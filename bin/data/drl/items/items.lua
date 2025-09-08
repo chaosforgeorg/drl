@@ -21,6 +21,7 @@ function drl.register_regular_items()
 		acc         = 1,
 		altfire     = ALT_THROW,
 		missile     = "mknife",
+		range       = 5,
 
 		OnCreate = function(self)
 			self:add_property( "BLADE", true )
@@ -576,6 +577,8 @@ function drl.register_regular_items()
 		reload        = 10,
 		missile       = "snormal",
 		range         = 15,
+		spread        = 3,
+		reduce        = 0.07,
 	}
 
 	register_item "dshotgun"
@@ -604,6 +607,8 @@ function drl.register_regular_items()
 		altreload     = RELOAD_SINGLE,
 		missile       = "swide",
 		range         = 8,
+		spread        = 3,
+		reduce        = 0.1,
 	}
 
 	register_item "ashotgun"
@@ -631,7 +636,9 @@ function drl.register_regular_items()
 		altreloadname = "full",
 		missile       = "sfocused",
 		range         = 15,
-		
+		spread        = 2,
+		reduce        = 0.05,
+
 		OnCreate = function(self)
 			self:add_property( "pump_action", true )
 			self:add_property( "chamber_empty", false )
@@ -723,11 +730,13 @@ function drl.register_regular_items()
 
 		OnAltFire = function( self, being )
 			self.missile = missiles[ "mrocketjump" ].nid
+			self.range   = 1
 			return true
 		end,
 
 		OnFire = function( self, being )
 			self.missile = missiles[ "mrocket" ].nid
+			self.range   = 0
 			return true
 		end,
 	}

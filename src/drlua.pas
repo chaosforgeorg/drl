@@ -162,8 +162,6 @@ begin
     iTable := LuaSystem.GetTable(['shotguns', iMID]);
     with iTable do
     try
-      Spread     := getInteger('spread');
-      Reduce     := getFloat ('reduce');
       ReadSprite( iTable, 'hitsprite', HitSprite );
     finally
       Free;

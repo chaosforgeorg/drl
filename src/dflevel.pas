@@ -1014,8 +1014,9 @@ var iDiff,iC: TCoord2D;
     end;
 begin
   iRange  := aItem.Range;
-  iSpread := aShotgun.Spread;
-  iReduce := aShotgun.Reduce;
+  iSpread := aItem.Spread;
+  iReduce := aItem.Reduce;
+  if ( iSpread <= 0 ) then Exit;
 
   iItemUID := aItem.uid;
 

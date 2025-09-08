@@ -95,6 +95,8 @@ TItem  = class( TThing )
     property Damage_Sides   : Word        read FProps.Damage.Sides   write FProps.Damage.Sides;
     property Damage_Add     : Integer     read FProps.Damage.Bonus   write FProps.Damage.Bonus;
     property Range          : Byte        read FProps.Range          write FProps.Range;
+    property Spread         : Byte        read FProps.Spread         write FProps.Spread;
+    property Reduce         : Single      read FProps.Reduce         write FProps.Reduce;
     property Missile        : Byte        read FProps.Missile        write FProps.Missile;
     property BlastRadius    : Byte        read FProps.BlastRadius    write FProps.BlastRadius;
     property Shots          : Byte        read FProps.Shots          write FProps.Shots;
@@ -280,6 +282,9 @@ begin
          FProps.ShotCost    := Table.getInteger('shotcost',0);
          FProps.ReloadTime  := Table.getInteger('reload',0);
          FProps.UseTime     := Table.getInteger('fire',0);
+         FProps.Range       := Table.getInteger('range');
+         FProps.Spread      := Table.getInteger('spread');
+         FProps.Reduce      := Table.GetFloat('reduce');
          FProps.AltFire     := TAltFire( Table.getInteger('altfire',0) );
          FProps.AltReload   := TAltReload( Table.getInteger('altreload',0) );
          FProps.DamageType  := TDamageType( Table.getInteger('damagetype',0) );
