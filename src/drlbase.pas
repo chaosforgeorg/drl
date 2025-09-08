@@ -752,7 +752,7 @@ begin
 
 
     if iItem.Flags[ IF_SHOTGUN ] then
-      iRange := Shotguns[ iItem.Missile ].Range
+      iRange := iItem.Range
     else
       iRange := Missiles[ iItem.Missile ].Range;
     if iRange = 0 then iRange := Player.Vision;

@@ -890,7 +890,7 @@ begin
   end;
   
   if aWeapon.Flags[ IF_SHOTGUN ] then
-      iRange := Shotguns[ aWeapon.Missile ].Range
+      iRange := aWeapon.Range
   else
       iRange := Missiles[ aWeapon.Missile ].Range;
   if iRange = 0 then iRange := self.Vision;

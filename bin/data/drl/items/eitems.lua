@@ -121,6 +121,7 @@ function drl.register_exotic_items()
 		fire          = 10,
 		reload        = 10,
 		missile       = "sfocused",
+		range         = 15,
 		altreload     = RELOAD_SCRIPT,
 		altreloadname = "full",
 
@@ -152,6 +153,7 @@ function drl.register_exotic_items()
 		fire          = 10,
 		reload        = 20,
 		missile       = "splasma",
+		range         = 15,
 	}
 
 	register_item "udshotgun"
@@ -177,6 +179,7 @@ function drl.register_exotic_items()
 		reload        = 15,
 		shots         = 2,
 		missile       = "snormal",
+		range         = 15,
 	}
 
 	register_item "ulaser"

@@ -463,6 +463,7 @@ function drl.register_unique_items()
 		altreloadname = "trigger",
 		shots         = 3,
 		missile       = "sfocused",
+		range         = 15,
 
 		OnAltReload = function(self,being)
 			if self.shots == 3 then
@@ -500,6 +501,7 @@ function drl.register_unique_items()
 		fire          = 5,
 		reload        = 25,
 		missile       = "sfocused",
+		range         = 15,
 	}
 
 	register_item "urbazooka"

@@ -1013,12 +1013,11 @@ var iDiff,iC: TCoord2D;
       until iCount = iRange;
     end;
 begin
-  iRange  := aShotgun.Range;
+  iRange  := aItem.Range;
   iSpread := aShotgun.Spread;
   iReduce := aShotgun.Reduce;
 
-  iItemUID := 0;
-  if aItem <> nil then iItemUID := aItem.uid;
+  iItemUID := aItem.uid;
 
   iDist := Distance( aSource, aTarget );
   if iDist = 0 then Exit;

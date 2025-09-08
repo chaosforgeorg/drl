@@ -575,6 +575,7 @@ function drl.register_regular_items()
 		fire          = 10,
 		reload        = 10,
 		missile       = "snormal",
+		range         = 15,
 	}
 
 	register_item "dshotgun"
@@ -602,6 +603,7 @@ function drl.register_regular_items()
 		altfire       = ALT_SINGLE,
 		altreload     = RELOAD_SINGLE,
 		missile       = "swide",
+		range         = 8,
 	}
 
 	register_item "ashotgun"
@@ -628,6 +630,7 @@ function drl.register_regular_items()
 		altreload     = RELOAD_SCRIPT,
 		altreloadname = "full",
 		missile       = "sfocused",
+		range         = 15,
 		
 		OnCreate = function(self)
 			self:add_property( "pump_action", true )

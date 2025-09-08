@@ -205,7 +205,6 @@ core.register_blueprint "missile"
 core.register_blueprint "shotgun"
 {
 	id          = { true,  core.TSTRING },
-	range       = { true,  core.TNUMBER },
 	spread      = { true,  core.TNUMBER },
 	reduce      = { true,  core.TNUMBER },
 	hitsprite   = { true,  core.TANY },
@@ -498,6 +497,7 @@ core.register_blueprint "item"
 			ammo_id       = { true, core.TIDIN("items") },
 			damage        = { true, core.TSTRING },
 			damagetype    = { true, core.TNUMBER },
+			range         = { false, core.TNUMBER, 0 },
 			acc           = { false, core.TNUMBER, 0 },
 			fire          = { false, core.TNUMBER, 10 },
 			radius        = { false, core.TNUMBER, 0 },

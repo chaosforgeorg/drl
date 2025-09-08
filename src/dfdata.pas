@@ -281,7 +281,6 @@ const
 
 type
   TShotgunData = record
-    Range      : Byte;
     Spread     : Byte;
     Reduce     : Real;
     HitSprite  : TSprite;
@@ -358,6 +357,7 @@ type TItemProperties = record
            AmmoMax     : Word;
            Acc         : Integer;
            Damage      : TDiceRoll;
+           Range       : Byte;
            Missile     : Byte;
            BlastRadius : Byte;
            Shots       : Byte;

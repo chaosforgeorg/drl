@@ -94,6 +94,7 @@ TItem  = class( TThing )
     property Damage_Dice    : Word        read FProps.Damage.Amount  write FProps.Damage.Amount;
     property Damage_Sides   : Word        read FProps.Damage.Sides   write FProps.Damage.Sides;
     property Damage_Add     : Integer     read FProps.Damage.Bonus   write FProps.Damage.Bonus;
+    property Range          : Byte        read FProps.Range          write FProps.Range;
     property Missile        : Byte        read FProps.Missile        write FProps.Missile;
     property BlastRadius    : Byte        read FProps.BlastRadius    write FProps.BlastRadius;
     property Shots          : Byte        read FProps.Shots          write FProps.Shots;
