@@ -433,9 +433,6 @@ begin
   case FProps.IType of
     ITEMTYPE_ARMOR, ITEMTYPE_BOOTS : DescriptionBox :=
       'Durability  : {!'+IntToStr(FProps.MaxDurability)+'}'#10+
-      'Move speed  : {!'+Percent(FProps.MoveMod)+'}'#10+
-      'Knockback   : {!'+Percent(FProps.KnockMod)+'}'#10+
-      Iff(FProps.DodgeMod <> 0,'Dodge rate  : {!'+Percent(FProps.DodgeMod)+'}'#10);
     ITEMTYPE_URANGED : DescriptionBox :=
       'Damage type : {!'+DamageTypeName(FProps.DamageType)+'}'#10+
       Iff(FProps.BlastRadius <> 0,'Expl.radius : {!'+IntToStr(FProps.BlastRadius)+'}'#10);
@@ -454,6 +451,11 @@ begin
       Iff(FProps.Acc     <> 0,'Accuracy    : {!' + BonusStr(FProps.Acc)+'}'#10)+
       Iff((not aShort) and (FProps.AltFire <> ALT_NONE),'Alt. fire   : {!'+AltFireName( FProps.AltFire )+'}'#10);
   end;
+  DescriptionBox +=
+    Iff(FProps.MoveMod  <> 0,'Move speed  : {!'+Percent(FProps.MoveMod)+'}'#10)+
+    Iff(FProps.KnockMod <> 0,'Knockback   : {!'+Percent(FProps.KnockMod)+'}'#10)+
+    Iff(FProps.DodgeMod <> 0,'Dodge rate  : {!'+Percent(FProps.DodgeMod)+'}'#10);
+
   DescriptionBox +=
       Iff(GetResistance('bullet')   <> 0,'Bullet res. : {!' + BonusStr(GetResistance('bullet'))+'}'#10)+
       Iff(GetResistance('melee')    <> 0,'Melee res.  : {!' + BonusStr(GetResistance('melee'))+'}'#10)+

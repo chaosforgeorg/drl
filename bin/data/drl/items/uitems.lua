@@ -135,7 +135,8 @@ function drl.register_unique_items()
 		weight   = 2,
 		desc     = "Now that is a BIG cleaver. Butcher them!",
 		firstmsg = "Aaaah, fresh meat!",
-		flags    = { IF_UNIQUE, IF_HALFKNOCK, IF_MODABLE, IF_SINGLEMOD },
+		flags    = { IF_UNIQUE, IF_MODABLE, IF_SINGLEMOD },
+		knockmod = -50,
 
 		type        = ITEMTYPE_MELEE,
 		damage      = "5d6",
@@ -984,7 +985,8 @@ function drl.register_unique_items()
 		weight   = 1,
 		group    = "melee",
 		desc     = "It was called the Dragonslayer, because no human could wield it...",
-		flags    = { IF_UNIQUE, IF_HALFKNOCK, IF_CURSED },
+		flags    = { IF_UNIQUE, IF_CURSED },
+		knockmod = -50,
 
 		type        = ITEMTYPE_MELEE,
 		damage      = "9d9",

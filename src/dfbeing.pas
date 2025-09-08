@@ -2518,9 +2518,6 @@ var iModifier : Real;
     iSlot     : TEqSlot;
 begin
   iModifier := 100;
-  if Inv.Slot[efWeapon] <> nil then
-    if Inv.Slot[efWeapon].Flags[ IF_HALFKNOCK ] then
-      iModifier := 50;
   for iSlot in TEqSlot do
     if Inv.Slot[iSlot] <> nil then
       with Inv.Slot[iSlot] do
