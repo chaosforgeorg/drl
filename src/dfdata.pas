@@ -339,43 +339,37 @@ type TItemRecharge = record
 end;
 
 type TItemProperties = record
-  Recharge   : TItemRecharge;
-  MoveMod    : Integer;
-  DodgeMod   : Integer;
-  KnockMod   : Integer;
-   case IType : TItemType of
-     ItemType_Armor,ItemType_Boots : (
-       Durability : Word;
-       MaxDurability : Word;
-       SpriteMod  : Integer;
-       PCosColor  : TColor;
-       PGlowColor : TColor;
-     );
-     ItemType_Ammo,
-     ItemType_Melee,
-     ItemType_NRanged,
-     ItemType_URanged,
-     ItemType_Ranged,
-     ItemType_AmmoPack : (
-       AmmoID      : Byte;
-       Ammo        : Word;
-       AmmoMax     : Word;
-       Acc         : Integer;
-       Damage      : TDiceRoll;
-       Range       : Byte;
-       Spread      : Byte;
-       Reduce      : Single;
-       Missile     : Byte;
-       BlastRadius : Byte;
-       Shots       : Byte;
-       ShotCost    : Byte;
-       ReloadTime  : Byte;
-       UseTime     : Byte;
-       DamageType  : TDamageType;
-       AltFire     : TAltFire;
-       AltReload   : TAltReload;
-     );
- end;
+  IType         : TItemType;
+
+  Recharge      : TItemRecharge;
+  MoveMod       : Integer;
+  DodgeMod      : Integer;
+  KnockMod      : Integer;
+
+  PCosColor     : TColor;
+  PGlowColor    : TColor;
+  SpriteMod     : Integer;
+  Durability    : Word;
+  MaxDurability : Word;
+
+  AmmoID        : Byte;
+  Ammo          : Word;
+  AmmoMax       : Word;
+  Acc           : Integer;
+  Damage        : TDiceRoll;
+  Range         : Byte;
+  Spread        : Byte;
+  Reduce        : Single;
+  Missile       : Byte;
+  BlastRadius   : Byte;
+  Shots         : Byte;
+  ShotCost      : Byte;
+  ReloadTime    : Byte;
+  UseTime       : Byte;
+  DamageType    : TDamageType;
+  AltFire       : TAltFire;
+  AltReload     : TAltReload;
+end;
 
 const MaxPlayerLevel = 26;
 

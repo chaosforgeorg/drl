@@ -207,7 +207,7 @@ begin
   inherited LuaLoad( Table );
   FHooks := FHooks * ItemHooks;
 
-  FProps.itype:= TItemType( Table.getInteger('type') );
+  FProps.itype := TItemType( Table.getInteger('type') );
 
   for i := Ord('A') to Ord('Z') do FMods[i] := 0;
 
@@ -225,62 +225,38 @@ begin
   FProps.DodgeMod  := Table.getInteger( 'dodgemod', 0 );
   FProps.KnockMod  := Table.getInteger( 'knockmod', 0 );
 
-   case FProps.IType of
-     ITEMTYPE_TELE,
-     ITEMTYPE_LEVER,
-     ITEMTYPE_PACK,
-     ITEMTYPE_FEATURE,
-     ITEMTYPE_POWER : ;
-     ITEMTYPE_ARMOR,
-     ITEMTYPE_BOOTS :
-       begin
-         FProps.PCosColor := ColorZero;
-         if not Table.isNil( 'pcoscolor' ) then
-           FProps.PCosColor := NewColor( Table.GetVec4f('pcoscolor' ) );
-         FProps.PGlowColor := ColorZero;
-         if not Table.isNil( 'pglow' ) then
-           FProps.PGlowColor := NewColor( Table.GetVec4f('pglow' ) );
-         FProps.Durability := Table.getInteger('durability');
-         if FProps.Durability = 0 then FProps.Durability := 100;
-         FProps.MaxDurability := FProps.Durability;
-         FProps.SpriteMod := Table.GetInteger('spritemod',0);
-       end;
-     ITEMTYPE_AMMOPACK :
-       begin
-         FProps.Ammo        := Table.getInteger('ammo');
-         FProps.AmmoMax     := Table.getInteger('ammomax');
-         FProps.AmmoID      := Table.getInteger('ammo_id',0);
-       end;
-     ITEMTYPE_MELEE :
-       begin
-         FProps.Damage      := NewDiceRoll( Table.getInteger('damage_dice'), Table.getInteger('damage_sides'), Table.getInteger('damage_bonus') );
-         FProps.DamageType  := TDamageType( Table.getInteger('damagetype') );
-         FProps.Acc         := Table.getInteger('acc');
-         FProps.UseTime     := Table.getInteger('fire');
-         FProps.AltFire     := TAltFire( Table.getInteger('altfire') );
-         FProps.missile     := Table.getInteger('missile');
-       end;
-     ITEMTYPE_RANGED, ITEMTYPE_NRANGED, ITEMTYPE_URANGED:
-       begin
-         FProps.Damage      := NewDiceRoll( Table.getInteger('damage_dice'), Table.getInteger('damage_sides'), Table.getInteger('damage_bonus') );
-         FProps.AmmoID      := Table.getInteger('ammo_id',0);
-         FProps.AmmoMax     := Table.getInteger('ammomax',0);
-         FProps.Ammo        := FProps.AmmoMax;
-         FProps.Acc         := Table.getInteger('acc');
-         FProps.missile     := Table.getInteger('missile');
-         FProps.BlastRadius := Table.getInteger('radius');
-         FProps.Shots       := Table.getInteger('shots');
-         FProps.ShotCost    := Table.getInteger('shotcost',0);
-         FProps.ReloadTime  := Table.getInteger('reload',0);
-         FProps.UseTime     := Table.getInteger('fire',0);
-         FProps.Range       := Table.getInteger('range');
-         FProps.Spread      := Table.getInteger('spread');
-         FProps.Reduce      := Table.GetFloat('reduce');
-         FProps.AltFire     := TAltFire( Table.getInteger('altfire',0) );
-         FProps.AltReload   := TAltReload( Table.getInteger('altreload',0) );
-         FProps.DamageType  := TDamageType( Table.getInteger('damagetype',0) );
-       end;
-  end;
+  FProps.Durability    := Table.getInteger('durability',0);
+  FProps.MaxDurability := FProps.Durability;
+  FProps.SpriteMod     := Table.GetInteger('spritemod',0);
+
+  FProps.Ammo     := Table.getInteger('ammo',0);
+  FProps.AmmoMax  := Table.getInteger('ammomax',0);
+  FProps.AmmoID   := Table.getInteger('ammo_id',0);
+  if Ammo = 0 then FProps.Ammo := FProps.AmmoMax;
+
+  FProps.Damage     := NewDiceRoll( Table.getInteger('damage_dice',0), Table.getInteger('damage_sides',0), Table.getInteger('damage_bonus',0) );
+  FProps.DamageType := TDamageType( Table.getInteger('damagetype',0) );
+
+  FProps.Acc         := Table.getInteger('acc',0);
+  FProps.UseTime     := Table.getInteger('fire',0);
+  FProps.ReloadTime  := Table.getInteger('reload',0);
+  FProps.AltFire     := TAltFire( Table.getInteger('altfire',0) );
+  FProps.missile     := Table.getInteger('missile',0);
+
+  FProps.BlastRadius := Table.getInteger('radius',0);
+  FProps.Range       := Table.getInteger('range',0);
+  FProps.Shots       := Table.getInteger('shots',0);
+  FProps.ShotCost    := Table.getInteger('shotcost',0);
+  FProps.Spread      := Table.getInteger('spread',0);
+  FProps.Reduce      := Table.GetFloat('reduce',0.0);
+
+  FProps.AltFire     := TAltFire( Table.getInteger('altfire',0) );
+  FProps.AltReload   := TAltReload( Table.getInteger('altreload',0) );
+
+  FProps.PCosColor := ColorZero;
+  FProps.PGlowColor := ColorZero;
+  if not Table.isNil( 'pcoscolor' ) then FProps.PCosColor  := NewColor( Table.GetVec4f('pcoscolor' ) );
+  if not Table.isNil( 'pglow' )     then FProps.PGlowColor := NewColor( Table.GetVec4f('pglow' ) );
 
   if onFloor and ( FProps.IType = ITEMTYPE_AMMO ) then
     FAmount := Round( FAmount * Double(LuaSystem.Get([ 'diff', DRL.Difficulty, 'ammofactor' ])) );
@@ -432,7 +408,7 @@ begin
   DescriptionBox := '';
   case FProps.IType of
     ITEMTYPE_ARMOR, ITEMTYPE_BOOTS : DescriptionBox :=
-      'Durability  : {!'+IntToStr(FProps.MaxDurability)+'}'#10+
+      'Durability  : {!'+IntToStr(FProps.MaxDurability)+'}'#10;
     ITEMTYPE_URANGED : DescriptionBox :=
       'Damage type : {!'+DamageTypeName(FProps.DamageType)+'}'#10+
       Iff(FProps.BlastRadius <> 0,'Expl.radius : {!'+IntToStr(FProps.BlastRadius)+'}'#10);
