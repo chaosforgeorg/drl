@@ -9,13 +9,6 @@ unit dfitem;
 interface
 uses Classes, SysUtils, dfthing, dfdata, vrltools, vluatable, vcolor, math;
 
-type TItemRecharge = record
-  Delay   : Byte;
-  Amount  : Byte;
-  Counter : Byte;
-  Limit   : Byte;
-end;
-
 type
 
 { TItem }
@@ -62,7 +55,6 @@ TItem  = class( TThing )
     class function Compare( a, b : TItem ) : Boolean; reintroduce;
     class procedure RegisterLuaAPI();
     private
-    FRecharge : TItemRecharge;
     FNID      : Byte;
     FProps    : TItemProperties;
     FMods     : array[Ord('A')..Ord('Z')] of Byte;
@@ -71,15 +63,15 @@ TItem  = class( TThing )
     FMax      : Integer;
     procedure LuaLoad( Table : TLuaTable; onFloor: boolean ); reintroduce;
     public
-    property PGlowColor     : TColor      read FProps.PGlowColor     write FProps.PGlowColor;
-    property PCosColor      : TColor      read FProps.PCosColor      write FProps.PCosColor;
+    property PGlowColor     : TColor      read FProps.PGlowColor      write FProps.PGlowColor;
+    property PCosColor      : TColor      read FProps.PCosColor       write FProps.PCosColor;
     published
     property Max            : Integer     read FMax;
-    property Amount         : Integer     read FAmount               write FAmount;
+    property Amount         : Integer     read FAmount                write FAmount;
     property NID            : Byte        read FNID;
-    property RechargeDelay  : Byte        read FRecharge.Delay       write FRecharge.Delay;
-    property RechargeAmount : Byte        read FRecharge.Amount      write FRecharge.Amount;
-    property RechargeLimit  : Byte        read FRecharge.Limit       write FRecharge.Limit;
+    property RechargeDelay  : Byte        read FProps.Recharge.Delay  write FProps.Recharge.Delay;
+    property RechargeAmount : Byte        read FProps.Recharge.Amount write FProps.Recharge.Amount;
+    property RechargeLimit  : Byte        read FProps.Recharge.Limit  write FProps.Recharge.Limit;
     property IType          : TItemType   read FProps.IType          write FProps.IType;
     property Durability     : Word        read FProps.Durability     write FProps.Durability;
     property MaxDurability  : Word        read FProps.MaxDurability  write FProps.MaxDurability;
@@ -175,7 +167,6 @@ var i, iCount : Word;
 begin
   inherited CreateFromStream ( aStream ) ;
 
-  aStream.Read( FRecharge, SizeOf( FRecharge ) );
   aStream.Read( FMods,     SizeOf( FMods ) );
   aStream.Read( FProps,    SizeOf( FProps ) );
   aStream.Read( FAppear,   SizeOf( FAppear ) );
@@ -194,7 +185,6 @@ var iNode : TNode;
 begin
   inherited WriteToStream ( aStream ) ;
 
-  aStream.Write( FRecharge, SizeOf( FRecharge ) );
   aStream.Write( FMods,     SizeOf( FMods ) );
   aStream.Write( FProps,    SizeOf( FProps ) );
   aStream.Write( FAppear,   SizeOf( FAppear ) );
@@ -226,10 +216,14 @@ begin
   FMax             := Table.getInteger('max');
   FAmount          := Table.getInteger('amount');
 
-  FRecharge.Delay  := Table.getInteger('rechargedelay',0);
-  FRecharge.Amount := Table.getInteger('rechargeamount',0);
-  FRecharge.Limit  := Table.getInteger('rechargelimit',0);
-  FRecharge.Counter:= 0;
+  FProps.Recharge.Delay  := Table.getInteger('rechargedelay',0);
+  FProps.Recharge.Amount := Table.getInteger('rechargeamount',0);
+  FProps.Recharge.Limit  := Table.getInteger('rechargelimit',0);
+  FProps.Recharge.Counter:= 0;
+
+  FProps.MoveMod   := Table.getInteger( 'movemod', 0 );
+  FProps.DodgeMod  := Table.getInteger( 'dodgemod', 0 );
+  FProps.KnockMod  := Table.getInteger( 'knockmod', 0 );
 
    case FProps.IType of
      ITEMTYPE_TELE,
@@ -249,9 +243,6 @@ begin
          FProps.Durability := Table.getInteger('durability');
          if FProps.Durability = 0 then FProps.Durability := 100;
          FProps.MaxDurability := FProps.Durability;
-         FProps.MoveMod  := Table.getInteger('movemod');
-         FProps.DodgeMod  := Table.getInteger('dodgemod');
-         FProps.KnockMod := Table.getInteger('knockmod');
          FProps.SpriteMod := Table.GetInteger('spritemod',0);
        end;
      ITEMTYPE_AMMOPACK :
@@ -305,7 +296,7 @@ end;
 
 procedure TItem.RechargeReset;
 begin
-  FRecharge.Counter := FRecharge.Delay;
+  FProps.Recharge.Counter := FProps.Recharge.Delay;
 end;
 
 function    TItem.rollDamage : Integer;
@@ -628,24 +619,24 @@ begin
   
   if ( IF_RECHARGE in FFlags ) or ( ( IF_NECROCHARGE in FFlags ) and ( Being <> nil ) and ( Being.HP > 1 ) ) then
   begin
-    if FRecharge.Counter = 0 then
+    if FProps.Recharge.Counter = 0 then
     case FProps.IType of
       ITEMTYPE_RANGED :
-        if (FProps.Ammo < FProps.AmmoMax) and ( ( FRecharge.Limit = 0 ) or ( FProps.Ammo < FRecharge.Limit ) )  then
+        if (FProps.Ammo < FProps.AmmoMax) and ( ( FProps.Recharge.Limit = 0 ) or ( FProps.Ammo < FProps.Recharge.Limit ) )  then
         begin
-          FProps.Ammo := Min( FProps.Ammo + FRecharge.Amount, IIf( FRecharge.Limit <> 0, Min( FProps.AmmoMax, FRecharge.Limit ), FProps.AmmoMax ) );
+          FProps.Ammo := Min( FProps.Ammo + FProps.Recharge.Amount, IIf( FProps.Recharge.Limit <> 0, Min( FProps.AmmoMax, FProps.Recharge.Limit ), FProps.AmmoMax ) );
           if IF_NECROCHARGE in FFlags then Being.HP := Being.HP - 1;
         end;
       ITEMTYPE_ARMOR,
       ITEMTYPE_BOOTS  :
-        if (FProps.Durability < FProps.MaxDurability) and ( ( FRecharge.Limit = 0 ) or ( FProps.Durability < FRecharge.Limit ) ) then
+        if (FProps.Durability < FProps.MaxDurability) and ( ( FProps.Recharge.Limit = 0 ) or ( FProps.Durability < FProps.Recharge.Limit ) ) then
         begin
-          FProps.Durability := Min( FProps.Durability + FRecharge.Amount, IIf( FRecharge.Limit <> 0, Min( FProps.MaxDurability, FRecharge.Limit ), FProps.MaxDurability ) );
+          FProps.Durability := Min( FProps.Durability + FProps.Recharge.Amount, IIf( FProps.Recharge.Limit <> 0, Min( FProps.MaxDurability, FProps.Recharge.Limit ), FProps.MaxDurability ) );
           if IF_NECROCHARGE in FFlags then Being.HP := Being.HP - 1;
         end;
     end
     else
-      FRecharge.Counter := FRecharge.Counter - 1;
+      Dec( FProps.Recharge.Counter );
   end;
 end;
 

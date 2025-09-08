@@ -59,7 +59,6 @@ function drl.register_missiles()
 		miss_base  = 30,
 		miss_dist  = 5,
 		flags      = { MF_EXACT },
-		range      = 1,
 		explosion  = {
 			delay = 40,
 			color = RED,
@@ -155,34 +154,25 @@ function drl.register_missiles()
 		miss_base  = 10,
 		miss_dist  = 3,
 		flags      = { MF_EXACT },
-		range      = 5,
 	}
 
 	register_shotgun "snormal"
 	{
-		spread     = 3,
-		reduce     = 0.07,
 		hitsprite  = SPRITE_BLAST,
 	}
 
 	register_shotgun "swide"
 	{
-		spread     = 3,
-		reduce     = 0.1,
 		hitsprite  = SPRITE_BLAST,
 	}
 
 	register_shotgun "sfocused"
 	{
-		spread     = 2,
-		reduce     = 0.05,
 		hitsprite  = SPRITE_BLAST,
 	}
 
 	register_shotgun "splasma"
 	{
-		spread     = 3,
-		reduce     = 0.05,
 		hitsprite  = SPRITE_BLAST,
 	}
 end

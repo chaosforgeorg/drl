@@ -2439,10 +2439,14 @@ end;
 function TBeing.getMoveCost: LongInt;
 var iModifier  : Single;
     iMoveBonus : Integer;
+    iSlot      : TEqSlot;
 begin
   iModifier := FTimes.Move/100.;
-  if Inv.Slot[efTorso] <> nil then iModifier *= (100-Inv.Slot[efTorso].MoveMod)/100.;
-  if Inv.Slot[efBoots] <> nil then iModifier *= (100-Inv.Slot[efBoots].MoveMod)/100.;
+  for iSlot in TEqSlot do
+    if Inv.Slot[iSlot] <> nil then
+      with Inv.Slot[iSlot] do
+        if MoveMod <> 0 then
+          iModifier *= (100-MoveMod)/100.;
   iMoveBonus := GetBonus( Hook_getMoveBonus, [] );
   if iMoveBonus <> 0 then iModifier *= (100-iMoveBonus)/100.;
   if not ( BF_FLY in FFlags ) then
@@ -2501,28 +2505,28 @@ begin
 end;
 
 function TBeing.getDodgeMod : LongInt;
+var iSlot : TEqSlot;
 begin
   Result := GetBonus( Hook_getDodgeBonus, [] );
-  if Inv.Slot[efTorso] <> nil    then Result += Inv.Slot[efTorso].DodgeMod;
-  if Inv.Slot[efBoots] <> nil    then Result += Inv.Slot[efBoots].DodgeMod;
+  for iSlot in TEqSlot do
+    if Inv.Slot[iSlot] <> nil then
+      Result += Inv.Slot[iSlot].DodgeMod;
 end;
 
 function TBeing.getKnockMod : LongInt;
-var Modifier : Real;
+var iModifier : Real;
+    iSlot     : TEqSlot;
 begin
-  Modifier := 100;
+  iModifier := 100;
   if Inv.Slot[efWeapon] <> nil then
     if Inv.Slot[efWeapon].Flags[ IF_HALFKNOCK ] then
-      Modifier := 50;
-  if Inv.Slot[efBoots] <> nil then
-    with Inv.Slot[efBoots] do
-      if KnockMod <> 0 then
-        Modifier *= (100 + KnockMod) / 100. ;
-  if Inv.Slot[efTorso] <> nil then
-    with Inv.Slot[efTorso] do
-      if KnockMod <> 0 then
-        Modifier *= (100 + KnockMod) / 100. ;
-  getKnockMod := Round(Modifier) ;
+      iModifier := 50;
+  for iSlot in TEqSlot do
+    if Inv.Slot[iSlot] <> nil then
+      with Inv.Slot[iSlot] do
+        if KnockMod <> 0 then
+          iModifier *= (100 + KnockMod) / 100. ;
+  getKnockMod := Round(iModifier) ;
 end;
 
 function TBeing.canDualWield : boolean;
