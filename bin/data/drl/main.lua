@@ -610,6 +610,7 @@ function drl.OnCreateEpisode()
 				script = level_proto.id,
 				style  = from.style,
 				danger = from.danger,
+				depth  = from.depth,
 				name   = level_proto.name,
 				exit   = index + 1,
 			} )
