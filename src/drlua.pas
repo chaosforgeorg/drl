@@ -137,7 +137,6 @@ begin
       Color     := getInteger('color');
       Delay     := getInteger('delay');
       Flags     := getFlags('flags');
-      Range     := getInteger('range');
       MissBase  := getInteger('miss_base');
       MissDist  := getInteger('miss_dist');
       ReadExplosion( iTable, 'explosion', Explosion );

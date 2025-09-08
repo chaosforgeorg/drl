@@ -727,7 +727,7 @@ begin
         iTarget := FTargeting.List.Current
       else
       begin
-        iRange      := Missiles[ iItem.Missile ].Range;
+        iRange      := iItem.Range;
         iLimitRange := MF_EXACT in Missiles[ iItem.Missile ].Flags;
         iFireTitle  := 'Choose throw target:';
       end;
@@ -750,11 +750,7 @@ begin
       Exit( False );
     end;
 
-
-    if iItem.Flags[ IF_SHOTGUN ] then
-      iRange := iItem.Range
-    else
-      iRange := Missiles[ iItem.Missile ].Range;
+    iRange := iItem.Range;
     if iRange = 0 then iRange := Player.Vision;
 
     iLimitRange := (not iItem.Flags[ IF_SHOTGUN ]) and (MF_EXACT in Missiles[ iItem.Missile ].Flags);
@@ -820,7 +816,7 @@ function TDRL.HandleUsableCommand( aItem : TItem ) : Boolean;
 var iRange      : Integer;
     iLimitRange : Boolean;
 begin
-  iRange      := Missiles[ aItem.Missile ].Range;
+  iRange := aItem.Range;
   if iRange = 0 then iRange := Player.Vision;
   if iRange <> Player.Vision then
     FTargeting.Update( iRange );

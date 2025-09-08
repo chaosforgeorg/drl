@@ -889,10 +889,7 @@ begin
     if aWeapon.Ammo < aWeapon.ShotCost then Exit( False );
   end;
   
-  if aWeapon.Flags[ IF_SHOTGUN ] then
-      iRange := aWeapon.Range
-  else
-      iRange := Missiles[ aWeapon.Missile ].Range;
+  iRange := aWeapon.Range;
   if iRange = 0 then iRange := self.Vision;
   iLimitRange := (not aWeapon.Flags[ IF_SHOTGUN ]) and (MF_EXACT in Missiles[ aWeapon.Missile ].Flags);
 

@@ -184,8 +184,8 @@ function drl.register_unique_items()
 			miss_base  = 10,
 			miss_dist  = 3,
 			flags      = { MF_EXACT },
-			range      = 5,
 		},
+		range      = 5,
 	}
 
 	register_item "usubtle"

@@ -295,7 +295,6 @@ type
     Delay      : Byte;
     MissBase   : Byte;
     MissDist   : Byte;
-    Range      : Byte;
     Flags      : TFlags;
     Explosion  : TExplosionData;
   end;
