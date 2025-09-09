@@ -288,7 +288,6 @@ type
     MissBase   : Byte;
     MissDist   : Byte;
     Flags      : TFlags;
-    Explosion  : TExplosionData;
   end;
 
   TAffectData = record
@@ -365,6 +364,7 @@ type TItemProperties = record
   PGlowColor    : TColor;
   MisSprite     : TSprite;
   HitSprite     : TSprite;
+  Explosion     : TExplosionData;
 end;
 
 const MaxPlayerLevel = 26;

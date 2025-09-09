@@ -63,10 +63,11 @@ TItem  = class( TThing )
     FMax      : Integer;
     procedure LuaLoad( aTable : TLuaTable; aOnFloor: boolean ); reintroduce;
     public
-    property PGlowColor     : TColor      read FProps.PGlowColor      write FProps.PGlowColor;
-    property PCosColor      : TColor      read FProps.PCosColor       write FProps.PCosColor;
-    property HitSprite      : TSprite     read FProps.HitSprite;
-    property MisSprite      : TSprite     read FProps.MisSprite;
+    property PGlowColor     : TColor         read FProps.PGlowColor      write FProps.PGlowColor;
+    property PCosColor      : TColor         read FProps.PCosColor       write FProps.PCosColor;
+    property HitSprite      : TSprite        read FProps.HitSprite;
+    property MisSprite      : TSprite        read FProps.MisSprite;
+    property Explosion      : TExplosionData read FProps.Explosion;
     published
     property Max            : Integer     read FMax;
     property Amount         : Integer     read FAmount                write FAmount;
@@ -262,6 +263,8 @@ begin
 
   ReadSprite( aTable, 'missprite', FProps.MisSprite );
   ReadSprite( aTable, 'hitsprite', FProps.HitSprite );
+  ReadExplosion( aTable, 'explosion', FProps.Explosion );
+
 
   if aOnFloor and ( FProps.IType = ITEMTYPE_AMMO ) then
     FAmount := Round( FAmount * Double(LuaSystem.Get([ 'diff', DRL.Difficulty, 'ammofactor' ])) );
@@ -653,11 +656,61 @@ begin
   Result := 0;
 end;
 
-const lua_item_lib : array[0..3] of luaL_Reg = (
-      ( name : 'new';        func : @lua_item_new),
-      ( name : 'get_mod';    func : @lua_item_get_mod),
-      ( name : 'set_mod';    func : @lua_item_set_mod),
-      ( name : nil;          func : nil; )
+function lua_item_set_sprite(L: Plua_State): Integer; cdecl;
+var iState   : TDRLLuaState;
+    iItem    : TItem;
+    iType    : Ansistring;
+    iPSprite : ^TSprite;
+    iTable   : TLuaTable;
+begin
+  iState.Init(L);
+  iItem := iState.ToObject(1) as TItem;
+  if iItem = nil then Exit(0);
+  iType := iState.ToString(2);
+  iPSprite := nil;
+  if iType = 'spr' then
+    iPSprite := @iItem.FSprite
+  else if iType = 'mis' then
+    iPSprite := @iItem.FProps.MisSprite
+  else if iType = 'hit' then
+    iPSprite := @iItem.FProps.HitSprite
+  else if iType = 'exp' then
+    iPSprite := @iItem.FProps.Explosion.Sprite;
+  if iPSprite = nil then
+  begin
+    iState.Error('sprite type expected as parameter #1!');
+    Exit( 0 );
+  end;
+  iTable := iState.ToTable(3);
+  if iTable = nil then Exit( 0 );
+  FillChar( iPSprite^, SizeOf( TSprite ), 0 );
+  ReadSprite( iTable, iPSprite^ );
+  FreeAndNil( iTable );
+  Result := 0;
+end;
+
+function lua_item_set_explosion(L: Plua_State): Integer; cdecl;
+var iState   : TDRLLuaState;
+    iItem    : TItem;
+    iTable   : TLuaTable;
+begin
+  iState.Init(L);
+  iItem := iState.ToObject(1) as TItem;
+  if iItem = nil then Exit(0);
+  iTable := iState.ToTable(2);
+  if iTable = nil then Exit( 0 );
+  FillChar( iItem.FProps.Explosion, SizeOf( TExplosionData ), 0 );
+  ReadExplosion( iTable, iItem.FProps.Explosion );
+  FreeAndNil( iTable );
+  Result := 0;
+end;
+const lua_item_lib : array[0..5] of luaL_Reg = (
+      ( name : 'new';           func : @lua_item_new),
+      ( name : 'get_mod';       func : @lua_item_get_mod),
+      ( name : 'set_mod';       func : @lua_item_set_mod),
+      ( name : 'set_sprite';    func : @lua_item_set_sprite),
+      ( name : 'set_explosion'; func : @lua_item_set_explosion),
+      ( name : nil;             func : nil; )
 );
 
 class procedure TItem.RegisterLuaAPI();

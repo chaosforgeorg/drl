@@ -186,14 +186,14 @@ register_level "the_chained_court"
 					miss_dist  = 10,
 					hitdesc    = "You are engulfed in flames!",
 					flags      = { MF_EXACT, MF_IMMIDATE },
-					explosion  = {
-						delay = 50,
-						color = YELLOW,
-						flags = { EFNOKNOCK, EFSELFSAFE },
-					},
 				},
 				missprite = 0,
 				hitsprite = SPRITE_BLAST,
+				explosion  = {
+					delay = 50,
+					color = YELLOW,
+					flags = { EFNOKNOCK, EFSELFSAFE },
+				},
 			},
 
 			OnCreate = function (self)

@@ -147,13 +147,13 @@ function drl.register_beings()
 				delay      = 30,
 				miss_base  = 50,
 				miss_dist  = 5,
-				explosion  = {
-					delay = 40,
-					color = RED,
-				},
 			},
 			missprite  = SPRITE_FIREBALL,
 			hitsprite  = SPRITE_BLAST,
+			explosion  = {
+				delay = 40,
+				color = RED,
+			},
 		},
 	}
 
@@ -244,13 +244,13 @@ function drl.register_beings()
 				delay      = 30,
 				miss_base  = 50,
 				miss_dist  = 4,
-				explosion  = {
-					delay = 40,
-					color = MAGENTA,
-				},
 			},
 			missprite  = SPRITE_PLASMABALL,
 			hitsprite  = SPRITE_BLAST,
+			explosion  = {
+				delay = 40,
+				color = MAGENTA,
+			},
 		},
 	}
 
@@ -292,16 +292,16 @@ function drl.register_beings()
 				delay      = 30,
 				miss_base  = 50,
 				miss_dist  = 5,
-				explosion  = {
-					delay = 40,
-					color = MAGENTA,
-				},
 			},
 			missprite = {
 				sprite     = SPRITE_ACIDSHOT,
 				coscolor   = { 1.0, 0.0, 1.0, 1.0 },
 			},
 			hitsprite  = SPRITE_BLAST,
+			explosion  = {
+				delay = 40,
+				color = MAGENTA,
+			},
 		},
 	}
 
@@ -342,16 +342,16 @@ function drl.register_beings()
 				delay      = 35,
 				miss_base  = 50,
 				miss_dist  = 3,
-				explosion  = {
-					delay = 40,
-					color = GREEN,
-				},
 			},
 			missprite = {
 				sprite     = SPRITE_ACIDSHOT,
 				coscolor   = { 0.0, 1.0, 0.0, 1.0 },
 			},
 			hitsprite  = SPRITE_BLAST,
+			explosion  = {
+				delay = 40,
+				color = GREEN,
+			},
 		},
 	}
 
@@ -471,13 +471,13 @@ function drl.register_beings()
 				miss_base  = 30,
 				miss_dist  = 6,
 				flags = { MF_EXACT },
-				explosion  = {
-					delay = 40,
-					color = RED,
-				},
 			},
 			missprite = SPRITE_ROCKETSHOT,
 			hitsprite = SPRITE_BLAST,
+			explosion  = {
+				delay = 40,
+				color = RED,
+			},
 		},
 
 		OnCreate = function (self)
@@ -522,13 +522,13 @@ function drl.register_beings()
 				delay      = 20,
 				miss_base  = 1,
 				miss_dist  = 3,
-				explosion  = {
-					delay = 40,
-					color = RED,
-				},
 			},
 			missprite  = SPRITE_ROCKETSHOT,
 			hitsprite  = SPRITE_BLAST,
+			explosion  = {
+				delay = 40,
+				color = RED,
+			},
 		},
 
 		OnCreate = function (self)
@@ -572,14 +572,14 @@ function drl.register_beings()
 				miss_dist  = 10,
 				hitdesc    = "You are engulfed in flames!",
 				flags      = { MF_EXACT, MF_IMMIDATE },
-				explosion  = {
-					delay = 50,
-					color = YELLOW,
-					flags = { EFNOKNOCK, EFSELFSAFE },
-				},
 			},
 			missprite = 0,
 			hitsprite = SPRITE_BLAST,
+			explosion  = {
+				delay = 50,
+				color = YELLOW,
+				flags = { EFNOKNOCK, EFSELFSAFE },
+			},
 		},
 
 		OnCreate = function (self)
@@ -777,13 +777,13 @@ function drl.register_beings()
 				delay      = 15,
 				miss_base  = 20,
 				miss_dist  = 4,
-				explosion  = {
-					delay = 40,
-					color = MAGENTA,
-				},
 			},
 			missprite = SPRITE_FIREBALL,
 			hitsprite = SPRITE_BLAST,
+			explosion  = {
+				delay = 40,
+				color = MAGENTA,
+			},
 		}
 	}
 
@@ -874,13 +874,13 @@ function drl.register_beings()
 				delay      = 30,
 				miss_base  = 30,
 				miss_dist  = 4,
-				explosion  = {
-					delay = 40,
-					color = MAGENTA,
-				},
 			},
 			missprite = SPRITE_PLASMABALL,
 			hitsprite = SPRITE_BLAST,
+			explosion  = {
+				delay = 40,
+				color = MAGENTA,
+			},
 		},
 	}
 
@@ -923,16 +923,16 @@ function drl.register_beings()
 				delay      = 30,
 				miss_base  = 30,
 				miss_dist  = 4,
-				explosion  = {
-					delay = 40,
-					color = MAGENTA,
-				},
 			},
 			missprite = {
 				sprite = SPRITE_PLASMABALL,
 				coscolor   = { 1.0, 0.0, 1.0, 1.0 },
 			},
 			hitsprite = SPRITE_BLAST,
+			explosion  = {
+				delay = 40,
+				color = MAGENTA,
+			},
 		},
 	}
 
@@ -1051,13 +1051,13 @@ function drl.register_beings()
 				miss_base  = 30,
 				miss_dist  = 5,
 				flags = { MF_EXACT },
-				explosion  = {
-					delay = 40,
-					color = RED,
-				},
 			},
 			missprite  = SPRITE_ROCKETSHOT,
 			hitsprite  = SPRITE_BLAST,
+			explosion  = {
+				delay = 40,
+				color = RED,
+			},
 		},
 
 		OnCreate = function (self)
@@ -1104,14 +1104,14 @@ function drl.register_beings()
 				delay      = 20,
 				miss_base  = 1,
 				miss_dist  = 3,
-				explosion  = {
-					delay   = 40,
-					color   = GREEN,
-					content = "acid",
-				},
 			},
 			missprite  = SPRITE_ROCKETSHOT,
 			hitsprite  = SPRITE_BLAST,
+			explosion  = {
+				delay   = 40,
+				color   = GREEN,
+				content = "acid",
+			},
 		},
 
 		OnCreate = function (self)
@@ -1156,14 +1156,14 @@ function drl.register_beings()
 				miss_dist  = 10,
 				hitdesc    = "You are engulfed in flames!",
 				flags      = { MF_EXACT, MF_IMMIDATE },
-				explosion  = {
-					delay = 50,
-					color = BLUE,
-					flags = { EFNOKNOCK, EFSELFSAFE },
-				},
 			},
 			missprite = 0,
 			hitsprite = SPRITE_BLAST,
+			explosion  = {
+				delay = 50,
+				color = BLUE,
+				flags = { EFNOKNOCK, EFSELFSAFE },
+			},
 		},
 
 		OnCreate = function (self)
@@ -1211,16 +1211,16 @@ function drl.register_beings()
 				delay      = 35,
 				miss_base  = 40,
 				miss_dist  = 3,
-				explosion  = {
-					delay   = 40,
-					color   = GREEN,
-				},
 			},
 			missprite = {
 				sprite     = SPRITE_ACIDSHOT,
 				coscolor   = { 0.0, 1.0, 0.0, 1.0 },
 			},
 			hitsprite  = SPRITE_BLAST,
+			explosion  = {
+				delay   = 40,
+				color   = GREEN,
+			},
 		},
 
 		OnCreate = function (self)
@@ -1330,15 +1330,15 @@ function drl.register_beings()
 				miss_base  = 30,
 				miss_dist  = 4,
 				flags      = { MF_EXACT },
-				explosion  = {
-					delay = 40,
-					color = RED,
-					flags = { EFRANDOMCONTENT },
-					content = "lava",
-				},
 			},
 			missprite  = SPRITE_EXPLOSION,
 			hitsprite  = SPRITE_BLAST,
+			explosion  = {
+				delay = 40,
+				color = RED,
+				flags = { EFRANDOMCONTENT },
+				content = "lava",
+			},
 		},
 
 		OnCreate = function (self)
@@ -1646,14 +1646,14 @@ function drl.register_beings()
 				miss_base  = 10,
 				miss_dist  = 10,
 				flags      = { MF_EXACT, MF_IMMIDATE },
-				explosion  = {
-					delay = 50,
-					color = YELLOW,
-					flags = { EFNOKNOCK, EFSELFSAFE },
-				},
 			},
 			missprite = 0,
 			hitsprite = SPRITE_BLAST,
+			explosion  = {
+				delay = 50,
+				color = YELLOW,
+				flags = { EFNOKNOCK, EFSELFSAFE },
+			},
 		},
 
 		OnCreate = function (self)

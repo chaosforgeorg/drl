@@ -396,7 +396,6 @@ register_item          = core.register_storage( "items", "item", function( ip )
 		end
 
 		if type(ip.missile) == "string" then
-			core.log( ip.missile )
 			ip.missile = missiles[ip.missile].nid
 		end
 

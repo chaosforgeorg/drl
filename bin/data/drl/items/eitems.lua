@@ -263,13 +263,13 @@ function drl.register_exotic_items()
 			delay      = 20,
 			miss_base  = 1,
 			miss_dist  = 3,
-			explosion  = {
-				delay = 40,
-				color = LIGHTBLUE,
-			},
 		},
 		missprite  = SPRITE_PLASMASHOT,
 		hitsprite  = SPRITE_BLAST,
+		explosion  = {
+			delay = 40,
+			color = LIGHTBLUE,
+		},
 	}
 
 	register_item "uminigun"
@@ -325,6 +325,10 @@ function drl.register_exotic_items()
 		hitsprite     = SPRITE_BLAST,
 		altreload     = RELOAD_SCRIPT,
 		altreloadname = "full",
+		explosion     = {
+			delay 	= 40,
+			color 	= RED,
+		},
 
 		OnAltReload = function( self, being )
 			return being:full_reload( self )
@@ -412,6 +416,11 @@ function drl.register_exotic_items()
 		missile       = "mbfg",
 		sprite        = SPRITE_BFGSHOT,
 		hitsprite     = SPRITE_BLAST,
+		explosion     = {
+			delay = 33,
+			color = GREEN,
+			flags = { EFSELFSAFE, EFAFTERBLINK, EFCHAIN, EFHALFKNOCK, EFNODISTANCEDROP },
+		},
 
 		OnAltReload = function(self, being)
 			local floor_cell = cells[ level.map[ being.position ] ]
@@ -511,14 +520,14 @@ function drl.register_exotic_items()
 			delay      = 10,
 			miss_base  = 30,
 			miss_dist  = 5,
-			explosion  = {
-				delay = 80,
-				color = RED,
-				content = "lava",
-			},
 		},
 		missprite     = SPRITE_ROCKETSHOT,
 		hitsprite     = SPRITE_BLAST,
+		explosion     = {
+			delay = 80,
+			color = RED,
+			content = "lava",
+		},
 	}
 
 	register_item "uoarmor"
@@ -1205,6 +1214,11 @@ function drl.register_exotic_items()
 		missile       = "mbfg",
 		sprite        = SPRITE_BFGSHOT,
 		hitsprite     = SPRITE_BLAST,
+		explosion     = {
+			delay = 33,
+			color = GREEN,
+			flags = { EFSELFSAFE, EFAFTERBLINK, EFCHAIN, EFHALFKNOCK, EFNODISTANCEDROP },
+		},
 
 		OnFirstPickup = function(self,being)
 			if not being:is_player() then return end

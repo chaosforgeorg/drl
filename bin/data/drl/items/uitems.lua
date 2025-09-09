@@ -304,11 +304,16 @@ function drl.register_unique_items()
 		reload        = 20,
 		altfire       = ALT_AIMED,
 		altreload     = RELOAD_DUAL,
-		missile       = "mexplround",
+		missile       = "mgun",
 		missprite     = SPRITE_SHOT,
 		hitsprite     = SPRITE_BLAST,
+		explosion     = {
+			delay = 40,
+			color = RED,
+		},
 	}
 
+	--[=[
 	register_item "umega"
 	{
 		name     = "Mega Buster",
@@ -357,7 +362,11 @@ function drl.register_unique_items()
 					damage_dice  = 4,
 					damage_sides = 2,
 					acc          = 0,
-					missile      = missiles[ "mexplround" ].nid
+					missile      = missiles[ "mgun" ].nid,
+					explosion    = {
+						delay = 40,
+						color = RED,
+					},
 				},
 				[DAMAGE_ACID] = {
 					damagetype   = DAMAGE_ACID,
@@ -365,7 +374,11 @@ function drl.register_unique_items()
 					damage_dice  = 4,
 					damage_sides = 2,
 					acc          = 0,
-					missile      = missiles[ "mexplground" ].nid
+					missile      = missiles[ "mgun" ].nid,
+					explosion    = {
+						delay = 40,
+						color = GREEN,
+					},
 				},
 				[DAMAGE_PLASMA] = {
 					damagetype   = DAMAGE_PLASMA,
@@ -380,11 +393,16 @@ function drl.register_unique_items()
 			if final.damagetype ~= self.damagetype then
 				ui.msg("The Mega Buster morphs!")
 			end
+			if final.explosion then
+				self:set_explosion( final.explosion )
+				final.explosion = nil
+			end
 			for k,v in pairs( final ) do
 				self[k] = v
 			end
 		end,
 	}
+	--]=]
 
 	register_medal "cleric"
 	{
@@ -548,13 +566,13 @@ function drl.register_unique_items()
 			miss_base  = 30,
 			miss_dist  = 5,
 			flags      = { MF_EXACT },
-			explosion  = {
-				delay = 40,
-				color = RED,
-			},
 		},
 		missprite  = SPRITE_ROCKETSHOT,
 		hitsprite  = SPRITE_BLAST,
+		explosion  = {
+			delay = 40,
+			color = RED,
+		},
 	}
 
 	register_item "uacid"
@@ -587,14 +605,14 @@ function drl.register_unique_items()
 			delay      = 10,
 			miss_base  = 30,
 			miss_dist  = 5,
-			explosion  = {
-				delay = 80,
-				color = GREEN,
-				content = "acid",
-			},
 		},
 		missprite  = SPRITE_ROCKETSHOT,
 		hitsprite  = SPRITE_BLAST,
+		explosion  = {
+			delay = 80,
+			color = GREEN,
+			content = "acid",
+		},
 
 		OnCreate = function( self )
 			self.ammo = 0
@@ -650,14 +668,14 @@ function drl.register_unique_items()
 			miss_base  = 30,
 			miss_dist  = 5,
 			flags      = { MF_EXACT },
-			explosion  = {
-				delay = 25,
-				color = GREEN,
-				flags = { EFHALFKNOCK, EFNODISTANCEDROP },
-			},
 		},
 		missprite  = SPRITE_BFGSHOT,
 		hitsprite  = SPRITE_BLAST,
+		explosion  = {
+			delay = 25,
+			color = GREEN,
+			flags = { EFHALFKNOCK, EFNODISTANCEDROP },
+		},
 	}
 
 	register_item "urailgun"

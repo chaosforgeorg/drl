@@ -193,7 +193,6 @@ core.register_blueprint "missile"
 	miss_dist   = { true,  core.TNUMBER },
 	hitdesc     = { false, core.TSTRING, "" },
 	flags       = { false, core.TFLAGS,  {} },
-	explosion   = { false, core.TTABLE },
 	ray_delay   = { false, core.TNUMBER, 0 },
 }
 
@@ -498,6 +497,7 @@ core.register_blueprint "item"
 			scavenge      = { false, core.TARRAY(core.TIDIN("items")) },
 			hitsprite     = { true, core.TANY },
 			missprite     = { false, core.TANY },
+			explosion     = { false, core.TTABLE },
 			missile       = { false, core.TANY }, -- TODO core.TMISSILE
 		},
 		[ITEMTYPE_NRANGED] = {
@@ -515,6 +515,7 @@ core.register_blueprint "item"
 			shots      = { false, core.TNUMBER, 0 },
 			hitsprite  = { true, core.TANY },
 			missprite  = { true, core.TANY },
+			explosion  = { false, core.TTABLE },
 			missile    = { true, core.TANY }, 
 		},
 		[ITEMTYPE_URANGED] = {
@@ -533,6 +534,7 @@ core.register_blueprint "item"
 			shots         = { false, core.TNUMBER, 0 },
 			hitsprite     = { true, core.TANY },
 			missprite     = { true, core.TANY },
+			explosion     = { false, core.TTABLE },
 			missile       = { true, core.TANY }, 
 		},
 		[ITEMTYPE_MELEE]  = {

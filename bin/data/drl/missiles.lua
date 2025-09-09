@@ -35,10 +35,6 @@ function drl.register_missiles()
 		delay      = 30,
 		miss_base  = 30,
 		miss_dist  = 5,
-		explosion  = {
-			delay 	= 40,
-			color 	= RED,
-		},
 	}
 
 	register_missile "mrocketjump"
@@ -49,38 +45,6 @@ function drl.register_missiles()
 		miss_base  = 30,
 		miss_dist  = 5,
 		flags      = { MF_EXACT },
-		explosion  = {
-			delay = 40,
-			color = RED,
-			flags = { EFSELFKNOCKBACK, EFSELFHALF },
-		},
-	}
-
-	register_missile "mexplround"
-	{
-		sound_id   = "pistol",
-		color      = LIGHTGRAY,
-		delay      = 15,
-		miss_base  = 10,
-		miss_dist  = 3,
-		explosion  = {
-			delay = 40,
-			color = RED,
-		},
-	}
-
-	register_missile "mexplground"
-	{
-		sound_id   = "pistol",
-		color      = LIGHTGRAY,
-		delay      = 15,
-		miss_base  = 10,
-		miss_dist  = 3,
-		explosion  = {
-			delay = 40,
-			color = GREEN,
-		},
-
 	}
 
 	register_missile "mbfg"
@@ -92,11 +56,6 @@ function drl.register_missiles()
 		miss_base  = 50,
 		miss_dist  = 10,
 		flags      = { MF_EXACT },
-		explosion  = {
-			delay = 33,
-			color = GREEN,
-			flags = { EFSELFSAFE, EFAFTERBLINK, EFCHAIN, EFHALFKNOCK, EFNODISTANCEDROP },
-		},
 	}
 
 	register_missile "mbfgover"
@@ -108,11 +67,6 @@ function drl.register_missiles()
 		miss_base  = 50,
 		miss_dist  = 10,
 		flags      = { MF_EXACT },
-		explosion  = {
-			delay = 33,
-			color = GREEN,
-			flags = { EFSELFSAFE, EFAFTERBLINK, EFCHAIN, EFHALFKNOCK, EFNODISTANCEDROP },
-		},
 	}
 
 	register_missile "mblaster"

@@ -137,7 +137,6 @@ begin
       Flags     := getFlags('flags');
       MissBase  := getInteger('miss_base');
       MissDist  := getInteger('miss_dist');
-      ReadExplosion( iTable, 'explosion', Explosion );
     finally
       Free;
     end;

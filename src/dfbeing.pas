@@ -2361,7 +2361,7 @@ begin
     if iMaxDamage then
       iRoll.Init( 0,0, iRoll.Max );
 
-    iExplosion            := Missiles[iMissile].Explosion;
+    iExplosion            := aItem.Explosion;
     iExplosion.Range      := iRadius;
     if IO.Audio.GetSampleID(aItem.ID+'.explode') > 0
       then iExplosion.SoundID := aItem.ID

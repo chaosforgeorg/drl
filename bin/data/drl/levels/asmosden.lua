@@ -51,12 +51,13 @@ register_level "the_asmos_den"
 					miss_dist  = 0,
 					hitdesc    = "You feel an intense pain!",
 					flags      = { MF_EXACT },
-					explosion = {
-						delay = 100,
-						color = LIGHTBLUE,
-					},
 				},
+				missprite = 0,
 				hitsprite  = SPRITE_BLAST,
+				explosion = {
+					delay = 100,
+					color = LIGHTBLUE,
+				},
 			},
 
 			OnCreate = function (self)

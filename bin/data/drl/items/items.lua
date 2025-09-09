@@ -733,15 +733,28 @@ function drl.register_regular_items()
 		missile       = "mrocket",
 		missprite     = SPRITE_ROCKETSHOT,
 		hitsprite     = SPRITE_BLAST,
+		explosion     = {
+			delay 	= 40,
+			color 	= RED,
+		},
 
 		OnAltFire = function( self, being )
 			self.missile = missiles[ "mrocketjump" ].nid
+			self:set_explosion{
+				delay 	= 40,
+				color 	= RED,
+				flags = { EFSELFKNOCKBACK, EFSELFHALF },
+			}
 			self.range   = 1
 			return true
 		end,
 
 		OnFire = function( self, being )
 			self.missile = missiles[ "mrocket" ].nid
+			self:set_explosion{
+				delay 	= 40,
+				color 	= RED,
+			}
 			self.range   = 0
 			return true
 		end,

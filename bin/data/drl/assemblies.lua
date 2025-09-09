@@ -702,7 +702,10 @@ function drl.register_assemblies()
 			item.usetime         = item.__proto.fire
 			item.blastradius     = 1
 			item.shots           = item.__proto.shots
-			item.missile         = missiles[ "mexplround" ].nid
+			item:set_explosion{
+				delay = 40,
+				color = RED,
+			}
 			item.damagetype      = DAMAGE_FIRE
 		end,
 	}
