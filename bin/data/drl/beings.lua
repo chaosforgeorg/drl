@@ -570,11 +570,11 @@ function drl.register_beings()
 				delay      = 0,
 				miss_base  = 10,
 				miss_dist  = 10,
-				hitdesc    = "You are engulfed in flames!",
 			},
+			hitdesc   = "You are engulfed in flames!",
 			missprite = 0,
 			hitsprite = SPRITE_BLAST,
-			explosion  = {
+			explosion = {
 				delay = 50,
 				color = YELLOW,
 				flags = { EFNOKNOCK, EFSELFSAFE },
@@ -1153,11 +1153,11 @@ function drl.register_beings()
 				delay      = 0,
 				miss_base  = 10,
 				miss_dist  = 10,
-				hitdesc    = "You are engulfed in flames!",
 			},
+			hitdesc   = "You are engulfed in flames!",
 			missprite = 0,
 			hitsprite = SPRITE_BLAST,
-			explosion  = {
+			explosion = {
 				delay = 50,
 				color = BLUE,
 				flags = { EFNOKNOCK, EFSELFSAFE },
@@ -1638,15 +1638,15 @@ function drl.register_beings()
 			flags      = { IF_AUTOHIT, IF_INSTANTHIT, IF_EXACTHIT },
 			missile = {
 				sound_id   = "arch",
-				hitdesc    = "You are engulfed in flames!",
 				color      = YELLOW,
 				delay      = 0,
 				miss_base  = 10,
 				miss_dist  = 10,
 			},
+			hitdesc   = "You are engulfed in flames!",
 			missprite = 0,
 			hitsprite = SPRITE_BLAST,
-			explosion  = {
+			explosion = {
 				delay = 50,
 				color = YELLOW,
 				flags = { EFNOKNOCK, EFSELFSAFE },

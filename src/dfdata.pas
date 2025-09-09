@@ -287,7 +287,6 @@ type
     Delay      : Byte;
     MissBase   : Byte;
     MissDist   : Byte;
-    Flags      : TFlags;
   end;
 
   TAffectData = record

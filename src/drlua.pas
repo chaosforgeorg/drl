@@ -134,7 +134,6 @@ begin
       Picture   := getChar('ascii');
       Color     := getInteger('color');
       Delay     := getInteger('delay');
-      Flags     := getFlags('flags');
       MissBase  := getInteger('miss_base');
       MissDist  := getInteger('miss_dist');
     finally

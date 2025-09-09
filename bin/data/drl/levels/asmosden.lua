@@ -48,8 +48,8 @@ register_level "the_asmos_den"
 					delay      = 1,
 					miss_base  = 0,
 					miss_dist  = 0,
-					hitdesc    = "You feel an intense pain!",
 				},
+				hitdesc   = "You feel an intense pain!",
 				missprite = 0,
 				hitsprite  = SPRITE_BLAST,
 				explosion = {

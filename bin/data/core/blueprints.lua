@@ -191,8 +191,6 @@ core.register_blueprint "missile"
 	delay       = { true,  core.TNUMBER },
 	miss_base   = { true,  core.TNUMBER },
 	miss_dist   = { true,  core.TNUMBER },
-	hitdesc     = { false, core.TSTRING, "" },
-	flags       = { false, core.TFLAGS,  {} },
 	ray_delay   = { false, core.TNUMBER, 0 },
 }
 
@@ -516,6 +514,7 @@ core.register_blueprint "item"
 			hitsprite  = { true, core.TANY },
 			missprite  = { true, core.TANY },
 			explosion  = { false, core.TTABLE },
+			hitdesc    = { false, core.TSTRING, "" },
 			missile    = { true, core.TANY }, 
 		},
 		[ITEMTYPE_URANGED] = {

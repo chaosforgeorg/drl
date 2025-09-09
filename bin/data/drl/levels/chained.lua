@@ -184,8 +184,8 @@ register_level "the_chained_court"
 					delay      = 0,
 					miss_base  = 10,
 					miss_dist  = 10,
-					hitdesc    = "You are engulfed in flames!",
 				},
+				hitdesc    = "You are engulfed in flames!",
 				missprite = 0,
 				hitsprite = SPRITE_BLAST,
 				explosion  = {

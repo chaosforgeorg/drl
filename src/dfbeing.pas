@@ -2271,7 +2271,7 @@ begin
         if iLevel.isVisible( iCoord ) then
             if iBeing.IsPlayer then
             begin
-              iFireDesc := LuaSystem.Get(['missiles',iMissile,'hitdesc'], '');
+              iFireDesc := LuaSystem.Get(['items',aItem.NID,'hitdesc'], '');
               if iFireDesc = '' then iFireDesc := 'You are hit!';
               IO.Msg( Capitalized( iFireDesc ) );
             end
