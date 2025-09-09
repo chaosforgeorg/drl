@@ -2136,7 +2136,6 @@ var iDirection  : TDirection;
     iSteps      : DWord;
     iDelay      : DWord;
     iSound      : DWord;
-    iMissile    : DWord;
     iDirectHit  : Boolean;
     iThisUID    : TUID;
     iItemUID    : TUID;
@@ -2155,7 +2154,6 @@ begin
 
   iLevel     := TLevel(Parent);
   iDirectHit := False;
-  iMissile   := aItem.Missile;
   iThisUID   := FUID;
   iItemUID   := aItem.uid;
   iDodged    := False;
@@ -2210,7 +2208,7 @@ begin
   iIsHit := aItem.Flags[ IF_EXACTHIT ];
   iStart := iMisslePath.GetSource;
 
-  iRadius := aItem.BlastRadius;
+  iRadius := aItem.Radius;
   if ( BF_FIREANGEL in FFlags ) and ( not ( aItem.Hooks[ Hook_OnHitBeing ] ) ) then
     iRadius += 1;
 

@@ -340,8 +340,7 @@ type TItemProperties = record
   Range         : Byte;
   Spread        : Byte;
   Reduce        : Single;
-  Missile       : Byte;
-  BlastRadius   : Byte;
+  Radius        : Byte;
   Shots         : Byte;
   ShotCost      : Byte;
   ReloadTime    : Byte;

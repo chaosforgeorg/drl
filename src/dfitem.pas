@@ -94,8 +94,7 @@ TItem  = class( TThing )
     property Range          : Byte        read FProps.Range          write FProps.Range;
     property Spread         : Byte        read FProps.Spread         write FProps.Spread;
     property Reduce         : Single      read FProps.Reduce         write FProps.Reduce;
-    property Missile        : Byte        read FProps.Missile        write FProps.Missile;
-    property BlastRadius    : Byte        read FProps.BlastRadius    write FProps.BlastRadius;
+    property Radius         : Byte        read FProps.Radius         write FProps.Radius;
     property Shots          : Byte        read FProps.Shots          write FProps.Shots;
     property ShotCost       : Byte        read FProps.ShotCost       write FProps.ShotCost;
     property ReloadTime     : Byte        read FProps.ReloadTime     write FProps.ReloadTime;
@@ -249,9 +248,8 @@ begin
   FProps.UseTime     := aTable.getInteger('fire',0);
   FProps.ReloadTime  := aTable.getInteger('reload',0);
   FProps.AltFire     := TAltFire( aTable.getInteger('altfire',0) );
-  FProps.missile     := aTable.getInteger('missile',0);
 
-  FProps.BlastRadius := aTable.getInteger('radius',0);
+  FProps.Radius      := aTable.getInteger('radius',0);
   FProps.Range       := aTable.getInteger('range',0);
   FProps.Shots       := aTable.getInteger('shots',0);
   FProps.ShotCost    := aTable.getInteger('shotcost',0);
@@ -430,15 +428,15 @@ begin
       'Durability  : {!'+IntToStr(FProps.MaxDurability)+'}'#10;
     ITEMTYPE_URANGED : DescriptionBox :=
       'Damage type : {!'+DamageTypeName(FProps.DamageType)+'}'#10+
-      Iff(FProps.BlastRadius <> 0,'Expl.radius : {!'+IntToStr(FProps.BlastRadius)+'}'#10);
+      Iff(FProps.Radius <> 0,'Expl.radius : {!'+IntToStr(FProps.Radius)+'}'#10);
     ITEMTYPE_RANGED, ITEMTYPE_NRANGED : DescriptionBox :=
       'Fire time   : {!'+Seconds(FProps.UseTime)+'}'#10+
       Iff(FProps.ReloadTime > 0, 'Reload time : {!'+Seconds(FProps.ReloadTime)+'}'#10)+
       'Accuracy    : {!'+BonusStr(FProps.Acc)+'}'#10+
       'Damage type : {!'+DamageTypeName(FProps.DamageType)+'}'#10+
-      Iff(FProps.Shots       <> 0,'Shots       : {!'+IntToStr(FProps.Shots)+'}'#10)+
-      Iff(FProps.ShotCost    <> 0,'Shot cost   : {!'+IntToStr(FProps.ShotCost)+'}'#10)+
-      Iff(FProps.BlastRadius <> 0,'Expl.radius : {!'+IntToStr(FProps.BlastRadius)+'}'#10)+
+      Iff(FProps.Shots    <> 0,'Shots       : {!'+IntToStr(FProps.Shots)+'}'#10)+
+      Iff(FProps.ShotCost <> 0,'Shot cost   : {!'+IntToStr(FProps.ShotCost)+'}'#10)+
+      Iff(FProps.Radius   <> 0,'Expl.radius : {!'+IntToStr(FProps.Radius)+'}'#10)+
       Iff((not aShort) and (FProps.AltFire   <> ALT_NONE   ),'Alt. fire   : {!'+AltFireName( FProps.AltFire )+'}'#10)+
       Iff((not aShort) and (FProps.AltReload <> RELOAD_NONE),'Alt. reload : {!'+AltReloadName( FProps.AltReload )+'}'#10);
     ITEMTYPE_MELEE : DescriptionBox :=

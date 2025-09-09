@@ -130,7 +130,7 @@ function drl.register_exotic_items()
 		OnAltReload = function(self)
 			if not self:can_overcharge("This will destroy the weapon after the next shot...") then return false end
 			self.misdelay      = 200
-			self.blastradius   = self.blastradius * 2
+			self.radius        = self.radius * 2
 			self.damage_dice   = self.damage_dice * 2
 			self.shotcost      = self.ammomax
 			self.ammomax       = self.shotcost
@@ -953,7 +953,7 @@ function drl.register_exotic_items()
 				if item.itype ~= ITEMTYPE_RANGED then return false end
 				if item.group ~= "shotgun" and ( item.shots >= 3 ) and ( not item.flags[ IF_SPREAD ]) then
 					return true
-				elseif ( item.blastradius >= 3 ) or ( item.flags[ IF_SPREAD ] and ( item.blastradius >= 2 ) ) then
+				elseif ( item.radius >= 3 ) or ( item.flags[ IF_SPREAD ] and ( item.radius >= 2 ) ) then
 					return true
 				else
 					return false
@@ -968,8 +968,8 @@ function drl.register_exotic_items()
 		OnModDescribe = function( self, item )
 			if item.group ~= "shotgun" and ( item.shots >= 3 ) and ( not item.flags[ IF_SPREAD ]) then
 				return "shots {!"..item.shots.."} -> {!"..(item.shots+2).."}"
-			elseif ( item.blastradius >= 3 ) or ( item.flags[ IF_SPREAD ] and ( item.blastradius >= 2 ) ) then
-				return "blast radius {!"..item.blastradius.."} -> {!"..(item.blastradius+2).."}"
+			elseif ( item.radius >= 3 ) or ( item.flags[ IF_SPREAD ] and ( item.radius >= 2 ) ) then
+				return "blast radius {!"..item.radius.."} -> {!"..(item.radius+2).."}"
 			end
 			return "unknown"
 		end,
@@ -979,8 +979,8 @@ function drl.register_exotic_items()
 			local item = self.chosen_item
 			if item.group ~= "shotgun" and ( item.shots >= 3 ) and ( not item.flags[ IF_SPREAD ]) then
 				item.shots = item.shots + 2
-			elseif ( item.blastradius >= 3 ) or ( item.flags[ IF_SPREAD ] and ( item.blastradius >= 2 ) ) then
-				item.blastradius = item.blastradius + 2
+			elseif ( item.radius >= 3 ) or ( item.flags[ IF_SPREAD ] and ( item.radius >= 2 ) ) then
+				item.radius = item.radius + 2
 			end
 			ui.msg( "You upgrade your weapon!" )
 			item:add_mod( 'F', being.techbonus )

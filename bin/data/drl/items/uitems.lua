@@ -362,7 +362,7 @@ function drl.register_unique_items()
 			{
 				[DAMAGE_BULLET] = {
 					damagetype   = DAMAGE_BULLET,
-					blastradius  = 0,
+					radius       = 0,
 					damage_dice  = 1,
 					damage_sides = 8,
 					acc          = 2,
@@ -373,7 +373,7 @@ function drl.register_unique_items()
 				},
 				[DAMAGE_FIRE] = {
 					damagetype   = DAMAGE_FIRE,
-					blastradius  = 1,
+					radius       = 1,
 					damage_dice  = 4,
 					damage_sides = 2,
 					acc          = 0,
@@ -388,7 +388,7 @@ function drl.register_unique_items()
 				},
 				[DAMAGE_ACID] = {
 					damagetype   = DAMAGE_ACID,
-					blastradius  = 1,
+					radius       = 1,
 					damage_dice  = 4,
 					damage_sides = 2,
 					acc          = 0,
@@ -403,7 +403,7 @@ function drl.register_unique_items()
 				},
 				[DAMAGE_PLASMA] = {
 					damagetype   = DAMAGE_PLASMA,
-					blastradius  = 0,
+					radius       = 0,
 					damage_dice  = 1,
 					damage_sides = 10,
 					acc          = 1,
