@@ -22,6 +22,8 @@ function drl.register_regular_items()
 		altfire     = ALT_THROW,
 		missile     = "mknife",
 		range       = 5,
+		missprite   = SPRITE_KNIFE,
+		hitsprite   = SPRITE_BLAST,
 
 		OnCreate = function(self)
 			self:add_property( "BLADE", true )
@@ -553,6 +555,8 @@ function drl.register_regular_items()
 		altfire       = ALT_AIMED,
 		altreload     = RELOAD_DUAL,
 		missile       = "mgun",
+		missprite     = SPRITE_SHOT,
+		hitsprite     = SPRITE_BLAST,
 	}
 
 	register_item "shotgun"
@@ -579,6 +583,7 @@ function drl.register_regular_items()
 		range         = 15,
 		spread        = 3,
 		reduce        = 0.07,
+		hitsprite     = SPRITE_BLAST,
 	}
 
 	register_item "dshotgun"
@@ -609,6 +614,7 @@ function drl.register_regular_items()
 		range         = 8,
 		spread        = 3,
 		reduce        = 0.1,
+		hitsprite     = SPRITE_BLAST,
 	}
 
 	register_item "ashotgun"
@@ -638,6 +644,7 @@ function drl.register_regular_items()
 		range         = 15,
 		spread        = 2,
 		reduce        = 0.05,
+		hitsprite     = SPRITE_BLAST,
 
 		OnCreate = function(self)
 			self:add_property( "pump_action", true )
@@ -727,6 +734,8 @@ function drl.register_regular_items()
 		altfire       = ALT_TARGETSCRIPT,
 		altfirename   = "rocketjump",
 		missile       = "mrocket",
+		missprite     = SPRITE_ROCKETSHOT,
+		hitsprite     = SPRITE_BLAST,
 
 		OnAltFire = function( self, being )
 			self.missile = missiles[ "mrocketjump" ].nid
@@ -765,6 +774,8 @@ function drl.register_regular_items()
 		shots         = 4,
 		altfire       = ALT_CHAIN,
 		missile       = "mchaingun",
+		missprite     = SPRITE_SHOT,
+		hitsprite     = SPRITE_BLAST,
 	}
 
 	register_item "plasma"
@@ -793,6 +804,8 @@ function drl.register_regular_items()
 		altreload     = RELOAD_SCRIPT,
 		altreloadname = "overcharge",
 		missile       = "mplasma",
+		sprite        = SPRITE_PLASMASHOT,
+		hitsprite     = SPRITE_BLAST,
 
 		OnAltReload = function(self)
 			if not self:can_overcharge("This will destroy the weapon after the next shot...") then return false end

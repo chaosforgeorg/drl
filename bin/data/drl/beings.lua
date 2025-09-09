@@ -144,8 +144,6 @@ function drl.register_beings()
 				sound_id   = "imp",
 				ascii      = "*",
 				color      = LIGHTRED,
-				sprite     = SPRITE_FIREBALL,
-				hitsprite  = SPRITE_BLAST,
 				delay      = 30,
 				miss_base  = 50,
 				miss_dist  = 5,
@@ -154,6 +152,8 @@ function drl.register_beings()
 					color = RED,
 				},
 			},
+			missprite  = SPRITE_FIREBALL,
+			hitsprite  = SPRITE_BLAST,
 		},
 	}
 
@@ -241,8 +241,6 @@ function drl.register_beings()
 				sound_id   = "cacodemon",
 				ascii      = "*",
 				color      = LIGHTMAGENTA,
-				sprite     = SPRITE_PLASMABALL,
-				hitsprite  = SPRITE_BLAST,
 				delay      = 30,
 				miss_base  = 50,
 				miss_dist  = 4,
@@ -251,6 +249,8 @@ function drl.register_beings()
 					color = MAGENTA,
 				},
 			},
+			missprite  = SPRITE_PLASMABALL,
+			hitsprite  = SPRITE_BLAST,
 		},
 	}
 
@@ -289,9 +289,6 @@ function drl.register_beings()
 				sound_id   = "knight",
 				ascii      = "*",
 				color      = LIGHTMAGENTA,
-				sprite     = SPRITE_ACIDSHOT,
-				hitsprite  = SPRITE_BLAST,
-				coscolor   = { 1.0, 0.0, 1.0, 1.0 },
 				delay      = 30,
 				miss_base  = 50,
 				miss_dist  = 5,
@@ -300,6 +297,11 @@ function drl.register_beings()
 					color = MAGENTA,
 				},
 			},
+			missprite = {
+				sprite     = SPRITE_ACIDSHOT,
+				coscolor   = { 1.0, 0.0, 1.0, 1.0 },
+			},
+			hitsprite  = SPRITE_BLAST,
 		},
 	}
 
@@ -337,9 +339,6 @@ function drl.register_beings()
 				sound_id   = "baron",
 				ascii      = "*",
 				color      = LIGHTGREEN,
-				sprite     = SPRITE_ACIDSHOT,
-				hitsprite  = SPRITE_BLAST,
-				coscolor   = { 0.0, 1.0, 0.0, 1.0 },
 				delay      = 35,
 				miss_base  = 50,
 				miss_dist  = 3,
@@ -348,6 +347,11 @@ function drl.register_beings()
 					color = GREEN,
 				},
 			},
+			missprite = {
+				sprite     = SPRITE_ACIDSHOT,
+				coscolor   = { 0.0, 1.0, 0.0, 1.0 },
+			},
+			hitsprite  = SPRITE_BLAST,
 		},
 	}
 
@@ -384,12 +388,12 @@ function drl.register_beings()
 				sound_id   = "arachno",
 				ascii      = "*",
 				color      = MULTIYELLOW,
-				sprite     = SPRITE_PLASMASHOT,
-				hitsprite  = SPRITE_BLAST,
 				delay      = 7,
 				miss_base  = 20,
 				miss_dist  = 4,
 			},
+			missprite  = SPRITE_PLASMASHOT,
+			hitsprite  = SPRITE_BLAST,
 		},
 
 		OnCreate = function (self)
@@ -463,8 +467,6 @@ function drl.register_beings()
 			missile = {
 				sound_id   = "bazooka",
 				color      = YELLOW,
-				sprite     = SPRITE_ROCKETSHOT,
-				hitsprite  = SPRITE_BLAST,
 				delay      = 30,
 				miss_base  = 30,
 				miss_dist  = 6,
@@ -474,6 +476,8 @@ function drl.register_beings()
 					color = RED,
 				},
 			},
+			missprite = SPRITE_ROCKETSHOT,
+			hitsprite = SPRITE_BLAST,
 		},
 
 		OnCreate = function (self)
@@ -515,8 +519,6 @@ function drl.register_beings()
 				sound_id   = "mancubus",
 				ascii      = "*",
 				color      = LIGHTRED,
-				sprite     = SPRITE_ROCKETSHOT,
-				hitsprite  = SPRITE_BLAST,
 				delay      = 20,
 				miss_base  = 1,
 				miss_dist  = 3,
@@ -525,6 +527,8 @@ function drl.register_beings()
 					color = RED,
 				},
 			},
+			missprite  = SPRITE_ROCKETSHOT,
+			hitsprite  = SPRITE_BLAST,
 		},
 
 		OnCreate = function (self)
@@ -563,8 +567,6 @@ function drl.register_beings()
 			missile = {
 				sound_id   = "arch",
 				color      = YELLOW,
-				sprite     = 0,
-				hitsprite  = SPRITE_BLAST,
 				delay      = 0,
 				miss_base  = 10,
 				miss_dist  = 10,
@@ -576,6 +578,8 @@ function drl.register_beings()
 					flags = { EFNOKNOCK, EFSELFSAFE },
 				},
 			},
+			missprite = 0,
+			hitsprite = SPRITE_BLAST,
 		},
 
 		OnCreate = function (self)
@@ -770,8 +774,6 @@ function drl.register_beings()
 				sound_id   = "imp",
 				ascii      = "*",
 				color      = LIGHTMAGENTA,
-				sprite     = SPRITE_FIREBALL,
-				hitsprite  = SPRITE_BLAST,
 				delay      = 15,
 				miss_base  = 20,
 				miss_dist  = 4,
@@ -780,6 +782,8 @@ function drl.register_beings()
 					color = MAGENTA,
 				},
 			},
+			missprite = SPRITE_FIREBALL,
+			hitsprite = SPRITE_BLAST,
 		}
 	}
 
@@ -867,8 +871,6 @@ function drl.register_beings()
 				sound_id   = "cacodemon",
 				ascii      = "*",
 				color      = LIGHTMAGENTA,
-				sprite     = SPRITE_PLASMABALL,
-				hitsprite  = SPRITE_BLAST,
 				delay      = 30,
 				miss_base  = 30,
 				miss_dist  = 4,
@@ -877,6 +879,8 @@ function drl.register_beings()
 					color = MAGENTA,
 				},
 			},
+			missprite = SPRITE_PLASMABALL,
+			hitsprite = SPRITE_BLAST,
 		},
 	}
 
@@ -916,9 +920,6 @@ function drl.register_beings()
 				sound_id   = "baron",
 				ascii      = "*",
 				color      = LIGHTMAGENTA,
-				sprite     = SPRITE_PLASMABALL,
-				hitsprite  = SPRITE_BLAST,
-				coscolor   = { 1.0, 0.0, 1.0, 1.0 },
 				delay      = 30,
 				miss_base  = 30,
 				miss_dist  = 4,
@@ -927,6 +928,11 @@ function drl.register_beings()
 					color = MAGENTA,
 				},
 			},
+			missprite = {
+				sprite = SPRITE_PLASMABALL,
+				coscolor   = { 1.0, 0.0, 1.0, 1.0 },
+			},
+			hitsprite = SPRITE_BLAST,
 		},
 	}
 
@@ -962,12 +968,12 @@ function drl.register_beings()
 				sound_id   = "arachno",
 				ascii      = "*",
 				color      = LIGHTBLUE,
-				sprite     = SPRITE_PLASMASHOT,
-				hitsprite  = SPRITE_BLAST,
 				delay      = 10,
 				miss_base  = 20,
 				miss_dist  = 4,
 			},
+			missprite = SPRITE_PLASMASHOT,
+			hitsprite = SPRITE_BLAST,
 		},
 
 		OnCreate = function (self)
@@ -1041,8 +1047,6 @@ function drl.register_beings()
 			missile = {
 				sound_id   = "bazooka",
 				color      = YELLOW,
-				sprite     = SPRITE_ROCKETSHOT,
-				hitsprite  = SPRITE_BLAST,
 				delay      = 30,
 				miss_base  = 30,
 				miss_dist  = 5,
@@ -1052,6 +1056,8 @@ function drl.register_beings()
 					color = RED,
 				},
 			},
+			missprite  = SPRITE_ROCKETSHOT,
+			hitsprite  = SPRITE_BLAST,
 		},
 
 		OnCreate = function (self)
@@ -1095,8 +1101,6 @@ function drl.register_beings()
 				sound_id   = "mancubus",
 				ascii      = "*",
 				color      = GREEN,
-				sprite     = SPRITE_ROCKETSHOT,
-				hitsprite  = SPRITE_BLAST,
 				delay      = 20,
 				miss_base  = 1,
 				miss_dist  = 3,
@@ -1106,6 +1110,8 @@ function drl.register_beings()
 					content = "acid",
 				},
 			},
+			missprite  = SPRITE_ROCKETSHOT,
+			hitsprite  = SPRITE_BLAST,
 		},
 
 		OnCreate = function (self)
@@ -1145,8 +1151,6 @@ function drl.register_beings()
 			missile = {
 				sound_id   = "arch",
 				color      = LIGHTBLUE,
-				sprite     = 0,
-				hitsprite  = SPRITE_BLAST,
 				delay      = 0,
 				miss_base  = 10,
 				miss_dist  = 10,
@@ -1158,6 +1162,8 @@ function drl.register_beings()
 					flags = { EFNOKNOCK, EFSELFSAFE },
 				},
 			},
+			missprite = 0,
+			hitsprite = SPRITE_BLAST,
 		},
 
 		OnCreate = function (self)
@@ -1202,9 +1208,6 @@ function drl.register_beings()
 				sound_id   = "baron",
 				ascii      = "*",
 				color      = LIGHTGREEN,
-				sprite     = SPRITE_ACIDSHOT,
-				hitsprite  = SPRITE_BLAST,
-				coscolor   = { 0.0, 1.0, 0.0, 1.0 },
 				delay      = 35,
 				miss_base  = 40,
 				miss_dist  = 3,
@@ -1213,6 +1216,11 @@ function drl.register_beings()
 					color   = GREEN,
 				},
 			},
+			missprite = {
+				sprite     = SPRITE_ACIDSHOT,
+				coscolor   = { 0.0, 1.0, 0.0, 1.0 },
+			},
+			hitsprite  = SPRITE_BLAST,
 		},
 
 		OnCreate = function (self)
@@ -1251,14 +1259,16 @@ function drl.register_beings()
 			damagetype = DAMAGE_PLASMA,
 			missile = {
 				color     = WHITE,
-				sprite    = SPRITE_CSHOT,
-				coscolor  = { 0.2,0.2,0.3,1.0 },
-				hitsprite = SPRITE_BLAST,
 				delay     = 5,
 				miss_base = 10,
 				miss_dist = 3,
 				flags     = { MF_RAY },
 			},
+			missprite = {
+				sprite    = SPRITE_CSHOT,
+				coscolor  = { 0.2,0.2,0.3,1.0 },
+			},
+			hitsprite = SPRITE_BLAST,
 		},
 
 		OnCreate = function (self)
@@ -1316,8 +1326,6 @@ function drl.register_beings()
 				sound_id   = "cacodemon",
 				ascii      = "*",
 				color      = LIGHTRED,
-				sprite     = SPRITE_EXPLOSION,
-				hitsprite  = SPRITE_BLAST,
 				delay      = 50,
 				miss_base  = 30,
 				miss_dist  = 4,
@@ -1329,6 +1337,8 @@ function drl.register_beings()
 					content = "lava",
 				},
 			},
+			missprite  = SPRITE_EXPLOSION,
+			hitsprite  = SPRITE_BLAST,
 		},
 
 		OnCreate = function (self)
@@ -1510,12 +1520,12 @@ function drl.register_beings()
 				sound_id   = "chaingun",
 				ascii      = "-",
 				color      = YELLOW,
-				sprite     = SPRITE_SHOT,
-				hitsprite  = SPRITE_BLAST,
 				delay      = 20,
 				miss_base  = 20,
 				miss_dist  = 4,
 			},
+			missprite  = SPRITE_SHOT,
+			hitsprite  = SPRITE_BLAST,
 		},
 
 		OnCreate = function (self)
@@ -1632,8 +1642,6 @@ function drl.register_beings()
 				sound_id   = "arch",
 				hitdesc    = "You are engulfed in flames!",
 				color      = YELLOW,
-				sprite     = 0,
-				hitsprite  = SPRITE_BLAST,
 				delay      = 0,
 				miss_base  = 10,
 				miss_dist  = 10,
@@ -1644,6 +1652,8 @@ function drl.register_beings()
 					flags = { EFNOKNOCK, EFSELFSAFE },
 				},
 			},
+			missprite = 0,
+			hitsprite = SPRITE_BLAST,
 		},
 
 		OnCreate = function (self)

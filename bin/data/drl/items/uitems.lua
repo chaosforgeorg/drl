@@ -82,6 +82,8 @@ function drl.register_unique_items()
 		reload        = 20,
 		shotcost      = 10,
 		missile       = "mplasma",
+		missprite     = SPRITE_PLASMASHOT,
+		hitsprite     = SPRITE_BLAST,
 
 		OnHitBeing = function(self,being,target)
 			target:play_sound("phasing")
@@ -179,14 +181,14 @@ function drl.register_unique_items()
 		missile     = {
 			sound_id   = "knife",
 			color      = LIGHTGRAY,
-			sprite     = SPRITE_CLEAVER,
-			hitsprite  = SPRITE_BLAST,
 			delay      = 50,
 			miss_base  = 10,
 			miss_dist  = 3,
 			flags      = { MF_EXACT },
 		},
 		range      = 5,
+		missprite  = SPRITE_CLEAVER,
+		hitsprite  = SPRITE_BLAST,
 	}
 
 	register_item "usubtle"
@@ -259,6 +261,8 @@ function drl.register_unique_items()
 		altreload     = RELOAD_SCRIPT,
 		altreloadname = "Angel Arm",
 		missile       = "mgun",
+		missprite     = SPRITE_SHOT,
+		hitsprite     = SPRITE_BLAST,
 
 		OnAltReload = function(self,being)
 			if being:is_player() and being.hpmax > 10 then
@@ -301,6 +305,8 @@ function drl.register_unique_items()
 		altfire       = ALT_AIMED,
 		altreload     = RELOAD_DUAL,
 		missile       = "mexplround",
+		missprite     = SPRITE_SHOT,
+		hitsprite     = SPRITE_BLAST,
 	}
 
 	register_item "umega"
@@ -326,6 +332,8 @@ function drl.register_unique_items()
 		shots         = 3,
 		shotcost      = 3,
 		missile       = "mchaingun",
+		missprite     = SPRITE_SHOT,
+		hitsprite     = SPRITE_BLAST,
 
 		OnKill = function (self,being,target)
 			local damage = DAMAGE_BULLET
@@ -408,6 +416,8 @@ function drl.register_unique_items()
 		altreload     = RELOAD_SCRIPT,
 		altreloadname = "firemode",
 		missile       = "mchaingun",
+		missprite     = SPRITE_SHOT,
+		hitsprite     = SPRITE_BLAST,
 
 		OnKill = function (self,being,target)
 			if target.id == "mastermind" and target.is_boss then
@@ -464,6 +474,7 @@ function drl.register_unique_items()
 		altreloadname = "trigger",
 		shots         = 3,
 		missile       = "sfocused",
+		hitsprite     = SPRITE_BLAST,
 		range         = 15,
 		spread        = 2,
 		reduce        = 0.05,
@@ -504,6 +515,7 @@ function drl.register_unique_items()
 		fire          = 5,
 		reload        = 25,
 		missile       = "sfocused",
+		hitsprite     = SPRITE_BLAST,
 		range         = 15,
 		spread        = 2,
 		reduce        = 0.05,
@@ -534,8 +546,6 @@ function drl.register_unique_items()
 		missile = {
 			sound_id   = "bazooka",
 			color      = BROWN,
-			sprite     = SPRITE_ROCKETSHOT,
-			hitsprite  = SPRITE_BLAST,
 			delay      = 30,
 			miss_base  = 30,
 			miss_dist  = 5,
@@ -545,6 +555,8 @@ function drl.register_unique_items()
 				color = RED,
 			},
 		},
+		missprite  = SPRITE_ROCKETSHOT,
+		hitsprite  = SPRITE_BLAST,
 	}
 
 	register_item "uacid"
@@ -574,8 +586,6 @@ function drl.register_unique_items()
 		missile = {
 			sound_id   = "bazooka",
 			color      = GREEN,
-			sprite     = SPRITE_ROCKETSHOT,
-			hitsprite  = SPRITE_BLAST,
 			delay      = 10,
 			miss_base  = 30,
 			miss_dist  = 5,
@@ -585,6 +595,8 @@ function drl.register_unique_items()
 				content = "acid",
 			},
 		},
+		missprite  = SPRITE_ROCKETSHOT,
+		hitsprite  = SPRITE_BLAST,
 
 		OnCreate = function( self )
 			self.ammo = 0
@@ -636,8 +648,6 @@ function drl.register_unique_items()
 		missile = {
 			sound_id   = "plasma",
 			color      = GREEN,
-			sprite     = SPRITE_BFGSHOT,
-			hitsprite  = SPRITE_BLAST,
 			delay      = 15,
 			miss_base  = 30,
 			miss_dist  = 5,
@@ -648,6 +658,8 @@ function drl.register_unique_items()
 				flags = { EFHALFKNOCK, EFNODISTANCEDROP },
 			},
 		},
+		missprite  = SPRITE_BFGSHOT,
+		hitsprite  = SPRITE_BLAST,
 	}
 
 	register_item "urailgun"
@@ -675,14 +687,16 @@ function drl.register_unique_items()
 		missile = {
 			sound_id   = "pistol",
 			color      = LIGHTGREEN,
-			sprite     = SPRITE_CSHOT,
-			coscolor   = { 0.0,1.0,0.0,0.3 },
-			hitsprite  = SPRITE_BLAST,
 			delay      = 50,
 			miss_base  = 3,
 			miss_dist  = 3,
 			flags      = { MF_RAY, MF_HARD },
 		},
+		missprite = {
+			sprite     = SPRITE_CSHOT,
+			coscolor   = { 0.0,1.0,0.0,0.3 },
+		},
+		hitsprite  = SPRITE_BLAST,
 	}
 
 	register_item "umarmor"

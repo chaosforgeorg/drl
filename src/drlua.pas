@@ -131,8 +131,6 @@ begin
     with iTable do
     try
       SoundID   := getString('sound_id');
-      ReadSprite( iTable, Sprite );
-      ReadSprite( iTable, 'hitsprite', HitSprite );
       Picture   := getChar('ascii');
       Color     := getInteger('color');
       Delay     := getInteger('delay');
@@ -162,7 +160,6 @@ begin
     iTable := LuaSystem.GetTable(['shotguns', iMID]);
     with iTable do
     try
-      ReadSprite( iTable, 'hitsprite', HitSprite );
     finally
       Free;
     end;

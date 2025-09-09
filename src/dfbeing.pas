@@ -2325,7 +2325,7 @@ begin
   if UIDs[ iThisUID ] = nil then Exit( False );
 
   iSound  := IO.Audio.ResolveSoundID([aItem.ID+'.fire',Missiles[iMissile].soundID+'.fire','fire']);
-  iSprite := Missiles[iMissile].Sprite;
+  iSprite := aItem.MisSprite;
   if iSound <> 0 then
     IO.addSoundAnimation( aSequence, iSource, iSound );
 
@@ -2345,7 +2345,7 @@ begin
     if iHit and iLevel.isVisible( iMisslePath.GetC ) then
     begin
       IO.addSoundAnimation( iMarkSeq, iMisslePath.GetC, IO.Audio.ResolveSoundID([Iif( iIsHit, 'flesh_bullet_hit', 'concrete_bullet_hit' )]) );
-      IO.addMarkAnimation(199, iMarkSeq, iMisslePath.GetC, Missiles[iMissile].HitSprite, Iif( iIsHit, LightRed, LightGray ), '*' );
+      IO.addMarkAnimation(199, iMarkSeq, iMisslePath.GetC, aItem.HitSprite, Iif( iIsHit, LightRed, LightGray ), '*' );
     end;
   end;
 

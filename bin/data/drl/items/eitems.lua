@@ -73,6 +73,8 @@ function drl.register_exotic_items()
 		reload        = 10,
 		altfire       = ALT_AIMED,
 		missile       = "mblaster",
+		missprite     = SPRITE_SHOT,
+		hitsprite     = SPRITE_BLAST,
 	}
 
 	register_item "ucpistol"
@@ -98,6 +100,8 @@ function drl.register_exotic_items()
 		altfire       = ALT_AIMED,
 		altreload     = RELOAD_DUAL,
 		missile       = "mgun",
+		missprite     = SPRITE_SHOT,
+		hitsprite     = SPRITE_BLAST,
 	}
 
 	register_item "uashotgun"
@@ -124,6 +128,7 @@ function drl.register_exotic_items()
 		spread        = 2,
 		reduce        = 0.05,
 		range         = 15,
+		hitsprite     = SPRITE_BLAST,
 		altreload     = RELOAD_SCRIPT,
 		altreloadname = "full",
 
@@ -158,6 +163,7 @@ function drl.register_exotic_items()
 		range         = 15,
 		spread        = 3,
 		reduce        = 0.05,
+		hitsprite     = SPRITE_BLAST,
 	}
 
 	register_item "udshotgun"
@@ -186,6 +192,7 @@ function drl.register_exotic_items()
 		range         = 15,
 		spread        = 3,
 		reduce        = 0.07,
+		hitsprite     = SPRITE_BLAST,
 	}
 
 	register_item "ulaser"
@@ -215,13 +222,15 @@ function drl.register_exotic_items()
 		missile = {
 			sound_id   = "plasma",
 			color      = MULTIYELLOW,
-			sprite     = SPRITE_CSHOT,
-			hitsprite  = SPRITE_BLAST,
-			coscolor   = { 1.0, 1.0, 0.0, 1.0 },
 			delay      = 10,
 			miss_base  = 10,
 			miss_dist  = 3,
 		},
+		missprite     = {
+			sprite = SPRITE_CSHOT,
+			coscolor   = { 1.0, 1.0, 0.0, 1.0 },
+		},
+		hitsprite     = SPRITE_BLAST,
 	}
 
 	register_item "utristar"
@@ -254,8 +263,6 @@ function drl.register_exotic_items()
 			sound_id   = "plasma",
 			ascii      = "*",
 			color      = LIGHTBLUE,
-			sprite     = SPRITE_PLASMASHOT,
-			hitsprite  = SPRITE_BLAST,
 			delay      = 20,
 			miss_base  = 1,
 			miss_dist  = 3,
@@ -264,6 +271,8 @@ function drl.register_exotic_items()
 				color = LIGHTBLUE,
 			},
 		},
+		missprite  = SPRITE_PLASMASHOT,
+		hitsprite  = SPRITE_BLAST,
 	}
 
 	register_item "uminigun"
@@ -289,6 +298,8 @@ function drl.register_exotic_items()
 		shots         = 8,
 		altfire       = ALT_CHAIN,
 		missile       = "mchaingun",
+		missprite     = SPRITE_SHOT,
+		hitsprite     = SPRITE_BLAST,
 	}
 
 	register_item "umbazooka"
@@ -313,6 +324,8 @@ function drl.register_exotic_items()
 		radius        = 3,
 		reload        = 12,
 		missile       = "mrocket",
+		missprite     = SPRITE_ROCKETSHOT,
+		hitsprite     = SPRITE_BLAST,
 		altreload     = RELOAD_SCRIPT,
 		altreloadname = "full",
 
@@ -348,6 +361,8 @@ function drl.register_exotic_items()
 		altreload     = RELOAD_SCRIPT,
 		altreloadname = "overcharge",
 		missile       = "mplasma",
+		missprite     = SPRITE_PLASMASHOT,
+		hitsprite     = SPRITE_BLAST,
 
 		OnAltReload = function(self, being)
 			local floor_cell = cells[ level.map[ being.position ] ]
@@ -398,6 +413,8 @@ function drl.register_exotic_items()
 		altreloadname = "overcharge",
 		overcharge    = "mbfgover",
 		missile       = "mbfg",
+		sprite        = SPRITE_BFGSHOT,
+		hitsprite     = SPRITE_BLAST,
 
 		OnAltReload = function(self, being)
 			local floor_cell = cells[ level.map[ being.position ] ]
@@ -445,6 +462,8 @@ function drl.register_exotic_items()
 		missile       = "mplasma",
 		altfire       = ALT_SCRIPT,
 		altfirename   = "self-target",
+		missprite     = SPRITE_PLASMASHOT,
+		hitsprite     = SPRITE_BLAST,
 
 		OnHitBeing = function(self,being,target)
 			target:play_sound("phasing")
@@ -492,8 +511,6 @@ function drl.register_exotic_items()
 		missile = {
 			sound_id   = "bazooka",
 			color      = BROWN,
-			sprite     = SPRITE_ROCKETSHOT,
-			hitsprite  = SPRITE_BLAST,
 			delay      = 10,
 			miss_base  = 30,
 			miss_dist  = 5,
@@ -503,6 +520,8 @@ function drl.register_exotic_items()
 				content = "lava",
 			},
 		},
+		missprite     = SPRITE_ROCKETSHOT,
+		hitsprite     = SPRITE_BLAST,
 	}
 
 	register_item "uoarmor"
@@ -1187,6 +1206,8 @@ function drl.register_exotic_items()
 		altreloadname = "overcharge",
 		overcharge    = "mbfgover",
 		missile       = "mbfg",
+		sprite        = SPRITE_BFGSHOT,
+		hitsprite     = SPRITE_BLAST,
 
 		OnFirstPickup = function(self,being)
 			if not being:is_player() then return end

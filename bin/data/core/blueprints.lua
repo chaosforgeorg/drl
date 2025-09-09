@@ -188,9 +188,6 @@ core.register_blueprint "missile"
 	sound_id    = { false, core.TSTRING },
 	ascii       = { false, core.TSTRING, "-" },
 	color       = { true,  core.TNUMBER },
-	coscolor    = { false, core.TTABLE },
-	sprite      = { true,  core.TANY },
-	hitsprite   = { true,  core.TANY },
 	delay       = { true,  core.TNUMBER },
 	miss_base   = { true,  core.TNUMBER },
 	miss_dist   = { true,  core.TNUMBER },
@@ -203,7 +200,6 @@ core.register_blueprint "missile"
 core.register_blueprint "shotgun"
 {
 	id          = { true,  core.TSTRING },
-	hitsprite   = { true,  core.TANY },
 }
 
 core.register_blueprint "ai"
@@ -505,6 +501,8 @@ core.register_blueprint "item"
 			altreloadname = { false, core.TSTRING },
 			overcharge    = { false, core.TIDIN("missiles") },
 			scavenge      = { false, core.TARRAY(core.TIDIN("items")) },
+			hitsprite     = { true, core.TANY },
+			missprite     = { false, core.TANY },
 			missile       = { true, core.TANY }, -- TODO core.TMISSILE
 		},
 		[ITEMTYPE_NRANGED] = {
@@ -520,6 +518,8 @@ core.register_blueprint "item"
 			fire       = { false, core.TNUMBER, 10 },
 			radius     = { false, core.TNUMBER, 0 },
 			shots      = { false, core.TNUMBER, 0 },
+			hitsprite  = { true, core.TANY },
+			missprite  = { true, core.TANY },
 			missile    = { true, core.TANY }, 
 		},
 		[ITEMTYPE_URANGED] = {
@@ -536,6 +536,8 @@ core.register_blueprint "item"
 			fire          = { false, core.TNUMBER, 10 },
 			radius        = { false, core.TNUMBER, 0 },
 			shots         = { false, core.TNUMBER, 0 },
+			hitsprite     = { true, core.TANY },
+			missprite     = { true, core.TANY },
 			missile       = { true, core.TANY }, 
 		},
 		[ITEMTYPE_MELEE]  = {
@@ -552,9 +554,10 @@ core.register_blueprint "item"
 			fire        = { false, core.TNUMBER, 10 },
 			altfire     = { false, core.TNUMBER, 0 },
 			altfirename = { false, core.TSTRING },
+			hitsprite   = { false, core.TANY },
+			missprite   = { false, core.TANY },
 			missile     = { false, core.TANY, 0 }, 
 			scavenge    = { false, core.TARRAY(core.TIDIN("items")) },
-			throw_id    = { false, core.TIDIN("missiles") },
 		},
 		[ITEMTYPE_LEVER] = {
 			ascii      = { false, core.TSTRING, "&" },

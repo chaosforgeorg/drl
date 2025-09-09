@@ -46,7 +46,6 @@ register_level "the_asmos_den"
 					sound_id   = "arch",
 					color      = LIGHTRED,
 					sprite     = 0,
-					hitsprite  = SPRITE_BLAST,
 					delay      = 1,
 					miss_base  = 0,
 					miss_dist  = 0,
@@ -57,6 +56,7 @@ register_level "the_asmos_den"
 						color = LIGHTBLUE,
 					},
 				},
+				hitsprite  = SPRITE_BLAST,
 			},
 
 			OnCreate = function (self)

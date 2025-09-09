@@ -1049,9 +1049,9 @@ begin
           if KnockBacked then Continue;
           if isVisible then
           begin
-            if iDmg > 10 then IO.addMarkAnimation( 199, 0, iTC, aShotgun.HitSprite, Red, '*' )
-              else if iDmg > 4 then IO.addMarkAnimation( 199, 0, iTC, aShotgun.HitSprite, LightRed, '*' )
-                else IO.addMarkAnimation( 199, 0, iTC, aShotgun.HitSprite, LightGray, '*' );
+            if iDmg > 10 then IO.addMarkAnimation( 199, 0, iTC, aItem.HitSprite, Red, '*' )
+              else if iDmg > 4 then IO.addMarkAnimation( 199, 0, iTC, aItem.HitSprite, LightRed, '*' )
+                else IO.addMarkAnimation( 199, 0, iTC, aItem.HitSprite, LightGray, '*' );
           end;
           if iDmg >= KnockBackValue then
           begin
@@ -1066,7 +1066,7 @@ begin
         
         DamageTile( iTC, iDmg, aDamageType );
         if isVisible( iTC ) and ( not isPassable( iTC ) ) then
-          IO.addMarkAnimation( 199, 0, iTC, aShotgun.HitSprite, LightGray,'*' );
+          IO.addMarkAnimation( 199, 0, iTC, aItem.HitSprite, LightGray,'*' );
       end;
   ClearLightMapBits([lfDamage]);
 end;

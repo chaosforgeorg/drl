@@ -61,10 +61,12 @@ TItem  = class( TThing )
     FAppear   : Integer;
     FAmount   : Integer;
     FMax      : Integer;
-    procedure LuaLoad( Table : TLuaTable; onFloor: boolean ); reintroduce;
+    procedure LuaLoad( aTable : TLuaTable; aOnFloor: boolean ); reintroduce;
     public
     property PGlowColor     : TColor      read FProps.PGlowColor      write FProps.PGlowColor;
     property PCosColor      : TColor      read FProps.PCosColor       write FProps.PCosColor;
+    property HitSprite      : TSprite     read FProps.HitSprite;
+    property MisSprite      : TSprite     read FProps.MisSprite;
     published
     property Max            : Integer     read FMax;
     property Amount         : Integer     read FAmount                write FAmount;
@@ -201,64 +203,67 @@ begin
        iNode.WriteToStream( aStream );
 end;
 
-procedure TItem.LuaLoad( Table : TLuaTable; onFloor: boolean );
+procedure TItem.LuaLoad( aTable : TLuaTable; aOnFloor: boolean );
 var i : Byte;
 begin
-  inherited LuaLoad( Table );
+  inherited LuaLoad( aTable );
   FHooks := FHooks * ItemHooks;
 
-  FProps.itype := TItemType( Table.getInteger('type') );
+  FProps.itype := TItemType( aTable.getInteger('type') );
 
   for i := Ord('A') to Ord('Z') do FMods[i] := 0;
 
   FAppear          := 0;
-  FNID             := Table.getInteger('nid');
-  FMax             := Table.getInteger('max');
-  FAmount          := Table.getInteger('amount');
+  FNID             := aTable.getInteger('nid');
+  FMax             := aTable.getInteger('max');
+  FAmount          := aTable.getInteger('amount');
 
-  FProps.Recharge.Delay  := Table.getInteger('rechargedelay',0);
-  FProps.Recharge.Amount := Table.getInteger('rechargeamount',0);
-  FProps.Recharge.Limit  := Table.getInteger('rechargelimit',0);
+  FProps.Recharge.Delay  := aTable.getInteger('rechargedelay',0);
+  FProps.Recharge.Amount := aTable.getInteger('rechargeamount',0);
+  FProps.Recharge.Limit  := aTable.getInteger('rechargelimit',0);
   FProps.Recharge.Counter:= 0;
 
-  FProps.MoveMod   := Table.getInteger( 'movemod', 0 );
-  FProps.DodgeMod  := Table.getInteger( 'dodgemod', 0 );
-  FProps.KnockMod  := Table.getInteger( 'knockmod', 0 );
+  FProps.MoveMod   := aTable.getInteger( 'movemod', 0 );
+  FProps.DodgeMod  := aTable.getInteger( 'dodgemod', 0 );
+  FProps.KnockMod  := aTable.getInteger( 'knockmod', 0 );
 
-  FProps.Durability    := Table.getInteger('durability',0);
+  FProps.Durability    := aTable.getInteger('durability',0);
   FProps.MaxDurability := FProps.Durability;
-  FProps.SpriteMod     := Table.GetInteger('spritemod',0);
+  FProps.SpriteMod     := aTable.GetInteger('spritemod',0);
 
-  FProps.Ammo     := Table.getInteger('ammo',0);
-  FProps.AmmoMax  := Table.getInteger('ammomax',0);
-  FProps.AmmoID   := Table.getInteger('ammo_id',0);
+  FProps.Ammo     := aTable.getInteger('ammo',0);
+  FProps.AmmoMax  := aTable.getInteger('ammomax',0);
+  FProps.AmmoID   := aTable.getInteger('ammo_id',0);
   if Ammo = 0 then FProps.Ammo := FProps.AmmoMax;
 
-  FProps.Damage     := NewDiceRoll( Table.getInteger('damage_dice',0), Table.getInteger('damage_sides',0), Table.getInteger('damage_bonus',0) );
-  FProps.DamageType := TDamageType( Table.getInteger('damagetype',0) );
+  FProps.Damage     := NewDiceRoll( aTable.getInteger('damage_dice',0), aTable.getInteger('damage_sides',0), aTable.getInteger('damage_bonus',0) );
+  FProps.DamageType := TDamageType( aTable.getInteger('damagetype',0) );
 
-  FProps.Acc         := Table.getInteger('acc',0);
-  FProps.UseTime     := Table.getInteger('fire',0);
-  FProps.ReloadTime  := Table.getInteger('reload',0);
-  FProps.AltFire     := TAltFire( Table.getInteger('altfire',0) );
-  FProps.missile     := Table.getInteger('missile',0);
+  FProps.Acc         := aTable.getInteger('acc',0);
+  FProps.UseTime     := aTable.getInteger('fire',0);
+  FProps.ReloadTime  := aTable.getInteger('reload',0);
+  FProps.AltFire     := TAltFire( aTable.getInteger('altfire',0) );
+  FProps.missile     := aTable.getInteger('missile',0);
 
-  FProps.BlastRadius := Table.getInteger('radius',0);
-  FProps.Range       := Table.getInteger('range',0);
-  FProps.Shots       := Table.getInteger('shots',0);
-  FProps.ShotCost    := Table.getInteger('shotcost',0);
-  FProps.Spread      := Table.getInteger('spread',0);
-  FProps.Reduce      := Table.GetFloat('reduce',0.0);
+  FProps.BlastRadius := aTable.getInteger('radius',0);
+  FProps.Range       := aTable.getInteger('range',0);
+  FProps.Shots       := aTable.getInteger('shots',0);
+  FProps.ShotCost    := aTable.getInteger('shotcost',0);
+  FProps.Spread      := aTable.getInteger('spread',0);
+  FProps.Reduce      := aTable.GetFloat('reduce',0.0);
 
-  FProps.AltFire     := TAltFire( Table.getInteger('altfire',0) );
-  FProps.AltReload   := TAltReload( Table.getInteger('altreload',0) );
+  FProps.AltFire     := TAltFire( aTable.getInteger('altfire',0) );
+  FProps.AltReload   := TAltReload( aTable.getInteger('altreload',0) );
 
   FProps.PCosColor := ColorZero;
   FProps.PGlowColor := ColorZero;
-  if not Table.isNil( 'pcoscolor' ) then FProps.PCosColor  := NewColor( Table.GetVec4f('pcoscolor' ) );
-  if not Table.isNil( 'pglow' )     then FProps.PGlowColor := NewColor( Table.GetVec4f('pglow' ) );
+  if not aTable.isNil( 'pcoscolor' ) then FProps.PCosColor  := NewColor( aTable.GetVec4f('pcoscolor' ) );
+  if not aTable.isNil( 'pglow' )     then FProps.PGlowColor := NewColor( aTable.GetVec4f('pglow' ) );
 
-  if onFloor and ( FProps.IType = ITEMTYPE_AMMO ) then
+  ReadSprite( aTable, 'missprite', FProps.MisSprite );
+  ReadSprite( aTable, 'hitsprite', FProps.HitSprite );
+
+  if aOnFloor and ( FProps.IType = ITEMTYPE_AMMO ) then
     FAmount := Round( FAmount * Double(LuaSystem.Get([ 'diff', DRL.Difficulty, 'ammofactor' ])) );
 
   CallHook( Hook_OnCreate, [] );

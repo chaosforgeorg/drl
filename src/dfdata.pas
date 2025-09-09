@@ -281,13 +281,10 @@ const
 
 type
   TShotgunData = record
-    HitSprite  : TSprite;
   end;
 
   TMissileData = record
     SoundID    : string[20];
-    Sprite     : TSprite;
-    HitSprite  : TSprite;
     Picture    : Char;
     Color      : Byte;
     Delay      : Byte;
@@ -346,8 +343,6 @@ type TItemProperties = record
   DodgeMod      : Integer;
   KnockMod      : Integer;
 
-  PCosColor     : TColor;
-  PGlowColor    : TColor;
   SpriteMod     : Integer;
   Durability    : Word;
   MaxDurability : Word;
@@ -369,6 +364,11 @@ type TItemProperties = record
   DamageType    : TDamageType;
   AltFire       : TAltFire;
   AltReload     : TAltReload;
+
+  PCosColor     : TColor;
+  PGlowColor    : TColor;
+  MisSprite     : TSprite;
+  HitSprite     : TSprite;
 end;
 
 const MaxPlayerLevel = 26;
