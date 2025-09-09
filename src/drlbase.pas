@@ -727,8 +727,8 @@ begin
         iTarget := FTargeting.List.Current
       else
       begin
-        iRange      := Missiles[ iItem.Missile ].Range;
-        iLimitRange := MF_EXACT in Missiles[ iItem.Missile ].Flags;
+        iRange      := iItem.Range;
+        iLimitRange := iItem.Flags[ IF_EXACTHIT ];
         iFireTitle  := 'Choose throw target:';
       end;
     end;
@@ -750,14 +750,10 @@ begin
       Exit( False );
     end;
 
-
-    if iItem.Flags[ IF_SHOTGUN ] then
-      iRange := Shotguns[ iItem.Missile ].Range
-    else
-      iRange := Missiles[ iItem.Missile ].Range;
+    iRange := iItem.Range;
     if iRange = 0 then iRange := Player.Vision;
 
-    iLimitRange := (not iItem.Flags[ IF_SHOTGUN ]) and (MF_EXACT in Missiles[ iItem.Missile ].Flags);
+    iLimitRange := (not iItem.Flags[ IF_SHOTGUN ]) and iItem.Flags[ IF_EXACTHIT ];
     if aMouse or aAuto then
     begin
       if aMouse
@@ -820,11 +816,11 @@ function TDRL.HandleUsableCommand( aItem : TItem ) : Boolean;
 var iRange      : Integer;
     iLimitRange : Boolean;
 begin
-  iRange      := Missiles[ aItem.Missile ].Range;
+  iRange := aItem.Range;
   if iRange = 0 then iRange := Player.Vision;
   if iRange <> Player.Vision then
     FTargeting.Update( iRange );
-  iLimitRange := MF_EXACT in Missiles[ aItem.Missile ].Flags;
+  iLimitRange := aItem.Flags[ IF_EXACTHIT ];
   IO.PushLayer( TTargetModeView.Create( aItem, COMMAND_USE, 'Choose target:', iRange+1, iLimitRange, FTargeting.List, 0 ) );
   Exit( False );
 end;

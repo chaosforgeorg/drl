@@ -73,7 +73,7 @@ TLevel = class(TLuaMapNode, ITextMap)
     procedure DropCorpse( aCoord : TCoord2D; CellID : Byte );
     function DamageTile( aCoord : TCoord2D; aDamage : Integer; aDamageType : TDamageType ) : Boolean;
     procedure Explosion( aDelay : Integer; aCoord : TCoord2D; aData : TExplosionData; aItem : TItem; aKnockback : TDirection; aDirectHit : Boolean = False; aDamageMult : Single = 1.0 );
-    procedure Shotgun( aSource, aTarget : TCoord2D; aDamage : TDiceRoll; aDamageMul : Single; aDamageType : TDamageType; aShotgun : TShotgunData; aItem : TItem );
+    procedure Shotgun( aSource, aTarget : TCoord2D; aDamage : TDiceRoll; aDamageMul : Single; aDamageType : TDamageType; aItem : TItem );
     procedure Respawn( aChance : byte );
     function isPassable( const aCoord : TCoord2D ) : Boolean; override;
     function isEmpty( const coord : TCoord2D; EmptyFlags : TFlags32 = []) : Boolean; override;
@@ -985,7 +985,7 @@ begin
   if aData.ContentID <> 0 then RecalcFluids;
 end;
 
-procedure TLevel.Shotgun( aSource, aTarget : TCoord2D; aDamage : TDiceRoll; aDamageMul : Single; aDamageType : TDamageType; aShotgun : TShotgunData; aItem : TItem );
+procedure TLevel.Shotgun( aSource, aTarget : TCoord2D; aDamage : TDiceRoll; aDamageMul : Single; aDamageType : TDamageType; aItem : TItem );
 var iDiff,iC: TCoord2D;
     iTC     : TCoord2D;
     iDist   : Single;
@@ -1013,12 +1013,12 @@ var iDiff,iC: TCoord2D;
       until iCount = iRange;
     end;
 begin
-  iRange  := aShotgun.Range;
-  iSpread := aShotgun.Spread;
-  iReduce := aShotgun.Reduce;
+  iRange  := aItem.Range;
+  iSpread := aItem.Spread;
+  iReduce := aItem.Reduce;
+  if ( iSpread <= 0 ) then Exit;
 
-  iItemUID := 0;
-  if aItem <> nil then iItemUID := aItem.uid;
+  iItemUID := aItem.uid;
 
   iDist := Distance( aSource, aTarget );
   if iDist = 0 then Exit;
@@ -1049,9 +1049,9 @@ begin
           if KnockBacked then Continue;
           if isVisible then
           begin
-            if iDmg > 10 then IO.addMarkAnimation( 199, 0, iTC, aShotgun.HitSprite, Red, '*' )
-              else if iDmg > 4 then IO.addMarkAnimation( 199, 0, iTC, aShotgun.HitSprite, LightRed, '*' )
-                else IO.addMarkAnimation( 199, 0, iTC, aShotgun.HitSprite, LightGray, '*' );
+            if iDmg > 10 then IO.addMarkAnimation( 199, 0, iTC, aItem.HitSprite, Red, '*' )
+              else if iDmg > 4 then IO.addMarkAnimation( 199, 0, iTC, aItem.HitSprite, LightRed, '*' )
+                else IO.addMarkAnimation( 199, 0, iTC, aItem.HitSprite, LightGray, '*' );
           end;
           if iDmg >= KnockBackValue then
           begin
@@ -1066,7 +1066,7 @@ begin
         
         DamageTile( iTC, iDmg, aDamageType );
         if isVisible( iTC ) and ( not isPassable( iTC ) ) then
-          IO.addMarkAnimation( 199, 0, iTC, aShotgun.HitSprite, LightGray,'*' );
+          IO.addMarkAnimation( 199, 0, iTC, aItem.HitSprite, LightGray,'*' );
       end;
   ClearLightMapBits([lfDamage]);
 end;

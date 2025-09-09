@@ -25,7 +25,8 @@ register_level "unholy_cathedral"
 			set      = "angelic",
 			group    = "melee",
 			desc     = "Legend says that no one wielding the Spear of Destiny can ever be defeated.",
-			flags    = { IF_UNIQUE, IF_HALFKNOCK, IF_NUKERESIST },
+			flags    = { IF_UNIQUE, IF_NUKERESIST },
+			knockmod = -50,
 
 			type        = ITEMTYPE_MELEE,
 			damage      = "8d8",
@@ -64,7 +65,8 @@ register_level "unholy_cathedral"
 			weight   = 0,
 			group    = "melee",
 			desc     = "You don't want to know who's scythe this is...",
-			flags    = { IF_UNIQUE, IF_HALFKNOCK, IF_NUKERESIST },
+			flags    = { IF_UNIQUE, IF_NUKERESIST },
+			knockmod = -50,
 
 			type        = ITEMTYPE_MELEE,
 			damage      = "9d9",

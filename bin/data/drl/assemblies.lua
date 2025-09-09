@@ -88,7 +88,7 @@ function drl.register_assemblies()
 			item.damage_dice  = 5
 			item.damage_sides = 5
 			item.acc          = 7
-			item.blastradius  = 3
+			item.radius       = 3
 		end,
 	}
 
@@ -400,7 +400,7 @@ function drl.register_assemblies()
 		OnApply = function (item)
 			item.name        = "tactical rocket launcher"
 			item.ammomax     = 5
-			item.blastradius = 2
+			item.radius      = 2
 			item.flags[ IF_AUTOHIT ] = true
 		end,
 	}
@@ -464,8 +464,9 @@ function drl.register_assemblies()
 
 		OnApply = function (item)
 			item.name         = "energy "..item.name
+			item.miscolor     = MULTIYELLOW
+			item:set_sprite( "hit", { sprite = SPRITE_BLAST } )
 			item.damagetype   = DAMAGE_PLASMA
-			item.missile      = missiles[ "mblaster" ].nid
 			item.damage_sides = item.__proto.damage_sides + 1
 			item.ammoid       = items["cell"].nid
 		end,
@@ -513,10 +514,10 @@ function drl.register_assemblies()
 			end
 			item.damage_dice  = item.__proto.damage_dice
 			item.damage_sides = item.__proto.damage_sides + 2
-			item.missile      = missiles[ "mbfgover" ].nid
+			item.misdelay     = 200
 			item.shotcost     = item.__proto.shotcost * 1.5
 			item.ammomax      = item.__proto.ammomax * 1.5
-			item.blastradius  = 12
+			item.radius       = 12
 		end,
 	}
 
@@ -628,7 +629,9 @@ function drl.register_assemblies()
 
 		OnApply = function (item)
 			item.name         = "focused double shotgun"
-			item.missile      = shotguns[ "snormal" ].nid
+			item.range        = 15
+			item.spread       = 3
+			item.reduce       = 0.07
 			item.damage_dice  = 8
 			item.damage_sides = 4
 			item.reloadtime   = 15
@@ -646,7 +649,7 @@ function drl.register_assemblies()
 		desc  = "non-sg/non-bfg ranged weapon",
 
 		Match = function (item)
-			return item.group ~= "shotgun" and (item.itype == ITEMTYPE_RANGED) and (item.blastradius < 5)
+			return item.group ~= "shotgun" and (item.itype == ITEMTYPE_RANGED) and (item.radius < 5)
 		end,
 
 		OnApply = function (item)
@@ -690,7 +693,7 @@ function drl.register_assemblies()
 		desc  = "10mm weapon",
 
 		Match = function (item)
-			return item.itype == ITEMTYPE_RANGED and (item.missile == missiles[ "mchaingun" ].nid or item.missile == missiles[ "mgun" ].nid)
+			return item.itype == ITEMTYPE_RANGED and items[ item.ammoid ].id == "ammo"
 		end,
 
 		OnApply = function (item)
@@ -698,9 +701,12 @@ function drl.register_assemblies()
 			item.damage_dice     = math.ceil( item.__proto.damage_dice * item.__proto.damage_sides / 2 )
 			item.damage_sides    = 2
 			item.usetime         = item.__proto.fire
-			item.blastradius     = 1
+			item.radius          = 1
 			item.shots           = item.__proto.shots
-			item.missile         = missiles[ "mexplround" ].nid
+			item:set_explosion{
+				delay = 40,
+				color = RED,
+			}
 			item.damagetype      = DAMAGE_FIRE
 		end,
 	}
@@ -740,11 +746,11 @@ function drl.register_assemblies()
 				item.name     = "biggest fucking gun"
 			end
 			item.damage_dice  = item.__proto.damage_dice * 2
-			item.damage_sides  = item.__proto.damage_sides * 2
-			item.missile      = missiles[ "mbfgover" ].nid
+			item.damage_sides = item.__proto.damage_sides * 2
+			item.misdelay     = 200
 			item.shotcost     = item.__proto.shotcost * 2.5
 			item.ammomax      = item.__proto.ammomax * 2.5
-			item.blastradius  = 16
+			item.radius       = 16
 		end,
 	}
 
@@ -815,7 +821,7 @@ function drl.register_assemblies()
 			--item.desc         = "Simon-v's legendary rocket launcher."
 			item.damage_dice  = 6
 			item.damage_sides = 9
-			item.blastradius  = 6
+			item.radius       = 6
 			-- This is the behaviour of the N-mod on 0.9.9.1.
 			-- shark said that you can get this with N2, but here we are basically allowing a *6*-mod weapon build up
 			item.flags[ IF_RECHARGE ] = true

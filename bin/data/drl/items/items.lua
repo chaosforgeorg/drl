@@ -13,14 +13,20 @@ function drl.register_regular_items()
 		weight   = 640,
 		group    = "melee",
 		desc     = "Not what you'd really like to use, but it's better than your fists.",
-		flags    = { IF_THROWDROP },
+		flags    = { IF_THROWDROP, IF_EXACTHIT },
 
 		type        = ITEMTYPE_MELEE,
 		damage      = "2d5",
 		damagetype  = DAMAGE_MELEE,
 		acc         = 1,
 		altfire     = ALT_THROW,
-		missile     = "mknife",
+		miscolor    = LIGHTGRAY,
+		misdelay    = 50,
+		miss_base   = 10,
+		miss_dist   = 3,
+		range       = 5,
+		missprite   = SPRITE_KNIFE,
+		hitsprite   = SPRITE_BLAST,
 
 		OnCreate = function(self)
 			self:add_property( "BLADE", true )
@@ -551,7 +557,12 @@ function drl.register_regular_items()
 		reload        = 12,
 		altfire       = ALT_AIMED,
 		altreload     = RELOAD_DUAL,
-		missile       = "mgun",
+		miscolor      = LIGHTGRAY,
+		misdelay      = 15,
+		miss_base     = 10,
+		miss_dist     = 3,
+		missprite     = SPRITE_SHOT,
+		hitsprite     = SPRITE_BLAST,
 	}
 
 	register_item "shotgun"
@@ -574,7 +585,10 @@ function drl.register_regular_items()
 		damagetype    = DAMAGE_SHARPNEL,
 		fire          = 10,
 		reload        = 10,
-		missile       = "snormal",
+		range         = 15,
+		spread        = 3,
+		reduce        = 0.07,
+		hitsprite     = SPRITE_BLAST,
 	}
 
 	register_item "dshotgun"
@@ -601,7 +615,10 @@ function drl.register_regular_items()
 		shots         = 2,
 		altfire       = ALT_SINGLE,
 		altreload     = RELOAD_SINGLE,
-		missile       = "swide",
+		range         = 8,
+		spread        = 3,
+		reduce        = 0.1,
+		hitsprite     = SPRITE_BLAST,
 	}
 
 	register_item "ashotgun"
@@ -627,8 +644,11 @@ function drl.register_regular_items()
 		reload        = 10,
 		altreload     = RELOAD_SCRIPT,
 		altreloadname = "full",
-		missile       = "sfocused",
-		
+		range         = 15,
+		spread        = 2,
+		reduce        = 0.05,
+		hitsprite     = SPRITE_BLAST,
+
 		OnCreate = function(self)
 			self:add_property( "pump_action", true )
 			self:add_property( "chamber_empty", false )
@@ -716,15 +736,35 @@ function drl.register_regular_items()
 		reload        = 15,
 		altfire       = ALT_TARGETSCRIPT,
 		altfirename   = "rocketjump",
-		missile       = "mrocket",
+		miscolor      = BROWN,
+		misdelay      = 30,
+		miss_base     = 30,
+		miss_dist     = 5,
+		missprite     = SPRITE_ROCKETSHOT,
+		hitsprite     = SPRITE_BLAST,
+		explosion     = {
+			delay 	= 40,
+			color 	= RED,
+		},
 
 		OnAltFire = function( self, being )
-			self.missile = missiles[ "mrocketjump" ].nid
+			self:set_explosion{
+				delay 	= 40,
+				color 	= RED,
+				flags = { EFSELFKNOCKBACK, EFSELFHALF },
+			}
+			self.flags[ IF_EXACTHIT ] = true
+			self.range   = 1
 			return true
 		end,
 
 		OnFire = function( self, being )
-			self.missile = missiles[ "mrocket" ].nid
+			self:set_explosion{
+				delay 	= 40,
+				color 	= RED,
+			}
+			self.flags[ IF_EXACTHIT ] = false
+			self.range   = 0
 			return true
 		end,
 	}
@@ -752,7 +792,12 @@ function drl.register_regular_items()
 		reload        = 25,
 		shots         = 4,
 		altfire       = ALT_CHAIN,
-		missile       = "mchaingun",
+		miscolor      = WHITE,
+		misdelay      = 10,
+		miss_base     = 10,
+		miss_dist     = 3,
+		missprite     = SPRITE_SHOT,
+		hitsprite     = SPRITE_BLAST,
 	}
 
 	register_item "plasma"
@@ -780,7 +825,13 @@ function drl.register_regular_items()
 		altfire       = ALT_CHAIN,
 		altreload     = RELOAD_SCRIPT,
 		altreloadname = "overcharge",
-		missile       = "mplasma",
+		misascii      = "*",
+		miscolor      = MULTIBLUE,
+		misdelay      = 10,
+		miss_base     = 30,
+		miss_dist     = 3,
+		sprite        = SPRITE_PLASMASHOT,
+		hitsprite     = SPRITE_BLAST,
 
 		OnAltReload = function(self)
 			if not self:can_overcharge("This will destroy the weapon after the next shot...") then return false end

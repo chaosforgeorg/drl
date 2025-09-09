@@ -280,26 +280,6 @@ const
   ActSoundChance    = 30;
 
 type
-  TShotgunData = record
-    Range      : Byte;
-    Spread     : Byte;
-    Reduce     : Real;
-    HitSprite  : TSprite;
-  end;
-
-  TMissileData = record
-    SoundID    : string[20];
-    Sprite     : TSprite;
-    HitSprite  : TSprite;
-    Picture    : Char;
-    Color      : Byte;
-    Delay      : Byte;
-    MissBase   : Byte;
-    MissDist   : Byte;
-    Range      : Byte;
-    Flags      : TFlags;
-    Explosion  : TExplosionData;
-  end;
 
   TAffectData = record
     Name       : Ansistring;
@@ -312,8 +292,6 @@ type
   end;
 
 var
-  Missiles  : array of TMissileData;
-  Shotguns  : array of TShotgunData;
   Affects   : array of TAffectData;
 
 const
@@ -335,40 +313,54 @@ const ItemEqFilters : array[TEqSlot] of TItemTypeSet = (
                       );
 const ItemsAll      : TItemTypeSet = [Low(TItemType)..High(TItemType)];
 
+type TItemRecharge = record
+  Delay   : Byte;
+  Amount  : Byte;
+  Counter : Byte;
+  Limit   : Byte;
+end;
+
 type TItemProperties = record
-       case IType : TItemType of
-         ItemType_Armor,ItemType_Boots : (
-           Durability : Word;
-           MaxDurability : Word;
-           MoveMod    : Integer;
-	   DodgeMod   : Integer;
-           KnockMod   : Integer;
-           SpriteMod  : Integer;
-           PCosColor  : TColor;
-           PGlowColor : TColor;
-         );
-         ItemType_Ammo,
-         ItemType_Melee,
-         ItemType_NRanged,
-         ItemType_URanged,
-         ItemType_Ranged,
-         ItemType_AmmoPack : (
-           AmmoID      : Byte;
-           Ammo        : Word;
-           AmmoMax     : Word;
-           Acc         : Integer;
-           Damage      : TDiceRoll;
-           Missile     : Byte;
-           BlastRadius : Byte;
-           Shots       : Byte;
-           ShotCost    : Byte;
-           ReloadTime  : Byte;
-           UseTime     : Byte;
-           DamageType  : TDamageType;
-           AltFire     : TAltFire;
-           AltReload   : TAltReload;
-         );
-     end;
+  IType         : TItemType;
+
+  Recharge      : TItemRecharge;
+  MoveMod       : Integer;
+  DodgeMod      : Integer;
+  KnockMod      : Integer;
+
+  SpriteMod     : Integer;
+  Durability    : Word;
+  MaxDurability : Word;
+
+  AmmoID        : Byte;
+  Ammo          : Word;
+  AmmoMax       : Word;
+  Acc           : Integer;
+  Damage        : TDiceRoll;
+  Range         : Byte;
+  Spread        : Byte;
+  Reduce        : Single;
+  Radius        : Byte;
+  Shots         : Byte;
+  ShotCost      : Byte;
+  ReloadTime    : Byte;
+  UseTime       : Byte;
+  DamageType    : TDamageType;
+  MissBase      : Byte;
+  MissDist      : Byte;
+  AltFire       : TAltFire;
+  AltReload     : TAltReload;
+
+  MisASCII      : Char;
+  MisColor      : Byte;
+  MisDelay      : Byte;
+
+  PCosColor     : TColor;
+  PGlowColor    : TColor;
+  MisSprite     : TSprite;
+  HitSprite     : TSprite;
+  Explosion     : TExplosionData;
+end;
 
 const MaxPlayerLevel = 26;
 

@@ -63,6 +63,7 @@ function drl.register_unique_items()
 	register_item "unullpointer"
 	{
 		name     = "Charch's Null Pointer",
+		sound_id = "plasma",
 		color    = LIGHTGREEN,
 		sprite   = SPRITE_PLASMA,
 		psprite  = SPRITE_PLAYER_PLASMA,
@@ -81,7 +82,13 @@ function drl.register_unique_items()
 		acc           = 6,
 		reload        = 20,
 		shotcost      = 10,
-		missile       = "mplasma",
+		misascii      = "*",
+		miscolor      = MULTIBLUE,
+		misdelay      = 10,
+		miss_base     = 30,
+		miss_dist     = 3,
+		missprite     = SPRITE_PLASMASHOT,
+		hitsprite     = SPRITE_BLAST,
 
 		OnHitBeing = function(self,being,target)
 			target:play_sound("phasing")
@@ -126,8 +133,8 @@ function drl.register_unique_items()
 
 	register_item "ubutcher"
 	{
-		sound_id = "knife",
 		name     = "Butcher's Cleaver",
+		sound_id = "knife",
 		color    = LIGHTGREEN,
 		sprite   = SPRITE_CLEAVER,
 		psprite  = SPRITE_PLAYER_CLEAVER,
@@ -135,7 +142,8 @@ function drl.register_unique_items()
 		weight   = 2,
 		desc     = "Now that is a BIG cleaver. Butcher them!",
 		firstmsg = "Aaaah, fresh meat!",
-		flags    = { IF_UNIQUE, IF_HALFKNOCK, IF_MODABLE, IF_SINGLEMOD },
+		flags    = { IF_UNIQUE, IF_MODABLE, IF_SINGLEMOD },
+		knockmod = -50,
 
 		type        = ITEMTYPE_MELEE,
 		damage      = "5d6",
@@ -158,8 +166,8 @@ function drl.register_unique_items()
 
 	register_item "umjoll"
 	{
-		sound_id = "knife",
 		name     = "Mjollnir",
+		sound_id = "knife",
 		color    = LIGHTGREEN,
 		sprite   = SPRITE_CLEAVER,
 		psprite  = SPRITE_PLAYER_CLEAVER,
@@ -168,24 +176,20 @@ function drl.register_unique_items()
 		group    = "melee",
 		scavenge = { "umod_onyx" },
 		desc     = "Forged by the dwarves Eitri and Brokk, in response to Loki's challenge, Mjollnir is an indestructible war hammer.",
-		flags    = { IF_UNIQUE, IF_NODESTROY, IF_MODABLE, IF_SINGLEMOD },
+		flags    = { IF_UNIQUE, IF_NODESTROY, IF_MODABLE, IF_SINGLEMOD, IF_EXACTHIT },
 
-		type        = ITEMTYPE_MELEE,
-		damage      = "1d25",
-		damagetype  = DAMAGE_MELEE,
-		acc         = 0,
-		altfire     = ALT_THROW,
-		missile     = {
-			sound_id   = "knife",
-			color      = LIGHTGRAY,
-			sprite     = SPRITE_CLEAVER,
-			hitsprite  = SPRITE_BLAST,
-			delay      = 50,
-			miss_base  = 10,
-			miss_dist  = 3,
-			flags      = { MF_EXACT },
-			range      = 5,
-		},
+		type       = ITEMTYPE_MELEE,
+		damage     = "1d25",
+		damagetype = DAMAGE_MELEE,
+		acc        = 0,
+		altfire    = ALT_THROW,
+		miscolor   = LIGHTGRAY,
+		misdelay   = 50,
+		miss_base  = 10,
+		miss_dist  = 3,
+		range      = 5,
+		missprite  = SPRITE_CLEAVER,
+		hitsprite  = SPRITE_BLAST,
 	}
 
 	register_item "usubtle"
@@ -236,6 +240,7 @@ function drl.register_unique_items()
 	register_item "utrigun"
 	{
 		name     = "Trigun",
+		sound_id = "pistol",
 		color    = LIGHTGREEN,
 		sprite   = SPRITE_PISTOL,
 		psprite  = SPRITE_PLAYER_PISTOL,
@@ -257,7 +262,12 @@ function drl.register_unique_items()
 		altfire       = ALT_AIMED,
 		altreload     = RELOAD_SCRIPT,
 		altreloadname = "Angel Arm",
-		missile       = "mgun",
+		miscolor      = LIGHTGRAY,
+		misdelay      = 15,
+		miss_base     = 10,
+		miss_dist     = 3,
+		missprite     = SPRITE_SHOT,
+		hitsprite     = SPRITE_BLAST,
 
 		OnAltReload = function(self,being)
 			if being:is_player() and being.hpmax > 10 then
@@ -278,6 +288,7 @@ function drl.register_unique_items()
 	register_item "ujackal"
 	{
 		name     = "Anti-Freak Jackal",
+		sound_id = "pistol",
 		color    = LIGHTGREEN,
 		sprite   = SPRITE_PISTOL,
 		psprite  = SPRITE_PLAYER_PISTOL,
@@ -299,12 +310,22 @@ function drl.register_unique_items()
 		reload        = 20,
 		altfire       = ALT_AIMED,
 		altreload     = RELOAD_DUAL,
-		missile       = "mexplround",
+		miscolor      = LIGHTGRAY,
+		misdelay      = 15,
+		miss_base     = 10,
+		miss_dist     = 3,
+		missprite     = SPRITE_SHOT,
+		hitsprite     = SPRITE_BLAST,
+		explosion     = {
+			delay = 40,
+			color = RED,
+		},
 	}
 
 	register_item "umega"
 	{
 		name     = "Mega Buster",
+		sound_id = "chaingun",
 		color    = LIGHTGREEN,
 		sprite   = SPRITE_PLASMA,
 		psprite  = SPRITE_PLAYER_PLASMA,
@@ -324,7 +345,12 @@ function drl.register_unique_items()
 		reload        = 35,
 		shots         = 3,
 		shotcost      = 3,
-		missile       = "mchaingun",
+		miscolor      = WHITE,
+		misdelay      = 10,
+		miss_base     = 10,
+		miss_dist     = 3,
+		missprite     = SPRITE_SHOT,
+		hitsprite     = SPRITE_BLAST,
 
 		OnKill = function (self,being,target)
 			local damage = DAMAGE_BULLET
@@ -336,40 +362,65 @@ function drl.register_unique_items()
 			{
 				[DAMAGE_BULLET] = {
 					damagetype   = DAMAGE_BULLET,
-					blastradius  = 0,
+					radius       = 0,
 					damage_dice  = 1,
 					damage_sides = 8,
 					acc          = 2,
-					missile      = missiles[ "mchaingun" ].nid
+					miscolor     = LIGHTGRAY,
+					misdelay     = 10,
+					miss_base    = 10,
+					miss_dist    = 3,
 				},
 				[DAMAGE_FIRE] = {
 					damagetype   = DAMAGE_FIRE,
-					blastradius  = 1,
+					radius       = 1,
 					damage_dice  = 4,
 					damage_sides = 2,
 					acc          = 0,
-					missile      = missiles[ "mexplround" ].nid
+					miscolor     = LIGHTGRAY,
+					misdelay     = 15,
+					miss_base    = 10,
+					miss_dist    = 3,
+					explosion    = {
+						delay = 40,
+						color = RED,
+					},
 				},
 				[DAMAGE_ACID] = {
 					damagetype   = DAMAGE_ACID,
-					blastradius  = 1,
+					radius       = 1,
 					damage_dice  = 4,
 					damage_sides = 2,
 					acc          = 0,
-					missile      = missiles[ "mexplground" ].nid
+					miscolor     = LIGHTGRAY,
+					misdelay     = 15,
+					miss_base    = 10,
+					miss_dist    = 3,
+					explosion    = {
+						delay = 40,
+						color = GREEN,
+					},
 				},
 				[DAMAGE_PLASMA] = {
 					damagetype   = DAMAGE_PLASMA,
-					blastradius  = 0,
+					radius       = 0,
 					damage_dice  = 1,
 					damage_sides = 10,
 					acc          = 1,
-					missile      = missiles[ "mplasma" ].nid
+					misascii     = "*",
+					miscolor     = MULTIBLUE,
+					misdelay     = 10,
+					miss_base    = 30,
+					miss_dist    = 3,
 				}
 			}
 			local final = morph[ damage ] or morph[ DAMAGE_BULLET ]
 			if final.damagetype ~= self.damagetype then
 				ui.msg("The Mega Buster morphs!")
+			end
+			if final.explosion then
+				self:set_explosion( final.explosion )
+				final.explosion = nil
 			end
 			for k,v in pairs( final ) do
 				self[k] = v
@@ -387,6 +438,7 @@ function drl.register_unique_items()
 	register_item "uberetta"
 	{
 		name     = "Grammaton Cleric Beretta",
+		sound_id = "pistol",
 		color    = LIGHTGREEN,
 		sprite   = SPRITE_PISTOL,
 		psprite  = SPRITE_PLAYER_PISTOL,
@@ -406,7 +458,12 @@ function drl.register_unique_items()
 		reload        = 20,
 		altreload     = RELOAD_SCRIPT,
 		altreloadname = "firemode",
-		missile       = "mchaingun",
+		miscolor      = WHITE,
+		misdelay      = 10,
+		miss_base     = 10,
+		miss_dist     = 3,
+		missprite     = SPRITE_SHOT,
+		hitsprite     = SPRITE_BLAST,
 
 		OnKill = function (self,being,target)
 			if target.id == "mastermind" and target.is_boss then
@@ -462,7 +519,10 @@ function drl.register_unique_items()
 		altreload     = RELOAD_SCRIPT,
 		altreloadname = "trigger",
 		shots         = 3,
-		missile       = "sfocused",
+		hitsprite     = SPRITE_BLAST,
+		range         = 15,
+		spread        = 2,
+		reduce        = 0.05,
 
 		OnAltReload = function(self,being)
 			if self.shots == 3 then
@@ -499,12 +559,16 @@ function drl.register_unique_items()
 		damagetype    = DAMAGE_SHARPNEL,
 		fire          = 5,
 		reload        = 25,
-		missile       = "sfocused",
+		hitsprite     = SPRITE_BLAST,
+		range         = 15,
+		spread        = 2,
+		reduce        = 0.05,
 	}
 
 	register_item "urbazooka"
 	{
 		name     = "Revenant's Launcher",
+		sound_id = "bazooka",
 		color    = LIGHTGREEN,
 		sprite   = SPRITE_BAZOOKA,
 		psprite  = SPRITE_PLAYER_BAZOOKA,
@@ -513,36 +577,33 @@ function drl.register_unique_items()
 		group    = "rocket",
 		desc     = "Two can play the homing missile game.",
 		scavenge = { "umod_sniper" },
-		flags    = { IF_UNIQUE, IF_MODABLE },
+		flags    = { IF_UNIQUE, IF_MODABLE, IF_EXACTHIT },
 
-		type          = ITEMTYPE_RANGED,
-		ammo_id       = "rocket",
-		ammomax       = 1,
-		damage        = "7d6",
-		damagetype    = DAMAGE_FIRE,
-		acc           = 6,
-		fire          = 10,
-		radius        = 3,
-		reload        = 14,
-		missile = {
-			sound_id   = "bazooka",
-			color      = BROWN,
-			sprite     = SPRITE_ROCKETSHOT,
-			hitsprite  = SPRITE_BLAST,
-			delay      = 30,
-			miss_base  = 30,
-			miss_dist  = 5,
-			flags      = { MF_EXACT },
-			explosion  = {
-				delay = 40,
-				color = RED,
-			},
+		type       = ITEMTYPE_RANGED,
+		ammo_id    = "rocket",
+		ammomax    = 1,
+		damage     = "7d6",
+		damagetype = DAMAGE_FIRE,
+		acc        = 6,
+		fire       = 10,
+		radius     = 3,
+		reload     = 14,
+		miscolor   = BROWN,
+		misdelay   = 30,
+		miss_base  = 30,
+		miss_dist  = 5,
+		missprite  = SPRITE_ROCKETSHOT,
+		hitsprite  = SPRITE_BLAST,
+		explosion  = {
+			delay = 40,
+			color = RED,
 		},
 	}
 
 	register_item "uacid"
 	{
 		name     = "Acid Spitter",
+		sound_id = "bazooka",
 		color    = LIGHTGREEN,
 		sprite   = SPRITE_PLASMA,
 		psprite  = SPRITE_PLAYER_PLASMA,
@@ -554,29 +615,26 @@ function drl.register_unique_items()
 
 		resist = { acid = 75 },
 
-		type          = ITEMTYPE_RANGED,
-		ammo_id       = "rocket",
-		ammomax       = 10,
-		damage        = "10d10",
-		damagetype    = DAMAGE_ACID,
-		acc           = 5,
-		fire          = 8,
-		radius        = 3,
-		reload        = 12,
-		shotcost      = 10,
-		missile = {
-			sound_id   = "bazooka",
-			color      = GREEN,
-			sprite     = SPRITE_ROCKETSHOT,
-			hitsprite  = SPRITE_BLAST,
-			delay      = 10,
-			miss_base  = 30,
-			miss_dist  = 5,
-			explosion  = {
-				delay = 80,
-				color = GREEN,
-				content = "acid",
-			},
+		type       = ITEMTYPE_RANGED,
+		ammo_id    = "rocket",
+		ammomax    = 10,
+		damage     = "10d10",
+		damagetype = DAMAGE_ACID,
+		acc        = 5,
+		fire       = 8,
+		radius     = 3,
+		reload     = 12,
+		shotcost   = 10,
+		miscolor   = GREEN,
+		misdelay   = 10,
+		miss_base  = 30,
+		miss_dist  = 5,
+		missprite  = SPRITE_ROCKETSHOT,
+		hitsprite  = SPRITE_BLAST,
+		explosion  = {
+			delay = 80,
+			color = GREEN,
+			content = "acid",
 		},
 
 		OnCreate = function( self )
@@ -604,6 +662,7 @@ function drl.register_unique_items()
 	register_item "ubfg10k"
 	{
 		name     = "BFG 10K",
+		sound_id = "plasma",
 		color    = LIGHTGREEN,
 		sprite   = SPRITE_BFG10K,
 		psprite  = SPRITE_PLAYER_BFG9000,
@@ -612,40 +671,37 @@ function drl.register_unique_items()
 		group    = "bfg",
 		scavenge = { "umod_nano" },
 		desc     = "The Ultimate Big Fucking Gun. Redefines the word \"wallpaper\".",
-		flags    = { IF_UNIQUE, IF_SCATTER, IF_MODABLE, IF_SINGLEMOD },
+		flags    = { IF_UNIQUE, IF_SCATTER, IF_MODABLE, IF_SINGLEMOD, IF_EXACTHIT },
 
-		type          = ITEMTYPE_RANGED,
-		ammo_id       = "cell",
-		ammomax       = 50,
-		damage        = "6d4",
-		damagetype    = DAMAGE_SPLASMA,
-		acc           = 3,
-		fire          = 10,
-		radius        = 2,
-		reload        = 20,
-		shots         = 5,
-		shotcost      = 5,
-		altfire       = ALT_CHAIN,
-		missile = {
-			sound_id   = "plasma",
-			color      = GREEN,
-			sprite     = SPRITE_BFGSHOT,
-			hitsprite  = SPRITE_BLAST,
-			delay      = 15,
-			miss_base  = 30,
-			miss_dist  = 5,
-			flags      = { MF_EXACT },
-			explosion  = {
-				delay = 25,
-				color = GREEN,
-				flags = { EFHALFKNOCK, EFNODISTANCEDROP },
-			},
+		type       = ITEMTYPE_RANGED,
+		ammo_id    = "cell",
+		ammomax    = 50,
+		damage     = "6d4",
+		damagetype = DAMAGE_SPLASMA,
+		acc        = 3,
+		fire       = 10,
+		radius     = 2,
+		reload     = 20,
+		shots      = 5,
+		shotcost   = 5,
+		altfire    = ALT_CHAIN,
+		miscolor   = GREEN,
+		misdelay   = 15,
+		miss_base  = 30,
+		miss_dist  = 5,
+		missprite  = SPRITE_BFGSHOT,
+		hitsprite  = SPRITE_BLAST,
+		explosion  = {
+			delay = 25,
+			color = GREEN,
+			flags = { EFHALFKNOCK, EFNODISTANCEDROP },
 		},
 	}
 
 	register_item "urailgun"
 	{
 		name     = "Railgun",
+		sound_id = "pistol",
 		color    = LIGHTGREEN,
 		sprite   = SPRITE_PLASMA,
 		psprite  = SPRITE_PLAYER_PLASMA,
@@ -654,28 +710,26 @@ function drl.register_unique_items()
 		scavenge = { "umod_sniper" },
 		group    = "plasma",
 		desc     = "Groovy! Wait 'til they stand in a row, and watch them being impaled.",
-		flags    = { IF_UNIQUE, IF_MODABLE, IF_SINGLEMOD },
+		flags    = { IF_UNIQUE, IF_MODABLE, IF_SINGLEMOD, IF_RAYGUN, IF_PIERCEHIT },
 
-		type          = ITEMTYPE_RANGED,
-		ammo_id       = "cell",
-		ammomax       = 40,
-		damage        = "8d8",
-		damagetype    = DAMAGE_BULLET,
-		acc           = 12,
-		fire          = 15,
-		reload        = 20,
-		shotcost      = 5,
-		missile = {
-			sound_id   = "pistol",
-			color      = LIGHTGREEN,
+		type       = ITEMTYPE_RANGED,
+		ammo_id    = "cell",
+		ammomax    = 40,
+		damage     = "8d8",
+		damagetype = DAMAGE_BULLET,
+		acc        = 12,
+		fire       = 15,
+		reload     = 20,
+		shotcost   = 5,
+		miscolor   = LIGHTGREEN,
+		misdelay   = 50,
+		miss_base  = 3,
+		miss_dist  = 3,
+		missprite = {
 			sprite     = SPRITE_CSHOT,
 			coscolor   = { 0.0,1.0,0.0,0.3 },
-			hitsprite  = SPRITE_BLAST,
-			delay      = 50,
-			miss_base  = 3,
-			miss_dist  = 3,
-			flags      = { MF_RAY, MF_HARD },
 		},
+		hitsprite  = SPRITE_BLAST,
 	}
 
 	register_item "umarmor"
@@ -978,7 +1032,8 @@ function drl.register_unique_items()
 		weight   = 1,
 		group    = "melee",
 		desc     = "It was called the Dragonslayer, because no human could wield it...",
-		flags    = { IF_UNIQUE, IF_HALFKNOCK, IF_CURSED },
+		flags    = { IF_UNIQUE, IF_CURSED },
+		knockmod = -50,
 
 		type        = ITEMTYPE_MELEE,
 		damage      = "9d9",

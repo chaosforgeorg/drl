@@ -72,7 +72,7 @@ TBeing = class(TThing,IPathQuery)
     function canDualWield : boolean;
     function canDualWieldMelee : boolean;
     function canPackReload : Boolean;
-    function getStrayChance( aDefender : TBeing; aMissile : Byte ) : Byte;
+    function getStrayChance( aDefender : TBeing; aWeapon : TItem ) : Byte;
     function Preposition( Creature : AnsiString ) : string;
     function Dead : Boolean;
     procedure Remove( Node : TNode ); override;
@@ -216,14 +216,15 @@ uses math, vlualibrary, vluaentitynode, vuid, vdebug, vvision, vluasystem,
 
 const PAIN_DURATION = 500;
 
-function TBeing.getStrayChance( aDefender : TBeing; aMissile : Byte ) : Byte;
+function TBeing.getStrayChance( aDefender : TBeing; aWeapon : TItem ) : Byte;
 var iMiss : Integer;
 begin
   if IsPlayer        then Exit(0);
   if aDefender = nil then Exit(0);
+  if aWeapon   = nil then Exit(0);
 
-  iMiss := Missiles[ aMissile ].MissBase +
-          Missiles[ aMissile ].MissDist *
+  iMiss := aWeapon.MissBase +
+          aWeapon.MissDist *
           Distance( FPosition, aDefender.FPosition );
 
   if aDefender.IsPlayer then
@@ -396,7 +397,6 @@ function TBeing.HandleShotgunFire( aTarget : TCoord2D; aShotGun : TItem; aAltFir
 var iThisUID   : DWord;
     iDual      : Boolean;
     iCount     : DWord;
-    iShotgun   : TShotgunData;
     iDamageMul : Single;
     iDamage    : TDiceRoll;
     iDamageType: TDamageType;
@@ -417,10 +417,9 @@ begin
   for iCount := 1 to aShots do
   begin
     if not iDual then aShotGun.PlaySound( 'fire', FPosition );
-    iShotgun := Shotguns[ aShotGun.Missile ];
     iDamageType := aShotGun.DamageType;
     if (BF_ARMYDEAD in FFlags) and (iDamageType = DAMAGE_SHARPNEL) then iDamageType := Damage_IgnoreArmor;
-    TLevel(Parent).ShotGun( FPosition, aTarget, iDamage, iDamageMul, iDamageType, iShotgun, aShotgun );
+    TLevel(Parent).ShotGun( FPosition, aTarget, iDamage, iDamageMul, iDamageType, aShotgun );
     if UIDs[ iThisUID ] = nil then Exit( false );
     if (not iDual) and (aShotGun.Shots > 1) then IO.Delay(30);
   end;
@@ -465,7 +464,7 @@ begin
       if not TLevel(Parent).isProperCoord(iRay.GetC) then begin aTarget:=iRay.prev; break;end; {**** Stop at edge of map.}
       Inc(iSteps);
       if iSteps >= iMissileRange then begin aTarget := iRay.GetC; break; end; {**** Stop if further than maxrange.}
-      if (MF_EXACT in (Missiles[aGun.Missile].Flags)) and (iRay.GetC = aTarget) then break; {**** Stop at target square for exact missiles.}
+      if aGun.Flags[ IF_EXACTHIT ] and (iRay.GetC = aTarget) then break; {**** Stop at target square for exact missiles.}
       if iRay.Done then
          iRay.Init(TLevel(Parent), iRay.GetC, iRay.GetC + (aTarget - FPosition)); {**** Extend target out in same direction for non-exact missiles.}
     until false;
@@ -481,11 +480,11 @@ begin
     if iChaining then aTarget := RotateTowards( FPosition, aTarget, iChainTarget, PI/6 );
     if aGun.Flags[ IF_SCATTER ] then
        begin
-            if not SendMissile( TLevel(Parent).Area.Clamped(aTarget.RandomShifted( iScatter )), aGun, aAltFire, iSeqBase+(iCount-1)*Missiles[aGun.Missile].Delay*3, iCount-1 ) then Exit( False );
+            if not SendMissile( TLevel(Parent).Area.Clamped(aTarget.RandomShifted( iScatter )), aGun, aAltFire, iSeqBase+(iCount-1)*aGun.MisDelay*3, iCount-1 ) then Exit( False );
        end
     else
        begin
-            if not SendMissile( aTarget, aGun, aAltFire, iSeqBase+(iCount-1)*Missiles[aGun.Missile].Delay*3, iCount-1 ) then Exit( False );
+            if not SendMissile( aTarget, aGun, aAltFire, iSeqBase+(iCount-1)*aGun.MisDelay*3, iCount-1 ) then Exit( False );
        end;
     if DRL.State <> DSPlaying then Exit( False );
   end;
@@ -889,12 +888,9 @@ begin
     if aWeapon.Ammo < aWeapon.ShotCost then Exit( False );
   end;
   
-  if aWeapon.Flags[ IF_SHOTGUN ] then
-      iRange := Shotguns[ aWeapon.Missile ].Range
-  else
-      iRange := Missiles[ aWeapon.Missile ].Range;
+  iRange := aWeapon.Range;
   if iRange = 0 then iRange := self.Vision;
-  iLimitRange := (not aWeapon.Flags[ IF_SHOTGUN ]) and (MF_EXACT in Missiles[ aWeapon.Missile ].Flags);
+  iLimitRange := (not aWeapon.Flags[ IF_SHOTGUN ]) and aWeapon.Flags[ IF_EXACTHIT ];
 
   if iLimitRange then
   begin
@@ -2100,9 +2096,9 @@ begin
   end;
 
   if iWeapon.Flags[ IF_SHOTGUN ]
-   or ( MF_IMMIDATE in Missiles[iWeapon.Missile].Flags )
-   or ( MF_EXACT in Missiles[iWeapon.Missile].Flags )
-   or ( iWeapon.Flags[ IF_AUTOHIT ] ) then Exit( 100 );
+   or iWeapon.Flags[ IF_INSTANTHIT ]
+   or iWeapon.Flags[ IF_EXACTHIT ]
+   or iWeapon.Flags[ IF_AUTOHIT ] then Exit( 100 );
 
   iToHit := getToHit( iWeapon, ALT_NONE, False );
   iToHit -= aBeing.GetBonus( Hook_getDefenceBonus, [False] );
@@ -2140,7 +2136,6 @@ var iDirection  : TDirection;
     iSteps      : DWord;
     iDelay      : DWord;
     iSound      : DWord;
-    iMissile    : DWord;
     iDirectHit  : Boolean;
     iThisUID    : TUID;
     iItemUID    : TUID;
@@ -2159,7 +2154,6 @@ begin
 
   iLevel     := TLevel(Parent);
   iDirectHit := False;
-  iMissile   := aItem.Missile;
   iThisUID   := FUID;
   iItemUID   := aItem.uid;
   iDodged    := False;
@@ -2169,34 +2163,31 @@ begin
     iAimedBeing := iLevel.Being[ aTarget ];
   end;
   if iBeing <> nil then
-    if Random(100) <= getStrayChance( iBeing, iMissile ) then
+    if Random(100) <= getStrayChance( iBeing, aItem ) then
     begin
       if iBeing.FLastPos.X = 1 then iBeing.FLastPos := iBeing.FPosition;
       aTarget := iBeing.FLastPos;
       iDodged := True;
     end;
       
-  with Missiles[iMissile] do
-  begin
-    case Color of
-      MULTIYELLOW : case Random(3) of 0 : iColor := LightGreen; 1 : iColor := White;  2 : iColor := Yellow; end;
-      MULTIBLUE   : case Random(3) of 0 : iColor := LightBlue;  1 : iColor := White;  2 : iColor := Blue;   end;
-    else
-      iColor := Color;
-    end;
-    iDelay := Delay;
+  case aItem.MisColor of
+    MULTIYELLOW : case Random(3) of 0 : iColor := LightGreen; 1 : iColor := White;  2 : iColor := Yellow; end;
+    MULTIBLUE   : case Random(3) of 0 : iColor := LightBlue;  1 : iColor := White;  2 : iColor := Blue;   end;
+  else
+    iColor := aItem.MisColor;
   end;
+  iDelay := aItem.MisDelay;
 
   iMaxRange := 30; //aGun.MaxRange
 
   iToHit := getToHit( aItem, aAltFire, False );
   if aAltFire = ALT_AIMED then iToHit += 3;
-  if ( aItem <> nil ) and ( aItem.Flags[ IF_SPREAD ] ) then iToHit += 10;
+  if aItem.Flags[ IF_SPREAD ] then iToHit += 10;
 
   iTarget := aTarget;
   iSource := FPosition;
   
-  if ( MF_IMMIDATE in Missiles[iMissile].Flags ) then
+  if aItem.Flags[ IF_INSTANTHIT ] then
       iSource := iTarget;
 
   iMisslePath.Init( iLevel, iSource, aTarget );
@@ -2213,17 +2204,17 @@ begin
   iDamage    := Floor( iDamage * iDamageMul );
 
   iSteps := 0;
-  iHit   := MF_EXACT in Missiles[iMissile].Flags;
-  iIsHit := MF_EXACT in Missiles[iMissile].Flags;
+  iHit   := aItem.Flags[ IF_EXACTHIT ];
+  iIsHit := aItem.Flags[ IF_EXACTHIT ];
   iStart := iMisslePath.GetSource;
 
-  iRadius := aItem.BlastRadius;
+  iRadius := aItem.Radius;
   if ( BF_FIREANGEL in FFlags ) and ( not ( aItem.Hooks[ Hook_OnHitBeing ] ) ) then
     iRadius += 1;
 
   repeat
     iOldCoord := iMisslePath.GetC;
-    if not ( MF_IMMIDATE in Missiles[iMissile].Flags ) then
+    if not aItem.Flags[ IF_INSTANTHIT ] then
       iMisslePath.Next;
     iCoord := iMisslePath.GetC;
     iSteps := Distance (iStart.x, iStart.y, iCoord.x, iCoord.y);
@@ -2276,7 +2267,7 @@ begin
         if iLevel.isVisible( iCoord ) then
             if iBeing.IsPlayer then
             begin
-              iFireDesc := LuaSystem.Get(['missiles',iMissile,'hitdesc'], '');
+              iFireDesc := LuaSystem.Get(['items',aItem.NID,'hitdesc'], '');
               if iFireDesc = '' then iFireDesc := 'You are hit!';
               IO.Msg( Capitalized( iFireDesc ) );
             end
@@ -2284,7 +2275,7 @@ begin
 
         if iRadius = 0 then
         begin
-          if not ( MF_HARD in Missiles[iMissile].Flags ) then
+          if not aItem.Flags[ IF_PIERCEHIT ] then
           begin
             iDirection.CreateSmooth( Self.FPosition, iCoord );
             iBeing.KnockBack( iDirection, iDamage div 12 );
@@ -2298,7 +2289,7 @@ begin
             iBeing.ApplyDamage( iDamage, Target_Torso, aItem.DamageType, aItem, aSequence );
         end;
 
-        if not ( MF_HARD in Missiles[iMissile].Flags ) then
+        if not aItem.Flags[ IF_PIERCEHIT ] then
         begin
           aTarget := iCoord;
           iHit    := True;
@@ -2308,10 +2299,10 @@ begin
     end;
     
     if iMisslePath.Done then
-      if MF_EXACT in Missiles[iMissile].Flags then
+      if aItem.Flags[ IF_EXACTHIT ] then
         Break;
 
-    if ( iSteps >= iMaxRange ) or (MF_IMMIDATE in Missiles[iMissile].Flags) then
+    if ( iSteps >= iMaxRange ) or aItem.Flags[ IF_INSTANTHIT ] then
     begin
       if (iAimedBeing = Player) and (iDodged) then IO.Msg('You dodge!');
       break;
@@ -2327,14 +2318,14 @@ begin
 
   if UIDs[ iThisUID ] = nil then Exit( False );
 
-  iSound  := IO.Audio.ResolveSoundID([aItem.ID+'.fire',Missiles[iMissile].soundID+'.fire','fire']);
-  iSprite := Missiles[iMissile].Sprite;
+  iSound  := IO.Audio.ResolveSoundID([aItem.ID+'.fire',aItem.SoundID+'.fire','fire']);
+  iSprite := aItem.MisSprite;
   if iSound <> 0 then
     IO.addSoundAnimation( aSequence, iSource, iSound );
 
-  if not ( MF_IMMIDATE in Missiles[iMissile].Flags ) then
+  if not aItem.Flags[ IF_INSTANTHIT ] then
   begin
-    if MF_RAY in Missiles[iMissile].Flags then
+    if aItem.Flags[ IF_RAYGUN ] then
     begin
       iDuration := iDelay;
       iMarkSeq  := 0;
@@ -2344,11 +2335,11 @@ begin
       iDuration := (iSource - iMisslePath.GetC).LargerLength * iDelay;
       iMarkSeq  := iDuration + aSequence;
     end;
-    IO.addMissileAnimation( iDuration, aSequence,iSource,iMisslePath.GetC,iColor,Missiles[iMissile].Picture,iDelay,iSprite,MF_RAY in Missiles[iMissile].Flags);
+    IO.addMissileAnimation( iDuration, aSequence,iSource,iMisslePath.GetC,iColor,aItem.MisASCII,iDelay,iSprite,aItem.Flags[ IF_RAYGUN ]);
     if iHit and iLevel.isVisible( iMisslePath.GetC ) then
     begin
       IO.addSoundAnimation( iMarkSeq, iMisslePath.GetC, IO.Audio.ResolveSoundID([Iif( iIsHit, 'flesh_bullet_hit', 'concrete_bullet_hit' )]) );
-      IO.addMarkAnimation(199, iMarkSeq, iMisslePath.GetC, Missiles[iMissile].HitSprite, Iif( iIsHit, LightRed, LightGray ), '*' );
+      IO.addMarkAnimation(199, iMarkSeq, iMisslePath.GetC, aItem.HitSprite, Iif( iIsHit, LightRed, LightGray ), '*' );
     end;
   end;
 
@@ -2366,11 +2357,11 @@ begin
     if iMaxDamage then
       iRoll.Init( 0,0, iRoll.Max );
 
-    iExplosion            := Missiles[iMissile].Explosion;
+    iExplosion            := aItem.Explosion;
     iExplosion.Range      := iRadius;
     if IO.Audio.GetSampleID(aItem.ID+'.explode') > 0
       then iExplosion.SoundID := aItem.ID
-      else iExplosion.SoundID := Missiles[iMissile].soundID;
+      else iExplosion.SoundID := aItem.SoundID;
     iExplosion.Damage     := iRoll;
     iExplosion.DamageType := aItem.DamageType;
     iDirection.CreateSmooth( FPosition, iCoord );
@@ -2442,10 +2433,14 @@ end;
 function TBeing.getMoveCost: LongInt;
 var iModifier  : Single;
     iMoveBonus : Integer;
+    iSlot      : TEqSlot;
 begin
   iModifier := FTimes.Move/100.;
-  if Inv.Slot[efTorso] <> nil then iModifier *= (100-Inv.Slot[efTorso].MoveMod)/100.;
-  if Inv.Slot[efBoots] <> nil then iModifier *= (100-Inv.Slot[efBoots].MoveMod)/100.;
+  for iSlot in TEqSlot do
+    if Inv.Slot[iSlot] <> nil then
+      with Inv.Slot[iSlot] do
+        if MoveMod <> 0 then
+          iModifier *= (100-MoveMod)/100.;
   iMoveBonus := GetBonus( Hook_getMoveBonus, [] );
   if iMoveBonus <> 0 then iModifier *= (100-iMoveBonus)/100.;
   if not ( BF_FLY in FFlags ) then
@@ -2504,28 +2499,25 @@ begin
 end;
 
 function TBeing.getDodgeMod : LongInt;
+var iSlot : TEqSlot;
 begin
   Result := GetBonus( Hook_getDodgeBonus, [] );
-  if Inv.Slot[efTorso] <> nil    then Result += Inv.Slot[efTorso].DodgeMod;
-  if Inv.Slot[efBoots] <> nil    then Result += Inv.Slot[efBoots].DodgeMod;
+  for iSlot in TEqSlot do
+    if Inv.Slot[iSlot] <> nil then
+      Result += Inv.Slot[iSlot].DodgeMod;
 end;
 
 function TBeing.getKnockMod : LongInt;
-var Modifier : Real;
+var iModifier : Real;
+    iSlot     : TEqSlot;
 begin
-  Modifier := 100;
-  if Inv.Slot[efWeapon] <> nil then
-    if Inv.Slot[efWeapon].Flags[ IF_HALFKNOCK ] then
-      Modifier := 50;
-  if Inv.Slot[efBoots] <> nil then
-    with Inv.Slot[efBoots] do
-      if KnockMod <> 0 then
-        Modifier *= (100 + KnockMod) / 100. ;
-  if Inv.Slot[efTorso] <> nil then
-    with Inv.Slot[efTorso] do
-      if KnockMod <> 0 then
-        Modifier *= (100 + KnockMod) / 100. ;
-  getKnockMod := Round(Modifier) ;
+  iModifier := 100;
+  for iSlot in TEqSlot do
+    if Inv.Slot[iSlot] <> nil then
+      with Inv.Slot[iSlot] do
+        if KnockMod <> 0 then
+          iModifier *= (100 + KnockMod) / 100. ;
+  getKnockMod := Round(iModifier) ;
 end;
 
 function TBeing.canDualWield : boolean;
