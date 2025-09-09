@@ -280,9 +280,6 @@ const
   ActSoundChance    = 30;
 
 type
-  TShotgunData = record
-  end;
-
   TMissileData = record
     SoundID    : string[20];
     Picture    : Char;
@@ -306,7 +303,6 @@ type
 
 var
   Missiles  : array of TMissileData;
-  Shotguns  : array of TShotgunData;
   Affects   : array of TAffectData;
 
 const

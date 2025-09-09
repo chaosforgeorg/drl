@@ -197,11 +197,6 @@ core.register_blueprint "missile"
 	ray_delay   = { false, core.TNUMBER, 0 },
 }
 
-core.register_blueprint "shotgun"
-{
-	id          = { true,  core.TSTRING },
-}
-
 core.register_blueprint "ai"
 {
 	id          = { true,  core.TSTRING },
@@ -503,7 +498,7 @@ core.register_blueprint "item"
 			scavenge      = { false, core.TARRAY(core.TIDIN("items")) },
 			hitsprite     = { true, core.TANY },
 			missprite     = { false, core.TANY },
-			missile       = { true, core.TANY }, -- TODO core.TMISSILE
+			missile       = { false, core.TANY }, -- TODO core.TMISSILE
 		},
 		[ITEMTYPE_NRANGED] = {
 			ascii      = { false, core.TSTRING, "?" },

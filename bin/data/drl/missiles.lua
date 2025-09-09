@@ -133,20 +133,4 @@ function drl.register_missiles()
 		miss_dist  = 3,
 		flags      = { MF_EXACT },
 	}
-
-	register_shotgun "snormal"
-	{
-	}
-
-	register_shotgun "swide"
-	{
-	}
-
-	register_shotgun "sfocused"
-	{
-	}
-
-	register_shotgun "splasma"
-	{
-	}
 end

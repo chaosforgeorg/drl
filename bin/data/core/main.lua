@@ -83,7 +83,6 @@ register_trait      = core.register_storage( "traits", "trait" )
 register_ai         = core.register_storage( "ais", "ai" )
 register_challenge  = core.register_storage( "chal", "challenge" )
 register_itemset    = core.register_storage( "itemsets", "itemset" )
-register_shotgun    = core.register_storage( "shotguns", "shotgun", function (s) core.register_shotgun( s.nid ) end )
 register_missile    = core.register_storage( "missiles", "missile", function (m)
 		m.sound_id = m.sound_id or m.id
 		if m.explosion and m.explosion.content then
@@ -393,15 +392,12 @@ register_item          = core.register_storage( "items", "item", function( ip )
 		end	
 
 		if type(ip.missile) == "table" then
-			if ip.group == "shotgun" then
-				ip.missile        = register_shotgun ( "s"..ip.id ) ( ip.missile )
-			else
-				ip.missile        = register_missile ( "m"..ip.id ) ( ip.missile )
-			end
+			ip.missile        = register_missile ( "m"..ip.id ) ( ip.missile )
 		end
 
 		if type(ip.missile) == "string" then
-			ip.missile = core.iif( ip.group == "shotgun", shotguns, missiles )[ip.missile].nid
+			core.log( ip.missile )
+			ip.missile = missiles[ip.missile].nid
 		end
 
 		local OnCreate = function (self)

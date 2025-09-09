@@ -396,7 +396,6 @@ function TBeing.HandleShotgunFire( aTarget : TCoord2D; aShotGun : TItem; aAltFir
 var iThisUID   : DWord;
     iDual      : Boolean;
     iCount     : DWord;
-    iShotgun   : TShotgunData;
     iDamageMul : Single;
     iDamage    : TDiceRoll;
     iDamageType: TDamageType;
@@ -417,10 +416,9 @@ begin
   for iCount := 1 to aShots do
   begin
     if not iDual then aShotGun.PlaySound( 'fire', FPosition );
-    iShotgun := Shotguns[ aShotGun.Missile ];
     iDamageType := aShotGun.DamageType;
     if (BF_ARMYDEAD in FFlags) and (iDamageType = DAMAGE_SHARPNEL) then iDamageType := Damage_IgnoreArmor;
-    TLevel(Parent).ShotGun( FPosition, aTarget, iDamage, iDamageMul, iDamageType, iShotgun, aShotgun );
+    TLevel(Parent).ShotGun( FPosition, aTarget, iDamage, iDamageMul, iDamageType, aShotgun );
     if UIDs[ iThisUID ] = nil then Exit( false );
     if (not iDual) and (aShotGun.Shots > 1) then IO.Delay(30);
   end;
