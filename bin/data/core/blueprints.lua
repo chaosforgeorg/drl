@@ -182,18 +182,6 @@ core.register_blueprint "affect"
 	getReloadCostMul = { false, core.TFUNC },
 }
 
-core.register_blueprint "missile"
-{
-	id          = { true,  core.TSTRING },
-	sound_id    = { false, core.TSTRING },
-	ascii       = { false, core.TSTRING, "-" },
-	color       = { true,  core.TNUMBER },
-	delay       = { true,  core.TNUMBER },
-	miss_base   = { true,  core.TNUMBER },
-	miss_dist   = { true,  core.TNUMBER },
-	ray_delay   = { false, core.TNUMBER, 0 },
-}
-
 core.register_blueprint "ai"
 {
 	id          = { true,  core.TSTRING },
@@ -491,12 +479,15 @@ core.register_blueprint "item"
 			altreload     = { false, core.TNUMBER, 0 },
 			altfirename   = { false, core.TSTRING },
 			altreloadname = { false, core.TSTRING },
-			overcharge    = { false, core.TIDIN("missiles") },
 			scavenge      = { false, core.TARRAY(core.TIDIN("items")) },
+			misascii      = { false, core.TSTRING, "-" },
+			miscolor      = { false, core.TNUMBER },
+			misdelay      = { false, core.TNUMBER },
+			miss_base     = { false, core.TNUMBER, 0 },
+			miss_dist     = { false, core.TNUMBER, 0 },
 			hitsprite     = { true, core.TANY },
 			missprite     = { false, core.TANY },
 			explosion     = { false, core.TTABLE },
-			missile       = { false, core.TANY }, -- TODO core.TMISSILE
 		},
 		[ITEMTYPE_NRANGED] = {
 			ascii      = { false, core.TSTRING, "?" },
@@ -513,9 +504,13 @@ core.register_blueprint "item"
 			shots      = { false, core.TNUMBER, 0 },
 			hitsprite  = { true, core.TANY },
 			missprite  = { true, core.TANY },
+			misascii   = { false, core.TSTRING, "-" },
+			miscolor   = { false, core.TNUMBER },
+			misdelay   = { false, core.TNUMBER },
+			miss_base  = { false, core.TNUMBER, 0 },
+			miss_dist  = { false, core.TNUMBER, 0 },
 			explosion  = { false, core.TTABLE },
 			hitdesc    = { false, core.TSTRING, "" },
-			missile    = { true, core.TANY }, 
 		},
 		[ITEMTYPE_URANGED] = {
 			ascii         = { false, core.TSTRING, "*" },
@@ -531,10 +526,14 @@ core.register_blueprint "item"
 			fire          = { false, core.TNUMBER, 10 },
 			radius        = { false, core.TNUMBER, 0 },
 			shots         = { false, core.TNUMBER, 0 },
+			misascii      = { false, core.TSTRING, "-" },
+			miscolor      = { false, core.TNUMBER },
+			misdelay      = { false, core.TNUMBER },
+			miss_base     = { false, core.TNUMBER, 0 },
+			miss_dist     = { false, core.TNUMBER, 0 },
 			hitsprite     = { true, core.TANY },
 			missprite     = { true, core.TANY },
 			explosion     = { false, core.TTABLE },
-			missile       = { true, core.TANY }, 
 		},
 		[ITEMTYPE_MELEE]  = {
 			ascii       = { false, core.TSTRING, "\\" },
@@ -550,9 +549,13 @@ core.register_blueprint "item"
 			fire        = { false, core.TNUMBER, 10 },
 			altfire     = { false, core.TNUMBER, 0 },
 			altfirename = { false, core.TSTRING },
+			misascii    = { false, core.TSTRING, "-" },
+			miscolor    = { false, core.TNUMBER },
+			misdelay    = { false, core.TNUMBER },
+			miss_base   = { false, core.TNUMBER, 0 },
+			miss_dist   = { false, core.TNUMBER, 0 },
 			hitsprite   = { false, core.TANY },
 			missprite   = { false, core.TANY },
-			missile     = { false, core.TANY, 0 }, 
 			scavenge    = { false, core.TARRAY(core.TIDIN("items")) },
 		},
 		[ITEMTYPE_LEVER] = {

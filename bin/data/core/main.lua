@@ -83,15 +83,6 @@ register_trait      = core.register_storage( "traits", "trait" )
 register_ai         = core.register_storage( "ais", "ai" )
 register_challenge  = core.register_storage( "chal", "challenge" )
 register_itemset    = core.register_storage( "itemsets", "itemset" )
-register_missile    = core.register_storage( "missiles", "missile", function (m)
-		m.sound_id = m.sound_id or m.id
-		if m.explosion and m.explosion.content then
-			m.explosion.content = cells[m.explosion.content].nid
-		end
-		core.register_missile(m.nid)
-		return m.nid
-	end
-)
 register_mod_array = core.register_storage( "mod_arrays", "mod_array", function (m) 
 		m.sig   = core.mod_list_signature(m.mods)
 		m.desc  = core.mod_array_description(m)
@@ -301,12 +292,19 @@ register_being         = core.register_storage( "beings", "being", function( bp 
 		end
 
 		if bp.weapon then
-			local wid = "nat_"..bp.id
-			local ip  = bp.weapon
-			ip.name   = ip.name or "ranged attack"
-			ip.type   = ITEMTYPE_NRANGED
-			ip.weight = 0
-			ip.sprite = 0
+			local wid   = "nat_"..bp.id
+			local ip    = bp.weapon
+			ip.name     = ip.name or "ranged attack"
+			if not ip.sound_id then
+				if bp.sound_id and bp.sound_id ~= "" then
+					ip.sound_id = bp.sound_id
+				else
+					ip.sound_id = bp.id
+				end
+			end
+			ip.type     = ITEMTYPE_NRANGED
+			ip.weight   = 0
+			ip.sprite   = 0
 			register_item( wid ) ( ip )
 			ip.flags[ IF_NODROP ] = true
 			ip.flags[ IF_NOAMMO ] = true
@@ -375,6 +373,9 @@ register_item          = core.register_storage( "items", "item", function( ip )
 			ip.damage_bonus = tonumber(damage_bonus) or 0
 		end
 
+		if ip.explosion and ip.explosion.content then
+			ip.explosion.content = cells[ip.explosion.content].nid
+		end
 
 		if ip.firstmsg then ip.OnFirstPickup = function () ui.msg("\""..ip.firstmsg.."\"") end end
 
@@ -390,14 +391,6 @@ register_item          = core.register_storage( "items", "item", function( ip )
 				end		
 			end
 		end	
-
-		if type(ip.missile) == "table" then
-			ip.missile        = register_missile ( "m"..ip.id ) ( ip.missile )
-		end
-
-		if type(ip.missile) == "string" then
-			ip.missile = missiles[ip.missile].nid
-		end
 
 		local OnCreate = function (self)
 			self:add_property( "resist", {} )

@@ -115,34 +115,6 @@ begin
   Exit(1);
 end;
 
-function lua_core_register_missile(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
-    iTable : TLuaTable;
-    iMID   : Integer;
-begin
-  iState.Init(L);
-  if High(Missiles) = -1 then SetLength(Missiles,20);
-  iMID := iState.ToInteger(1);
-  if iMID > High(Missiles) then
-    SetLength(Missiles,High(Missiles)*2);
-  with Missiles[iMID] do
-  begin
-    iTable := LuaSystem.GetTable(['missiles', iMID]);
-    with iTable do
-    try
-      SoundID   := getString('sound_id');
-      Picture   := getChar('ascii');
-      Color     := getInteger('color');
-      Delay     := getInteger('delay');
-      MissBase  := getInteger('miss_base');
-      MissDist  := getInteger('miss_dist');
-    finally
-      Free;
-    end;
-  end;
-  Result := 0;
-end;
-
 function lua_core_register_affect(L: Plua_State): Integer; cdecl;
 var State : TDRLLuaState;
     mID : Integer;
@@ -495,13 +467,12 @@ const lua_player_data_lib : array[0..4] of luaL_Reg = (
 );
 
 
-const lua_core_lib : array[0..11] of luaL_Reg = (
+const lua_core_lib : array[0..10] of luaL_Reg = (
     ( name : 'add_to_cell_set';func : @lua_core_add_to_cell_set),
     ( name : 'game_time';      func : @lua_core_game_time),
     ( name : 'time_ms';        func : @lua_core_time_ms),
     ( name : 'is_playing';func : @lua_core_is_playing),
     ( name : 'register_cell';   func : @lua_core_register_cell),
-    ( name : 'register_missile';func : @lua_core_register_missile),
     ( name : 'register_affect'; func : @lua_core_register_affect),
 
     ( name : 'play_music';func : @lua_core_play_music),

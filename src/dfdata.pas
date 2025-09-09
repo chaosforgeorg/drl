@@ -280,14 +280,6 @@ const
   ActSoundChance    = 30;
 
 type
-  TMissileData = record
-    SoundID    : string[20];
-    Picture    : Char;
-    Color      : Byte;
-    Delay      : Byte;
-    MissBase   : Byte;
-    MissDist   : Byte;
-  end;
 
   TAffectData = record
     Name       : Ansistring;
@@ -300,7 +292,6 @@ type
   end;
 
 var
-  Missiles  : array of TMissileData;
   Affects   : array of TAffectData;
 
 const
@@ -356,8 +347,14 @@ type TItemProperties = record
   ReloadTime    : Byte;
   UseTime       : Byte;
   DamageType    : TDamageType;
+  MissBase      : Byte;
+  MissDist      : Byte;
   AltFire       : TAltFire;
   AltReload     : TAltReload;
+
+  MisASCII      : Char;
+  MisColor      : Byte;
+  MisDelay      : Byte;
 
   PCosColor     : TColor;
   PGlowColor    : TColor;

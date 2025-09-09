@@ -72,7 +72,7 @@ TBeing = class(TThing,IPathQuery)
     function canDualWield : boolean;
     function canDualWieldMelee : boolean;
     function canPackReload : Boolean;
-    function getStrayChance( aDefender : TBeing; aMissile : Byte ) : Byte;
+    function getStrayChance( aDefender : TBeing; aWeapon : TItem ) : Byte;
     function Preposition( Creature : AnsiString ) : string;
     function Dead : Boolean;
     procedure Remove( Node : TNode ); override;
@@ -216,14 +216,15 @@ uses math, vlualibrary, vluaentitynode, vuid, vdebug, vvision, vluasystem,
 
 const PAIN_DURATION = 500;
 
-function TBeing.getStrayChance( aDefender : TBeing; aMissile : Byte ) : Byte;
+function TBeing.getStrayChance( aDefender : TBeing; aWeapon : TItem ) : Byte;
 var iMiss : Integer;
 begin
   if IsPlayer        then Exit(0);
   if aDefender = nil then Exit(0);
+  if aWeapon   = nil then Exit(0);
 
-  iMiss := Missiles[ aMissile ].MissBase +
-          Missiles[ aMissile ].MissDist *
+  iMiss := aWeapon.MissBase +
+          aWeapon.MissDist *
           Distance( FPosition, aDefender.FPosition );
 
   if aDefender.IsPlayer then
@@ -479,11 +480,11 @@ begin
     if iChaining then aTarget := RotateTowards( FPosition, aTarget, iChainTarget, PI/6 );
     if aGun.Flags[ IF_SCATTER ] then
        begin
-            if not SendMissile( TLevel(Parent).Area.Clamped(aTarget.RandomShifted( iScatter )), aGun, aAltFire, iSeqBase+(iCount-1)*Missiles[aGun.Missile].Delay*3, iCount-1 ) then Exit( False );
+            if not SendMissile( TLevel(Parent).Area.Clamped(aTarget.RandomShifted( iScatter )), aGun, aAltFire, iSeqBase+(iCount-1)*aGun.MisDelay*3, iCount-1 ) then Exit( False );
        end
     else
        begin
-            if not SendMissile( aTarget, aGun, aAltFire, iSeqBase+(iCount-1)*Missiles[aGun.Missile].Delay*3, iCount-1 ) then Exit( False );
+            if not SendMissile( aTarget, aGun, aAltFire, iSeqBase+(iCount-1)*aGun.MisDelay*3, iCount-1 ) then Exit( False );
        end;
     if DRL.State <> DSPlaying then Exit( False );
   end;
@@ -2164,23 +2165,20 @@ begin
     iAimedBeing := iLevel.Being[ aTarget ];
   end;
   if iBeing <> nil then
-    if Random(100) <= getStrayChance( iBeing, iMissile ) then
+    if Random(100) <= getStrayChance( iBeing, aItem ) then
     begin
       if iBeing.FLastPos.X = 1 then iBeing.FLastPos := iBeing.FPosition;
       aTarget := iBeing.FLastPos;
       iDodged := True;
     end;
       
-  with Missiles[iMissile] do
-  begin
-    case Color of
-      MULTIYELLOW : case Random(3) of 0 : iColor := LightGreen; 1 : iColor := White;  2 : iColor := Yellow; end;
-      MULTIBLUE   : case Random(3) of 0 : iColor := LightBlue;  1 : iColor := White;  2 : iColor := Blue;   end;
-    else
-      iColor := Color;
-    end;
-    iDelay := Delay;
+  case aItem.MisColor of
+    MULTIYELLOW : case Random(3) of 0 : iColor := LightGreen; 1 : iColor := White;  2 : iColor := Yellow; end;
+    MULTIBLUE   : case Random(3) of 0 : iColor := LightBlue;  1 : iColor := White;  2 : iColor := Blue;   end;
+  else
+    iColor := aItem.MisColor;
   end;
+  iDelay := aItem.MisDelay;
 
   iMaxRange := 30; //aGun.MaxRange
 
@@ -2322,7 +2320,7 @@ begin
 
   if UIDs[ iThisUID ] = nil then Exit( False );
 
-  iSound  := IO.Audio.ResolveSoundID([aItem.ID+'.fire',Missiles[iMissile].soundID+'.fire','fire']);
+  iSound  := IO.Audio.ResolveSoundID([aItem.ID+'.fire',aItem.SoundID+'.fire','fire']);
   iSprite := aItem.MisSprite;
   if iSound <> 0 then
     IO.addSoundAnimation( aSequence, iSource, iSound );
@@ -2339,7 +2337,7 @@ begin
       iDuration := (iSource - iMisslePath.GetC).LargerLength * iDelay;
       iMarkSeq  := iDuration + aSequence;
     end;
-    IO.addMissileAnimation( iDuration, aSequence,iSource,iMisslePath.GetC,iColor,Missiles[iMissile].Picture,iDelay,iSprite,aItem.Flags[ IF_RAYGUN ]);
+    IO.addMissileAnimation( iDuration, aSequence,iSource,iMisslePath.GetC,iColor,aItem.MisASCII,iDelay,iSprite,aItem.Flags[ IF_RAYGUN ]);
     if iHit and iLevel.isVisible( iMisslePath.GetC ) then
     begin
       IO.addSoundAnimation( iMarkSeq, iMisslePath.GetC, IO.Audio.ResolveSoundID([Iif( iIsHit, 'flesh_bullet_hit', 'concrete_bullet_hit' )]) );
@@ -2365,7 +2363,7 @@ begin
     iExplosion.Range      := iRadius;
     if IO.Audio.GetSampleID(aItem.ID+'.explode') > 0
       then iExplosion.SoundID := aItem.ID
-      else iExplosion.SoundID := Missiles[iMissile].soundID;
+      else iExplosion.SoundID := aItem.SoundID;
     iExplosion.Damage     := iRoll;
     iExplosion.DamageType := aItem.DamageType;
     iDirection.CreateSmooth( FPosition, iCoord );

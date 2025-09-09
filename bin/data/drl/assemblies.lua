@@ -464,8 +464,9 @@ function drl.register_assemblies()
 
 		OnApply = function (item)
 			item.name         = "energy "..item.name
+			item.miscolor     = MULTIYELLOW
+			item:set_sprite( "hit", { sprite = SPRITE_BLAST } )
 			item.damagetype   = DAMAGE_PLASMA
-			item.missile      = missiles[ "mblaster" ].nid
 			item.damage_sides = item.__proto.damage_sides + 1
 			item.ammoid       = items["cell"].nid
 		end,
@@ -513,7 +514,7 @@ function drl.register_assemblies()
 			end
 			item.damage_dice  = item.__proto.damage_dice
 			item.damage_sides = item.__proto.damage_sides + 2
-			item.missile      = missiles[ "mbfgover" ].nid
+			item.misdelay     = 200
 			item.shotcost     = item.__proto.shotcost * 1.5
 			item.ammomax      = item.__proto.ammomax * 1.5
 			item.blastradius  = 12
@@ -692,7 +693,7 @@ function drl.register_assemblies()
 		desc  = "10mm weapon",
 
 		Match = function (item)
-			return item.itype == ITEMTYPE_RANGED and (item.missile == missiles[ "mchaingun" ].nid or item.missile == missiles[ "mgun" ].nid)
+			return item.itype == ITEMTYPE_RANGED and items[ item.ammoid ].id == "ammo"
 		end,
 
 		OnApply = function (item)
@@ -746,7 +747,7 @@ function drl.register_assemblies()
 			end
 			item.damage_dice  = item.__proto.damage_dice * 2
 			item.damage_sides  = item.__proto.damage_sides * 2
-			item.missile      = missiles[ "mbfgover" ].nid
+			item.misdelay     = 200
 			item.shotcost     = item.__proto.shotcost * 2.5
 			item.ammomax      = item.__proto.ammomax * 2.5
 			item.blastradius  = 16

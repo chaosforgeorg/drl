@@ -174,17 +174,15 @@ register_level "the_chained_court"
 			kill_desc       = "was charred by the Arena Master",
 
 			weapon = {
+				sound_id   = "arch",
 				damage     = "15d1",
 				damagetype = DAMAGE_FIRE,
 				radius     = 2,
 				flags      = { IF_AUTOHIT, IF_INSTANTHIT, IF_EXACTHIT },
-				missile = {
-					sound_id   = "arch",
-					color      = YELLOW,
-					delay      = 0,
-					miss_base  = 10,
-					miss_dist  = 10,
-				},
+				miscolor   = YELLOW,
+				misdelay   = 0,
+				miss_base  = 10,
+				miss_dist  = 10,
 				hitdesc    = "You are engulfed in flames!",
 				missprite = 0,
 				hitsprite = SPRITE_BLAST,

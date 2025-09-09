@@ -72,6 +72,8 @@ TItem  = class( TThing )
     property Max            : Integer     read FMax;
     property Amount         : Integer     read FAmount                write FAmount;
     property NID            : Byte        read FNID;
+    property MissBase       : Byte        read FProps.MissBase        write FProps.MissBase;
+    property MissDist       : Byte        read FProps.MissDist        write FProps.MissDist;
     property RechargeDelay  : Byte        read FProps.Recharge.Delay  write FProps.Recharge.Delay;
     property RechargeAmount : Byte        read FProps.Recharge.Amount write FProps.Recharge.Amount;
     property RechargeLimit  : Byte        read FProps.Recharge.Limit  write FProps.Recharge.Limit;
@@ -101,6 +103,9 @@ TItem  = class( TThing )
     property DamageType     : TDamageType read FProps.DamageType     write FProps.DamageType;
     property AltFire        : TAltFire    read FProps.AltFire        write FProps.AltFire;
     property AltReload      : TAltReload  read FProps.AltReload      write FProps.AltReload;
+    property MisASCII       : Char        read FProps.MisASCII       write FProps.MisAscii;
+    property MisColor       : Byte        read FProps.MisColor       write FProps.MisColor;
+    property MisDelay       : Byte        read FProps.MisDelay       write FProps.MisDelay;
     property Appear         : Integer     read FAppear               write FAppear;
     property Desc           : AnsiString  read Description;
   end;
@@ -252,6 +257,12 @@ begin
   FProps.ShotCost    := aTable.getInteger('shotcost',0);
   FProps.Spread      := aTable.getInteger('spread',0);
   FProps.Reduce      := aTable.GetFloat('reduce',0.0);
+
+  FProps.MisASCII    := aTable.getChar('misascii','-');
+  FProps.MisColor    := aTable.getInteger('miscolor',0);
+  FProps.MisDelay    := aTable.getInteger('misdelay',0);
+  FProps.MissBase    := aTable.getInteger('miss_base',0);
+  FProps.MissDist    := aTable.getInteger('miss_dist',0);
 
   FProps.AltFire     := TAltFire( aTable.getInteger('altfire',0) );
   FProps.AltReload   := TAltReload( aTable.getInteger('altreload',0) );

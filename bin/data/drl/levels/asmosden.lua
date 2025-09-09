@@ -38,17 +38,15 @@ register_level "the_asmos_den"
 			kill_desc       = "damned by Hell Incarnate",
 
 			weapon = {
+				sound_id   = "arch",
 				damage     = "3d2",
 				damagetype = DAMAGE_IGNOREARMOR,
 				radius     = 1,
 				flags      = { IF_AUTOHIT, IF_EXACTHIT, IF_INSTANTHIT },
-				missile = {
-					sound_id   = "arch",
-					color      = LIGHTRED,
-					delay      = 1,
-					miss_base  = 0,
-					miss_dist  = 0,
-				},
+				miscolor      = LIGHTRED,
+				misdelay      = 1,
+				miss_base  = 0,
+				miss_dist  = 0,
 				hitdesc   = "You feel an intense pain!",
 				missprite = 0,
 				hitsprite  = SPRITE_BLAST,
