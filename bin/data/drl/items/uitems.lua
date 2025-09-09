@@ -171,7 +171,7 @@ function drl.register_unique_items()
 		group    = "melee",
 		scavenge = { "umod_onyx" },
 		desc     = "Forged by the dwarves Eitri and Brokk, in response to Loki's challenge, Mjollnir is an indestructible war hammer.",
-		flags    = { IF_UNIQUE, IF_NODESTROY, IF_MODABLE, IF_SINGLEMOD },
+		flags    = { IF_UNIQUE, IF_NODESTROY, IF_MODABLE, IF_SINGLEMOD, IF_EXACTHIT },
 
 		type        = ITEMTYPE_MELEE,
 		damage      = "1d25",
@@ -184,7 +184,6 @@ function drl.register_unique_items()
 			delay      = 50,
 			miss_base  = 10,
 			miss_dist  = 3,
-			flags      = { MF_EXACT },
 		},
 		range      = 5,
 		missprite  = SPRITE_CLEAVER,
@@ -548,7 +547,7 @@ function drl.register_unique_items()
 		group    = "rocket",
 		desc     = "Two can play the homing missile game.",
 		scavenge = { "umod_sniper" },
-		flags    = { IF_UNIQUE, IF_MODABLE },
+		flags    = { IF_UNIQUE, IF_MODABLE, IF_EXACTHIT },
 
 		type          = ITEMTYPE_RANGED,
 		ammo_id       = "rocket",
@@ -565,7 +564,6 @@ function drl.register_unique_items()
 			delay      = 30,
 			miss_base  = 30,
 			miss_dist  = 5,
-			flags      = { MF_EXACT },
 		},
 		missprite  = SPRITE_ROCKETSHOT,
 		hitsprite  = SPRITE_BLAST,
@@ -647,7 +645,7 @@ function drl.register_unique_items()
 		group    = "bfg",
 		scavenge = { "umod_nano" },
 		desc     = "The Ultimate Big Fucking Gun. Redefines the word \"wallpaper\".",
-		flags    = { IF_UNIQUE, IF_SCATTER, IF_MODABLE, IF_SINGLEMOD },
+		flags    = { IF_UNIQUE, IF_SCATTER, IF_MODABLE, IF_SINGLEMOD, IF_EXACTHIT },
 
 		type          = ITEMTYPE_RANGED,
 		ammo_id       = "cell",
@@ -667,7 +665,6 @@ function drl.register_unique_items()
 			delay      = 15,
 			miss_base  = 30,
 			miss_dist  = 5,
-			flags      = { MF_EXACT },
 		},
 		missprite  = SPRITE_BFGSHOT,
 		hitsprite  = SPRITE_BLAST,
@@ -689,7 +686,7 @@ function drl.register_unique_items()
 		scavenge = { "umod_sniper" },
 		group    = "plasma",
 		desc     = "Groovy! Wait 'til they stand in a row, and watch them being impaled.",
-		flags    = { IF_UNIQUE, IF_MODABLE, IF_SINGLEMOD },
+		flags    = { IF_UNIQUE, IF_MODABLE, IF_SINGLEMOD, IF_RAYGUN, IF_PIERCEHIT },
 
 		type          = ITEMTYPE_RANGED,
 		ammo_id       = "cell",
@@ -706,7 +703,6 @@ function drl.register_unique_items()
 			delay      = 50,
 			miss_base  = 3,
 			miss_dist  = 3,
-			flags      = { MF_RAY, MF_HARD },
 		},
 		missprite = {
 			sprite     = SPRITE_CSHOT,

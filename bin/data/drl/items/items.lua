@@ -13,7 +13,7 @@ function drl.register_regular_items()
 		weight   = 640,
 		group    = "melee",
 		desc     = "Not what you'd really like to use, but it's better than your fists.",
-		flags    = { IF_THROWDROP },
+		flags    = { IF_THROWDROP, IF_EXACTHIT },
 
 		type        = ITEMTYPE_MELEE,
 		damage      = "2d5",
@@ -739,22 +739,22 @@ function drl.register_regular_items()
 		},
 
 		OnAltFire = function( self, being )
-			self.missile = missiles[ "mrocketjump" ].nid
 			self:set_explosion{
 				delay 	= 40,
 				color 	= RED,
 				flags = { EFSELFKNOCKBACK, EFSELFHALF },
 			}
+			self.flags[ IF_EXACTHIT ] = true
 			self.range   = 1
 			return true
 		end,
 
 		OnFire = function( self, being )
-			self.missile = missiles[ "mrocket" ].nid
 			self:set_explosion{
 				delay 	= 40,
 				color 	= RED,
 			}
+			self.flags[ IF_EXACTHIT ] = false
 			self.range   = 0
 			return true
 		end,

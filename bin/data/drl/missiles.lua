@@ -37,16 +37,6 @@ function drl.register_missiles()
 		miss_dist  = 5,
 	}
 
-	register_missile "mrocketjump"
-	{
-		sound_id   = "bazooka",
-		color      = BROWN,
-		delay      = 30,
-		miss_base  = 30,
-		miss_dist  = 5,
-		flags      = { MF_EXACT },
-	}
-
 	register_missile "mbfg"
 	{
 		sound_id   = "bfg9000",
@@ -55,7 +45,6 @@ function drl.register_missiles()
 		delay      = 100,
 		miss_base  = 50,
 		miss_dist  = 10,
-		flags      = { MF_EXACT },
 	}
 
 	register_missile "mbfgover"
@@ -66,7 +55,6 @@ function drl.register_missiles()
 		delay      = 200,
 		miss_base  = 50,
 		miss_dist  = 10,
-		flags      = { MF_EXACT },
 	}
 
 	register_missile "mblaster"
@@ -85,6 +73,5 @@ function drl.register_missiles()
 		delay      = 50,
 		miss_base  = 10,
 		miss_dist  = 3,
-		flags      = { MF_EXACT },
 	}
 end

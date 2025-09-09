@@ -118,15 +118,15 @@ IF_EXOTIC         = 22;
 IF_MODIFIED       = 23;
 IF_CURSED         = 24;
 IF_HIGHLIGHT      = 25;
-
+IF_RAYGUN         = 26;
 IF_GLOBE          = 27;
 IF_RECHARGE       = 28;
-
+IF_INSTANTHIT     = 29;
 IF_NOAMMO         = 30;
 IF_NECROCHARGE    = 31;
-
+IF_PIERCEHIT      = 32;
 IF_SINGLERELOAD   = 33;
-
+IF_EXACTHIT       = 34;
 IF_SHOTGUN        = 35;
 
 IF_SPREAD         = 37;
@@ -208,11 +208,6 @@ SLOT_ARMOR    = EFTORSO;
 SLOT_WEAPON   = EFWEAPON;
 SLOT_BOOTS    = EFBOOTS;
 SLOT_PREPARED = EFWEAPON2;
-
-MF_RAY      = 1;
-MF_HARD     = 2;
-MF_EXACT    = 3;
-MF_IMMIDATE = 4;
 
 MULTIBLUE   = 17;
 MULTIYELLOW = 18;

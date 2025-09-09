@@ -396,7 +396,7 @@ function drl.register_exotic_items()
 		weight   = 2,
 		group    = "bfg",
 		desc     = "A self-charging BFG9000! How much more lucky can you get?",
-		flags    = { IF_EXOTIC, IF_RECHARGE, IF_NOUNLOAD },
+		flags    = { IF_EXOTIC, IF_RECHARGE, IF_NOUNLOAD, IF_EXACTHIT },
 
 		type          = ITEMTYPE_RANGED,
 		ammo_id       = "cell",
@@ -1196,7 +1196,7 @@ function drl.register_exotic_items()
 		weight   = 4,
 		group    = "bfg",
 		desc     = "The Big Fucking Gun. Hell wouldn't be fun without it.",
-		flags    = { IF_EXOTIC },
+		flags    = { IF_EXOTIC, IF_EXACTHIT },
 
 		type          = ITEMTYPE_RANGED,
 		ammo_id       = "cell",

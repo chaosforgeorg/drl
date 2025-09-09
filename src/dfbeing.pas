@@ -463,7 +463,7 @@ begin
       if not TLevel(Parent).isProperCoord(iRay.GetC) then begin aTarget:=iRay.prev; break;end; {**** Stop at edge of map.}
       Inc(iSteps);
       if iSteps >= iMissileRange then begin aTarget := iRay.GetC; break; end; {**** Stop if further than maxrange.}
-      if (MF_EXACT in (Missiles[aGun.Missile].Flags)) and (iRay.GetC = aTarget) then break; {**** Stop at target square for exact missiles.}
+      if aGun.Flags[ IF_EXACTHIT ] and (iRay.GetC = aTarget) then break; {**** Stop at target square for exact missiles.}
       if iRay.Done then
          iRay.Init(TLevel(Parent), iRay.GetC, iRay.GetC + (aTarget - FPosition)); {**** Extend target out in same direction for non-exact missiles.}
     until false;
@@ -889,7 +889,7 @@ begin
   
   iRange := aWeapon.Range;
   if iRange = 0 then iRange := self.Vision;
-  iLimitRange := (not aWeapon.Flags[ IF_SHOTGUN ]) and (MF_EXACT in Missiles[ aWeapon.Missile ].Flags);
+  iLimitRange := (not aWeapon.Flags[ IF_SHOTGUN ]) and aWeapon.Flags[ IF_EXACTHIT ];
 
   if iLimitRange then
   begin
@@ -2095,9 +2095,9 @@ begin
   end;
 
   if iWeapon.Flags[ IF_SHOTGUN ]
-   or ( MF_IMMIDATE in Missiles[iWeapon.Missile].Flags )
-   or ( MF_EXACT in Missiles[iWeapon.Missile].Flags )
-   or ( iWeapon.Flags[ IF_AUTOHIT ] ) then Exit( 100 );
+   or iWeapon.Flags[ IF_INSTANTHIT ]
+   or iWeapon.Flags[ IF_EXACTHIT ]
+   or iWeapon.Flags[ IF_AUTOHIT ] then Exit( 100 );
 
   iToHit := getToHit( iWeapon, ALT_NONE, False );
   iToHit -= aBeing.GetBonus( Hook_getDefenceBonus, [False] );
@@ -2186,12 +2186,12 @@ begin
 
   iToHit := getToHit( aItem, aAltFire, False );
   if aAltFire = ALT_AIMED then iToHit += 3;
-  if ( aItem <> nil ) and ( aItem.Flags[ IF_SPREAD ] ) then iToHit += 10;
+  if aItem.Flags[ IF_SPREAD ] then iToHit += 10;
 
   iTarget := aTarget;
   iSource := FPosition;
   
-  if ( MF_IMMIDATE in Missiles[iMissile].Flags ) then
+  if aItem.Flags[ IF_INSTANTHIT ] then
       iSource := iTarget;
 
   iMisslePath.Init( iLevel, iSource, aTarget );
@@ -2208,8 +2208,8 @@ begin
   iDamage    := Floor( iDamage * iDamageMul );
 
   iSteps := 0;
-  iHit   := MF_EXACT in Missiles[iMissile].Flags;
-  iIsHit := MF_EXACT in Missiles[iMissile].Flags;
+  iHit   := aItem.Flags[ IF_EXACTHIT ];
+  iIsHit := aItem.Flags[ IF_EXACTHIT ];
   iStart := iMisslePath.GetSource;
 
   iRadius := aItem.BlastRadius;
@@ -2218,7 +2218,7 @@ begin
 
   repeat
     iOldCoord := iMisslePath.GetC;
-    if not ( MF_IMMIDATE in Missiles[iMissile].Flags ) then
+    if not aItem.Flags[ IF_INSTANTHIT ] then
       iMisslePath.Next;
     iCoord := iMisslePath.GetC;
     iSteps := Distance (iStart.x, iStart.y, iCoord.x, iCoord.y);
@@ -2279,7 +2279,7 @@ begin
 
         if iRadius = 0 then
         begin
-          if not ( MF_HARD in Missiles[iMissile].Flags ) then
+          if not aItem.Flags[ IF_PIERCEHIT ] then
           begin
             iDirection.CreateSmooth( Self.FPosition, iCoord );
             iBeing.KnockBack( iDirection, iDamage div 12 );
@@ -2293,7 +2293,7 @@ begin
             iBeing.ApplyDamage( iDamage, Target_Torso, aItem.DamageType, aItem, aSequence );
         end;
 
-        if not ( MF_HARD in Missiles[iMissile].Flags ) then
+        if not aItem.Flags[ IF_PIERCEHIT ] then
         begin
           aTarget := iCoord;
           iHit    := True;
@@ -2303,10 +2303,10 @@ begin
     end;
     
     if iMisslePath.Done then
-      if MF_EXACT in Missiles[iMissile].Flags then
+      if aItem.Flags[ IF_EXACTHIT ] then
         Break;
 
-    if ( iSteps >= iMaxRange ) or (MF_IMMIDATE in Missiles[iMissile].Flags) then
+    if ( iSteps >= iMaxRange ) or aItem.Flags[ IF_INSTANTHIT ] then
     begin
       if (iAimedBeing = Player) and (iDodged) then IO.Msg('You dodge!');
       break;
@@ -2327,9 +2327,9 @@ begin
   if iSound <> 0 then
     IO.addSoundAnimation( aSequence, iSource, iSound );
 
-  if not ( MF_IMMIDATE in Missiles[iMissile].Flags ) then
+  if not aItem.Flags[ IF_INSTANTHIT ] then
   begin
-    if MF_RAY in Missiles[iMissile].Flags then
+    if aItem.Flags[ IF_RAYGUN ] then
     begin
       iDuration := iDelay;
       iMarkSeq  := 0;
@@ -2339,7 +2339,7 @@ begin
       iDuration := (iSource - iMisslePath.GetC).LargerLength * iDelay;
       iMarkSeq  := iDuration + aSequence;
     end;
-    IO.addMissileAnimation( iDuration, aSequence,iSource,iMisslePath.GetC,iColor,Missiles[iMissile].Picture,iDelay,iSprite,MF_RAY in Missiles[iMissile].Flags);
+    IO.addMissileAnimation( iDuration, aSequence,iSource,iMisslePath.GetC,iColor,Missiles[iMissile].Picture,iDelay,iSprite,aItem.Flags[ IF_RAYGUN ]);
     if iHit and iLevel.isVisible( iMisslePath.GetC ) then
     begin
       IO.addSoundAnimation( iMarkSeq, iMisslePath.GetC, IO.Audio.ResolveSoundID([Iif( iIsHit, 'flesh_bullet_hit', 'concrete_bullet_hit' )]) );
