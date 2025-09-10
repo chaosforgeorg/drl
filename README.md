@@ -105,7 +105,7 @@ Because the lua code is packaged into the wad file, inline debugging is more dif
 2. Launch a game
 3. F1
 4. Some examples of useful commands are:
-   * player:exit("the_wall") (<i>Exit and open this level</i>)
+   * player:exit(27,0.1) (<i>Jump to the first special level</i>)
    * player.inv:add("nuke") (<i>Give me some real firepower</i>)
    * player:set_affect("inv",5000) (<i>Feeling scared</i>)
    * player:relocate(coord(10,10)) (<i>Send me to this location</i>)
@@ -115,6 +115,7 @@ Because the lua code is packaged into the wad file, inline debugging is more dif
    * =player.id (<i>property</i>)
    * =player.eq.weapon.ammo
    * =player.eq.weapon:is_damaged()
+   * =level.name
 
 ##### Gameplay
 1. Run/Start Debugging
