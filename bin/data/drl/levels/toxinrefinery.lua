@@ -229,7 +229,7 @@ register_level "toxin_refinery"
 	OnKillAll = function ()
 		if not level.data.kill_all then
 			level.data.kill_all  = true
-			ui.msg("The acrid smell begins to dissipate")
+			ui.msg("The acrid smell begins to dissipate.")
 			level.status = 4
 		end
 	end,
