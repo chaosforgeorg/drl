@@ -432,13 +432,16 @@ begin
       'Damage type : {!'+DamageTypeName(FProps.DamageType)+'}'#10+
       Iff(FProps.Radius <> 0,'Expl.radius : {!'+IntToStr(FProps.Radius)+'}'#10);
     ITEMTYPE_RANGED, ITEMTYPE_NRANGED : DescriptionBox :=
-      'Fire time   : {!'+Seconds(FProps.UseTime)+'}'#10+
+      Iff(FProps.UseTime  <> 10, 'Fire time   : {!'+Seconds(FProps.UseTime)+'}'#10)+
       Iff(FProps.ReloadTime > 0, 'Reload time : {!'+Seconds(FProps.ReloadTime)+'}'#10)+
-      'Accuracy    : {!'+BonusStr(FProps.Acc)+'}'#10+
+      Iff(FProps.Acc       <> 0, 'Accuracy    : {!'+BonusStr(FProps.Acc)+'}'#10)+
       'Damage type : {!'+DamageTypeName(FProps.DamageType)+'}'#10+
       Iff(FProps.Shots    <> 0,'Shots       : {!'+IntToStr(FProps.Shots)+'}'#10)+
       Iff(FProps.ShotCost <> 0,'Shot cost   : {!'+IntToStr(FProps.ShotCost)+'}'#10)+
       Iff(FProps.Radius   <> 0,'Expl.radius : {!'+IntToStr(FProps.Radius)+'}'#10)+
+      Iff(FProps.Falloff  <> 0,'Dmg. falloff: {!'+IntToStr(FProps.Falloff)+'%}'#10)+
+      Iff(FProps.Spread   <> 0,'Cone size   : {!'+IntToStr(FProps.Spread)+'}'#10)+
+      Iff(FProps.Range    <> 0,'Max range   : {!'+IntToStr(FProps.Range)+'}'#10)+
       Iff((not aShort) and (FProps.AltFire   <> ALT_NONE   ),'Alt. fire   : {!'+AltFireName( FProps.AltFire )+'}'#10)+
       Iff((not aShort) and (FProps.AltReload <> RELOAD_NONE),'Alt. reload : {!'+AltReloadName( FProps.AltReload )+'}'#10);
     ITEMTYPE_MELEE : DescriptionBox :=
