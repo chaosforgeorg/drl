@@ -187,9 +187,10 @@ register_level "the_chained_court"
 				missprite = 0,
 				hitsprite = SPRITE_BLAST,
 				explosion  = {
-					delay = 50,
-					color = YELLOW,
-					flags = { EFNOKNOCK, EFSELFSAFE },
+					delay     = 50,
+					color     = YELLOW,
+					flags     = { EFSELFSAFE },
+					knockback = 0,
 				},
 			},
 

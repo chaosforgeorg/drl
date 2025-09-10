@@ -954,15 +954,14 @@ begin
           iPointDelay := aDelay + iDistance * aData.Delay;
           if efChain in aData.Flags then
             Explosion( iPointDelay, iC, iChain, nil, NewDirection(0) );
-          iKnockback := KnockBackValue;
-          if (efHalfKnock in aData.Flags) then iKnockback *= 2;
+          iKnockback := aData.Knockback;
           if (efSelfKnockback in aData.Flags) and isActive then iKnockback := 2;
-          if (iDamage >= iKnockBack) and (not (efNoKnock in aData.Flags) ) then
+          if iKnockback > 0 then
           begin
             if aCoord = iC
               then iDir := aKnockback
               else iDir.CreateSmooth( aCoord, iC );
-            Knockback( iDir, iDamage div iKnockback );
+            Knockback( iDir, iDamage / iKnockback );
           end;
           KnockBacked := True;
           if (Flags[BF_SPLASHIMMUNE]) and (aCoord <> iC) then Continue;
@@ -992,6 +991,7 @@ var iDiff,iC: TCoord2D;
     iDmg    : Integer;
     iRange  : Integer;
     iSpread : Integer;
+    iKnock  : Integer;
     iReduce : Single;
     iDir    : TDirection;
     iNode   : TNode;
@@ -1016,6 +1016,7 @@ begin
   iRange  := aItem.Range;
   iSpread := aItem.Spread;
   iReduce := aItem.Reduce;
+  iKnock  := aItem.Knockback;
   if ( iSpread <= 0 ) then Exit;
 
   iItemUID := aItem.uid;
@@ -1053,10 +1054,10 @@ begin
               else if iDmg > 4 then IO.addMarkAnimation( 199, 0, iTC, aItem.HitSprite, LightRed, '*' )
                 else IO.addMarkAnimation( 199, 0, iTC, aItem.HitSprite, LightGray, '*' );
           end;
-          if iDmg >= KnockBackValue then
+          if iKnock > 0 then
           begin
             iDir.CreateSmooth( aSource, iTC );
-            Knockback( iDir, iDmg div KnockBackValue );
+            Knockback( iDir, iDmg / iKnock );
           end;
           KnockBacked := True;
           if ( aItem <> nil ) and ( UIDs[ iItemUID ] = nil ) then aItem := nil;

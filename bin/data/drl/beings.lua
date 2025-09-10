@@ -551,9 +551,10 @@ function drl.register_beings()
 			missprite = 0,
 			hitsprite = SPRITE_BLAST,
 			explosion = {
-				delay = 50,
-				color = YELLOW,
-				flags = { EFNOKNOCK, EFSELFSAFE },
+				delay     = 50,
+				color     = YELLOW,
+				flags     = { EFSELFSAFE },
+				knockback = 0,
 			},
 		},
 
@@ -1118,9 +1119,10 @@ function drl.register_beings()
 			missprite = 0,
 			hitsprite = SPRITE_BLAST,
 			explosion = {
-				delay = 50,
-				color = BLUE,
-				flags = { EFNOKNOCK, EFSELFSAFE },
+				delay     = 50,
+				color     = BLUE,
+				flags     = { EFSELFSAFE },
+				knockback = 0,
 			},
 		},
 
@@ -1596,9 +1598,10 @@ function drl.register_beings()
 			missprite = 0,
 			hitsprite = SPRITE_BLAST,
 			explosion = {
-				delay = 50,
-				color = YELLOW,
-				flags = { EFNOKNOCK, EFSELFSAFE },
+				delay     = 50,
+				color     = YELLOW,
+				flags     = { EFSELFSAFE },
+				knockback = 0,
 			},
 		},
 

@@ -57,7 +57,7 @@ TBeing = class(TThing,IPathQuery)
     function GetBonus( aHook : Byte; const aParams : array of Const ) : Integer; virtual;
     function GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single; virtual;
     procedure BloodFloor;
-    procedure Knockback( aDir : TDirection; aStrength : Integer );
+    procedure Knockback( aDir : TDirection; aStrength : Single );
     destructor Destroy; override;
     function rollMeleeDamage( aSlot : TEqSlot = efWeapon ) : Integer;
     function getMoveCost : LongInt;
@@ -2275,10 +2275,10 @@ begin
 
         if iRadius = 0 then
         begin
-          if not aItem.Flags[ IF_PIERCEHIT ] then
+          if ( not aItem.Flags[ IF_PIERCEHIT ] ) and ( aItem.Knockback > 0 ) then
           begin
             iDirection.CreateSmooth( Self.FPosition, iCoord );
-            iBeing.KnockBack( iDirection, iDamage div 12 );
+            iBeing.KnockBack( iDirection, iDamage / aItem.Knockback );
           end;
           iRunDamage := True;
           if aItem.Hooks[ Hook_OnHitBeing ] then
@@ -2387,31 +2387,28 @@ begin
   BloodDecal( NewDirection(0), 1 );
 end;
 
-procedure TBeing.Knockback( aDir : TDirection; aStrength : Integer );
+procedure TBeing.Knockback( aDir : TDirection; aStrength : Single );
 var iKnock     : TCoord2D;
-    iFStrength : Real;
     iLevel     : TLevel;
+    iStrength  : Integer;
 begin
   iLevel := TLevel(Parent);
-  if aStrength*aDir.code = 0 then Exit;
+  if aStrength <= 0.0         then Exit;
+  if aDir.code = 0            then Exit;
   if BF_KNOCKIMMUNE in FFlags then Exit;
 
-  iKnock := FPosition + aDir;
-  iFStrength := aStrength;
-
-  iFStrength *= getKnockMod / 100;
-  aStrength := Round(iFStrength);
-  aStrength -= GetBonus( Hook_getBodyBonus, [] );
-
-  if aStrength <= 0 then Exit;
+  iKnock     := FPosition + aDir;
+  aStrength  *= getKnockMod / 100.0;
+  iStrength  := Floor( aStrength ) - GetBonus( Hook_getBodyBonus, [] );
+  if iStrength <= 0 then Exit;
 
   if not iLevel.isEmpty( iKnock, [EF_NOBEINGS,EF_NOBLOCK] ) then Exit;
   iKnock := FPosition;
-  while aStrength > 0 do
+  while iStrength > 0 do
   begin
     if not iLevel.isEmpty(iKnock + aDir, [EF_NOBEINGS,EF_NOBLOCK] ) then Break;
     iKnock += aDir;
-    Dec(aStrength);
+    Dec(iStrength);
   end;
 
   if iLevel.isEmpty(iKnock,[EF_NOBEINGS,EF_NOBLOCK]) then
@@ -2423,7 +2420,7 @@ begin
       if iLevel.AnimationVisible( FPosition, Self ) or iLevel.AnimationVisible( iKnock, Self ) then
         IO.addMoveAnimation(100,0,FUID,Position,iKnock,Sprite,True,True);
       if isPlayer then
-        IO.addScreenShakeAnimation( 400, 0, Clampf( aStrength * 1.0, 2.0, 10.0 ) );
+        IO.addScreenShakeAnimation( 400, 0, Clampf( iStrength * 1.0, 2.0, 10.0 ) );
     end;
     Displace( iKnock );
     HandlePostDisplace;

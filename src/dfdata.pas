@@ -129,7 +129,7 @@ type
     TDamageType     = ( Damage_Bullet, Damage_Melee, Damage_Pierce, Damage_Sharpnel, Damage_Acid, Damage_Fire, Damage_Cold, Damage_Poison, Damage_Plasma, Damage_SPlasma, Damage_IgnoreArmor );
     TAltFire        = ( ALT_NONE, ALT_CHAIN, ALT_THROW, ALT_SCRIPT, ALT_TARGETSCRIPT, ALT_AIMED, ALT_SINGLE );
     TAltReload      = ( RELOAD_NONE, RELOAD_SCRIPT, RELOAD_DUAL, RELOAD_SINGLE );
-    TExplosionFlag  = ( efSelfHalf, efSelfKnockback, efSelfSafe, efAfterBlink, efChain, efHalfKnock, efNoKnock, efRandomContent, efNoDistanceDrop, efAlwaysVisible );
+    TExplosionFlag  = ( efSelfHalf, efSelfKnockback, efSelfSafe, efAfterBlink, efChain, efRandomContent, efNoDistanceDrop, efAlwaysVisible );
     TResistance     = ( Resist_Bullet, Resist_Melee, Resist_Shrapnel, Resist_Acid, Resist_Fire, Resist_Plasma, Resist_Cold, Resist_Poison );
 
 const
@@ -147,8 +147,6 @@ const
 const
   COMMAND_NONE     = 0;
   COMMAND_SKIP     = 250;
-
-  KnockbackValue = 7;
 
 const
   Setting_AlwaysRandomName : Boolean = False;
@@ -204,11 +202,11 @@ const
   Option_IntuitionChar    : Char = '.';
 
 var
-  ModuleOption_KlassAchievements    : Boolean = False;
-  ModuleOption_NewMenu              : Boolean = False;
-  ModuleOption_MeleeMoveOnKill      : Boolean = False;
-  ModuleOption_FullBeingDescription : Boolean = False;
-
+  ModuleOption_KlassAchievements         : Boolean = False;
+  ModuleOption_NewMenu                   : Boolean = False;
+  ModuleOption_MeleeMoveOnKill           : Boolean = False;
+  ModuleOption_FullBeingDescription      : Boolean = False;
+  ModuleOption_DefaultExplosionKnockback : Integer = 8;
 
 var
   HARDSPRITE_HIGHLIGHT        : DWord = 0;
@@ -262,6 +260,7 @@ type TCellSet = set of Byte;
        Damage    : TDiceRoll;
        DamageType: TDamageType;
        ContentID : Word;
+       Knockback : Integer;
        SoundID   : string[16];
        Sprite    : TSprite;
      end;
@@ -340,6 +339,7 @@ type TItemProperties = record
   Range         : Byte;
   Spread        : Byte;
   Reduce        : Single;
+  Knockback     : Integer;
   Radius        : Byte;
   Shots         : Byte;
   ShotCost      : Byte;
@@ -884,6 +884,7 @@ begin
   aExplosion.Range      := aTable.getInteger('range',0);
   aExplosion.Delay      := aTable.getInteger('delay',0);
   aExplosion.Color      := aTable.getInteger('color',0);
+  aExplosion.Knockback  := aTable.GetInteger('knockback',ModuleOption_DefaultExplosionKnockback);
   aExplosion.SoundID    := aTable.getString('sound_id','');
   aExplosion.Flags      := ExplosionFlagsFromFlags( aTable.getFlags('flags',[]) );
   aExplosion.Damage     := NewDiceRoll( aTable.getString('damage','') );

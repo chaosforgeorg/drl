@@ -469,6 +469,7 @@ core.register_blueprint "item"
 			range         = { false, core.TNUMBER, 0 },
 			spread        = { false, core.TNUMBER, 0 },
 			reduce        = { false, core.TNUMBER, 0.0 },
+			knockback     = { false, core.TNUMBER, 12 },
 			acc           = { false, core.TNUMBER, 0 },
 			fire          = { false, core.TNUMBER, 10 },
 			radius        = { false, core.TNUMBER, 0 },
@@ -498,6 +499,7 @@ core.register_blueprint "item"
 			range      = { false, core.TNUMBER, 0 }, 
 			spread     = { false, core.TNUMBER, 0 },
 			reduce     = { false, core.TNUMBER, 0.0 },
+			knockback  = { false, core.TNUMBER, 12 },
 			acc        = { false, core.TNUMBER, 0 },
 			fire       = { false, core.TNUMBER, 10 },
 			radius     = { false, core.TNUMBER, 0 },
@@ -520,6 +522,7 @@ core.register_blueprint "item"
 			damage        = { true, core.TSTRING },
 			damagetype    = { true, core.TNUMBER },
 			range         = { true, core.TNUMBER }, -- throwing 
+			knockback     = { false, core.TNUMBER, 12 },
 			spread        = { false, core.TNUMBER, 0 },
 			reduce        = { false, core.TNUMBER, 0.0 },
 			acc           = { false, core.TNUMBER, 0 },
