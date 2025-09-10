@@ -991,6 +991,7 @@ var iDiff,iC: TCoord2D;
     iDmg    : Integer;
     iRange  : Integer;
     iSpread : Integer;
+    iKnock  : Integer;
     iReduce : Single;
     iDir    : TDirection;
     iNode   : TNode;
@@ -1015,6 +1016,7 @@ begin
   iRange  := aItem.Range;
   iSpread := aItem.Spread;
   iReduce := aItem.Reduce;
+  iKnock  := aItem.Knockback;
   if ( iSpread <= 0 ) then Exit;
 
   iItemUID := aItem.uid;
@@ -1052,11 +1054,11 @@ begin
               else if iDmg > 4 then IO.addMarkAnimation( 199, 0, iTC, aItem.HitSprite, LightRed, '*' )
                 else IO.addMarkAnimation( 199, 0, iTC, aItem.HitSprite, LightGray, '*' );
           end;
-          if ShotgunKnockBackValue > 0 then
-            if iDmg >= ShotgunKnockBackValue then
+          if iKnock > 0 then
+            if iDmg >= iKnock then
             begin
               iDir.CreateSmooth( aSource, iTC );
-              Knockback( iDir, iDmg div ShotgunKnockBackValue );
+              Knockback( iDir, iDmg div iKnock );
             end;
           KnockBacked := True;
           if ( aItem <> nil ) and ( UIDs[ iItemUID ] = nil ) then aItem := nil;

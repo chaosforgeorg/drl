@@ -2275,10 +2275,10 @@ begin
 
         if iRadius = 0 then
         begin
-          if not aItem.Flags[ IF_PIERCEHIT ] then
+          if ( not aItem.Flags[ IF_PIERCEHIT ] ) and ( aItem.Knockback > 0 ) then
           begin
             iDirection.CreateSmooth( Self.FPosition, iCoord );
-            iBeing.KnockBack( iDirection, iDamage div 12 );
+            iBeing.KnockBack( iDirection, iDamage div aItem.Knockback );
           end;
           iRunDamage := True;
           if aItem.Hooks[ Hook_OnHitBeing ] then

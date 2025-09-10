@@ -523,6 +523,7 @@ function drl.register_unique_items()
 		range         = 15,
 		spread        = 2,
 		reduce        = 0.05,
+		knockback     = 8,
 
 		OnAltReload = function(self,being)
 			if self.shots == 3 then
@@ -563,6 +564,7 @@ function drl.register_unique_items()
 		range         = 15,
 		spread        = 2,
 		reduce        = 0.05,
+		knockback     = 8,
 	}
 
 	register_item "urbazooka"

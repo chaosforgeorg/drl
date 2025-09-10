@@ -207,7 +207,6 @@ var
   ModuleOption_MeleeMoveOnKill           : Boolean = False;
   ModuleOption_FullBeingDescription      : Boolean = False;
   ModuleOption_DefaultExplosionKnockback : Integer = 8;
-  ShotgunKnockBackValue : Integer = 8;
 
 var
   HARDSPRITE_HIGHLIGHT        : DWord = 0;
@@ -340,6 +339,7 @@ type TItemProperties = record
   Range         : Byte;
   Spread        : Byte;
   Reduce        : Single;
+  Knockback     : Integer;
   Radius        : Byte;
   Shots         : Byte;
   ShotCost      : Byte;

@@ -588,6 +588,7 @@ function drl.register_regular_items()
 		range         = 15,
 		spread        = 3,
 		reduce        = 0.07,
+		knockback     = 8,
 		hitsprite     = SPRITE_BLAST,
 	}
 
@@ -618,6 +619,7 @@ function drl.register_regular_items()
 		range         = 8,
 		spread        = 3,
 		reduce        = 0.1,
+		knockback     = 8,
 		hitsprite     = SPRITE_BLAST,
 	}
 
@@ -647,6 +649,7 @@ function drl.register_regular_items()
 		range         = 15,
 		spread        = 2,
 		reduce        = 0.05,
+		knockback     = 8,
 		hitsprite     = SPRITE_BLAST,
 
 		OnCreate = function(self)
