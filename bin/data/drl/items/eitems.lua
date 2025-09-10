@@ -227,7 +227,7 @@ function drl.register_exotic_items()
 		fire          = 10,
 		reload        = 10,
 		spread        = 2,
-		reduce        = 0.05,
+		falloff       = 5,
 		knockback     = 8,
 		range         = 15,
 		hitsprite     = SPRITE_BLAST,
@@ -263,7 +263,7 @@ function drl.register_exotic_items()
 		reload        = 20,
 		range         = 15,
 		spread        = 3,
-		reduce        = 0.05,
+		falloff       = 5,
 		knockback     = 12,
 		hitsprite     = SPRITE_BLAST,
 	}
@@ -292,7 +292,7 @@ function drl.register_exotic_items()
 		shots         = 2,
 		range         = 15,
 		spread        = 3,
-		reduce        = 0.07,
+		falloff       = 7,
 		knockback     = 8,
 		hitsprite     = SPRITE_BLAST,
 	}

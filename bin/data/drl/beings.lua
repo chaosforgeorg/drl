@@ -498,7 +498,7 @@ function drl.register_beings()
 			damagetype = DAMAGE_FIRE,
 			radius     = 2,
 			flags      = { IF_SPREAD },
-			miss_base  = 1,
+			miss_base  = 10,
 			miss_dist  = 3,
 			misascii   = "*",
 			miscolor   = LIGHTRED,

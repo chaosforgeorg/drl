@@ -985,17 +985,17 @@ begin
 end;
 
 procedure TLevel.Shotgun( aSource, aTarget : TCoord2D; aDamage : TDiceRoll; aDamageMul : Single; aDamageType : TDamageType; aItem : TItem );
-var iDiff,iC: TCoord2D;
-    iTC     : TCoord2D;
-    iDist   : Single;
-    iDmg    : Integer;
-    iRange  : Integer;
-    iSpread : Integer;
-    iKnock  : Integer;
-    iReduce : Single;
-    iDir    : TDirection;
-    iNode   : TNode;
-    iItemUID: TUID;
+var iDiff,iC : TCoord2D;
+    iTC      : TCoord2D;
+    iDist    : Single;
+    iDmg     : Integer;
+    iRange   : Integer;
+    iSpread  : Integer;
+    iKnock   : Integer;
+    iFalloff : Integer;
+    iDir     : TDirection;
+    iNode    : TNode;
+    iItemUID : TUID;
 
     procedure SendShotgunBeam( aSrc : TCoord2D; aTgt : TCoord2D );
     var iSRay  : TVisionRay;
@@ -1013,16 +1013,15 @@ var iDiff,iC: TCoord2D;
       until iCount = iRange;
     end;
 begin
-  iRange  := aItem.Range;
-  iSpread := aItem.Spread;
-  iReduce := aItem.Reduce;
-  iKnock  := aItem.Knockback;
+  iRange   := aItem.Range;
+  iSpread  := aItem.Spread;
+  iFalloff := aItem.Falloff;
+  iKnock   := aItem.Knockback;
   if ( iSpread <= 0 ) then Exit;
 
   iItemUID := aItem.uid;
 
-  iDist := Distance( aSource, aTarget );
-  if iDist = 0 then Exit;
+  if aSource = aTarget then Exit;
   iDiff := aTarget - aSource;
   iDist := Sqrt( iDiff.x*iDiff.x+iDiff.y*iDiff.y);
   iC.x := Round((iDiff.x*iRange)/iDist);
@@ -1039,7 +1038,7 @@ begin
   for iTC in FArea do
     if LightFlag[ iTC, lfDamage ] then
       begin
-        iDmg := Round( aDamage.Roll * (1.0-iReduce*Max(1,Distance( aSource, iTC ))) );
+        iDmg := Round( aDamage.Roll * (1.0-0.01*iFalloff*Max(1,Distance( aSource, iTC ))) );
         iDmg := Floor( iDmg * aDamageMul );
 
         if iDmg < 1 then iDmg := 1;

@@ -631,7 +631,7 @@ function drl.register_assemblies()
 			item.name         = "focused double shotgun"
 			item.range        = 15
 			item.spread       = 3
-			item.reduce       = 0.07
+			item.falloff      = 7
 			item.damage_dice  = 8
 			item.damage_sides = 4
 			item.reloadtime   = 15

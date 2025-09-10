@@ -338,7 +338,7 @@ type TItemProperties = record
   Damage        : TDiceRoll;
   Range         : Byte;
   Spread        : Byte;
-  Reduce        : Single;
+  Falloff       : Integer;
   Knockback     : Integer;
   Radius        : Byte;
   Shots         : Byte;

@@ -587,7 +587,7 @@ function drl.register_regular_items()
 		reload        = 10,
 		range         = 15,
 		spread        = 3,
-		reduce        = 0.07,
+		falloff       = 7,
 		knockback     = 8,
 		hitsprite     = SPRITE_BLAST,
 	}
@@ -618,7 +618,7 @@ function drl.register_regular_items()
 		altreload     = RELOAD_SINGLE,
 		range         = 8,
 		spread        = 3,
-		reduce        = 0.1,
+		falloff       = 10,
 		knockback     = 8,
 		hitsprite     = SPRITE_BLAST,
 	}
@@ -648,7 +648,7 @@ function drl.register_regular_items()
 		altreloadname = "full",
 		range         = 15,
 		spread        = 2,
-		reduce        = 0.05,
+		falloff       = 5,
 		knockback     = 8,
 		hitsprite     = SPRITE_BLAST,
 

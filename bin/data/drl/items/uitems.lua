@@ -522,7 +522,7 @@ function drl.register_unique_items()
 		hitsprite     = SPRITE_BLAST,
 		range         = 15,
 		spread        = 2,
-		reduce        = 0.05,
+		falloff       = 5,
 		knockback     = 8,
 
 		OnAltReload = function(self,being)
@@ -563,7 +563,7 @@ function drl.register_unique_items()
 		hitsprite     = SPRITE_BLAST,
 		range         = 15,
 		spread        = 2,
-		reduce        = 0.05,
+		falloff       = 5,
 		knockback     = 8,
 	}
 

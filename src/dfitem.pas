@@ -93,7 +93,7 @@ TItem  = class( TThing )
     property Damage_Add     : Integer     read FProps.Damage.Bonus   write FProps.Damage.Bonus;
     property Range          : Byte        read FProps.Range          write FProps.Range;
     property Spread         : Byte        read FProps.Spread         write FProps.Spread;
-    property Reduce         : Single      read FProps.Reduce         write FProps.Reduce;
+    property Falloff        : Integer     read FProps.Falloff        write FProps.Falloff;
     property Knockback      : Integer     read FProps.Knockback      write FProps.Knockback;
     property Radius         : Byte        read FProps.Radius         write FProps.Radius;
     property Shots          : Byte        read FProps.Shots          write FProps.Shots;
@@ -255,7 +255,7 @@ begin
   FProps.Shots       := aTable.getInteger('shots',0);
   FProps.ShotCost    := aTable.getInteger('shotcost',0);
   FProps.Spread      := aTable.getInteger('spread',0);
-  FProps.Reduce      := aTable.GetFloat('reduce',0.0);
+  FProps.Falloff     := aTable.GetInteger('falloff',0);
   FProps.Knockback   := aTable.GetInteger('knockback',0);
 
   FProps.MisASCII    := aTable.getChar('misascii','-');
