@@ -956,12 +956,12 @@ begin
             Explosion( iPointDelay, iC, iChain, nil, NewDirection(0) );
           iKnockback := aData.Knockback;
           if (efSelfKnockback in aData.Flags) and isActive then iKnockback := 2;
-          if (iKnockback > 0) and (iDamage >= iKnockBack) then
+          if iKnockback > 0 then
           begin
             if aCoord = iC
               then iDir := aKnockback
               else iDir.CreateSmooth( aCoord, iC );
-            Knockback( iDir, iDamage div iKnockback );
+            Knockback( iDir, iDamage / iKnockback );
           end;
           KnockBacked := True;
           if (Flags[BF_SPLASHIMMUNE]) and (aCoord <> iC) then Continue;
@@ -1055,11 +1055,10 @@ begin
                 else IO.addMarkAnimation( 199, 0, iTC, aItem.HitSprite, LightGray, '*' );
           end;
           if iKnock > 0 then
-            if iDmg >= iKnock then
-            begin
-              iDir.CreateSmooth( aSource, iTC );
-              Knockback( iDir, iDmg div iKnock );
-            end;
+          begin
+            iDir.CreateSmooth( aSource, iTC );
+            Knockback( iDir, iDmg / iKnock );
+          end;
           KnockBacked := True;
           if ( aItem <> nil ) and ( UIDs[ iItemUID ] = nil ) then aItem := nil;
           ApplyDamage( iDmg, Target_Torso, aDamageType, aItem, 0 );

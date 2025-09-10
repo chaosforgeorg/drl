@@ -1,3 +1,6 @@
+0.10.3
+[mod] -- GH#333: changed knockback calculation so that even lower knockback armor protection matters
+
 0.10.2
 [new] -- GJ#113: defence markers added (corneshooting indicator)
 [mod] -- GJ#166: phasing will try not to place the player on any liquid
