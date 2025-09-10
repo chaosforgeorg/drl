@@ -69,9 +69,8 @@ register_level "halls_of_carnage"
 			b:phase()
 		end
 
-		level:player(player_start.x,player_start.y)
-
 		generator.set_permanence( area( 66,9,70,12 ) )
+		level:player(player_start.x,player_start.y)
 		local tick = core.bydiff{ 80, 60, 50, 30, 20 }
 
 		level.data.event = {
