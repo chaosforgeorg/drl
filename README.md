@@ -28,10 +28,10 @@ There are two IDEs available: Visual Studio Code and Lazarus. You should only ne
 ### Setting up the source folders:
 1. Download DRL source from http://drl.chaosforge.org/
 2. Download the DRL binaries (if you haven't already)
-3. Copy the following DLLs from the DRL binaries into bin:
-  * SDL2.dll (true source: https://github.com/libsdl-org/SDL/releases/tag/release-2.32.0)
-  * SDL_mixer.dll (true source: https://github.com/libsdl-org/SDL_mixer/releases/tag/release-2.6.3)
-  * SDL_image.dll (true source: https://github.com/libsdl-org/SDL_image/releases/tag/release-2.8.5)
+3. Copy the following DLLs (versions are indicative):
+  * SDL3.dll (source: https://github.com/libsdl-org/SDL/releases/download/release-3.2.22/SDL3-3.2.22-win32-x64.zip)
+  * SDL2_mixer.dll (source: https://github.com/libsdl-org/SDL_mixer/releases/download/release-2.6.3/SDL2_mixer-2.6.3-win32-x64.zip)
+  * SDL3_image.dll (source: https://github.com/libsdl-org/SDL_image/releases/download/release-3.2.4/SDL3_image-3.2.4-win32-x64.zip)
   * fmod64.dll (true source: www.fmod.com/download)
   * data\\drlhq\music\\* to (bin\\)data\\drlhq\\music
   * data\\drlhq\sounds\\* to (bin\\)data\\drlhq\\sound
