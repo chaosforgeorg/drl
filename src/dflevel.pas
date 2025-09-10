@@ -954,10 +954,9 @@ begin
           iPointDelay := aDelay + iDistance * aData.Delay;
           if efChain in aData.Flags then
             Explosion( iPointDelay, iC, iChain, nil, NewDirection(0) );
-          iKnockback := KnockBackValue;
-          if (efHalfKnock in aData.Flags) then iKnockback *= 2;
+          iKnockback := aData.Knockback;
           if (efSelfKnockback in aData.Flags) and isActive then iKnockback := 2;
-          if (iDamage >= iKnockBack) and (not (efNoKnock in aData.Flags) ) then
+          if (iKnockback > 0) and (iDamage >= iKnockBack) then
           begin
             if aCoord = iC
               then iDir := aKnockback
@@ -1053,11 +1052,12 @@ begin
               else if iDmg > 4 then IO.addMarkAnimation( 199, 0, iTC, aItem.HitSprite, LightRed, '*' )
                 else IO.addMarkAnimation( 199, 0, iTC, aItem.HitSprite, LightGray, '*' );
           end;
-          if iDmg >= KnockBackValue then
-          begin
-            iDir.CreateSmooth( aSource, iTC );
-            Knockback( iDir, iDmg div KnockBackValue );
-          end;
+          if ShotgunKnockBackValue > 0 then
+            if iDmg >= ShotgunKnockBackValue then
+            begin
+              iDir.CreateSmooth( aSource, iTC );
+              Knockback( iDir, iDmg div ShotgunKnockBackValue );
+            end;
           KnockBacked := True;
           if ( aItem <> nil ) and ( UIDs[ iItemUID ] = nil ) then aItem := nil;
           ApplyDamage( iDmg, Target_Torso, aDamageType, aItem, 0 );

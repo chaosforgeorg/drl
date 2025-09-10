@@ -692,9 +692,10 @@ function drl.register_unique_items()
 		missprite  = SPRITE_BFGSHOT,
 		hitsprite  = SPRITE_BLAST,
 		explosion  = {
-			delay = 25,
-			color = GREEN,
-			flags = { EFHALFKNOCK, EFNODISTANCEDROP },
+			delay     = 25,
+			color     = GREEN,
+			flags     = { EFNODISTANCEDROP },
+			knockback = 16,
 		},
 	}
 

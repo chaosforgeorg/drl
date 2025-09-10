@@ -113,9 +113,10 @@ function drl.register_exotic_items()
 		sprite        = SPRITE_BFGSHOT,
 		hitsprite     = SPRITE_BLAST,
 		explosion     = {
-			delay = 33,
-			color = GREEN,
-			flags = { EFSELFSAFE, EFAFTERBLINK, EFCHAIN, EFHALFKNOCK, EFNODISTANCEDROP },
+			delay     = 33,
+			color     = GREEN,
+			flags     = { EFSELFSAFE, EFAFTERBLINK, EFCHAIN, EFNODISTANCEDROP },
+			knockback = 16,
 		},
 
 		OnFirstPickup = function(self,being)
@@ -528,9 +529,10 @@ function drl.register_exotic_items()
 		sprite        = SPRITE_BFGSHOT,
 		hitsprite     = SPRITE_BLAST,
 		explosion     = {
-			delay = 33,
-			color = GREEN,
-			flags = { EFSELFSAFE, EFAFTERBLINK, EFCHAIN, EFHALFKNOCK, EFNODISTANCEDROP },
+			delay     = 33,
+			color     = GREEN,
+			flags     = { EFSELFSAFE, EFAFTERBLINK, EFCHAIN, EFNODISTANCEDROP },
+			knockback = 16,
 		},
 
 		OnAltReload = function(self, being)
