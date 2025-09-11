@@ -41,7 +41,7 @@ function drl.register_assemblies()
 		OnApply = function (item)
 			item.name       = "speedloader pistol"
 			item.reloadtime = 4
-			item.usetime    = item.__proto.fire
+			item.usetime    = item.__proto.usetime
 			item.acc        = item.__proto.acc
 		end,
 	}
@@ -419,13 +419,13 @@ function drl.register_assemblies()
 		OnApply = function (item)
 			item.name           = "storm "..item.name
 			item.acc            = item.__proto.acc - 2
-			item.usetime        = item.__proto.fire * 0.85
+			item.usetime        = item.__proto.usetime * 0.85
 			item.damage_dice    = 1
 			item.damage_sides   = item.__proto.damage_dice * item.__proto.damage_sides
 			item.shots          = 2
 			item.ammomax        = math.floor(item.__proto.ammomax * 1.5)
 			item.ammo           = math.min(item.ammo, item.ammomax)
-			item.reloadtime     = item.__proto.reload
+			item.reloadtime     = item.__proto.reloadtime
 		end,
 	}
 
@@ -445,7 +445,7 @@ function drl.register_assemblies()
 			item.acc          = item.__proto.acc + 3
 			item.shots        = math.ceil(item.__proto.shots / 2)
 			item.shotcost     = math.max(item.__proto.shotcost,1) * 2
-			item.reloadtime   = item.__proto.reload / 2
+			item.reloadtime   = item.__proto.reloadtime / 2
 			item.damage_dice  = item.__proto.damage_dice + 1
 			item.damage_sides = item.__proto.damage_sides - 1
 		end,
@@ -491,7 +491,7 @@ function drl.register_assemblies()
 			item.damage_sides   = item.__proto.damage_sides + 2
 			item.shots          = item.__proto.shots + 2
 			item.ammomax        = item.__proto.ammomax * 2
-			item.reloadtime     = item.__proto.reload * 1.5
+			item.reloadtime     = item.__proto.reloadtime * 1.5
 		end,
 	}
 
@@ -700,7 +700,7 @@ function drl.register_assemblies()
 			item.name            = "demolition "..item.name
 			item.damage_dice     = math.ceil( item.__proto.damage_dice * item.__proto.damage_sides / 2 )
 			item.damage_sides    = 2
-			item.usetime         = item.__proto.fire
+			item.usetime         = item.__proto.usetime
 			item.radius          = 1
 			item.shots           = item.__proto.shots
 			item:set_explosion{
