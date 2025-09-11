@@ -867,7 +867,7 @@ begin
     FCharacter.Push( '' );
     FCharacter.Push( Format( 'Current movement speed is {!%.2f} second/move.', [getMoveCost/(Speed*10.0)] ) );
     FCharacter.Push( Format( 'Current fire speed is {!%.2f} second/%s.', [getFireCost( ALT_NONE, False )/(Speed*10.0),IIf(canDualWield,'dualshot','shot')] ) );
-    FCharacter.Push( Format( 'Current reload speed is {!%.2f} second/reload.', [getReloadCost/(Speed*10.0)] ) );
+    FCharacter.Push( Format( 'Current reload speed is {!%.2f} second/reload.', [getReloadCost(Inv.Slot[efWeapon]) /(Speed*10.0)] ) );
     FCharacter.Push( Format( 'Current to hit chance (point blank) is {!%s}.',[toHitPercent(10+getToHit(Inv.Slot[efWeapon], ALT_NONE, False))]));
     FCharacter.Push( Format( 'Current melee hit chance is {!%s}.',[toHitPercent(10+getToHit(Inv.Slot[efWeapon], ALT_NONE, True))]));
     FCharacter.Push( '' );

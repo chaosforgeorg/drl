@@ -62,9 +62,9 @@ TBeing = class(TThing,IPathQuery)
     function rollMeleeDamage( aSlot : TEqSlot = efWeapon ) : Integer;
     function getMoveCost : LongInt;
     function getFireCost( aAltFire : TAltFire; aIsMelee : Boolean ) : LongInt;
-    function getReloadCost : LongInt;
-    function getUseCost : LongInt;
-    function getWearCost : LongInt;
+    function getReloadCost( aItem : TItem ) : LongInt;
+    function getUseCost( aItem : TItem ) : LongInt;
+    function getWearCost( aItem : TItem ) : LongInt;
     function getDodgeMod : LongInt;
     function getKnockMod : LongInt;
     function getToHit( aItem : TItem; aAltFire : TAltFire; aIsMelee : Boolean ) : Integer;
@@ -625,7 +625,7 @@ begin
     else iWeapon.PlaySound( 'reload', FPosition );
 
   if not ( BF_QUICKSWAP in FFlags )
-     then Exit( Success( 'You prepare the %s!',[ iWeapon.Name ], 1000 ) )
+     then Exit( Success( 'You prepare the %s!',[ iWeapon.Name ], getWearCost(iWeapon) ) )
      else Exit( Success( 'You prepare the %s instantly!',[ iWeapon.Name ] ) );
 end;
 
@@ -643,7 +643,7 @@ begin
 
   if ( BF_QUICKSWAP in FFlags ) or ( canDualWield )
     then Exit( Success( 'You swap your weapons instantly!',[] ) )
-    else Exit( Success( 'You swap your weapons.',[], Round(getWearCost*0.5) ) );
+    else Exit( Success( 'You swap your weapons.',[], Round(getWearCost( Inv.Slot[ efWeapon ] ) *0.5) ) );
 end;
 
 function TBeing.ActionDrop ( aItem : TItem; aUnload : Boolean ) : boolean;
@@ -716,7 +716,7 @@ begin
   begin
     if not ( iWeapon and Flags[BF_QUICKSWAP] ) then
     begin
-      Dec( FSpeedCount, getWearCost );
+      Dec( FSpeedCount, getWearCost( aItem ) );
       Exit( True );
     end;
   end;
@@ -738,7 +738,7 @@ begin
   begin
     if not ( iWeapon and Flags[BF_QUICKSWAP] ) then
     begin
-      Dec( FSpeedCount, getWearCost );
+      Dec( FSpeedCount, getWearCost( aItem ) );
       Exit( True );
     end;
   end;
@@ -747,14 +747,16 @@ end;
 
 function TBeing.ActionTakeOff( aSlot : TEqSlot ) : boolean;
 var iWeapon : Boolean;
+    iItem   : TItem;
 begin
-  if (FInv.Slot[aSlot] = nil) or FInv.Slot[aSlot].Flags[ IF_CURSED ] then
+  iItem := FInv.Slot[aSlot];
+  if (iItem = nil) or iItem.Flags[ IF_CURSED ] then
     Exit( False );
-  iWeapon := FInv.Slot[aSlot].isEqWeapon;
+  iWeapon := iItem.isEqWeapon;
   FInv.setSlot( aSlot, nil );
   if not ( iWeapon and Flags[BF_QUICKSWAP] ) then
   begin
-    Dec( FSpeedCount, getWearCost );
+    Dec( FSpeedCount, getWearCost( iItem ) );
     Exit( True );
   end;
   Exit( False );
@@ -996,6 +998,7 @@ var isOnGround : Boolean;
     isFailed   : Boolean;
     isURanged  : Boolean;
     iSlot      : TEqSlot;
+    iUseCost   : Integer;
     iUID       : TUID;
 	
 begin
@@ -1058,6 +1061,8 @@ begin
     end;
   if isUse then
   begin
+    iUseCost := getUseCost( aItem );
+
     if isURanged then
     begin
       aItem.Flags[ IF_NODESTROY ] := True;
@@ -1082,7 +1087,7 @@ begin
   if isURanged then Exit( isUsedUp );
   
   if isUse then
-    Dec(FSpeedCount,getUseCost)
+    Dec(FSpeedCount,iUseCost)
   else
     Dec(FSpeedCount,1000);
   Exit( True );
@@ -1296,8 +1301,10 @@ procedure TBeing.Reload( aAmmoItem : TItem; aSingle : Boolean );
 var iAmmo  : Byte;
     iPack  : Boolean;
     iCount : Integer;
+    iCost  : Integer;
 begin
   Inv.Slot[efWeapon].PlaySound( 'reload', FPosition );
+  iCost := getReloadCost( Inv.Slot[efWeapon] );
 
   repeat
     iPack  := aAmmoItem.isAmmoPack;
@@ -1327,9 +1334,9 @@ begin
     end;
 
     if iPack then
-      Dec(FSpeedCount,getReloadCost div 5)
+      Dec(FSpeedCount,iCost div 5)
     else
-      Dec(FSpeedCount,getReloadCost);
+      Dec(FSpeedCount,iCost);
     Break;
   until aAmmoItem = nil;
 end;
@@ -2472,27 +2479,29 @@ begin
   Exit( getWeaponFireCost( iWeapon ) );
 end;
 
-function TBeing.getReloadCost: LongInt;
+function TBeing.getReloadCost( aItem : TItem ) : LongInt;
 var iModifier : Real;
-    iWeapon   : TItem;
 begin
-  iWeapon := Inv.Slot[efWeapon];
-  if (iWeapon = nil) or (iWeapon.isMelee) then Exit(1000);
-  iModifier := iWeapon.ReloadTime/10.0;
+  if (aItem = nil) or (aItem.isMelee) then Exit(1000);
+  iModifier := aItem.ReloadTime/10.0;
   iModifier *= FTimes.Reload/100.;
-  iModifier *= GetBonusMul( Hook_getReloadCostMul, [ iWeapon ] );
+  iModifier *= GetBonusMul( Hook_getReloadCostMul, [ aItem ] );
 
   getReloadCost := Round(ActionCostReload*iModifier);
 end;
 
-function TBeing.getUseCost: LongInt;
+function TBeing.getUseCost( aItem : TItem ) : LongInt;
 begin
-  getUseCost := FTimes.Use * 10;
+  getUseCost := 10;
+  if aItem <> nil then getUseCost := aItem.UseTime;
+  getUseCost := FTimes.Use * getUseCost;
 end;
 
-function TBeing.getWearCost: LongInt;
+function TBeing.getWearCost( aItem : TItem ) : LongInt;
 begin
-  getWearCost := FTimes.Wear * 10;
+  getWearCost := 10;
+  if aItem <> nil then getWearCost := aItem.SwapTime;
+  getWearCost := FTimes.Wear * getWearCost;
 end;
 
 function TBeing.getDodgeMod : LongInt;
@@ -2903,45 +2912,46 @@ begin
 end;
 
 function lua_being_wear(L: Plua_State): Integer; cdecl;
-var State  : TDRLLuaState;
-    Being  : TBeing;
-    Item   : TItem;
-    LRes   : Boolean;
+var iState  : TDRLLuaState;
+    iBeing  : TBeing;
+    iItem   : TItem;
+    iLRes   : Boolean;
 begin
-  State.Init(L);
-  Being := State.ToObject(1) as TBeing;
-  Item := State.ToObject(2) as TItem;
-  if Item <> nil then
+  iState.Init(L);
+  iBeing := iState.ToObject(1) as TBeing;
+  iItem  := iState.ToObject(2) as TItem;
+  iLRes  := False;
+  if iItem <> nil then
   begin
-    with Being do
-    if Item.isWearable then
+    with iBeing do
+    if iItem.isWearable then
     begin
-      Inv.Wear( Item );
-      SCount := SCount - getWearCost;
-      LRes := True;
+      SCount := SCount - getWearCost( iItem );
+      Inv.Wear( iItem );
+      iLRes := True;
     end;
   end;
-  State.Push( LRes );
+  iState.Push( iLRes );
   Result := 1;
 end;
 
 function lua_being_pickup(L: Plua_State): Integer; cdecl;
-var State  : TDRLLuaState;
-    Being  : TBeing;
+var iState  : TDRLLuaState;
+    iBeing  : TBeing;
 begin
-  State.Init(L);
-  Being := State.ToObject(1) as TBeing;
-  State.Push( Being.ActionPickup );
+  iState.Init(L);
+  iBeing := iState.ToObject(1) as TBeing;
+  iState.Push( iBeing.ActionPickup );
   Result := 1;
 end;
 
 function lua_being_unload(L: Plua_State): Integer; cdecl;
-var State  : TDRLLuaState;
-    Being  : TBeing;
+var iState  : TDRLLuaState;
+    iBeing  : TBeing;
 begin
-  State.Init(L);
-  Being := State.ToObject(1) as TBeing;
-  State.Push( Being.ActionUnload( State.ToObject(1) as TItem ) );
+  iState.Init(L);
+  iBeing := iState.ToObject(1) as TBeing;
+  iState.Push( iBeing.ActionUnload( iState.ToObject(1) as TItem ) );
   Result := 1;
 end;
 

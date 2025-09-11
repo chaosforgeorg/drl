@@ -100,6 +100,7 @@ TItem  = class( TThing )
     property ShotCost       : Byte        read FProps.ShotCost       write FProps.ShotCost;
     property ReloadTime     : Byte        read FProps.ReloadTime     write FProps.ReloadTime;
     property UseTime        : Byte        read FProps.UseTime        write FProps.UseTime;
+    property SwapTime       : Byte        read FProps.SwapTime       write FProps.SwapTime;
     property DamageType     : TDamageType read FProps.DamageType     write FProps.DamageType;
     property AltFire        : TAltFire    read FProps.AltFire        write FProps.AltFire;
     property AltReload      : TAltReload  read FProps.AltReload      write FProps.AltReload;
@@ -246,8 +247,9 @@ begin
   FProps.DamageType := TDamageType( aTable.getInteger('damagetype',0) );
 
   FProps.Acc         := aTable.getInteger('acc',0);
-  FProps.UseTime     := aTable.getInteger('fire',0);
-  FProps.ReloadTime  := aTable.getInteger('reload',0);
+  FProps.UseTime     := aTable.getInteger('fire',10);
+  FProps.SwapTime    := aTable.getInteger('swaptime',10);
+  FProps.ReloadTime  := aTable.getInteger('reload',10);
   FProps.AltFire     := TAltFire( aTable.getInteger('altfire',0) );
 
   FProps.Radius      := aTable.getInteger('radius',0);
@@ -427,13 +429,15 @@ begin
   DescriptionBox := '';
   case FProps.IType of
     ITEMTYPE_ARMOR, ITEMTYPE_BOOTS : DescriptionBox :=
-      'Durability  : {!'+IntToStr(FProps.MaxDurability)+'}'#10;
+      'Durability  : {!'+IntToStr(FProps.MaxDurability)+'}'#10+
+      Iff(FProps.SwapTime  <> 10, 'Swap time   : {!'+Seconds(FProps.SwapTime)+'}'#10);
     ITEMTYPE_URANGED : DescriptionBox :=
       'Damage type : {!'+DamageTypeName(FProps.DamageType)+'}'#10+
       Iff(FProps.Radius <> 0,'Expl.radius : {!'+IntToStr(FProps.Radius)+'}'#10);
     ITEMTYPE_RANGED, ITEMTYPE_NRANGED : DescriptionBox :=
       Iff(FProps.UseTime  <> 10, 'Fire time   : {!'+Seconds(FProps.UseTime)+'}'#10)+
       Iff(FProps.ReloadTime > 0, 'Reload time : {!'+Seconds(FProps.ReloadTime)+'}'#10)+
+      Iff(FProps.SwapTime <> 10, 'Swap time   : {!'+Seconds(FProps.SwapTime)+'}'#10)+
       Iff(FProps.Acc       <> 0, 'Accuracy    : {!'+BonusStr(FProps.Acc)+'}'#10)+
       'Damage type : {!'+DamageTypeName(FProps.DamageType)+'}'#10+
       Iff(FProps.Shots    <> 0,'Shots       : {!'+IntToStr(FProps.Shots)+'}'#10)+
@@ -446,7 +450,8 @@ begin
       Iff((not aShort) and (FProps.AltReload <> RELOAD_NONE),'Alt. reload : {!'+AltReloadName( FProps.AltReload )+'}'#10);
     ITEMTYPE_MELEE : DescriptionBox :=
       'Attack time : {!'+Seconds(FProps.UseTime)+'}'#10+
-      Iff(FProps.Acc     <> 0,'Accuracy    : {!' + BonusStr(FProps.Acc)+'}'#10)+
+      Iff(FProps.SwapTime<> 10, 'Swap time   : {!'+Seconds(FProps.SwapTime)+'}'#10)+
+      Iff(FProps.Acc     <> 0,  'Accuracy    : {!' + BonusStr(FProps.Acc)+'}'#10)+
       Iff((not aShort) and (FProps.AltFire <> ALT_NONE),'Alt. fire   : {!'+AltFireName( FProps.AltFire )+'}'#10);
   end;
   DescriptionBox +=

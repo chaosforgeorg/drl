@@ -345,6 +345,7 @@ type TItemProperties = record
   ShotCost      : Byte;
   ReloadTime    : Byte;
   UseTime       : Byte;
+  SwapTime      : Byte;
   DamageType    : TDamageType;
   MissBase      : Byte;
   MissDist      : Byte;

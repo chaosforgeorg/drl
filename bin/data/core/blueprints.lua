@@ -421,6 +421,7 @@ core.register_blueprint "item"
 			pglow      = { false, core.TTABLE },
 			durability = { false, core.TNUMBER, 100 },
 			spritemod  = { false, core.TNUMBER, 0 },
+			swaptime   = { false, core.TNUMBER, 10 },
 			scavenge   = { false, core.TARRAY(core.TIDIN("items")) },
 		},
 		[ITEMTYPE_BOOTS] = {
@@ -428,6 +429,7 @@ core.register_blueprint "item"
 			desc       = { true,  core.TSTRING },
 			armor      = { true,  core.TNUMBER },
 			durability = { false, core.TNUMBER, 100 },
+			swaptime   = { false, core.TNUMBER, 10 },
 			scavenge   = { false, core.TARRAY(core.TIDIN("items")) },
 		},
 		[ITEMTYPE_PACK]   = {
@@ -474,6 +476,7 @@ core.register_blueprint "item"
 			fire          = { false, core.TNUMBER, 10 },
 			radius        = { false, core.TNUMBER, 0 },
 			reload        = { false, core.TNUMBER, 10 },
+			swaptime      = { false, core.TNUMBER, 10 },
 			shots         = { false, core.TNUMBER, 0 },
 			shotcost      = { false, core.TNUMBER, 0 },
 			altfire       = { false, core.TNUMBER, 0 },
@@ -550,6 +553,7 @@ core.register_blueprint "item"
 			range       = { false, core.TNUMBER, 0 }, -- throwing 
 			acc         = { false, core.TNUMBER, 0 },
 			fire        = { false, core.TNUMBER, 10 },
+			swaptime    = { false, core.TNUMBER, 10 },
 			altfire     = { false, core.TNUMBER, 0 },
 			altfirename = { false, core.TSTRING },
 			misascii    = { false, core.TSTRING, "-" },
