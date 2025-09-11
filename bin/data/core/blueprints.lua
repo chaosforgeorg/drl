@@ -552,6 +552,7 @@ core.register_blueprint "item"
 			damagetype  = { true, core.TNUMBER },
 			range       = { false, core.TNUMBER, 0 }, -- throwing 
 			acc         = { false, core.TNUMBER, 0 },
+			knockback   = { false, core.TNUMBER, 12 },
 			usetime     = { false, core.TNUMBER, 10 },
 			swaptime    = { false, core.TNUMBER, 10 },
 			altfire     = { false, core.TNUMBER, 0 },
