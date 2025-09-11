@@ -991,6 +991,7 @@ var iDiff,iC : TCoord2D;
     iDmg     : Integer;
     iRange   : Integer;
     iSpread  : Integer;
+    iHSprite : TSprite;
     iKnock   : Integer;
     iFalloff : Integer;
     iDir     : TDirection;
@@ -1017,6 +1018,7 @@ begin
   iSpread  := aItem.Spread;
   iFalloff := aItem.Falloff;
   iKnock   := aItem.Knockback;
+  iHSprite := aItem.HitSprite;
   if ( iSpread <= 0 ) then Exit;
 
   iItemUID := aItem.uid;
@@ -1049,9 +1051,9 @@ begin
           if KnockBacked then Continue;
           if isVisible then
           begin
-            if iDmg > 10 then IO.addMarkAnimation( 199, 0, iTC, aItem.HitSprite, Red, '*' )
-              else if iDmg > 4 then IO.addMarkAnimation( 199, 0, iTC, aItem.HitSprite, LightRed, '*' )
-                else IO.addMarkAnimation( 199, 0, iTC, aItem.HitSprite, LightGray, '*' );
+            if iDmg > 10 then IO.addMarkAnimation( 199, 0, iTC, iHSprite, Red, '*' )
+              else if iDmg > 4 then IO.addMarkAnimation( 199, 0, iTC, iHSprite, LightRed, '*' )
+                else IO.addMarkAnimation( 199, 0, iTC, iHSprite, LightGray, '*' );
           end;
           if iKnock > 0 then
           begin
@@ -1066,7 +1068,7 @@ begin
         
         DamageTile( iTC, iDmg, aDamageType );
         if isVisible( iTC ) and ( not isPassable( iTC ) ) then
-          IO.addMarkAnimation( 199, 0, iTC, aItem.HitSprite, LightGray,'*' );
+          IO.addMarkAnimation( 199, 0, iTC, iHSprite, LightGray,'*' );
       end;
   ClearLightMapBits([lfDamage]);
 end;
