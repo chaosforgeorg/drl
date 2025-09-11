@@ -339,7 +339,7 @@ function level:is_corpse( c )
 	return cell.flags[ CF_CORPSE ]
 end
 
-function level:push_feature( who, what, c, target, quiet )
+function level:push_feature( who, what, c, target, quiet, stupid )
 	local item_id = what.id
 	local name    = what.name
 	if not area.FULL:contains(target) then
@@ -350,7 +350,7 @@ function level:push_feature( who, what, c, target, quiet )
 	local target_cell_id = self.map[target]
 	local target_cell    = cells[target_cell_id]
 	if target_cell.flags[CF_HAZARD] then
-		if not quiet then ui.msg( "Oh my, how stupid!" ) end
+		if stupid and not quiet then ui.msg( "Oh my, how stupid!" ) end
 		self:play_sound( item_id .. ".move", c )
 		level:damage_tile( c, 1000, DAMAGE_PLASMA )
 		who.scount = who.scount - 1000
