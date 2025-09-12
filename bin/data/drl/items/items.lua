@@ -1305,7 +1305,7 @@ function drl.register_regular_items()
 		color      = BROWN,
 		armor      = 3,
 		hp         = 2,
-		flags      = { IF_BLOCKMOVE },
+		flags      = { IF_BLOCKMOVE, IF_BLOCKSHOT },
 		sprite     = SPRITE_BARREL,
 
 		type       = ITEMTYPE_FEATURE,
@@ -1330,7 +1330,7 @@ function drl.register_regular_items()
 		color      = GREEN,
 		armor      = 4,
 		hp         = 2,
-		flags      = { IF_BLOCKMOVE },
+		flags      = { IF_BLOCKMOVE, IF_BLOCKSHOT },
 		sprite     = SPRITE_ACIDBARREL,
 		sframes    = 2,
 
@@ -1357,7 +1357,7 @@ function drl.register_regular_items()
 		color      = LIGHTRED,
 		armor      = 5,
 		hp         = 2,
-		flags      = { IF_BLOCKMOVE },
+		flags      = { IF_BLOCKMOVE, IF_BLOCKSHOT },
 		sprite     = SPRITE_LAVABARREL,
 		sframes    = 2,
 
@@ -1386,7 +1386,7 @@ function drl.register_regular_items()
 		color      = BROWN,
 		armor      = 5,
 		hp         = 5,
-		flags      = { IF_BLOCKMOVE },
+		flags      = { IF_BLOCKMOVE, IF_BLOCKSHOT },
 		sprite     = SPRITE_TREE,
 
 		type       = ITEMTYPE_FEATURE,

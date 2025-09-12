@@ -2152,6 +2152,8 @@ var iDirection  : TDirection;
     iDamageMod  : Integer;
     iDamageMul  : Single;
     iMaxDamage  : Boolean;
+    iCover      : TLuaEntityNode;
+    iCoverValue : Integer;
     iExplosion  : TExplosionData;
 begin
   if DRL.State <> DSPlaying then Exit( False );
@@ -2230,25 +2232,45 @@ begin
 
     if not iLevel.isEmpty( iCoord, [EF_NOBLOCK] ) then
     begin
-      if (iAimedBeing = Player) and (iDodged) then IO.Msg('You dodge!');
+      iCoverValue := 10;
+      if not iLevel.cellFlagSet( iCoord, CF_BLOCKMOVE ) then
+      begin
+        iCoverValue := 0;
+        iCover      := iLevel.GetItem( iCoord );
+        if ( iCover <> nil ) then
+        begin
+          if not aItem.Flags[ IF_LOB ] then
+          begin
+            if iCover.Flags[ IF_LIGHTCOVER ] then iCoverValue := 3;
+            if iCover.Flags[ IF_HARDCOVER ]  then iCoverValue := 7;
+          end;
+          if iCover.Flags[ IF_BLOCKSHOT ] then iCoverValue := 10;
+        end;
+      end;
 
-      if aItem.Flags[ IF_DESTRUCTIVE ]
-        then iLevel.DamageTile( iCoord, iDamage * 2, aItem.DamageType )
-        else iLevel.DamageTile( iCoord, iDamage, aItem.DamageType );
+      if ( iCoverValue >= 10 ) or ( Random(10) < iCoverValue ) then
+      begin
+        if (iAimedBeing = Player) and (iDodged) then IO.Msg('You dodge!');
 
-      if iLevel.isVisible( iCoord ) then
-        IO.Msg('Boom!');
-      iCoord := iOldCoord;
-      iHit   := True;
-      Break;
+        if aItem.Flags[ IF_DESTRUCTIVE ]
+          then iLevel.DamageTile( iCoord, iDamage * 2, aItem.DamageType )
+          else iLevel.DamageTile( iCoord, iDamage, aItem.DamageType );
+
+        if iLevel.isVisible( iCoord ) then
+          IO.Msg('Boom!');
+        iCoord := iOldCoord;
+        iHit   := True;
+        Break;
+      end;
     end;
-    
+
     if iLevel.Being[ iCoord ] <> nil then
     begin
       iBeing := iLevel.Being[ iCoord ];
       if iBeing = iAimedBeing then
         iDodged := False;
 
+      if aItem.Flags[ IF_LOB ] and ( iCoord <> iTarget ) then iToHit := -iToHit;
       iToHit -= iBeing.GetBonus( Hook_getDefenceBonus, [False] );
 
       if aItem.Flags[ IF_FARHIT ]

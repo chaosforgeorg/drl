@@ -128,7 +128,7 @@ IF_PIERCEHIT      = 32;
 IF_SINGLERELOAD   = 33;
 IF_EXACTHIT       = 34;
 IF_SHOTGUN        = 35;
-
+IF_LOB            = 36;
 IF_SPREAD         = 37;
 IF_SCATTER        = 38;
 IF_SINGLEMOD      = 39;
@@ -157,6 +157,9 @@ IF_FEATURENAME    = 61;
 IF_BLOCKMOVE      = 62;
 IF_BLOCKLOS       = 63;
 IF_UNIQUENAME     = 64;
+IF_BLOCKSHOT      = 65;
+IF_LIGHTCOVER     = 66;
+IF_HARDCOVER      = 67;
 
 LF_NOHOMING       = 1;
 LF_UNIQUEITEM     = 2;
