@@ -208,7 +208,7 @@ register_level "central_processing"
 			['E'] = { "floor", item = "epack" },
 			['B'] = { "floor", item = "sboots" },
 			['M'] = { "floor", item = "mod_agility"},
-			['A'] = { "floor", item = "garmor"},
+			['A'] = { "floor", item = "barmor"},
 			['D'] = { "floor", item = "phase"},
 			['V'] = { "floor", item = "uballisticarmor"},
 			['r'] = { "floor", item = "rocket"},
