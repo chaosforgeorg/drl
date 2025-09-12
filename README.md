@@ -28,11 +28,7 @@ There are two IDEs available: Visual Studio Code and Lazarus. You should only ne
 ### Setting up the source folders:
 1. Download DRL source from http://drl.chaosforge.org/
 2. Download the DRL binaries (if you haven't already)
-3. Copy the following DLLs from the DRL binaries into bin:
-  * SDL2.dll (true source: https://github.com/libsdl-org/SDL/releases/tag/release-2.32.0)
-  * SDL_mixer.dll (true source: https://github.com/libsdl-org/SDL_mixer/releases/tag/release-2.6.3)
-  * SDL_image.dll (true source: https://github.com/libsdl-org/SDL_image/releases/tag/release-2.8.5)
-  * fmod64.dll (true source: www.fmod.com/download)
+3. Copy the following files from the DRL binaries:
   * data\\drlhq\music\\* to (bin\\)data\\drlhq\\music
   * data\\drlhq\sounds\\* to (bin\\)data\\drlhq\\sound
   * data\\drlhq\sounds\\* to (bin\\)data\\drllq\\sound
@@ -105,7 +101,7 @@ Because the lua code is packaged into the wad file, inline debugging is more dif
 2. Launch a game
 3. F1
 4. Some examples of useful commands are:
-   * player:exit("the_wall") (<i>Exit and open this level</i>)
+   * player:exit(27,0.1) (<i>Jump to the first special level</i>)
    * player.inv:add("nuke") (<i>Give me some real firepower</i>)
    * player:set_affect("inv",5000) (<i>Feeling scared</i>)
    * player:relocate(coord(10,10)) (<i>Send me to this location</i>)
@@ -115,6 +111,7 @@ Because the lua code is packaged into the wad file, inline debugging is more dif
    * =player.id (<i>property</i>)
    * =player.eq.weapon.ammo
    * =player.eq.weapon:is_damaged()
+   * =level.name
 
 ##### Gameplay
 1. Run/Start Debugging

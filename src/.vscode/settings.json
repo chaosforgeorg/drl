@@ -1,6 +1,7 @@
 {
     "debugPath": "bin",
     "releasePath": "bin",
+    "libPath": "ext\\windows",
     "instantFpcPath": "E:\\lazarus\\fpc\\3.2.2\\bin\\x86_64-win64\\instantfpc.exe",
     "fpcPath": "E:\\lazarus\\fpc\\3.2.2\\bin\\x86_64-win64\\fpc.exe",
     "drlBasePath": "e:\\git\\drl",

@@ -569,18 +569,18 @@ end
 function drl.OnCreateEpisode()
 	player.episode = {}
 	local paired = {
-		{"hells_arena"}, -- 2
-		{"central_processing","toxin_refinery"}, -- 4
-		{"the_chained_court"}, -- 5
-		{"military_base","phobos_lab"}, -- 7
-		{"hells_armory", "deimos_lab"}, -- 9/1
-		{"the_wall","containment_area"}, -- 11/3
-		{"city_of_skulls","abyssal_plains"}, -- 12/4
-		{"halls_of_carnage","spiders_lair"}, -- 14/6
-		{"the_vaults","house_of_pain"}, -- 17/1
-		{"unholy_cathedral"}, -- 19/3
-		{"the_mortuary","limbo"},-- 20/4
-		{"the_lava_pits","mt_erebus"},-- 22/6
+		{"hells_arena"}, -- 2                                    26
+		{"central_processing","toxin_refinery"}, -- 4            27
+		{"the_chained_court"}, -- 5                              28
+		{"military_base","phobos_lab"}, -- 7                     29
+		{"hells_armory", "deimos_lab"}, -- 9/1                   30
+		{"the_wall","containment_area"}, -- 11/3                 31
+		{"city_of_skulls","abyssal_plains"}, -- 12/4             32
+		{"halls_of_carnage","spiders_lair"}, -- 14/6             33
+		{"the_vaults","house_of_pain"}, -- 17/1                  34
+		{"unholy_cathedral"}, -- 19/3                            35
+		{"the_mortuary","limbo"},-- 20/4                         36
+		{"the_lava_pits","mt_erebus"},-- 22/6                    37
 	}
 
 	player.episode[1] = { script = "intro", style = 1, deathname = "level 1 of the Phobos base" }
