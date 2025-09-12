@@ -321,7 +321,7 @@ register_level "central_processing"
 	OnKillAll = function ()
 		if not level.data.kill_all then
 			level.data.kill_all  = true
-			ui.msg("The machinery falls silent")
+			ui.msg("The machinery falls silent.")
 			level.status = 4
 		end
 	end,
