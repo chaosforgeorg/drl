@@ -723,12 +723,25 @@ begin
   FreeAndNil( iTable );
   Result := 0;
 end;
-const lua_item_lib : array[0..5] of luaL_Reg = (
+
+function lua_item_set_sound_id(L: Plua_State): Integer; cdecl;
+var iState   : TDRLLuaState;
+    iItem    : TItem;
+begin
+  iState.Init(L);
+  iItem := iState.ToObject(1) as TItem;
+  if iItem = nil then Exit(0);
+  iItem.SoundID := iState.ToString( 2 );
+  Result := 0;
+end;
+
+const lua_item_lib : array[0..6] of luaL_Reg = (
       ( name : 'new';           func : @lua_item_new),
       ( name : 'get_mod';       func : @lua_item_get_mod),
       ( name : 'set_mod';       func : @lua_item_set_mod),
       ( name : 'set_sprite';    func : @lua_item_set_sprite),
       ( name : 'set_explosion'; func : @lua_item_set_explosion),
+      ( name : 'set_sound_id';  func : @lua_item_set_sound_id),
       ( name : nil;             func : nil; )
 );
 

@@ -32,7 +32,7 @@ protected
   FAnimCount : Word;
   {$TYPEINFO ON}
 public
-  property SoundID    : String16 read FSoundID;
+  property SoundID    : String16 read FSoundID          write FSoundID;
   property Sprite     : TSprite  read GetSprite         write FSprite;
   property AnimCount  : Word     read FAnimCount        write FAnimCount;
 published

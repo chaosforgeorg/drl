@@ -2390,7 +2390,7 @@ begin
     iExplosion.Range      := iRadius;
     if IO.Audio.GetSampleID(aItem.ID+'.explode') > 0
       then iExplosion.SoundID := aItem.ID
-      else iExplosion.SoundID := aItem.SoundID;
+      else iExplosion.SoundID := Iif( aItem.SoundID <> '', aItem.SoundID, 'explode' );
     iExplosion.Damage     := iRoll;
     iExplosion.DamageType := aItem.DamageType;
     iDirection.CreateSmooth( FPosition, iCoord );
