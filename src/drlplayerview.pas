@@ -483,7 +483,7 @@ begin
     iK := 53;
     if IO.NarrowMode then
     begin
-      iR := 38;
+      iR := 40;
       iK := 50;
     end;
 
@@ -517,8 +517,8 @@ begin
       begin
         Inc( iY );
         VTIG_FreeLabel( '{d'+Padded(ResNames[iRes],7)+'{!'+Padded(BonusStr(iTot)+'%',5)+
-             '} Torso {!'+Padded(BonusStr(iTor)+'%',5)+
-             '} Feet {!'+Padded(BonusStr(iFeet)+'%',5)+'}', Point( iR, iY ) );
+             '} Torso{!'+Padded(BonusStr(iTor)+'%',5)+
+             '} Feet{!'+Padded(BonusStr(iFeet)+'%',5)+'}', Point( iR, iY ) );
       end;
     end;
 
