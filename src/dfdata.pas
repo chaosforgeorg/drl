@@ -117,7 +117,7 @@ const
   Config       : TDRLConfig = nil;
 
 const
-  AnimationSpeedMove   = 125;
+  AnimationSpeedMove   = 135;
   AnimationSpeedPush   = 200;
   AnimationSpeedAttack = 100;
 
