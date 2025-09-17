@@ -538,13 +538,17 @@ function core.tag_reqs_met( proto, reqs )
 		return proto.tags[ reqs ]
 	end
 	if reqs.all then 
-		for _,r in ipairs( reqs.all ) do
+		local all = reqs.all
+		if type(all) ~= "table" then all = { all } end
+		for _,r in ipairs( all ) do
 			if not proto.tags[ r ] then return false end
 		end
 	end
 	if reqs.any then 
+		local any   = reqs.any
+		if type(any) ~= "table" then any = { any } end
 		local found = false
-		for _,r in ipairs( reqs.any ) do
+		for _,r in ipairs( any ) do
 			if proto.tags[ r ] then 
 				found = true 
 				break
