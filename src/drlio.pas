@@ -551,7 +551,7 @@ end;
 
 procedure TDRLIO.FullLook( aBeing : TBeing );
 begin
-  if aBeing = nil then Exit;
+  if ( aBeing = nil ) or ( not aBeing.isVisible ) then Exit;
   FConsole.HideCursor;
   PushLayer( TMoreView.Create( aBeing ) );
 end;

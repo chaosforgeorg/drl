@@ -169,9 +169,7 @@ begin
    end;
    if (iInput in [ INPUT_MORE, INPUT_MLEFT ]) and iLevel.isVisible( FTarget ) then
    begin
-     with iLevel do
-       if Being[FTarget] <> nil then
-         IO.FullLook( Being[FTarget]);
+     IO.FullLook( iLevel.Being[FTarget]);
      UpdateTarget;
    end;
    Exit( True );
