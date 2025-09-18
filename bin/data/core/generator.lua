@@ -912,6 +912,28 @@ function generator.mirror_horizontally( y_value, x_start )
 	end
 end
 
+function generator.mirror_vertically( x_value, y_start )
+	core.log("generator.mirror_vertically()")
+	local y_start = y_start or 1
+	for y = y_start, MAXY do
+		for x = 1, x_value-1 do
+			local c1 = coord( x, y )
+			local c2 = coord( 2 * x_value - x, y )
+			level:set_cell( c2, level:get_cell( c1 ) )
+			local item = level:get_item( c1 )
+			if item then
+				level:drop_item( item.id, c2 )
+			end
+		end
+	end
+end
+
+function generator.mirror_quad( pos )
+	core.log("generator.mirror_quad()")
+	generator.mirror_horizontally( pos.y )
+	generator.mirror_vertically( pos.x )
+end
+
 function generator.horiz_river( settings )
 	assert( settings )
 	assert( settings.cell )
