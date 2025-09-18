@@ -972,6 +972,7 @@ function drl.register_exotic_items()
 		OnUse = function(self,being)
 			if not self:has_property( "chosen_item" ) then return true end
 			local item = self.chosen_item
+			self:remove_property("chosen_item")
 			if item.group ~= "shotgun" and ( item.shots >= 3 ) and ( not item.flags[ IF_SPREAD ]) then
 				item.shots = item.shots + 2
 			elseif ( item.radius >= 3 ) or ( item.flags[ IF_SPREAD ] and ( item.radius >= 2 ) ) then
@@ -1021,6 +1022,7 @@ function drl.register_exotic_items()
 		OnUse = function(self,being)
 			if not self:has_property( "chosen_item" ) then return true end
 			local item = self.chosen_item
+			self:remove_property("chosen_item")
 			-- A little easter egg for applying S-mod on shotgun/melee
 			if item.group == "shotgun" or item.itype ~= ITEMTYPE_RANGED then
 				ui.msg( "You suddenly feel a little silly." )
@@ -1085,6 +1087,7 @@ function drl.register_exotic_items()
 		OnUse = function(self,being)
 			if not self:has_property( "chosen_item" ) then return true end
 			local item = self.chosen_item
+			self:remove_property("chosen_item")
 			ui.msg( "You upgrade your gear!" )
 			item:add_mod( 'N', being.techbonus )
 			if item.flags[ IF_RECHARGE ] then
@@ -1140,6 +1143,7 @@ function drl.register_exotic_items()
 		OnUse = function(self,being)
 			if not self:has_property( "chosen_item" ) then return true end
 			local item = self.chosen_item
+			self:remove_property("chosen_item")
 			ui.msg( "You upgrade your gear!" )
 			item.durability = 100
 			item.flags[ IF_NODURABILITY ] = true

@@ -1092,6 +1092,7 @@ function drl.register_regular_items()
 		OnUse = function(self,being)
 			if not self:has_property("chosen_item") then return true end
 			local item = self.chosen_item
+			self:remove_property("chosen_item")
 			if item.itype == ITEMTYPE_MELEE then
 				item.damage_sides = item.damage_sides + 1
 			elseif item.itype == ITEMTYPE_RANGED then
@@ -1150,6 +1151,7 @@ function drl.register_regular_items()
 		OnUse = function(self,being)
 			if not self:has_property("chosen_item") then return true end
 			local item = self.chosen_item
+			self:remove_property("chosen_item")
 			if (item.itype == ITEMTYPE_RANGED) or (item.itype == ITEMTYPE_MELEE) then
 				item.usetime = item.usetime * 0.85
 			elseif item.itype == ITEMTYPE_ARMOR or item.itype == ITEMTYPE_BOOTS then
@@ -1212,6 +1214,7 @@ function drl.register_regular_items()
 		OnUse = function(self,being)
 			if not self:has_property("chosen_item") then return true end
 			local item = self.chosen_item
+			self:remove_property("chosen_item")
 			if item.itype == ITEMTYPE_MELEE or item.itype == ITEMTYPE_RANGED then
 				item.acc = item.acc + 1
 			elseif item.itype == ITEMTYPE_ARMOR then
@@ -1278,6 +1281,7 @@ function drl.register_regular_items()
 		OnUse = function(self,being)
 			if not self:has_property("chosen_item") then return true end
 			local item = self.chosen_item
+			self:remove_property("chosen_item")
 			if item.itype == ITEMTYPE_MELEE then
 				item.damage_dice = item.damage_dice + 1
 			elseif item.itype == ITEMTYPE_RANGED then
