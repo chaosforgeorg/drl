@@ -182,17 +182,17 @@ end
 function being:phase( cell )
 	local target
 	if self:is_player() then 
-		target = level:random_empty_coord{ EF_NOBEINGS, EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM, EF_NOLIQUID, EF_NOSPAWN, EF_CANTELE }
+		target = level:random_empty_coord( { EF_NOBEINGS, EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM, EF_NOLIQUID, EF_NOSPAWN, EF_CANTELE }, level.data.phase_zone )
 	else
-		target = level:random_empty_coord{ EF_NOBEINGS, EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN, EF_CANTELE }
+		target = level:random_empty_coord( { EF_NOBEINGS, EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN, EF_CANTELE }, level.data.phase_zone )
 	end
 	if not target then
-		target = level:random_empty_coord{ EF_NOBEINGS, EF_NOBLOCK, EF_NOSPAWN, EF_CANTELE }
+		target = level:random_empty_coord( { EF_NOBEINGS, EF_NOBLOCK, EF_NOSPAWN, EF_CANTELE }, level.data.phase_zone )
 	end
 	if cell then
 		cell = cells[ cell ].nid
 		local targets = {}
-		for c in area.FULL_SHRINKED() do
+		for c in ( level.data.phase_zone or area.FULL_SHRINKED)() do
 			if level:get_cell( c ) == cell then
 				table.insert( targets, c:clone() )
 			end
