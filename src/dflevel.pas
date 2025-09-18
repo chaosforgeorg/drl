@@ -208,8 +208,7 @@ begin
   try
     FID := Script;
 
-    if IsString('entry')   then Player.AddHistory( GetString('entry') );
-    if IsString('welcome') then 
+    if IsString('welcome') then
     begin
       IO.Msg( GetString('welcome') );
       FFeeling := GetString('welcome');

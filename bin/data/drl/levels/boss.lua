@@ -38,7 +38,6 @@ register_badge "hellgate5"
 register_level "hellgate"
 {
 	name  = "Phobos Anomaly",
-	entry = "On @1 he encountered the Phobos Anomaly.",
 	welcome = "You arrive at the Phobos Anomaly.",
 
 	OnRegister = function ()
@@ -133,6 +132,7 @@ register_level "hellgate"
 	end,
 
 	OnEnterLevel = function ()
+		player:add_history( "He arrived at the Phobos Anomaly." )
 		level.status = 1
 		ui.msg_feel("You sense a certain tension.")
 		level:play_sound( "baron.act", player.position )
@@ -179,9 +179,7 @@ register_level "hellgate"
 register_level "tower_of_babel"
 {
 	name  = "Tower of Babel",
-	entry = "On @1 he found the Tower of Babel!",
 	welcome = "You enter a big arena. There's blood everywhere. You hear heavy mechanical footsteps...",
-	welcome = "You reach the Tower of Babel.",
 
 	Create = function ()
 		level:fill( "wall" )
@@ -208,6 +206,7 @@ register_level "tower_of_babel"
 	end,
 
 	OnEnterLevel = function ()
+		player:add_history( "He found the Tower of Babel." )
 		local boss = level:summon("cyberdemon")
 		boss.is_boss = true
 	end,
@@ -228,7 +227,6 @@ register_level "tower_of_babel"
 register_level "dis"
 {
 	name = "Dis",
-	entry = "Then at last he found Dis!",
 	welcome = "You enter the damned city of Dis...",
 
 	OnRegister = function ()
@@ -315,6 +313,7 @@ WWWWWWWWWWWWWWWWWWWWW...............####...............WWWWWWWWWWWWWWWWWWWWW
 	end,
 
 	OnEnterLevel = function ()
+		player:add_history( "Then at last he found Dis!" )
 		local boss = level:drop_being("mastermind",coord(39,19))
 		boss.is_boss = true
 	end,
@@ -331,7 +330,6 @@ WWWWWWWWWWWWWWWWWWWWW...............####...............WWWWWWWWWWWWWWWWWWWWW
 register_level "hell_fortress"
 {
 	name = "Hell Fortress",
-	entry = "He defeated the Mastermind and found the TRUE EVIL!",
 	welcome = "This is it. This is the lair of all evil! What will you meet here?",
 
 	Create = function ()
@@ -375,6 +373,10 @@ register_level "hell_fortress"
 			boss = level:drop_being("jc",coord(76,11))
 		end
 		boss.is_boss = true
+	end,
+
+	OnEnterLevel = function ()
+		player:add_history( "He defeated the Mastermind and found the TRUE EVIL!" )
 	end,
 
 	OnKillAll = function ()

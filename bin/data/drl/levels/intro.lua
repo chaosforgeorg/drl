@@ -3,7 +3,6 @@
 register_level "intro"
 {
 	name  = "Phobos Base Entry",
-	entry = "He started his journey on the surface of Phobos.",
 
 	Create = function ()
 		level:fill( "rock" )
@@ -210,6 +209,10 @@ register_level "intro"
 
 		level:player(4,10)
 		player:set_achievement("drl_legacy_1")
+	end,
+
+	OnEnterLevel = function ()
+		player:add_history( "He started his journey on the surface of Phobos." )
 	end,
 
 	OnTick = function ()
