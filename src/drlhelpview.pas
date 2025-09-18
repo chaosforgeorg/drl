@@ -131,7 +131,7 @@ begin
     VTIG_Text('');
     VTIG_Text('  {!Escape}    - game menu (Save, Quit, Settings, Help, etc)');
     VTIG_Text('  {!Arrows}    - movement (Home,End,PgUp,PgDown - diagonals)');
-    VTIG_Text('  {!.}(period) - wait (pass turn)');
+    VTIG_Text('  {!W}         - wait (pass turn)');
     VTIG_Text('  {!SPACE}     - action (open,close,press button,descend stairs)');
     VTIG_Text('  {!I},{!E},{!P},{!T}   - inventory, equipment etc (left/right to switch while open)');
     VTIG_Text('  {!F}         - fire weapon (SHIFT for alternative mode)');
