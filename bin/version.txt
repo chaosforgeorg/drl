@@ -1,3 +1,4 @@
+0.10.4
 0.10.3
 [mod] -- GH#333: changed knockback calculation so that even lower knockback armor protection matters
 
