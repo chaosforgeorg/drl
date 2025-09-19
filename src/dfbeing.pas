@@ -2347,10 +2347,14 @@ begin
 
   if UIDs[ iThisUID ] = nil then Exit( False );
 
-  iSound  := IO.Audio.ResolveSoundID([aItem.ID+'.fire',aItem.SoundID+'.fire','fire']);
+  if ( not aItem.Flags[ IF_SERIESSOUND ] ) or ( aShotCount = 0 ) then
+  begin
+    iSound  := IO.Audio.ResolveSoundID([aItem.ID+'.fire',aItem.SoundID+'.fire','fire']);
+    if iSound <> 0 then
+      IO.addSoundAnimation( aSequence, iSource, iSound );
+  end;
+
   iSprite := aItem.MisSprite;
-  if iSound <> 0 then
-    IO.addSoundAnimation( aSequence, iSource, iSound );
 
   if not aItem.Flags[ IF_INSTANTHIT ] then
   begin
