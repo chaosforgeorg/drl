@@ -2233,7 +2233,7 @@ begin
     if not iLevel.isEmpty( iCoord, [EF_NOBLOCK] ) then
     begin
       iCoverValue := 10;
-      if not iLevel.cellFlagSet( iCoord, CF_BLOCKMOVE ) then
+      if ( iCoord <> iTarget ) and ( not iLevel.cellFlagSet( iCoord, CF_BLOCKMOVE ) ) then
       begin
         iCoverValue := 0;
         iCover      := iLevel.GetItem( iCoord );
