@@ -917,7 +917,7 @@ begin
   Dec( FSpeedCount, getFireCost( iAltFire, False ) );
 
   if ( not FireRanged( aTarget, aWeapon, iAltFire, aDelay )) or Player.Dead then Exit( True );
-  if ( not aForceSingle ) and canDualWield and ( Inv.Slot[ efWeapon2 ].Ammo > 0 ) then
+  if ( not aForceSingle ) and canDualWield and ( Inv.Slot[ efWeapon2 ].Flags[ IF_NOAMMO ] or ( Inv.Slot[ efWeapon2 ].Ammo > 0 ) ) then
     if ( not FireRanged( aTarget, Inv.Slot[ efWeapon2 ], iAltFire, aDelay + 100 )) or Player.Dead then Exit( True );
 
   Exit( True );
