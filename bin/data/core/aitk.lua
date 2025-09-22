@@ -481,18 +481,18 @@ function aitk.try_hunt( self )
         attackchance = math.floor( attackchance / 3 )
     end
     if dist == 1 and (not self.nomelee) then
-        self:attack( target )
         if sequential then self.sequence = 0 end
+        self:attack( target )
         return "hunt"
     elseif has_ammo and sequence >= 0 and ( sequence > 0 or ( math.random(100) <= attackchance ) ) then
         self.retaliate = false
         if self:has_property("on_fire") then
             return self.on_fire
         end
-        self:action_fire( target, self.eq.weapon )
         if sequence == 0 and sequential then
             self.sequence = core.resolve_range( sequential )
         end 
+        self:action_fire( target, self.eq.weapon )
         return "hunt"
     end
 
@@ -651,7 +651,8 @@ function aitk.charge_charge( self )
     local move_check,move_coord = self:direct_seek( self.move_to_target, 1.5 )
     if move_check ~= MOVEOK then
         if player.position == move_coord then
-            self:attack(move_coord)
+            self:attack( move_coord )
+       		if ( not core.is_playing() ) or ( not self.__ptr ) then return "idle" end 
         else
             self.scount = self.scount - 500
         end
@@ -671,6 +672,7 @@ function aitk.charge_post_charge( self )
     if move_check ~= MOVEOK then
         if player.position == move_coord then
             self:attack( move_coord )
+       		if ( not core.is_playing() ) or ( not self.__ptr ) then return "idle" end 
         else
             self.scount = self.scount - 500
         end

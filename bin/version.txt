@@ -1,5 +1,6 @@
-0.10.5
+0.10.4
 [fix] -- GJ#199: fixed ammo-less weapons not behaving properly when dual wielding
+[fix] -- GJ#196: fixed AoRA on death crash
 
 0.10.3
 [mod] -- GH#333: changed knockback calculation so that even lower knockback armor protection matters
