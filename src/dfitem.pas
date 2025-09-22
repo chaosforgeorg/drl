@@ -247,9 +247,9 @@ begin
   FProps.DamageType := TDamageType( aTable.getInteger('damagetype',0) );
 
   FProps.Acc         := aTable.getInteger('acc',0);
-  FProps.UseTime     := aTable.getInteger('fire',10);
+  FProps.UseTime     := aTable.getInteger('usetime',10);
   FProps.SwapTime    := aTable.getInteger('swaptime',10);
-  FProps.ReloadTime  := aTable.getInteger('reload',10);
+  FProps.ReloadTime  := aTable.getInteger('reloadtime',10);
   FProps.AltFire     := TAltFire( aTable.getInteger('altfire',0) );
 
   FProps.Radius      := aTable.getInteger('radius',0);
