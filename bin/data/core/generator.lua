@@ -192,6 +192,7 @@ function generator.create_translation( code )
 			elseif value == "WALL"  then value = generator.styles[ level.style ].wall
 			elseif value == "DOOR"  then value = generator.styles[ level.style ].door
 			else
+				assert( cells[value], "No such cell '"..value.."' in translation!" )
 				value = cells[value].nid
 			end
 			translation[k] = value

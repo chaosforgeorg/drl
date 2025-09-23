@@ -220,7 +220,8 @@ begin
     FAbbr   := GetString( 'abbr','' );
     if FSName = '' then FSName := FName;
     Call('Create',[]);
-    Place( Player, DropCoord( NewCoord2D(LuaPlayerX,LuaPlayerY), [ EF_NOBEINGS ] ) );
+    if ( LuaPlayerX > 0 ) and ( LuaPlayerY > 0 ) then
+      Place( Player, DropCoord( NewCoord2D(LuaPlayerX,LuaPlayerY), [ EF_NOBEINGS ] ) );
     Include( FFlags, LF_SCRIPT );
   finally
     Free;
