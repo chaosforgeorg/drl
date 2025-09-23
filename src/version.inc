@@ -2,5 +2,5 @@
 VERSION_STRING = '0.10.4';
 VERSION_ARRAY  : array[1..3] of byte = (0,10,4);
 VERSION_BETA   = false;
-VERSION_REV    = 116660475;	
+VERSION_REV    = 197430287;	
 VERSION_CORE   = 'drl';

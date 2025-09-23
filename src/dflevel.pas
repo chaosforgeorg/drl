@@ -488,7 +488,7 @@ begin
   iEnemies := 0;
   for iNode in Self do
     if iNode is TBeing then
-      if ( not TBeing(iNode).isPlayer ) and ( not iNode.Flags[ BF_FRIENDLY ] ) then
+      if ( not TBeing(iNode).isPlayer ) and ( not iNode.Flags[ BF_FRIENDLY ] ) and ( not iNode.Flags[ BF_ILLUSION ] )then
         if ( not aUnique ) or ( not iNode.Flags[ BF_RESPAWN ] ) then
           Inc( iEnemies );
   Exit( iEnemies );
@@ -869,7 +869,7 @@ begin
   if aBeing = nil then Exit;
   aCoord := DropCoord( aCoord, [ EF_NOTELE,EF_NOBEINGS,EF_NOBLOCK,EF_NOSTAIRS ] );
   Add( aBeing, aCoord );
-  if ( not aBeing.IsPlayer ) and ( not aBeing.Flags[ BF_FRIENDLY ] ) then
+  if ( not aBeing.IsPlayer ) and ( not aBeing.Flags[ BF_FRIENDLY ] ) and ( not aBeing.Flags[ BF_ILLUSION ] ) then
   begin
     Player.FKills.MaxCount := Player.FKills.MaxCount + 1;
     if not aBeing.Flags[ BF_RESPAWN ] then Player.FKillMax := Player.FKillMax + 1;

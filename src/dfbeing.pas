@@ -1653,7 +1653,7 @@ begin
   FDying := True;
 
   // TODO: Change to Player.RegisterKill(kill)
-  if not ( BF_FRIENDLY in FFlags ) then
+  if ( not ( BF_FRIENDLY in FFlags ) ) and ( not ( BF_ILLUSION in FFlags ) ) then
     Player.RegisterKill( FID, aKiller, aWeapon, not Flags[ BF_RESPAWN ] );
 
   if (aKiller <> nil) and (aWeapon <> nil) then
@@ -1747,6 +1747,7 @@ var iSlot       : TEqSlot;
     iUID        : TUID;
     iPosition   : TCoord2D;
 begin
+  Result := False;
   FMeleeAttack := True;
   iSlot     := efTorso;
   iWeapon   := nil;
@@ -1770,7 +1771,8 @@ begin
     if DRL.Level.AnimationVisible( Position, Self ) then
       IO.addBumpAnimation( VisualTime( iAttackCost, AnimationSpeedAttack ), 0, iUID, iPosition, aWhere, Sprite, 0.5 );
 
-    Result := iLevel.DamageTile( aWhere, rollMeleeDamage( iSlot ), Damage_Melee );
+    if not ( BF_ILLUSION in FFlags ) then
+      Result := iLevel.DamageTile( aWhere, rollMeleeDamage( iSlot ), Damage_Melee );
     Dec( FSpeedCount, iAttackCost )
   end;
   if iLevel.isAlive( iUID ) then
@@ -1874,7 +1876,8 @@ begin
     if isVisible then IO.Msg( Capitalized(iName) + iResult + iDefenderName + '.' );
 
     // Apply damage
-    aTarget.ApplyDamage( iDamage, Target_Torso, iDamageType, iWeapon, 0 );
+    if not ( BF_ILLUSION in FFlags ) then
+      aTarget.ApplyDamage( iDamage, Target_Torso, iDamageType, iWeapon, 0 );
     if ( DRL.State <> DSPlaying ) or ( not iLevel.isAlive( iUID ) ) then Exit;
   end;
 
@@ -1949,8 +1952,11 @@ var iDirection     : TDirection;
 begin
   if ( aDamage < 0 ) or (BF_INV in FFlags) or FDying then Exit;
 
-  if BF_SELFIMMUNE in FFlags then
-    if ( ( aSource <> nil ) and Self.Inv.Equipped( aSource ) ) then Exit;
+  if aSource <> nil then
+  begin
+    if ( BF_SELFIMMUNE in FFlags ) and Self.Inv.Equipped( aSource ) then Exit;
+    if aSource.Flags[ IF_ILLUSION ] then Exit;
+  end;
 
   iActive := TLevel(Parent).ActiveBeing;
   if iActive <> nil then
@@ -1967,7 +1973,7 @@ begin
 
   CallHook( Hook_OnReceiveDamage, [ aDamage, aSource, iActive ] );
 
-  if BF_INV in FFlags then Exit;
+  if FDying or ( BF_INV in FFlags ) then Exit;
 
   if aDamageType <> Damage_IgnoreArmor then
   begin

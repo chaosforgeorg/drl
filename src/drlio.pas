@@ -1338,8 +1338,14 @@ begin
   Result := 0;
 end;
 
+function lua_ui_reset_auto_target(L: Plua_State): Integer; cdecl;
+var iState : TDRLLuaState;
+begin
+  iState.Init(L);
+  DRL.ResetAutoTarget;
+end;
 
-const lua_ui_lib : array[0..18] of luaL_Reg = (
+const lua_ui_lib : array[0..19] of luaL_Reg = (
       ( name : 'msg';           func : @lua_ui_msg ),
       ( name : 'msg_clear';     func : @lua_ui_msg_clear ),
       ( name : 'msg_enter';     func : @lua_ui_msg_enter ),
@@ -1358,6 +1364,7 @@ const lua_ui_lib : array[0..18] of luaL_Reg = (
       ( name : 'is_pad';            func : @lua_ui_is_pad ),
       ( name : 'get_rank';          func : @lua_ui_get_rank ),
       ( name : 'save_and_quit';     func : @lua_ui_save_and_quit ),
+      ( name : 'reset_auto_target'; func : @lua_ui_reset_auto_target ),
       ( name : nil;          func : nil; )
 );
 

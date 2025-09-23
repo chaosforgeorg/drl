@@ -109,7 +109,7 @@ BF_NOHEAL       = 51;
 BF_RESPAWN      = 53;
 BF_WALKSOUND    = 54;
 BF_FLY          = 55;
-
+BF_ILLUSION     = 56;
 BF_FRIENDLY     = 57;
 BF_NOBLEED      = 58;
 
@@ -160,6 +160,7 @@ IF_UNIQUENAME     = 64;
 IF_BLOCKSHOT      = 65;
 IF_LIGHTCOVER     = 66;
 IF_HARDCOVER      = 67;
+IF_ILLUSION       = 68;
 
 LF_NOHOMING       = 1;
 LF_UNIQUEITEM     = 2;

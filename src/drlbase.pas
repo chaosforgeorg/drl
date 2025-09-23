@@ -66,9 +66,9 @@ TDRL = class(TVObject)
        function HandleUsableCommand( aItem : TItem ) : Boolean;
        function HandleSwapWeaponCommand : Boolean;
        function HandlePickupCommand( aAlt : Boolean ) : Boolean;
+       procedure ResetAutoTarget;
      private
        procedure Apply( aResult : TMenuResult );
-       procedure ResetAutoTarget;
        function HandleMouseEvent( aEvent : TIOEvent ) : Boolean;
        function HandleKeyEvent( aEvent : TIOEvent ) : Boolean;
        function HandlePadMovement( aEvent : TIOEvent ) : Boolean;
