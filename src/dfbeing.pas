@@ -1510,34 +1510,16 @@ end;
 function TBeing.Resurrect( aRange : Integer ) : TBeing;
 var iRange  : Integer;
     iCoord  : TCoord2D;
-    iBeing  : TBeing;
-    iItem   : TItem;
     iLevel  : TLevel;
-    iCellID : Byte;
 begin
   if aRange <= 0 then Exit( nil );
-  iBeing := nil;
   iLevel := TLevel(Parent);
   for iRange := 1 to aRange do
     for iCoord in NewArea( FPosition, aRange ).Clamped( iLevel.Area.Shrinked ) do
       if iLevel.cellFlagSet( iCoord, CF_RAISABLE ) then
         if iLevel.isEmpty(iCoord,[EF_NOBEINGS,EF_NOBLOCK]) then
-        if iLevel.isEyeContact( FPosition, iCoord ) then
-        begin
-          try
-            iCellID := iLevel.GetCell( iCoord );
-            iBeing := TBeing.Create( Cells[ iCellID ].raiseto );
-            Include( iBeing.FFlags, BF_RESPAWN );
-            iLevel.DropBeing( iBeing, iCoord );
-            iLevel.Cell[iCoord] := LuaSystem.Defines[ Cells[ iCellID ].destroyto ];
-            Include( iBeing.FFlags, BF_NOEXP );
-            for iItem in iBeing.FInv do
-              iItem.Flags[ IF_NODROP ] := True;
-          except
-            on e : EPlacementException do FreeAndNil( iBeing );
-          end;
-          Exit( iBeing );
-        end;
+          if iLevel.isEyeContact( FPosition, iCoord ) then
+            Exit( iLevel.Respawn( iCoord ) );
   Exit( nil );
 end;
 

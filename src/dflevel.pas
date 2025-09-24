@@ -74,7 +74,8 @@ TLevel = class(TLuaMapNode, ITextMap)
     function DamageTile( aCoord : TCoord2D; aDamage : Integer; aDamageType : TDamageType ) : Boolean;
     procedure Explosion( aDelay : Integer; aCoord : TCoord2D; aData : TExplosionData; aItem : TItem; aKnockback : TDirection; aDirectHit : Boolean = False; aDamageMult : Single = 1.0 );
     procedure Shotgun( aSource, aTarget : TCoord2D; aDamage : TDiceRoll; aDamageMul : Single; aDamageType : TDamageType; aItem : TItem );
-    procedure Respawn( aChance : byte );
+    function Respawn( aCoord : TCoord2D ) : TBeing; overload;
+    procedure Respawn( aChance : byte ); overload;
     function isPassable( const aCoord : TCoord2D ) : Boolean; override;
     function isEmpty( const coord : TCoord2D; EmptyFlags : TFlags32 = []) : Boolean; override;
     function cellFlagSet( coord : TCoord2D; Flag : byte) : Boolean;
@@ -1076,9 +1077,6 @@ end;
 
 procedure TLevel.Respawn( aChance : byte );
 var iCoord  : TCoord2D;
-    iBeing  : TBeing;
-    iItem   : TItem;
-    iCellID : Byte;
 begin
   if LF_NORESPAWN in FFlags then Exit;
   for iCoord in FArea do
@@ -1087,20 +1085,30 @@ begin
         if not isVisible( iCoord ) then
           if isPassable( iCoord ) then
             if Random(100) < aChance then
-            try
-              iCellID := GetCell( iCoord );
-              iBeing := TBeing.Create( Cells[ iCellID ].raiseto );
-              iBeing.Flags[ BF_RESPAWN ] := True;
-              DropBeing( iBeing, iCoord );
-              iBeing.Flags[ BF_NOEXP   ] := True;
-              for iItem in iBeing.Inv do
-                iItem.Flags[ IF_NODROP ] := True;
-              Cell[ iCoord ] := LuaSystem.Defines[ Cells[ iCellID ].destroyto ];
-            except
-              on EPlacementException do FreeAndNil( iBeing );
-            end;
-
+              Respawn( iCoord );
 end;
+
+function TLevel.Respawn( aCoord : TCoord2D ) : TBeing;
+var iBeing  : TBeing;
+    iItem   : TItem;
+    iCellID : Byte;
+begin
+  iCellID := GetCell( aCoord );
+  if Cells[ iCellID ].raiseto = '' then Exit( nil );
+  try
+    iBeing := TBeing.Create( Cells[ iCellID ].raiseto );
+    iBeing.Flags[ BF_RESPAWN ] := True;
+    DropBeing( iBeing, aCoord );
+    Cell[ aCoord ] := LuaSystem.Defines[ Cells[ iCellID ].destroyto ];
+    iBeing.Flags[ BF_NOEXP   ] := True;
+    for iItem in iBeing.Inv do
+      iItem.Flags[ IF_NODROP ] := True;
+  except
+    on EPlacementException do FreeAndNil( iBeing );
+  end;
+  Exit( iBeing );
+end;
+
 
 function TLevel.isPassable ( const aCoord : TCoord2D ) : Boolean;
 var iItem : TItem;
