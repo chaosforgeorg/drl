@@ -169,7 +169,7 @@ function drl.register_generators()
 			for i=1,divs do
 				local newdiv = math.floor( MAXX / (divs+1) )*i + math.random(16)-8
 				local where = coord( newdiv, math.random(12)+4 )
-				generator.plot_lines( where, area.FULL, false, wall_cell, generator.cell_set{ wall_cell } )
+				generator.plot_line( level, where, false, wall_cell )
 				level:set_cell( where, generator.styles[ level.style ].door )
 				table.insert( areas, area( divpoint+1, 2, newdiv-1, MAXY-1 ) )
 				divpoint = newdiv

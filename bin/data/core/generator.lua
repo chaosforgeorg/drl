@@ -334,35 +334,6 @@ function generator.contd_drunkard_walks( amount, steps, cell, edges1, edges2, ig
 	end
 end
 
-
-function generator.plot_lines( where, larea, horiz, cell, block )
-	core.log("generator.plot_lines(...)")
-	local step = function( point, px, py )
-		point.x = point.x + px
-		point.y = point.y + py
-		if block[ level:get_cell( point ) ] then
-			return true
-		else
-			level:set_cell( point, cell )
-			return false
-		end
-	end
-	local hcoord = function( c ) if horiz then return c.x else return c.y end end
-
-	local sx, sy, minv, maxv = 0, 0, 0, 0
-	if horiz then
-		sx = 1; minv = larea.a.x; maxv = larea.b.x
-	else
-		sy = 1; minv = larea.a.y; maxv = larea.b.y
-	end
-
-	local c
-	c = coord.clone( where )
-	while hcoord(c) < maxv do if step( c, sx, sy ) then break end end
-	c = coord.clone( where )
-	while hcoord(c) > minv do if step( c, -sx, -sy ) then break end end
-end
-
 function generator.maze_dungeon( floor_cell, wall_cell, granularity, tries, minl, maxl, maze_area )
 	core.log("generator.maze_dungeon()")
 	if type(floor_cell) == "string" then floor_cell = cells[floor_cell].nid end
@@ -415,8 +386,8 @@ function generator.warehouse_fill( wall_cell, fill_area, boxsize, amount, specia
 	end
 end
 
-function generator.read_rooms()
-	core.log("generator.add_rooms()")
+function generator.read_room_list()
+	core.log("generator.read_room_list()")
 	local room_list      = {}
 	local cell_meta      = generator.merge_cell_sets( generator.cell_sets[ CELLSET_WALLS ], generator.cell_sets[ CELLSET_DOORS ] )
 	local cell_meta_list = generator.merge_cell_lists( generator.cell_lists[ CELLSET_WALLS ], generator.cell_lists[ CELLSET_DOORS ] )
@@ -460,7 +431,7 @@ end
 
 function generator.create_room_list( list )
 	core.log("generator.add_rooms()")
-	local room_list = generator.read_rooms()
+	local room_list = generator.read_room_list()
 	local list = list or {}
 	for _,room in ipairs( room_list ) do
 		generator.add_room( list, room )	
@@ -637,10 +608,8 @@ function generator.generate_tiled_level( settings )
 	local door_cell    = settings.door_cell  or cells[generator.styles[ level.style ].door].nid
 	local floor_cell   = settings.floor_cell or cells[generator.styles[ level.style ].floor].nid
 
-	local block = generator.cell_set{ wall_cell }
-
 	local plot = function( horiz, where )
-		generator.plot_lines( where, area.FULL, horiz, wall_cell, block )
+		generator.plot_line( level, where, horiz, wall_cell )
 		level:set_cell( where, door_cell )
 	end
 
