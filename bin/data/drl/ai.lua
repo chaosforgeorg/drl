@@ -116,7 +116,7 @@ register_ai "archvile_ai"
 				local b = self:resurrect(6)
 				if b then
 					self:msg("", self:get_name(true,true).. " raises his arms!" )
-					b:msg("", self:get_name(true,true).." suddenly rises from the ground!" )
+					b:msg("", b:get_name(true,true).." suddenly rises from the ground!" )
 				end
 				self.scount = self.scount - 1000
 				return true
