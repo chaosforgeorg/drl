@@ -186,6 +186,7 @@ core.register_blueprint "ai"
 {
 	id          = { true,  core.TSTRING },
 	states      = { true,  core.TMAP( core.TSTRING, core.TFUNC ) },
+	funcs       = { false, core.TMAP( core.TSTRING, core.TFUNC ), {} },
 
 	OnCreate    = { true,  core.TFUNC },
 	OnAttacked  = { true,  core.TFUNC },

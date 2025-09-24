@@ -41,7 +41,7 @@ TBeing = class(TThing,IPathQuery)
     function  TryMove( aWhere : TCoord2D ) : TMoveResult;
     function  MoveTowards( aWhere : TCoord2D; aVisualMultiplier : Single = 1.0 ) : TMoveResult;
     procedure Reload( aAmmoItem : TItem; aSingle : Boolean );
-    procedure Ressurect( RRange : Byte );
+    function Resurrect( aRange : Integer ) : TBeing;
     procedure Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer ); virtual;
     procedure Blood( aFrom : TDirection; aAmount : LongInt );
     function Attack( aWhere : TCoord2D; aMoveOnKill : Boolean ) : Boolean; overload;
@@ -1507,38 +1507,38 @@ begin
   CallHook( Hook_OnTick, [ Player.Statistics.GameTime ] );
 end;
 
-procedure TBeing.Ressurect( RRange : Byte );
-var range   : byte;
-    sc      : TCoord2D;
+function TBeing.Resurrect( aRange : Integer ) : TBeing;
+var iRange  : Integer;
+    iCoord  : TCoord2D;
     iBeing  : TBeing;
     iItem   : TItem;
     iLevel  : TLevel;
     iCellID : Byte;
 begin
+  if aRange <= 0 then Exit( nil );
+  iBeing := nil;
   iLevel := TLevel(Parent);
-  for Range := 1 to RRange do
-    for sc in NewArea( FPosition, Range ).Clamped( iLevel.Area.Shrinked ) do
-      if iLevel.cellFlagSet( sc, CF_RAISABLE ) then
-        if iLevel.isEmpty(sc,[EF_NOBEINGS,EF_NOBLOCK]) then
-        if iLevel.isEyeContact( FPosition, sc ) then
+  for iRange := 1 to aRange do
+    for iCoord in NewArea( FPosition, aRange ).Clamped( iLevel.Area.Shrinked ) do
+      if iLevel.cellFlagSet( iCoord, CF_RAISABLE ) then
+        if iLevel.isEmpty(iCoord,[EF_NOBEINGS,EF_NOBLOCK]) then
+        if iLevel.isEyeContact( FPosition, iCoord ) then
         begin
           try
-            iCellID := iLevel.GetCell(sc);
+            iCellID := iLevel.GetCell( iCoord );
             iBeing := TBeing.Create( Cells[ iCellID ].raiseto );
             Include( iBeing.FFlags, BF_RESPAWN );
-            iLevel.DropBeing( iBeing, sc );
-            iLevel.Cell[sc] := LuaSystem.Defines[ Cells[ iCellID ].destroyto ];
+            iLevel.DropBeing( iBeing, iCoord );
+            iLevel.Cell[iCoord] := LuaSystem.Defines[ Cells[ iCellID ].destroyto ];
             Include( iBeing.FFlags, BF_NOEXP );
             for iItem in iBeing.FInv do
               iItem.Flags[ IF_NODROP ] := True;
-
-            if isVisible then IO.Msg(Capitalized(GetName(true))+' raises his arms!');
-            if iBeing.isVisible then IO.Msg(Capitalized( iBeing.GetName(true))+' suddenly rises from the dead!');
           except
             on e : EPlacementException do FreeAndNil( iBeing );
           end;
-          Exit;
+          Exit( iBeing );
         end;
+  Exit( nil );
 end;
 
 
@@ -2695,14 +2695,14 @@ begin
   Result := 1;
 end;
 
-function lua_being_ressurect(L: Plua_State): Integer; cdecl;
-var State       : TDRLLuaState;
-    Being       : TBeing;
+function lua_being_resurrect( L: Plua_State ): Integer; cdecl;
+var iState : TDRLLuaState;
+    iBeing : TBeing;
 begin
-  State.Init(L);
-  Being := State.ToObject(1) as TBeing;
-  Being.Ressurect( State.ToInteger(2) );
-  Result := 0;
+  iState.Init(L);
+  iBeing := iState.ToObject(1) as TBeing;
+  iState.Push( iBeing.Resurrect( iState.ToInteger(2) ) );
+  Result := 1;
 end;
 
 function lua_being_apply_damage(L: Plua_State): Integer; cdecl;
@@ -3313,7 +3313,7 @@ end;
 const lua_being_lib : array[0..39] of luaL_Reg = (
       ( name : 'new';           func : @lua_being_new),
       ( name : 'kill';          func : @lua_being_kill),
-      ( name : 'ressurect';     func : @lua_being_ressurect),
+      ( name : 'resurrect';     func : @lua_being_resurrect),
       ( name : 'apply_damage';  func : @lua_being_apply_damage),
       ( name : 'get_name';      func : @lua_being_get_name),
       ( name : 'inv_items';     func : @lua_being_inv_items),

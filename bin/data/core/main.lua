@@ -41,7 +41,7 @@ register_cell = core.register_storage( "cells", "cell", function( c )
 	end	
 )
 
-function register_corpse( being_proto, index, no_ressurect )
+function register_corpse( being_proto, index, no_resurrect )
 	local frames = being_proto.sframes or 1
 	if frames < 1 then frames = 1 end
 	frames = frames + (index or 0)
@@ -57,7 +57,7 @@ function register_corpse( being_proto, index, no_ressurect )
 		destroyto = "bloodpool";
 		raiseto = being_proto.id;
 	}
-	if no_ressurect then
+	if no_resurrect then
 		proto.flags = {CF_CORPSE, CF_NOCHANGE, CF_OVERLAY, CF_VBLOODY }
 	end
 	if being_proto.sflags[ SF_LARGE ] then

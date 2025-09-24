@@ -76,6 +76,21 @@ setmetatable(being.inv, {
 	end,
 })
 
+being.ai = {
+	__props = {},
+}
+
+setmetatable(being.ai, {
+	__newindex = function (self, key, value)
+		error("being.ai cannot be written to!")
+	end,
+	__index = function (self, key)
+		assert( key ~= "ai_type", "being.ai.ai_type cannot be read!" )
+		local this = core.to_object( self )
+		return ais[ this.ai_type ].funcs[ key ]
+	end,
+})
+
 being.eq =  {
 	clear = function(self)
 		for i=0,MAX_EQ_SIZE-1 do

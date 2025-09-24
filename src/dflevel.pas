@@ -1075,9 +1075,10 @@ end;
 
 
 procedure TLevel.Respawn( aChance : byte );
-var iCoord : TCoord2D;
-    iBeing : TBeing;
-    iItem  : TItem;
+var iCoord  : TCoord2D;
+    iBeing  : TBeing;
+    iItem   : TItem;
+    iCellID : Byte;
 begin
   if LF_NORESPAWN in FFlags then Exit;
   for iCoord in FArea do
@@ -1087,13 +1088,14 @@ begin
           if isPassable( iCoord ) then
             if Random(100) < aChance then
             try
-              iBeing := TBeing.Create( Cells[ GetCell(iCoord) ].raiseto );
+              iCellID := GetCell( iCoord );
+              iBeing := TBeing.Create( Cells[ iCellID ].raiseto );
               iBeing.Flags[ BF_RESPAWN ] := True;
               DropBeing( iBeing, iCoord );
               iBeing.Flags[ BF_NOEXP   ] := True;
               for iItem in iBeing.Inv do
                 iItem.Flags[ IF_NODROP ] := True;
-              Cell[ iCoord ] := LuaSystem.Defines[ Cells[ GetCell(iCoord) ].destroyto ];
+              Cell[ iCoord ] := LuaSystem.Defines[ Cells[ iCellID ].destroyto ];
             except
               on EPlacementException do FreeAndNil( iBeing );
             end;

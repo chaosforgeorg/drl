@@ -109,29 +109,33 @@ register_ai "archvile_ai"
 	end,
 
 	OnAttacked = aitk.basic_on_attacked,
+
+	funcs = {
+		resurrect = function( self )
+			if math.random(4) == 1 then
+				local b = self:resurrect(6)
+				if b then
+					self:msg("", self:get_name(true,true).. " raises his arms!" )
+					b:msg("", self:get_name(true,true).." suddenly rises from the ground!" )
+				end
+				self.scount = self.scount - 1000
+				return true
+			end
+			return false
+		end
+	},
+
 	states = {
 		idle   = function ( self )
-			if math.random(4) == 1 then
-				self:ressurect(6)
-				self.scount = self.scount - 1000
-				return "idle"
-			end
+			if self.ai.resurrect( self ) then return "idle" end
 			return aitk.basic_smart_idle( self )
 		end,
 		pursue = function ( self )
-			if math.random(4) == 1 then
-				self:ressurect(6)
-				self.scount = self.scount - 1000
-				return "pursue"
-			end
+			if self.ai.resurrect( self ) then return "pursue" end
 			return aitk.basic_pursue( self )
 		end,
 		hunt   = function( self )
-			if math.random(4) == 1 then
-				self:ressurect(6)
-				self.scount = self.scount - 1000
-				return "hunt"
-			end
+			if self.ai.resurrect( self ) then return "hunt" end
 			local action, dist, target = aitk.try_hunt( self )
 			if action then return action end
 		
