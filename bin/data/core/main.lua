@@ -1,6 +1,7 @@
 require( "core:constants" )
 require( "core:commands" )
 require( "core:functions" )
+require( "core:bsp" )
 require( "core:generator" )
 require( "core:level" )
 require( "core:thing" )

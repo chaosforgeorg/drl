@@ -601,6 +601,64 @@ function generator.generate_special_stairs( stairs_id, feelings )
 	return pos
 end
 
+
+function generator.generate_nutiled_level( settings )
+	core.log("generator.generate_nutiled_level()")
+	local settings     = settings or {}
+	local wall_cell    = settings.wall_cell  or cells[generator.styles[ level.style ].wall].nid
+	local door_cell    = settings.door_cell  or cells[generator.styles[ level.style ].door].nid
+	local floor_cell   = settings.floor_cell or cells[generator.styles[ level.style ].floor].nid
+	level:fill( wall_cell )
+	local larea = area( 1, 1, MAXX, MAXY )
+	local result = { area = larea:shrinked(1) }
+	local border = settings.border 
+	if border then
+		level:fill( floor_cell, larea:shrinked(1) )
+		result.area = larea:shrinked(border)
+		level:fill( wall_cell, result.area )
+	end
+	local corridor = settings.corridor or 2
+	local rbsp_settings = {
+		subdiv   = settings.subdiv or 5,
+		grid     = settings.grid or coord( 4,4 ),
+		gmin     = settings.gmin or coord( 2,2 ),
+		corridor = corridor,
+		room_min = settings.room_min or coord( 4, 4 ),
+	}
+	local rooms = generator.rbsp( level, result.area:expanded(1), rbsp_settings )
+
+	level:fill( floor_cell, result.area )
+
+	local rec_settings = settings.rec_settings or {
+		subdiv = 1,
+		return_all = true,
+		rec_single = 8,
+		rec_min = coord( 5, 5 )
+	}
+	local split_rooms
+	local rec_rooms
+	rec_rooms, split_rooms = generator.bsp_recursive( level, rooms, rec_settings )
+	rooms = {}
+	local small_rooms = {}
+	for _,r in ipairs( rec_rooms ) do
+		local d = r:dim()
+		if d.x < 7 or d.y < 7 then
+			table.insert( small_rooms, r )
+		else
+			table.insert( rooms, r )
+		end
+	end
+
+--	if corridor > 1 then
+--		generator.ring_clear( self, result.area, 25, coord( corridor, corridor ), false, nil, true )
+--	end
+
+	generator.clear_dead_ends()
+	generator.remove_needless_doors()
+
+	generator.restore_walls( wall_cell )
+end
+
 function generator.generate_tiled_level( settings )
 	core.log("generator.generate_tiled_level()")
 	local settings     = settings or {}
