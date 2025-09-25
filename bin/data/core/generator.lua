@@ -614,7 +614,7 @@ function generator.generate_nutiled_level( settings )
 	local border = settings.border 
 	if border then
 		level:fill( floor_cell, larea:shrinked(1) )
-		result.area = larea:shrinked(border)
+		result.area = larea:shrinked(border + 2)
 		level:fill( wall_cell, result.area )
 	end
 	local corridor = settings.corridor or 2
