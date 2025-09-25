@@ -154,7 +154,7 @@ function generator.bsp_recursive( self, rooms, bsp_settings )
 
 	local rooms_out = {}
 	local recursive_mask = {}
-	local min      = bsp_settings.rec_min           or ivec2(8,8)
+	local min      = bsp_settings.rec_min           or coord(8,8)
 	local single   = bsp_settings.rec_single        or 11
 	local doors    = bsp_settings.rec_doors         or 2
 	local max_side = bsp_settings.max_reserved_side or 100
