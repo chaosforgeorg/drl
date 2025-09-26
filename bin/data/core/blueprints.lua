@@ -614,7 +614,8 @@ core.register_blueprint "item"
 	OnPostMove    = { false, core.TFUNC },
 	OnDamage      = { false, core.TFUNC },
 	OnDescribe    = { false, core.TFUNC },
-	
+	OnDieCheck    = { false, core.TFUNC },
+
 	OnModDescribe = { false, core.TFUNC },
 }
 

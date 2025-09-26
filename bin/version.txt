@@ -1,4 +1,4 @@
-0.10.4
+0.10.6
 [fix] -- GJ#199: fixed ammo-less weapons not behaving properly when dual wielding
 [fix] -- GJ#196: fixed AoRA on death crash
 

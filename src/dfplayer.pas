@@ -464,10 +464,19 @@ begin
 end;
 
 procedure TPlayer.Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer );
-var iLevel : TLevel;
+var iLevel   : TLevel;
+    iSlot    : TEqSlot;
 begin
   iLevel := TLevel(Parent);
   if (DRL.State <> DSPlaying) and IsPlayer then Exit;
+
+  for iSlot in TEqSlot do
+    if FInv.Slot[ iSlot ] <> nil then
+      if not FInv.Slot[ iSlot ].CallHookCheck( Hook_OnDieCheck, [ aOverkill ] ) then
+      begin
+        HP := Max(1,HP);
+        Exit;
+      end;
 
   if not CallHookCheck( Hook_OnDieCheck, [ aOverkill ] ) then
   begin
