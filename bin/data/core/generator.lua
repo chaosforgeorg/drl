@@ -608,6 +608,7 @@ function generator.generate_nutiled_level( settings )
 	local wall_cell    = settings.wall_cell  or cells[generator.styles[ level.style ].wall].nid
 	local door_cell    = settings.door_cell  or cells[generator.styles[ level.style ].door].nid
 	local floor_cell   = settings.floor_cell or cells[generator.styles[ level.style ].floor].nid
+	wall_cell = cells[wall_cell].nid
 	level:fill( wall_cell )
 	local larea = area( 1, 1, MAXX, MAXY )
 	local result = { area = larea:shrinked(1) }
@@ -635,9 +636,35 @@ function generator.generate_nutiled_level( settings )
 		rec_single = 8,
 		rec_min = coord( 5, 5 )
 	}
+	for _,r in ipairs( rooms ) do
+		if r.a.y == 1 and r.b.y == MAXY then
+			local roll = math.random(3)
+			if roll == 2 then
+				r.a = coord( r.a.x, r.a.y + corridor + 1 )
+			elseif roll == 3 then
+				r.b = coord( r.b.x, r.b.y - corridor - 1 )
+			else
+				r.a = coord( r.a.x, r.a.y + corridor + 1 )
+				r.b = coord( r.b.x, r.b.y - corridor - 1 )
+			end
+		end
+	end
+
 	local split_rooms
 	local rec_rooms
 	rec_rooms, split_rooms = generator.bsp_recursive( level, rooms, rec_settings )
+	for _,room in ipairs( rooms ) do
+		local nonwall = 0
+		for c in room:edges() do
+			if level:get_cell( c ) ~= wall_cell then
+				nonwall = nonwall + 1
+			end
+		end
+		if nonwall == 0 then
+			generator.place_doors( level, room, 2 )
+		end
+	end
+
 	rooms = {}
 	local small_rooms = {}
 	for _,r in ipairs( rec_rooms ) do

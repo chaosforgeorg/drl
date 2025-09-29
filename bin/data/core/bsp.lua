@@ -191,9 +191,7 @@ function generator.bsp_recursive( self, rooms, bsp_settings )
 			if reserved or match_bsp then 
 				self:fill( bsp_settings.tiles.wall, room )
 				self:fill( bsp_settings.tiles.floor, room:shrinked(1) )
-				if not generator.place_doors( self, room, doors ) then
-					return false
-				end
+				generator.place_doors( self, room, doors )
 				local settings = bsp_settings
 				if reserved then
 					settings = reserved_split_settings
