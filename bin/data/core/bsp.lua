@@ -1,8 +1,6 @@
 function generator.bsp_place_wall( self, c, wall_tile, door_tile, e1, e2 )
 	local wid = cells[ wall_tile ].nid
 	local did = cells[ door_tile ].nid
-    core.log('place wall ('..c.x..'x'..c.y..', '..e1.x..'x'..e1.y..', '..e2.x..'x'..e2.y..')' )
-    core.log('tiles ('..cells[wall_tile].id..','..cells[door_tile].id..')' )
 	self:fill( wid, area( e1, e2 ) )
 	self:set_cell( c, did )
 end
@@ -69,13 +67,9 @@ function generator.bsp( self, ar, bsp_settings )
 				if ori then
 					c = c + coord( 1, 1 )
 				end
-                core.log(c:tostring())
 				if self:get_cell( c ) == fid then
-                    core.log('test')
 					local e1, e2 = generator.get_endpoint_coords( self, c, ori, fid )
 					if e1 then
-                    core.log('e1')
-
 						generator.bsp_place_wall( self, c, wid, did, e1, e2 )
 						counter = counter + 1
 		
@@ -200,10 +194,7 @@ function generator.bsp_recursive( self, rooms, bsp_settings )
 				local attempt = 0
 				repeat
 					attempt = attempt + 1
-                    core.log("recursion")
 					srooms = generator.bsp( self, room, settings )
-                    core.log("recursion_end")
-
 				until #srooms > 1 or attempt > 4
 
 				if #srooms > 1 then
