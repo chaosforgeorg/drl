@@ -135,7 +135,11 @@ function drl.register_generators()
 			local hdim = coord( math.floor( tdim.x / 2 ), math.floor( tdim.y / 2 ) )
 			generator.tile_place( level, center - hdim, tile )
 			level.light[ area( center - hdim, center + hdim ) ][ LFNOSPAWN ] = true
-			generator.generate_special_stairs( "rstairs", "You shiver from cold..." )
+			
+			local linfo = player.episode[ level.index ]
+			if linfo.special then
+				generator.generate_special_stairs( "rstairs", "You shiver from cold..." )
+			end
 		end,
 
 		post_run   = function()
@@ -165,7 +169,7 @@ function drl.register_generators()
 			for i=1,divs do
 				local newdiv = math.floor( MAXX / (divs+1) )*i + math.random(16)-8
 				local where = coord( newdiv, math.random(12)+4 )
-				generator.plot_lines( where, area.FULL, false, wall_cell, generator.cell_set{ wall_cell } )
+				generator.plot_line( level, where, false, wall_cell )
 				level:set_cell( where, generator.styles[ level.style ].door )
 				table.insert( areas, area( divpoint+1, 2, newdiv-1, MAXY-1 ) )
 				divpoint = newdiv

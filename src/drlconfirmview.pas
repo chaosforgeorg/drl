@@ -6,14 +6,14 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlconfirmview;
 interface
-uses vutil, dfdata;
+uses vutil, viotypes, dfdata;
 
 type TOnConfirmObjectCallback = procedure of object;
      TOnConfirmRawCallback    = procedure;
 
-type TConfirmView = class( TInterfaceLayer )
+type TConfirmView = class( TIOLayer )
   constructor Create;
-  procedure Update( aDTime : Integer ); override;
+  procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
 protected
@@ -34,7 +34,7 @@ end;
 
 implementation
 
-uses vtig, drlbase, drlio;
+uses vtig, drlbase;
  
 constructor TConfirmView.Create;
 begin
@@ -54,9 +54,8 @@ begin
   FMessage := '';
 end;
 
-procedure TConfirmView.Update( aDTime : Integer );
-var iRect   : TRectangle;
-    iResult : ( None, Cancel, Confirm );
+procedure TConfirmView.Update( aDTime : Integer; aActive : Boolean );
+var iResult : ( None, Cancel, Confirm );
 begin
   if IsFinished then Exit;
 
@@ -64,12 +63,11 @@ begin
   VTIG_Begin('confirm_menu', FSize );
   VTIG_Text( FMessage );
   VTIG_Text( '' );
-  iRect := VTIG_GetWindowRect;
   if VTIG_Selectable( FCancel )  then iResult := Cancel;
   if VTIG_Selectable( FConfirm ) then iResult := Confirm;
   VTIG_End;
 
-  IO.RenderUIBackground( iRect.TopLeft, iRect.BottomRight - PointUnit );
+  if not aActive then Exit;
 
   if VTIG_EventCancel then iResult := Cancel;
   case iResult of

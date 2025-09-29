@@ -33,8 +33,10 @@ protected
   FHooks    : array[1..MAXTRAITS]      of TFlags;
   FHookMask : TFlags;
   FCount    : Byte;
-protected
+  FMaster   : Byte;
+public
   property Values[ aIndex : Byte ] : Byte read Get; default;
+  property Master : Byte read FMaster;
 end;
 
 implementation
@@ -114,6 +116,7 @@ begin
       if LuaSystem.Get(['klasses',aKlass,'trait',i,'master'], False ) then
         FBlocked[ i ] := True;
     FBlocked[ aTrait ] := FValues[ aTrait ] >= iMax;
+    FMaster := aTrait;
   end;
 
   LuaSystem.ProtectedCall( [ 'traits',aTrait,'OnPick' ], [ Player, FValues[ aTrait ] ] );
@@ -162,7 +165,8 @@ begin
   for iCount := 1 to High(FValues)  do FValues[iCount] := 0;
   for iCount := 1 to High(FOrder)   do FOrder[iCount] := 0;
   for iCount := 1 to High(FHooks)   do FHooks[iCount] := [];
-  FCount := 0;
+  FCount  := 0;
+  FMaster := 0;
   FHookMask := [];
 end;
 
@@ -175,6 +179,7 @@ begin
   aStream.Read( FCount,    SizeOf( FCount ) );
   aStream.Read( FHooks,    SizeOf( FHooks ) );
   aStream.Read( FHookMask, SizeOf( FHookMask ) );
+  aStream.Read( FMaster,   SizeOf( FMaster ) );
 end;
 
 procedure TTraits.WriteToStream( aStream : TStream );
@@ -186,6 +191,7 @@ begin
   aStream.Write( FCount,    SizeOf( FCount ) );
   aStream.Write( FHooks,    SizeOf( FHooks ) );
   aStream.Write( FHookMask, SizeOf( FHookMask ) );
+  aStream.Write( FMaster,   SizeOf( FMaster ) );
 end;
 
 function TTraits.CallHook( aHook : Byte; const aParams : array of Const ) : Boolean;

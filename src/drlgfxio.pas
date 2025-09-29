@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlgfxio;
 interface
 uses vglquadrenderer, vgltypes, vluaconfig, vioevent, viotypes, vuielement, vimage,
-     vrltools, vutil, vtextures, vvector, vbitmapfont,
+     vrltools, vutil, vtextures, vvector, vbitmapfont, vio,
      drlio, drlspritemap, drlanimation, drlminimap, dfdata, dfthing;
 
 type
@@ -21,7 +21,7 @@ type
     procedure Reconfigure( aConfig : TLuaConfig ); override;
     procedure Configure( aConfig : TLuaConfig; aReload : Boolean = False ); override;
     procedure Update( aMSec : DWord ); override;
-    function PushLayer( aLayer : TInterfaceLayer ) : TInterfaceLayer; override;
+    function PushLayer( aLayer : TIOLayer ) : TIOLayer; override;
     function OnEvent( const iEvent : TIOEvent ) : Boolean; override;
     procedure UpdateMinimap;
     destructor Destroy; override;
@@ -31,12 +31,12 @@ type
     procedure AnimationWipe; override;
     procedure Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0); override;
     procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ); override;
-    procedure addMoveAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean ); override;
+    procedure addMoveAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aWipeBump : Boolean ); override;
     procedure addBumpAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aAmount : Single ); override;
     procedure addScreenMoveAnimation( aDuration : DWord; aTo : TCoord2D ); override;
     procedure addCellAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aValue : Integer ); override;
     procedure addItemAnimation( aDuration : DWord; aDelay : DWord; aItem : TThing; aValue : Integer ); override;
-    procedure addKillAnimation( aDuration : DWord; aDelay : DWord; aBeing : TThing ); override;
+    procedure addKillAnimation( aDuration : DWord; aDelay : DWord; aBeing : TThing; aReverse : Boolean = False ); override;
     procedure addMissileAnimation( aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aColor : Byte; aPic : Char; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False ); override;
     procedure addMarkAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aColor : Byte; aPic : Char ); override;
     procedure addSoundAnimation( aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord ); override;
@@ -47,7 +47,7 @@ type
     procedure DeviceChanged;
     function DeviceCoordToConsoleCoord( aCoord : TIOPoint ) : TIOPoint; override;
     function ConsoleCoordToDeviceCoord( aCoord : TIOPoint ) : TIOPoint; override;
-    procedure RenderUIBackground( aUL, aBR : TIOPoint; aOpacity : Single = 0.85; aZ : Integer = 0 ); override;
+    procedure RenderUIBackgroundBlock( aUL, aBR : TIOPoint; aOpacity : Single = 0.85; aZ : Integer = 0 ); override;
     procedure RenderUIBackground( aTexture : TTextureID; aZ : Integer = 0 ); override;
 
     procedure SetTarget( aTarget : TCoord2D; aColor : Byte; aRange : Byte ); override;
@@ -69,6 +69,7 @@ type
 
     procedure RunModuleChoice; override;
  protected
+    procedure DrawHUD; override;
     function ReadDefaultFont : TBitmapFont;
     procedure ExplosionMark( aCoord : TCoord2D; aColor : Byte; aDuration : DWord; aDelay : DWord ); override;
     function FullScreenCallback( aEvent : TIOEvent ) : Boolean;
@@ -138,10 +139,10 @@ implementation
 
 uses {$IFDEF WINDOWS}windows,{$ENDIF}
      classes, sysutils, math,
-     vdebug, vlog, vmath, vdf, vgl3library,
+     vdebug, vlog, vmath, vdf, vgl3library, vuid, vvision,
      vglimage, vsdlio, vcolor, vglconsole, vioconsole,
-     vtig, vtigstyle,
-     dfplayer,
+     vtig, vtigstyle, vtigio,
+     dfplayer, dfitem, dflevel,
      drlbase, drlconfiguration, drlmodule;
 
 
@@ -445,18 +446,27 @@ begin
       FAnimations.addAnimation( TGFXScreenShakeAnimation.Create( aDuration, aDelay, aStrength, aDirection ) );
 end;
 
-procedure TDRLGFXIO.addMoveAnimation ( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean );
+procedure TDRLGFXIO.addMoveAnimation ( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aWipeBump : Boolean );
+var iCount : Integer;
 begin
   if DRL.State <> DSPlaying then Exit;
+  iCount := 0;
+  if aWipeBump then
+    with FAnimations do
+      if Animations.Size > 0 then
+      repeat
+        if ( Animations[iCount].UID = aUID ) and ( Animations[iCount] is TGFXBumpAnimation )
+          then Animations.Delete( iCount )
+          else Inc( iCount );
+      until iCount >= Animations.Size;
   FAnimations.AddAnimation(TGFXMoveAnimation.Create(aDuration, aDelay, aUID, aFrom, aTo, aSprite, aBeing ));
 end;
 
 procedure TDRLGFXIO.addBumpAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aAmount : Single );
 begin
   if DRL.State <> DSPlaying then Exit;
-  FAnimations.AddAnimation(TGFXMoveAnimation.Create(aDuration, aDelay, aUID, aFrom, aTo, aSprite, True, aAmount ));
-  FAnimations.AddAnimation(TGFXMoveAnimation.Create(aDuration, aDelay, aUID, aTo, aFrom, aSprite, True, -aAmount ));
-  if Player.UID = aUID then WaitForAnimation;
+  FAnimations.AddAnimation(TGFXBumpAnimation.Create(aDuration, aDelay, aUID, aFrom, aTo, aSprite, True, aAmount ));
+  FAnimations.AddAnimation(TGFXBumpAnimation.Create(aDuration, aDelay, aUID, aTo, aFrom, aSprite, True, -aAmount ));
 end;
 
 function TDRLGFXIO.getUIDPosition( aUID : TUID; var aPosition : TVec2i ) : Boolean;
@@ -491,11 +501,11 @@ begin
   FAnimations.addAnimation( TGFXItemAnimation.Create( aDuration, aDelay, aItem.UID, aValue ) );
 end;
 
-procedure TDRLGFXIO.addKillAnimation( aDuration : DWord; aDelay : DWord; aBeing : TThing );
+procedure TDRLGFXIO.addKillAnimation( aDuration : DWord; aDelay : DWord; aBeing : TThing; aReverse : Boolean = False );
 begin
   if DRL.State <> DSPlaying then Exit;
   if SF_PAINANIM in aBeing.Sprite.Flags then
-    FAnimations.addAnimation( TGFXKillAnimation.Create( aDuration, aDelay, aBeing.UID ) );
+    FAnimations.addAnimation( TGFXKillAnimation.Create( aDuration, aDelay, aBeing.UID, aReverse ) );
 end;
 
 
@@ -549,9 +559,65 @@ begin
 end;
 
 procedure TDRLGFXIO.SetAutoTarget( aTarget : TCoord2D );
+var iLevel  : TLevel;
+    iSprite : TSprite;
+    iCoord  : TCoord2D;
+    iFirst  : TCoord2D;
+  procedure Trace( aT : TCoord2D; aMain : Boolean );
+  var iRay      : TBresenhamRay;
+      iBlock    : TCoord2D;
+      iFinalize : Boolean;
+  begin
+    iFinalize := False;
+    iRay.Init( aT, Player.Position );
+    repeat
+      iRay.Next;
+      if iRay.Done or ( not iLevel.isProperCoord( iRay.GetC ) ) then Break;
+      if iLevel.blocksVision( iRay.GetC ) then
+      begin
+        iBlock    := iRay.GetC;
+        iFinalize := True;
+      end
+      else
+        if iFinalize then Break;
+    until False;
+
+    if iFinalize then
+    begin
+      if aMain
+        then begin iSprite.Color := NewColor(0,160,0); iSprite.Frames := HARDSPRITE_SHIELD_COUNT; end
+        else begin iSprite.Color := NewColor(64,64,64);iSprite.Frames := 1; end;
+
+      iLevel.Markers.Add( iBlock, iSprite, 0 );
+    end;
+  end;
+
 begin
   inherited SetAutoTarget( aTarget );
-  SpriteMap.SetAutoTarget( aTarget )
+  SpriteMap.SetAutoTarget( aTarget );
+
+  if ( DRL.State <> DSPlaying )    then Exit;
+  iLevel := DRL.Level;
+  if ( iLevel = nil )              then Exit;
+  iLevel.Markers.Wipe(0);
+  if ( aTarget = Player.Position ) or ( not iLevel.isProperCoord( aTarget ) ) then Exit;
+  FillChar( iSprite, SizeOf( iSprite ), 0 );
+  iSprite.SpriteID[0] := HARDSPRITE_SHIELD;
+  iSprite.Frames      := HARDSPRITE_SHIELD_COUNT;
+  iSprite.FrameTime   := 125;
+
+  Include( iSprite.Flags, SF_COSPLAY );
+  if iLevel.isVisible( aTarget ) then
+    with DRL.Targeting do
+    begin
+      iFirst := List.Current;
+      repeat
+        iCoord := List.Next;
+        if ( iCoord <> Player.Position ) and ( iCoord <> aTarget ) then
+          Trace( iCoord, False );
+      until iCoord = iFirst;
+      Trace( aTarget, True );
+    end;
 end;
 
 procedure TDRLGFXIO.Focus( aCoord : TCoord2D );
@@ -748,7 +814,7 @@ begin
 
   if (DRL <> nil) and (DRL.State = DSPlaying) then
   begin
-    if FConsoleWindow = nil then
+    if FTIGConsoleView = nil then
        FConsole.HideCursor;
     //if not UI.AnimationsRunning then SpriteMap.NewShift := SpriteMap.ShiftValue( Player.Position );
 
@@ -925,10 +991,51 @@ begin
           //while ( SDL_PeepEvents( @iDiscardEvent, 1, SDL_GETEVENT, SDL_MOUSEMOTION, SDL_MOUSEMOTION) > 0 ) do;
         end;
   end;
+
+  if ( iEvent.EType = VEVENT_PADDOWN ) or ( iEvent.EType = VEVENT_PADUP ) then
+    case iEvent.Pad.Button of
+      VPAD_BUTTON_DPAD_UP     : begin VTIG_GetIOState.EventState.SetState( VTIG_IE_1, FGPLTrigger and iEvent.Pad.Pressed ); if FGPLTrigger and iEvent.Pad.Pressed then Exit( isModal ) end;
+      VPAD_BUTTON_DPAD_DOWN   : begin VTIG_GetIOState.EventState.SetState( VTIG_IE_4, FGPLTrigger and iEvent.Pad.Pressed ); if FGPLTrigger and iEvent.Pad.Pressed then Exit( isModal ) end;
+      VPAD_BUTTON_DPAD_LEFT   : begin VTIG_GetIOState.EventState.SetState( VTIG_IE_2, FGPLTrigger and iEvent.Pad.Pressed ); if FGPLTrigger and iEvent.Pad.Pressed then Exit( isModal ) end;
+      VPAD_BUTTON_DPAD_RIGHT  : begin VTIG_GetIOState.EventState.SetState( VTIG_IE_3, FGPLTrigger and iEvent.Pad.Pressed ); if FGPLTrigger and iEvent.Pad.Pressed then Exit( isModal ) end;
+    end;
+
   Exit( inherited OnEvent( iEvent ) )
 end;
 
-function TDRLGFXIO.PushLayer(  aLayer : TInterfaceLayer ) : TInterfaceLayer;
+procedure TDRLGFXIO.DrawHUD;
+var i     : Byte;
+    iItem : TItem;
+    iPosX : Integer;
+    iPosY : Integer;
+begin
+  inherited DrawHUD;
+  if Player = nil then Exit;
+
+  if IsGamepad and FGPLTrigger and ( not isModal ) then
+  begin
+    iPosY := 4;
+    iPosX := 2;
+    if Player.Position.X < 20 then
+      iPosX := 40;
+    for i := 1 to 4 do
+    begin
+      iItem := nil;
+      with Player.FQuickSlots[ i ] do
+      begin
+             if UID <> 0 then iItem := UIDs[ UID ] as TItem
+        else if ID <> '' then iItem := Player.Inv.Find( ID );
+      end;
+      if iItem <> nil then
+      begin
+        VTIG_FreeLabel( '[{!{0}}] {1}', vutil.Point(iPosX,iPosY), [ PadQSlotChar[ i ], iItem.description ], iItem.MenuColor );
+        Inc( iPosY );
+      end;
+    end;
+  end;
+end;
+
+function TDRLGFXIO.PushLayer(  aLayer : TIOLayer ) : TIOLayer;
 begin
   if FMCursor <> nil then
   begin
@@ -978,7 +1085,7 @@ begin
   Exit( FConsole.GetDeviceArea.Pos + aCoord );
 end;
 
-procedure TDRLGFXIO.RenderUIBackground( aUL, aBR : TIOPoint; aOpacity : Single = 0.85; aZ : Integer = 0 );
+procedure TDRLGFXIO.RenderUIBackgroundBlock( aUL, aBR : TIOPoint; aOpacity : Single = 0.85; aZ : Integer = 0 );
 var iP1,iP2 : TIOPoint;
 begin
   iP1 := ConsoleCoordToDeviceCoord( aUL + PointUnit );

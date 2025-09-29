@@ -6,11 +6,11 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlassemblyview;
 interface
-uses vutil, drlio, dfdata;
+uses vutil, viotypes, dfdata;
 
-type TAssemblyView = class( TInterfaceLayer )
+type TAssemblyView = class( TIOLayer )
   constructor Create;
-  procedure Update( aDTime : Integer ); override;
+  procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
   destructor Destroy; override;
@@ -19,7 +19,6 @@ protected
 protected
   FFinished : Boolean;
   FSize     : TPoint;
-  FRect     : TRectangle;
   FContent  : TStringGArray;
 end;
 
@@ -33,7 +32,7 @@ begin
   FSize      := Point( 80, 25 );
 end;
 
-procedure TAssemblyView.Update( aDTime : Integer );
+procedure TAssemblyView.Update( aDTime : Integer; aActive : Boolean );
 var iString : Ansistring;
 begin
   if FContent = nil then ReadAssemblies;
@@ -41,11 +40,9 @@ begin
   for iString in FContent do
     VTIG_Text( iString );
   VTIG_Scrollbar;
-  FRect := VTIG_GetWindowRect;
   VTIG_End('{l<{!{$input_up},{$input_down}}> scroll, <{!{$input_ok},{$input_escape}}> return}');
   if VTIG_EventCancel or VTIG_EventConfirm then
     FFinished := True;
-  IO.RenderUIBackground( FRect.TopLeft, FRect.BottomRight - PointUnit );
 end;
 
 

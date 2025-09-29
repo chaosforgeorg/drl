@@ -37,9 +37,9 @@ being.inv = {
 		for i in being.inv.items(self) do
 			if i.itype == ITEMTYPE_AMMO then
 				if i.nid == ammo_nid then
-					if i.ammo <= acount then
+					if i.amount <= acount then
 						ammo   = i
-						acount = i.ammo
+						acount = i.amount
 					end
 				end
 			end
@@ -73,6 +73,21 @@ setmetatable(being.inv, {
 			return unpack(itemlist)
 		end
 		return nil
+	end,
+})
+
+being.ai = {
+	__props = {},
+}
+
+setmetatable(being.ai, {
+	__newindex = function (self, key, value)
+		error("being.ai cannot be written to!")
+	end,
+	__index = function (self, key)
+		assert( key ~= "ai_type", "being.ai.ai_type cannot be read!" )
+		local this = core.to_object( self )
+		return ais[ this.ai_type ].funcs[ key ]
 	end,
 })
 
@@ -180,11 +195,19 @@ function being:msg( msg_player, msg_being )
 end
 
 function being:phase( cell )
-	local target = level:random_empty_coord{ EF_NOBEINGS, EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN, EF_CANTELE }
+	local target
+	if self:is_player() then 
+		target = level:random_empty_coord( { EF_NOBEINGS, EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM, EF_NOLIQUID, EF_NOSPAWN, EF_CANTELE }, level.data.phase_zone )
+	else
+		target = level:random_empty_coord( { EF_NOBEINGS, EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN, EF_CANTELE }, level.data.phase_zone )
+	end
+	if not target then
+		target = level:random_empty_coord( { EF_NOBEINGS, EF_NOBLOCK, EF_NOSPAWN, EF_CANTELE }, level.data.phase_zone )
+	end
 	if cell then
 		cell = cells[ cell ].nid
 		local targets = {}
-		for c in area.FULL_SHRINKED() do
+		for c in ( level.data.phase_zone or area.FULL_SHRINKED)() do
 			if level:get_cell( c ) == cell then
 				table.insert( targets, c:clone() )
 			end

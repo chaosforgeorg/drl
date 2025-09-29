@@ -1,5 +1,5 @@
 function drl.register_exotic_items()
-	
+
 	-- Item sets --
 	register_itemset "gothic"
 	{
@@ -49,9 +49,102 @@ function drl.register_exotic_items()
 		end,
 	}
 
+	-- "Normal" exotics
+
+	register_item "chainsaw"
+	{
+		name     = "chainsaw",
+		color    = LIGHTMAGENTA,
+		sprite   = SPRITE_CHAINSAW,
+		psprite  = SPRITE_PLAYER_CHAINSAW,
+		level    = 12,
+		weight   = 6,
+		group    = "melee",
+		desc     = "Chainsaw -- cuts through flesh like a hot knife through butter.",
+		flags    = { IF_EXOTIC },
+
+		type        = ITEMTYPE_MELEE,
+		damage      = "4d6",
+		damagetype  = DAMAGE_MELEE,
+
+		OnFirstPickup = function(self,being)
+			if not being:is_player() then return end
+			ui.blink(LIGHTRED,100)
+			-- XXX Should this be given on first pick-up ALWAYS or only when in chain court?
+			being:set_affect( "berserk",40*diff[DIFFICULTY].powerfactor)
+			if not being.flags[ BF_NOHEAL ] and being.hp < being.hpmax then
+				being.hp = being.hpmax
+			end
+			being:remove_affect( "tired" )
+			being:quick_weapon("chainsaw")
+			ui.msg("BLOOD! BLOOD FOR ARMOK, GOD OF BLOOD!")
+		end
+	}
+
+	register_item "bfg9000"
+	{
+		name     = "BFG 9000",
+		color    = LIGHTMAGENTA,
+		sprite   = SPRITE_BFG9000,
+		psprite  = SPRITE_PLAYER_BFG9000,
+		level    = 20,
+		weight   = 4,
+		group    = "bfg",
+		desc     = "The Big Fucking Gun. Hell wouldn't be fun without it.",
+		flags    = { IF_EXOTIC, IF_EXACTHIT },
+
+		type          = ITEMTYPE_RANGED,
+		ammo_id       = "cell",
+		ammomax       = 100,
+		damage        = "10d6",
+		damagetype    = DAMAGE_SPLASMA,
+		acc           = 5,
+		radius        = 8,
+		reloadtime    = 20,
+		shotcost      = 40,
+		altreload     = RELOAD_SCRIPT,
+		altreloadname = "overcharge",
+		misascii      = "*",
+		miscolor      = WHITE,
+		misdelay      = 100,
+		miss_base     = 50,
+		miss_dist     = 10,
+		sprite        = SPRITE_BFGSHOT,
+		hitsprite     = SPRITE_BLAST,
+		explosion     = {
+			delay     = 33,
+			color     = GREEN,
+			flags     = { EFSELFSAFE, EFAFTERBLINK, EFCHAIN, EFNODISTANCEDROP },
+			knockback = 16,
+		},
+
+		OnFirstPickup = function(self,being)
+			if not being:is_player() then return end
+			being:quick_weapon("bfg9000")
+			ui.blink(LIGHTBLUE,100)
+			ui.blink(WHITE,100,100)
+			ui.blink(LIGHTBLUE,100,200)
+			ui.msg("HELL, NOW YOU'LL GET LOOSE!")
+		end,
+
+		OnAltReload = function(self)
+			if not self:can_overcharge("This will destroy the weapon after the next shot...") then return false end
+			self.misdelay      = 200
+			self.radius        = self.radius * 2
+			self.damage_dice   = self.damage_dice * 2
+			self.shotcost      = self.ammomax
+			self.ammomax       = self.shotcost
+			self.ammo          = self.shotcost
+			return true
+		end,
+	}
+
+	-- rest of the exotic weapons
+
 	register_item "ublaster"
 	{
 		name     = "blaster",
+		sound_id = "plasma",
 		color    = LIGHTMAGENTA,
 		sprite   = SPRITE_PISTOL,
 		psprite  = SPRITE_PLAYER_PISTOL,
@@ -69,15 +162,22 @@ function drl.register_exotic_items()
 		damage        = "2d4",
 		damagetype    = DAMAGE_PLASMA,
 		acc           = 3,
-		fire          = 9,
-		reload        = 10,
+		usetime       = 9,
+		reloadtime    = 10,
 		altfire       = ALT_AIMED,
-		missile       = "mblaster",
+		miscolor      = MULTIYELLOW,
+		misdelay      = 10,
+		miss_base     = 30,
+		miss_dist     = 5,
+		missprite     = SPRITE_SHOT,
+		hitsprite     = SPRITE_BLAST,
 	}
 
 	register_item "ucpistol"
 	{
 		name     = "combat pistol",
+		sound_id = "pistol",
+
 		color    = LIGHTMAGENTA,
 		sprite   = SPRITE_PISTOL,
 		psprite  = SPRITE_PLAYER_PISTOL,
@@ -93,11 +193,15 @@ function drl.register_exotic_items()
 		damage        = "3d3",
 		damagetype    = DAMAGE_BULLET,
 		acc           = 5,
-		fire          = 10,
-		reload        = 18,
+		reloadtime    = 18,
 		altfire       = ALT_AIMED,
 		altreload     = RELOAD_DUAL,
-		missile       = "mgun",
+		miscolor      = LIGHTGRAY,
+		misdelay      = 15,
+		miss_base     = 10,
+		miss_dist     = 3,
+		missprite     = SPRITE_SHOT,
+		hitsprite     = SPRITE_BLAST,
 	}
 
 	register_item "uashotgun"
@@ -118,9 +222,11 @@ function drl.register_exotic_items()
 		ammomax       = 6,
 		damage        = "7d3",
 		damagetype    = DAMAGE_SHARPNEL,
-		fire          = 10,
-		reload        = 10,
-		missile       = "sfocused",
+		spread        = 2,
+		falloff       = 5,
+		knockback     = 8,
+		range         = 15,
+		hitsprite     = SPRITE_BLAST,
 		altreload     = RELOAD_SCRIPT,
 		altreloadname = "full",
 
@@ -149,9 +255,12 @@ function drl.register_exotic_items()
 		shotcost      = 3,
 		damage        = "7d3",
 		damagetype    = DAMAGE_PLASMA,
-		fire          = 10,
-		reload        = 20,
-		missile       = "splasma",
+		reloadtime    = 20,
+		range         = 15,
+		spread        = 3,
+		falloff       = 5,
+		knockback     = 12,
+		hitsprite     = SPRITE_BLAST,
 	}
 
 	register_item "udshotgun"
@@ -173,10 +282,13 @@ function drl.register_exotic_items()
 		ammomax       = 2,
 		damage        = "8d4",
 		damagetype    = DAMAGE_SHARPNEL,
-		fire          = 10,
-		reload        = 15,
+		reloadtime    = 15,
 		shots         = 2,
-		missile       = "snormal",
+		range         = 15,
+		spread        = 3,
+		falloff       = 7,
+		knockback     = 8,
+		hitsprite     = SPRITE_BLAST,
 	}
 
 	register_item "ulaser"
@@ -193,26 +305,24 @@ function drl.register_exotic_items()
 		firstmsg = "The sniper chain weapon!",
 		flags    = { IF_EXOTIC },
 
-		type          = ITEMTYPE_RANGED,
-		ammo_id       = "cell",
-		ammomax       = 40,
-		damage        = "1d7",
-		damagetype    = DAMAGE_PLASMA,
-		acc           = 8,
-		fire          = 10,
-		reload        = 15,
-		shots         = 5,
-		altfire       = ALT_CHAIN,
-		missile = {
-			sound_id   = "plasma",
-			color      = MULTIYELLOW,
-			sprite     = SPRITE_CSHOT,
-			hitsprite  = SPRITE_BLAST,
+		type       = ITEMTYPE_RANGED,
+		ammo_id    = "cell",
+		ammomax    = 40,
+		damage     = "1d7",
+		damagetype = DAMAGE_PLASMA,
+		acc        = 8,
+		reloadtime = 15,
+		shots      = 5,
+		altfire    = ALT_CHAIN,
+		miscolor   = MULTIYELLOW,
+		misdelay   = 10,
+		miss_base  = 10,
+		miss_dist  = 3,
+		missprite  = {
+			sprite = SPRITE_CSHOT,
 			coscolor   = { 1.0, 1.0, 0.0, 1.0 },
-			delay      = 10,
-			miss_base  = 10,
-			miss_dist  = 3,
 		},
+		hitsprite     = SPRITE_BLAST,
 	}
 
 	register_item "utristar"
@@ -229,37 +339,33 @@ function drl.register_exotic_items()
 		firstmsg = "Quite bulky!",
 		flags    = { IF_EXOTIC, IF_SPREAD },
 
-
-		type          = ITEMTYPE_RANGED,
-		ammo_id       = "cell",
-		ammomax       = 45,
-		damage        = "4d5",
-		damagetype    = DAMAGE_PLASMA,
-		acc           = 5,
-		fire          = 10,
-		radius        = 2,
-		reload        = 15,
-		shots         = 3,
-		shotcost      = 5,
-		missile = {
-			sound_id   = "plasma",
-			ascii      = "*",
-			color      = LIGHTBLUE,
-			sprite     = SPRITE_PLASMASHOT,
-			hitsprite  = SPRITE_BLAST,
-			delay      = 20,
-			miss_base  = 1,
-			miss_dist  = 3,
-			explosion  = {
-				delay = 40,
-				color = LIGHTBLUE,
-			},
+		type       = ITEMTYPE_RANGED,
+		ammo_id    = "cell",
+		ammomax    = 45,
+		damage     = "4d5",
+		damagetype = DAMAGE_PLASMA,
+		acc        = 5,
+		radius     = 2,
+		reloadtime = 15,
+		shots      = 3,
+		shotcost   = 5,
+		misascii   = "*",
+		miscolor   = LIGHTBLUE,
+		misdelay   = 20,
+		miss_base  = 1,
+		miss_dist  = 3,
+		missprite  = SPRITE_PLASMASHOT,
+		hitsprite  = SPRITE_BLAST,
+		explosion  = {
+			delay = 40,
+			color = LIGHTBLUE,
 		},
 	}
 
 	register_item "uminigun"
 	{
 		name     = "minigun",
+		sound_id = "chaingun",
 		color    = LIGHTMAGENTA,
 		sprite   = SPRITE_CHAINGUN,
 		psprite  = SPRITE_PLAYER_CHAINGUN,
@@ -275,16 +381,22 @@ function drl.register_exotic_items()
 		damage        = "1d6",
 		damagetype    = DAMAGE_BULLET,
 		acc           = 1,
-		fire          = 12,
-		reload        = 35,
+		usetime       = 12,
+		reloadtime    = 35,
 		shots         = 8,
 		altfire       = ALT_CHAIN,
-		missile       = "mchaingun",
+		miscolor      = WHITE,
+		misdelay      = 10,
+		miss_base     = 10,
+		miss_dist     = 3,
+		missprite     = SPRITE_SHOT,
+		hitsprite     = SPRITE_BLAST,
 	}
 
 	register_item "umbazooka"
 	{
 		name     = "missile launcher",
+		sound_id = "bazooka",
 		color    = LIGHTMAGENTA,
 		sprite   = SPRITE_BAZOOKA,
 		psprite  = SPRITE_PLAYER_BAZOOKA,
@@ -300,12 +412,21 @@ function drl.register_exotic_items()
 		damage        = "6d6",
 		damagetype    = DAMAGE_FIRE,
 		acc           = 10,
-		fire          = 8,
 		radius        = 3,
-		reload        = 12,
-		missile       = "mrocket",
+		usetime       = 8,
+		reloadtime    = 12,
+		miscolor      = BROWN,
+		misdelay      = 30,
+		miss_base     = 30,
+		miss_dist     = 5,
+		missprite     = SPRITE_ROCKETSHOT,
+		hitsprite     = SPRITE_BLAST,
 		altreload     = RELOAD_SCRIPT,
 		altreloadname = "full",
+		explosion     = {
+			delay 	= 40,
+			color 	= RED,
+		},
 
 		OnAltReload = function( self, being )
 			return being:full_reload( self )
@@ -315,6 +436,7 @@ function drl.register_exotic_items()
 	register_item "unplasma"
 	{
 		name     = "nuclear plasma rifle",
+		sound_id = "plasma",
 		color    = LIGHTMAGENTA,
 		sprite   = SPRITE_PLASMA,
 		psprite  = SPRITE_PLAYER_PLASMA,
@@ -332,13 +454,18 @@ function drl.register_exotic_items()
 		damage        = "1d7",
 		damagetype    = DAMAGE_PLASMA,
 		acc           = 2,
-		fire          = 10,
-		reload        = 20,
+		reloadtime    = 20,
 		shots         = 6,
 		altfire       = ALT_CHAIN,
 		altreload     = RELOAD_SCRIPT,
 		altreloadname = "overcharge",
-		missile       = "mplasma",
+		misascii      = "*",
+		miscolor      = MULTIBLUE,
+		misdelay      = 10,
+		miss_base     = 30,
+		miss_dist     = 3,
+		missprite     = SPRITE_PLASMASHOT,
+		hitsprite     = SPRITE_BLAST,
 
 		OnAltReload = function(self, being)
 			local floor_cell = cells[ level.map[ being.position ] ]
@@ -364,6 +491,7 @@ function drl.register_exotic_items()
 	register_item "unbfg9000"
 	{
 		name     = "nuclear BFG 9000",
+		sound_id = "bfg9000",
 		color    = LIGHTMAGENTA,
 		sprite   = SPRITE_BFG9000,
 		psprite  = SPRITE_PLAYER_BFG9000,
@@ -371,7 +499,7 @@ function drl.register_exotic_items()
 		weight   = 2,
 		group    = "bfg",
 		desc     = "A self-charging BFG9000! How much more lucky can you get?",
-		flags    = { IF_EXOTIC, IF_RECHARGE, IF_NOUNLOAD },
+		flags    = { IF_EXOTIC, IF_RECHARGE, IF_NOUNLOAD, IF_EXACTHIT },
 
 		type          = ITEMTYPE_RANGED,
 		ammo_id       = "cell",
@@ -381,14 +509,25 @@ function drl.register_exotic_items()
 		damage        = "8d6",
 		damagetype    = DAMAGE_SPLASMA,
 		acc           = 5,
-		fire          = 15,
 		radius        = 8,
-		reload        = 20,
+		usetime       = 15,
+		reloadtime    = 20,
 		shotcost      = 40,
 		altreload     = RELOAD_SCRIPT,
 		altreloadname = "overcharge",
-		overcharge    = "mbfgover",
-		missile       = "mbfg",
+		misascii      = "*",
+		miscolor      = WHITE,
+		misdelay      = 100,
+		miss_base     = 50,
+		miss_dist     = 10,
+		sprite        = SPRITE_BFGSHOT,
+		hitsprite     = SPRITE_BLAST,
+		explosion     = {
+			delay     = 33,
+			color     = GREEN,
+			flags     = { EFSELFSAFE, EFAFTERBLINK, EFCHAIN, EFNODISTANCEDROP },
+			knockback = 16,
+		},
 
 		OnAltReload = function(self, being)
 			local floor_cell = cells[ level.map[ being.position ] ]
@@ -414,6 +553,7 @@ function drl.register_exotic_items()
 	register_item "utrans"
 	{
 		name     = "combat translocator",
+		sound_id = "plasma",
 		color    = LIGHTMAGENTA,
 		sprite   = SPRITE_PLASMA,
 		psprite  = SPRITE_PLAYER_PLASMA,
@@ -430,12 +570,17 @@ function drl.register_exotic_items()
 		damage        = "0d0",
 		damagetype    = DAMAGE_PLASMA,
 		acc           = 4,
-		fire          = 10,
-		reload        = 20,
+		reloadtime    = 20,
 		shotcost      = 5,
-		missile       = "mplasma",
+		misascii      = "*",
+		miscolor      = MULTIBLUE,
+		misdelay      = 10,
+		miss_base     = 30,
+		miss_dist     = 3,
 		altfire       = ALT_SCRIPT,
 		altfirename   = "self-target",
+		missprite     = SPRITE_PLASMASHOT,
+		hitsprite     = SPRITE_BLAST,
 
 		OnHitBeing = function(self,being,target)
 			target:play_sound("phasing")
@@ -462,6 +607,7 @@ function drl.register_exotic_items()
 	register_item "unapalm"
 	{
 		name     = "napalm launcher",
+		sound_id = "bazooka",
 		color    = LIGHTMAGENTA,
 		sprite   = SPRITE_BAZOOKA,
 		psprite  = SPRITE_PLAYER_BAZOOKA,
@@ -471,28 +617,25 @@ function drl.register_exotic_items()
 		desc     = "This will surely make a mess!",
 		flags    = { IF_EXOTIC, IF_SINGLERELOAD },
 
-		type          = ITEMTYPE_RANGED,
-		ammo_id       = "rocket",
-		ammomax       = 1,
-		damage        = "7d7",
-		damagetype    = DAMAGE_FIRE,
-		acc           = 10,
-		fire          = 8,
-		radius        = 2,
-		reload        = 12,
-		missile = {
-			sound_id   = "bazooka",
-			color      = BROWN,
-			sprite     = SPRITE_ROCKETSHOT,
-			hitsprite  = SPRITE_BLAST,
-			delay      = 10,
-			miss_base  = 30,
-			miss_dist  = 5,
-			explosion  = {
-				delay = 80,
-				color = RED,
-				content = "lava",
-			},
+		type       = ITEMTYPE_RANGED,
+		ammo_id    = "rocket",
+		ammomax    = 1,
+		damage     = "7d7",
+		damagetype = DAMAGE_FIRE,
+		acc        = 10,
+		radius     = 2,
+		usetime    = 8,
+		reloadtime = 12,
+		miscolor   = BROWN,
+		misdelay   = 10,
+		miss_base  = 30,
+		miss_dist  = 5,
+		missprite  = SPRITE_ROCKETSHOT,
+		hitsprite  = SPRITE_BLAST,
+		explosion  = {
+			delay = 80,
+			color = RED,
+			content = "lava",
 		},
 	}
 
@@ -805,7 +948,7 @@ function drl.register_exotic_items()
 				if item.itype ~= ITEMTYPE_RANGED then return false end
 				if item.group ~= "shotgun" and ( item.shots >= 3 ) and ( not item.flags[ IF_SPREAD ]) then
 					return true
-				elseif ( item.blastradius >= 3 ) or ( item.flags[ IF_SPREAD ] and ( item.blastradius >= 2 ) ) then
+				elseif ( item.radius >= 3 ) or ( item.flags[ IF_SPREAD ] and ( item.radius >= 2 ) ) then
 					return true
 				else
 					return false
@@ -820,8 +963,8 @@ function drl.register_exotic_items()
 		OnModDescribe = function( self, item )
 			if item.group ~= "shotgun" and ( item.shots >= 3 ) and ( not item.flags[ IF_SPREAD ]) then
 				return "shots {!"..item.shots.."} -> {!"..(item.shots+2).."}"
-			elseif ( item.blastradius >= 3 ) or ( item.flags[ IF_SPREAD ] and ( item.blastradius >= 2 ) ) then
-				return "blast radius {!"..item.blastradius.."} -> {!"..(item.blastradius+2).."}"
+			elseif ( item.radius >= 3 ) or ( item.flags[ IF_SPREAD ] and ( item.radius >= 2 ) ) then
+				return "blast radius {!"..item.radius.."} -> {!"..(item.radius+2).."}"
 			end
 			return "unknown"
 		end,
@@ -829,10 +972,11 @@ function drl.register_exotic_items()
 		OnUse = function(self,being)
 			if not self:has_property( "chosen_item" ) then return true end
 			local item = self.chosen_item
+			self:remove_property("chosen_item")
 			if item.group ~= "shotgun" and ( item.shots >= 3 ) and ( not item.flags[ IF_SPREAD ]) then
 				item.shots = item.shots + 2
-			elseif ( item.blastradius >= 3 ) or ( item.flags[ IF_SPREAD ] and ( item.blastradius >= 2 ) ) then
-				item.blastradius = item.blastradius + 2
+			elseif ( item.radius >= 3 ) or ( item.flags[ IF_SPREAD ] and ( item.radius >= 2 ) ) then
+				item.radius = item.radius + 2
 			end
 			ui.msg( "You upgrade your weapon!" )
 			item:add_mod( 'F', being.techbonus )
@@ -878,6 +1022,7 @@ function drl.register_exotic_items()
 		OnUse = function(self,being)
 			if not self:has_property( "chosen_item" ) then return true end
 			local item = self.chosen_item
+			self:remove_property("chosen_item")
 			-- A little easter egg for applying S-mod on shotgun/melee
 			if item.group == "shotgun" or item.itype ~= ITEMTYPE_RANGED then
 				ui.msg( "You suddenly feel a little silly." )
@@ -942,6 +1087,7 @@ function drl.register_exotic_items()
 		OnUse = function(self,being)
 			if not self:has_property( "chosen_item" ) then return true end
 			local item = self.chosen_item
+			self:remove_property("chosen_item")
 			ui.msg( "You upgrade your gear!" )
 			item:add_mod( 'N', being.techbonus )
 			if item.flags[ IF_RECHARGE ] then
@@ -997,6 +1143,7 @@ function drl.register_exotic_items()
 		OnUse = function(self,being)
 			if not self:has_property( "chosen_item" ) then return true end
 			local item = self.chosen_item
+			self:remove_property("chosen_item")
 			ui.msg( "You upgrade your gear!" )
 			item.durability = 100
 			item.flags[ IF_NODURABILITY ] = true
@@ -1116,86 +1263,6 @@ function drl.register_exotic_items()
 				being:remove_affect( "tired" )
 				being:set_affect( "berserk", count * 5 )
 			end
-			return true
-		end,
-	}
-
--- "Normal" exotics
-
-	register_item "chainsaw"
-	{
-		name     = "chainsaw",
-		color    = LIGHTMAGENTA,
-		sprite   = SPRITE_CHAINSAW,
-		psprite  = SPRITE_PLAYER_CHAINSAW,
-		level    = 12,
-		weight   = 6,
-		group    = "melee",
-		desc     = "Chainsaw -- cuts through flesh like a hot knife through butter.",
-		flags    = { IF_EXOTIC },
-
-		type        = ITEMTYPE_MELEE,
-		damage      = "4d6",
-		damagetype  = DAMAGE_MELEE,
-
-		OnFirstPickup = function(self,being)
-			if not being:is_player() then return end
-			ui.blink(LIGHTRED,100)
-			-- XXX Should this be given on first pick-up ALWAYS or only when in chain court?
-			being:set_affect( "berserk",40*diff[DIFFICULTY].powerfactor)
-			if not being.flags[ BF_NOHEAL ] and being.hp < being.hpmax then
-				being.hp = being.hpmax
-			end
-			being:remove_affect( "tired" )
-			being:quick_weapon("chainsaw")
-			ui.msg("BLOOD! BLOOD FOR ARMOK, GOD OF BLOOD!")
-		end
-	}
-
-	register_item "bfg9000"
-	{
-		name     = "BFG 9000",
-		color    = LIGHTMAGENTA,
-		sprite   = SPRITE_BFG9000,
-		psprite  = SPRITE_PLAYER_BFG9000,
-		level    = 20,
-		weight   = 4,
-		group    = "bfg",
-		desc     = "The Big Fucking Gun. Hell wouldn't be fun without it.",
-		flags    = { IF_EXOTIC },
-
-		type          = ITEMTYPE_RANGED,
-		ammo_id       = "cell",
-		ammomax       = 100,
-		damage        = "10d6",
-		damagetype    = DAMAGE_SPLASMA,
-		acc           = 5,
-		fire          = 10,
-		radius        = 8,
-		reload        = 20,
-		shotcost      = 40,
-		altreload     = RELOAD_SCRIPT,
-		altreloadname = "overcharge",
-		overcharge    = "mbfgover",
-		missile       = "mbfg",
-
-		OnFirstPickup = function(self,being)
-			if not being:is_player() then return end
-			being:quick_weapon("bfg9000")
-			ui.blink(LIGHTBLUE,100)
-			ui.blink(WHITE,100,100)
-			ui.blink(LIGHTBLUE,100,200)
-			ui.msg("HELL, NOW YOU'LL GET LOOSE!")
-		end,
-
-		OnAltReload = function(self)
-			if not self:can_overcharge("This will destroy the weapon after the next shot...") then return false end
-			self.missile       = missiles[ "mbfgover" ].nid
-			self.blastradius   = self.blastradius * 2
-			self.damage_dice   = self.damage_dice * 2
-			self.shotcost      = self.ammomax
-			self.ammomax       = self.shotcost
-			self.ammo          = self.shotcost
 			return true
 		end,
 	}

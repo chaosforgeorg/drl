@@ -64,6 +64,7 @@ register_level "phobos_lab"
 	end,	
 
 	Create = function ()
+		core.special_create()
 		level:set_generator_style( 1 )
 		level:fill( "floor" )
 		level.data.bridge = area(50,10,60,11)
@@ -173,6 +174,9 @@ register_level "phobos_lab"
 	end,
 
 	OnExit = function ()
+		if level.status == 4 then
+			core.special_complete()
+		end
 		ui.msg("\"So much for the lab, next time I'll use neurotoxin...\"")
 		player:add_history("He broke through the lab.")
 	end,

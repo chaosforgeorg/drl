@@ -12,7 +12,7 @@ type TCommand = object
   ID      : AnsiString;
 
   class function Create( aCommand : Byte ) : TCommand; static;
-  class function Create( aCommand : Byte; aTarget : TCoord2D ) : TCommand; static;
+  class function Create( aCommand : Byte; aTarget : TCoord2D; aAlt : Boolean = False ) : TCommand; static;
   class function Create( aCommand : Byte; aID : AnsiString ) : TCommand; static;
   class function Create( aCommand : Byte; aItem : TItem ) : TCommand; static;
   class function Create( aCommand : Byte; aItem : TItem; aAlt : Boolean ) : TCommand; static;
@@ -29,10 +29,11 @@ begin
   Result.Target  := NewCoord2D(0,0);
 end;
 
-class function TCommand.Create( aCommand : Byte; aTarget : TCoord2D ) : TCommand;
+class function TCommand.Create( aCommand : Byte; aTarget : TCoord2D; aAlt : Boolean = False ) : TCommand;
 begin
   Result.Command := aCommand;
   Result.Target  := aTarget;
+  Result.Alt     := aAlt;
 end;
 
 class function TCommand.Create( aCommand : Byte; aID : AnsiString ) : TCommand;

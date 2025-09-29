@@ -13,14 +13,20 @@ function drl.register_regular_items()
 		weight   = 640,
 		group    = "melee",
 		desc     = "Not what you'd really like to use, but it's better than your fists.",
-		flags    = { IF_THROWDROP },
+		flags    = { IF_THROWDROP, IF_EXACTHIT },
 
 		type        = ITEMTYPE_MELEE,
 		damage      = "2d5",
 		damagetype  = DAMAGE_MELEE,
 		acc         = 1,
 		altfire     = ALT_THROW,
-		missile     = "mknife",
+		miscolor    = LIGHTGRAY,
+		misdelay    = 50,
+		miss_base   = 10,
+		miss_dist   = 3,
+		range       = 5,
+		missprite   = SPRITE_KNIFE,
+		hitsprite   = SPRITE_BLAST,
 
 		OnCreate = function(self)
 			self:add_property( "BLADE", true )
@@ -352,7 +358,7 @@ function drl.register_regular_items()
 			ui.msg("BackPack!")
 			ui.blink(YELLOW,50)
 			being:add_property( "BACKPACK", 4 )
-			being:resort_ammo()
+			being:resort_stacks()
 		end,
 	}
 
@@ -411,8 +417,8 @@ function drl.register_regular_items()
 		desc     = "10mm ammo, the backbone of your firepower.",
 
 		type    = ITEMTYPE_AMMO,
-		ammo    = 24,
-		ammomax = 100,
+		amount  = 24,
+		max     = 100,
 	}
 
 	register_item "shell"
@@ -426,8 +432,8 @@ function drl.register_regular_items()
 		desc     = "Food for your trusty shotguns.",
 
 		type    = ITEMTYPE_AMMO,
-		ammo    = 8,
-		ammomax = 50,
+		amount  = 8,
+		max     = 50,
 	}
 
 	register_item "rocket"
@@ -441,8 +447,8 @@ function drl.register_regular_items()
 		desc     = "Rockets -- heavy, big and go boom.",
 
 		type    = ITEMTYPE_AMMO,
-		ammo    = 3,
-		ammomax = 10,
+		amount  = 3,
+		max     = 10,
 	}
 
 	register_item "cell"
@@ -457,8 +463,8 @@ function drl.register_regular_items()
 		desc     = "Power cells, the peak of monster frying technology.",
 
 		type    = ITEMTYPE_AMMO,
-		ammo    = 20,
-		ammomax = 50,
+		amount  = 20,
+		max     = 50,
 	}
 
 	register_item "pammo"
@@ -547,11 +553,15 @@ function drl.register_regular_items()
 		damage        = "2d4",
 		damagetype    = DAMAGE_BULLET,
 		acc           = 4,
-		fire          = 10,
-		reload        = 12,
+		reloadtime    = 12,
 		altfire       = ALT_AIMED,
 		altreload     = RELOAD_DUAL,
-		missile       = "mgun",
+		miscolor      = LIGHTGRAY,
+		misdelay      = 15,
+		miss_base     = 10,
+		miss_dist     = 3,
+		missprite     = SPRITE_SHOT,
+		hitsprite     = SPRITE_BLAST,
 	}
 
 	register_item "shotgun"
@@ -572,9 +582,11 @@ function drl.register_regular_items()
 		ammomax       = 1,
 		damage        = "8d3",
 		damagetype    = DAMAGE_SHARPNEL,
-		fire          = 10,
-		reload        = 10,
-		missile       = "snormal",
+		range         = 15,
+		spread        = 3,
+		falloff       = 7,
+		knockback     = 8,
+		hitsprite     = SPRITE_BLAST,
 	}
 
 	register_item "dshotgun"
@@ -596,12 +608,15 @@ function drl.register_regular_items()
 		ammomax       = 2,
 		damage        = "9d3",
 		damagetype    = DAMAGE_SHARPNEL,
-		fire          = 10,
-		reload        = 20,
+		reloadtime    = 20,
 		shots         = 2,
 		altfire       = ALT_SINGLE,
 		altreload     = RELOAD_SINGLE,
-		missile       = "swide",
+		range         = 8,
+		spread        = 3,
+		falloff       = 10,
+		knockback     = 8,
+		hitsprite     = SPRITE_BLAST,
 	}
 
 	register_item "ashotgun"
@@ -623,12 +638,14 @@ function drl.register_regular_items()
 		ammomax       = 5,
 		damage        = "7d3",
 		damagetype    = DAMAGE_SHARPNEL,
-		fire          = 10,
-		reload        = 10,
 		altreload     = RELOAD_SCRIPT,
 		altreloadname = "full",
-		missile       = "sfocused",
-		
+		range         = 15,
+		spread        = 2,
+		falloff       = 5,
+		knockback     = 8,
+		hitsprite     = SPRITE_BLAST,
+
 		OnCreate = function(self)
 			self:add_property( "pump_action", true )
 			self:add_property( "chamber_empty", false )
@@ -711,20 +728,39 @@ function drl.register_regular_items()
 		damage        = "6d6",
 		damagetype    = DAMAGE_FIRE,
 		acc           = 4,
-		fire          = 10,
 		radius        = 4,
-		reload        = 15,
+		reloadtime    = 15,
 		altfire       = ALT_TARGETSCRIPT,
 		altfirename   = "rocketjump",
-		missile       = "mrocket",
+		miscolor      = BROWN,
+		misdelay      = 30,
+		miss_base     = 30,
+		miss_dist     = 5,
+		missprite     = SPRITE_ROCKETSHOT,
+		hitsprite     = SPRITE_BLAST,
+		explosion     = {
+			delay 	= 40,
+			color 	= RED,
+		},
 
 		OnAltFire = function( self, being )
-			self.missile = missiles[ "mrocketjump" ].nid
+			self:set_explosion{
+				delay 	= 40,
+				color 	= RED,
+				flags = { EFSELFKNOCKBACK, EFSELFHALF },
+			}
+			self.flags[ IF_EXACTHIT ] = true
+			self.range   = 1
 			return true
 		end,
 
 		OnFire = function( self, being )
-			self.missile = missiles[ "mrocket" ].nid
+			self:set_explosion{
+				delay 	= 40,
+				color 	= RED,
+			}
+			self.flags[ IF_EXACTHIT ] = false
+			self.range   = 0
 			return true
 		end,
 	}
@@ -748,11 +784,15 @@ function drl.register_regular_items()
 		damage        = "1d6",
 		damagetype    = DAMAGE_BULLET,
 		acc           = 2,
-		fire          = 10,
-		reload        = 25,
+		reloadtime    = 25,
 		shots         = 4,
 		altfire       = ALT_CHAIN,
-		missile       = "mchaingun",
+		miscolor      = WHITE,
+		misdelay      = 10,
+		miss_base     = 10,
+		miss_dist     = 3,
+		missprite     = SPRITE_SHOT,
+		hitsprite     = SPRITE_BLAST,
 	}
 
 	register_item "plasma"
@@ -774,13 +814,18 @@ function drl.register_regular_items()
 		damage        = "1d7",
 		damagetype    = DAMAGE_PLASMA,
 		acc           = 2,
-		fire          = 10,
-		reload        = 20,
+		reloadtime    = 20,
 		shots         = 6,
 		altfire       = ALT_CHAIN,
 		altreload     = RELOAD_SCRIPT,
 		altreloadname = "overcharge",
-		missile       = "mplasma",
+		misascii      = "*",
+		miscolor      = MULTIBLUE,
+		misdelay      = 10,
+		miss_base     = 30,
+		miss_dist     = 3,
+		sprite        = SPRITE_PLASMASHOT,
+		hitsprite     = SPRITE_BLAST,
 
 		OnAltReload = function(self)
 			if not self:can_overcharge("This will destroy the weapon after the next shot...") then return false end
@@ -1047,6 +1092,7 @@ function drl.register_regular_items()
 		OnUse = function(self,being)
 			if not self:has_property("chosen_item") then return true end
 			local item = self.chosen_item
+			self:remove_property("chosen_item")
 			if item.itype == ITEMTYPE_MELEE then
 				item.damage_sides = item.damage_sides + 1
 			elseif item.itype == ITEMTYPE_RANGED then
@@ -1105,6 +1151,7 @@ function drl.register_regular_items()
 		OnUse = function(self,being)
 			if not self:has_property("chosen_item") then return true end
 			local item = self.chosen_item
+			self:remove_property("chosen_item")
 			if (item.itype == ITEMTYPE_RANGED) or (item.itype == ITEMTYPE_MELEE) then
 				item.usetime = item.usetime * 0.85
 			elseif item.itype == ITEMTYPE_ARMOR or item.itype == ITEMTYPE_BOOTS then
@@ -1167,6 +1214,7 @@ function drl.register_regular_items()
 		OnUse = function(self,being)
 			if not self:has_property("chosen_item") then return true end
 			local item = self.chosen_item
+			self:remove_property("chosen_item")
 			if item.itype == ITEMTYPE_MELEE or item.itype == ITEMTYPE_RANGED then
 				item.acc = item.acc + 1
 			elseif item.itype == ITEMTYPE_ARMOR then
@@ -1233,6 +1281,7 @@ function drl.register_regular_items()
 		OnUse = function(self,being)
 			if not self:has_property("chosen_item") then return true end
 			local item = self.chosen_item
+			self:remove_property("chosen_item")
 			if item.itype == ITEMTYPE_MELEE then
 				item.damage_dice = item.damage_dice + 1
 			elseif item.itype == ITEMTYPE_RANGED then
@@ -1260,7 +1309,7 @@ function drl.register_regular_items()
 		color      = BROWN,
 		armor      = 3,
 		hp         = 2,
-		flags      = { IF_BLOCKMOVE },
+		flags      = { IF_BLOCKMOVE, IF_BLOCKSHOT },
 		sprite     = SPRITE_BARREL,
 
 		type       = ITEMTYPE_FEATURE,
@@ -1269,7 +1318,7 @@ function drl.register_regular_items()
 		OnAct = function( self, c, being )
 			local source = being.position
 			local push   = c + (c - source)
-			level:push_feature( being, self, c, push ) 
+			level:push_feature( being, self, c, push, false, true ) 
 		end,
 
 		OnDestroy = function(self,c)
@@ -1285,7 +1334,7 @@ function drl.register_regular_items()
 		color      = GREEN,
 		armor      = 4,
 		hp         = 2,
-		flags      = { IF_BLOCKMOVE },
+		flags      = { IF_BLOCKMOVE, IF_BLOCKSHOT },
 		sprite     = SPRITE_ACIDBARREL,
 		sframes    = 2,
 
@@ -1295,7 +1344,7 @@ function drl.register_regular_items()
 		OnAct = function( self, c, being )
 			local source = being.position
 			local push   = c + (c - source)
-			level:push_feature( being, self, c, push ) 
+			level:push_feature( being, self, c, push, false, true ) 
 		end,
 
 		OnDestroy = function(self,c)
@@ -1312,7 +1361,7 @@ function drl.register_regular_items()
 		color      = LIGHTRED,
 		armor      = 5,
 		hp         = 2,
-		flags      = { IF_BLOCKMOVE },
+		flags      = { IF_BLOCKMOVE, IF_BLOCKSHOT },
 		sprite     = SPRITE_LAVABARREL,
 		sframes    = 2,
 
@@ -1322,7 +1371,7 @@ function drl.register_regular_items()
 		OnAct = function( self, c, being )
 			local source = being.position
 			local push   = c + (c - source)
-			level:push_feature( being, self, c, push ) 
+			level:push_feature( being, self, c, push, false, true ) 
 		end,
 
 		OnDestroy = function(self,c)
@@ -1341,7 +1390,7 @@ function drl.register_regular_items()
 		color      = BROWN,
 		armor      = 5,
 		hp         = 5,
-		flags      = { IF_BLOCKMOVE },
+		flags      = { IF_BLOCKMOVE, IF_BLOCKSHOT },
 		sprite     = SPRITE_TREE,
 
 		type       = ITEMTYPE_FEATURE,

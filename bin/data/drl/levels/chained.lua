@@ -174,25 +174,23 @@ register_level "the_chained_court"
 			kill_desc       = "was charred by the Arena Master",
 
 			weapon = {
+				sound_id   = "arch",
 				damage     = "15d1",
 				damagetype = DAMAGE_FIRE,
 				radius     = 2,
-				flags      = { IF_AUTOHIT },
-				missile = {
-					sound_id   = "arch",
-					color      = YELLOW,
-					sprite     = 0,
-					hitsprite  = SPRITE_BLAST,
-					delay      = 0,
-					miss_base  = 10,
-					miss_dist  = 10,
-					hitdesc    = "You are engulfed in flames!",
-					flags      = { MF_EXACT, MF_IMMIDATE },
-					explosion  = {
-						delay = 50,
-						color = YELLOW,
-						flags = { EFNOKNOCK, EFSELFSAFE },
-					},
+				flags      = { IF_AUTOHIT, IF_INSTANTHIT, IF_EXACTHIT },
+				miscolor   = YELLOW,
+				misdelay   = 0,
+				miss_base  = 10,
+				miss_dist  = 10,
+				hitdesc    = "You are engulfed in flames!",
+				missprite = 0,
+				hitsprite = SPRITE_BLAST,
+				explosion  = {
+					delay     = 50,
+					color     = YELLOW,
+					flags     = { EFSELFSAFE },
+					knockback = 0,
 				},
 			},
 
@@ -208,6 +206,7 @@ register_level "the_chained_court"
 	end,
 
 	Create = function ()
+		core.special_create()
 		level:set_generator_style( 1 )
 		-- level.status 1 == chained court
 		-- level.status 0 == unchained court (w/ Arena Master)
@@ -319,6 +318,12 @@ register_level "the_chained_court"
 			ui.msg("A devilish voice booms:")
 			ui.msg("\"Come to think of it... I'd rather see you dead, mortal... prepare yourself!\"")
 			level:play_sound( "baron.act", player.position )
+		end
+	end,
+
+	OnExit = function ()
+		if level.status == 3 then
+			core.special_complete()
 		end
 	end,
 

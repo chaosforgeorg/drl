@@ -35,6 +35,7 @@ register_level "spiders_lair"
 
 
 	Create = function ()
+		core.special_create()
 		level:set_generator_style( 1 )
 		level:fill( "rwall" )
 
@@ -102,13 +103,14 @@ register_level "spiders_lair"
 
 	OnExit = function ()
 		if level.status == 0 then
-				ui.msg("Arachnophobia!")
-				player:add_history("He fled the Lair, knowing how to fear Arachnotrons!")
+			ui.msg("Arachnophobia!")
+			player:add_history("He fled the Lair, knowing how to fear Arachnotrons!")
 		else
-				ui.msg("Silence rules the spidery lands...")
-				player:add_history("He cleared the Lair, kickin' serious spider ass!")
-				player:add_badge("arachno1")
-				if core.is_challenge("challenge_aod") then player:add_badge("arachno2") end
+			core.special_complete()
+			ui.msg("Silence rules the spidery lands...")
+			player:add_history("He cleared the Lair, kickin' serious spider ass!")
+			player:add_badge("arachno1")
+			if core.is_challenge("challenge_aod") then player:add_badge("arachno2") end
 		end
 	end,
 

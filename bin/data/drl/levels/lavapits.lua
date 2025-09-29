@@ -8,6 +8,7 @@ register_level "the_lava_pits"
 	level = 22,
 
 	Create = function ()
+		core.special_create()
 		level:set_generator_style( 1 )
 		level:fill( "lava" )
 
@@ -95,6 +96,7 @@ register_level "the_lava_pits"
 			ui.msg("There goes my beard... at least I'm still alive.")
 			player:add_history("He fled there from the monstrous lava elemental.")
 		elseif result == 2 then
+			core.special_complete()
 			ui.msg("Lava elementals my ass. I don't care.")
 			player:add_badge("lava1")
 			if core.is_challenge("challenge_aoi") then player:add_badge("lava2") end

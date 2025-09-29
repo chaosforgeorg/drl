@@ -220,23 +220,25 @@ function level:roll_item( params )
 end
 
 function level:summon(t,opt)
-	local count = 1
-	local where = nil
-	local cid   = nil
-	local bid   = nil
-	local empty = { EF_NOBEINGS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN }
-	local safe  = 0
+	local count  = 1
+	local where  = nil
+	local cid    = nil
+	local bid    = nil
+	local empty  = { EF_NOBEINGS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN }
+	local safe   = 0
+	local effect = nil
 	if type(t) == "string" then 
 		bid = t
 		count = opt or 1
 	elseif type(t) == "table" then 
-		bid   = t.id or t[1]
-		count = t.count or t[2] or 1
-		cid   = t.cell
+		bid    = t.id or t[1]
+		count  = t.count or t[2] or 1
+		cid    = t.cell
 		if cid then empty = { EF_NOBEINGS, EF_NOBLOCK } end
-		where = t.area
-		empty = t.empty or empty
-		safe  = t.safe or 0
+		where  = t.area
+		empty  = t.empty or empty
+		safe   = t.safe or 0
+		effect = t.effect or nil
 	else
 		error( "Bad argument #1 passed to summon!" )
 	end
@@ -254,7 +256,12 @@ function level:summon(t,opt)
 				c = level:random_empty_coord(empty, where)
 			end
 		until ( safe == 0 ) or ( player:distance_to( c ) > safe )
-		last_being = self:drop_being( bid, c )
+		if c then
+			last_being = self:drop_being( bid, c )
+			if effect and last_being then
+				level:explosion( c, effect )
+			end
+		end
 	end
 	return last_being
 end
@@ -339,7 +346,7 @@ function level:is_corpse( c )
 	return cell.flags[ CF_CORPSE ]
 end
 
-function level:push_feature( who, what, c, target, quiet )
+function level:push_feature( who, what, c, target, quiet, stupid )
 	local item_id = what.id
 	local name    = what.name
 	if not area.FULL:contains(target) then
@@ -350,7 +357,7 @@ function level:push_feature( who, what, c, target, quiet )
 	local target_cell_id = self.map[target]
 	local target_cell    = cells[target_cell_id]
 	if target_cell.flags[CF_HAZARD] then
-		if not quiet then ui.msg( "Oh my, how stupid!" ) end
+		if stupid and not quiet then ui.msg( "Oh my, how stupid!" ) end
 		self:play_sound( item_id .. ".move", c )
 		level:damage_tile( c, 1000, DAMAGE_PLASMA )
 		who.scount = who.scount - 1000
@@ -396,7 +403,7 @@ function level:drop_items( what )
 			local ammo = i.ammo
 			i.ammo = 0
 			local ia = self:drop_item( items[ i.ammoid ].id, what.position, true, true, true )
-			ia.ammo = ammo
+			ia.amount = ammo
 		end
 		self:drop_item( i, what.position, true, true, true )
 	end

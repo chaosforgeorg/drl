@@ -8,6 +8,7 @@ register_level "military_base"
 	level = 7,
 
 	Create = function ()
+		core.special_create()
 		level:set_generator_style( 1 )
 		level:fill( "rwall" )
 
@@ -96,6 +97,7 @@ register_level "military_base"
 			ui.msg("Too many memories to go destroying them all...")
 			player:add_history("He left without a fuss.")
 		else
+			core.special_complete()
 			ui.msg("Better to end their tortured bodies here and now.")
 			player:add_history("He purified his fellow comrades.")
 		end

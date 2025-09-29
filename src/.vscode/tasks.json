@@ -21,6 +21,11 @@
             ]
         },
         {
+            "label": "Update libraries (debug)",
+            "type": "shell",
+            "command": "xcopy /Y /D ${config:drlBasePath}\\${config:libPath}\\* ${config:drlBasePath}\\${config:debugPath}",
+        },
+        {
             "label": "Build drl.exe (debug)",
             "type": "shell",
             "group": {
@@ -48,7 +53,7 @@
                 "-vm4056", //Suppress message 4056
                 "-vm4055", //Suppress message 4055
                 "-vm3250", //Suppress message 3250
-                "-Fi${config:drlBasePath}\\${config:debugPath}", //Include file search path. Might not be necessary?
+                "-Fi${config:drlBasePath}\\${config:debugPath}", //Include file search path
                 "-Fi${config:valkyrieSourcePath}\\libs", //Include file search path
                 "-Fi${config:valkyrieSourcePath}\\src", //Include file search path
                 "-Fu${config:valkyrieSourcePath}\\libs", //Include unit search path
@@ -85,7 +90,15 @@
                     "message": 5,
                     "loop": true
                 }
-            }
+            },
+            "dependsOn": [
+                 "Update libraries (debug)",
+            ]
+        },
+        {
+            "label": "Update libraries (release)",
+            "type": "shell",
+            "command": "xcopy /Y /D ${config:drlBasePath}\\${config:libPath}\\* ${config:drlBasePath}\\${config:releasePath}",
         },
         {
             "label": "Build drl.exe (release)",
@@ -123,7 +136,10 @@
                     "message": 5,
                     "loop": true
                 }
-            }
+            },
+            "dependsOn": [
+                 "Update libraries (release)",
+            ]
         },
         {
             "label": "Syntax Check (debug)",
@@ -138,7 +154,7 @@
                 "-B", //Recompile all used units (make clean)
                 "-v", //Be verbose
                 "-s", //Do not call the assembler and linker
-                "-Fi${config:drlBasePath}\\${config:debugPath}", //Include file search path. Might not be necessary?
+                "-Fi${config:drlBasePath}\\${config:libPath}", //Include file search path
                 "-Fi${config:valkyrieSourcePath}\\libs", //Include file search path
                 "-Fi${config:valkyrieSourcePath}\\src", //Include file search path
                 "-Fu${config:valkyrieSourcePath}\\libs", //Include unit search path
@@ -171,7 +187,10 @@
                     "message": 5,
                     "loop": true
                 }
-            }
+            },
+            "dependsOn": [
+                 "Update libraries (debug)",
+            ]
         },
         {
             "label": "Run (no compilation)",

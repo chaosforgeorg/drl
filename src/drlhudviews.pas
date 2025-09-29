@@ -6,14 +6,15 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlhudviews;
 interface
-uses vutil, vgenerics, vcolor, vioevent, vrltools, dfdata, dfitem, drlkeybindings;
+uses vutil, viotypes, vgenerics, vcolor, vioevent, vrltools,
+     dfdata, dfitem, drlkeybindings;
 
-type TLookModeView = class( TInterfaceLayer )
+type TLookModeView = class( TIOLayer )
   constructor Create;
-  procedure Update( aDTime : Integer ); override;
+  procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
-  function HandleInput( aInput : TInputKey ) : Boolean; override;
+  function HandleInput( aInput : Integer ) : Boolean; override;
 protected
   procedure UpdateTarget;
 protected
@@ -22,16 +23,18 @@ protected
   FTarget   : TCoord2D;
 end;
 
-type TDirectionQueryLayer = class( TInterfaceLayer )
-  constructor Create;
-  procedure Update( aDTime : Integer ); override;
+type TDirectionQueryLayer = class( TIOLayer )
+  constructor Create( aAllowAlt : Boolean );
+  procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
-  function HandleInput( aInput : TInputKey ) : Boolean; override;
+  function HandleInput( aInput : Integer ) : Boolean; override;
   function HandleEvent( const aEvent : TIOEvent ) : Boolean; override;
 protected
   procedure Finalize( aDir : TDirection ); virtual; abstract;
 protected
+  FAlt      : Boolean;
+  FAllowAlt : Boolean;
   FPrompt   : AnsiString;
   FFinished : Boolean;
 end;
@@ -56,12 +59,12 @@ protected
   FFlag : Byte;
 end;
 
-type TMoreLayer = class( TInterfaceLayer )
+type TMoreLayer = class( TIOLayer )
   constructor Create( aMore : Boolean = True );
-  procedure Update( aDTime : Integer ); override;
+  procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
-  function HandleInput( aInput : TInputKey ) : Boolean; override;
+  function HandleInput( aInput : Integer ) : Boolean; override;
   function HandleEvent( const aEvent : TIOEvent ) : Boolean; override;
 protected
   FPrompt   : AnsiString;
@@ -69,12 +72,12 @@ protected
   FFinished : Boolean;
 end;
 
-type TTargetModeView = class( TInterfaceLayer )
-  constructor Create( aItem : TItem; aCommand : Byte; aActionName : AnsiString; aRange: byte; aLimitRange : Boolean; aTargets: TAutoTarget; aChainFire : Byte; aPadMode : Boolean );
-  procedure Update( aDTime : Integer ); override;
+type TTargetModeView = class( TIOLayer )
+  constructor Create( aItem : TItem; aCommand : Byte; aActionName : AnsiString; aRange: byte; aLimitRange : Boolean; aTargets: TAutoTarget; aChainFire : Byte );
+  procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
-  function HandleInput( aInput : TInputKey ) : Boolean; override;
+  function HandleInput( aInput : Integer ) : Boolean; override;
   function HandleEvent( const aEvent : TIOEvent ) : Boolean; override;
 protected
   procedure HandleFire;
@@ -85,7 +88,6 @@ protected
   FFirst      : Boolean;
   FFinished   : Boolean;
   FLimitRange : Boolean;
-  FPadMode    : Boolean;
   FTarget     : TCoord2D;
   FPosition   : TCoord2D;
   FColor      : Byte;
@@ -100,12 +102,12 @@ end;
 
 type TScrollItemArray = specialize TGArray< TItem >;
 
-type TScrollSwapLayer = class( TInterfaceLayer )
+type TScrollSwapLayer = class( TIOLayer )
   constructor Create;
-  procedure Update( aDTime : Integer ); override;
+  procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
-  function HandleInput( aInput : TInputKey ) : Boolean; override;
+  function HandleInput( aInput : Integer ) : Boolean; override;
   destructor Destroy; override;
 protected
   FFinished : Boolean;
@@ -124,7 +126,7 @@ begin
   IO.Targeting := True;
 end;
 
-procedure TLookModeView.Update( aDTime : Integer );
+procedure TLookModeView.Update( aDTime : Integer; aActive : Boolean );
 begin
   if FFirst then UpdateTarget;
   VTIG_FreeLabel( ' = LOOK MODE =', Point( -15, 1 ), Yellow )
@@ -140,34 +142,34 @@ begin
   Exit( True );
 end;
 
-function TLookModeView.HandleInput( aInput : TInputKey ) : Boolean;
+function TLookModeView.HandleInput( aInput : Integer ) : Boolean;
 var iLevel : TLevel;
     iDir   : TDirection;
+    iInput : TInputKey;
 begin
-  if aInput in [ INPUT_ESCAPE, INPUT_MRIGHT, INPUT_QUIT, INPUT_HARDQUIT ] then
+  iInput := TInputKey( aInput );
+  if iInput in [ INPUT_ESCAPE, INPUT_MRIGHT, INPUT_QUIT, INPUT_HARDQUIT ] then
   begin
     IO.FinishTargeting;
     FFinished := true;
     Exit( True );
   end;
 
-  if (aInput = INPUT_TOGGLEGRID) and GraphicsVersion then SpriteMap.ToggleGrid;
-  if aInput in [ INPUT_MMOVE, INPUT_MRIGHT, INPUT_MLEFT ] then FTarget := IO.MTarget;
+  if (iInput = INPUT_TOGGLEGRID) and GraphicsVersion then SpriteMap.ToggleGrid;
+  if iInput in [ INPUT_MMOVE, INPUT_MRIGHT, INPUT_MLEFT ] then FTarget := IO.MTarget;
   iLevel := DRL.Level;
-  if aInput <> INPUT_MORE then
+  if iInput <> INPUT_MORE then
   begin
-    iDir := InputDirection( aInput );
+    iDir := InputDirection( iInput );
     if iLevel.isProperCoord( FTarget + iDir ) then
     begin
       FTarget += iDir;
       UpdateTarget;
     end;
    end;
-   if (aInput in [ INPUT_MORE, INPUT_MLEFT ]) and iLevel.isVisible( FTarget ) then
+   if (iInput in [ INPUT_MORE, INPUT_MLEFT ]) and iLevel.isVisible( FTarget ) then
    begin
-     with iLevel do
-       if Being[FTarget] <> nil then
-         IO.FullLook( Being[FTarget].ID );
+     IO.FullLook( iLevel.Being[FTarget]);
      UpdateTarget;
    end;
    Exit( True );
@@ -181,12 +183,14 @@ begin
   if SpriteMap <> nil then SpriteMap.SetTarget( FTarget, NewColor( White ), False );
 end;
 
-constructor TDirectionQueryLayer.Create;
+constructor TDirectionQueryLayer.Create( aAllowAlt : Boolean );
 begin
   FPrompt := '';
+  FAlt      := False;
+  FAllowAlt := aAllowAlt;
 end;
 
-procedure TDirectionQueryLayer.Update( aDTime : Integer );
+procedure TDirectionQueryLayer.Update( aDTime : Integer; aActive : Boolean );
 begin
   VTIG_FreeLabel( FPrompt + ', choose direction...', Point( 0, 2 ), Yellow )
 end;
@@ -201,17 +205,26 @@ begin
   Exit( True );
 end;
 
-function TDirectionQueryLayer.HandleInput( aInput : TInputKey ) : Boolean;
+function TDirectionQueryLayer.HandleInput( aInput : Integer ) : Boolean;
+var iInput : TInputKey;
 begin
-  if aInput in [ INPUT_ESCAPE, INPUT_MRIGHT, INPUT_QUIT, INPUT_HARDQUIT ] then
+  iInput := TInputKey( aInput );
+  if iInput in [ INPUT_ESCAPE, INPUT_MRIGHT, INPUT_QUIT, INPUT_HARDQUIT ] then
   begin
     FFinished := True;
     Exit( True );
   end;
-  if aInput in INPUT_MOVE+[INPUT_WAIT] then
+  if iInput in INPUT_MOVE+[INPUT_WAIT] then
   begin
     FFinished := True;
-    Finalize( InputDirection( aInput ) );
+    Finalize( InputDirection( iInput ) );
+    Exit( True );
+  end;
+  if FAllowAlt and ( iInput in INPUT_MULTIMOVE ) then
+  begin
+    FFinished := True;
+    FAlt := True;
+    Finalize( InputDirection( iInput ) );
     Exit( True );
   end;
   Exit( True );
@@ -231,7 +244,7 @@ end;
 
 constructor TRunModeView.Create;
 begin
-  inherited Create;
+  inherited Create( False );
   FPrompt := 'Run mode';
 end;
 
@@ -242,19 +255,19 @@ end;
 
 constructor TMeleeDirView.Create;
 begin
-  inherited Create;
+  inherited Create( ModuleOption_MeleeMoveOnKill );
   FPrompt := 'Melee attack';
 end;
 
 procedure TMeleeDirView.Finalize( aDir : TDirection );
 begin
   if aDir.code <> DIR_CENTER then
-    DRL.HandleCommand( TCommand.Create( COMMAND_MELEE, Player.Position + aDir ) );
+    DRL.HandleCommand( TCommand.Create( COMMAND_MELEE, Player.Position + aDir, ModuleOption_MeleeMoveOnKill and ( not FAlt ) ) );
 end;
 
 constructor TActionDirView.Create( aAction : Ansistring; aFlag : Byte );
 begin
-  inherited Create;
+  inherited Create( False );
   FPrompt := aAction;
   FFlag   := aFlag;
 end;
@@ -273,7 +286,7 @@ begin
   FLength := VTIG_Length( FPrompt );
 end;
 
-procedure TMoreLayer.Update( aDTime : Integer );
+procedure TMoreLayer.Update( aDTime : Integer; aActive : Boolean );
 begin
   VTIG_FreeLabel( FPrompt, Point( 3, 2 ), Yellow )
 end;
@@ -288,9 +301,9 @@ begin
   Exit( True );
 end;
 
-function TMoreLayer.HandleInput( aInput : TInputKey ) : Boolean;
+function TMoreLayer.HandleInput( aInput : Integer ) : Boolean;
 begin
-  if aInput in [ INPUT_OK, INPUT_MLEFT, INPUT_QUIT, INPUT_HARDQUIT ] then
+  if TInputKey( aInput ) in [ INPUT_OK, INPUT_MLEFT, INPUT_QUIT, INPUT_HARDQUIT ] then
     FFinished := True;
   Exit( True );
 end;
@@ -303,11 +316,10 @@ begin
 end;
 
 constructor TTargetModeView.Create( aItem : TItem; aCommand : Byte; aActionName : AnsiString;
-  aRange: byte; aLimitRange : Boolean; aTargets: TAutoTarget; aChainFire : Byte; aPadMode : Boolean );
+  aRange: byte; aLimitRange : Boolean; aTargets: TAutoTarget; aChainFire : Byte );
 begin
   FFirst        := True;
   FFinished     := False;
-  FPadMode      := aPadMode;
   FTargets      := aTargets;
   FTarget       := aTargets.Current;
   FActionName   := aActionName;
@@ -323,7 +335,7 @@ begin
   IO.Targeting  := True;
 end;
 
-procedure TTargetModeView.Update( aDTime : Integer );
+procedure TTargetModeView.Update( aDTime : Integer; aActive : Boolean );
 begin
   if FFirst then UpdateTarget;
   VTIG_FreeLabel( FActionName, Point( 0, 2 ), Yellow )
@@ -339,25 +351,27 @@ begin
   Exit( True );
 end;
 
-function TTargetModeView.HandleInput( aInput : TInputKey ) : Boolean;
+function TTargetModeView.HandleInput( aInput : Integer ) : Boolean;
 var iDir        : TDirection;
     iDist       : Byte;
     iTargetLine : TVisionRay;
+    iInput      : TInputKey;
 begin
-  if aInput in [ INPUT_ESCAPE, INPUT_MRIGHT, INPUT_QUIT, INPUT_HARDQUIT ] then
+  iInput := TInputKey( aInput );
+  if iInput in [ INPUT_ESCAPE, INPUT_MRIGHT, INPUT_QUIT, INPUT_HARDQUIT ] then
   begin
     Finalize;
     Exit( True );
   end;
 
-  if (aInput = INPUT_TOGGLEGRID) and GraphicsVersion then SpriteMap.ToggleGrid;
-  if aInput = INPUT_TARGETNEXT then
+  if (iInput = INPUT_TOGGLEGRID) and GraphicsVersion then SpriteMap.ToggleGrid;
+  if iInput = INPUT_TARGETNEXT then
   begin
     FTarget := FTargets.Next;
     UpdateTarget;
   end;
 
-  if aInput in [ INPUT_MMOVE, INPUT_MRIGHT, INPUT_MLEFT ] then
+  if iInput in [ INPUT_MMOVE, INPUT_MRIGHT, INPUT_MLEFT ] then
   begin
     FTarget := IO.MTarget;
     iDist   := Distance( FTarget, FPosition );
@@ -376,21 +390,21 @@ begin
     end;
     UpdateTarget;
   end;
-  if aInput in INPUT_MOVE then
+  if iInput in INPUT_MOVE then
   begin
-    iDir := InputDirection( aInput );
+    iDir := InputDirection( iInput );
     MoveTarget( FTarget + iDir );
   end;
 
-  if aInput = INPUT_MORE then
+  if iInput = INPUT_MORE then
   begin
     with DRL.Level do
      if Being[FTarget] <> nil then
-       IO.FullLook( Being[FTarget].ID );
+       IO.FullLook( Being[FTarget] );
     UpdateTarget;
   end;
 
-  if aInput in [ INPUT_FIRE, INPUT_ALTFIRE, INPUT_TARGET, INPUT_ALTTARGET, INPUT_MLEFT ] then
+  if ( iInput in [ INPUT_ACTION, INPUT_OK, INPUT_FIRE, INPUT_ALTFIRE, INPUT_TARGET, INPUT_ALTTARGET, INPUT_MLEFT ] ) then
     HandleFire;
 
   Exit( True );
@@ -406,7 +420,7 @@ begin
     VPAD_BUTTON_Y : begin
       with DRL.Level do
          if Being[FTarget] <> nil then
-           IO.FullLook( Being[FTarget].ID );
+           IO.FullLook( Being[FTarget] );
       UpdateTarget;
       Exit( True );
     end;
@@ -512,10 +526,10 @@ begin
         Exit;
       end;
     end;
-    if (Slot[ efWeapon2 ] <> nil) and Slot[ efWeapon2 ].isWeapon then FArray.Push( Slot[ efWeapon2 ] );
+    if (Slot[ efWeapon2 ] <> nil) and Slot[ efWeapon2 ].isEqWeapon then FArray.Push( Slot[ efWeapon2 ] );
     for iItem in Player.Inv do
       if not Equipped( iItem ) then
-        if iItem.isWeapon then
+        if iItem.isEqWeapon then
           FArray.Push( iItem );
 
     if FArray.Size <= 1 then
@@ -532,7 +546,7 @@ begin
   if Player.Inv.Slot[ efWeapon ] = nil then FIndex := 0;
 end;
 
-procedure TScrollSwapLayer.Update( aDTime : Integer );
+procedure TScrollSwapLayer.Update( aDTime : Integer; aActive : Boolean );
 begin
   VTIG_FreeLabel( 'Scroll, <{!LMB}> wield, <{!RMB}> cancel:', Point( 0, 2 ), Yellow );
   IO.HintOverlay := FArray[ FIndex ].Description;
@@ -548,19 +562,21 @@ begin
   Exit( True );
 end;
 
-function TScrollSwapLayer.HandleInput( aInput : TInputKey ) : Boolean;
+function TScrollSwapLayer.HandleInput( aInput : Integer ) : Boolean;
+var iInput : TInputKey;
 begin
-  if aInput in [ INPUT_MRIGHT, INPUT_ESCAPE, INPUT_QUIT, INPUT_HARDQUIT ] then
+  iInput := TInputKey( aInput );
+  if iInput in [ INPUT_MRIGHT, INPUT_ESCAPE, INPUT_QUIT, INPUT_HARDQUIT ] then
   begin
     IO.HintOverlay := '';
     FFinished := True;
     Exit( True );
   end;
 
-  if aInput = INPUT_MSCRUP   then if FIndex = 0 then FIndex := FArray.Size-1 else FIndex -= 1;
-  if aInput = INPUT_MSCRDOWN then FIndex := (FIndex + 1) mod FArray.Size;
+  if iInput = INPUT_MSCRUP   then if FIndex = 0 then FIndex := FArray.Size-1 else FIndex -= 1;
+  if iInput = INPUT_MSCRDOWN then FIndex := (FIndex + 1) mod FArray.Size;
 
-  if aInput in [INPUT_MLEFT, INPUT_OK ] then
+  if iInput in [INPUT_MLEFT, INPUT_OK ] then
   begin
     IO.HintOverlay := '';
     FFinished      := True;

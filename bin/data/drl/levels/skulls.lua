@@ -8,6 +8,7 @@ register_level "city_of_skulls"
 	level = 12,
 
 	Create = function ()
+		core.special_create()
 		level:set_generator_style( 1 )
 		level:fill( "rwall" )
 
@@ -89,6 +90,7 @@ register_level "city_of_skulls"
 
 	OnExit = function ()
 		if level.status == 3 then
+			core.special_complete()
 			player:add_history("He wiped out the City of Skulls.")
  	 		player:add_badge("skull1")
 			if core.is_challenge("challenge_aora") then player:add_badge("skull2") end

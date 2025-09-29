@@ -130,6 +130,7 @@ begin
     FillChar( iCell.Sprite,      SizeOf(iCell.Sprite),      0 );
     FillChar( iCell.BloodSprite, SizeOf(iCell.BloodSprite), 0 );
     FillChar( iCell.Deco,        SizeOf(iCell.Deco),        0 );
+    Initialize( iBase );
     FillChar( iBase,             SizeOf(iBase),             0 );
     ReadSprite( iTable, iBase );
     if iTable.IsTable( 'sprite' ) then

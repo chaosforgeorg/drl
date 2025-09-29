@@ -6,17 +6,16 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlrankupview;
 interface
-uses vutil, drlio, dfdata;
+uses vutil, viotypes, dfdata;
 
-type TRankUpView = class( TInterfaceLayer )
+type TRankUpView = class( TIOLayer )
   constructor Create( aRank : THOFRank );
-  procedure Update( aDTime : Integer ); override;
+  procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
 protected
   FFinished : Boolean;
   FSize     : TPoint;
-  FRect     : TRectangle;
   FLines    : array of Ansistring;
 end;
 
@@ -60,7 +59,7 @@ begin
   SetLength( FLines, iSize );
 end;
 
-procedure TRankUpView.Update( aDTime : Integer );
+procedure TRankUpView.Update( aDTime : Integer; aActive : Boolean );
 var i : Integer;
 begin
   VTIG_BeginWindow('Congratulations!', 'rank_up_view', FSize );
@@ -70,11 +69,9 @@ begin
 
   VTIG_FreeLabel( 'Press <{!{$input_ok}}>...', Point( 12, 8+High( FLines ) ) );
 
-  FRect := VTIG_GetWindowRect;
   VTIG_End('{l<{!{$input_ok},{$input_escape}}> continue}');
   if VTIG_EventCancel or VTIG_EventConfirm then
     FFinished := True;
-  IO.RenderUIBackground( FRect.TopLeft, FRect.BottomRight - PointUnit );
 end;
 
 

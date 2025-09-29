@@ -8,6 +8,7 @@ register_level "the_wall"
 	level = 11,
 
 	Create = function ()
+		core.special_create()
 		level:set_generator_style( 1 )
 		level:fill( "wall" )
 
@@ -86,6 +87,7 @@ register_level "the_wall"
 			ui.msg("This must be madness!")
 			player:add_history("He broke into the Wall, but gave up against the overwhelming forces.")
 		elseif result == 2 then
+			core.special_complete()
 			ui.msg("All in all, we're just another brick in the wall.")
 			player:add_history("He massacred the evil behind the Wall!")
 			player:add_badge("wall1")

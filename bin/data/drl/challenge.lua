@@ -298,7 +298,7 @@ function drl.register_challenges()
 			player.inv:clear()
 			player.eq:clear()
 			player.eq.weapon = "shotgun"
-			player.inv:add( "shell", { ammo = 50 } )
+			player.inv:add( "shell", { amount = 50 } )
 			player.inv:add( "smed" )
 			player.inv:add( "smed" )
 			if player.klass == klasses.technician.nid then
@@ -507,11 +507,11 @@ function drl.register_challenges()
 			player.inv:clear()
 			if CHALLENGE ~= "challenge_aob" then
 				if CHALLENGE == "challenge_aosh" then
-					player.inv:add( "shell", { ammo = 50 } )
+					player.inv:add( "shell", { amount = 50 } )
 				elseif CHALLENGE == "challenge_aopc" then
 					player.inv:add( "nuke" )
 				else
-					player.inv:add( "ammo", { ammo = 100 } )
+					player.inv:add( "ammo", { amount = 100 } )
 				end
 			end
 			player.flags[ BF_IMPATIENT ] = true
@@ -571,19 +571,14 @@ function drl.register_challenges()
 		removemedals = { "icarus1", "icarus2", "explorer", "conqueror", "competn1", "competn2", "competn3", "untouchable1", "untouchable2", "untouchable3" },
 
 		OnCreateEpisode = function ()
-			local episode = player.episode
-			player.episode = {}
-			local LevCount = 17
-			for i=1,LevCount do
-				player.episode[i] = episode[i+8]
-			end
-			local SpecLevCount = 0
-			for i=1,LevCount-1 do
+			local slevcount = 0
+			for i=8,24 do
 				if player.episode[i].special then
-					SpecLevCount = SpecLevCount + 1
+					slevcount = slevcount + 1
 				end
 			end
-			statistics.bonus_levels_count = SpecLevCount
+			statistics.bonus_levels_count = slevcount
+			player.level_index = 8
 		end,
 
 		OnCreatePlayer = function ()
@@ -591,10 +586,10 @@ function drl.register_challenges()
 			if CHALLENGE == "challenge_aob" then
 				player.inv:add( "chainsaw")
 			elseif CHALLENGE == "challenge_aomr" then
-				player.inv:add( "ammo", { ammo = 100 } )
+				player.inv:add( "ammo", { amount = 100 } )
 			elseif CHALLENGE == "challenge_aosh" then
 				player.inv:add( "shotgun" )
-				player.inv:add( "shell", { ammo = 50 } )
+				player.inv:add( "shell", { amount = 50 } )
 			elseif CHALLENGE == "challenge_aolt" then
 				player.eq.prepared = "pammo"
 				player.inv:add( "shotgun" )
@@ -605,8 +600,8 @@ function drl.register_challenges()
 				player.inv:add( "shotgun" )
 				player.inv:add( "chaingun" )
 				player.inv:add( "knife")
-				player.inv:add( "ammo", { ammo = 100 } )
-				player.inv:add( "shell", { ammo = 50 } )
+				player.inv:add( "ammo", { amount = 100 } )
+				player.inv:add( "shell", { amount = 50 } )
 			end
 			if CHALLENGE ~= "challenge_aoi" and CHALLENGE ~= "challenge_aoms" then
 				player.inv:add( "lmed" )
@@ -993,11 +988,11 @@ function drl.register_challenges()
 			player.inv:clear()
 			if CHALLENGE ~= "challenge_aob" then
 				if CHALLENGE == "challenge_aosh" then
-					player.inv:add( "shell", { ammo = 50 } )
+					player.inv:add( "shell", { amount = 50 } )
 				elseif CHALLENGE == "challenge_aopc" then
 					player.inv:add( "nuke" )
 				else
-					player.inv:add( "ammo", { ammo = 100 } )
+					player.inv:add( "ammo", { amount = 100 } )
 				end
 			end
 			if player.klass == klasses.technician.nid then
@@ -1121,14 +1116,14 @@ function drl.register_challenges()
 			if ARCHANGEL then LevCount = 666 end
 
 			for i=1,LevD - 1 do
-				player.episode[i] = { style = table.random_pick{1,5,8}, number = i, name = "Phobos", danger = i, deathname = "the Phobos base" }
+				player.episode[i] = { style = table.random_pick{1,5,8}, name = "Phobos L"..tostring(i), danger = i, deathname = "level "..tostring(i).." of the Phobos base" }
 			end
 			for i=LevD, LevH - 1 do
-				player.episode[i] = { style = table.random_pick{2,6}, number = i, name = "Deimos", danger = i, deathname = "the Deimos base" }
+				player.episode[i] = { style = table.random_pick{2,6}, name = "Deimos L"..tostring(i), danger = i, deathname = "level "..tostring(i).." of the Deimos base" }
 			end
 			for i=LevH,LevCount-1 do
 				if i < 25 then
-					player.episode[i] = { style = table.random_pick{3,7}, number = i, name = "Hell", danger = i }
+					player.episode[i] = { style = table.random_pick{3,7}, name = "Hell L"..tostring(i), danger = i, deathname = "level "..tostring(i).." of Hell" }
 				else
 					local mod_value = {
 						{1,5,8},
@@ -1136,12 +1131,12 @@ function drl.register_challenges()
 						{3,7},
 					}
 					local list = mod_value[math.floor(i / 5) % 3 + 1]
-					player.episode[i] = { style = table.random_pick(list), number = i, name = "Beyond", danger = i }
+					player.episode[i] = { style = table.random_pick(list), name = "Beyond L"..tostring(i), danger = i, deathname = "level "..tostring(i).." of Beyond" }
 				end
 			end
 
 			-- Here is where we can add some Ao100 specific special levels like #88
-			player.episode[LevCount] = { style = 3, number = LevCount, name = "Hell", danger = LevCount*2 }
+			player.episode[LevCount] = { style = 3, name = "Hell L"..tostring(LevCount), danger = LevCount*2, deathname = "level "..tostring(LevCount).." of Hell" }
 			statistics.bonus_levels_count = 0
 		end,
 
@@ -1154,7 +1149,7 @@ function drl.register_challenges()
 			if ARCHANGEL then LevCount = 666 end
 
 			if l == LevCount and player.eq.armor and player.eq.armor.id == "uberarmor" then
-				level.flags[ LF_BOSS ] = true
+				level.flags[ LF_NOBEINGREVEAL ] = true
 				ui.msg_enter("Something is wrong... Something is really wrong here!")
 				for b in level:beings() do
 					if not b:is_player() then
@@ -1305,7 +1300,7 @@ You can rest easy knowing that you're Boss. Yet at the last level you sensed som
 		end,
 
 		OnCreateEpisode = function ()
-			player.episode[1] = { style = 1, number = 1, name = "Phobos", danger = 2, deathname = "the Phobos base" }
+			player.episode[1] = { style = 1, name = "Phobos L1", danger = 2, deathname = "level 1 of the Phobos base" }
 		end,
 
 		OnUnLoad = function ()
@@ -1452,19 +1447,14 @@ You can rest easy knowing that you're Boss. Yet at the last level you sensed som
 		removemedals = { "icarus1", "icarus2", "explorer", "conqueror", "competn1", "competn2", "competn3", "untouchable1", "untouchable2", "untouchable3" },
 
 		OnCreateEpisode = function ()
-			local episode = player.episode
-			player.episode = {}
-			local LevCount = 9
-			for i=1,LevCount do
-				player.episode[i] = episode[i+16]
-			end
-			local SpecLevCount = 0
-			for i=1,LevCount-1 do
+			local slevcount = 0
+			for i=16,24 do
 				if player.episode[i].special then
-					SpecLevCount = SpecLevCount + 1
+					slevcount = slevcount + 1
 				end
 			end
-			statistics.bonus_levels_count = SpecLevCount
+			statistics.bonus_levels_count = slevcount
+			player.level_index = 16
 		end,
 
 		OnCreatePlayer = function ()
@@ -1620,10 +1610,10 @@ You can rest easy knowing that you're Boss. Yet at the last level you sensed som
 			player.episode = {}
 
 			for i=1,LevH - 1 do
-				player.episode[i] = { style = 1, number = i, name = "Phobos Base", danger = i*2 }
+				player.episode[i] = { style = 1, name = "Phobos L"..tostring(i), danger = i*2, deathname = "level "..tostring(i).." of the Phobos base" }
 			end
 			for i=LevH,LevCount - 2 do
-				player.episode[i] = { style = 2, number = i-(LevH-1), name = "Phobos Hell", danger = i*2 }
+				player.episode[i] = { style = 2, name = "Phobos Hell L"..tostring(i), danger = i*2, deathname = "level "..tostring(i).." of Phobos Hell" }
 			end
 			player.episode[LevCount-1] = { script = "tower_of_babel" }
 			player.episode[LevCount]   = { script = "hell_fortress" }
@@ -1633,7 +1623,15 @@ You can rest easy knowing that you're Boss. Yet at the last level you sensed som
 					if not (level_proto.chance and (math.random(100) > level_proto.chance)) then
 						local lev = core.resolve_range(level_proto.level)
 						if lev % 2 == 0 then
-							player.episode[lev / 2].special = level_proto.id
+ 							local from = player.episode[lev / 2]
+							table.insert( player.episode, { 
+								script = level_proto.id,
+								style  = from.style,
+								danger = from.danger,
+								name   = level_proto.name,
+								exit   = (lev / 2) + 1,
+							} )
+							from.special = #player.episode
 						end
 					end
 				end

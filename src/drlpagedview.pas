@@ -6,11 +6,11 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlpagedview;
 interface
-uses vutil, drlio, dfdata, vgenerics;
+uses vutil, viotypes, dfdata, vgenerics;
 
-type TPagedView = class( TInterfaceLayer )
+type TPagedView = class( TIOLayer )
   constructor Create( aPages : TPagedReport; aInitialPage : AnsiString = '' );
-  procedure Update( aDTime : Integer ); override;
+  procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
   destructor Destroy; override;
@@ -18,7 +18,6 @@ protected
   FFinished : Boolean;
   FPage     : Integer;
   FSize     : TPoint;
-  FRect     : TRectangle;
   FContent  : TPagedReport;
 end;
 
@@ -41,7 +40,7 @@ begin
         FPage := i;
 end;
 
-procedure TPagedView.Update( aDTime : Integer );
+procedure TPagedView.Update( aDTime : Integer; aActive : Boolean );
 var iString     : Ansistring;
     iTitle      : Ansistring;
 begin
@@ -68,9 +67,7 @@ begin
 
     if FContent.Headers[ FPage ] <> '' then
       VTIG_End;
-  FRect := VTIG_GetWindowRect;
   VTIG_End('{l<{!{$input_up},{$input_down}}> scroll, <{!{$input_left},{$input_right}}> pages, <{!{$input_ok},{$input_escape}}> exit}');
-  IO.RenderUIBackground( FRect.TopLeft, FRect.BottomRight - PointUnit );
 
   if VTIG_EventCancel or VTIG_EventConfirm then
     FFinished := True;

@@ -6,7 +6,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlchoiceview;
 interface
-uses vgenerics, vutil, dfdata;
+uses viotypes, vgenerics, vutil, dfdata;
 
 type TChoiceViewChoice = record
   Name    : AnsiString;
@@ -17,9 +17,9 @@ end;
 
 type TChoiceArray = specialize TGArray< TChoiceViewChoice >;
 
-type TChoiceView = class( TInterfaceLayer )
+type TChoiceView = class( TIOLayer )
   constructor Create;
-  procedure Update( aDTime : Integer ); override;
+  procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
   procedure Add( const aEntry : TChoiceViewChoice );
@@ -48,7 +48,7 @@ end;
 
 implementation
 
-uses sysutils, vdebug, vtig, drlbase, drlio;
+uses sysutils, vdebug, vtig, drlbase;
 
 constructor TChoiceView.Create;
 begin
@@ -65,9 +65,8 @@ begin
   FChoices  := TChoiceArray.Create;
 end;
 
-procedure TChoiceView.Update( aDTime : Integer );
-var iRect : TRectangle;
-    i     : Byte;
+procedure TChoiceView.Update( aDTime : Integer; aActive : Boolean );
+var i : Byte;
 begin
   if IsFinished then Exit;
   if FDelay > 0 then FDelay -= aDTime;
@@ -90,10 +89,7 @@ begin
     VTIG_Ruler;
     VTIG_Text( FChoices[VTIG_Selected].Desc );
   end;
-  iRect := VTIG_GetWindowRect;
   VTIG_End;
-
-  IO.RenderUIBackground( iRect.TopLeft, iRect.BottomRight - PointUnit );
 
   if FEscape and VTIG_EventCancel then
   begin

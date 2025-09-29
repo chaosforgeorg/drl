@@ -6,7 +6,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlplayerview;
 interface
-uses viotypes, vgenerics,
+uses viotypes, vgenerics, vtigstyle,
      dfitem, dfdata,
      drlio, drltraits, drlconfirmview;
 
@@ -41,15 +41,16 @@ type TTraitViewEntry = record
   Available : Boolean;
   Value     : Byte;
   Index     : Byte;
+  Master    : Boolean;
 end;
 
 type TTraitViewArray = specialize TGArray< TTraitViewEntry >;
 
-type TPlayerView = class( TInterfaceLayer )
+type TPlayerView = class( TIOLayer )
   constructor Create( aInitialState : TPlayerViewState = PLAYERVIEW_INVENTORY );
   constructor CreateTrait( aFirstTrait : Boolean; aKlass : Byte = 0 );
   constructor CreateCommand( aCommand : Byte; aScavenger : Boolean = False );
-  procedure Update( aDTime : Integer ); override;
+  procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
   procedure Retain;
@@ -76,6 +77,7 @@ protected
   FInv         : TItemViewArray;
   FEq          : TItemViewArray;
   FCharacter   : TStringGArray;
+  FTraitsStyle : TTIGStyle;
   FAction      : AnsiString;
   FITitle      : AnsiString;
   FCTitle      : AnsiString;
@@ -86,7 +88,6 @@ protected
   FSSlot       : TEqSlot;
   FTraits      : TTraitViewArray;
   FCommandMode : Byte;
-  FRect        : TIORect;
 
   class var FTraitPick : Byte;
 public
@@ -143,7 +144,7 @@ begin
   FState       := PLAYERVIEW_INVENTORY;
   ReadInv;
   case aCommand of
-    COMMAND_USE    : begin FAction := 'use';  FITitle := 'Choose item to use';  Filter( [ITEMTYPE_PACK] ); end;
+    COMMAND_USE    : begin FAction := 'use';  FITitle := 'Choose item to use';  Filter( [ITEMTYPE_PACK,ITEMTYPE_URANGED] ); end;
     COMMAND_DROP   : begin FAction := 'drop'; FITitle := 'Choose item to drop'; end;
     COMMAND_UNLOAD : if aScavenger
                        then begin FAction := 'unload/scavenge';  FITitle := 'Choose item to unload/scavenge';  Filter( [ITEMTYPE_RANGED, ITEMTYPE_AMMOPACK, ITEMTYPE_MELEE, ITEMTYPE_ARMOR, ITEMTYPE_BOOTS] ); end
@@ -153,6 +154,8 @@ end;
 
 procedure TPlayerView.Initialize;
 begin
+  FTraitsStyle := TIGStylePadless;
+  FTraitsStyle.Padding[ VTIG_WINDOW_PADDING ].X := 1;
   VTIG_EventClear;
   VTIG_ResetSelect( 'inventory' );
   VTIG_ResetSelect( 'equipment' );
@@ -173,7 +176,7 @@ begin
   FTraitPick   := 255;
 end;
 
-procedure TPlayerView.Update( aDTime : Integer );
+procedure TPlayerView.Update( aDTime : Integer; aActive : Boolean );
 var iTraitFirst : Boolean;
 begin
   if IsFinished or (FState = PLAYERVIEW_CLOSING) or (FState = PLAYERVIEW_PENDING) then Exit;
@@ -204,9 +207,35 @@ begin
     begin
       if FState = PLAYERVIEW_TRAITS       then FState := Low( TPlayerViewState ) else FState := Succ( FState );
     end;
-    if ( FState <> PLAYERVIEW_DONE ) and VTIG_Event( [ TIG_EV_INVENTORY, TIG_EV_EQUIPMENT, TIG_EV_CHARACTER, TIG_EV_TRAITS ] ) then
+    if ( FState <> PLAYERVIEW_DONE ) then
     begin
-      FState := PLAYERVIEW_DONE;
+      if VTIG_Event( TIG_EV_INVENTORY ) then
+      begin
+        if FState = PLAYERVIEW_INVENTORY
+          then FState := PLAYERVIEW_DONE
+          else FState := PLAYERVIEW_INVENTORY;
+      end;
+
+      if VTIG_Event( TIG_EV_EQUIPMENT ) then
+      begin
+        if FState = PLAYERVIEW_EQUIPMENT
+          then FState := PLAYERVIEW_DONE
+          else FState := PLAYERVIEW_EQUIPMENT;
+      end;
+
+      if VTIG_Event( TIG_EV_CHARACTER ) then
+      begin
+        if FState = PLAYERVIEW_CHARACTER
+          then FState := PLAYERVIEW_DONE
+          else FState := PLAYERVIEW_CHARACTER;
+      end;
+
+      if VTIG_Event( TIG_EV_TRAITS ) then
+      begin
+        if FState = PLAYERVIEW_TRAITS
+          then FState := PLAYERVIEW_DONE
+          else FState := PLAYERVIEW_TRAITS;
+      end;
     end;
   end;
 
@@ -220,8 +249,6 @@ begin
           FTraitPick := 255;
         end;
   end;
-
-  IO.RenderUIBackground( FRect.TopLeft, FRect.BottomRight - PointUnit );
 end;
 
 function TPlayerView.IsFinished : Boolean;
@@ -272,7 +299,7 @@ var iEntry    : TItemViewEntry;
         ReadQuickslots;
         Exit( True );
       end;
-      if iItem.isPack then
+      if iItem.isUsable then
       begin
         if Player.FQuickSlots[ aValue ].ID = iItem.ID
           then Player.FQuickSlots[ aValue ].ID := ''
@@ -287,14 +314,19 @@ var iEntry    : TItemViewEntry;
     end;
     Exit( False );
   end;
+  function QSlotChar( aQSlot : Byte ) : Char;
+  begin
+    if IO.IsGamepad and ( aQSlot < 5 ) and ( aQSlot > 0 ) then
+      Exit( PadQSlotChar[ aQSlot ] );
+    Exit( Chr(Ord('0') + iEntry.QSlot ) );
+  end;
 begin
   if FInv = nil then ReadInv;
   VTIG_BeginWindow( FITitle, 'inventory', FSize );
-    FRect := VTIG_GetWindowRect;
     VTIG_BeginGroup( 50 );
     for iEntry in FInv do
       if iEntry.QSlot <> 0
-        then VTIG_Selectable( '[{!{0}}] {1}',[Chr(Ord('0') + iEntry.QSlot), iEntry.Name], True, iEntry.Color )
+        then VTIG_Selectable( '[{!{0}}] {1}',[QSlotChar( iEntry.QSlot ), iEntry.Name], True, iEntry.Color )
         else VTIG_Selectable( iEntry.Name, True, iEntry.Color );
     iSelected := VTIG_Selected;
     if FInv.Size = 0 then
@@ -324,8 +356,9 @@ begin
       begin
         VTIG_Text( '<{!{$input_uidrop}}> drop' );
         VTIG_Text( '<{!{$input_uialtdrop}}>    unload and drop' );
-        if not IO.IsGamepad then
-          VTIG_Text( '<{!1-9}> mark quickslot' );
+        if IO.IsGamepad
+          then VTIG_Text( '<{!LTrigger+DPad}> mark quickslot' )
+          else VTIG_Text( '<{!1-9}> mark quickslot' );
       end;
     end;
 
@@ -362,10 +395,12 @@ begin
         begin
           iCommand := COMMAND_NONE;
           if FInv[iSelected].Item.isWearable then iCommand := COMMAND_WEAR;
-          if FInv[iSelected].Item.isPack     then iCommand := COMMAND_USE;
+          if FInv[iSelected].Item.isUsable   then iCommand := COMMAND_USE;
           FState := PLAYERVIEW_CLOSING;
           if iCommand <> COMMAND_NONE then
-            DRL.HandleCommand( TCommand.Create( iCommand, FInv[iSelected].Item ) );
+            if FInv[iSelected].Item.IType = ITEMTYPE_URANGED
+              then DRL.HandleUsableCommand( FInv[iSelected].Item )
+              else DRL.HandleCommand( TCommand.Create( iCommand, FInv[iSelected].Item ) );
           FState := PLAYERVIEW_DONE;
         end;
         if VTIG_Event( VTIG_IE_1 ) then MarkQSlot( iSelected, 1 );
@@ -398,12 +433,9 @@ begin
     if VTIG_EventConfirm then
       FState := PLAYERVIEW_DONE;
   end;
-
 end;
 
 procedure TPlayerView.UpdateEquipment;
-const ResNames : array[TResistance] of AnsiString = ('Bullet','Melee','Shrap','Acid','Fire','Plasma','Cold','Poison');
-      ResIDs   : array[TResistance] of AnsiString = ('bullet','melee','shrapnel','acid','fire','plasma','cold','poison');
 var iEntry            : TItemViewEntry;
     iSelected,iY      : Integer;
     iB, iA, iR, iK    : Integer;
@@ -426,7 +458,6 @@ var iEntry            : TItemViewEntry;
 begin
   if FEq = nil then ReadEq;
   VTIG_BeginWindow('Equipment', 'equipment', FSize );
-    FRect := VTIG_GetWindowRect;
     VTIG_BeginGroup( 10, True );
 
       VTIG_BeginGroup( 50 );
@@ -452,7 +483,7 @@ begin
     iK := 53;
     if IO.NarrowMode then
     begin
-      iR := 38;
+      iR := 40;
       iK := 50;
     end;
 
@@ -486,8 +517,8 @@ begin
       begin
         Inc( iY );
         VTIG_FreeLabel( '{d'+Padded(ResNames[iRes],7)+'{!'+Padded(BonusStr(iTot)+'%',5)+
-             '} Torso {!'+Padded(BonusStr(iTor)+'%',5)+
-             '} Feet {!'+Padded(BonusStr(iFeet)+'%',5)+'}', Point( iR, iY ) );
+             '} Torso{!'+Padded(BonusStr(iTor)+'%',5)+
+             '} Feet{!'+Padded(BonusStr(iFeet)+'%',5)+'}', Point( iR, iY ) );
       end;
     end;
 
@@ -557,7 +588,6 @@ var iString : Ansistring;
 begin
   if FCharacter = nil then ReadCharacter;
   VTIG_BeginWindow(FCTitle, 'character', FSize );
-  FRect := VTIG_GetWindowRect;
   iCount := 0;
   if Assigned( IO.Ascii[Player.ASCIIMoreCode] ) then
     for iString in IO.Ascii[Player.ASCIIMoreCode] do
@@ -575,13 +605,13 @@ var iSelected : Integer;
     iEntry    : TTraitViewEntry;
 begin
   if FTraits = nil then ReadTraits( Player.Klass );
+  VTIG_PushStyle( @FTraitsStyle );
   if FTraitMode
     then VTIG_BeginWindow('Select trait to upgrade', 'traits', FSize )
     else VTIG_BeginWindow('Traits', 'traits', FSize );
-  FRect := VTIG_GetWindowRect;
+  VTIG_PopStyle();
 
   VTIG_BeginGroup( 23 );
-    VTIG_AdjustPadding( Point(0,-1) );
     for iEntry in FTraits do
       if iEntry.Available
         then VTIG_Selectable( iEntry.Entry, True, LightRed )
@@ -592,6 +622,7 @@ begin
   VTIG_BeginGroup;
   if iSelected >= 0 then
   begin
+    VTIG_Text('');
     VTIG_Text( FTraits[iSelected].Name, LightRed );
     VTIG_Ruler;
     if FTraits[iSelected].Quote <> '' then
@@ -605,6 +636,17 @@ begin
       VTIG_Text( 'Requires : {0}',[FTraits[iSelected].Requires] );
     if FTraits[iSelected].Blocks <> '' then
       VTIG_Text( 'Blocks   : {0}',[FTraits[iSelected].Blocks] );
+    if FTraits[iSelected].Master then
+    begin
+      VTIG_Text( '' );
+      if ( not FTraitFirst ) and ( Player.Traits.Master > 0 ) then
+      begin
+        if FTraits[iSelected].Index <> Player.Traits.Master then
+          VTIG_Text( '{rYou can pick only one {RMaster} trait.}' );
+      end
+      else
+        VTIG_Text( 'You can pick only one {!Master} trait.' );
+    end;
   end;
   VTIG_EndGroup;
 
@@ -745,6 +787,7 @@ begin
     iEntry.Blocks   := '';
     with LuaSystem.GetTable(['klasses',iKlass,'trait',iTrait]) do
     try
+      iEntry.Master:= getBoolean( 'master', False );
       if GetTableSize('requires') > 0 then
       for iTable in ITables('requires') do
       begin
@@ -814,9 +857,7 @@ begin
     if FKills.NoDamageSequence > iKillRecord then iKillRecord := FKills.NoDamageSequence;
 
     FCharacter.Push( Format( '{!%s}, level {!%d} {!%s},',[ Name, ExpLevel, AnsiString(LuaSystem.Get(['klasses',Klass,'name']))] ) );
-    if DRL.Level.Name_Number > 0
-      then FCharacter.Push( Format( 'currently on level {!%d} of {!%s}. ', [ DRL.Level.Name_Number, DRL.Level.Name ] ) )
-      else FCharacter.Push( Format( 'currently at {!%s}. ', [ DRL.Level.Name ] ) );
+    FCharacter.Push( Format( 'currently at {!%s}. ', [ DRL.Level.Name ] ) );
     FCharacter.Push( Format( 'He survived {!%d} turns, which took him {!%d} seconds. ', [ Statistics['game_time'], Statistics['real_time'] ] ) );
     FCharacter.Push( Format( 'He took {!%d} damage, {!%d} on this floor alone. ', [ Statistics['damage_taken'], Statistics['damage_on_level'] ] ) );
     FCharacter.Push( Format( 'He killed {!%d} out of {!%d} enemies ({!%d%%}). ', [ Statistics['unique_kills'], Statistics['max_unique_kills'], Percent( Statistics['unique_kills'], Statistics['max_unique_kills'] ) ] ) );
@@ -826,7 +867,7 @@ begin
     FCharacter.Push( '' );
     FCharacter.Push( Format( 'Current movement speed is {!%.2f} second/move.', [getMoveCost/(Speed*10.0)] ) );
     FCharacter.Push( Format( 'Current fire speed is {!%.2f} second/%s.', [getFireCost( ALT_NONE, False )/(Speed*10.0),IIf(canDualWield,'dualshot','shot')] ) );
-    FCharacter.Push( Format( 'Current reload speed is {!%.2f} second/reload.', [getReloadCost/(Speed*10.0)] ) );
+    FCharacter.Push( Format( 'Current reload speed is {!%.2f} second/reload.', [getReloadCost(Inv.Slot[efWeapon]) /(Speed*10.0)] ) );
     FCharacter.Push( Format( 'Current to hit chance (point blank) is {!%s}.',[toHitPercent(10+getToHit(Inv.Slot[efWeapon], ALT_NONE, False))]));
     FCharacter.Push( Format( 'Current melee hit chance is {!%s}.',[toHitPercent(10+getToHit(Inv.Slot[efWeapon], ALT_NONE, True))]));
     FCharacter.Push( '' );

@@ -51,6 +51,7 @@ register_level "the_vaults"
 	end,
 
 	Create = function ()
+		core.special_create()
 		level:set_generator_style( 1 )
 		level:fill( "rwall" )
 
@@ -163,6 +164,7 @@ register_level "the_vaults"
 			player:add_history("He managed to scavenge a part of the Vaults' treasures.")
 			player:add_badge("vaults2")
 		elseif result == 2 or result == 4 then
+			core.special_complete()
 			ui.msg("Eternal death awaits any who would seek to steal the treasures secured within the Vaults...")
 			if result == 2 then
 				player:add_history("He managed to clear the Vaults completely!")

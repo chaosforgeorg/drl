@@ -38,24 +38,21 @@ register_level "the_asmos_den"
 			kill_desc       = "damned by Hell Incarnate",
 
 			weapon = {
+				sound_id   = "arch",
 				damage     = "3d2",
 				damagetype = DAMAGE_IGNOREARMOR,
 				radius     = 1,
-				flags      = { IF_AUTOHIT },
-				missile = {
-					sound_id   = "arch",
-					color      = LIGHTRED,
-					sprite     = 0,
-					hitsprite  = SPRITE_BLAST,
-					delay      = 1,
-					miss_base  = 0,
-					miss_dist  = 0,
-					hitdesc    = "You feel an intense pain!",
-					flags      = { MF_EXACT },
-					explosion = {
-						delay = 100,
-						color = LIGHTBLUE,
-					},
+				flags      = { IF_AUTOHIT, IF_EXACTHIT, IF_INSTANTHIT },
+				miscolor      = LIGHTRED,
+				misdelay      = 1,
+				miss_base  = 0,
+				miss_dist  = 0,
+				hitdesc   = "You feel an intense pain!",
+				missprite = 0,
+				hitsprite  = SPRITE_BLAST,
+				explosion = {
+					delay = 100,
+					color = LIGHTBLUE,
 				},
 			},
 
@@ -120,6 +117,7 @@ register_level "the_asmos_den"
 	end,
 
 	Create = function ()
+		core.special_create()
 		level:set_generator_style( 1 )
 		level:fill( "rwall" )
 		local asmosden_armor = {
@@ -211,6 +209,7 @@ register_level "the_asmos_den"
 			hell:kill()
 			ui.msg("I hope this damn armor was worth the trouble!")
 			player:add_history("He pilfered the treasure there.")
+			core.special_complete()
 		end
 	end,
 }

@@ -182,42 +182,15 @@ core.register_blueprint "affect"
 	getReloadCostMul = { false, core.TFUNC },
 }
 
-core.register_blueprint "missile"
-{
-	id          = { true,  core.TSTRING },
-	sound_id    = { false, core.TSTRING },
-	ascii       = { false, core.TSTRING, "-" },
-	color       = { true,  core.TNUMBER },
-	coscolor    = { false, core.TTABLE },
-	sprite      = { true,  core.TANY },
-	hitsprite   = { true,  core.TANY },
-	delay       = { true,  core.TNUMBER },
-	miss_base   = { true,  core.TNUMBER },
-	miss_dist   = { true,  core.TNUMBER },
-	firedesc    = { false, core.TSTRING, "" },
-	hitdesc     = { false, core.TSTRING, "" },
-	flags       = { false, core.TFLAGS,  {} },
-	range       = { false, core.TNUMBER, 0 },
-	explosion   = { false, core.TTABLE },
-	ray_delay   = { false, core.TNUMBER, 0 },
-}
-
-core.register_blueprint "shotgun"
-{
-	id          = { true,  core.TSTRING },
-	range       = { true,  core.TNUMBER },
-	spread      = { true,  core.TNUMBER },
-	reduce      = { true,  core.TNUMBER },
-	hitsprite   = { true,  core.TANY },
-}
-
 core.register_blueprint "ai"
 {
 	id          = { true,  core.TSTRING },
 	states      = { true,  core.TMAP( core.TSTRING, core.TFUNC ) },
+	funcs       = { false, core.TMAP( core.TSTRING, core.TFUNC ), {} },
 
 	OnCreate    = { true,  core.TFUNC },
 	OnAttacked  = { true,  core.TFUNC },
+	OnAction    = { false, core.TFUNC },
 }
 
 core.register_blueprint "being"
@@ -382,7 +355,6 @@ core.register_blueprint "challenge"
 	OnFired          = { false, core.TFUNC },
 	OnExit           = { false, core.TFUNC },
 	OnTick           = { false, core.TFUNC },
-	OnCompletedCheck = { false, core.TFUNC },
 	OnLoad           = { false, core.TFUNC },
 	OnLoaded         = { false, core.TFUNC },
 	OnUnLoad         = { false, core.TFUNC },
@@ -435,7 +407,12 @@ core.register_blueprint "item"
 	firstmsg       = { false, core.TSTRING },
 	resist         = { false, core.TTABLE },
 	tags           = { false, core.TTABLE, {} },
-
+	max            = { false, core.TNUMBER, 1 },
+    amount         = { false, core.TNUMBER, 1 },
+	movemod        = { false, core.TNUMBER, 0 },
+	dodgemod       = { false, core.TNUMBER, 0 },
+	knockmod       = { false, core.TNUMBER, 0 },
+    
 	type        = {{
 		[ITEMTYPE_ARMOR] = {
 			ascii      = { false, core.TSTRING, "[" },
@@ -444,10 +421,8 @@ core.register_blueprint "item"
 			pcoscolor  = { false, core.TTABLE },
 			pglow      = { false, core.TTABLE },
 			durability = { false, core.TNUMBER, 100 },
-			movemod    = { false, core.TNUMBER, 0 },
-			dodgemod   = { false, core.TNUMBER, 0 },
-			knockmod   = { false, core.TNUMBER, 0 },
 			spritemod  = { false, core.TNUMBER, 0 },
+			swaptime   = { false, core.TNUMBER, 10 },
 			scavenge   = { false, core.TARRAY(core.TIDIN("items")) },
 		},
 		[ITEMTYPE_BOOTS] = {
@@ -455,9 +430,7 @@ core.register_blueprint "item"
 			desc       = { true,  core.TSTRING },
 			armor      = { true,  core.TNUMBER },
 			durability = { false, core.TNUMBER, 100 },
-			movemod    = { false, core.TNUMBER, 0 },
-			dodgemod   = { false, core.TNUMBER, 0 },
-			knockmod   = { false, core.TNUMBER, 0 },
+			swaptime   = { false, core.TNUMBER, 10 },
 			scavenge   = { false, core.TARRAY(core.TIDIN("items")) },
 		},
 		[ITEMTYPE_PACK]   = {
@@ -477,8 +450,6 @@ core.register_blueprint "item"
 		[ITEMTYPE_AMMO]   = {
 			ascii   = { false, core.TSTRING, "|" },
 			desc    = { true, core.TSTRING },
-			ammo    = { true, core.TNUMBER },
-			ammomax = { true, core.TNUMBER  },
 		},
 		[ITEMTYPE_AMMOPACK] = {
 			ascii   = { false, core.TSTRING, "!" },
@@ -498,19 +469,30 @@ core.register_blueprint "item"
 			ammo_id       = { true, core.TIDIN("items") },
 			damage        = { true, core.TSTRING },
 			damagetype    = { true, core.TNUMBER },
+			range         = { false, core.TNUMBER, 0 },
+			spread        = { false, core.TNUMBER, 0 },
+			falloff       = { false, core.TNUMBER, 0 },
+			knockback     = { false, core.TNUMBER, 12 },
 			acc           = { false, core.TNUMBER, 0 },
-			fire          = { false, core.TNUMBER, 10 },
 			radius        = { false, core.TNUMBER, 0 },
-			reload        = { false, core.TNUMBER, 10 },
+			usetime       = { false, core.TNUMBER, 10 },
+			reloadtime    = { false, core.TNUMBER, 10 },
+			swaptime      = { false, core.TNUMBER, 10 },
 			shots         = { false, core.TNUMBER, 0 },
 			shotcost      = { false, core.TNUMBER, 0 },
 			altfire       = { false, core.TNUMBER, 0 },
 			altreload     = { false, core.TNUMBER, 0 },
 			altfirename   = { false, core.TSTRING },
 			altreloadname = { false, core.TSTRING },
-			overcharge    = { false, core.TIDIN("missiles") },
 			scavenge      = { false, core.TARRAY(core.TIDIN("items")) },
-			missile       = { true, core.TANY }, -- TODO core.TMISSILE
+			misascii      = { false, core.TSTRING, "-" },
+			miscolor      = { false, core.TNUMBER },
+			misdelay      = { false, core.TNUMBER },
+			miss_base     = { false, core.TNUMBER, 0 },
+			miss_dist     = { false, core.TNUMBER, 0 },
+			hitsprite     = { true, core.TANY },
+			missprite     = { false, core.TANY },
+			explosion     = { false, core.TTABLE },
 		},
 		[ITEMTYPE_NRANGED] = {
 			ascii      = { false, core.TSTRING, "?" },
@@ -518,11 +500,50 @@ core.register_blueprint "item"
 			group      = { false, core.TSTRING },
 			damage     = { true, core.TSTRING },
 			damagetype = { true, core.TNUMBER },
+			range      = { false, core.TNUMBER, 0 }, 
+			spread     = { false, core.TNUMBER, 0 },
+			falloff    = { false, core.TNUMBER, 0 },
+			knockback  = { false, core.TNUMBER, 12 },
 			acc        = { false, core.TNUMBER, 0 },
-			fire       = { false, core.TNUMBER, 10 },
+			ammomax    = { false, core.TNUMBER, 0 },
+			ammo_id    = { false, core.TIDIN("items") },
+			usetime    = { false, core.TNUMBER, 10 },
+			reloadtime = { false, core.TNUMBER, 10 },
 			radius     = { false, core.TNUMBER, 0 },
 			shots      = { false, core.TNUMBER, 0 },
-			missile    = { true, core.TANY }, 
+			hitsprite  = { true, core.TANY },
+			missprite  = { true, core.TANY },
+			misascii   = { false, core.TSTRING, "-" },
+			miscolor   = { false, core.TNUMBER },
+			misdelay   = { false, core.TNUMBER },
+			miss_base  = { false, core.TNUMBER, 0 },
+			miss_dist  = { false, core.TNUMBER, 0 },
+			explosion  = { false, core.TTABLE },
+			hitdesc    = { false, core.TSTRING, "" },
+		},
+		[ITEMTYPE_URANGED] = {
+			ascii         = { false, core.TSTRING, "*" },
+			sound_id      = { false, core.TID },
+			desc          = { true, core.TSTRING },
+			group         = { true, core.TSTRING },
+			damage        = { true, core.TSTRING },
+			damagetype    = { true, core.TNUMBER },
+			range         = { true, core.TNUMBER }, -- throwing 
+			knockback     = { false, core.TNUMBER, 12 },
+			spread        = { false, core.TNUMBER, 0 },
+			falloff       = { false, core.TNUMBER, 0 },
+			acc           = { false, core.TNUMBER, 0 },
+			usetime       = { false, core.TNUMBER, 10 },
+			radius        = { false, core.TNUMBER, 0 },
+			shots         = { false, core.TNUMBER, 0 },
+			misascii      = { false, core.TSTRING, "-" },
+			miscolor      = { false, core.TNUMBER },
+			misdelay      = { false, core.TNUMBER },
+			miss_base     = { false, core.TNUMBER, 0 },
+			miss_dist     = { false, core.TNUMBER, 0 },
+			hitsprite     = { true, core.TANY },
+			missprite     = { true, core.TANY },
+			explosion     = { false, core.TTABLE },
 		},
 		[ITEMTYPE_MELEE]  = {
 			ascii       = { false, core.TSTRING, "\\" },
@@ -533,13 +554,21 @@ core.register_blueprint "item"
 			desc        = { true, core.TSTRING },
 			damage      = { true, core.TSTRING },
 			damagetype  = { true, core.TNUMBER },
+			range       = { false, core.TNUMBER, 0 }, -- throwing 
 			acc         = { false, core.TNUMBER, 0 },
-			fire        = { false, core.TNUMBER, 10 },
+			knockback   = { false, core.TNUMBER, 12 },
+			usetime     = { false, core.TNUMBER, 10 },
+			swaptime    = { false, core.TNUMBER, 10 },
 			altfire     = { false, core.TNUMBER, 0 },
 			altfirename = { false, core.TSTRING },
-			missile     = { false, core.TANY, 0 }, 
+			misascii    = { false, core.TSTRING, "-" },
+			miscolor    = { false, core.TNUMBER },
+			misdelay    = { false, core.TNUMBER },
+			miss_base   = { false, core.TNUMBER, 0 },
+			miss_dist   = { false, core.TNUMBER, 0 },
+			hitsprite   = { false, core.TANY },
+			missprite   = { false, core.TANY },
 			scavenge    = { false, core.TARRAY(core.TIDIN("items")) },
-			throw_id    = { false, core.TIDIN("missiles") },
 		},
 		[ITEMTYPE_LEVER] = {
 			ascii      = { false, core.TSTRING, "&" },
@@ -585,7 +614,8 @@ core.register_blueprint "item"
 	OnPostMove    = { false, core.TFUNC },
 	OnDamage      = { false, core.TFUNC },
 	OnDescribe    = { false, core.TFUNC },
-	
+	OnDieCheck    = { false, core.TFUNC },
+
 	OnModDescribe = { false, core.TFUNC },
 }
 
@@ -627,7 +657,6 @@ core.register_blueprint "level"
 	OnFired          = { false, core.TFUNC },
 	OnExit           = { false, core.TFUNC },
 	OnTick           = { false, core.TFUNC },
-	OnCompletedCheck = { false, core.TFUNC },
 	OnNuked          = { false, core.TFUNC },
 }
 

@@ -11,10 +11,6 @@ register_level "house_of_pain"
 		return DIFFICULTY > 1
 	end,
 
-	OnCompletedCheck = function ()
-		return level.status > 1
-	end,
-
 	OnUse = function (item)
 		if item.id == "phase" or item.id == "hphase" or item.id == "hstaff" then
 			ui.msg("Hey, no teleporting in the House!")
@@ -25,6 +21,7 @@ register_level "house_of_pain"
 	end,
 
 	Create = function ()
+		core.special_create()
 		level:set_generator_style( 1 )
 		level:fill( "rwall" )
 		level.data.is_staff = false
@@ -163,12 +160,12 @@ register_level "house_of_pain"
 		local result = level.status
 		if result == 0 then
 			ui.msg("Better show myself out...")
-			-- XXX Originally "Armory", but I think it should refer to the House?
 			player:add_history("He left the House without drawing too much attention.")
 		elseif result == 1 then
 			ui.msg("Enough!")
 			player:add_history("He fled the House on fire!")
 		else
+			core.special_complete()
 			ui.msg("My house, my rules.")
 			player:add_history("He conquered the House!")
 		end

@@ -7,8 +7,8 @@ register_level "abyssal_plains"
 	welcome = "You enter the Abyssal Plains. Well isn't this... just... dandy.",
 	level = 12,
 
-
 	Create = function ()
+		core.special_create()
 		level:set_generator_style( 1 )
 		level:fill( "wall" )
 
@@ -138,6 +138,7 @@ register_level "abyssal_plains"
 			player:add_history("He slaughtered the beasts living there.")
  	 		player:add_badge("skull1")
 			if core.is_challenge("challenge_aora") then player:add_badge("skull2") end
+			core.special_complete()
 		else
 			ui.msg("Damn, that was way too close for comfort!.")
 			player:add_history("He barely escaped the trap set for him.")

@@ -9,11 +9,10 @@ unit dfthing;
 interface
 uses SysUtils, Classes, vluaentitynode, vutil, vrltools, vluatable, dfdata, drlhooks;
 
-type
+type String16 = string[16];
 
 { TThing }
-
-TThing = class( TLuaEntityNode )
+type TThing = class( TLuaEntityNode )
   constructor Create( const aID : AnsiString );
   constructor CreateFromStream( Stream : TStream ); override;
   function PlaySound( const aSoundID : string; aDelay : Integer = 0 ) : Boolean;
@@ -29,12 +28,13 @@ protected
   FHP        : Integer;
   FArmor     : Integer;
   FSprite    : TSprite;
-  FSoundID   : string[16];
+  FSoundID   : String16;
   FAnimCount : Word;
   {$TYPEINFO ON}
 public
-  property Sprite     : TSprite  read GetSprite           write FSprite;
-  property AnimCount  : Word     read FAnimCount          write FAnimCount;
+  property SoundID    : String16 read FSoundID          write FSoundID;
+  property Sprite     : TSprite  read GetSprite         write FSprite;
+  property AnimCount  : Word     read FAnimCount        write FAnimCount;
 published
   property SpriteID   : DWord    read FSprite.SpriteID[0] write FSprite.SpriteID[0];
   property HP         : Integer  read FHP                 write FHP;

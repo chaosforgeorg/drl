@@ -106,8 +106,14 @@ Keytable["F8"] = function()
 end
 Keytable["SHIFT+F8"] = function() 
 	ui.msg("ARMAGEDDON!")
+	local list = {}
 	for b in level:beings() do
 		if not b:is_player() then
+			table.insert( list, b )
+		end
+	end
+	for _,b in ipairs(list) do
+		if b.__ptr then
 			b:kill()
 		end
 	end

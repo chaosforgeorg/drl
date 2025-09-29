@@ -25,6 +25,7 @@ press {!LStick} - use active class skill (i.e. {!Adrenaline})
 press {!RStick} - swap weapon with prepared weapon
    (with {!RTrigger}) unload weapon from ground or inventory
 {!D-pad} -  move targeting reticule (might be removed in the future)
+{!LTrigger} -- hold to show quickslots, {!DPad} direction to use
 
 {rUI}
 
@@ -36,6 +37,7 @@ press {!RStick} - swap weapon with prepared weapon
 {!RShoulder}/{!LShoulder} - change panels.
 {!Y} - drop ( with {!RTrigger} drop and unload weapon)
 {!X} - swap item in Equipment
+{!LTrigger+DPad} - assign quickslot to direction
 
 {rFlowing movement}
 

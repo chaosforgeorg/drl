@@ -55,7 +55,7 @@ CF_STAIRS     = 21;
 CF_RAISABLE   = 22;
 CF_STAIRSENSE = 23;
 
-BF_BOSS           = 1;
+
 BF_ENVIROSAFE     = 2;
 BF_CHARGE         = 3;
 BF_OPENDOORS      = 4;
@@ -109,7 +109,7 @@ BF_NOHEAL       = 51;
 BF_RESPAWN      = 53;
 BF_WALKSOUND    = 54;
 BF_FLY          = 55;
-
+BF_ILLUSION     = 56;
 BF_FRIENDLY     = 57;
 BF_NOBLEED      = 58;
 
@@ -118,17 +118,17 @@ IF_EXOTIC         = 22;
 IF_MODIFIED       = 23;
 IF_CURSED         = 24;
 IF_HIGHLIGHT      = 25;
-IF_HALFKNOCK      = 26;
+IF_RAYGUN         = 26;
 IF_GLOBE          = 27;
 IF_RECHARGE       = 28;
-
+IF_INSTANTHIT     = 29;
 IF_NOAMMO         = 30;
 IF_NECROCHARGE    = 31;
-
+IF_PIERCEHIT      = 32;
 IF_SINGLERELOAD   = 33;
-
+IF_EXACTHIT       = 34;
 IF_SHOTGUN        = 35;
-
+IF_LOB            = 36;
 IF_SPREAD         = 37;
 IF_SCATTER        = 38;
 IF_SINGLEMOD      = 39;
@@ -145,7 +145,7 @@ IF_NONMODABLE     = 49;
 IF_NOREPAIR       = 50;
 IF_ASSEMBLED      = 51;
 IF_DESTROY        = 52;
-
+IF_SERIESSOUND    = 53;
 IF_DESTRUCTIVE    = 54;
 IF_FARHIT         = 55;
 IF_UNSEENHIT      = 56;
@@ -157,10 +157,14 @@ IF_FEATURENAME    = 61;
 IF_BLOCKMOVE      = 62;
 IF_BLOCKLOS       = 63;
 IF_UNIQUENAME     = 64;
+IF_BLOCKSHOT      = 65;
+IF_LIGHTCOVER     = 66;
+IF_HARDCOVER      = 67;
+IF_ILLUSION       = 68;
 
 LF_NOHOMING       = 1;
 LF_UNIQUEITEM     = 2;
-LF_BONUS          = 3;
+
 LF_SCRIPT         = 4;
 LF_NORESPAWN      = 5;
 LF_NUKED          = 6;
@@ -169,8 +173,10 @@ LF_ITEMSVISIBLE   = 8;
 LF_BEINGSVISIBLE  = 9;
 LF_RESPAWN        = 10;
 LF_SHARPFLUID     = 11;
-LF_BOSS           = 12;
+
 LF_ENRAGE         = 13;
+LF_NOBEINGREVEAL  = 14;
+LF_NOITEMREVEAL   = 15;
 
 SF_LARGE      = 1;
 SF_OVERLAY    = 2;
@@ -206,11 +212,6 @@ SLOT_ARMOR    = EFTORSO;
 SLOT_WEAPON   = EFWEAPON;
 SLOT_BOOTS    = EFBOOTS;
 SLOT_PREPARED = EFWEAPON2;
-
-MF_RAY      = 1;
-MF_HARD     = 2;
-MF_EXACT    = 3;
-MF_IMMIDATE = 4;
 
 MULTIBLUE   = 17;
 MULTIYELLOW = 18;

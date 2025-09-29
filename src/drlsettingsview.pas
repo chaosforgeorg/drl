@@ -6,7 +6,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlsettingsview;
 interface
-uses viotypes, vioevent, vconfiguration, drlio, dfdata;
+uses vio, viotypes, vioevent, vconfiguration, drlio, dfdata;
 
 type TSettingsViewState = (
   SETTINGSVIEW_GENERAL,
@@ -32,9 +32,9 @@ const SETTINGSVIEW_KEYS : set of TSettingsViewState = [
   SETTINGSVIEW_KEYLEGACY
 ];
 
-type TSettingsView = class( TInterfaceLayer )
+type TSettingsView = class( TIOLayer )
   constructor Create;
-  procedure Update( aDTime : Integer ); override;
+  procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
   function HandleEvent( const aEvent : TIOEvent ) : Boolean; override;
@@ -46,9 +46,7 @@ protected
 protected
   FState       : TSettingsViewState;
   FSize        : TIOPoint;
-  FRect        : TIORect;
   FWSize       : TIOPoint;
-  FWRect       : TIORect;
   FCapture     : Boolean;
   FKey         : Word;
   FResInput    : Boolean;
@@ -140,7 +138,7 @@ begin
   end;
 end;
 
-procedure TSettingsView.Update( aDTime : Integer );
+procedure TSettingsView.Update( aDTime : Integer; aActive : Boolean );
 var iSelected : Integer;
     iNext     : TSettingsViewState;
     iApply    : Boolean;
@@ -157,10 +155,8 @@ begin
   if ( FWarning <> '' ) then
   begin
     VTIG_BeginWindow( 'Warning', 'settings_warning', FWSize );
-    FWRect := VTIG_GetWindowRect;
     VTIG_Text(FWarning);
     VTIG_End('{l<{!{$input_escape},{$input_ok}}> continue}');
-    IO.RenderUIBackground( FWRect.TopLeft, FWRect.BottomRight - PointUnit );
 
     if VTIG_EventCancel or VTIG_EventConfirm then
       FWarning := '';
@@ -171,12 +167,10 @@ begin
   begin
     iRResult := None;
     VTIG_BeginWindow( 'Restart?', 'settings_restart', FWSize );
-    FWRect := VTIG_GetWindowRect;
     VTIG_Text('This is a different core mod then the current one. Restart with new core mod?');
     VTIG_Text( '' );
     if VTIG_Selectable( 'Restart' ) then iRResult := Confirm;
     if VTIG_Selectable( 'Cancel' )  then iRResult := Cancel;
-    IO.RenderUIBackground( FWRect.TopLeft, FWRect.BottomRight - PointUnit );
     if VTIG_EventCancel then iRResult := Cancel;
 
     if iRResult <> None then
@@ -200,7 +194,6 @@ begin
   iMode := Configuration.CastInteger( 'display_mode' );
 
   VTIG_BeginWindow( CStates[ FState ].Title, 'settings', FSize );
-    FRect := VTIG_GetWindowRect;
     VTIG_BeginGroup( 18, True );
 
     VTIG_BeginGroup( 50 );
@@ -355,8 +348,6 @@ begin
   if FState in SETTINGSVIEW_KEYS
     then VTIG_End('{l<{!{$input_up},{$input_down}}> select, <{!{$input_ok}}> change/enter, <{!{$input_escape}}> back, <{!{$input_uidrop}}> clear}')
     else VTIG_End('{l<{!{$input_up},{$input_down}}> select, <{!{$input_ok}}> change or enter submenu, <{!{$input_escape}}> back}');
-
-  IO.RenderUIBackground( FRect.TopLeft, FRect.BottomRight - PointUnit );
 
   if iNext <> SETTINGSVIEW_DONE then
   begin

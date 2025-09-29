@@ -1,4 +1,19 @@
-0.10.0h
+0.10.4
+[new] -- GJ#113: defence markers added (corneshooting indicator)
+[new] -- GJ#144: UI - quickslot support for gamepad
+[mod] -- GH#333: changed knockback calculation so that even lower knockback armor protection matters
+[mod] -- GJ#166: phasing will try not to place the player on any liquid
+[mod] -- GJ#165: direct hit damage calculated before knockback 
+[mod] -- GH#---: on kill all special level trigger once each enemy is killed once
+[mod] -- GH#328: UI - inv/eq/trait/char keys are active when panel is up!
+[mod] -- GH#---: level up happens after the player turn
+[mod] -- GH#331: default swap time with prepared is 0.5 (down from 0.8)
+[fix] -- GJ#199: fixed ammo-less weapons not behaving properly when dual wielding
+[fix] -- GJ#196: fixed AoRA on death crash
+[fix] -- GH#---: fixed several bugs related to checking if a level is nuked
+[fix] -- GH#336: fixed auto-target behavior on darkness levels
+
+0.10.0g
 [new] -- GH#189: G-version - Gamepad support!
 [new] -- GH#313: G-version - x1.5 tile scaling added (fuzzy, but playable!)
 [new] -- GH#224: G-version - low health and damage blood pulse effect

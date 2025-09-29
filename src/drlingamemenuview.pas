@@ -6,11 +6,11 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlingamemenuview;
 interface
-uses drlio, drlconfirmview, dfdata;
+uses viotypes, drlio, drlconfirmview, dfdata;
 
-type TInGameMenuView = class( TInterfaceLayer )
+type TInGameMenuView = class( TIOLayer )
   constructor Create;
-  procedure Update( aDTime : Integer ); override;
+  procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
 protected
@@ -37,13 +37,11 @@ begin
   FFinished := False;
 end;
 
-procedure TInGameMenuView.Update( aDTime : Integer );
-var iRect : TRectangle;
+procedure TInGameMenuView.Update( aDTime : Integer; aActive : Boolean );
 begin
   if IsFinished or (DRL.State <> DSPlaying) then Exit;
 
   VTIG_Begin('ingame_menu', Point( 30, 11 ) );
-  iRect := VTIG_GetWindowRect;
   if VTIG_Selectable( 'Continue' ) then
   begin
     FFinished := True;
@@ -80,8 +78,6 @@ begin
     DRL.SetState( DSSaving );
   end;
   VTIG_End;
-
-  IO.RenderUIBackground( iRect.TopLeft, iRect.BottomRight - PointUnit );
 
   if VTIG_EventCancel then FFinished := True;
 end;

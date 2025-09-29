@@ -6,11 +6,11 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlmodulechoiceview;
 interface
-uses vutil, drlio, dfdata;
+uses viotypes, vutil, drlio, dfdata;
 
-type TModuleChoiceView = class( TInterfaceLayer )
+type TModuleChoiceView = class( TIOLayer )
   constructor Create;
-  procedure Update( aDTime : Integer ); override;
+  procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
 protected
@@ -26,7 +26,7 @@ begin
   FFinished := False;
 end;
 
-procedure TModuleChoiceView.Update( aDTime : Integer );
+procedure TModuleChoiceView.Update( aDTime : Integer; aActive : Boolean );
 var iResult : Ansistring;
     iModule : TDRLModule;
 begin

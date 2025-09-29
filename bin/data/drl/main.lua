@@ -1,8 +1,8 @@
 core.declare( "drl", {} )
 core.declare( "core_module", "drl" )
 core.declare( "DEMO", false )
-core.declare( "VERSION_MODULE",      "0.10.0" )
-core.declare( "VERSION_MODULE_SAVE", "0.10.0" )
+core.declare( "VERSION_MODULE",      "0.10.4" )
+core.declare( "VERSION_MODULE_SAVE", "0.10.4" )
 
 require( "drl:generator" )
 require( "drl:generators" )
@@ -12,7 +12,6 @@ require( "drl:sprites" )
 require( "drl:difficulty" )
 require( "drl:affects" )
 require( "drl:awards" )
-require( "drl:missiles" )
 require( "drl:cells" )
 require( "drl:traits" )
 require( "drl:ai" )
@@ -64,7 +63,6 @@ function drl.OnLoad()
 	drl.register_difficulties()
 	drl.register_base_data()
 	drl.register_affects()
-	drl.register_missiles()
 	drl.register_cells()
 	drl.register_regular_items()
 	drl.register_exotic_items()
@@ -116,6 +114,7 @@ function drl.OnLoad()
 
 	if GRAPHICSVERSION then
 		ui.set_style_color( VTIG_BACKGROUND_COLOR, { 16, 0, 0, 0 } )
+		ui.set_style_color( VTIG_WINDOW_BACKGROUND_COLOR, { 1, 1, 1, 200 } )
 		ui.set_style_color( VTIG_SELECTED_BACKGROUND_COLOR, { 68, 34, 34, 255 } )
 		ui.set_style_color( VTIG_INPUT_TEXT_COLOR, LIGHTGRAY )
 		ui.set_style_color( VTIG_INPUT_BACKGROUND_COLOR, {68, 34, 34, 255} )
@@ -424,12 +423,7 @@ function drl.RunPrintMortem()
 			player:mortem_print(" "..player_description)
 		end
 		local epi_name = player.episode[player.level_index].deathname or player.episode[player.level_index].name or "an Unknown Location"
-		local depth    = player.episode[player.level_index].number or 0
-		if depth ~= 0 then
-			player:mortem_print( " "..death_reason.." on level {!"..depth.."} of {!"..epi_name.."}." )
-		else
-			player:mortem_print( " "..death_reason.." at {!"..epi_name.."}." )
-		end
+		player:mortem_print( " "..death_reason.." at {!"..epi_name.."}." )
 	else
 		if game_module.OnMortemPrint then
 			game_module.OnMortemPrint(death_reason)
@@ -573,52 +567,61 @@ function drl.RunPrintMortem()
 end
 
 function drl.OnCreateEpisode()
-	local BOSS_LEVEL = 24
 	player.episode = {}
 	local paired = {
-		{"hells_arena"}, -- 2
-		{"central_processing","toxin_refinery"}, -- 4
-		{"the_chained_court"}, -- 5
-		{"military_base","phobos_lab"}, -- 7
-		{"hells_armory", "deimos_lab"}, -- 9/1
-		{"the_wall","containment_area"}, -- 11/3
-		{"city_of_skulls","abyssal_plains"}, -- 12/4
-		{"halls_of_carnage","spiders_lair"}, -- 14/6
-		{"the_vaults","house_of_pain"}, -- 17/1
-		{"unholy_cathedral"}, -- 19/3
-		{"the_mortuary","limbo"},-- 20/4
-		{"the_lava_pits","mt_erebus"},-- 22/6
+		{"hells_arena"}, -- 2                                    26
+		{"central_processing","toxin_refinery"}, -- 4            27
+		{"the_chained_court"}, -- 5                              28
+		{"military_base","phobos_lab"}, -- 7                     29
+		{"hells_armory", "deimos_lab"}, -- 9/1                   30
+		{"the_wall","containment_area"}, -- 11/3                 31
+		{"city_of_skulls","abyssal_plains"}, -- 12/4             32
+		{"halls_of_carnage","spiders_lair"}, -- 14/6             33
+		{"the_vaults","house_of_pain"}, -- 17/1                  34
+		{"unholy_cathedral"}, -- 19/3                            35
+		{"the_mortuary","limbo"},-- 20/4                         36
+		{"the_lava_pits","mt_erebus"},-- 22/6                    37
 	}
 
-	player.episode[1] = { script = "intro", style = 1, deathname = "the Phobos base" }
-	player.episode[2] = { style = 1, number = 2, name = "Phobos", danger = 2, deathname = "the Phobos base" }
+	player.episode[1] = { script = "intro", style = 1, deathname = "level 1 of the Phobos base" }
+	player.episode[2] = { style = 1, name = "Phobos L2", danger = 2, deathname = "level 2 of the Phobos base" }
 	for i=3,8 do
-		player.episode[i] = { style = table.random_pick{1,5,8}, number = i, name = "Phobos", danger = i, deathname = "the Phobos base" }
+		player.episode[i] = { style = table.random_pick{1,5,8}, name = "Phobos L"..tostring(i), danger = i, deathname = "level "..tostring(i).." of the Phobos base" }
 	end
 	for i=9,16 do
-		player.episode[i] = { style = table.random_pick{2,6}, number = i-8, name = "Deimos", danger = i, deathname = "the Deimos base" }
+		player.episode[i] = { style = table.random_pick{2,6}, name = "Deimos L"..tostring(i-8), danger = i, deathname = "level "..tostring(i-8).." of the Deimos base" }
 	end
-	for i=17,BOSS_LEVEL-1 do
-		player.episode[i] = { style = table.random_pick{3,7}, number = i-16, name = "Hell", danger = i }
+	for i=17,23 do
+		player.episode[i] = { style = table.random_pick{3,7}, name = "Hell L"..tostring(i-16), danger = i, deathname = "level "..tostring(i-16).." of Hell" }
 	end
 	player.episode[8]            = { script = "hellgate", style = 4, deathname = "the Hellgate" }
 	player.episode[16]           = { script = "tower_of_babel", style = 9, deathname = "the Tower of Babel" }
-	player.episode[BOSS_LEVEL]   = { script = "dis", style = 4, deathname = "the City of Dis" }
-	player.episode[BOSS_LEVEL+1] = { script = "hell_fortress", style = 4, deathname = "the Hell Fortress" }
+	player.episode[24]           = { script = "dis", style = 4, deathname = "the City of Dis" }
+	player.episode[25]           = { script = "hell_fortress", style = 4, deathname = "the Hell Fortress" }
 
 	for _,pairing in ipairs(paired) do
 		local level_proto = levels[table.random_pick(pairing)]
 		if (not level_proto.canGenerate) or level_proto.canGenerate() then
-			player.episode[core.resolve_range(level_proto.level)].special = level_proto.id
+			local index = core.resolve_range(level_proto.level)
+			local from  = player.episode[index]
+			table.insert( player.episode, { 
+				script = level_proto.id,
+				style  = from.style,
+				danger = from.danger,
+				depth  = from.depth,
+				name   = level_proto.name,
+				exit   = index + 1,
+			} )
+			from.special = #player.episode
 		end
 	end
-	local SpecLevCount = 0
-	for i=2,BOSS_LEVEL-1 do
+	local slcount = 0
+	for i=2,23 do
 		if player.episode[i].special then
-			SpecLevCount = SpecLevCount + 1
+			slcount = slcount + 1
 		end
 	end
-	statistics.bonus_levels_count = SpecLevCount
+	statistics.bonus_levels_count = slcount
 end
 
 function drl.GetMOTD()
@@ -793,11 +796,13 @@ function drl.GetQuitMessage()
 	return messages[math.random(#(messages))]
 end
 
-function drl.GetAmmoMax( ammo_id )
-	local result   = items[ ammo_id ].ammomax
-	local backpack = player:get_property( "BACKPACK", 0 )
-	if backpack > 0 then
-		result = math.ceil( result * ( 1 + backpack * 0.1 ) )
+function drl.GetItemMax( id )
+	local result   = items[ id ].max
+	if items[ id ].type == ITEMTYPE_AMMO then
+		local backpack = player:get_property( "BACKPACK", 0 )
+		if backpack > 0 then
+			result = math.ceil( result * ( 1 + backpack * 0.1 ) )
+		end
 	end
 	return result
 end

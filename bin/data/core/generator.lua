@@ -192,6 +192,7 @@ function generator.create_translation( code )
 			elseif value == "WALL"  then value = generator.styles[ level.style ].wall
 			elseif value == "DOOR"  then value = generator.styles[ level.style ].door
 			else
+				assert( cells[value], "No such cell '"..value.."' in translation!" )
 				value = cells[value].nid
 			end
 			translation[k] = value
@@ -333,35 +334,6 @@ function generator.contd_drunkard_walks( amount, steps, cell, edges1, edges2, ig
 	end
 end
 
-
-function generator.plot_lines( where, larea, horiz, cell, block )
-	core.log("generator.plot_lines(...)")
-	local step = function( point, px, py )
-		point.x = point.x + px
-		point.y = point.y + py
-		if block[ level:get_cell( point ) ] then
-			return true
-		else
-			level:set_cell( point, cell )
-			return false
-		end
-	end
-	local hcoord = function( c ) if horiz then return c.x else return c.y end end
-
-	local sx, sy, minv, maxv = 0, 0, 0, 0
-	if horiz then
-		sx = 1; minv = larea.a.x; maxv = larea.b.x
-	else
-		sy = 1; minv = larea.a.y; maxv = larea.b.y
-	end
-
-	local c
-	c = coord.clone( where )
-	while hcoord(c) < maxv do if step( c, sx, sy ) then break end end
-	c = coord.clone( where )
-	while hcoord(c) > minv do if step( c, -sx, -sy ) then break end end
-end
-
 function generator.maze_dungeon( floor_cell, wall_cell, granularity, tries, minl, maxl, maze_area )
 	core.log("generator.maze_dungeon()")
 	if type(floor_cell) == "string" then floor_cell = cells[floor_cell].nid end
@@ -414,8 +386,8 @@ function generator.warehouse_fill( wall_cell, fill_area, boxsize, amount, specia
 	end
 end
 
-function generator.read_rooms()
-	core.log("generator.add_rooms()")
+function generator.read_room_list()
+	core.log("generator.read_room_list()")
 	local room_list      = {}
 	local cell_meta      = generator.merge_cell_sets( generator.cell_sets[ CELLSET_WALLS ], generator.cell_sets[ CELLSET_DOORS ] )
 	local cell_meta_list = generator.merge_cell_lists( generator.cell_lists[ CELLSET_WALLS ], generator.cell_lists[ CELLSET_DOORS ] )
@@ -459,7 +431,7 @@ end
 
 function generator.create_room_list( list )
 	core.log("generator.add_rooms()")
-	local room_list = generator.read_rooms()
+	local room_list = generator.read_room_list()
 	local list = list or {}
 	for _,room in ipairs( room_list ) do
 		generator.add_room( list, room )	
@@ -621,15 +593,97 @@ end
 
 function generator.generate_special_stairs( stairs_id, feelings )
 	core.log("generator.generate_special_stairs()")
-	local pos
-	if level.special_exit ~= "" then
-		pos = generator.generate_stairs( stairs_id )
-		if feelings then
-			if type(feelings) == "string" then feelings = { feelings } end
-			ui.msg_feel( table.random_pick( feelings ) )
-		end
+	local pos = generator.generate_stairs( stairs_id )
+	if feelings then
+		if type(feelings) == "string" then feelings = { feelings } end
+		ui.msg_feel( table.random_pick( feelings ) )
 	end
 	return pos
+end
+
+
+function generator.generate_nutiled_level( settings )
+	core.log("generator.generate_nutiled_level()")
+	local settings     = settings or {}
+	local wall_cell    = settings.wall_cell  or cells[generator.styles[ level.style ].wall].nid
+	local door_cell    = settings.door_cell  or cells[generator.styles[ level.style ].door].nid
+	local floor_cell   = settings.floor_cell or cells[generator.styles[ level.style ].floor].nid
+	wall_cell = cells[wall_cell].nid
+	level:fill( wall_cell )
+	local larea = area( 1, 1, MAXX, MAXY )
+	local result = { area = larea:shrinked(1) }
+	local border = settings.border 
+	if border then
+		level:fill( floor_cell, larea:shrinked(1) )
+		result.area = larea:shrinked(border + 2)
+		level:fill( wall_cell, result.area )
+	end
+	local corridor = settings.corridor or 2
+	local rbsp_settings = {
+		subdiv   = settings.subdiv or 5,
+		grid     = settings.grid or coord( 4,4 ),
+		gmin     = settings.gmin or coord( 2,2 ),
+		corridor = corridor,
+		room_min = settings.room_min or coord( 4, 4 ),
+	}
+	local rooms = generator.rbsp( level, result.area:expanded(1), rbsp_settings )
+
+	level:fill( floor_cell, result.area )
+
+	local rec_settings = settings.rec_settings or {
+		subdiv = 1,
+		return_all = true,
+		rec_single = 8,
+		rec_min = coord( 5, 5 )
+	}
+	for _,r in ipairs( rooms ) do
+		if r.a.y == 1 and r.b.y == MAXY then
+			local roll = math.random(3)
+			if roll == 2 then
+				r.a = coord( r.a.x, r.a.y + corridor + 1 )
+			elseif roll == 3 then
+				r.b = coord( r.b.x, r.b.y - corridor - 1 )
+			else
+				r.a = coord( r.a.x, r.a.y + corridor + 1 )
+				r.b = coord( r.b.x, r.b.y - corridor - 1 )
+			end
+		end
+	end
+
+	local split_rooms
+	local rec_rooms
+	rec_rooms, split_rooms = generator.bsp_recursive( level, rooms, rec_settings )
+	for _,room in ipairs( rooms ) do
+		local nonwall = 0
+		for c in room:edges() do
+			if level:get_cell( c ) ~= wall_cell then
+				nonwall = nonwall + 1
+			end
+		end
+		if nonwall == 0 then
+			generator.place_doors( level, room, 2 )
+		end
+	end
+
+	rooms = {}
+	local small_rooms = {}
+	for _,r in ipairs( rec_rooms ) do
+		local d = r:dim()
+		if d.x < 7 or d.y < 7 then
+			table.insert( small_rooms, r )
+		else
+			table.insert( rooms, r )
+		end
+	end
+
+--	if corridor > 1 then
+--		generator.ring_clear( self, result.area, 25, coord( corridor, corridor ), false, nil, true )
+--	end
+
+	generator.clear_dead_ends()
+	generator.remove_needless_doors()
+
+	generator.restore_walls( wall_cell )
 end
 
 function generator.generate_tiled_level( settings )
@@ -639,10 +693,8 @@ function generator.generate_tiled_level( settings )
 	local door_cell    = settings.door_cell  or cells[generator.styles[ level.style ].door].nid
 	local floor_cell   = settings.floor_cell or cells[generator.styles[ level.style ].floor].nid
 
-	local block = generator.cell_set{ wall_cell }
-
 	local plot = function( horiz, where )
-		generator.plot_lines( where, area.FULL, horiz, wall_cell, block )
+		generator.plot_line( level, where, horiz, wall_cell )
 		level:set_cell( where, door_cell )
 	end
 
@@ -913,6 +965,28 @@ function generator.mirror_horizontally( y_value, x_start )
 			end
 		end
 	end
+end
+
+function generator.mirror_vertically( x_value, y_start )
+	core.log("generator.mirror_vertically()")
+	local y_start = y_start or 1
+	for y = y_start, MAXY do
+		for x = 1, x_value-1 do
+			local c1 = coord( x, y )
+			local c2 = coord( 2 * x_value - x, y )
+			level:set_cell( c2, level:get_cell( c1 ) )
+			local item = level:get_item( c1 )
+			if item then
+				level:drop_item( item.id, c2 )
+			end
+		end
+	end
+end
+
+function generator.mirror_quad( pos )
+	core.log("generator.mirror_quad()")
+	generator.mirror_horizontally( pos.y )
+	generator.mirror_vertically( pos.x )
 end
 
 function generator.horiz_river( settings )

@@ -11,11 +11,6 @@ register_level "hells_armory"
 		return DIFFICULTY > 1
 	end,
 
-	OnCompletedCheck = function ()
-		return level.status > 1
-	end,
-
-
 	OnRegister = function ()
 
 		register_item "lever_spec3"
@@ -55,6 +50,7 @@ register_level "hells_armory"
 
 
 	Create = function ()
+		core.special_create()
 		level:set_generator_style( 1 )
 		level:fill( "lava" )
 
@@ -190,6 +186,7 @@ register_level "hells_armory"
 			ui.msg("This is madness!")
 			player:add_history("He fled being chased by a nightmare!")
 		else
+			core.special_complete()
 			ui.msg("Gotta love the craft...")
 			player:add_history("He destroyed the evil within and reaped the rewards!")
 		end

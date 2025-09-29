@@ -11,10 +11,6 @@ register_level "deimos_lab"
 		return DIFFICULTY > 1
 	end,
 
-	OnCompletedCheck = function ()
-		return level.status > 6
-	end,
-
 	OnRegister = function ()
 
 		register_item "lever_deimoslab"
@@ -58,6 +54,7 @@ register_level "deimos_lab"
 
 
 	Create = function ()
+		core.special_create()
 		level:set_generator_style( 2 )
 		level:fill( "wall" )
 		level.data.vault1 = area(38,9,41,12)
@@ -192,6 +189,7 @@ register_level "deimos_lab"
 			ui.msg("This is madness!")
 			player:add_history("He fled the lab after unleashing a nightmare!")
 		else
+			core.special_complete()
 			ui.msg("Gotta love the craft...")
 			player:add_history("He destroyed the evil within and reaped the rewards!")
 		end

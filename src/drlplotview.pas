@@ -6,11 +6,11 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlplotview;
 interface
-uses vutil, vtextures, drlio, dfdata;
+uses vutil, viotypes, vtextures, drlio, dfdata;
 
-type TPlotView = class( TInterfaceLayer )
+type TPlotView = class( TIOLayer )
   constructor Create( const aMessage : AnsiString; aColor : DWord; const aBackground : Ansistring = '' );
-  procedure Update( aDTime : Integer ); override;
+  procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
 protected
@@ -46,7 +46,7 @@ begin
          else Log( LOGERROR, 'Texture not found - "'+aBackground+'"');
 end;
 
-procedure TPlotView.Update( aDTime : Integer );
+procedure TPlotView.Update( aDTime : Integer; aActive : Boolean );
 var iRate : DWord;
 begin
   iRate := 40;
@@ -61,7 +61,7 @@ begin
   VTIG_SetMaxCharacters( FPosition );
   VTIG_FreeLabel( FMessage, Rectangle( 10, 5, 62, 15 ), FColor );
   IO.RenderUIBackground( FBGTexture, 1 );
-  IO.RenderUIBackground( PointZero, FSize, 0.5, 2 );
+  IO.RenderUIBackgroundBlock( PointZero, FSize, 0.5, 2 );
 
   if VTIG_EventCancel or VTIG_EventConfirm then
      if ( not FBoost ) and ( FPosition < ( Length(FMessage) * 0.8 ) )

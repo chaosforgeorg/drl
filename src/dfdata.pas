@@ -78,14 +78,6 @@ type TMenuResult = class
   procedure Reset;
 end;
 
-type TInterfaceLayer = class
-  procedure Update( aDTime : Integer ); virtual; abstract;
-  function IsFinished : Boolean; virtual; abstract;
-  function IsModal : Boolean; virtual;
-  function HandleEvent( const aEvent : TIOEvent ) : Boolean; virtual;
-  function HandleInput( aInput : TInputKey ) : Boolean; virtual;
-end;
-
 type THOFRankEntry = record
   ID    : Ansistring;
   Value : Integer;
@@ -125,21 +117,28 @@ const
   Config       : TDRLConfig = nil;
 
 const
-  AnimationSpeedMove   = 125;
+  AnimationSpeedMove   = 135;
   AnimationSpeedPush   = 200;
   AnimationSpeedAttack = 100;
 
 type
-    TItemType       = ( ItemType_None, ItemType_Ranged, ItemType_NRanged, ItemType_Armor, ItemType_Melee, ItemType_Ammo, ItemType_Pack, ItemType_Power, ItemType_Boots, ItemType_Tele, ItemType_Lever, ItemType_Feature, ItemType_AmmoPack );
+    TItemType       = ( ItemType_None, ItemType_Ranged, ItemType_NRanged, ItemType_URanged, ItemType_Armor, ItemType_Melee, ItemType_Ammo, ItemType_Pack, ItemType_Power, ItemType_Boots, ItemType_Tele, ItemType_Lever, ItemType_Feature, ItemType_AmmoPack );
     TBodyTarget     = ( Target_Internal, Target_Torso, Target_Feet );
     TEqSlot         = ( efTorso, efWeapon, efBoots, efWeapon2 );
     TStatusEffect   = ( StatusNormal, StatusInvert, StatusRed, StatusGreen, StatusBlue, StatusCyan, StatusMagenta, StatusYellow, StatusGray, StatusWhite );
-    TDamageType     = ( Damage_Bullet, Damage_Melee, Damage_Sharpnel, Damage_Acid, Damage_Fire, Damage_Cold, Damage_Poison, Damage_Plasma, Damage_SPlasma, Damage_IgnoreArmor );
+    TDamageType     = ( Damage_Bullet, Damage_Melee, Damage_Pierce, Damage_Sharpnel, Damage_Acid, Damage_Fire, Damage_Cold, Damage_Poison, Damage_Plasma, Damage_SPlasma, Damage_IgnoreArmor );
     TAltFire        = ( ALT_NONE, ALT_CHAIN, ALT_THROW, ALT_SCRIPT, ALT_TARGETSCRIPT, ALT_AIMED, ALT_SINGLE );
     TAltReload      = ( RELOAD_NONE, RELOAD_SCRIPT, RELOAD_DUAL, RELOAD_SINGLE );
-    TExplosionFlag  = ( efSelfHalf, efSelfKnockback, efSelfSafe, efAfterBlink, efChain, efHalfKnock, efNoKnock, efRandomContent, efNoDistanceDrop, efAlwaysVisible );
+    TExplosionFlag  = ( efSelfHalf, efSelfKnockback, efSelfSafe, efAfterBlink, efChain, efRandomContent, efNoDistanceDrop, efAlwaysVisible );
     TResistance     = ( Resist_Bullet, Resist_Melee, Resist_Shrapnel, Resist_Acid, Resist_Fire, Resist_Plasma, Resist_Cold, Resist_Poison );
 
+const
+    ResNames : array[TResistance] of AnsiString = ('Bullet','Melee','Shrap','Acid','Fire','Plasma','Cold','Poison');
+    ResIDs   : array[TResistance] of AnsiString = ('bullet','melee','shrapnel','acid','fire','plasma','cold','poison');
+
+
+const
+   PadQSlotChar : array[1..4] of Char = ( '^','<','>','v' );
 
 const
 {$include ../bin/data/core/constants.lua}
@@ -148,8 +147,6 @@ const
 const
   COMMAND_NONE     = 0;
   COMMAND_SKIP     = 250;
-
-  KnockbackValue = 7;
 
 const
   Setting_AlwaysRandomName : Boolean = False;
@@ -205,9 +202,11 @@ const
   Option_IntuitionChar    : Char = '.';
 
 var
-  ModuleOption_KlassAchievements : Boolean = False;
-  ModuleOption_NewMenu           : Boolean = False;
-
+  ModuleOption_KlassAchievements         : Boolean = False;
+  ModuleOption_NewMenu                   : Boolean = False;
+  ModuleOption_MeleeMoveOnKill           : Boolean = False;
+  ModuleOption_FullBeingDescription      : Boolean = False;
+  ModuleOption_DefaultExplosionKnockback : Integer = 8;
 
 var
   HARDSPRITE_HIGHLIGHT        : DWord = 0;
@@ -215,6 +214,8 @@ var
   HARDSPRITE_SELECT           : DWord = 0;
   HARDSPRITE_MARK             : DWord = 0;
   HARDSPRITE_GRID             : DWord = 0;
+  HARDSPRITE_SHIELD           : DWord = 0;
+  HARDSPRITE_SHIELD_COUNT     : DWord = 0;
   HARDSPRITE_DECAL_BLOOD      : array[0..3] of DWord = ( 0,0,0,0 );
   HARDSPRITE_DECAL_WALL_BLOOD : array[0..3] of DWord = ( 0,0,0,0 );
 
@@ -259,6 +260,7 @@ type TCellSet = set of Byte;
        Damage    : TDiceRoll;
        DamageType: TDamageType;
        ContentID : Word;
+       Knockback : Integer;
        SoundID   : string[16];
        Sprite    : TSprite;
      end;
@@ -277,26 +279,6 @@ const
   ActSoundChance    = 30;
 
 type
-  TShotgunData = record
-    Range      : Byte;
-    Spread     : Byte;
-    Reduce     : Real;
-    HitSprite  : TSprite;
-  end;
-
-  TMissileData = record
-    SoundID    : string[20];
-    Sprite     : TSprite;
-    HitSprite  : TSprite;
-    Picture    : Char;
-    Color      : Byte;
-    Delay      : Byte;
-    MissBase   : Byte;
-    MissDist   : Byte;
-    Range      : Byte;
-    Flags      : TFlags;
-    Explosion  : TExplosionData;
-  end;
 
   TAffectData = record
     Name       : Ansistring;
@@ -309,8 +291,6 @@ type
   end;
 
 var
-  Missiles  : array of TMissileData;
-  Shotguns  : array of TShotgunData;
   Affects   : array of TAffectData;
 
 const
@@ -332,39 +312,56 @@ const ItemEqFilters : array[TEqSlot] of TItemTypeSet = (
                       );
 const ItemsAll      : TItemTypeSet = [Low(TItemType)..High(TItemType)];
 
+type TItemRecharge = record
+  Delay   : Byte;
+  Amount  : Byte;
+  Counter : Byte;
+  Limit   : Byte;
+end;
+
 type TItemProperties = record
-       case IType : TItemType of
-         ItemType_Armor,ItemType_Boots : (
-           Durability : Word;
-           MaxDurability : Word;
-           MoveMod    : Integer;
-	   DodgeMod   : Integer;
-           KnockMod   : Integer;
-           SpriteMod  : Integer;
-           PCosColor  : TColor;
-           PGlowColor : TColor;
-         );
-         ItemType_Ammo,
-         ItemType_Melee,
-         ItemType_NRanged,
-         ItemType_Ranged,
-         ItemType_AmmoPack : (
-           AmmoID      : Byte;
-           Ammo        : Word;
-           AmmoMax     : Word;
-           Acc         : Integer;
-           Damage      : TDiceRoll;
-           Missile     : Byte;
-           BlastRadius : Byte;
-           Shots       : Byte;
-           ShotCost    : Byte;
-           ReloadTime  : Byte;
-           UseTime     : Byte;
-           DamageType  : TDamageType;
-           AltFire     : TAltFire;
-           AltReload   : TAltReload;
-         );
-     end;
+  IType         : TItemType;
+
+  Recharge      : TItemRecharge;
+  MoveMod       : Integer;
+  DodgeMod      : Integer;
+  KnockMod      : Integer;
+
+  SpriteMod     : Integer;
+  Durability    : Word;
+  MaxDurability : Word;
+
+  AmmoID        : Byte;
+  Ammo          : Word;
+  AmmoMax       : Word;
+  Acc           : Integer;
+  Damage        : TDiceRoll;
+  Range         : Byte;
+  Spread        : Byte;
+  Falloff       : Integer;
+  Knockback     : Integer;
+  Radius        : Byte;
+  Shots         : Byte;
+  ShotCost      : Byte;
+  ReloadTime    : Byte;
+  UseTime       : Byte;
+  SwapTime      : Byte;
+  DamageType    : TDamageType;
+  MissBase      : Byte;
+  MissDist      : Byte;
+  AltFire       : TAltFire;
+  AltReload     : TAltReload;
+
+  MisASCII      : Char;
+  MisColor      : Byte;
+  MisDelay      : Byte;
+
+  PCosColor     : TColor;
+  PGlowColor    : TColor;
+  MisSprite     : TSprite;
+  HitSprite     : TSprite;
+  Explosion     : TExplosionData;
+end;
 
 const MaxPlayerLevel = 26;
 
@@ -416,12 +413,14 @@ function GetPropValueFixed(Instance: TObject; const PropName: Ansistring; Prefer
 
 var TIGStyleColored   : TTIGStyle;
     TIGStyleFrameless : TTIGStyle;
+    TIGStylePadless   : TTIGStyle;
 
 implementation
 uses typinfo, strutils, math, vmath, vdebug, vluasystem;
 
 function ReadFileString( aStream : TStream; aSize : Integer ) : Ansistring;
 begin
+  Initialize( Result );
   SetLength( Result, aSize );
   if aStream.Size > 0 then aStream.ReadBuffer( Result[1], aSize );
 end;
@@ -458,6 +457,7 @@ var iChar : Char;
 begin
   if aSize < 0 then aSize := aStream.Size;
   iLine := '';
+  Initialize( iChar );
   while aStream.Read( iChar, SizeOf(iChar) ) = SizeOf(iChar) do
   begin
     if iChar = #10 then Break;
@@ -467,21 +467,6 @@ begin
   if (iLine = '') and ( aStream.Position >= aSize )
     then Result := ''
     else Result := iLine;
-end;
-
-function TInterfaceLayer.IsModal : Boolean;
-begin
-  Exit( False );
-end;
-
-function TInterfaceLayer.HandleEvent( const aEvent : TIOEvent ) : Boolean;
-begin
-  Exit( IsModal );
-end;
-
-function TInterfaceLayer.HandleInput( aInput : TInputKey ) : Boolean;
-begin
-  Exit( False );
 end;
 
 constructor TPagedReport.Create( aTitle : Ansistring; aStyled : Boolean );
@@ -560,6 +545,7 @@ begin
     Damage_Plasma  : Exit('plasma');
     Damage_SPlasma : Exit('plasma');
     Damage_IgnoreArmor : Exit('heavy');
+    Damage_Pierce  : Exit('pierce');
   end;
 end;
 
@@ -899,6 +885,7 @@ begin
   aExplosion.Range      := aTable.getInteger('range',0);
   aExplosion.Delay      := aTable.getInteger('delay',0);
   aExplosion.Color      := aTable.getInteger('color',0);
+  aExplosion.Knockback  := aTable.GetInteger('knockback',ModuleOption_DefaultExplosionKnockback);
   aExplosion.SoundID    := aTable.getString('sound_id','');
   aExplosion.Flags      := ExplosionFlagsFromFlags( aTable.getFlags('flags',[]) );
   aExplosion.Damage     := NewDiceRoll( aTable.getString('damage','') );

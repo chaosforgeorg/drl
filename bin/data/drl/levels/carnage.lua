@@ -8,6 +8,7 @@ register_level "halls_of_carnage"
 	level = 14,
 
 	Create = function ()
+		core.special_create()
 		level:set_generator_style( 1 )
 		level:fill( "rwall" )
 
@@ -81,5 +82,11 @@ register_level "halls_of_carnage"
 
 	OnTick = function()
 		generator.OnTick()
+	end,
+
+	OnExit = function ()
+		if level:get_enemies_left( true ) == 0 then
+			core.special_complete()
+		end
 	end,
 }

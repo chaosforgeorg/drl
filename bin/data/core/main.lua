@@ -1,6 +1,7 @@
 require( "core:constants" )
 require( "core:commands" )
 require( "core:functions" )
+require( "core:bsp" )
 require( "core:generator" )
 require( "core:level" )
 require( "core:thing" )
@@ -16,6 +17,8 @@ core.options = {
 	auto_glow_items = true,
 	klass_achievements = false,
 	new_menu = false,
+	melee_move_on_kill = false,
+	full_being_description = false,
 }
 
 module = false
@@ -39,7 +42,7 @@ register_cell = core.register_storage( "cells", "cell", function( c )
 	end	
 )
 
-function register_corpse( being_proto, index, no_ressurect )
+function register_corpse( being_proto, index, no_resurrect )
 	local frames = being_proto.sframes or 1
 	if frames < 1 then frames = 1 end
 	frames = frames + (index or 0)
@@ -55,7 +58,7 @@ function register_corpse( being_proto, index, no_ressurect )
 		destroyto = "bloodpool";
 		raiseto = being_proto.id;
 	}
-	if no_ressurect then
+	if no_resurrect then
 		proto.flags = {CF_CORPSE, CF_NOCHANGE, CF_OVERLAY, CF_VBLOODY }
 	end
 	if being_proto.sflags[ SF_LARGE ] then
@@ -81,16 +84,6 @@ register_trait      = core.register_storage( "traits", "trait" )
 register_ai         = core.register_storage( "ais", "ai" )
 register_challenge  = core.register_storage( "chal", "challenge" )
 register_itemset    = core.register_storage( "itemsets", "itemset" )
-register_shotgun    = core.register_storage( "shotguns", "shotgun", function (s) core.register_shotgun( s.nid ) end )
-register_missile    = core.register_storage( "missiles", "missile", function (m)
-		m.sound_id = m.sound_id or m.id
-		if m.explosion and m.explosion.content then
-			m.explosion.content = cells[m.explosion.content].nid
-		end
-		core.register_missile(m.nid)
-		return m.nid
-	end
-)
 register_mod_array = core.register_storage( "mod_arrays", "mod_array", function (m) 
 		m.sig   = core.mod_list_signature(m.mods)
 		m.desc  = core.mod_array_description(m)
@@ -294,17 +287,25 @@ register_being         = core.register_storage( "beings", "being", function( bp 
 			end
 
 			bp.OnCreate   = core.create_seq_function( OnCreate, bp.OnCreate )
+			bp.OnAction   = core.create_seq_function( ai_proto.OnAction, bp.OnAction )
 			bp.OnAction   = core.create_seq_function( aitk.OnAction, bp.OnAction )
 			bp.OnAttacked = core.create_seq_function( bp.OnAttacked, ai_proto.OnAttacked )
 		end
 
 		if bp.weapon then
-			local wid = "nat_"..bp.id
-			local ip  = bp.weapon
-			ip.name   = wid
-			ip.type   = ITEMTYPE_NRANGED
-			ip.weight = 0
-			ip.sprite = 0
+			local wid   = "nat_"..bp.id
+			local ip    = bp.weapon
+			ip.name     = ip.name or "ranged attack"
+			if not ip.sound_id then
+				if bp.sound_id and bp.sound_id ~= "" then
+					ip.sound_id = bp.sound_id
+				else
+					ip.sound_id = bp.id
+				end
+			end
+			ip.type     = ITEMTYPE_NRANGED
+			ip.weight   = 0
+			ip.sprite   = 0
 			register_item( wid ) ( ip )
 			ip.flags[ IF_NODROP ] = true
 			ip.flags[ IF_NOAMMO ] = true
@@ -373,6 +374,9 @@ register_item          = core.register_storage( "items", "item", function( ip )
 			ip.damage_bonus = tonumber(damage_bonus) or 0
 		end
 
+		if ip.explosion and ip.explosion.content then
+			ip.explosion.content = cells[ip.explosion.content].nid
+		end
 
 		if ip.firstmsg then ip.OnFirstPickup = function () ui.msg("\""..ip.firstmsg.."\"") end end
 
@@ -388,18 +392,6 @@ register_item          = core.register_storage( "items", "item", function( ip )
 				end		
 			end
 		end	
-
-		if type(ip.missile) == "table" then
-			if ip.group == "shotgun" then
-				ip.missile        = register_shotgun ( "s"..ip.id ) ( ip.missile )
-			else
-				ip.missile        = register_missile ( "m"..ip.id ) ( ip.missile )
-			end
-		end
-
-		if type(ip.missile) == "string" then
-			ip.missile = core.iif( ip.group == "shotgun", shotguns, missiles )[ip.missile].nid
-		end
 
 		local OnCreate = function (self)
 			self:add_property( "resist", {} )
@@ -547,13 +539,17 @@ function core.tag_reqs_met( proto, reqs )
 		return proto.tags[ reqs ]
 	end
 	if reqs.all then 
-		for _,r in ipairs( reqs.all ) do
+		local all = reqs.all
+		if type(all) ~= "table" then all = { all } end
+		for _,r in ipairs( all ) do
 			if not proto.tags[ r ] then return false end
 		end
 	end
 	if reqs.any then 
+		local any   = reqs.any
+		if type(any) ~= "table" then any = { any } end
 		local found = false
-		for _,r in ipairs( reqs.any ) do
+		for _,r in ipairs( any ) do
 			if proto.tags[ r ] then 
 				found = true 
 				break
@@ -602,6 +598,7 @@ core.type_name = {
 	[ITEMTYPE_NRANGED] = "natural ranged",
 	[ITEMTYPE_ARMOR]   = "armor",
 	[ITEMTYPE_MELEE]   = "melee weapon",
+	[ITEMTYPE_URANGED] = "usable weapon",
 	[ITEMTYPE_AMMO]    = "ammo",
 	[ITEMTYPE_AMMOPACK]= "ammo pack",
 	[ITEMTYPE_PACK]    = "pack",
@@ -678,7 +675,6 @@ function core.less_than_table( value, param )
 	return value[#value][2]
 end
 
-
 function core.ranged_table( value, param )
 	if type( value ) ~= "table" then return value end
 	local result = value[1]
@@ -695,6 +691,15 @@ function core.ranged_table( value, param )
 	return result
 end
 
+function core.special_create()
+	level.flags[ LF_NOBEINGREVEAL ] = true
+	level.flags[ LF_NOITEMREVEAL  ] = true
+	statistics.bonus_levels_visited = statistics.bonus_levels_visited + 1
+end
+
+function core.special_complete()
+	statistics.bonus_levels_completed = statistics.bonus_levels_completed + 1
+end
 
 setmetatable(_G, {
 	__newindex = function (_, n)

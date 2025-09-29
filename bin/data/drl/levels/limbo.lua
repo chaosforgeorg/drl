@@ -65,6 +65,7 @@ register_level "limbo"
 
 
 	Create = function ()
+		core.special_create()
 		level:set_generator_style( 1 )
 		level:fill( "blood" )
 
@@ -155,6 +156,7 @@ register_level "limbo"
 
 	OnExit = function ()
 		if level.status == 1 then
+			core.special_complete()
 			ui.msg("As you descend the stairs you hear a wail. They're back...")
 			ui.msg("There's only one way to end this...")
 			player:add_history("He managed to clear Limbo from evil!")

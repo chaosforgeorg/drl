@@ -8,10 +8,6 @@ register_level "hells_arena"
 	welcome = "You enter Hell's Arena",
 	level = 2,
 
-	OnCompletedCheck = function ()
-		return level.status == 4
-	end,
-
 	OnRegister = function ()
 
 		register_medal "chessmaster1"
@@ -89,6 +85,7 @@ register_level "hells_arena"
 	end,
 
 	Create = function ()
+		core.special_create()
 		level:set_generator_style( 1 )
 		level:fill( "rwall" )
 		level:fill( "floor", area.FULL_SHRINKED )
@@ -213,7 +210,8 @@ register_level "hells_arena"
 		else                  ui.msg("The crowds cheer! \"Kill! Kill!\"") end
 	end,
 
-	OnKillAll = function ()
+	OnKillAll = function ( wipe )
+		if not wipe then return end
 		if level.status == 1 then
 			ui.continue("The voice booms:\n{R\"Not bad mortal! For the weakling that you are, you show some determination.\"}\nYou hear screams everywhere!\n{R\"More Blood! More BLOOD!\"}")
 			local choice = ui.query("The voice continues:\n{R\"I can now let you go free, or you may try to complete the challenge!\nDo you want to continue the fight?\"}" )
@@ -303,6 +301,7 @@ register_level "hells_arena"
 
 		-- badges --
 		if result == 4 then
+			core.special_complete()
 			player:add_badge("arena1")
 			if DIFFICULTY >= DIFF_VERYHARD then
 				player:add_badge("arena2")

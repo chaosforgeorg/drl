@@ -23,7 +23,7 @@ type
 
 TLevel = class(TLuaMapNode, ITextMap)
     constructor Create; reintroduce;
-    procedure Init( nStyle : byte; nLNum : Word;nName : string; nSpecExit : string; aIndex : Integer; nDangerLevel : Word);
+    procedure Init( aStyle : byte; aName : Ansistring; aIndex : Integer; aDangerLevel : Word );
     procedure AfterGeneration( aGenerated : Boolean );
     procedure PreEnter;
     procedure RecalcFluids;
@@ -71,10 +71,11 @@ TLevel = class(TLuaMapNode, ITextMap)
     function CallHookCheck( Hook : Byte; const Params : array of Const ) : Boolean;
 
     procedure DropCorpse( aCoord : TCoord2D; CellID : Byte );
-    procedure DamageTile( aCoord : TCoord2D; aDamage : Integer; aDamageType : TDamageType );
-    procedure Explosion( aDelay : Integer; aCoord : TCoord2D; aData : TExplosionData; aItem : TItem; aDirectHit : Boolean = False; aDamageMult : Single = 1.0 );
-    procedure Shotgun( aSource, aTarget : TCoord2D; aDamage : TDiceRoll; aDamageMul : Single; aDamageType : TDamageType; aShotgun : TShotgunData; aItem : TItem );
-    procedure Respawn( aChance : byte );
+    function DamageTile( aCoord : TCoord2D; aDamage : Integer; aDamageType : TDamageType ) : Boolean;
+    procedure Explosion( aDelay : Integer; aCoord : TCoord2D; aData : TExplosionData; aItem : TItem; aKnockback : TDirection; aDirectHit : Boolean = False; aDamageMult : Single = 1.0 );
+    procedure Shotgun( aSource, aTarget : TCoord2D; aDamage : TDiceRoll; aDamageMul : Single; aDamageType : TDamageType; aItem : TItem );
+    function Respawn( aCoord : TCoord2D ) : TBeing; overload;
+    procedure Respawn( aChance : byte ); overload;
     function isPassable( const aCoord : TCoord2D ) : Boolean; override;
     function isEmpty( const coord : TCoord2D; EmptyFlags : TFlags32 = []) : Boolean; override;
     function cellFlagSet( coord : TCoord2D; Flag : byte) : Boolean;
@@ -91,7 +92,6 @@ TLevel = class(TLuaMapNode, ITextMap)
     function isAlive( aUID : TUID ) : boolean;
 
     procedure ScriptLevel(script : string);
-    procedure SingleLevel(ModuleID : string);
 
     function RandomCoord( EmptyFlags : TFlags32 ) : TCoord2D; // raises EPlacementException
 
@@ -99,7 +99,7 @@ TLevel = class(TLuaMapNode, ITextMap)
 
     procedure DestroyItem( coord : TCoord2D );
     procedure Blood( coord : TCoord2D );
-    procedure Kill( aBeing : TBeing; Silent : Boolean = False );
+    procedure Kill( aBeing : TBeing );
     function ActiveBeing : TBeing;
     procedure CalculateVision( coord : TCoord2D );
 
@@ -134,7 +134,6 @@ TLevel = class(TLuaMapNode, ITextMap)
     FStyle         : Byte;
     FBoss          : TUID;
 
-    FLNum          : Word;
     FLTime         : DWord;
     FEmpty         : Boolean;
 
@@ -147,7 +146,6 @@ TLevel = class(TLuaMapNode, ITextMap)
     FFloorCell     : Word;
     FFloorStyle    : Byte;
     FFeeling       : AnsiString;
-    FSpecExit      : AnsiString;
     FMusicID       : AnsiString;
     FSName         : AnsiString;
     FAbbr          : AnsiString;
@@ -186,10 +184,8 @@ TLevel = class(TLuaMapNode, ITextMap)
     property Name         : AnsiString read FName        write FName;
     property SName        : AnsiString read FSName       write FSName;
     property Abbr         : AnsiString read FAbbr        write FAbbr;
-    property Name_Number  : Word       read FLNum        write FLNum;
     property Danger_Level : Word       read FDangerLevel write FDangerLevel;
     property Style        : Byte       read FStyle;
-    property Special_Exit : AnsiString read FSpecExit;
     property Feeling      : AnsiString read FFeeling     write FFeeling;
     property id           : AnsiString read FID;
     property Music_ID     : AnsiString read FMusicID     write FMusicID;
@@ -213,8 +209,7 @@ begin
   try
     FID := Script;
 
-    if IsString('entry')   then Player.AddHistory( GetString('entry') );
-    if IsString('welcome') then 
+    if IsString('welcome') then
     begin
       IO.Msg( GetString('welcome') );
       FFeeling := GetString('welcome');
@@ -225,26 +220,14 @@ begin
     FSName  := GetString( 'sname','' );
     FAbbr   := GetString( 'abbr','' );
     if FSName = '' then FSName := FName;
-    FLNum   := 0;
     Call('Create',[]);
-    Place( Player, DropCoord( NewCoord2D(LuaPlayerX,LuaPlayerY), [ EF_NOBEINGS ] ) );
+    if ( LuaPlayerX > 0 ) and ( LuaPlayerY > 0 ) then
+      Place( Player, DropCoord( NewCoord2D(LuaPlayerX,LuaPlayerY), [ EF_NOBEINGS ] ) );
     Include( FFlags, LF_SCRIPT );
   finally
     Free;
   end;
   FHooks := LoadHooks( [ 'levels', script ] ) * LevelHooks;
-
-  AfterGeneration( False );
-end;
-
-procedure TLevel.SingleLevel(ModuleID : string);
-begin
-  FullClear;
-  LuaPlayerX := 2;
-  LuaPlayerY := 2;
-
-  LuaSystem.ProtectedCall([ModuleID,'run'],[]);
-  Place( Player, DropCoord( NewCoord2D(LuaPlayerX,LuaPlayerY), [ EF_NOBEINGS ] ) );
 
   AfterGeneration( False );
 end;
@@ -449,7 +432,6 @@ begin
   aStream.Read( FIndex, SizeOf( FIndex ) );
   FStatus := aStream.ReadWord();
   FStyle  := aStream.ReadByte();
-  FLNum   := aStream.ReadWord();
   FLTime  := aStream.ReadDWord();
   aStream.Read( FBoss, SizeOf( FBoss ) );
   aStream.Read( FEmpty, SizeOf( FEmpty ) );
@@ -459,7 +441,6 @@ begin
   FFloorStyle  := aStream.ReadByte();
   FID          := aStream.ReadAnsiString();
   FFeeling     := aStream.ReadAnsiString();
-  FSpecExit    := aStream.ReadAnsiString();
   FMusicID     := aStream.ReadAnsiString();
   FSName       := aStream.ReadAnsiString();
   FAbbr        := aStream.ReadAnsiString();
@@ -482,7 +463,6 @@ begin
   aStream.Write( FIndex, SizeOf( FIndex ) );
   aStream.WriteWord( FStatus );
   aStream.WriteByte( FStyle );
-  aStream.WriteWord( FLNum );
   aStream.WriteDWord( FLTime );
   aStream.Write( FBoss, SizeOf( FBoss ) );
   aStream.Write( FEmpty, SizeOf( FEmpty ) );
@@ -492,7 +472,6 @@ begin
   aStream.WriteByte( FFloorStyle );
   aStream.WriteAnsiString( aID );
   aStream.WriteAnsiString( FFeeling );
-  aStream.WriteAnsiString( FSpecExit );
   aStream.WriteAnsiString( FMusicID );
   aStream.WriteAnsiString( FSName );
   aStream.WriteAnsiString( FAbbr );
@@ -511,7 +490,7 @@ begin
   iEnemies := 0;
   for iNode in Self do
     if iNode is TBeing then
-      if ( not TBeing(iNode).isPlayer ) and ( not iNode.Flags[ BF_FRIENDLY ] ) then
+      if ( not TBeing(iNode).isPlayer ) and ( not iNode.Flags[ BF_FRIENDLY ] ) and ( not iNode.Flags[ BF_ILLUSION ] )then
         if ( not aUnique ) or ( not iNode.Flags[ BF_RESPAWN ] ) then
           Inc( iEnemies );
   Exit( iEnemies );
@@ -530,7 +509,7 @@ begin
   FIndex   := 0;
 end;
 
-procedure TLevel.Init(nStyle : byte; nLNum : Word; nName : string; nSpecExit : string; aIndex : Integer; nDangerLevel : Word);
+procedure TLevel.Init( aStyle : Byte; aName : Ansistring; aIndex : Integer; aDangerLevel : Word );
 begin
   FActiveBeing := nil;
   FNextNode    := nil;
@@ -538,14 +517,12 @@ begin
   FIndex := aIndex;
   FBoss := 0;
   FLTime  := 0;
-  FStyle := nstyle;
+  FStyle := aStyle;
   FullClear;
-  FLNum := nlnum;
-  FName := nname;
+  FName := aName;
   FSName := FName;
   FAbbr  := '';
-  FDangerLevel := nDangerLevel;
-  FSpecExit := nSpecExit;
+  FDangerLevel := aDangerLevel;
   FID := 'level'+IntToStr(FIndex);
   FFlags := [];
   FEmpty := False;
@@ -646,16 +623,7 @@ procedure TLevel.Leave;
 var TimeDiff : LongInt;
 begin
   CallHook(Hook_OnExit,[FIndex,FID, FStatus]);
-  if LF_BONUS in FFlags then
-    if Hook_OnCompletedCheck in FHooks then
-    begin
-      if RawCallHookCheck( Hook_OnCompletedCheck,[] ) then Player.Statistics.Increase('bonus_levels_completed');
-    end
-    else
-      if EnemiesLeft() = 0 then Player.Statistics.Increase('bonus_levels_completed');
-
-
-  if (not (LF_BONUS in FFlags)) and (Player.HP > 0) then
+  if ( Player.HP > 0 ) and ( not ( Hook_OnExit in FHooks ) ) then
   begin
     TimeDiff :=  Player.Statistics.GameTime - Player.Statistics['entry_time'];
     if TimeDiff < 100 then
@@ -812,13 +780,14 @@ begin
 end;
 
 
-procedure TLevel.DamageTile( aCoord : TCoord2D; aDamage : Integer; aDamageType : TDamageType );
+function TLevel.DamageTile( aCoord : TCoord2D; aDamage : Integer; aDamageType : TDamageType ) : Boolean;
 var iCellID  : Byte;
     iHeavy   : Boolean;
     iFeature : TItem;
     iNode    : TNode;
     iDamage  : Integer;
 begin
+  Result := False;
   if not isProperCoord( aCoord )      then Exit;
   if LightFlag[ aCoord, lfPermanent ] then Exit;
   if LightFlag[ aCoord, lfFresh ]     then Exit;
@@ -850,6 +819,7 @@ begin
         then Cell[ aCoord ] := FFloorCell
         else Cell[ aCoord ] := LuaSystem.Defines[ Cells[ iCellID ].destroyto ];
 
+      Result := True;
       CallHook( aCoord, iCellID, CellHook_OnDestroy );
     end;
   end;
@@ -859,6 +829,7 @@ begin
     iFeature.HP := iFeature.HP - ( aDamage - iFeature.Armor );
     if iFeature.HP <= 0 then
     begin
+      Result := True;
       SetItem( aCoord, nil );
       iFeature.Detach;
       iFeature.CallHook( Hook_OnDestroy, [ LuaCoord( aCoord ) ] );
@@ -900,7 +871,7 @@ begin
   if aBeing = nil then Exit;
   aCoord := DropCoord( aCoord, [ EF_NOTELE,EF_NOBEINGS,EF_NOBLOCK,EF_NOSTAIRS ] );
   Add( aBeing, aCoord );
-  if ( not aBeing.IsPlayer ) and ( not aBeing.Flags[ BF_FRIENDLY ] ) then
+  if ( not aBeing.IsPlayer ) and ( not aBeing.Flags[ BF_FRIENDLY ] ) and ( not aBeing.Flags[ BF_ILLUSION ] ) then
   begin
     Player.FKills.MaxCount := Player.FKills.MaxCount + 1;
     if not aBeing.Flags[ BF_RESPAWN ] then Player.FKillMax := Player.FKillMax + 1;
@@ -933,7 +904,7 @@ begin
   end;
 end;
 
-procedure TLevel.Explosion( aDelay : Integer; aCoord : TCoord2D; aData : TExplosionData; aItem : TItem; aDirectHit : Boolean = False; aDamageMult : Single = 1.0 );
+procedure TLevel.Explosion( aDelay : Integer; aCoord : TCoord2D; aData : TExplosionData; aItem : TItem; aKnockback : TDirection; aDirectHit : Boolean = False; aDamageMult : Single = 1.0 );
 var iC          : TCoord2D;
     iDamage     : Integer;
     iDir        : TDirection;
@@ -983,17 +954,18 @@ begin
           if (efSelfSafe in aData.Flags) and isActive then Continue;
           iPointDelay := aDelay + iDistance * aData.Delay;
           if efChain in aData.Flags then
-            Explosion( iPointDelay, iC, iChain, nil );
-          iKnockback := KnockBackValue;
-          if (efHalfKnock in aData.Flags) then iKnockback *= 2;
+            Explosion( iPointDelay, iC, iChain, nil, NewDirection(0) );
+          iKnockback := aData.Knockback;
           if (efSelfKnockback in aData.Flags) and isActive then iKnockback := 2;
-          if (iDamage >= iKnockBack) and (not (efNoKnock in aData.Flags) ) then
+          if iKnockback > 0 then
           begin
-            iDir.CreateSmooth( aCoord, iC );
-            Knockback( iDir, iDamage div iKnockback );
+            if aCoord = iC
+              then iDir := aKnockback
+              else iDir.CreateSmooth( aCoord, iC );
+            Knockback( iDir, iDamage / iKnockback );
           end;
           KnockBacked := True;
-          if (Flags[BF_SPLASHIMMUNE]) and (not aDirectHit) then Continue;
+          if (Flags[BF_SPLASHIMMUNE]) and (aCoord <> iC) then Continue;
           if (efSelfHalf in aData.Flags) and isActive then iDamage := iDamage div 2;
           if ( aItem <> nil ) and ( UIDs[ iItemUID ] = nil ) then aItem := nil;
           ApplyDamage( iDamage, Target_Torso, aData.DamageType, aItem, iPointDelay );
@@ -1001,7 +973,7 @@ begin
         end;
         if ( iDamage > 10 ) and ( Item[iC] <> nil ) and (not Item[iC].isFeature) then
         begin
-          if efChain in aData.Flags then Explosion( iPointDelay, iC, iChain, nil );
+          if efChain in aData.Flags then Explosion( iPointDelay, iC, iChain, nil, NewDirection(0) );
           DestroyItem( iC );
         end;
         if (aData.ContentID <> 0) and isEmpty( iC, [ EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM ] ) then
@@ -1013,17 +985,19 @@ begin
   if aData.ContentID <> 0 then RecalcFluids;
 end;
 
-procedure TLevel.Shotgun( aSource, aTarget : TCoord2D; aDamage : TDiceRoll; aDamageMul : Single; aDamageType : TDamageType; aShotgun : TShotgunData; aItem : TItem );
-var iDiff,iC: TCoord2D;
-    iTC     : TCoord2D;
-    iDist   : Single;
-    iDmg    : Integer;
-    iRange  : Integer;
-    iSpread : Integer;
-    iReduce : Single;
-    iDir    : TDirection;
-    iNode   : TNode;
-    iItemUID: TUID;
+procedure TLevel.Shotgun( aSource, aTarget : TCoord2D; aDamage : TDiceRoll; aDamageMul : Single; aDamageType : TDamageType; aItem : TItem );
+var iDiff,iC : TCoord2D;
+    iTC      : TCoord2D;
+    iDist    : Single;
+    iDmg     : Integer;
+    iRange   : Integer;
+    iSpread  : Integer;
+    iHSprite : TSprite;
+    iKnock   : Integer;
+    iFalloff : Integer;
+    iDir     : TDirection;
+    iNode    : TNode;
+    iItemUID : TUID;
 
     procedure SendShotgunBeam( aSrc : TCoord2D; aTgt : TCoord2D );
     var iSRay  : TVisionRay;
@@ -1041,15 +1015,16 @@ var iDiff,iC: TCoord2D;
       until iCount = iRange;
     end;
 begin
-  iRange  := aShotgun.Range;
-  iSpread := aShotgun.Spread;
-  iReduce := aShotgun.Reduce;
+  iRange   := aItem.Range;
+  iSpread  := aItem.Spread;
+  iFalloff := aItem.Falloff;
+  iKnock   := aItem.Knockback;
+  iHSprite := aItem.HitSprite;
+  if ( iSpread <= 0 ) then Exit;
 
-  iItemUID := 0;
-  if aItem <> nil then iItemUID := aItem.uid;
+  iItemUID := aItem.uid;
 
-  iDist := Distance( aSource, aTarget );
-  if iDist = 0 then Exit;
+  if aSource = aTarget then Exit;
   iDiff := aTarget - aSource;
   iDist := Sqrt( iDiff.x*iDiff.x+iDiff.y*iDiff.y);
   iC.x := Round((iDiff.x*iRange)/iDist);
@@ -1066,7 +1041,7 @@ begin
   for iTC in FArea do
     if LightFlag[ iTC, lfDamage ] then
       begin
-        iDmg := Round( aDamage.Roll * (1.0-iReduce*Max(1,Distance( aSource, iTC ))) );
+        iDmg := Round( aDamage.Roll * (1.0-0.01*iFalloff*Max(1,Distance( aSource, iTC ))) );
         iDmg := Floor( iDmg * aDamageMul );
 
         if iDmg < 1 then iDmg := 1;
@@ -1077,14 +1052,14 @@ begin
           if KnockBacked then Continue;
           if isVisible then
           begin
-            if iDmg > 10 then IO.addMarkAnimation( 199, 0, iTC, aShotgun.HitSprite, Red, '*' )
-              else if iDmg > 4 then IO.addMarkAnimation( 199, 0, iTC, aShotgun.HitSprite, LightRed, '*' )
-                else IO.addMarkAnimation( 199, 0, iTC, aShotgun.HitSprite, LightGray, '*' );
+            if iDmg > 10 then IO.addMarkAnimation( 199, 0, iTC, iHSprite, Red, '*' )
+              else if iDmg > 4 then IO.addMarkAnimation( 199, 0, iTC, iHSprite, LightRed, '*' )
+                else IO.addMarkAnimation( 199, 0, iTC, iHSprite, LightGray, '*' );
           end;
-          if iDmg >= KnockBackValue then
+          if iKnock > 0 then
           begin
             iDir.CreateSmooth( aSource, iTC );
-            Knockback( iDir, iDmg div KnockBackValue );
+            Knockback( iDir, iDmg / iKnock );
           end;
           KnockBacked := True;
           if ( aItem <> nil ) and ( UIDs[ iItemUID ] = nil ) then aItem := nil;
@@ -1094,16 +1069,14 @@ begin
         
         DamageTile( iTC, iDmg, aDamageType );
         if isVisible( iTC ) and ( not isPassable( iTC ) ) then
-          IO.addMarkAnimation( 199, 0, iTC, aShotgun.HitSprite, LightGray,'*' );
+          IO.addMarkAnimation( 199, 0, iTC, iHSprite, LightGray,'*' );
       end;
   ClearLightMapBits([lfDamage]);
 end;
 
 
 procedure TLevel.Respawn( aChance : byte );
-var iCoord : TCoord2D;
-    iBeing : TBeing;
-    iItem  : TItem;
+var iCoord  : TCoord2D;
 begin
   if LF_NORESPAWN in FFlags then Exit;
   for iCoord in FArea do
@@ -1112,19 +1085,32 @@ begin
         if not isVisible( iCoord ) then
           if isPassable( iCoord ) then
             if Random(100) < aChance then
-            try
-              iBeing := TBeing.Create( Cells[ GetCell(iCoord) ].raiseto );
-              iBeing.Flags[ BF_RESPAWN ] := True;
-              DropBeing( iBeing, iCoord );
-              iBeing.Flags[ BF_NOEXP   ] := True;
-              for iItem in iBeing.Inv do
-                iItem.Flags[ IF_NODROP ] := True;
-              Cell[ iCoord ] := LuaSystem.Defines[ Cells[ GetCell(iCoord) ].destroyto ];
-            except
-              on EPlacementException do FreeAndNil( iBeing );
-            end;
-
+              Respawn( iCoord );
 end;
+
+function TLevel.Respawn( aCoord : TCoord2D ) : TBeing;
+var iBeing  : TBeing;
+    iItem   : TItem;
+    iCellID : Byte;
+begin
+  iCellID := GetCell( aCoord );
+  if Cells[ iCellID ].raiseto = '' then Exit( nil );
+  try
+    iBeing := TBeing.Create( Cells[ iCellID ].raiseto );
+    iBeing.Flags[ BF_RESPAWN ] := True;
+    DropBeing( iBeing, aCoord );
+    Cell[ aCoord ] := LuaSystem.Defines[ Cells[ iCellID ].destroyto ];
+    iBeing.Flags[ BF_NOEXP   ] := True;
+    for iItem in iBeing.Inv do
+      iItem.Flags[ IF_NODROP ] := True;
+    if BeingVisible( aCoord, iBeing ) or BeingExplored( aCoord, iBeing ) then
+      IO.addKillAnimation( 1000, 0, iBeing, True );
+  except
+    on EPlacementException do FreeAndNil( iBeing );
+  end;
+  Exit( iBeing );
+end;
+
 
 function TLevel.isPassable ( const aCoord : TCoord2D ) : Boolean;
 var iItem : TItem;
@@ -1154,14 +1140,15 @@ begin
     else LightFlag[ coord, LFBLOOD ] := True;
 end;
 
-procedure TLevel.Kill ( aBeing : TBeing; Silent : Boolean ) ;
-var iEnemiesLeft : Integer;
+procedure TLevel.Kill ( aBeing : TBeing ) ;
+var iEnemiesLeft       : Integer;
+    iUniqueEnemiesLeft : Integer;
 begin
   if aBeing = nil then Exit;
   if Being[ aBeing.Position ] = aBeing then
     SetBeing( aBeing.Position, nil );
 
-  if (DRL.State = DSPlaying) and (not Silent) then
+  if DRL.State = DSPlaying then
   begin
     CallHook(Hook_OnKill,[ aBeing ]);
   end;
@@ -1169,23 +1156,26 @@ begin
   FreeAndNil(aBeing);
   if DRL.State <> DSPlaying then Exit;
 
-  iEnemiesLeft := EnemiesLeft();
-  if ( iEnemiesLeft < 4 ) and ( not ( LF_BONUS in FFlags ) ) and ( not ( LF_BOSS in FFlags ) ) then
+  iEnemiesLeft       := EnemiesLeft();
+  if ( iEnemiesLeft < 4 ) and ( not ( LF_NOBEINGREVEAL in FFlags ) ) then
     Include( FFlags, LF_BEINGSVISIBLE );
 
-  if not Silent then
+  if Hook_OnKillAll in FHooks then
   begin
-    if iEnemiesLeft = 0 then
+    iUniqueEnemiesLeft := 0;
+    if iEnemiesLeft > 0       then iUniqueEnemiesLeft := EnemiesLeft( True );
+    if iUniqueEnemiesLeft = 0 then CallHook( Hook_OnKillAll,[ Boolean( iEnemiesLeft = 0 ) ] );
+  end;
+
+  if iEnemiesLeft = 0 then
+  begin
+    if (not (LF_RESPAWN in FFlags)) and ( EnemiesLeft() = 0 ) then
     begin
-      CallHook(Hook_OnKillAll,[]);
-      if (not (LF_RESPAWN in FFlags)) and ( EnemiesLeft() = 0 ) then
-      begin
-        if not (Hook_OnKillAll in FHooks) then
-          IO.Msg('You feel relatively safe now.');
-        FEmpty := True;
-        if ( not ( LF_BONUS in FFlags ) ) and ( not ( LF_BOSS in FFlags ) ) then
-          Include( FFlags, LF_ITEMSVISIBLE );
-      end;
+      if not (Hook_OnKillAll in FHooks) then
+        IO.Msg('You feel relatively safe now.');
+      FEmpty := True;
+      if ( not ( LF_NOITEMREVEAL in FFlags ) ) then
+        Include( FFlags, LF_ITEMSVISIBLE );
     end;
   end;
 end;
@@ -1292,9 +1282,10 @@ begin
         Exit;
       end;
 
+      Include( FFlags, LF_NUKED );
+
       NukeRun;
 
-      Include( FFlags, LF_NUKED );
       Player.NukeActivated := 0;
       Player.ApplyDamage( 6000, Target_Internal, Damage_Plasma, nil, 0 );
 
@@ -1307,7 +1298,8 @@ procedure TLevel.NukeRun;
 var iCount     : Integer;
     iExplosion : TExplosionData;
 begin
-  FillChar( iExplosion, SizeOf( TExplosionData ), 0 );
+  Initialize( iExplosion );
+  iExplosion := Default( TExplosionData );
   iExplosion.Range      := 8;
   iExplosion.Delay      := 10;
   iExplosion.Color      := LightRed;
@@ -1316,7 +1308,7 @@ begin
   iExplosion.Flags      := [ efAlwaysVisible ];
   for iCount := 1 to 10 do
   begin
-    Explosion( iCount*200, RandomCoord( [ EF_NOBLOCK ] ),iExplosion, nil );
+    Explosion( iCount*200, RandomCoord( [ EF_NOBLOCK ] ),iExplosion, nil, NewDirection(0) );
     if iCount mod 2 = 0 then
     begin
       IO.Blink( LightRed, 50, (iCount-1) * 200 );
@@ -1440,7 +1432,7 @@ var iCoord    : TCoord2D;
     iBeing    : TBeing;
     iLongMode : Boolean;
 begin
-  iLongMode := (aBeing = Player) and (LF_BEINGSVISIBLE in FFlags);
+  iLongMode := (aBeing = Player) and (LF_BEINGSVISIBLE in FFlags) and ( not Player.Flags[ BF_DARKNESS ] );
   aAutoTarget.Clear( aBeing.Position );
   if iLongMode then aRange += 2;
   for iCoord in NewArea( aBeing.Position, aRange ).Clamped( Area ) do
@@ -1471,7 +1463,7 @@ function TLevel.PushItem( aWho : TBeing; aWhat : TItem; aFrom, aTo : TCoord2D ) 
 var iItemOld : TItem;
 begin
   if ( aWho = nil ) or ( aWhat = nil ) or ( aWhat.Position <> aFrom ) then Exit( False );
-  IO.addMoveAnimation( aWho.VisualTime( aWho.getMoveCost, AnimationSpeedPush ), 0, aWhat.UID, aFrom, aTo, aWhat.Sprite, False );
+  IO.addMoveAnimation( aWho.VisualTime( aWho.getMoveCost, AnimationSpeedPush ), 0, aWhat.UID, aFrom, aTo, aWhat.Sprite, False, False );
   iItemOld := Item[ aTo ];
   SetItem( aTo, aWhat );
   SetItem( aFrom, nil );
@@ -1648,34 +1640,21 @@ begin
     if iState.IsTable(3) then
     begin
       iTable := iState.ToTable( 3 );
+      Initialize( iData );
       ReadExplosion( iTable, iData );
       iTable.Free;
-      iLevel.Explosion( 0, iState.ToPosition(2), iData, iState.ToObjectOrNil(4) as TItem );
+      iLevel.Explosion( 0, iState.ToPosition(2), iData, iState.ToObjectOrNil(4) as TItem, NewDirection(0) );
     end
     else
     begin
       iTable := iState.ToTable( 4 );
       ReadExplosion( iTable, iData );
       iTable.Free;
-      iLevel.Explosion( iState.ToInteger(3), iState.ToPosition(2), iData, iState.ToObjectOrNil(5) as TItem );
+      iLevel.Explosion( iState.ToInteger(3), iState.ToPosition(2), iData, iState.ToObjectOrNil(5) as TItem, NewDirection(0) );
     end;
   end
   else
     iState.Error('Malformed level:explosion!');
-  Result := 0;
-end;
-
-function lua_level_clear_being(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
-    c  : TCoord2D;
-    Level : TLevel;
-begin
-  State.Init(L);
-  Level := State.ToObject(1) as TLevel;
-  if State.IsNil(2) then Exit(0);
-  c := State.ToCoord(2);
-  if Level.Being[c] <> nil then
-    Level.Kill(Level.Being[c],State.ToBoolean(3));
   Result := 0;
 end;
 
@@ -1866,6 +1845,16 @@ begin
   Exit( 0 );
 end;
 
+function lua_level_get_enemies_left(L: Plua_State): Integer; cdecl;
+var iState : TDRLLuaState;
+    iLevel : TLevel;
+begin
+  iState.Init(L);
+  iLevel := iState.ToObject(1) as TLevel;
+  iState.Push( LongInt( iLevel.EnemiesLeft( iState.ToBoolean(2, False) ) ) );
+  Exit( 1 );
+end;
+
 const lua_level_lib : array[0..19] of luaL_Reg = (
       ( name : 'drop_item';  func : @lua_level_drop_item),
       ( name : 'drop_being'; func : @lua_level_drop_being),
@@ -1873,7 +1862,6 @@ const lua_level_lib : array[0..19] of luaL_Reg = (
       ( name : 'play_sound'; func : @lua_level_play_sound),
       ( name : 'nuke';       func : @lua_level_nuke),
       ( name : 'explosion';  func : @lua_level_explosion),
-      ( name : 'clear_being';func : @lua_level_clear_being),
       ( name : 'recalc_fluids';func : @lua_level_recalc_fluids),
       ( name : 'animate_cell'; func : @lua_level_animate_cell),
       ( name : 'animate_item'; func : @lua_level_animate_item),
@@ -1886,6 +1874,7 @@ const lua_level_lib : array[0..19] of luaL_Reg = (
       ( name : 'push_item';  func : @lua_level_push_item),
       ( name : 'reset';         func : @lua_level_reset),
       ( name : 'post_generate'; func : @lua_level_post_generate),
+      ( name : 'get_enemies_left'; func : @lua_level_get_enemies_left),
       ( name : nil;          func : nil; )
 );
 

@@ -46,7 +46,7 @@ function drl.register_klasses()
 			being.hp    = being.hp + 10
 
 			being.eq.weapon = "pistol"
-			being.inv:add( "ammo", { ammo = 40 } )
+			being.inv:add( "ammo", { amount = 40 } )
 			being.inv:add( "smed" )
 			being.inv:add( "smed" )
 
@@ -95,7 +95,7 @@ function drl.register_klasses()
 			being.speed = being.speed + 10
 
 			being.eq.weapon = "pistol"
-			being.inv:add( "ammo", { ammo = 20 } )
+			being.inv:add( "ammo", { amount= 20 } )
 			being.inv:add( "smed" )
 			being.inv:add( "smed" )
 		end
@@ -139,7 +139,7 @@ function drl.register_klasses()
 			being:add_property( "MOD_EXPERT" )
 			being.usetime = 10 -- 1/10 of 100
 			being.eq.weapon = "pistol"
-			being.inv:add( "ammo", { ammo = 20 } )
+			being.inv:add( "ammo", { amount = 20 } )
 			being.inv:add( "smed" )
 			being.inv:add( "smed" )
 			being.inv:add( "mod_tech" )
@@ -177,7 +177,7 @@ function drl.register_klasses()
 
 		OnPick = function( being )
 			being.eq.weapon = "pistol"
-			being.inv:add( "ammo", { ammo = 40 } )
+			being.inv:add( "ammo", { amount = 40 } )
 			being.inv:add( "smed" )
 			being.inv:add( "smed" )
 		end

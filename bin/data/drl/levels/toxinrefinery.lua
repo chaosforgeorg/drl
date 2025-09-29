@@ -82,6 +82,7 @@ register_level "toxin_refinery"
 	end,
 	
 	Create = function ()
+		core.special_create()
 		level:set_generator_style( 1 )
 		level:fill( "wall" )
 		level.data.bridge               = area(36,11,36,14)
@@ -92,10 +93,9 @@ register_level "toxin_refinery"
 		level.data.room4                = area(50,4,67,10)
 		level.data.room5                = area(54,13,61,16)
 		level.data.room6                = area(71,16,74,19)
-		level.data.hallway              = area()
 		level.data.door1                = area(39,10,39,10)
 		level.data.trap1                = area(13,5,13,6)
-		level.data.door2                = area(66,15,66,16)
+		level.data.door2                = area(66,15,66,15)
 		level.data.door3                = area(36,10,36,10)
 		level.data.secret1              = area(13,14,13,14)
 		level.data.secret_trap          = area(32,2,40,3)
@@ -216,7 +216,7 @@ register_level "toxin_refinery"
 					level:summon{ "imp",      1, area = level.data.room2 }
 					level:summon{ "sergeant", 1, area = level.data.room3 }
 					level:summon{ "imp",      2, area = level.data.room4 }
-					level:summon{ "former",   1, area = level.data.room6 }
+					level:summon{ "demon",    1, area = level.data.room6 }
     				level:summon{ "imp",      2, area = level.data.room6 }
 				end
 			end
@@ -226,9 +226,11 @@ register_level "toxin_refinery"
 	end,
 
 	OnKillAll = function ()
-		level.data.kill_all  = true
-		ui.msg("The acrid smell begins to dissipate")
-		level.status = 4
+		if not level.data.kill_all then
+			level.data.kill_all  = true
+			ui.msg("The acrid smell begins to dissipate.")
+			level.status = 4
+		end
 	end,
 
 	OnEnterLevel = function ()
@@ -265,6 +267,7 @@ register_level "toxin_refinery"
 
 	OnExit = function ()
 		if level.data.kill_all  then
+			core.special_complete()
 			ui.msg("You were a green machine.")
 			player:add_history("He was the antidote.")
 		else

@@ -20,7 +20,6 @@ end;
 { TPlayer }
 
 type TPlayer = class(TBeing)
-  SpecExit        : string[20];
   NukeActivated   : Word;
 
   InventorySize   : Byte;
@@ -93,7 +92,7 @@ published
   property Klass           : Byte       read FKlass         write FKlass;
   property ExpFactor       : Real       read FExpFactor     write FExpFactor;
   property Score           : LongInt    read FScore         write FScore;
-  property Level_Index     : Integer    read FLevelIndex;
+  property Level_Index     : Integer    read FLevelIndex    write FLevelIndex;
   property EnemiesInVision : Word       read FEnemiesInVision;
 end;
 
@@ -122,7 +121,6 @@ begin
   StatusEffect  := StatusNormal;
   FStatistics   := TStatistics.Create;
   FScore        := 0;
-  SpecExit      := '';
   NukeActivated := 0;
   FExpLevel   := 1;
   FKlass      := 1;
@@ -158,7 +156,6 @@ procedure TPlayer.WriteToStream ( Stream : TStream ) ;
 begin
   inherited WriteToStream( Stream );
 
-  Stream.WriteAnsiString( SpecExit );
   Stream.Write( FLevelIndex, SizeOf( FLevelIndex ) );
   Stream.WriteWord( NukeActivated );
   Stream.WriteByte( InventorySize );
@@ -183,7 +180,6 @@ constructor TPlayer.CreateFromStream ( Stream : TStream ) ;
 begin
   inherited CreateFromStream( Stream );
 
-  SpecExit       := Stream.ReadAnsiString();
   Stream.Read( FLevelIndex, SizeOf( FLevelIndex ) );
   NukeActivated  := Stream.ReadWord();
   InventorySize  := Stream.ReadByte();
@@ -256,12 +252,7 @@ procedure TPlayer.AddExp( aAmount : LongInt );
 begin
   if Dead then Exit;
   aAmount := Round( aAmount * FExpFactor );
-
   FExp += aAmount;
-
-  if FExpLevel >= MaxPlayerLevel - 1 then Exit;
-
-  while FExp >= ExpTable[ FExpLevel + 1 ] do LevelUp;
 end;
 
 procedure TPlayer.ApplyDamage(aDamage: LongInt; aTarget: TBodyTarget; aDamageType: TDamageType; aSource : TItem; aDelay : Integer );
@@ -394,6 +385,11 @@ end;
 
 procedure TPlayer.PostAction;
 begin
+  if not Dead then
+    if FExpLevel < MaxPlayerLevel - 1 then
+      while FExp >= ExpTable[ FExpLevel + 1 ] do
+        LevelUp;
+
   CallHook(Hook_OnPostAction,[]);
   if DRL.State <> DSPlaying then Exit;
   FLastTurnDodge := False;
@@ -468,10 +464,19 @@ begin
 end;
 
 procedure TPlayer.Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer );
-var iLevel : TLevel;
+var iLevel   : TLevel;
+    iSlot    : TEqSlot;
 begin
   iLevel := TLevel(Parent);
   if (DRL.State <> DSPlaying) and IsPlayer then Exit;
+
+  for iSlot in TEqSlot do
+    if FInv.Slot[ iSlot ] <> nil then
+      if not FInv.Slot[ iSlot ].CallHookCheck( Hook_OnDieCheck, [ aOverkill ] ) then
+      begin
+        HP := Max(1,HP);
+        Exit;
+      end;
 
   if not CallHookCheck( Hook_OnDieCheck, [ aOverkill ] ) then
   begin
@@ -685,14 +690,13 @@ begin
   Result := 1;
 end;
 
-function lua_player_resort_ammo(L: Plua_State): Integer; cdecl;
+function lua_player_resort_stacks(L: Plua_State): Integer; cdecl;
 var State     : TDRLLuaState;
     Being     : TBeing;
     Item      : TItem;
     Node, Temp: TNode;
 var List : TItemList;
     Cnt  : Byte;
-
 begin
   State.Init(L);
   Being := State.ToObject(1) as TBeing;
@@ -704,7 +708,7 @@ begin
   Cnt := 0;
   for Node in Player do
     if Node is TItem then
-      if (Node as TItem).isAmmo then
+      if (Node as TItem).isStackable then
       begin
         Inc( Cnt );
         List[ Cnt ] := Node as TItem;
@@ -717,7 +721,7 @@ begin
 
   for Node in Temp do
     with Node as TItem do
-      Player.Inv.AddAmmo( NID, Ammo );
+      Player.Inv.AddStack( NID, Amount );
 
   FreeAndNil( Temp );
   Result := 0;
@@ -733,17 +737,6 @@ begin
   IO.FadeOut(1.0);
   DRL.SetState( DSFinished );
   DRL.GameWon := True;
-  Result := 0;
-end;
-
-function lua_player_continue_game(L: Plua_State): Integer; cdecl;
-var State   : TDRLLuaState;
-    Being   : TBeing;
-begin
-  State.Init(L);
-  Being := State.ToObject(1) as TBeing;
-  if not (Being is TPlayer) then Exit(0);
-  DRL.SetState( DSPlaying );
   Result := 0;
 end;
 
@@ -783,20 +776,10 @@ begin
     DRL.SetState( DSNextLevel );
   end;
   Player.FSpeedCount := 4000;
-  if iState.IsNil(2) then
-  begin
-    Player.SpecExit   := '';
-    Exit(0);
-  end;
+  if iState.IsNil(2) then Exit( 0 );
   if iState.IsNumber(2) then
   begin
-    Player.SpecExit    := '';
     Player.FLevelIndex := iState.ToInteger(2)-1;
-    Exit(0);
-  end;
-  if iState.IsString(2) then
-  begin
-    Player.SpecExit    := iState.ToString(2);
     Exit(0);
   end;
   iState.Error('Player.exit - bad parameters!');
@@ -902,7 +885,7 @@ begin
   Result := 0;
 end;
 
-const lua_player_lib : array[0..16] of luaL_Reg = (
+const lua_player_lib : array[0..15] of luaL_Reg = (
       ( name : 'set_achievement'; func : @lua_player_set_achievement),
       ( name : 'store_inc_stat';  func : @lua_player_store_inc_stat),
       ( name : 'store_mark_stat'; func : @lua_player_store_mark_stat),
@@ -910,9 +893,8 @@ const lua_player_lib : array[0..16] of luaL_Reg = (
       ( name : 'has_won';         func : @lua_player_has_won),
       ( name : 'get_trait';       func : @lua_player_get_trait),
       ( name : 'get_trait_hist';  func : @lua_player_get_trait_hist),
-      ( name : 'resort_ammo';     func : @lua_player_resort_ammo),
+      ( name : 'resort_stacks';   func : @lua_player_resort_stacks),
       ( name : 'win';             func : @lua_player_win),
-      ( name : 'continue_game';   func : @lua_player_continue_game),
       ( name : 'choose_trait';    func : @lua_player_choose_trait),
       ( name : 'level_up';        func : @lua_player_level_up),
       ( name : 'exit';            func : @lua_player_exit),

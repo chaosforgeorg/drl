@@ -320,7 +320,8 @@ function drl.register_cells()
 		end,
 
 		OnExit = function(c)
-			player:exit( nil, 0.5 )
+			local linfo = player.episode[level.index]
+			player:exit( linfo.exit, 0.5 )
 		end,
 	}
 
@@ -334,15 +335,22 @@ function drl.register_cells()
 		sprite     = SPRITE_REDSTAIRS,
 
 		OnEnter = function(c,being)
-			being:msg("There are stairs leading to "..levels[level.special_exit].name.." here.")
+			local linfo = player.episode[level.index]
+			local sinfo = player.episode[linfo.special]
+			if sinfo and sinfo.script and levels[sinfo.script].entry then
+				player:add_history( levels[sinfo.script].entry )
+			end
+			being:msg("There are stairs leading to "..player.episode[linfo.special].name.." here.")
 		end,
 
 		OnExit = function(c)
-			player:exit( level.special_exit, 0.5 )
+			local linfo = player.episode[level.index]
+			player:exit( linfo.special, 0.5 )
 		end,
 
 		OnDescribe = function(c)
-			return "stairs leading to "..levels[level.special_exit].name
+			local linfo = player.episode[level.index]
+			return "stairs leading to "..player.episode[linfo.special].name
 		end,
 	}
 

@@ -111,6 +111,8 @@ public
   property LastPosition : TVec2i read FPosition;
 end;
 
+TGFXBumpAnimation = class(TGFXMoveAnimation);
+
 { TGFXScreenMoveAnimation }
 
 TGFXScreenMoveAnimation = class(TAnimation)
@@ -149,17 +151,18 @@ private
 end;
 
 TGFXKillAnimation = class(TAnimation)
-  constructor Create( aDuration : DWord; aDelay : DWord; aUID : TUID );
+  constructor Create( aDuration : DWord; aDelay : DWord; aUID : TUID; aReverse : Boolean = False );
   procedure OnStart; override;
   procedure OnDraw; override;
   destructor Destroy; override;
 private
   FSprite     : TSprite;
-  FValue      : Integer;
   FLight      : Byte;
   FPosition   : TVec2i;
   FCoord      : TCoord2D;
-  FPlayerHack : Integer;
+  FSprites    : array[0..3] of Integer;
+  FCount      : Integer;
+  FReverse    : Boolean;
 end;
 
 
@@ -428,7 +431,7 @@ destructor TGFXMoveAnimation.Destroy;
 var iThing : TThing;
 begin
   iThing := UIDs.Get( FUID ) as TThing;
-  if iThing <> nil then iThing.AnimCount := Max( 0, iThing.AnimCount - 1 );
+  if Started and ( iThing <> nil ) then iThing.AnimCount := Max( 0, iThing.AnimCount - 1 );
   inherited Destroy;
 end;
 
@@ -557,25 +560,50 @@ begin
   inherited Destroy;
 end;
 
-constructor TGFXKillAnimation.Create( aDuration : DWord; aDelay : DWord; aUID : TUID );
-var iBeing : TBeing;
+constructor TGFXKillAnimation.Create( aDuration : DWord; aDelay : DWord; aUID : TUID; aReverse : Boolean = False );
+var iBeing      : TBeing;
+    iCols       : Integer;
+    iPlayerHack : Integer;
 begin
   inherited Create( aDuration, aDelay, aUID );
-  iBeing  := UIDs.Get( FUID ) as TBeing;
+  FReverse := aReverse;
+  iBeing   := UIDs.Get( FUID ) as TBeing;
   if iBeing = nil then Exit;
-  FValue      := 2;
+  FCount      := 2;
   // TODO: remove hack!
-  if iBeing.GetLuaProtoValue('corpse') = 0 then FValue := 3;
+  if iBeing.GetLuaProtoValue('corpse') = 0 then FCount := 3;
   FSprite     := iBeing.Sprite;
   FCoord      := iBeing.Position;
-  FPlayerHack := 0;
+
+  // TODO : remove hack!
+  iPlayerHack := 0;
   if iBeing.IsPlayer then
   begin
-    FPlayerHack := 1;
-    if iBeing.SpriteMod > 0 then FPlayerHack := 2;
+    iPlayerHack := 1;
+    if iBeing.SpriteMod > 0 then iPlayerHack := 2;
   end;
   FPosition.Init( (iBeing.Position.X - 1)*SpriteMap.GetGridSize,(iBeing.Position.Y - 1)*SpriteMap.GetGridSize);
   FLight      := Iif( DRL.Level.isVisible(iBeing.Position), SpriteMap.VariableLight( iBeing.Position, 30 ), 0 );
+
+  iCols := DRL_COLS;
+  if SF_LARGE in FSprite.Flags then iCols *= 2;
+
+  if aReverse then
+  begin
+    FCount := 2;
+    FSprites[0] := FSprite.SpriteID[0] + (FSprite.Frames + 1)* iCols;
+    FSprites[1] := FSprite.SpriteID[0] + (FSprite.Frames + 0) * iCols;
+  end
+  else
+  begin
+    FSprites[0] := FSprite.SpriteID[0] + FSprite.Frames * iCols;
+    if ( iPlayerHack > 0 ) then
+      FSprites[1] := ( FSprite.SpriteID[0] - FSprite.SpriteID[0] mod 1000 ) + DRL_COLS * 24 + iPlayerHack
+    else
+      FSprites[1] := FSprite.SpriteID[0] + (FSprite.Frames + 1) * iCols;
+    if FCount > 2 then
+      FSprites[2] := FSprite.SpriteID[0] + (FSprite.Frames + 2) * iCols;
+  end;
 end;
 
 procedure TGFXKillAnimation.OnStart;
@@ -596,32 +624,21 @@ begin
   iPosition := FPosition;
   iBeing    := UIDs.Get( FUID ) as TBeing;
   if iBeing <> nil then
-  begin
     iPosition.Init( (iBeing.Position.X - 1)*SpriteMap.GetGridSize,(iBeing.Position.Y - 1)*SpriteMap.GetGridSize);
-  end;
-  iSegment := Min( ( FTime * FValue ) div FDuration, FValue - 1 );
-  // TODO : remove hack!
-  if ( FPlayerHack > 0 ) and ( iSegment > 0 ) then
-  begin
-    iSprite.SpriteID[0] -= iSprite.SpriteID[0] mod 1000;
-    iSprite.SpriteID[0] += DRL_COLS * 24 + FPlayerHack;
-  end
-  else
-  begin
-    iSegment += iSprite.Frames;
-    if SF_LARGE in iSprite.Flags then iSegment *= 2;
-    iSprite.SpriteID[0] += iSegment * DRL_COLS;
-  end;
+  iSegment := Min( ( FTime * FCount ) div FDuration, FCount - 1 );
+  iSprite.SpriteID[0] := FSprites[iSegment];
   SpriteMap.PushSpriteBeing( iPosition, iSprite, FLight );
 end;
 
 destructor TGFXKillAnimation.Destroy;
-//var iBeing : TBeing;
+var iBeing : TBeing;
 begin
   // NOTE : we explicitly don't enable drawing of the dead enemy again
-
-  //iBeing := UIDs.Get( FUID ) as TBeing;
-  //if iBeing <> nil then iBeing.AnimCount := Max( 0, iBeing.AnimCount - 1 );
+  if FReverse then
+  begin
+    iBeing := UIDs.Get( FUID ) as TBeing;
+    if iBeing <> nil then iBeing.AnimCount := Max( 0, iBeing.AnimCount - 1 );
+  end;
   DRL.Level.LightFlag[ FCoord, LFCORPSING ] := False;
   inherited Destroy;
 end;

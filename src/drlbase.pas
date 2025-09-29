@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlbase;
 interface
 
-uses vnode, vutil, vuid, vrltools, vluasystem, vioevent, vstoreinterface,
+uses vnode, vutil, vuid, viotypes, vrltools, vluasystem, vioevent, vstoreinterface,
      dflevel, dfdata, dfhof, dfitem,
      drlhooks, drlua, drlcommand, drlkeybindings, drlmodule;
 
@@ -61,13 +61,14 @@ TDRL = class(TVObject)
        function HandleCommand( aCommand : TCommand ) : Boolean;
        function HandleActionCommand( aInput : TInputKey ) : Boolean;
        function HandleActionCommand( aTarget : TCoord2D; aFlag : Byte ) : Boolean;
-       function HandleMoveCommand( aInput : TInputKey ) : Boolean;
+       function HandleMoveCommand( aInput : TInputKey; aAlt : Boolean ) : Boolean;
        function HandleFireCommand( aAlt : Boolean; aMouse : Boolean; aAuto : Boolean; aPad : Boolean ) : Boolean;
+       function HandleUsableCommand( aItem : TItem ) : Boolean;
        function HandleSwapWeaponCommand : Boolean;
        function HandlePickupCommand( aAlt : Boolean ) : Boolean;
+       procedure ResetAutoTarget;
      private
        procedure Apply( aResult : TMenuResult );
-       procedure ResetAutoTarget;
        function HandleMouseEvent( aEvent : TIOEvent ) : Boolean;
        function HandleKeyEvent( aEvent : TIOEvent ) : Boolean;
        function HandlePadMovement( aEvent : TIOEvent ) : Boolean;
@@ -81,7 +82,7 @@ TDRL = class(TVObject)
        FLastInputTime   : QWord;
        FTargeting       : TTargeting;
        FDamagedLastTurn : Boolean;
-       FPlayerView      : TInterfaceLayer;
+       FPlayerView      : TIOLayer;
        FPadMoveActive   : Boolean;
        FPadMoveNext     : QWord;
        FStore           : TStoreInterface;
@@ -122,7 +123,7 @@ implementation
 
 uses  {$IFDEF WINDOWS}Windows,{$ELSE}Unix,{$ENDIF}
      Classes, SysUtils,
-     vdebug, viotypes,
+     vdebug,
      dfmap, dfbeing,
      drlio, drlgfxio, drltextio, zstream,
      drlspritemap, // remove
@@ -311,11 +312,13 @@ begin
   if not GraphicsVersion then
     (IO as TDRLTextIO).SetTextMap( FLevel );
 
-  HARDSPRITE_HIGHLIGHT := Lua.Get( 'HARDSPRITE_HIGHLIGHT' );
-  HARDSPRITE_EXPL      := Lua.Get( 'HARDSPRITE_EXPL' );
-  HARDSPRITE_SELECT    := Lua.Get( 'HARDSPRITE_SELECT' );
-  HARDSPRITE_MARK      := Lua.Get( 'HARDSPRITE_MARK' );
-  HARDSPRITE_GRID      := Lua.Get( 'HARDSPRITE_GRID' );
+  HARDSPRITE_HIGHLIGHT    := Lua.Get( 'HARDSPRITE_HIGHLIGHT' );
+  HARDSPRITE_EXPL         := Lua.Get( 'HARDSPRITE_EXPL' );
+  HARDSPRITE_SELECT       := Lua.Get( 'HARDSPRITE_SELECT' );
+  HARDSPRITE_MARK         := Lua.Get( 'HARDSPRITE_MARK' );
+  HARDSPRITE_GRID         := Lua.Get( 'HARDSPRITE_GRID' );
+  HARDSPRITE_SHIELD       := Lua.Get( 'HARDSPRITE_SHIELD' );
+  HARDSPRITE_SHIELD_COUNT := Lua.Get( 'HARDSPRITE_SHIELD_COUNT' );
   for i := 0 to 3 do
   begin
     HARDSPRITE_DECAL_BLOOD[i]      := 0;
@@ -469,9 +472,24 @@ begin
 end;
 
 function TDRL.Action( aInput : TInputKey ) : Boolean;
+var iDir : TDirection;
 begin
+  if aInput in [INPUT_RUNWAIT]+INPUT_MULTIMOVE then
+  begin
+    Player.MultiMove.Stop;
+    iDir    := InputDirection( aInput );
+    if ModuleOption_MeleeMoveOnKill and ( aInput <> INPUT_RUNWAIT ) then
+      if ( Player.TryMove( Player.Position + iDir ) in [ MoveBeing, MoveBlock ] )
+        then Exit( HandleMoveCommand( aInput, True ) );
+
+    if Player.EnemiesInVision > 0
+      then IO.Msg( 'Can''t multi-move, there are enemies present.',[] )
+      else Player.MultiMove.Start( iDir );
+    Exit;
+  end;
+
   if aInput in INPUT_MOVE then
-    Exit( HandleMoveCommand( aInput ) );
+    Exit( HandleMoveCommand( aInput, False ) );
 
   case aInput of
     INPUT_FIRE       : Exit( HandleFireCommand( False, False, Setting_AutoTarget, False ) );
@@ -598,7 +616,7 @@ begin
   Exit( False );
 end;
 
-function TDRL.HandleMoveCommand( aInput : TInputKey ) : Boolean;
+function TDRL.HandleMoveCommand( aInput : TInputKey; aAlt : Boolean ) : Boolean;
 var iDir        : TDirection;
     iTarget     : TCoord2D;
     iMoveResult : TMoveResult;
@@ -641,7 +659,7 @@ begin
          iBeing := Level.Being[ iTarget ];
          if iBeing.Flags[ BF_FRIENDLY ]
            then Exit( HandleCommand( TCommand.Create( COMMAND_SWAPPOSITION, iTarget ) ) )
-           else Exit( HandleCommand( TCommand.Create( COMMAND_MELEE, iTarget ) ) );
+           else Exit( HandleCommand( TCommand.Create( COMMAND_MELEE, iTarget, ModuleOption_MeleeMoveOnKill and (not aAlt) ) ) );
        end;
      MoveDoor  : Exit( HandleCommand( TCommand.Create( COMMAND_ACTION, iTarget ) ) );
      MoveOk    : Exit( HandleCommand( TCommand.Create( COMMAND_MOVE, iTarget ) ) );
@@ -709,8 +727,8 @@ begin
         iTarget := FTargeting.List.Current
       else
       begin
-        iRange      := Missiles[ iItem.Missile ].Range;
-        iLimitRange := MF_EXACT in Missiles[ iItem.Missile ].Flags;
+        iRange      := iItem.Range;
+        iLimitRange := iItem.Flags[ IF_EXACTHIT ];
         iFireTitle  := 'Choose throw target:';
       end;
     end;
@@ -732,14 +750,10 @@ begin
       Exit( False );
     end;
 
-
-    if iItem.Flags[ IF_SHOTGUN ] then
-      iRange := Shotguns[ iItem.Missile ].Range
-    else
-      iRange := Missiles[ iItem.Missile ].Range;
+    iRange := iItem.Range;
     if iRange = 0 then iRange := Player.Vision;
 
-    iLimitRange := (not iItem.Flags[ IF_SHOTGUN ]) and (MF_EXACT in Missiles[ iItem.Missile ].Flags);
+    iLimitRange := (not iItem.Flags[ IF_SHOTGUN ]) and iItem.Flags[ IF_EXACTHIT ];
     if aMouse or aAuto then
     begin
       if aMouse
@@ -780,7 +794,7 @@ begin
     if iRange = 0 then iRange := Player.Vision;
     if iRange <> Player.Vision then
       FTargeting.Update( iRange );
-    IO.PushLayer( TTargetModeView.Create( iItem, iCommand, iFireTitle, iRange+1, iLimitRange, FTargeting.List, iChainFire, aPad ) );
+    IO.PushLayer( TTargetModeView.Create( iItem, iCommand, iFireTitle, iRange+1, iLimitRange, FTargeting.List, iChainFire ) );
     Exit( False );
   end;
 
@@ -798,6 +812,18 @@ begin
   Exit( HandleCommand( TCommand.Create( iCommand, iTarget, iItem ) ) )
 end;
 
+function TDRL.HandleUsableCommand( aItem : TItem ) : Boolean;
+var iRange      : Integer;
+    iLimitRange : Boolean;
+begin
+  iRange := aItem.Range;
+  if iRange = 0 then iRange := Player.Vision;
+  if iRange <> Player.Vision then
+    FTargeting.Update( iRange );
+  iLimitRange := aItem.Flags[ IF_EXACTHIT ];
+  IO.PushLayer( TTargetModeView.Create( aItem, COMMAND_USE, 'Choose target:', iRange+1, iLimitRange, FTargeting.List, 0 ) );
+  Exit( False );
+end;
 
 function TDRL.HandleUnloadCommand( aItem : TItem ) : Boolean;
 var iID         : AnsiString;
@@ -850,11 +876,13 @@ var iItem : TItem;
 begin
   if not aAlt then Exit( HandleCommand( TCommand.Create( COMMAND_PICKUP ) ) );
   iItem := Level.Item[ Player.Position ];
-  if ( iItem = nil ) or (not (iItem.isPickupable or iItem.isPack or iItem.isWearable) ) then
+  if ( iItem = nil ) or (not (iItem.isPickupable or iItem.isUsable or iItem.isWearable) ) then
   begin
     IO.Msg( 'There''s nothing to use on the ground!' );
     Exit( False );
   end;
+  if iItem.IType = ITEMTYPE_URANGED
+    then Exit( DRL.HandleUsableCommand( iItem ) );
   Exit( HandleCommand( TCommand.Create( COMMAND_USE, iItem ) ) );
 end;
 
@@ -950,7 +978,7 @@ begin
       end
       else
       if Distance( Player.Position, IO.MTarget ) = 1
-        then Exit( HandleMoveCommand( DirectionToInput( NewDirection( Player.Position, IO.MTarget ) ) ) )
+        then Exit( HandleMoveCommand( DirectionToInput( NewDirection( Player.Position, IO.MTarget ) ), IO.ShiftHeld ) )
         else if Level.isExplored( IO.MTarget ) then
         begin
           if not Player.RunPath( IO.MTarget ) then
@@ -1015,14 +1043,14 @@ begin
     if IO.GetPadLDir.NotZero then
       Exit( MoveTargetEvent( FTargeting.List.Current + IO.GetPadLDir ) );
     if (FTargeting.List.Current <> Player.Position) and (Level.Being[FTargeting.List.Current] <> nil) then
-      IO.FullLook( Level.Being[FTargeting.List.Current].ID );
+      IO.FullLook( Level.Being[FTargeting.List.Current] );
     Exit( False );
   end;
 
   if aEvent.Pad.Pressed then // normal mode
   begin
     if IO.GetPadLDir.NotZero
-      then begin FPadMoved := True; Result := HandleMoveCommand( DirectionToInput( NewDirection( IO.GetPadLDir ) ) ); end
+      then begin FPadMoved := True; Result := HandleMoveCommand( DirectionToInput( NewDirection( IO.GetPadLDir ) ), IO.GetPadLTrigger ); end
       else Result := HandleCommand( TCommand.Create( COMMAND_WAIT ) );
     FPadMoveNext := IO.Time + PAD_REPEAT_START;
   end
@@ -1035,7 +1063,7 @@ begin
       begin
         iCell := Level.getCell( iTarget );
         if not ( ( CellHook_OnHazardQuery in Cells[ iCell ].Hooks ) and  Level.CallHook( CellHook_OnHazardQuery, iCell, Player ) ) then
-          Result := HandleMoveCommand( DirectionToInput( NewDirection( IO.GetPadLDir ) ) );
+          Result := HandleMoveCommand( DirectionToInput( NewDirection( IO.GetPadLDir ) ), IO.GetPadLTrigger );
       end;
     end;
     FPadMoveNext := IO.Time + PAD_REPEAT;
@@ -1086,10 +1114,18 @@ begin
                                 else Exit( HandleSwapWeaponCommand );
     VPAD_BUTTON_LEFTSHOULDER  : begin IO.SetAutoTarget( FTargeting.List.Prev ); Exit( False ); end;
     VPAD_BUTTON_RIGHTSHOULDER : begin IO.SetAutoTarget( FTargeting.List.Next ); Exit( False ); end;
-    VPAD_BUTTON_DPAD_UP    : if FPadMoved then Exit( MoveTargetEvent( FTargeting.List.Current + NewCoord2D( 0,-1 ) ) );
-    VPAD_BUTTON_DPAD_DOWN  : if FPadMoved then Exit( MoveTargetEvent( FTargeting.List.Current + NewCoord2D( 0, 1 ) ) );
-    VPAD_BUTTON_DPAD_LEFT  : if FPadMoved then Exit( MoveTargetEvent( FTargeting.List.Current + NewCoord2D(-1, 0 ) ) );
-    VPAD_BUTTON_DPAD_RIGHT : if FPadMoved then Exit( MoveTargetEvent( FTargeting.List.Current + NewCoord2D( 1, 0 ) ) );
+    VPAD_BUTTON_DPAD_UP    : if IO.GetPadLTrigger
+      then Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '1' ) ) )
+      else if FPadMoved then Exit( MoveTargetEvent( FTargeting.List.Current + NewCoord2D( 0,-1 ) ) );
+    VPAD_BUTTON_DPAD_DOWN  : if IO.GetPadLTrigger
+      then Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '4' ) ) )
+      else if FPadMoved then Exit( MoveTargetEvent( FTargeting.List.Current + NewCoord2D( 0, 1 ) ) );
+    VPAD_BUTTON_DPAD_LEFT  : if IO.GetPadLTrigger
+      then Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '2' ) ) )
+      else if FPadMoved then Exit( MoveTargetEvent( FTargeting.List.Current + NewCoord2D(-1, 0 ) ) );
+    VPAD_BUTTON_DPAD_RIGHT : if IO.GetPadLTrigger
+      then Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '3' ) ) )
+      else if FPadMoved then Exit( MoveTargetEvent( FTargeting.List.Current + NewCoord2D( 1, 0 ) ) );
   end;
   Exit( False );
 end;
@@ -1116,15 +1152,6 @@ begin
   if iInput <> INPUT_NONE then
   begin
     // Handle commands that should be handled by the UI
-    // TODO: Fix
-    if iInput in [INPUT_RUNWAIT]+INPUT_MULTIMOVE then
-    begin
-      Player.MultiMove.Stop;
-      if Player.EnemiesInVision > 0
-        then IO.Msg( 'Can''t multi-move, there are enemies present.',[] )
-        else Player.MultiMove.Start( InputDirection( iInput ) );
-      Exit;
-    end;
 
     if iInput in INPUT_TARGETMOVE then
     begin
@@ -1143,6 +1170,7 @@ begin
       INPUT_INVENTORY  : begin FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_INVENTORY ) ); Exit; end;
       INPUT_EQUIPMENT  : begin FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_EQUIPMENT ) ); Exit; end;
       INPUT_ASSEMBLIES : begin IO.PushLayer( TAssemblyView.Create ); Exit; end;
+      INPUT_MORE       : begin IO.FullLook( Level.Being[FTargeting.List.Current] ); Exit; end;
       INPUT_LEGACYUSE  : begin FPlayerView := IO.PushLayer( TPlayerView.CreateCommand( COMMAND_USE ) ); Exit; end;
       INPUT_LEGACYDROP : begin FPlayerView := IO.PushLayer( TPlayerView.CreateCommand( COMMAND_DROP ) ); Exit; end;
       INPUT_UNLOAD     : begin HandleUnloadCommand( nil ); Exit; end;
@@ -1209,6 +1237,7 @@ var iRank       : THOFRank;
     iInput      : TInputKey;
     iFullLoad   : Boolean;
     iChalAbbr   : Ansistring;
+    iScript     : Ansistring;
     iReport     : TPagedReport;
     iEnterNuke  : Boolean;
 begin
@@ -1281,43 +1310,30 @@ repeat
       end;
 
       Player.Statistics.Update;
-
-      if Player.SpecExit = '' then
-        Player.NextLevelIndex
-      else
-        Player.Statistics.Increase('bonus_levels_visited');
+      Player.NextLevelIndex;
 
       with LuaSystem.GetTable(['player','episode',Player.Level_Index]) do
       try
         FLevel.Init(getInteger('style',0),
-                   getInteger('number',0),
                    getString('name',''),
-                   getString('special',''),
                    Player.Level_Index,
                    getInteger('danger',0));
         if IsString('sname') then FLevel.SName := getString('sname');
         if IsString('abbr')  then FLevel.Abbr  := getString('abbr');
-
-        if Player.SpecExit <> ''
-          then FLevel.Flags[ LF_BONUS ] := True
-          else Player.SpecExit := getString('script','');
-
+        iScript := getString('script','');
       finally
         Free;
       end;
 
-      if Player.SpecExit <> ''
+      if iScript <> ''
         then
-          FLevel.ScriptLevel(Player.SpecExit)
+          FLevel.ScriptLevel(iScript)
         else
         begin
-          if FLevel.Name_Number <> 0
-            then IO.Msg('You enter %s, level %d.',[ FLevel.Name, FLevel.Name_Number ])
-            else IO.Msg('You enter %s.',[ FLevel.Name ] );
+          IO.Msg('You enter %s.',[ FLevel.Name ] );
           CallHookCheck(Hook_OnGenerate,[]);
           FLevel.AfterGeneration( True );
         end;
-      Player.SpecExit := '';
     end;
     iFullLoad := State = DSLoading;
 
@@ -1413,7 +1429,6 @@ repeat
     begin
       if Player.Level_Index <> 1 then Player.NextLevelIndex;
       Player.Statistics.Increase('crash_count');
-      Player.SpecExit := '';
       WriteSaveFile( True );
     end;
     raise;

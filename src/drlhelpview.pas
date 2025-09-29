@@ -6,11 +6,11 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlhelpview;
 interface
-uses vutil, drlio, drlhelp, dfdata;
+uses vutil, viotypes, drlio, drlhelp, dfdata;
 
-type THelpView = class( TInterfaceLayer )
+type THelpView = class( TIOLayer )
   constructor Create;
-  procedure Update( aDTime : Integer ); override;
+  procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
   destructor Destroy; override;
@@ -56,11 +56,10 @@ begin
   end;
 end;
 
-procedure THelpView.Update( aDTime : Integer );
+procedure THelpView.Update( aDTime : Integer; aActive : Boolean );
 begin
        if FMode = HELPVIEW_MENU then UpdateMenu
   else if FMode = HELPVIEW_READ then UpdateRead;
-  IO.RenderUIBackground( FRect.TopLeft, FRect.BottomRight - PointUnit );
 end;
 
 function THelpView.IsFinished : Boolean;
@@ -132,7 +131,7 @@ begin
     VTIG_Text('');
     VTIG_Text('  {!Escape}    - game menu (Save, Quit, Settings, Help, etc)');
     VTIG_Text('  {!Arrows}    - movement (Home,End,PgUp,PgDown - diagonals)');
-    VTIG_Text('  {!.}(period) - wait (pass turn)');
+    VTIG_Text('  {!W}         - wait (pass turn)');
     VTIG_Text('  {!SPACE}     - action (open,close,press button,descend stairs)');
     VTIG_Text('  {!I},{!E},{!P},{!T}   - inventory, equipment etc (left/right to switch while open)');
     VTIG_Text('  {!F}         - fire weapon (SHIFT for alternative mode)');

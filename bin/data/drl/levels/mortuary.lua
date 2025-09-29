@@ -12,6 +12,7 @@ register_level "the_mortuary"
 	end,
 
 	Create = function ()
+		core.special_create()
 		level:set_generator_style( 1 )
 		level:fill( "rwall" )
 		level:fill( "floor", area.FULL_SHRINKED )
@@ -99,6 +100,7 @@ XX.XX
 		if level.status == 1 then
 			ui.msg("As you descend the stairs you hear a wail. They're back...")
 			ui.msg("There's only one way to end this...")
+			core.special_complete()
 			player:add_history("He managed to clear the Mortuary from evil!")
 			player:add_medal("mortuary")
 			player:add_badge("reaper2")

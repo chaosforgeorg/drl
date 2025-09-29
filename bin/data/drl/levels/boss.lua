@@ -38,7 +38,6 @@ register_badge "hellgate5"
 register_level "hellgate"
 {
 	name  = "Phobos Anomaly",
-	entry = "On @1 he encountered the Phobos Anomaly.",
 	welcome = "You arrive at the Phobos Anomaly.",
 
 	OnRegister = function ()
@@ -128,11 +127,12 @@ register_level "hellgate"
 		generator.set_permanence( area( 51, 1, MAXX, MAXY ) )
 
 		level:player(2,10)
-		level.flags[ LF_NOHOMING ] = true
-		level.flags[ LF_BOSS     ] = true
+		level.flags[ LF_NOHOMING ]      = true
+		level.flags[ LF_NOBEINGREVEAL ] = true
 	end,
 
 	OnEnterLevel = function ()
+		player:add_history( "He arrived at the Phobos Anomaly." )
 		level.status = 1
 		ui.msg_feel("You sense a certain tension.")
 		level:play_sound( "baron.act", player.position )
@@ -179,9 +179,7 @@ register_level "hellgate"
 register_level "tower_of_babel"
 {
 	name  = "Tower of Babel",
-	entry = "On @1 he found the Tower of Babel!",
 	welcome = "You enter a big arena. There's blood everywhere. You hear heavy mechanical footsteps...",
-	welcome = "You reach the Tower of Babel.",
 
 	Create = function ()
 		level:fill( "wall" )
@@ -202,13 +200,15 @@ register_level "tower_of_babel"
 ]]
 		,"floor",12)
 
-		level.flags[ LF_NOHOMING ] = true
-		level.flags[ LF_BOSS     ] = true
+		level.flags[ LF_NOHOMING      ] = true
+		level.flags[ LF_NOBEINGREVEAL ] = true
 		generator.scatter_blood(area.FULL_SHRINKED,"floor",100)
 	end,
 
 	OnEnterLevel = function ()
+		player:add_history( "He found the Tower of Babel." )
 		local boss = level:summon("cyberdemon")
+		boss.is_boss = true
 	end,
 
 	OnKillAll = function ()
@@ -227,7 +227,6 @@ register_level "tower_of_babel"
 register_level "dis"
 {
 	name = "Dis",
-	entry = "Then at last he found Dis!",
 	welcome = "You enter the damned city of Dis...",
 
 	OnRegister = function ()
@@ -293,8 +292,9 @@ WWWWWWWWWWWWWWWWWWWWW...............####...............WWWWWWWWWWWWWWWWWWWWW
 		generator.set_permanence( area( 1, 1, 10, MAXY ) )
 		generator.set_permanence( area( MAXX-10, 1, MAXX, MAXY ) )
 
-		level.flags[ LF_NOHOMING ] = true
-		level.flags[ LF_BOSS     ] = true
+		level.flags[ LF_NOHOMING      ] = true
+		level.flags[ LF_NOBEINGREVEAL ] = true
+
 		if math.random( 2 ) == 1 then
 			level:player(19,11)
 		else
@@ -309,20 +309,27 @@ WWWWWWWWWWWWWWWWWWWWW...............####...............WWWWWWWWWWWWWWWWWWWWW
 			ui.msg("But... something's wrong!")
 			ui.msg("You sense a menace, a threat so evil it kills your mind!")
 			ui.msg("Was not all evil destroyed???")
-			player:continue_game()
 		end
 	end,
 
 	OnEnterLevel = function ()
+		player:add_history( "Then at last he found Dis!" )
 		local boss = level:drop_being("mastermind",coord(39,19))
-		boss.flags[ BF_BOSS ] = true
-	end
+		boss.is_boss = true
+	end,
+
+	OnKillAll = function ()
+		if not (level.flags[ LF_NUKED ] and player.flags[BF_INV]) then
+			ui.msg_enter("Congratulations! You defeated the Spider Mastermind!")
+			player:win()
+		end
+	end,
+
 }
 
 register_level "hell_fortress"
 {
 	name = "Hell Fortress",
-	entry = "He defeated the Mastermind and found the TRUE EVIL!",
 	welcome = "This is it. This is the lair of all evil! What will you meet here?",
 
 	Create = function ()
@@ -355,8 +362,8 @@ register_level "hell_fortress"
 ]]
 		, 2,2 )
 
-		level.flags[ LF_NOHOMING ] = true
-		level.flags[ LF_BOSS     ] = true
+		level.flags[ LF_NOHOMING ]      = true
+		level.flags[ LF_NOBEINGREVEAL ] = true
 		level:player(2,10)
 
 		local boss
@@ -365,7 +372,14 @@ register_level "hell_fortress"
 		else
 			boss = level:drop_being("jc",coord(76,11))
 		end
-		boss.flags[ BF_BOSS ] = true
+		boss.is_boss = true
 	end,
 
+	OnEnterLevel = function ()
+		player:add_history( "He defeated the Mastermind and found the TRUE EVIL!" )
+	end,
+
+	OnKillAll = function ()
+		player:win()
+	end,
 }

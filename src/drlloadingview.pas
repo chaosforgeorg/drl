@@ -6,11 +6,11 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlloadingview;
 interface
-uses vutil, dfdata;
+uses vutil, viotypes, dfdata;
        
-type TLoadingView = class( TInterfaceLayer )
+type TLoadingView = class( TIOLayer )
   constructor Create( aMax : DWord );
-  procedure Update( aDTime : Integer ); override;
+  procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
 protected
@@ -34,7 +34,7 @@ begin
   VTIG_EventClear;
 end;
 
-procedure TLoadingView.Update( aDTime : Integer );
+procedure TLoadingView.Update( aDTime : Integer; aActive : Boolean );
 var iSize     : TGLVec2i;
     iStep     : TGLVec2i;
     iV1,iV2   : TGLVec2i;

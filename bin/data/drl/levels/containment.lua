@@ -8,6 +8,7 @@ register_level "containment_area"
 	level = 11,
 
 	Create = function ()
+		core.special_create()
 		level:set_generator_style( 2 )
 		level:fill( "wall" )
 
@@ -127,6 +128,7 @@ PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
 			ui.msg("It's way too hairy down here!")
 			player:add_history("He broke into the Containment Area, but gave up against the overwhelming forces.")
 		elseif result == 4 then
+			core.special_complete()
 			ui.msg("Luckily it's not as bad as tricks and traps...")
 			player:add_history("He emerged from the Containment Area victorious!")
 			player:add_badge("wall1")
@@ -137,9 +139,5 @@ PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
 				player:add_badge("wall2")
 			end
 		end
-	end,
-
-	OnCompletedCheck = function ()
-		return level.status > 3
 	end,
 }
