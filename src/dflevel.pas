@@ -1103,7 +1103,7 @@ begin
     iBeing.Flags[ BF_NOEXP   ] := True;
     for iItem in iBeing.Inv do
       iItem.Flags[ IF_NODROP ] := True;
-    if isVisible( aCoord ) then
+    if BeingVisible( aCoord, iBeing ) or BeingExplored( aCoord, iBeing ) then
       IO.addKillAnimation( 1000, 0, iBeing, True );
   except
     on EPlacementException do FreeAndNil( iBeing );
