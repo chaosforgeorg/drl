@@ -413,7 +413,10 @@ function generator.read_room_list()
 			repeat
 				ec.y = ec.y + 1
 			until ec.y == MAXY or cell_meta[ level:get_cell( start.x + 1, ec.y ) ]
-			table.insert( room_list, area( start, ec ) )
+			local ar = area( start, ec )
+			if not level:find_coord( generator.cell_lists[ CELLSET_WALLS ], ar:shrinked() ) then
+				table.insert( room_list, ar )
+			end
 		end
 	end
 	return room_list
@@ -494,7 +497,7 @@ function generator.handle_rooms( room_list, settings )
 		local room      = choice:roll()
 		local room_meta = generator.get_room( room_list, room.min_size, room.max_size_x, room.max_size_y, room.max_area )
 		if room_meta then
-			core.log("generator.handle_rooms() > setting up room : "..room.id)
+			core.log("generator.handle_rooms() > setting up room : "..room.id.." area = "..tostring(room_meta.area) )
 			if room.setup( room_meta.area, room_meta, room_list ) then
 				room_meta.used = true
 			end
