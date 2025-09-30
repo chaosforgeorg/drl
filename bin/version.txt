@@ -1,4 +1,4 @@
-0.10.4
+0.10.4a
 [new] -- GJ#113: defence markers added (corneshooting indicator)
 [new] -- GJ#144: UI - quickslot support for gamepad
 [mod] -- GH#333: changed knockback calculation so that even lower knockback armor protection matters
