@@ -824,7 +824,7 @@ function drl.register_regular_items()
 		misdelay      = 10,
 		miss_base     = 30,
 		miss_dist     = 3,
-		sprite        = SPRITE_PLASMASHOT,
+		missprite     = SPRITE_PLASMASHOT,
 		hitsprite     = SPRITE_BLAST,
 
 		OnAltReload = function(self)
