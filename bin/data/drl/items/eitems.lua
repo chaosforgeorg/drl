@@ -109,7 +109,7 @@ function drl.register_exotic_items()
 		misdelay      = 100,
 		miss_base     = 50,
 		miss_dist     = 10,
-		sprite        = SPRITE_BFGSHOT,
+		missprite     = SPRITE_BFGSHOT,
 		hitsprite     = SPRITE_BLAST,
 		explosion     = {
 			delay     = 33,
@@ -520,7 +520,7 @@ function drl.register_exotic_items()
 		misdelay      = 100,
 		miss_base     = 50,
 		miss_dist     = 10,
-		sprite        = SPRITE_BFGSHOT,
+		missprite     = SPRITE_BFGSHOT,
 		hitsprite     = SPRITE_BLAST,
 		explosion     = {
 			delay     = 33,
