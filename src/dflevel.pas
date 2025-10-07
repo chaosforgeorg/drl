@@ -564,13 +564,24 @@ end;
 
 
 procedure TLevel.PreEnter;
-var c : TCoord2D;
+var iC     : TCoord2D;
+    iFlags : TFlags;
+    iCell  : Byte;
 begin
   if GraphicsVersion then
   begin
-    for c in FArea do
-      if SF_MULTI in Cells[CellBottom[c]].Sprite[0].Flags then
-        FMap.Rotation[c.x,c.y] := SpriteMap.GetCellRotationMask(c);
+    for iC in FArea do
+    begin
+      iFlags := Cells[CellBottom[iC]].Sprite[0].Flags;
+      if SF_MULTI in iFlags    then FMap.Rotation[iC.x,iC.y] := SpriteMap.GetCellRotationMask(iC);
+      if SF_DOORHACK in iFlags then FMap.Rotation[iC.x,iC.y] := SpriteMap.GetCellDoorRotation(iC);
+      iCell := CellTop[iC];
+      if iCell <> 0 then
+      begin
+        iFlags := Cells[iCell].Sprite[0].Flags;
+        if SF_DOORHACK in iFlags then FMap.Rotation[iC.x,iC.y] := SpriteMap.GetCellDoorRotation(iC);
+      end;
+    end;
 
     (IO as TDRLGFXIO).UpdateMinimap;
     RecalcFluids;
@@ -594,8 +605,8 @@ begin
     FFeeling := FFeeling + ' You feel there is something really valuable here!';
   end;
 
-  for c in FArea do
-    HitPoints[c] := Cells[GetCell(c)].HP;
+  for iC in FArea do
+    HitPoints[iC] := Cells[GetCell(iC)].HP;
 
 end;
 

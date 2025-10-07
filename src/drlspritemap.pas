@@ -67,7 +67,8 @@ type
   procedure ToggleGrid;
   function VariableLight( aWhere : TCoord2D; aBonus : ShortInt = 0 ) : Byte;
   function GetGridSize : Word;
-  function GetCellRotationMask( cell: TCoord2D ): Byte;
+  function GetCellRotationMask( aCell : TCoord2D ) : Byte;
+  function GetCellDoorRotation( aCell : TCoord2D ) : Byte;
   destructor Destroy; override;
   function GetBeingSprite( aBeing : TBeing ) : TSprite;
 private
@@ -961,35 +962,50 @@ begin
       end;
 end;
 
-function TDRLSpriteMap.GetCellRotationMask(cell: TCoord2D): Byte;
+function TDRLSpriteMap.GetCellRotationMask( aCell : TCoord2D): Byte;
 var iT,iB,iL,iR : Boolean;
-  function StickyCode( Coord : TCoord2D ) : Boolean;
+  function IsWall( aCoord : TCoord2D ) : Boolean; inline;
   begin
-    if not DRL.Level.isProperCoord( Coord ) then Exit(True);
-    if ((CF_STICKWALL in Cells[DRL.Level.CellBottom[ Coord ]].Flags) or
-      ((DRL.Level.CellTop[ Coord ] <> 0) and
-      (CF_STICKWALL in Cells[DRL.Level.CellTop[ Coord ]].Flags))) then Exit( True );
+    if not DRL.Level.isProperCoord( aCoord ) then Exit(True);
+    if ((CF_STICKWALL in Cells[DRL.Level.CellBottom[ aCoord ]].Flags) or
+      ((DRL.Level.CellTop[ aCoord ] <> 0) and
+      (CF_STICKWALL in Cells[DRL.Level.CellTop[ aCoord ]].Flags))) then Exit( True );
     Exit( False );
   end;
-  function AddIf( aBool : Boolean; aValue : Byte ) : Byte;
+  function AddIf( aBool : Boolean; aValue : Byte ) : Byte; inline;
   begin
     if aBool then Exit( aValue ) else Exit( 0 );
   end;
 begin
-  iT := StickyCode( cell.ifInc(  0, -1 ) );
-  iB := StickyCode( cell.ifInc(  0,  1 ) );
-  iL := StickyCode( cell.ifInc( -1,  0 ) );
-  iR := StickyCode( cell.ifInc(  1,  0 ) );
+  iT := IsWall( aCell.ifInc(  0, -1 ) );
+  iB := IsWall( aCell.ifInc(  0,  1 ) );
+  iL := IsWall( aCell.ifInc( -1,  0 ) );
+  iR := IsWall( aCell.ifInc(  1,  0 ) );
   GetCellRotationMask :=
-    AddIf( ( iT and iL ) and StickyCode( cell.ifInc( -1,-1) ),  1 ) +
+    AddIf( ( iT and iL ) and IsWall( aCell.ifInc( -1,-1) ),  1 ) +
     AddIf( iT, 2 ) +
-    AddIf( ( iT and iR ) and StickyCode( cell.ifInc(  1,-1) ),  4 ) +
+    AddIf( ( iT and iR ) and IsWall( aCell.ifInc(  1,-1) ),  4 ) +
     AddIf( iL, 8 ) +
 
     AddIf( iR, 16 ) +
-    AddIf( ( iB and iL ) and StickyCode( cell.ifInc( -1,1) ),  32 ) +
+    AddIf( ( iB and iL ) and IsWall( aCell.ifInc( -1,1) ),  32 ) +
     AddIf( iB, 64 ) +
-    AddIf( ( iB and iR ) and StickyCode( cell.ifInc(  1,1) ),  128 );
+    AddIf( ( iB and iR ) and IsWall( aCell.ifInc(  1,1) ),  128 );
+end;
+
+function TDRLSpriteMap.GetCellDoorRotation( aCell : TCoord2D ) : Byte;
+  function IsWall( aCoord : TCoord2D ) : Boolean; inline;
+  begin
+    if not DRL.Level.isProperCoord( aCoord ) then Exit( True );
+    if ((CF_STICKWALL in Cells[DRL.Level.CellBottom[ aCoord ]].Flags) or
+      ((DRL.Level.CellTop[ aCoord ] <> 0) and
+      (CF_STICKWALL in Cells[DRL.Level.CellTop[ aCoord ]].Flags))) then Exit( True );
+    Exit( False );
+  end;
+begin
+  GetCellDoorRotation := 0;
+  if IsWall( aCell.ifInc( 0, -1 ) ) and IsWall( aCell.ifInc( 0, 1 ) ) then
+    GetCellDoorRotation := 1;
 end;
 
 procedure TDRLSpriteMap.PushTerrain;
@@ -1105,7 +1121,15 @@ begin
         else
         begin
           if not ( ( CF_CORPSE in Cells[iTop].Flags ) and ( DRL.Level.LightFlag[ iCoord, LFCORPSING ] ) ) then
-            PushSpriteDoodad( iCoord, GetSprite( iTop, DRL.Level.CStyle[iCoord] ) );
+          begin
+            iSprite := GetSprite( iTop, DRL.Level.CStyle[iCoord] );
+            if ( SF_DOORHACK in iSprite.Flags ) and ( DRL.Level.Rotation[iCoord] > 0 ) then
+            begin
+              iSprite.SpriteID[0] := iSprite.SpriteID[ iSprite.SCount div 2 ];
+              Include( iSprite.Flags, SF_HIGHSPRITE );
+            end;
+            PushSpriteDoodad( iCoord, iSprite );
+          end;
           iDeco := DRL.Level.Deco[iCoord];
           if iDeco <> 0 then
           begin
