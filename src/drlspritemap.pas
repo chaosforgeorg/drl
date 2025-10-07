@@ -1025,6 +1025,14 @@ begin
         iZ     := iY * DRL_Z_LINE;
         iStyle := DRL.Level.CStyle[ iCoord ];
         iSpr   := GetSprite( iBottom, iStyle );
+        iDeco  := DRL.Level.Deco[iCoord];
+        if ( iDeco > 0 ) and ( SF_FULLDECO in iSpr.Flags ) then
+          if Cells[ iBottom ].Deco[ iDeco ].SpriteID[0] <> 0 then
+          begin
+            // TODO: maintain colorcos!
+            iSpr  := Cells[ iBottom ].Deco[ iDeco ];
+            iDeco := 0;
+          end;
         if SF_FLOW in iSpr.Flags
           then PushSpriteTerrain( iCoord, iSpr, iZ, FFluidX, FFluidY )
           else
@@ -1045,8 +1053,7 @@ begin
         end;
         if DRL.Level.LightFlag[ iCoord, LFBLOOD ] and (Cells[iBottom].BloodSprite.SpriteID[0] <> 0) then
           PushSpriteDoodad( iCoord, Cells[iBottom].BloodSprite );
-        iDeco := DRL.Level.Deco[iCoord];
-        if iDeco <> 0then
+        if iDeco <> 0 then
         begin
           iCell := Cells[ iBottom ];
           if iCell.Deco[ iDeco ].SpriteID[0] <> 0 then
