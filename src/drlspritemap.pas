@@ -1020,6 +1020,7 @@ var iDMinX  : Word;
     iStyle  : Byte;
     iDeco   : Byte;
     iCell   : TCell;
+    iColor  : TColor;
 
     function Mix( L, C : Byte ) : Byte;
     begin
@@ -1045,9 +1046,10 @@ begin
         if ( iDeco > 0 ) and ( SF_FULLDECO in iSpr.Flags ) then
           if Cells[ iBottom ].Deco[ iDeco ].SpriteID[0] <> 0 then
           begin
-            // TODO: maintain colorcos!
-            iSpr  := Cells[ iBottom ].Deco[ iDeco ];
-            iDeco := 0;
+            iColor     := iSpr.Color;
+            iSpr       := Cells[ iBottom ].Deco[ iDeco ];
+            iSpr.Color := iColor;
+            iDeco      := 0;
           end;
         if SF_FLOW in iSpr.Flags
           then PushSpriteTerrain( iCoord, iSpr, iZ, FFluidX, FFluidY )
@@ -1074,7 +1076,10 @@ begin
           iCell := Cells[ iBottom ];
           if iCell.Deco[ iDeco ].SpriteID[0] <> 0 then
           begin
-            PushSpriteTerrain( iCoord, GetSprite( iCell.Deco[ iDeco ] ), iZ + DRL_Z_ENVIRO + 1 );
+            iColor     := iSpr.Color;
+            iSpr       := GetSprite( iCell.Deco[ iDeco ] );
+            iSpr.Color := iColor;
+            PushSpriteTerrain( iCoord, iSpr, iZ + DRL_Z_ENVIRO + 1 );
           end;
         end;
         if (SF_FLOOR in iSpr.Flags) then
