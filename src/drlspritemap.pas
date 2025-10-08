@@ -1046,9 +1046,15 @@ begin
         if ( iDeco > 0 ) and ( SF_FULLDECO in iSpr.Flags ) then
           if Cells[ iBottom ].Deco[ iDeco ].SpriteID[0] <> 0 then
           begin
-            iColor     := iSpr.Color;
-            iSpr       := Cells[ iBottom ].Deco[ iDeco ];
-            iSpr.Color := iColor;
+            if SF_COSPLAY in iSpr.Flags then
+            begin
+              iColor     := iSpr.Color;
+              iSpr       := Cells[ iBottom ].Deco[ iDeco ];
+              iSpr.Color := iColor;
+              Include( iSpr.Flags, SF_COSPLAY );
+            end
+            else
+              iSpr := Cells[ iBottom ].Deco[ iDeco ];
             iDeco      := 0;
           end;
         if SF_FLOW in iSpr.Flags
@@ -1076,9 +1082,15 @@ begin
           iCell := Cells[ iBottom ];
           if iCell.Deco[ iDeco ].SpriteID[0] <> 0 then
           begin
-            iColor     := iSpr.Color;
-            iSpr       := GetSprite( iCell.Deco[ iDeco ] );
-            iSpr.Color := iColor;
+            if SF_COSPLAY in iSpr.Flags then
+            begin
+              iColor     := iSpr.Color;
+              iSpr       := GetSprite( iCell.Deco[ iDeco ] );
+              iSpr.Color := iColor;
+              Include( iSpr.Flags, SF_COSPLAY );
+            end
+            else
+              iSpr := GetSprite( iCell.Deco[ iDeco ] );
             PushSpriteTerrain( iCoord, iSpr, iZ + DRL_Z_ENVIRO + 1 );
           end;
         end;
