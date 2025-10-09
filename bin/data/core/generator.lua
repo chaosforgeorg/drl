@@ -653,6 +653,36 @@ function generator.generate_nutiled_level( settings )
 		end
 	end
 
+	if settings.fluid and corridor > 1 then
+		core.log("generator.generate_nutiled_level() - processing fluid" )
+		for _,r in ipairs( rooms ) do
+			level:fill( wall_cell, r )
+		end
+		core.log("generator.generate_nutiled_level() - fluid placement" )
+		local fluid_cell = cells[settings.fluid].nid
+		for c in level:each( floor_cell, larea:shrinked( 2 ) ) do
+			if level:around( c, { floor_cell, fluid_cell } ) == 8 then
+				level:set_cell( c, fluid_cell )
+			end
+		end
+
+		if settings.bridge then
+			core.log("generator.generate_nutiled_level() - bridge placement" )
+			for c in level:each( fluid_cell, larea:shrinked( 2 ) ) do
+				if level:cross_around( c, fluid_cell ) == 2 and level:around( c, { floor_cell, settings.bridge } ) == 6 then
+					if math.random(10) == 1 then
+						level:set_cell( c, settings.bridge )
+					end
+				end
+			end
+		end
+
+		for _,r in ipairs( rooms ) do
+			level:fill( floor_cell, r )
+		end
+	end
+
+	core.log("generator.generate_nutiled_level() - recursive split" )
 	local split_rooms
 	local rec_rooms
 	rec_rooms, split_rooms = generator.bsp_recursive( level, rooms, rec_settings )
@@ -668,6 +698,7 @@ function generator.generate_nutiled_level( settings )
 		end
 	end
 
+--[[
 	rooms = {}
 	local small_rooms = {}
 	for _,r in ipairs( rec_rooms ) do
@@ -678,6 +709,7 @@ function generator.generate_nutiled_level( settings )
 			table.insert( rooms, r )
 		end
 	end
+--]]
 
 --	if corridor > 1 then
 --		generator.ring_clear( self, result.area, 25, coord( corridor, corridor ), false, nil, true )
@@ -942,12 +974,13 @@ function generator.remove_needless_doors()
 	local floor = generator.styles[ level.style ].floor
 	local wall  = generator.styles[ level.style ].wall
 	local door  = generator.styles[ level.style ].door
+	local walls = generator.cell_lists[ CELLSET_WALLS ]
 	for c in level:each( door, area.FULL_SHRINKED ) do
-		local wcaround = level:cross_around( c, wall )
+		local wcaround = level:cross_around( c, walls )
 		if wcaround > 2 then
 			level:set_cell( c, wall )
 		elseif wcaround == 2 then
-			if level:around( c, wall ) > 5 then 
+			if level:around( c, walls ) > 5 then 
 				level:set_cell( c, floor )
 			end
 		end
@@ -1070,6 +1103,7 @@ function generator.vert_river( settings )
 	local position = settings.position
 	local bridge   = settings.bridge
 	local brange   = settings.bridge_range
+	local extra    = settings.bridge_extra or 0
 	local floor = generator.styles[ level.style ].floor
 
 	local function bridge_ok( x, y )
@@ -1115,9 +1149,9 @@ function generator.vert_river( settings )
 			local count  = 0
 			local dcount = 0
 			if #dbridges == 0 or math.random(3) == 1 then
-				count = math.min( #bridges, 2 )
+				count = math.min( #bridges, ( 1 + extra ) * 2 )
 			else
-				dcount = 1
+				dcount = math.min( #dbridges, ( 1 + extra ) )
 			end
 
 			while count > 0 and #bridges > 0 do
@@ -1165,9 +1199,10 @@ function generator.generate_rivers( settings )
 	else
 		local rsettings = {
 			cell         = cell,
-			width        = {3,5},
+			width        = settings.width or {3,5},
 			bridge       = bridge,
-			bridge_range = settings.vert_bridge,		  
+			bridge_range = settings.vert_bridge,	
+			bridge_extra = settings.bridge_extra or 0,	  
 		}
 
 		if allow_more and math.random(3) == 1 then
