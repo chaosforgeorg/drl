@@ -999,6 +999,7 @@ function generator.mirror_horizontally( y_value, x_start )
 			if item then
 				level:drop_item( item.id, c2 )
 			end
+			level:copy_lflags( c1, c2 )
 		end
 	end
 end

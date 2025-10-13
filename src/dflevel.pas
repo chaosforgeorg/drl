@@ -1789,6 +1789,20 @@ begin
   iLevel.CalculateRotation( iCoord );
 end;
 
+function lua_level_copy_lflags(L: Plua_State): Integer; cdecl;
+var iState   : TDRLLuaState;
+    iLevel   : TLevel;
+    iCF, iCT : TCoord2D;
+begin
+  iState.Init(L);
+  iLevel := iState.ToObject(1) as TLevel;
+  if iState.IsNil(2) then Exit(0);
+  if iState.IsNil(3) then Exit(0);
+  iCF := iState.ToCoord(2);
+  iCT := iState.ToCoord(3);
+  iLevel.SetLightValue( iCT, iLevel.GetLightValue( iCF ) );
+end;
+
 function lua_level_set_raw_deco(L: Plua_State): Integer; cdecl;
 var iState : TDRLLuaState;
     iCoord : TCoord2D;
@@ -1882,7 +1896,7 @@ begin
   Exit( 1 );
 end;
 
-const lua_level_lib : array[0..20] of luaL_Reg = (
+const lua_level_lib : array[0..21] of luaL_Reg = (
       ( name : 'drop_item';  func : @lua_level_drop_item),
       ( name : 'drop_being'; func : @lua_level_drop_being),
       ( name : 'player';     func : @lua_level_player),
@@ -1898,6 +1912,7 @@ const lua_level_lib : array[0..20] of luaL_Reg = (
       ( name : 'set_raw_deco';      func : @lua_level_set_raw_deco),
       ( name : 'get_raw_deco';      func : @lua_level_get_raw_deco),
       ( name : 'fix_rotation';      func : @lua_level_fix_rotation),
+      ( name : 'copy_lflags';        func : @lua_level_copy_lflags),
       ( name : 'damage_tile';func : @lua_level_damage_tile),
       ( name : 'push_item';  func : @lua_level_push_item),
       ( name : 'reset';         func : @lua_level_reset),
