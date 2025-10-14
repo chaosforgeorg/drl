@@ -449,9 +449,10 @@ begin
       Iff((not aShort) and (FProps.AltFire   <> ALT_NONE   ),'Alt. fire   : {!'+AltFireName( FProps.AltFire )+'}'#10)+
       Iff((not aShort) and (FProps.AltReload <> RELOAD_NONE),'Alt. reload : {!'+AltReloadName( FProps.AltReload )+'}'#10);
     ITEMTYPE_MELEE : DescriptionBox :=
-      'Attack time : {!'+Seconds(FProps.UseTime)+'}'#10+
+      Iff(FProps.UseTime <> 10, 'Attack time : {!'+Seconds(FProps.UseTime)+'}'#10)+
       Iff(FProps.SwapTime<> 10, 'Swap time   : {!'+Seconds(FProps.SwapTime)+'}'#10)+
       Iff(FProps.Acc     <> 0,  'Accuracy    : {!' + BonusStr(FProps.Acc)+'}'#10)+
+      'Damage type : {!'+DamageTypeName(FProps.DamageType)+'}'#10+
       Iff((not aShort) and (FProps.AltFire <> ALT_NONE),'Alt. fire   : {!'+AltFireName( FProps.AltFire )+'}'#10);
   end;
   DescriptionBox +=
