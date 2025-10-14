@@ -1451,6 +1451,13 @@ begin
   iLongMode := (aBeing = Player) and (LF_BEINGSVISIBLE in FFlags) and ( not Player.Flags[ BF_DARKNESS ] );
   aAutoTarget.Clear( aBeing.Position );
   if iLongMode then aRange += 2;
+
+  if ( aBeing = Player ) then
+    if ( Player.Inv.Slot[ efWeapon ] <> nil ) then
+      with Player.Inv.Slot[ efWeapon ] do
+        if Flags[ IF_EXACTHIT ] and ( Range > 0 ) then
+          aRange := Min( aRange, Range );
+
   for iCoord in NewArea( aBeing.Position, aRange ).Clamped( Area ) do
   begin
     iBeing := Being[ iCoord ];
