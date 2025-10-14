@@ -246,6 +246,7 @@ type TCellSet = set of Byte;
        Color     : TColor;
        OverColor : TColor;
        GlowColor : TColor;
+       Emissive  : TColor;
        SpriteID  : array[0..7] of DWord;
        SCount    : Word;
        Frames    : Word;
@@ -852,6 +853,9 @@ begin
   end;
   if not aTable.isNil( 'glow' ) then
     aSprite.GlowColor := NewColor( aTable.GetVec4f('glow' ) );
+
+  if not aTable.isNil( 'emissive' ) then
+    aSprite.Emissive := NewColor( aTable.GetVec4f('emissive' ) );
 
   // so we can later move to in-sprite table sprite info definitions slowly
   if aTable.IsTable( 'sprite' ) then

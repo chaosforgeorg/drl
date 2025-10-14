@@ -111,6 +111,7 @@ private
   function GetSprite( aSprite : TSprite; aTime : Integer = -1 ) : TSprite;
   function GetSprite( aCell, aStyle : Byte ) : TSprite;
   procedure DrawMarker;
+  function GetEmissive( aSprite : TSprite ) : TColor;
 public
   property Engine : TSpriteEngine read FSpriteEngine;
   property MaxShift : TVec2i read FMaxShift;
@@ -383,6 +384,7 @@ const MarkerSprite : TSprite = (
   Color     : (R:0;G:0;B:0;A:255);
   OverColor : (R:0;G:0;B:0;A:0);
   GlowColor : (R:0;G:0;B:0;A:0);
+  Emissive  : (R:0;G:0;B:0;A:0);
   SpriteID  : (0,0,0,0,0,0,0,0);
   SCount    : 1;
   Frames    : 0;
@@ -416,6 +418,12 @@ begin
   SpriteMap.PushSpriteFX( FMarker, MarkerSprite );
 end;
 
+function TDRLSpriteMap.GetEmissive( aSprite : TSprite ) : TColor;
+begin
+  if aSprite.Emissive.A <> 0 then Exit( aSprite.Emissive );
+  Exit( aSprite.Color );
+end;
+
 procedure TDRLSpriteMap.Draw;
 var iPoint   : TPoint;
     iCoord   : TCoord2D;
@@ -424,6 +432,7 @@ const TargetSprite : TSprite = (
   Color     : (R:0;G:0;B:0;A:255);
   OverColor : (R:0;G:0;B:0;A:0);
   GlowColor : (R:0;G:0;B:0;A:0);
+  Emissive  : (R:0;G:0;B:0;A:0);
   SpriteID  : (0,0,0,0,0,0,0,0);
   SCount    : 1;
   Frames    : 0;
@@ -559,7 +568,7 @@ begin
   begin
     iColor.FillAll( 255 );
     if SF_OVERLAY in iSprite.Flags then iColor.SetAll( ColorToGL( iSprite.OverColor ) );
-    Push( @iCoord, @iTex, @iColor, iSprite.Color, iSprite.GlowColor, DRL_Z_FX );
+    Push( @iCoord, @iTex, @iColor, iSprite.Color, iSprite.GlowColor, GetEmissive( iSprite ), DRL_Z_FX );
   end;
 end;
 
@@ -587,14 +596,14 @@ begin
       iCosColor := aSprite.Color;
 
     if SF_OVERLAY in aSprite.Flags
-      then PushXY( iSpriteID, iSize, aPos, aSprite.OverColor, iCosColor, aSprite.GlowColor, aZ )
-      else PushXY( iSpriteID, iSize, aPos, NewColor( aLight, aLight, aLight ), iCosColor, aSprite.GlowColor, aZ );
+      then PushXY( iSpriteID, iSize, aPos, aSprite.OverColor, iCosColor, aSprite.GlowColor, GetEmissive( aSprite ), aZ )
+      else PushXY( iSpriteID, iSize, aPos, NewColor( aLight, aLight, aLight ), iCosColor, aSprite.GlowColor, GetEmissive( aSprite ), aZ );
 
     if ( not Setting_Glow ) and ( aSprite.GlowColor.A > 0 ) then
     begin
       iCosColor := aSprite.GlowColor;
       iCosColor.A := 4;
-      PushXY( iSpriteID, iSize, aPos, ColorWhite, ColorZero, iCosColor, aZ-1, 1.0 + (1.0/8.0) )
+      PushXY( iSpriteID, iSize, aPos, ColorWhite, ColorZero, iCosColor, ColorZero, aZ-1, 1.0 + (1.0/8.0) )
     end;
   end;
 end;
@@ -724,9 +733,10 @@ var iColors   : TGLRawQColor;
     iEnd      : TVec2f;
     iPStart   : TVec2f;
     iPEnd     : TVec2f;
+    iEmissive : TColor;
   procedure Push( aLayer : TSpriteDataSet; aCosColor : TColor );
   begin
-    aLayer.PushPart( iSpriteID, iPa, iPb, @iColors, aCosColor, ColorZero, aZ, iStart, iEnd );
+    aLayer.PushPart( iSpriteID, iPa, iPb, @iColors, aCosColor, ColorZero, iEmissive, aZ, iStart, iEnd );
   end;
 
   function BilinearLight( aPos : TVec2f ) : Byte;
@@ -771,6 +781,9 @@ begin
   iPEnd     := iGridF * iEnd;
   iPa       := iPosition + TVec2i.Create( Round( iPStart.X ), Round( iPStart.Y ) );
   iPb       := iPosition + TVec2i.Create( Round( iPEnd.X ), Round( iPEnd.Y ) );
+
+  iEmissive := aSprite.Emissive;
+  if iEmissive.A = 0 then iEmissive := aSprite.Color;
   if ( SF_COSPLAY in aSprite.Flags )
     then Push( iLayer, aSprite.Color )
     else Push( iLayer, ColorBlack );
@@ -844,8 +857,8 @@ begin
   with iLayer do
   begin
     if ( SF_COSPLAY in aSprite.Flags )
-      then PushXY( iSpriteID, 1, ip, @iColors, aSprite.Color, ColorZero, aTSX, aTSY, aZ )
-      else PushXY( iSpriteID, 1, ip, @iColors, ColorBlack, ColorZero, aTSX, aTSY, aZ );
+      then PushXY( iSpriteID, 1, ip, @iColors, aSprite.Color, ColorZero, GetEmissive( aSprite ), aTSX, aTSY, aZ )
+      else PushXY( iSpriteID, 1, ip, @iColors, ColorBlack, ColorZero, GetEmissive( aSprite ), aTSX, aTSY, aZ );
   end;
 end;
 
@@ -1200,7 +1213,7 @@ begin
         else if DRL.Level.BeingIntuited(iCoord, iBeing) then
         begin
           with FSpriteEngine.Layers[ HARDSPRITE_MARK div 100000 ] do
-            Push( HARDSPRITE_MARK mod 100000, iCoord, ColorWhite, NewColor( Magenta ), ColorZero, DRL_Z_FX-1 );
+            Push( HARDSPRITE_MARK mod 100000, iCoord, ColorWhite, NewColor( Magenta ), ColorZero, NewColor( Magenta ), DRL_Z_FX-1 );
         end;
     end;
 
@@ -1214,11 +1227,11 @@ begin
            (not DRL.Level.isEmpty( FTargetList[iL], [ EF_NOBLOCK, EF_NOVISION ] )) then
           iColor := NewColor( 128, 0, 0 );
         with FSpriteEngine.Layers[ HARDSPRITE_SELECT div 100000 ] do
-          Push( HARDSPRITE_SELECT mod 100000, FTargetList[iL], ColorWhite, iColor, ColorZero, DRL_Z_FX );
+          Push( HARDSPRITE_SELECT mod 100000, FTargetList[iL], ColorWhite, iColor, ColorZero, iColor, DRL_Z_FX );
       end;
       if FTargetList.Size > 0 then
         with FSpriteEngine.Layers[ HARDSPRITE_MARK div 100000 ] do
-          Push( HARDSPRITE_MARK mod 100000, FTarget, ColorWhite, FTargetColor, ColorZero, DRL_Z_FX );
+          Push( HARDSPRITE_MARK mod 100000, FTarget, ColorWhite, FTargetColor, ColorZero, FTargetColor, DRL_Z_FX );
     end
   else
     if Setting_AutoTarget and ( FAutoTarget.X * FAutoTarget.Y <> 0 ) then
@@ -1228,14 +1241,14 @@ begin
       if ( iBeing <> nil ) and ( iBeing.AnimCount > 0 ) then
          (IO as TDRLGFXIO).getUIDPosition( iBeing.UID, iV );
       with FSpriteEngine.Layers[ HARDSPRITE_SELECT div 100000 ] do
-        PushXY( HARDSPRITE_SELECT mod 100000, 1, iV, ColorWhite, NewColor( Yellow ), ColorZero, DRL_Z_FX );
+        PushXY( HARDSPRITE_SELECT mod 100000, 1, iV, ColorWhite, NewColor( Yellow ), ColorZero, NewColor( Yellow ), DRL_Z_FX );
     end;
 
   if FGridActive then
   for iY := 1 to MAXY do
     for iX := iDMinX to iDMaxX do
     with FSpriteEngine.Layers[ HARDSPRITE_GRID div 100000 ] do
-      Push( HARDSPRITE_GRID mod 100000, NewCoord2D( iX, iY ), NewColor( 50, 50, 50, 50 ), ColorBlack, ColorZero, DRL_Z_ITEMS );
+      Push( HARDSPRITE_GRID mod 100000, NewCoord2D( iX, iY ), NewColor( 50, 50, 50, 50 ), ColorBlack, ColorZero, ColorBlack, DRL_Z_ITEMS );
 
 end;
 
@@ -1283,7 +1296,7 @@ var iData  : TDecalArray;
 //    iLQuad.Data[3] := TVec3b.Create( iLight, iLight, iLight );
 
     with FSpriteEngine.Layers[ iDecal.Sprite div 100000 ] do
-      PushXY( iDecal.Sprite mod 100000, 1, iPos, NewColor( iLight, iLight, iLight ), ColorZero, ColorBlack, DRL_Z_DECAL )
+      PushXY( iDecal.Sprite mod 100000, 1, iPos, NewColor( iLight, iLight, iLight ), ColorZero, ColorBlack, ColorZero, DRL_Z_DECAL )
   end;
 end;
 
