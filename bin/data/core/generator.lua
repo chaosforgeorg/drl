@@ -907,7 +907,7 @@ function generator.generate_archi_level( settings )
 	if not data.no_fill and ( not data.restore_edges )  then
 		generator.restore_walls( wall_cell )
 	end
-	if not data.fluids then
+	if data.fluids then
 		generator.generate_fluids(area(shift.x+1, shift.y+1, MAXX - shift.x-1, MAXY - shift.y-1))
 	end
 	return result
