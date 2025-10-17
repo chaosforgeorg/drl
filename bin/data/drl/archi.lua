@@ -2,7 +2,6 @@ generator.archi_data = {
 	shift  = coord( 3, 1 ),
 	size   = coord( 19, 7 ),
 	blocks = coord( 4, 3 ),
-	fluids = true,
 	trans  = {},
 [[
 ####+####+####+####
@@ -107,7 +106,6 @@ generator.archi_data_2 = {
 	shift  = coord( 3, 1 ),
 	size   = coord( 19, 10 ),
 	blocks = coord( 4, 2 ),
-	fluids = true,
 	trans  = {
 		["C"] = "crate",
 		["Y"] = "ycrate",
