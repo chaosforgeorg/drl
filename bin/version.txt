@@ -1,6 +1,8 @@
 0.10.5
 [new] -- GJ#225: you can assign quickslots directly from equipment screen
 [mod] -- GJ#231: melee weapons will display damage type
+[mod[ -- GJ#243: UI - reloading will use ammo stack on ground if matching (unless in combat+pack)
+
 
 0.10.4a
 [new] -- GJ#113: defence markers added (corneshooting indicator)
