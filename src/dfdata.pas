@@ -206,6 +206,7 @@ var
   ModuleOption_NewMenu                   : Boolean = False;
   ModuleOption_MeleeMoveOnKill           : Boolean = False;
   ModuleOption_FullBeingDescription      : Boolean = False;
+  ModuleOption_PercentHealth             : Boolean = False;
   ModuleOption_DefaultExplosionKnockback : Integer = 8;
 
 var

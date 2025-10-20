@@ -767,6 +767,12 @@ var iCon        : TUIConsole;
     if Player.ExpLevel >= MaxPlayerLevel - 1 then Exit('MAX');
     Exit(IntToStr(Clamp(Floor(((Player.Exp-ExpTable[Player.ExpLevel]) / (ExpTable[Player.ExpLevel+1]-ExpTable[Player.ExpLevel]))*100),0,99))+'%');
   end;
+  function HPCode( aHp, aHpMax : Integer ) : AnsiString;
+  begin
+    if aHP < aHpMax then Exit( '{R{0}}/{!{1}}');
+    if aHP > aHpMax then Exit( '{Y{0}}/{!{1}}');
+    Exit( '{!{0}}/{!{1}}');
+  end;
 
 begin
   iCNormal := DarkGray;
@@ -802,10 +808,20 @@ begin
 
     VTIG_FreeLabel( 'A:',                                 iPos + Point(28,0), iCNormal );
     VTIG_FreeLabel( Player.Name,                          iPos + Point(1,0),  NameColor(iHPP) );
-    VTIG_FreeLabel( 'Health:      Exp:   /      W:',      iPos + Point(1,1),  iCNormal );
-    VTIG_FreeLabel( IntToStr(iHPP)+'%',                   iPos + Point(9,1),  Red );
-    VTIG_FreeLabel( TwoInt(Player.ExpLevel),              iPos + Point(19,1), iCBold );
-    VTIG_FreeLabel( ExpString,                            iPos + Point(22,1), iCBold );
+    if ModuleOption_PercentHealth then
+    begin
+      VTIG_FreeLabel( 'Health:      Exp:   /      W:',      iPos + Point(1,1),  iCNormal );
+      VTIG_FreeLabel( IntToStr(iHPP)+'%',                   iPos + Point(9,1),  Red );
+      VTIG_FreeLabel( TwoInt(Player.ExpLevel),              iPos + Point(19,1), iCBold );
+      VTIG_FreeLabel( ExpString,                            iPos + Point(22,1), iCBold );
+    end
+    else
+    begin
+      VTIG_FreeLabel( 'Health:        Exp:        W:',      iPos + Point(1,1),  iCNormal );
+      VTIG_FreeLabel( HPCode( Player.HP, Player.HPMax ),    iPos + Point(9,1),  [ Player.HP, Player.HPMax ], iCNormal );
+      VTIG_FreeLabel( TwoInt(Player.ExpLevel),              iPos + Point(20,1), iCBold );
+      VTIG_FreeLabel( ExpString,                            iPos + Point(23,1), iCBold );
+    end;
 
     iWeapon := Player.Inv.Slot[efWeapon];
     if iWeapon = nil

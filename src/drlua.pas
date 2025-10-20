@@ -390,6 +390,7 @@ begin
   ModuleOption_NewMenu              := LuaSystem.Get( ['core','options','new_menu'], False );
   ModuleOption_MeleeMoveOnKill      := LuaSystem.Get( ['core','options','melee_move_on_kill'], False );
   ModuleOption_FullBeingDescription := LuaSystem.Get( ['core','options','full_being_description'], False );
+  ModuleOption_PercentHealth        := LuaSystem.Get( ['core','options','percent_health'], False );
 
 
   if ModdedGame then Log( LOGINFO, 'Game is modded.');
