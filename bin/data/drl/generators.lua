@@ -197,7 +197,7 @@ function drl.register_generators()
 
 		run          = function()
 			local result = generator.generate_archi_level{ data = { generator.archi_data, generator.archi_data2 } }
-			generator.generate_fluids{ area = result:shrinked(1) }
+			generator.generate_fluids( result:shrinked(1) )
 		end,
 	}
 
