@@ -19,6 +19,7 @@ core.options = {
 	new_menu = false,
 	melee_move_on_kill = false,
 	full_being_description = false,
+	percent_health = true,
 }
 
 module = false

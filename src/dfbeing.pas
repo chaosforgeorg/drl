@@ -387,9 +387,23 @@ begin
 end;
 
 function TBeing.getAmmoItem ( Weapon : TItem ) : TItem;
+var iGroundAmmo : TItem;
 begin
   if Weapon = nil then Exit( nil );
+  iGroundAmmo := nil;
+  if isPlayer then
+  begin
+    iGroundAmmo := TLevel(Parent).Item[ Position ];
+    if iGroundAmmo <> nil then
+    begin
+      if ( iGroundAmmo.IType <> ITEMTYPE_AMMO ) or ( iGroundAmmo.NID <> Weapon.AmmoID )
+        then iGroundAmmo := nil
+        else if Player.EnemiesInVision < 1 then
+          Exit( iGroundAmmo );
+    end;
+  end;
   if ( Weapon = FInv.Slot[ efWeapon ] ) and canPackReload then Exit( FInv.Slot[ efWeapon2 ] );
+  if iGroundAmmo <> nil then Exit( iGroundAmmo );
   Exit( FInv.SeekStack( Weapon.AmmoID ) );
 end;
 
@@ -767,7 +781,8 @@ var iSCount   : LongInt;
     iWeapon   : TItem;
     iItem     : TItem;
     iAmmoUID  : TUID;
-    iPack     : Boolean;
+    iIsPack   : Boolean;
+    iIsGround : Boolean;
     iAmmoName : AnsiString;
 begin
   iSCount := SCount;
@@ -784,18 +799,19 @@ begin
 
   iAmmoUID  := iItem.UID;
   iAmmoName := iItem.Name;
-  
-  iPack := iItem.isAmmoPack;
 
-  if not iWeapon.CallHookCheck( Hook_OnReload, [ Self, iItem, iPack ] ) then Exit( iSCount > SCount );
+  iIsPack     := iItem.isAmmoPack;
+  iIsGround := ( iItem.Parent = Self.Parent );
+
+  if not iWeapon.CallHookCheck( Hook_OnReload, [ Self, iItem, iIsPack ] ) then Exit( iSCount > SCount );
 
   if iSCount = SCount then
   begin
     Reload( iItem, iWeapon.Flags[ IF_SINGLERELOAD ] );
-    Emote( 'You '+IIf(iPack,'quickly ')+'reload the %s.', 'reloads his %s.', [iWeapon.Name] );
+    Emote( 'You '+IIf(iIsPack,'quickly ')+'reload the %s%s.', 'reloads his %s%s.', [iWeapon.Name,Iif(iIsGround,' from the ground')] );
   end;
 
-  if iPack and ( UIDs[ iAmmoUID ] = nil ) and IsPlayer then
+  if iIsPack and ( UIDs[ iAmmoUID ] = nil ) and IsPlayer then
     IO.Msg( 'Your %s is depleted.', [iAmmoName] );
   
   Exit( True );
@@ -827,6 +843,8 @@ end;
 function TBeing.ActionAltReload : Boolean;
 var iAmmoItem : TItem;
     iWeapon   : TItem;
+    iIsPack   : Boolean;
+    iIsGround : Boolean;
 begin
   iWeapon := Inv.Slot[ efWeapon ];
   if ( iWeapon = nil ) or ( not iWeapon.isRanged ) then Exit( Fail( 'You have no weapon to reload.',[] ) );
@@ -838,8 +856,10 @@ begin
         if iWeapon.Ammo = iWeapon.AmmoMax then Exit( Fail( 'Your %s is already fully loaded.', [ iWeapon.Name ] ) );
         iAmmoItem := getAmmoItem( iWeapon );
         if iAmmoItem = nil then Exit( Fail('You have no ammo for the %s!',[ iWeapon.Name ] ) );
+        iIsPack := iAmmoItem.isAmmoPack;
+        iIsGround := ( iAmmoItem.Parent = Self.Parent );
         Reload( iAmmoItem, True );
-        Exit( Success('You%s single-load the %s.', [ IIf( iAmmoItem.isAmmoPack, ' quickly'), iWeapon.Name ] ) );
+        Exit( Success('You%s single-load the %s%s.', [ IIf( iIsPack, ' quickly'), iWeapon.Name, IIf( iIsGround, ' from the ground') ] ) );
       end;
     else
       Exit( Fail('This weapon has no special reload mode.', [] ) );

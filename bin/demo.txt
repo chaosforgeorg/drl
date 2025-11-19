@@ -8,6 +8,7 @@ music music/jh_e1m3.ogg
 music music/jh_e1m4.ogg
 music music/silent_killer.ogg
 music music/the_tormented.ogg
+music music/ztd2.ogg
 music music/ztd3.ogg
 music music/jh_e1a2.ogg
 music music/survivor.ogg

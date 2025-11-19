@@ -507,6 +507,7 @@ begin
       VTIG_PushStyle( @TIGStyleColored );
       VTIG_Text( Padded( '- {!' + FArrayDiff[iSelected].Name + ' }', 48, '-' ) );
       VTIG_PopStyle;
+      VTIG_Text( '' );
       VTIG_Text( FArrayDiff[iSelected].Desc );
       if not FArrayDiff[iSelected].Allow then VTIG_Text( FArrayDiff[iSelected].Extra );
     VTIG_End;
@@ -565,6 +566,7 @@ begin
     VTIG_PushStyle( @TIGStyleColored );
     VTIG_Text( Padded( '- {!' + FArrayKlass[iSelected].Name + ' }', 48, '-' ) );
     VTIG_PopStyle;
+    VTIG_Text( '' );
     VTIG_Text( FArrayKlass[iSelected].Desc );
   VTIG_End;
 
@@ -612,6 +614,7 @@ begin
     VTIG_PushStyle( @TIGStyleColored );
     VTIG_Text( Padded( '- {!' + FArrayCType[iSelected].Name + ' }', 48, '-' ) );
     VTIG_PopStyle;
+    VTIG_Text( '' );
     VTIG_Text( FArrayCType[iSelected].Desc );
     if not FArrayCType[iSelected].Allow then
     begin

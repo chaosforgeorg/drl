@@ -116,6 +116,7 @@ TLevel = class(TLuaMapNode, ITextMap)
     procedure UpdateAutoTarget( aAutoTarget : TAutoTarget; aBeing : TBeing; aRange : Integer );
     function PushItem( aWho : TBeing; aWhat : TItem; aFrom, aTo : TCoord2D ) : Boolean;
     function SwapBeings( aA, aB : TCoord2D ) : Boolean;
+    procedure CalculateRotation( aCoord : TCoord2D ); inline;
 
     class procedure RegisterLuaAPI();
 
@@ -562,15 +563,30 @@ begin
   FHooks := LoadHooks( [ 'generator' ] ) * LevelHooks;
 end;
 
+procedure TLevel.CalculateRotation( aCoord : TCoord2D ); inline;
+var iFlags : TFlags;
+    iCell  : Byte;
+begin
+  iFlags := Cells[CellBottom[aCoord]].Sprite[0].Flags;
+  if SF_MULTI in iFlags    then FMap.Rotation[aCoord.x,aCoord.y] := SpriteMap.GetCellRotationMask(aCoord);
+  if SF_DOORHACK in iFlags then FMap.Rotation[aCoord.x,aCoord.y] := SpriteMap.GetCellDoorRotation(aCoord);
+  iCell := CellTop[aCoord];
+  if iCell <> 0 then
+  begin
+    iFlags := Cells[iCell].Sprite[0].Flags;
+    if SF_DOORHACK in iFlags then FMap.Rotation[aCoord.x,aCoord.y] := SpriteMap.GetCellDoorRotation(aCoord);
+  end;
+end;
 
 procedure TLevel.PreEnter;
-var c : TCoord2D;
+var iC     : TCoord2D;
+    iFlags : TFlags;
+    iCell  : Byte;
 begin
   if GraphicsVersion then
   begin
-    for c in FArea do
-      if SF_MULTI in Cells[CellBottom[c]].Sprite[0].Flags then
-        FMap.Rotation[c.x,c.y] := SpriteMap.GetCellRotationMask(c);
+    for iC in FArea do
+      CalculateRotation( iC );
 
     (IO as TDRLGFXIO).UpdateMinimap;
     RecalcFluids;
@@ -594,8 +610,8 @@ begin
     FFeeling := FFeeling + ' You feel there is something really valuable here!';
   end;
 
-  for c in FArea do
-    HitPoints[c] := Cells[GetCell(c)].HP;
+  for iC in FArea do
+    HitPoints[iC] := Cells[GetCell(iC)].HP;
 
 end;
 
@@ -1411,9 +1427,9 @@ var iCell  : TCell;
 begin
   iCell   := Cells[ getCellTop( Index ) ];
   iStyle  := getStyle( Index );
-  if iCell.Sprite[ iStyle ].SpriteID[0] <> 0 then;
+  if iCell.Sprite[ iStyle ].SpriteID[0] <> 0 then
     Exit( iCell.Sprite[ iStyle ] );
-  Exit( iCell.Sprite[ iStyle ] );
+  Exit( iCell.Sprite[ 0 ] );
 end;
 
 function TLevel.getSpriteBottom( Index : TCoord2D ): TSprite;
@@ -1422,9 +1438,9 @@ var iCell  : TCell;
 begin
   iCell   := Cells[ getCellBottom( Index ) ];
   iStyle  := getStyle( Index );
-  if iCell.Sprite[ iStyle ].SpriteID[0] <> 0 then;
+  if iCell.Sprite[ iStyle ].SpriteID[0] <> 0 then
     Exit( iCell.Sprite[ iStyle ] );
-  Exit( iCell.Sprite[ iStyle ] );
+  Exit( iCell.Sprite[ 0 ] );
 end;
 
 procedure TLevel.UpdateAutoTarget( aAutoTarget : TAutoTarget; aBeing : TBeing; aRange : Integer );
@@ -1435,6 +1451,13 @@ begin
   iLongMode := (aBeing = Player) and (LF_BEINGSVISIBLE in FFlags) and ( not Player.Flags[ BF_DARKNESS ] );
   aAutoTarget.Clear( aBeing.Position );
   if iLongMode then aRange += 2;
+
+  if ( aBeing = Player ) then
+    if ( Player.Inv.Slot[ efWeapon ] <> nil ) then
+      with Player.Inv.Slot[ efWeapon ] do
+        if Flags[ IF_EXACTHIT ] and ( Range > 0 ) then
+          aRange := Min( aRange, Range );
+
   for iCoord in NewArea( aBeing.Position, aRange ).Clamped( Area ) do
   begin
     iBeing := Being[ iCoord ];
@@ -1761,6 +1784,31 @@ begin
   Result := 1;
 end;
 
+function lua_level_fix_rotation(L: Plua_State): Integer; cdecl;
+var iState : TDRLLuaState;
+    iLevel : TLevel;
+    iCoord : TCoord2D;
+begin
+  iState.Init(L);
+  iLevel := iState.ToObject(1) as TLevel;
+  if iState.IsNil(2) then Exit(0);
+  iCoord := iState.ToCoord(2);
+  iLevel.CalculateRotation( iCoord );
+end;
+
+function lua_level_copy_lflags(L: Plua_State): Integer; cdecl;
+var iState   : TDRLLuaState;
+    iLevel   : TLevel;
+    iCF, iCT : TCoord2D;
+begin
+  iState.Init(L);
+  iLevel := iState.ToObject(1) as TLevel;
+  if iState.IsNil(2) then Exit(0);
+  if iState.IsNil(3) then Exit(0);
+  iCF := iState.ToCoord(2);
+  iCT := iState.ToCoord(3);
+  iLevel.SetLightValue( iCT, iLevel.GetLightValue( iCF ) );
+end;
 
 function lua_level_set_raw_deco(L: Plua_State): Integer; cdecl;
 var iState : TDRLLuaState;
@@ -1855,7 +1903,7 @@ begin
   Exit( 1 );
 end;
 
-const lua_level_lib : array[0..19] of luaL_Reg = (
+const lua_level_lib : array[0..21] of luaL_Reg = (
       ( name : 'drop_item';  func : @lua_level_drop_item),
       ( name : 'drop_being'; func : @lua_level_drop_being),
       ( name : 'player';     func : @lua_level_player),
@@ -1870,6 +1918,8 @@ const lua_level_lib : array[0..19] of luaL_Reg = (
       ( name : 'get_raw_style';      func : @lua_level_get_raw_style),
       ( name : 'set_raw_deco';      func : @lua_level_set_raw_deco),
       ( name : 'get_raw_deco';      func : @lua_level_get_raw_deco),
+      ( name : 'fix_rotation';      func : @lua_level_fix_rotation),
+      ( name : 'copy_lflags';        func : @lua_level_copy_lflags),
       ( name : 'damage_tile';func : @lua_level_damage_tile),
       ( name : 'push_item';  func : @lua_level_push_item),
       ( name : 'reset';         func : @lua_level_reset),

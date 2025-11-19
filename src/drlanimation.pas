@@ -135,9 +135,10 @@ TGFXCellAnimation = class(TAnimation)
   procedure OnDraw; override;
   destructor Destroy; override;
 private
-  FSprite : TSprite;
-  FCoord  : TCoord2D;
-  FValue  : Integer;
+  FSprite   : TSprite;
+  FCoord    : TCoord2D;
+  FValue    : Integer;
+  FRotation : Byte;
 end;
 
 TGFXItemAnimation = class(TAnimation)
@@ -477,9 +478,10 @@ end;
 constructor TGFXCellAnimation.Create( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aValue : Integer );
 begin
   inherited Create( aDuration, aDelay, 0 );
-  FCoord := aCoord;
-  FSprite := aSprite;
-  FValue  := aValue;
+  FCoord    := aCoord;
+  FSprite   := aSprite;
+  FValue    := aValue;
+  FRotation := DRL.Level.Rotation[ FCoord ];
 end;
 
 procedure TGFXCellAnimation.OnStart;
@@ -495,6 +497,14 @@ begin
   iSegment := ( FTime * FValue ) div FDuration;
   if ( iSegment <> FValue ) then
     iSegment += Sgn( FValue );
+  if SF_DOORHACK in FSprite.Flags then
+  begin
+    if FRotation > 0 then
+    begin
+      iSegment := Abs( iSegment ) + 4;
+      Include( iSprite.Flags, SF_HIGHSPRITE );
+    end;
+  end;
   if iSprite.SCount > 1 then
   begin
     iSegment := Abs( iSegment );

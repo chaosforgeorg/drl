@@ -56,6 +56,8 @@ type TPlayerView = class( TIOLayer )
   procedure Retain;
   destructor Destroy; override;
 protected
+  function MarkQSlot( aItem : TItem; aValue : Byte ) : Boolean;
+  function QSlotChar( aQSlot : Byte ) : Char;
   procedure Initialize;
   procedure UpdateInventory;
   procedure UpdateEquipment;
@@ -276,50 +278,48 @@ begin
   inherited Destroy;
 end;
 
+function TPlayerView.MarkQSlot( aItem : TItem; aValue : Byte ) : Boolean;
+var i : Integer;
+begin
+  if aItem.isWearable then
+  begin
+    if Player.FQuickSlots[ aValue ].UID = aItem.UID
+      then Player.FQuickSlots[ aValue ].UID := 0
+      else Player.FQuickSlots[ aValue ].UID := aItem.UID;
+    Player.FQuickSlots[ aValue ].ID := '';
+    for i := 1 to 9 do
+      if ( i <> aValue ) and ( Player.FQuickSlots[ i ].UID = aItem.UID ) then
+        Player.FQuickSlots[ i ].UID := 0;
+    ReadQuickslots;
+    Exit( True );
+  end;
+  if aItem.isUsable then
+  begin
+    if Player.FQuickSlots[ aValue ].ID = aItem.ID
+      then Player.FQuickSlots[ aValue ].ID := ''
+      else Player.FQuickSlots[ aValue ].ID := aItem.ID;
+    Player.FQuickSlots[ aValue ].UID := 0;
+    for i := 1 to 9 do
+      if ( i <> aValue ) and ( Player.FQuickSlots[ i ].ID = aItem.ID ) then
+        Player.FQuickSlots[ i ].ID := '';
+    ReadQuickslots;
+    Exit( True );
+  end;
+  Exit( False );
+end;
+
+function TPlayerView.QSlotChar( aQSlot : Byte ) : Char;
+begin
+  if IO.IsGamepad and ( aQSlot < 5 ) and ( aQSlot > 0 ) then
+    Exit( PadQSlotChar[ aQSlot ] );
+  Exit( Chr(Ord('0') + aQSlot ) );
+end;
+
 procedure TPlayerView.UpdateInventory;
 var iEntry    : TItemViewEntry;
     iSelected : Integer;
     iCommand  : Byte;
-  function MarkQSlot( aIndex, aValue : Byte ) : Boolean;
-  var iItem : TItem;
-      i     : Integer;
-  begin
-    if ( aIndex < FInv.Size ) and Assigned( FInv[ aIndex ].Item ) then
-    begin
-      iItem := FInv[ aIndex ].Item;
-      if iItem.isWearable then
-      begin
-        if Player.FQuickSlots[ aValue ].UID = iItem.UID
-          then Player.FQuickSlots[ aValue ].UID := 0
-          else Player.FQuickSlots[ aValue ].UID := iItem.UID;
-        Player.FQuickSlots[ aValue ].ID := '';
-        for i := 1 to 9 do
-          if ( i <> aValue ) and ( Player.FQuickSlots[ i ].UID = iItem.UID ) then
-            Player.FQuickSlots[ i ].UID := 0;
-        ReadQuickslots;
-        Exit( True );
-      end;
-      if iItem.isUsable then
-      begin
-        if Player.FQuickSlots[ aValue ].ID = iItem.ID
-          then Player.FQuickSlots[ aValue ].ID := ''
-          else Player.FQuickSlots[ aValue ].ID := iItem.ID;
-        Player.FQuickSlots[ aValue ].UID := 0;
-        for i := 1 to 9 do
-          if ( i <> aValue ) and ( Player.FQuickSlots[ i ].ID = iItem.ID ) then
-            Player.FQuickSlots[ i ].ID := '';
-        ReadQuickslots;
-        Exit( True );
-      end;
-    end;
-    Exit( False );
-  end;
-  function QSlotChar( aQSlot : Byte ) : Char;
-  begin
-    if IO.IsGamepad and ( aQSlot < 5 ) and ( aQSlot > 0 ) then
-      Exit( PadQSlotChar[ aQSlot ] );
-    Exit( Chr(Ord('0') + iEntry.QSlot ) );
-  end;
+
 begin
   if FInv = nil then ReadInv;
   VTIG_BeginWindow( FITitle, 'inventory', FSize );
@@ -403,15 +403,15 @@ begin
               else DRL.HandleCommand( TCommand.Create( iCommand, FInv[iSelected].Item ) );
           FState := PLAYERVIEW_DONE;
         end;
-        if VTIG_Event( VTIG_IE_1 ) then MarkQSlot( iSelected, 1 );
-        if VTIG_Event( VTIG_IE_2 ) then MarkQSlot( iSelected, 2 );
-        if VTIG_Event( VTIG_IE_3 ) then MarkQSlot( iSelected, 3 );
-        if VTIG_Event( VTIG_IE_4 ) then MarkQSlot( iSelected, 4 );
-        if VTIG_Event( VTIG_IE_5 ) then MarkQSlot( iSelected, 5 );
-        if VTIG_Event( VTIG_IE_6 ) then MarkQSlot( iSelected, 6 );
-        if VTIG_Event( VTIG_IE_7 ) then MarkQSlot( iSelected, 7 );
-        if VTIG_Event( VTIG_IE_8 ) then MarkQSlot( iSelected, 8 );
-        if VTIG_Event( VTIG_IE_9 ) then MarkQSlot( iSelected, 9 );
+        if VTIG_Event( VTIG_IE_1 ) then MarkQSlot( FInv[iSelected].Item, 1 );
+        if VTIG_Event( VTIG_IE_2 ) then MarkQSlot( FInv[iSelected].Item, 2 );
+        if VTIG_Event( VTIG_IE_3 ) then MarkQSlot( FInv[iSelected].Item, 3 );
+        if VTIG_Event( VTIG_IE_4 ) then MarkQSlot( FInv[iSelected].Item, 4 );
+        if VTIG_Event( VTIG_IE_5 ) then MarkQSlot( FInv[iSelected].Item, 5 );
+        if VTIG_Event( VTIG_IE_6 ) then MarkQSlot( FInv[iSelected].Item, 6 );
+        if VTIG_Event( VTIG_IE_7 ) then MarkQSlot( FInv[iSelected].Item, 7 );
+        if VTIG_Event( VTIG_IE_8 ) then MarkQSlot( FInv[iSelected].Item, 8 );
+        if VTIG_Event( VTIG_IE_9 ) then MarkQSlot( FInv[iSelected].Item, 9 );
       end
       else
       begin
@@ -462,7 +462,9 @@ begin
 
       VTIG_BeginGroup( 50 );
         for iEntry in FEq do
-          VTIG_Selectable( iEntry.Name, iEntry.Item <> nil, iEntry.Color );
+           if (iEntry.QSlot <> 0) and (iEntry.Item <> nil)
+            then VTIG_Selectable( '[{!{0}}] {1}',[QSlotChar( iEntry.QSlot ), iEntry.Name], True, iEntry.Color )
+            else VTIG_Selectable( iEntry.Name, iEntry.Item <> nil, iEntry.Color );
       iSelected := VTIG_Selected;
       VTIG_Text( '' );
       if ( iSelected >= 0 ) and Assigned( FEq[iSelected].Item ) then
@@ -480,11 +482,11 @@ begin
     iB := 0;
     iA := 0;
     iR := 42;
-    iK := 53;
+    iK := 42;
     if IO.NarrowMode then
     begin
       iR := 40;
-      iK := 50;
+      iK := 40;
     end;
 
     VTIG_FreeLabel( 'Basic traits',    Point(0, iY) );
@@ -522,9 +524,17 @@ begin
       end;
     end;
 
-     VTIG_FreeLabel( '<{!{$input_ok}}> take off/wear', Point(iK, 19) );
-     VTIG_FreeLabel( '<{!{$input_uiswap}}> swap item',       Point(iK, 20) );
-     VTIG_FreeLabel( '<{!{$input_uidrop}}> drop item', Point(iK, 21) );
+    VTIG_FreeLabel( '<{!{$input_ok}}> take off/wear', Point(iK, 19) );
+    if IO.IsGamepad then
+    begin
+      VTIG_FreeLabel( '<{!LTrigger+DPad}> mark quickslot', Point(iK, 20) );
+      VTIG_FreeLabel( '<{!{$input_uiswap}}> swap item, <{!{$input_uidrop}}> drop item', Point(iK, 21) );
+    end
+    else
+    begin
+      VTIG_FreeLabel( '<{!{$input_uiswap}}> swap item, <{!1-9}> mark quickslot', Point(iK, 20) );
+      VTIG_FreeLabel( '<{!{$input_uidrop}}> drop item', Point(iK, 21) );
+    end;
   VTIG_End('{l<{!{$input_left},{$input_right}}> panels, <{!{$input_up},{$input_down}}> select, <{!{$input_escape}}> exit}');
 
   if (iSelected >= 0) then
@@ -569,15 +579,24 @@ begin
       Exit;
     end
     else
-    if VTIG_Event( VTIG_IE_BACKSPACE ) then
+    if Assigned( FEq[iSelected].Item ) then
     begin
-      if Assigned( FEq[iSelected].Item ) then
-        begin
-          if Cursed then Exit;
-          FState := PLAYERVIEW_CLOSING;
-          DRL.HandleCommand( TCommand.Create( COMMAND_DROP, FEq[iSelected].Item, VTIG_Event( VTIG_IE_SHIFT ) or IO.GetPadRTrigger ) );
-          FState := PLAYERVIEW_DONE;
-        end;
+      if VTIG_Event( VTIG_IE_BACKSPACE ) then
+      begin
+        if Cursed then Exit;
+        FState := PLAYERVIEW_CLOSING;
+        DRL.HandleCommand( TCommand.Create( COMMAND_DROP, FEq[iSelected].Item, VTIG_Event( VTIG_IE_SHIFT ) or IO.GetPadRTrigger ) );
+        FState := PLAYERVIEW_DONE;
+      end;
+      if VTIG_Event( VTIG_IE_1 ) then MarkQSlot( FEq[iSelected].Item, 1 );
+      if VTIG_Event( VTIG_IE_2 ) then MarkQSlot( FEq[iSelected].Item, 2 );
+      if VTIG_Event( VTIG_IE_3 ) then MarkQSlot( FEq[iSelected].Item, 3 );
+      if VTIG_Event( VTIG_IE_4 ) then MarkQSlot( FEq[iSelected].Item, 4 );
+      if VTIG_Event( VTIG_IE_5 ) then MarkQSlot( FEq[iSelected].Item, 5 );
+      if VTIG_Event( VTIG_IE_6 ) then MarkQSlot( FEq[iSelected].Item, 6 );
+      if VTIG_Event( VTIG_IE_7 ) then MarkQSlot( FEq[iSelected].Item, 7 );
+      if VTIG_Event( VTIG_IE_8 ) then MarkQSlot( FEq[iSelected].Item, 8 );
+      if VTIG_Event( VTIG_IE_9 ) then MarkQSlot( FEq[iSelected].Item, 9 );
     end;
   end;
 end;
@@ -722,6 +741,8 @@ begin
           iEntry.QSlot := 0;
           FEq.Push( iEntry );
         end;
+
+  ReadQuickSlots;
 end;
 
 procedure TPlayerView.ReadTraits( aKlass : Byte );
@@ -936,27 +957,44 @@ end;
 procedure TPlayerView.ReadQuickslots;
 var i,s    : Integer;
 begin
-  if FInv.Size = 0 then Exit;
-
-  for i := 0 to FInv.Size - 1 do
-    FInv.Data^[i].QSlot := 0;
-
-  if FInv.Size > 0 then
-  for s := 1 to 9 do
+  if Assigned( FInv ) and ( FInv.Size > 0 ) then
   begin
-    if Player.FQuickSlots[s].UID <> 0 then
+    for i := 0 to FInv.Size - 1 do
+      FInv.Data^[i].QSlot := 0;
+
+    for s := 1 to 9 do
     begin
-      for i := 0 to FInv.Size - 1 do
-        if Assigned( FInv.Data^[i].Item ) then
-          if FInv.Data^[i].Item.UID = Player.FQuickSlots[s].UID then
-            FInv.Data^[i].QSlot := s;
-    end
-    else if Player.FQuickSlots[s].ID <> '' then
+      if Player.FQuickSlots[s].UID <> 0 then
+      begin
+        for i := 0 to FInv.Size - 1 do
+          if Assigned( FInv.Data^[i].Item ) then
+            if FInv.Data^[i].Item.UID = Player.FQuickSlots[s].UID then
+              FInv.Data^[i].QSlot := s;
+      end
+      else if Player.FQuickSlots[s].ID <> '' then
+      begin
+        for i := 0 to FInv.Size - 1 do
+          if Assigned( FInv.Data^[i].Item ) then
+            if FInv.Data^[i].Item.ID = Player.FQuickSlots[s].ID then
+              FInv.Data^[i].QSlot := s;
+      end;
+    end;
+  end;
+
+  if Assigned( FEq ) and ( FEq.Size > 0 ) then
+  begin
+    for i := 0 to FEq.Size - 1 do
+       FEq.Data^[i].QSlot := 0;
+
+    for s := 1 to 9 do
     begin
-      for i := 0 to FInv.Size - 1 do
-        if Assigned( FInv.Data^[i].Item ) then
-          if FInv.Data^[i].Item.ID = Player.FQuickSlots[s].ID then
-            FInv.Data^[i].QSlot := s;
+      if Player.FQuickSlots[s].UID <> 0 then
+      begin
+        for i := 0 to FEq.Size - 1 do
+          if Assigned( FEq.Data^[i].Item ) then
+            if FEq.Data^[i].Item.UID = Player.FQuickSlots[s].UID then
+              FEq.Data^[i].QSlot := s;
+      end
     end;
   end;
 end;

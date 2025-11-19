@@ -1,8 +1,8 @@
 core.declare( "drl", {} )
 core.declare( "core_module", "drl" )
 core.declare( "DEMO", false )
-core.declare( "VERSION_MODULE",      "0.10.4" )
-core.declare( "VERSION_MODULE_SAVE", "0.10.4" )
+core.declare( "VERSION_MODULE",      "0.10.5" )
+core.declare( "VERSION_MODULE_SAVE", "0.10.5" )
 
 require( "drl:generator" )
 require( "drl:generators" )
@@ -110,6 +110,7 @@ function drl.OnLoad()
 	ui.set_style_color( VTIG_FRAME_COLOR, RED )
 	ui.set_style_color( VTIG_FOOTER_COLOR, LIGHTRED )
 	ui.set_style_color( VTIG_SELECTED_TEXT_COLOR, YELLOW )
+	ui.set_style_color( VTIG_SELECTED_UNSELECTED_COLOR, LIGHTRED )
 	ui.set_style_color( VTIG_SCROLL_COLOR, YELLOW )
 
 	if GRAPHICSVERSION then
