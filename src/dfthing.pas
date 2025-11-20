@@ -15,14 +15,15 @@ type String16 = string[16];
 { TThing }
 type TThing = class( TLuaEntityNode )
   constructor Create( const aID : AnsiString );
-  constructor CreateFromStream( Stream : TStream ); override;
+  constructor CreateFromStream( aStream : TStream ); override;
   function PlaySound( const aSoundID : string; aDelay : Integer = 0 ) : Boolean;
   function PlaySound( const aSoundID : string; aPosition : TCoord2D; aDelay : Integer = 0 ) : Boolean;
   function CallHook( aHook : Byte; const aParams : array of Const ) : Boolean; virtual;
   function CallHookCheck( aHook : Byte; const aParams : array of Const ) : Boolean; virtual;
   function CallHookCan( aHook : Byte; const aParams : array of Const ) : Boolean; virtual;
   function GetSprite : TSprite; virtual;
-  procedure WriteToStream( Stream : TStream ); override;
+  procedure WriteToStream( aStream : TStream ); override;
+  destructor Destroy; override;
 protected
   procedure LuaLoad( Table : TLuaTable ); virtual;
 protected
@@ -31,6 +32,7 @@ protected
   FSprite    : TSprite;
   FSoundID   : String16;
   FAnimCount : Word;
+  FPerks     : TPerks;
   {$TYPEINFO ON}
 public
   property SoundID    : String16 read FSoundID          write FSoundID;
@@ -52,12 +54,14 @@ constructor TThing.Create( const aID : AnsiString );
 begin
   inherited Create( aID );
   FAnimCount := 0;
+  FPerks     := nil;
 end;
 
 procedure TThing.LuaLoad(Table: TLuaTable);
 var iColorID : AnsiString;
 begin
   FAnimCount   := 0;
+  FPerks       := nil;
   FGylph.ASCII := Table.getChar('ascii');
   FGylph.Color := Table.getInteger('color');
   FSoundID     := Table.getString('sound_id','');
@@ -117,24 +121,41 @@ begin
   Exit(FSprite);
 end;
 
-procedure TThing.WriteToStream( Stream: TStream );
+procedure TThing.WriteToStream( aStream : TStream );
 begin
-  inherited WriteToStream( Stream );
-  Stream.Write( FSprite,  SizeOf( FSprite ) );
-  Stream.Write( FSoundID, SizeOf( FSoundID ) );
-  Stream.Write( FHP,      SizeOf( FHP ) );
-  Stream.Write( FArmor,   SizeOf( FArmor ) );
+  inherited WriteToStream( aStream );
+  aStream.Write( FSprite,  SizeOf( FSprite ) );
+  aStream.Write( FSoundID, SizeOf( FSoundID ) );
+  aStream.Write( FHP,      SizeOf( FHP ) );
+  aStream.Write( FArmor,   SizeOf( FArmor ) );
+
+  if FPerks <> nil then
+  begin
+    aStream.WriteByte( 1 );
+    FPerks.WriteToStream( aStream );
+  end
+  else
+    aStream.WriteByte( 0 );
 end;
 
-constructor TThing.CreateFromStream( Stream: TStream );
+constructor TThing.CreateFromStream( aStream: TStream );
 begin
-  inherited CreateFromStream( Stream );
-  Stream.Read( FSprite,  SizeOf( FSprite ) );
-  Stream.Read( FSoundID, SizeOf( FSoundID ) );
-  Stream.Read( FHP,      SizeOf( FHP ) );
-  Stream.Read( FArmor,   SizeOf( FArmor ) );
+  inherited CreateFromStream( aStream );
+  aStream.Read( FSprite,  SizeOf( FSprite ) );
+  aStream.Read( FSoundID, SizeOf( FSoundID ) );
+  aStream.Read( FHP,      SizeOf( FHP ) );
+  aStream.Read( FArmor,   SizeOf( FArmor ) );
 
+  FPerks := nil;
+  if aStream.ReadByte > 0 then
+    FPerks := TPerks.CreateFromStream( aStream, Self );
   FAnimCount := 0;
+end;
+
+destructor TThing.Destroy;
+begin
+  FreeAndNil( FPerks );
+  inherited Destroy;
 end;
 
 end.
