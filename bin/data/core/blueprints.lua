@@ -182,6 +182,35 @@ core.register_blueprint "affect"
 	getReloadCostMul = { false, core.TFUNC },
 }
 
+core.register_blueprint "perk"
+{
+	id             = { true,  core.TSTRING },
+	name           = { false, core.TSTRING },
+	color          = { false, core.TNUMBER },
+	color_expire   = { false, core.TNUMBER },
+	status_effect  = { false, core.TNUMBER },
+	status_strength= { false, core.TNUMBER },
+
+	OnAdd          = { false, core.TFUNC },
+	OnTick         = { false, core.TFUNC },
+	OnTick10       = { false, core.TFUNC },
+	OnRemove       = { false, core.TFUNC },
+
+	getDamageBonus   = { false, core.TFUNC },
+	getToHitBonus    = { false, core.TFUNC },
+	getShotsBonus    = { false, core.TFUNC },
+	getFireCostBonus = { false, core.TFUNC },
+	getDefenceBonus  = { false, core.TFUNC },
+	getDodgeBonus    = { false, core.TFUNC },
+	getMoveBonus     = { false, core.TFUNC },
+	getBodyBonus     = { false, core.TFUNC },
+	getResistBonus   = { false, core.TFUNC },
+	getDamageMul     = { false, core.TFUNC },
+	getFireCostMul   = { false, core.TFUNC },
+	getAmmoCostMul   = { false, core.TFUNC },
+	getReloadCostMul = { false, core.TFUNC },
+}
+
 core.register_blueprint "ai"
 {
 	id          = { true,  core.TSTRING },

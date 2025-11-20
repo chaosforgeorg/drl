@@ -7,7 +7,8 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit dfthing;
 interface
-uses SysUtils, Classes, vluaentitynode, vutil, vrltools, vluatable, dfdata, drlhooks;
+uses SysUtils, Classes, vluaentitynode, vutil, vrltools, vluatable,
+     dfdata, drlhooks, drlperk;
 
 type String16 = string[16];
 
