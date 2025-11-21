@@ -458,7 +458,7 @@ end;
 procedure TDRL.PreAction;
 begin
   FLevel.CalculateVision( Player.Position );
-  StatusEffect := Player.Affects.getEffect;
+  StatusEffect := Player.GetPerkEffect;
   IO.PreAction;
   IO.Focus( Player.Position );
   Player.UpdateVisual;

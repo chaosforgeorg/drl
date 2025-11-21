@@ -352,7 +352,7 @@ function being:pick_item_to_mod( mod, filter )
 	return item, true
 end
 
-function being:apply_affect( id, max_duration, resist )
+function being:apply_timed_perk( id, max_duration, resist )
 	if resist and self.resist and self.resist[ resist ] then
 		local rvalue = self.resist[ resist ]
 		if rvalue > 0 then
@@ -362,13 +362,13 @@ function being:apply_affect( id, max_duration, resist )
 			return false
 		end
 	end
-	local current = self:get_affect_time( id )
+	local current = self:get_perk_time( id )
 	if current > 0 then
 		if current < max_duration then
-			self:set_affect( id, max_duration - current )
+			self:add_perk( id, max_duration - current )
 		end
 	else
-		self:set_affect( id, max_duration )
+		self:add_perk( id, max_duration )
 	end
 	return true
 end

@@ -118,11 +118,11 @@ function drl.register_unique_items()
 
 		OnUse = function(self,being)
 			if not being:is_player() then return false end
-			if being:is_affect( "tired" ) then
+			if being:is_perk( "tired" ) then
 				ui.msg("You're too tired to use it now.")
 				return false
 			end;
-			being:set_affect( "tired" )
+			being:add_perk( "tired" )
 			being:play_sound("phasing")
 			ui.msg("You feel yanked in a non-existing direction!")
 			being:phase()
@@ -219,12 +219,12 @@ function drl.register_unique_items()
 		end,
 
 		OnAltFire = function(self,being)
-			if being:is_affect( "tired" ) then
+			if being:is_perk( "tired" ) then
 				ui.msg("You are too tired to invoke the Knife!");
 			else
 				ui.msg("You feel your health drained!");
 				being.hp     = math.max( being.hp - 5, 1 )
-				being:set_affect( "tired" )
+				being:add_perk( "tired" )
 				being.scount = being.scount - 1000
 				for b in level:beings() do
 					if not b:is_player() and b:is_visible() then
@@ -1045,7 +1045,7 @@ function drl.register_unique_items()
 		OnPickupCheck = function (self,being)
 			-- XXX Maybe we should allow Barons of Hell to wield it since they are not really human...
 			if not being:is_player() then return false end
-			if being:is_affect("berserk") and being.eq:empty() then
+			if being:is_perk("berserk") and being.eq:empty() then
 				return true
 			end
 			ui.msg("It's too heavy! No human could ever wield this thing...")
@@ -1053,7 +1053,7 @@ function drl.register_unique_items()
 		end,
 
 		OnAltFire = function( self, being )
-			if being:is_affect( "tired" ) then
+			if being:is_perk( "tired" ) then
 				ui.msg("You're too tired to do that right now!")
 			else
 				local scount = being.scount
@@ -1067,7 +1067,7 @@ function drl.register_unique_items()
 					end
 				end
 				self.usetime = use
-				being:set_affect( "tired" )
+				being:add_perk( "tired" )
 				being.scount = scount - math.max( ( self.usetime * being.firetime * 8 - 5000 ), 8 * being.speed )
 			end
 			return false
@@ -1078,7 +1078,7 @@ function drl.register_unique_items()
 			ui.blink(RED,50)
 			ui.blink(LIGHTRED,50,50)
 			ui.msg("Release the power of the BERSERKER!")
-			being:set_affect( "berserk" )
+			being:add_perk( "berserk" )
 		end,
 
 		OnKill = function (self,being,target)

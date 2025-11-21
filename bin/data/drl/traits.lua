@@ -193,14 +193,14 @@ function drl.register_traits()
 						if self.berserkerlimit > 4 - math.min( math.floor( (player.enemiesinvision + 1) / 2), 3 ) then
 							level:play_sound( "bpack", "powerup", self.position )
 							ui.blink( RED, 50 )
-							if self:is_affect( "berserk" ) then
-								local berserk = self:get_affect_time( "berserk" )
+							if self:is_perk( "berserk" ) then
+								local berserk = self:get_perk_time( "berserk" )
 								if berserk > 0 then
 									local increase = 10 - math.min( math.floor( berserk / 10 ), 9 )
-									self:set_affect( "berserk", increase )
+									self:add_perk( "berserk", increase * 10 )
 								end
 							else
-								self:set_affect( "berserk", 20 )
+								self:add_perk( "berserk", 200 )
 							end
 							ui.msg("You're going berserk!")
 							self.berserkerlimit = 0
@@ -219,7 +219,7 @@ function drl.register_traits()
 		OnReceiveDamage = function ( self, damage, weapon, active )
 			if damage >= math.max( math.floor( self.hpmax / 3 ), 10 ) then
 				ui.msg("That hurt! You're going berserk!")
-				self:set_affect( "berserk", 20 )
+				self:add_perk( "berserk", 200 )
 			end
 		end,
 	}
@@ -690,7 +690,7 @@ function drl.register_traits()
 			local weapon = being.eq.weapon
 			if weapon and weapon.itype == ITEMTYPE_RANGED then
 				if weapon.flags[ IF_NOAMMO ] or ( weapon.ammo > 0 and weapon.ammo > weapon.shotcost ) and (weapon.shots < 3) then
-					if being:is_affect( "running" ) then
+					if being:is_perk( "running" ) then
 						local target = being:get_auto_target()
 						if target then
 							local scount = being.scount

@@ -112,7 +112,7 @@ function drl.register_challenges()
 
 		OnPickup = function(item,being)
 			if not being:is_player() then return end
-			if item.id == "lhglobe" then player:set_affect("berserk",20) end
+			if item.id == "lhglobe" then player:add_perk("berserk",200) end
 		end,
 
 		OnMortem = function ()
@@ -1015,7 +1015,7 @@ function drl.register_challenges()
 				ui.msg("SuperCharge!")
 				ui.blink(LIGHTBLUE,100)
 				player.hp = 2 * player.hpmax
-				player:remove_affect( "tired" )
+				player:remove_perk( "tired" )
 			end
 		end,
 

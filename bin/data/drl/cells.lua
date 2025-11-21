@@ -409,7 +409,7 @@ function drl.register_cells()
 			local damage   = 6
 			if DIFFICULTY == DIFF_EASY then damage = damage / 2 end
 			if being:is_player() then
-				if being:is_affect("running") then damage = damage / 2 end
+				if being:is_perk("running") then damage = damage / 2 end
 				ui.msg("Argh!!! Acid!")
 				if core.game_time() % 3 == 0 then
 					being:play_sound("hit")
@@ -423,8 +423,8 @@ function drl.register_cells()
 			if being.flags[ BF_FLY ] then return false end
 			if being:get_total_resistance( "acid", TARGET_FEET ) == 100 then return false end
 			if being:is_player() then
-				if being:is_affect("inv") then return false end
-				if being:is_affect("enviro") then return false end
+				if being:is_perk("inv") then return false end
+				if being:is_perk("enviro") then return false end
 			end
 			return true
 		end,
@@ -446,7 +446,7 @@ function drl.register_cells()
 			local damage = 12
 			if DIFFICULTY == DIFF_EASY then damage = damage / 2 end
 			if being:is_player() then
-				if being:is_affect("running") then damage = damage / 2 end
+				if being:is_perk("running") then damage = damage / 2 end
 				ui.msg("Argh!!! Lava!")
 				if core.game_time() % 3 == 0 then
 					being:play_sound("hit")
@@ -460,8 +460,8 @@ function drl.register_cells()
 			if being.flags[ BF_FLY ] then return false end
 			if being:get_total_resistance( "fire", TARGET_FEET ) == 100 then return false end
 			if being:is_player() then
-				if being:is_affect("inv") then return false end
-				if being:is_affect("enviro") then return false end
+				if being:is_perk("inv") then return false end
+				if being:is_perk("enviro") then return false end
 			end
 			return true
 		end,
@@ -483,7 +483,7 @@ function drl.register_cells()
 			if not cells.blood.OnHazardQuery( being ) then return end
 			local damage = 12
 			if DIFFICULTY == DIFF_EASY then damage = damage / 2 end
-			if being:is_affect("running") then damage = damage / 2 end
+			if being:is_perk("running") then damage = damage / 2 end
 			ui.msg("Argh!!! Blood!")
 			if core.game_time() % 3 == 0 then
 				being:play_sound("hit")
@@ -496,8 +496,8 @@ function drl.register_cells()
 			if being.flags[ BF_ENVIROSAFE ] then return false end
 			if being.flags[ BF_FLY ] then return false end
 			if being:get_total_resistance( "plasma", TARGET_FEET ) == 100 then return false end
-			if being:is_affect("inv") then return false end
-			if being:is_affect("enviro") then return false end
+			if being:is_perk("inv") then return false end
+			if being:is_perk("enviro") then return false end
 			return true
 		end,
 	}

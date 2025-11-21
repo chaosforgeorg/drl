@@ -71,11 +71,11 @@ function drl.register_exotic_items()
 			if not being:is_player() then return end
 			ui.blink(LIGHTRED,100)
 			-- XXX Should this be given on first pick-up ALWAYS or only when in chain court?
-			being:set_affect( "berserk",40*diff[DIFFICULTY].powerfactor)
+			being:add_perk( "berserk",400*diff[DIFFICULTY].powerfactor)
 			if not being.flags[ BF_NOHEAL ] and being.hp < being.hpmax then
 				being.hp = being.hpmax
 			end
-			being:remove_affect( "tired" )
+			being:remove_perk( "tired" )
 			being:quick_weapon("chainsaw")
 			ui.msg("BLOOD! BLOOD FOR ARMOK, GOD OF BLOOD!")
 		end
@@ -1197,7 +1197,7 @@ function drl.register_exotic_items()
 					level.map[ c ] = "bloodpool"
 					being:play_sound( "gib" )
 					being.hp = math.min( being.hp + 5, being.hpmax * 2 )
-					being:remove_affect( "tired" )
+					being:remove_perk( "tired" )
 				end
 			end
 			return true
@@ -1260,8 +1260,8 @@ function drl.register_exotic_items()
 				end
 			end
 			if count > 0 then
-				being:remove_affect( "tired" )
-				being:set_affect( "berserk", count * 5 )
+				being:remove_perk( "tired" )
+				being:add_perk( "berserk", count * 50 )
 			end
 			return true
 		end,

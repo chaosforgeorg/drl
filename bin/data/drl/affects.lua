@@ -1,19 +1,19 @@
 function drl.register_affects()
 	
-	register_affect "tired"
+	register_perk "tired"
 	{
 		name           = "tired",
 		color          = DARKGRAY,
 		color_expire   = DARKGRAY,
 		
 		OnAdd          = function(self)
-			self:remove_affect( "running" )
+			self:remove_perk( "running" )
 		end,
 		OnRemove       = function(self)
 		end,
 	}
 
-	register_affect "running"
+	register_perk "running"
 	{
 		name           = "running",
 		color          = YELLOW,
@@ -22,10 +22,14 @@ function drl.register_affects()
 		message_done   = "You stop running.",
 
 		OnAdd          = function(self)
-			self:remove_affect( "tired" )
+			self:msg("You start running!")
+			self:remove_perk( "tired" )
 		end,
-		OnRemove       = function(self)
-			self:set_affect( "tired" );
+		OnRemove       = function(self,silent)
+			self:add_perk( "tired" )
+			if not silent then
+				self:msg("You stop running.")
+			end
 		end,
 		getDodgeBonus = function( self )
 			return 20
@@ -44,19 +48,17 @@ function drl.register_affects()
 		end,
 	}
 
-	register_affect "berserk"
+	register_perk "berserk"
 	{
 		name           = "berserk",
 		color          = LIGHTRED,
 		color_expire   = RED,
-		message_init   = "You feel like a killing machine!",
-		message_ending = "You feel your anger slowly wearing off...",
-		message_done   = "You feel more calm.",
 		status_effect  = STATUSRED,
 		status_strength= 5,
 
 		OnAdd          = function(self)
-			self:remove_affect( "running", true )
+			self:msg("You feel like a killing machine!")
+			self:remove_perk( "running", true )
 			self.speed = self.speed + 50
 			self.resist.bullet = (self.resist.bullet or 0) + 50
 			self.resist.melee = (self.resist.melee or 0) + 50
@@ -65,10 +67,13 @@ function drl.register_affects()
 			self.resist.fire = (self.resist.fire or 0) + 50
 			self.resist.plasma = (self.resist.plasma or 0) + 50
 		end,
-		OnUpdate        = function(self)
-			ui.msg("You need to taste blood!")
+		OnTick10         = function(self,time)
+			self:msg("You need to taste blood!")
+			if time == 5 then
+				self:msg("You feel your anger slowly wearing off...")
+			end
 		end,
-		OnRemove       = function(self)
+		OnRemove       = function(self,silent)
 			self.speed = self.speed - 50
 			self.resist.bullet = (self.resist.bullet or 0) - 50
 			self.resist.melee = (self.resist.melee or 0) - 50
@@ -76,6 +81,9 @@ function drl.register_affects()
 			self.resist.acid = (self.resist.acid or 0) - 50
 			self.resist.fire = (self.resist.fire or 0) - 50
 			self.resist.plasma = (self.resist.plasma or 0) - 50
+			if not silent then
+				self:msg("You feel more calm.")
+			end
 		end,
 		getDamageMul = function( self, weapon, is_melee, alt )
 			if ( weapon and weapon.itype == ITEMTYPE_MELEE ) or is_melee then
@@ -85,67 +93,85 @@ function drl.register_affects()
 		end,
 	}
 
-	register_affect "inv"
+	register_perk "inv"
 	{
 		name           = "invulnerable",
 		color          = WHITE,
 		color_expire   = DARKGRAY,
-		message_init   = "You feel invincible!",
-		message_ending = "You feel your invincibility fading...",
-		message_done   = "You feel vulnerable again.",
 		status_effect  = STATUSINVERT,
 		status_strength= 10,
 
 		OnAdd          = function(self)
+			self:msg("You feel invincible!")
 			self.flags[ BF_INV ] = true
 		end,
-		OnUpdate       = function(self)
+		OnTick10       = function(self,time)
 			if self.hp < self.hpmax and not self.flags[ BF_NOHEAL ] then
 				self.hp = self.hpmax
 			end
+			if time == 5 then
+				self:msg("You feel your invincibility slowly wearing off...")
+			end
 		end,
-		OnRemove       = function(self)
+		OnRemove       = function(self,silent)
 			self.flags[ BF_INV ] = false
+			if not silent then
+				self:msg("You feel vulnerable again.")
+			end
 		end,
 	}
 
-	register_affect "enviro"
+	register_perk "enviro"
 	{
 		name           = "enviro",
 		color          = LIGHTGREEN,
 		color_expire   = GREEN,
-		message_init   = "You feel protected!",
-		message_ending = "You feel your protection fading...",
-		message_done   = "You feel less protected.",
 		status_effect  = STATUSGREEN,
 		status_strength= 1,
 
 		OnAdd          = function(self)
+			self:msg("You feel protected!")
 			self.resist.acid = (self.resist.acid or 0) + 25
 			self.resist.fire = (self.resist.fire or 0) + 25
 		end,
 
-		OnRemove       = function(self)
+		OnTick10         = function(self,time)
+			if time == 5 then
+				self:msg("You feel your protection fading...")
+			end
+		end,
+
+		OnRemove       = function(self,silent)
 			self.resist.acid = (self.resist.acid or 0) - 25
 			self.resist.fire = (self.resist.fire or 0) - 25
+			if not silent then
+				self:msg("You feel less protected.")
+			end
 		end,
 	}
 
-	register_affect "light"
+	register_perk "light"
 	{
 		name           = "light",
 		color          = YELLOW,
 		color_expire   = BROWN,
-		message_init   = "You see further!",
-		message_ending = "You feel your enhanced vision fading...",
-		message_done   = "Your vision fades.",
 
 		OnAdd          = function(self)
+			self:msg("You see further!")
 			self.vision = self.vision + 4
 		end,
+		
+		OnTick10         = function(self,time)
+			if time == 5 then
+				self:msg("You feel your enhanced vision fading...")
+			end
+		end,
 
-		OnRemove       = function(self)
+		OnRemove       = function(self,silent)
 			self.vision = self.vision - 4
+			if not silent then
+				self:msg("Your vision fades.")
+			end
 		end,
 	}
 

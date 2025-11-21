@@ -160,7 +160,7 @@ function drl.register_regular_items()
 
 		OnPickup = function(self,being)
 			being:msg("You feel better.")
-			being:remove_affect( "tired" )
+			being:remove_perk( "tired" )
 			local amount = math.floor( 10 * diff[DIFFICULTY].powerfactor * being:get_property( "MEDKIT_BONUS", 1 ) )
 			being.hp = math.min( being.hp +  amount, 2*being.hpmax )
 		end,
@@ -177,11 +177,11 @@ function drl.register_regular_items()
 		type    = ITEMTYPE_POWER,
 
 		OnPickup = function(self,being)
-			being:set_affect("berserk",core.power_duration(40))
+			being:add_perk("berserk",core.power_duration(400))
 			if (not being.flags[ BF_NOHEAL ]) and being.hp < being.hpmax then
 				being.hp = being.hpmax
 			end
-			being:remove_affect( "tired" )
+			being:remove_perk( "tired" )
 		end,
 	}
 
@@ -197,8 +197,8 @@ function drl.register_regular_items()
 		type    = ITEMTYPE_POWER,
 
 		OnPickup = function(self,being)
-			being:set_affect("inv",core.power_duration(50))
-			being:remove_affect( "tired" )
+			being:add_perk("inv",core.power_duration(500))
+			being:remove_perk( "tired" )
 		end,
 	}
 
@@ -218,7 +218,7 @@ function drl.register_regular_items()
 			being:msg("SuperCharge!")
 			ui.blink(LIGHTBLUE,100)
 			being.hp = 2 * being.hpmax
-			being:remove_affect( "tired" )
+			being:remove_perk( "tired" )
 		end,
 	}
 
@@ -235,7 +235,7 @@ function drl.register_regular_items()
 
 		OnPickup = function(self,being)
 			being:msg("You feel like new!")
-			being:remove_affect( "tired" )
+			being:remove_perk( "tired" )
 			local amount = math.floor( 10 * diff[DIFFICULTY].powerfactor * being:get_property( "MEDKIT_BONUS", 1 ) )
 			being.hp = math.min( being.hp + amount, 2*being.hpmax )
 			if being.hp < being.hpmax then
@@ -261,7 +261,7 @@ function drl.register_regular_items()
 			if not being.flags[ BF_NOHEAL ] then
 				being.hp = 2*being.hpmax
 			end
-			being:remove_affect( "tired" )
+			being:remove_perk( "tired" )
 			if being.eq.armor then being.eq.armor:fix() end
 			if being.eq.boots then being.eq.boots:fix() end
 		end,
@@ -332,7 +332,7 @@ function drl.register_regular_items()
 		type    = ITEMTYPE_POWER,
 
 		OnPickup = function(self,being)
-			being:set_affect("light",core.power_duration(60))
+			being:add_perk("light",core.power_duration(600))
 		end,
 	}
 
@@ -859,7 +859,7 @@ function drl.register_regular_items()
 				being:msg("Nothing happens.")
 			else
 				if isPlayer then 
-					being:remove_affect( "tired" )
+					being:remove_perk( "tired" )
 				end
 				local overheal = being:has_property("MEDKIT_OVERHEAL")
 				if being.hp >= being.hpmax * 2 or ( not overheal and being.hp >= being.hpmax ) then
@@ -894,7 +894,7 @@ function drl.register_regular_items()
 				being:msg("Nothing happens.")
 			else
 				if isPlayer then 
-					being:remove_affect( "tired" )
+					being:remove_perk( "tired" )
 				end
 				local overheal = being:has_property("MEDKIT_OVERHEAL")
 				if being.hp >= being.hpmax * 2 or ( (not overheal) and being.hp >= being.hpmax ) then
@@ -980,7 +980,7 @@ function drl.register_regular_items()
 
 		OnUse = function(self,being)
 			if being:is_player() then
-				being:set_affect("enviro",core.power_duration(70))
+				being:add_perk("enviro",core.power_duration(700))
 			end
 			return true
 		end,
@@ -1012,7 +1012,7 @@ function drl.register_regular_items()
 				local floor = level.map[ being.position ]
 				if floor == "acid" or floor == "lava" then
 					-- Added to make it sound less idiotic when invulnerable
-					if not being:is_affect("inv") then
+					if not being:is_perk("inv") then
 						ui.msg('Somehow, in an instant, you feel like an idiot...');
 					end
 					being:nuke(1)
@@ -1740,7 +1740,7 @@ function drl.register_regular_items()
 
 		OnUse = function(self,being)
 			ui.msg("MediTech depot. Proceeding with treatment...")
-			being:remove_affect( "tired" )
+			being:remove_perk( "tired" )
 			self.charges = self.charges - 1
 			local heal = (being.hpmax * diff[DIFFICULTY].powerfactor) / 4 + 2
 			being.hp = math.min( being.hp + heal,being.hpmax )
@@ -1873,7 +1873,7 @@ function drl.register_regular_items()
 		OnUse = function(self,being)
 			if being:is_player() then
 				being:play_sound( "phasing" )
-				being:set_affect("inv",core.power_duration(9))
+				being:add_perk("inv",core.power_duration(90))
 			end
 			return true
 		end,
