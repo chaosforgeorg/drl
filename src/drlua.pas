@@ -116,34 +116,6 @@ begin
   Exit(1);
 end;
 
-function lua_core_register_affect(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
-    mID : Integer;
-begin
-  State.Init(L);
-  if High(Affects) = -1 then SetLength(Affects,MAXAFFECT);
-  mID := State.ToInteger(1);
-  if mID > High(Affects) then
-    raise Exception.Create('Maximum number of registered affects reached!');
-  with Affects[mID] do
-  with LuaSystem.GetTable(['affects',mID]) do
-  try
-    Name       := getString('name');
-    Color      := getInteger('color');
-    Color_exp  := getInteger('color_expire');
-    AffHooks      := [];
-    StatusEff  := TStatusEffect( getInteger('status_effect',0) );
-    StatusStr  := getInteger('status_strength',0);
-    if isFunction('OnUpdate') then Include(AffHooks, AffectHookOnUpdate);
-    if isFunction('OnAdd')    then Include(AffHooks, AffectHookOnAdd);
-    if isFunction('OnRemove') then Include(AffHooks, AffectHookOnRemove);
-  finally
-    Free;
-  end;
-  Affects[mID].Hooks := LoadHooks( ['affects',mID] );
-  Result := 0;
-end;
-
 function lua_core_register_perk(L: Plua_State): Integer; cdecl;
 var iState : TDRLLuaState;
     iID    : Integer;
@@ -500,13 +472,12 @@ const lua_player_data_lib : array[0..4] of luaL_Reg = (
 );
 
 
-const lua_core_lib : array[0..11] of luaL_Reg = (
+const lua_core_lib : array[0..10] of luaL_Reg = (
     ( name : 'add_to_cell_set';func : @lua_core_add_to_cell_set),
     ( name : 'game_time';      func : @lua_core_game_time),
     ( name : 'time_ms';        func : @lua_core_time_ms),
     ( name : 'is_playing';func : @lua_core_is_playing),
     ( name : 'register_cell';   func : @lua_core_register_cell),
-    ( name : 'register_affect'; func : @lua_core_register_affect),
     ( name : 'register_perk';   func : @lua_core_register_perk),
 
     ( name : 'play_music';func : @lua_core_play_music),

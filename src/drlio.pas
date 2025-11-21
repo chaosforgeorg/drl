@@ -855,27 +855,17 @@ begin
     VTIG_FreeLabel( DRL.Level.Name, Point( -2-Length( DRL.Level.Name), iBottom ), iColor );
 
     iP := 0;
-    for i := 1 to MAXAFFECT do
-      if Player.Affects.IsActive(i) then
-      begin
-        if Player.Affects.IsExpiring(i)
-          then iColor := Affects[i].Color_exp
-          else iColor := Affects[i].Color;
-        VTIG_FreeLabel( Affects[i].name, Point( iPos.X+iP+1, iBottom ), iColor );
-        iP += Length( Affects[i].name ) + 1;
-      end;
-
-      iPerks := Player.GetPerkList;
-      if ( iPerks <> nil ) and ( iPerks.Size > 0 ) then
-        for i := 0 to iPerks.Size - 1 do
-          with PerkData[ iPerks[i].ID ] do
-          begin
-            if ( iPerks[i].Time > 0 ) and ( iPerks[i].Time <= 50 )
-              then iColor := ColorExp
-              else iColor := Color;
-            VTIG_FreeLabel( Name, Point( iPos.X+iP+1, iBottom ), iColor );
-            iP += Length( Name ) + 1;
-          end;
+    iPerks := Player.GetPerkList;
+    if ( iPerks <> nil ) and ( iPerks.Size > 0 ) then
+      for i := 0 to iPerks.Size - 1 do
+        with PerkData[ iPerks[i].ID ] do
+        begin
+          if ( iPerks[i].Time > 0 ) and ( iPerks[i].Time <= 50 )
+            then iColor := ColorExp
+            else iColor := Color;
+          VTIG_FreeLabel( Name, Point( iPos.X+iP+1, iBottom ), iColor );
+          iP += Length( Name ) + 1;
+        end;
   end;
 
   iOffset := -2;

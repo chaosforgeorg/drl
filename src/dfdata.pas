@@ -280,21 +280,6 @@ const
 
   ActSoundChance    = 30;
 
-type
-
-  TAffectData = record
-    Name       : Ansistring;
-    Color      : Byte;
-    Color_exp  : Byte;
-    AffHooks   : set of (AffectHookOnAdd,AffectHookOnUpdate,AffectHookOnRemove);
-    Hooks      : TFlags;
-    StatusEff  : TStatusEffect;
-    StatusStr  : DWord;
-  end;
-
-var
-  Affects   : array of TAffectData;
-
 const
 
   StatusEffect  : TStatusEffect = StatusNormal;

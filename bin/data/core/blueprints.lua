@@ -151,37 +151,6 @@ core.register_blueprint "award"
 	levels    = { true,  core.TARRAY("award_level") },
 }
 
-core.register_blueprint "affect"
-{
-	id             = { true,  core.TSTRING },
-	name           = { true,  core.TSTRING },
-	color          = { true,  core.TNUMBER },
-	color_expire   = { true,  core.TNUMBER },
-	message_init   = { false, core.TSTRING },
-	message_ending = { false, core.TSTRING },
-	message_done   = { false, core.TSTRING },
-	status_effect  = { false, core.TNUMBER },
-	status_strength= { false, core.TNUMBER },
-
-	OnAdd          = { false, core.TFUNC },
-	OnUpdate       = { false, core.TFUNC },
-	OnRemove       = { false, core.TFUNC },
-
-	getDamageBonus   = { false, core.TFUNC },
-	getToHitBonus    = { false, core.TFUNC },
-	getShotsBonus    = { false, core.TFUNC },
-	getFireCostBonus = { false, core.TFUNC },
-	getDefenceBonus  = { false, core.TFUNC },
-	getDodgeBonus    = { false, core.TFUNC },
-	getMoveBonus     = { false, core.TFUNC },
-	getBodyBonus     = { false, core.TFUNC },
-	getResistBonus   = { false, core.TFUNC },
-	getDamageMul     = { false, core.TFUNC },
-	getFireCostMul   = { false, core.TFUNC },
-	getAmmoCostMul   = { false, core.TFUNC },
-	getReloadCostMul = { false, core.TFUNC },
-}
-
 core.register_blueprint "perk"
 {
 	id             = { true,  core.TSTRING },

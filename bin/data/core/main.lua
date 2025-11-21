@@ -80,7 +80,6 @@ end
 register_difficulty = core.register_storage( "diff", "difficulty" )
 register_medal      = core.register_storage( "medals", "medal" )
 register_badge      = core.register_storage( "badges", "badge" )
-register_affect     = core.register_storage( "affects", "affect", function (a) core.register_affect( a.nid ) end )
 register_perk       = core.register_storage( "perks", "perk", function (a) core.register_perk( a.nid ) end )
 register_trait      = core.register_storage( "traits", "trait" )
 register_ai         = core.register_storage( "ais", "ai" )

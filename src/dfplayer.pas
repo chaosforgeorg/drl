@@ -8,7 +8,7 @@ unit dfplayer;
 interface
 uses classes, sysutils,
      vuielement,vpath, vutil, vrltools, vuitypes,
-     dfbeing, dfhof, dfdata, dfitem, dfaffect,
+     dfbeing, dfhof, dfdata, dfitem,
      drltraits, drlkeybindings, drlstatistics, drlmultimove;
 
 
@@ -308,7 +308,6 @@ begin
   if UIDs[ iThisUID ] = nil then Exit( False );
 
   MasterDodge := False;
-  FAffects.OnUpdate;
   if DRL.State <> DSPlaying then Exit( False );
   Inv.OnUpdate;
   FLastPos := FPosition;
