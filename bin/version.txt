@@ -1,5 +1,6 @@
 0.10.6
 [mod] -- GJ#228: affects timing now are based on ticks not turns
+[mod] -- GJ#228: berserk effect times halved to balance out the tick change
 
 0.10.5
 [new] -- GJ#225: you can assign quickslots directly from equipment screen

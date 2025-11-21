@@ -197,10 +197,10 @@ function drl.register_traits()
 								local berserk = self:get_perk_time( "berserk" )
 								if berserk > 0 then
 									local increase = 10 - math.min( math.floor( berserk / 10 ), 9 )
-									self:add_perk( "berserk", increase * 10 )
+									self:add_perk( "berserk", increase * 5 )
 								end
 							else
-								self:add_perk( "berserk", 200 )
+								self:add_perk( "berserk", 100 )
 							end
 							ui.msg("You're going berserk!")
 							self.berserkerlimit = 0
@@ -219,7 +219,7 @@ function drl.register_traits()
 		OnReceiveDamage = function ( self, damage, weapon, active )
 			if damage >= math.max( math.floor( self.hpmax / 3 ), 10 ) then
 				ui.msg("That hurt! You're going berserk!")
-				self:add_perk( "berserk", 200 )
+				self:add_perk( "berserk", 100 )
 			end
 		end,
 	}

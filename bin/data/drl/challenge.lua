@@ -112,7 +112,7 @@ function drl.register_challenges()
 
 		OnPickup = function(item,being)
 			if not being:is_player() then return end
-			if item.id == "lhglobe" then player:add_perk("berserk",200) end
+			if item.id == "lhglobe" then player:add_perk("berserk",100) end
 		end,
 
 		OnMortem = function ()

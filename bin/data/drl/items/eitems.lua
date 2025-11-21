@@ -71,7 +71,7 @@ function drl.register_exotic_items()
 			if not being:is_player() then return end
 			ui.blink(LIGHTRED,100)
 			-- XXX Should this be given on first pick-up ALWAYS or only when in chain court?
-			being:add_perk( "berserk",400*diff[DIFFICULTY].powerfactor)
+			being:add_perk( "berserk",200*diff[DIFFICULTY].powerfactor)
 			if not being.flags[ BF_NOHEAL ] and being.hp < being.hpmax then
 				being.hp = being.hpmax
 			end
@@ -1261,7 +1261,7 @@ function drl.register_exotic_items()
 			end
 			if count > 0 then
 				being:remove_perk( "tired" )
-				being:add_perk( "berserk", count * 50 )
+				being:add_perk( "berserk", count * 30 )
 			end
 			return true
 		end,

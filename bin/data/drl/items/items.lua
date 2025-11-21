@@ -177,7 +177,7 @@ function drl.register_regular_items()
 		type    = ITEMTYPE_POWER,
 
 		OnPickup = function(self,being)
-			being:add_perk("berserk",core.power_duration(400))
+			being:add_perk("berserk",core.power_duration(200))
 			if (not being.flags[ BF_NOHEAL ]) and being.hp < being.hpmax then
 				being.hp = being.hpmax
 			end
