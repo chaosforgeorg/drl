@@ -62,6 +62,7 @@ type TPlayer = class(TBeing)
   procedure ExamineItem;
   procedure NextLevelIndex;
   function GetSprite: TSprite; override;
+  function GetPerkEffect : TStatusEffect;
 private
   FLevelIndex     : Integer;
   FExp            : LongInt;
@@ -104,7 +105,7 @@ implementation
 uses math, vuid, variants, vioevent, vgenerics,
      vnode, vcolor, vdebug, vluasystem, vluastate, vtig,
      dfmap, dflevel,
-     drlhooks, drlio, drlspritemap, drlbase,
+     drlhooks, drlio, drlspritemap, drlbase, drlperk,
      drlua, drlinventory, drlplayerview, drlhudviews;
 
 constructor TPlayer.Create;
@@ -309,7 +310,7 @@ begin
   MasterDodge := False;
   FAffects.OnUpdate;
   if DRL.State <> DSPlaying then Exit( False );
-  Inv.EqTick;
+  Inv.OnUpdate;
   FLastPos := FPosition;
   FMeleeAttack := False;
   Exit( True );
@@ -451,6 +452,23 @@ function TPlayer.GetSprite : TSprite;
 begin
   Exit(FCSprite);
 end;
+
+function TPlayer.GetPerkEffect : TStatusEffect;
+var iCount    : DWord;
+    iStrength : DWord;
+begin
+  GetPerkEffect := StatusNormal;
+  if ( FPerks = nil ) or ( FPerks.List.Size = 0 ) then Exit;
+  iStrength     := 0;
+  for iCount := 0 to FPerks.List.Size - 1 do
+    with PerkData[FPerks.List[iCount].ID] do
+      if StatusStr > iStrength then
+      begin
+        GetPerkEffect := StatusEff;
+        iStrength     := StatusStr;
+      end;
+end;
+
 
 // pieczarki oliwki szynka kielbasa peperoni motzarella //
 

@@ -572,6 +572,7 @@ begin
   TNode.RegisterLuaAPI( 'game_object' );
 
   TLuaEntityNode.RegisterLuaAPI( 'thing' );
+  TThing.RegisterLuaAPI();
 
   TItem.RegisterLuaAPI();
   TBeing.RegisterLuaAPI();

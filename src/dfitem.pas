@@ -50,7 +50,7 @@ TItem  = class( TThing )
     function    canFire : Boolean;
     function MenuColor : byte;
     procedure RechargeReset;
-    procedure Tick( Owner : TThing );
+    procedure OnUpdate( Owner : TThing );
     function Preposition( const Item : AnsiString ) : string;
     class function Compare( a, b : TItem ) : Boolean; reintroduce;
     class procedure RegisterLuaAPI();
@@ -615,7 +615,7 @@ begin
   Exit( True );
 end;
 
-procedure TItem.Tick( Owner : TThing );
+procedure TItem.OnUpdate( Owner : TThing );
 var Being : TBeing;
 begin 
   if Hook_OnEquipTick in FHooks then

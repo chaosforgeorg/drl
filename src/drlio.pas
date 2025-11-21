@@ -187,7 +187,7 @@ implementation
 uses math, video, dateutils, variants,
      vsound, vluasystem, vuid, vlog, vdebug, vuiconsole, vmath,
      vsdlio, vglconsole, vtig, vtigio, vvector,
-     dflevel, dfplayer, dfitem, dfhof,
+     dflevel, dfplayer, dfitem, dfhof, drlperk,
      drlconfiguration, drlbase, drlmoreview, drlchoiceview, drlua, drlmodulechoiceview,
      drlhudviews, drlplotview;
 
@@ -737,6 +737,7 @@ var iCon        : TUIConsole;
     iCurrent    : DWord;
     iOffset     : Integer;
     iBoss       : TBeing;
+    iPerks      : TPerkList;
 
   function ArmorColor( aValue : Integer ) : TUIColor;
   begin
@@ -863,6 +864,18 @@ begin
         VTIG_FreeLabel( Affects[i].name, Point( iPos.X+iP+1, iBottom ), iColor );
         iP += Length( Affects[i].name ) + 1;
       end;
+
+      iPerks := Player.GetPerkList;
+      if ( iPerks <> nil ) and ( iPerks.Size > 0 ) then
+        for i := 0 to iPerks.Size - 1 do
+          with PerkData[ iPerks[i].ID ] do
+          begin
+            if ( iPerks[i].Time > 0 ) and ( iPerks[i].Time <= 50 )
+              then iColor := ColorExp
+              else iColor := Color;
+            VTIG_FreeLabel( Name, Point( iPos.X+iP+1, iBottom ), iColor );
+            iP += Length( Name ) + 1;
+          end;
   end;
 
   iOffset := -2;

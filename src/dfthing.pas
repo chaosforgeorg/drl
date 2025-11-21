@@ -21,9 +21,14 @@ type TThing = class( TLuaEntityNode )
   function CallHook( aHook : Byte; const aParams : array of Const ) : Boolean; virtual;
   function CallHookCheck( aHook : Byte; const aParams : array of Const ) : Boolean; virtual;
   function CallHookCan( aHook : Byte; const aParams : array of Const ) : Boolean; virtual;
+  function GetBonus( aHook : Byte; const aParams : array of Const ) : Integer; virtual;
+  function GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single; virtual;
   function GetSprite : TSprite; virtual;
+  function GetPerkList : TPerkList;
+  procedure Tick; virtual;
   procedure WriteToStream( aStream : TStream ); override;
   destructor Destroy; override;
+  class procedure RegisterLuaAPI();
 protected
   procedure LuaLoad( Table : TLuaTable ); virtual;
 protected
@@ -48,7 +53,7 @@ implementation
 
 uses typinfo, variants,
      vluasystem, vdebug,
-     drlbase, drlio;
+     drlbase, drlio, drlua;
 
 constructor TThing.Create( const aID : AnsiString );
 begin
@@ -116,9 +121,33 @@ begin
   Exit( False );
 end;
 
+function TThing.GetBonus( aHook : Byte; const aParams : array of Const ) : Integer;
+begin
+  GetBonus := 0;
+  if FPerks <> nil then GetBonus += FPerks.GetBonus( aHook, aParams );
+end;
+
+function TThing.GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single;
+begin
+  GetBonusMul := 1.0;
+  if FPerks <> nil then GetBonusMul := FPerks.GetBonusMul( aHook, aParams );
+end;
+
 function TThing.GetSprite: TSprite;
 begin
   Exit(FSprite);
+end;
+
+function TThing.GetPerkList : TPerkList;
+begin
+  if FPerks = nil then Exit( nil );
+  Exit( FPerks.List );
+end;
+
+procedure TThing.Tick;
+begin
+  if FPerks <> nil then
+    FPerks.OnTick;
 end;
 
 procedure TThing.WriteToStream( aStream : TStream );
@@ -156,6 +185,65 @@ destructor TThing.Destroy;
 begin
   FreeAndNil( FPerks );
   inherited Destroy;
+end;
+
+function lua_thing_set_perk(L: Plua_State): Integer; cdecl;
+var iState : TDRLLuaState;
+    iThing : TThing;
+begin
+  iState.Init(L);
+  iThing := iState.ToObject(1) as TThing;
+  if iThing = nil then Exit( 0 );
+  if iThing.FPerks = nil then iThing.FPerks := TPerks.Create( iThing );
+  iThing.FPerks.Add( iState.ToId(2), iState.ToInteger(3,-1) );
+  Result := 0;
+end;
+
+function lua_thing_get_perk_time(L: Plua_State): Integer; cdecl;
+var iState : TDRLLuaState;
+    iThing : TThing;
+begin
+  iState.Init(L);
+  iThing := iState.ToObject(1) as TThing;
+  if iThing.FPerks <> nil
+    then iState.Push( iThing.FPerks.getTime( iState.ToId(2) ) )
+    else iState.Push( 0 );
+  Result := 1;
+end;
+
+function lua_thing_remove_perk(L: Plua_State): Integer; cdecl;
+var iState : TDRLLuaState;
+    iThing : TThing;
+begin
+  iState.Init(L);
+  iThing := iState.ToObject(1) as TThing;
+  if iThing.FPerks <> nil then
+    iThing.FPerks.Remove( iState.ToId(2), iState.ToBoolean( 3, False ) );
+  Result := 0;
+end;
+
+function lua_thing_is_perk(L: Plua_State): Integer; cdecl;
+var iState : TDRLLuaState;
+    iThing : TThing;
+begin
+  iState.Init(L);
+  iThing := iState.ToObject(1) as TThing;
+  iState.Push( ( iThing.FPerks <> nil ) and ( iThing.FPerks.IsActive( iState.ToId( 2 ) ) ) );
+  Result := 1;
+end;
+
+
+const lua_thing_lib : array[0..4] of luaL_Reg = (
+  ( name : 'add_perk';      func : @lua_thing_set_perk),
+  ( name : 'get_perk_time'; func : @lua_thing_get_perk_time),
+  ( name : 'remove_perk';   func : @lua_thing_remove_perk),
+  ( name : 'is_perk';       func : @lua_thing_is_perk),
+  ( name : nil;             func : nil; )
+);
+
+class procedure TThing.RegisterLuaAPI();
+begin
+  LuaSystem.Register( 'thing', lua_thing_lib );
 end;
 
 end.

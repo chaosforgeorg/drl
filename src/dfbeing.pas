@@ -33,7 +33,7 @@ TBeing = class(TThing,IPathQuery)
     procedure WriteToStream( Stream: TStream ); override;
     procedure Initialize;
     function GetName( known : boolean ) : string;
-    procedure Tick;
+    procedure Tick; override;
     procedure Action; virtual;
     procedure HandlePostMove; virtual;
     procedure HandlePostDisplace;
@@ -54,8 +54,8 @@ TBeing = class(TThing,IPathQuery)
     function  isActive : boolean;
     function  WoundStatus : string;
     function  IsPlayer : Boolean;
-    function GetBonus( aHook : Byte; const aParams : array of Const ) : Integer; virtual;
-    function GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single; virtual;
+    function GetBonus( aHook : Byte; const aParams : array of Const ) : Integer; override;
+    function GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single; override;
     procedure BloodFloor;
     procedure Knockback( aDir : TDirection; aStrength : Single );
     destructor Destroy; override;
@@ -517,14 +517,16 @@ end;
 
 function TBeing.GetBonus( aHook : Byte; const aParams : array of Const ) : Integer;
 begin
-  GetBonus := FAffects.GetBonus( aHook, aParams );
+  GetBonus := inherited GetBonus( aHook, aParams );
+  GetBonus += FAffects.GetBonus( aHook, aParams );
   if aHook in FHooks then
     GetBonus += LuaSystem.ProtectedRunHook( Self, HookNames[ aHook ], aParams );
 end;
 
 function TBeing.GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single;
 begin
-  GetBonusMul    := FAffects.GetBonusMul( aHook, aParams );
+  GetBonusMul := inherited GetBonusMul( aHook, aParams );
+  GetBonusMul *= FAffects.GetBonusMul( aHook, aParams );
   if aHook in FHooks then
     GetBonusMul *= LuaSystem.ProtectedRunHook( Self, HookNames[ aHook ], aParams );
 end;
@@ -1519,6 +1521,9 @@ end;
 
 procedure TBeing.Tick;
 begin
+  inherited Tick;
+  FInv.Tick;
+
   if ( FHP * 100 ) > Integer( FHPMax * FHPDecayMax ) then
     if FHP > 1 then
       if ( Player.Statistics.GameTime mod 50 = 0 ) then
