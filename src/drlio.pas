@@ -18,6 +18,7 @@ const TIG_EV_NONE      = 0;
       TIG_EV_CHARACTER = 4;
       TIG_EV_TRAITS    = 5;
       TIG_EV_MORE      = 6;
+      TIG_EV_MORESELF  = 7;
       //TIG_EV_QUICK_0   = 10;
       //TIG_EV_QUICK_1   = 11;
       //TIG_EV_QUICK_2   = 12;
@@ -486,6 +487,7 @@ begin
         INPUT_TRAITS     : VTIG_GetIOState.EventState.SetState( TIG_EV_TRAITS,    aEvent.Key.Pressed );
         INPUT_PLAYERINFO : VTIG_GetIOState.EventState.SetState( TIG_EV_CHARACTER, aEvent.Key.Pressed );
         INPUT_MORE       : VTIG_GetIOState.EventState.SetState( TIG_EV_MORE,      aEvent.Key.Pressed );
+        INPUT_MORESELF   : VTIG_GetIOState.EventState.SetState( TIG_EV_MORE,      aEvent.Key.Pressed );
       end;
     end;
   end;

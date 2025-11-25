@@ -1042,8 +1042,12 @@ begin
   begin // Move target mode
     if IO.GetPadLDir.NotZero then
       Exit( MoveTargetEvent( FTargeting.List.Current + IO.GetPadLDir ) );
-    if (FTargeting.List.Current <> Player.Position) and (Level.Being[FTargeting.List.Current] <> nil) then
+    if ( not IO.GetPadLTrigger ) and (FTargeting.List.Current <> Player.Position) and (Level.Being[FTargeting.List.Current] <> nil) then
+    begin
       IO.FullLook( Level.Being[FTargeting.List.Current] );
+      Exit( False );
+    end;
+    IO.FullLook( Player );
     Exit( False );
   end;
 
@@ -1171,6 +1175,7 @@ begin
       INPUT_EQUIPMENT  : begin FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_EQUIPMENT ) ); Exit; end;
       INPUT_ASSEMBLIES : begin IO.PushLayer( TAssemblyView.Create ); Exit; end;
       INPUT_MORE       : begin IO.FullLook( Level.Being[FTargeting.List.Current] ); Exit; end;
+      INPUT_MORESELF   : begin IO.FullLook( Player ); Exit; end;
       INPUT_LEGACYUSE  : begin FPlayerView := IO.PushLayer( TPlayerView.CreateCommand( COMMAND_USE ) ); Exit; end;
       INPUT_LEGACYDROP : begin FPlayerView := IO.PushLayer( TPlayerView.CreateCommand( COMMAND_DROP ) ); Exit; end;
       INPUT_UNLOAD     : begin HandleUnloadCommand( nil ); Exit; end;

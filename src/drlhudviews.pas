@@ -158,6 +158,12 @@ begin
   if (iInput = INPUT_TOGGLEGRID) and GraphicsVersion then SpriteMap.ToggleGrid;
   if iInput in [ INPUT_MMOVE, INPUT_MRIGHT, INPUT_MLEFT ] then FTarget := IO.MTarget;
   iLevel := DRL.Level;
+  if iInput = INPUT_MORESELF then
+  begin
+    IO.FullLook( Player );
+    UpdateTarget;
+    Exit( True );
+  end;
   if iInput <> INPUT_MORE then
   begin
     iDir := InputDirection( iInput );
@@ -404,6 +410,13 @@ begin
     UpdateTarget;
   end;
 
+  if iInput = INPUT_MORESELF then
+  begin
+    with DRL.Level do
+      IO.FullLook( Player );
+    UpdateTarget;
+  end;
+
   if ( iInput in [ INPUT_ACTION, INPUT_OK, INPUT_FIRE, INPUT_ALTFIRE, INPUT_TARGET, INPUT_ALTTARGET, INPUT_MLEFT ] ) then
     HandleFire;
 
@@ -414,16 +427,21 @@ function TTargetModeView.HandleEvent( const aEvent : TIOEvent ) : Boolean;
 begin
   if aEvent.EType <> VEVENT_PADDOWN then Exit( True );
   case aEvent.Pad.Button of
-    VPAD_BUTTON_A : if IO.GetPadLDir.NotZero then
-      MoveTarget( FTarget + IO.GetPadLDir );
+    VPAD_BUTTON_A :
+      if IO.GetPadLDir.NotZero
+        then MoveTarget( FTarget + IO.GetPadLDir )
+        else begin
+          with DRL.Level do
+          begin
+            if IO.GetPadLTrigger
+              then IO.FullLook( Player )
+              else if Being[FTarget] <> nil then
+                IO.FullLook( Being[FTarget] );
+          end;
+          UpdateTarget;
+          Exit( True );
+        end;
     VPAD_BUTTON_X : HandleFire;
-    VPAD_BUTTON_Y : begin
-      with DRL.Level do
-         if Being[FTarget] <> nil then
-           IO.FullLook( Being[FTarget] );
-      UpdateTarget;
-      Exit( True );
-    end;
     VPAD_BUTTON_RIGHTSHOULDER : begin
       FTarget := FTargets.Next;
       UpdateTarget;
