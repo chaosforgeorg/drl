@@ -22,12 +22,12 @@ protected
   FBeing    : TBeing;
   FDesc     : Ansistring;
   FASCII    : Ansistring;
-  FTexts    : array[0..5] of TStringGArray;
+  FTexts    : array[0..6] of TStringGArray;
 end;
 
 implementation
 
-uses sysutils, vluasystem, vtig, dfplayer, dfitem, drlbase;
+uses sysutils, vluasystem, vtig, dfplayer, dfitem, drlbase, drlperk;
 
 constructor TMoreView.Create( aBeing : TBeing );
 var i : Integer;
@@ -55,13 +55,15 @@ end;
 procedure TMoreView.ReadTexts;
 var iTot, iTor : Integer;
     iRes       : TResistance;
-  procedure DescribeItem( aItem : TItem; var aStr : TStringGArray );
+    iCount, i  : Integer;
+    iPerks     : TPerkList;
+  procedure DescribeItem( aItem : TItem );
   var iBox    : Ansistring;
       iPos, i : Integer;
   begin
     if aItem = nil then Exit;
-    aStr := TStringGArray.Create;
-    aStr.Push( '{!'+aItem.Description+'}' );
+    FTexts[iCount] := TStringGArray.Create;
+    FTexts[iCount].Push( '{!'+aItem.Description+'}' );
     iBox := aItem.DescriptionBox( True );
     iPos := 1;
     if Length( iBox ) > 0 then
@@ -69,11 +71,12 @@ var iTot, iTor : Integer;
       for i := 1 to Length( iBox ) do
         if iBox[i] = #10 then
         begin
-          aStr.Push( Copy(iBox, iPos, i - iPos) );
+          FTexts[iCount].Push( Copy(iBox, iPos, i - iPos) );
           iPos := i + 1;
         end;
-      if iPos <= Length( iBox ) then aStr.Push( Copy( iBox, iPos, Length( iBox ) - iPos + 1) );
+      if iPos <= Length( iBox ) then FTexts[iCount].Push( Copy( iBox, iPos, Length( iBox ) - iPos + 1) );
     end;
+    Inc( iCount );
   end;
 
 begin
@@ -98,10 +101,46 @@ begin
         else FTexts[1].Push( Format( Padded(ResNames[iRes],7)+' : {!%d%%}',[ iTot ] ) );
     end;
   end;
+  iCount := 2;
+  iPerks := FBeing.GetPerkList;
+  if ( iPerks <> nil ) and ( iPerks.Size > 0 ) then
+  begin
+    for i := 0 to iPerks.Size - 1 do
+      with PerkData[ iPerks[i].ID ] do
+      if ( Desc <> '' ) and ( ColorExp <> 0 ) then
+      begin
+        if FTexts[iCount] = nil then
+        begin
+          FTexts[iCount] :=  TStringGArray.Create;
+          FTexts[iCount].Push( '{!Status effects}' );
+        end;
+        if iPerks[i].Time > 0
+          then FTexts[iCount].Push( '  {' + VTIG_ColorChar( Color ) + Name + '} ({!' + FloatToStr( iPerks[i].Time / 10 ) + '}s) - ' + Desc )
+          else FTexts[iCount].Push( '  {' + VTIG_ColorChar( Color ) + Name + '} - ' + Desc );
+      end;
+    if FTexts[iCount] <> nil then Inc( iCount );
+  end;
+
+  if ( iPerks <> nil ) and ( iPerks.Size > 0 ) then
+  begin
+    for i := 0 to iPerks.Size - 1 do
+      with PerkData[ iPerks[i].ID ] do
+      if ( Desc <> '' ) and ( ColorExp = 0 ) then
+      begin
+        if FTexts[iCount] = nil then
+        begin
+          FTexts[iCount] :=  TStringGArray.Create;
+          FTexts[iCount].Push( '{!Permanents}' );
+        end;
+        FTexts[iCount].Push( '  {' + VTIG_ColorChar( Color ) + Name + '} - ' + Desc );
+      end;
+    if FTexts[iCount] <> nil then Inc( iCount );
+  end;
+
   if FBeing.Inv <> nil then
   begin
-    DescribeItem( FBeing.Inv.Slot[ efWeapon ], FTexts[2] );
-    DescribeItem( FBeing.Inv.Slot[ efTorso ],  FTexts[3] );
+    DescribeItem( FBeing.Inv.Slot[ efWeapon ] );
+    DescribeItem( FBeing.Inv.Slot[ efTorso ] );
   end;
 end;
 
@@ -143,18 +182,13 @@ begin
       for iString in FTexts[1] do
         VTIG_Text( iString );
     end;
-    if FTexts[2] <> nil then
-    begin
-      VTIG_Ruler;
-      for iString in FTexts[2] do
-        VTIG_Text( iString );
-    end;
-    if FTexts[3] <> nil then
-    begin
-      VTIG_Ruler;
-      for iString in FTexts[3] do
-        VTIG_Text( iString );
-    end;
+    for iCount := 2 to High( FTexts ) do
+      if FTexts[iCount] <> nil then
+      begin
+        VTIG_Ruler;
+        for iString in FTexts[iCount] do
+          VTIG_Text( iString );
+      end;
     VTIG_Scrollbar;
     VTIG_End('{l<{!{$input_up},{$input_down}}> scroll, <{!{$input_ok},{$input_escape}}> return}');
   end;

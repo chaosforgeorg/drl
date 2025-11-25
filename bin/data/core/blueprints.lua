@@ -155,6 +155,7 @@ core.register_blueprint "perk"
 {
 	id             = { true,  core.TSTRING },
 	name           = { false, core.TSTRING },
+	desc 		   = { false, core.TSTRING, "" },
 	color          = { false, core.TNUMBER },
 	color_expire   = { false, core.TNUMBER },
 	status_effect  = { false, core.TNUMBER },
