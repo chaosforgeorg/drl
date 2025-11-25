@@ -568,7 +568,7 @@ end;
 
 function Seconds(Value : Integer) : string;
 begin
-  Seconds := FloatToStrF(Value/10.,ffFixed,0,1)+'s';
+  Seconds := FloatToStrF(Value/10.0,ffFixed,0,1)+'s';
 end;
 
 function ItemTypeSetFromFlags( const aFlags: TFlags ): TItemTypeSet;

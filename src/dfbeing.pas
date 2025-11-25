@@ -2468,14 +2468,14 @@ var iModifier  : Single;
     iMoveBonus : Integer;
     iSlot      : TEqSlot;
 begin
-  iModifier := FTimes.Move/100.;
+  iModifier := FTimes.Move/100.0;
   for iSlot in TEqSlot do
     if Inv.Slot[iSlot] <> nil then
       with Inv.Slot[iSlot] do
         if MoveMod <> 0 then
-          iModifier *= (100-MoveMod)/100.;
+          iModifier *= (100-MoveMod)/100.0;
   iMoveBonus := GetBonus( Hook_getMoveBonus, [] );
-  if iMoveBonus <> 0 then iModifier *= (100-iMoveBonus)/100.;
+  if iMoveBonus <> 0 then iModifier *= (100-iMoveBonus)/100.0;
   if not ( BF_FLY in FFlags ) then
     with Cells[ TLevel(Parent).getCell(FPosition) ] do
       iModifier *= MoveCost;
@@ -2491,9 +2491,9 @@ var iModifier : Single;
     if aIsMelee and ( aWeapon <> nil ) and ( not aWeapon.isMelee ) then aWeapon := nil;
     iModifier := 10;
     if aWeapon <> nil then iModifier := aWeapon.UseTime;
-    iModifier *= FTimes.Fire/1000.;
+    iModifier *= FTimes.Fire/1000.0;
     iBonus    := GetBonus( Hook_getFireCostBonus, [ aWeapon, aIsMelee, Integer( aAltFire ) ] );
-    if iBonus <> 0 then iModifier *= Max( (100.-iBonus)/100, 0.1 );
+    if iBonus <> 0 then iModifier *= Max( (100.0-iBonus)/100, 0.1 );
     if iModifier < 0.1 then iModifier := 0.1;
     iModifier *= GetBonusMul( Hook_getFireCostMul, [ aWeapon, aIsMelee, Integer( aAltFire ) ] );
     if (aAltFire = ALT_AIMED) then iModifier *= 2;
@@ -2513,7 +2513,7 @@ var iModifier : Real;
 begin
   if (aItem = nil) or (aItem.isMelee) then Exit(1000);
   iModifier := aItem.ReloadTime/10.0;
-  iModifier *= FTimes.Reload/100.;
+  iModifier *= FTimes.Reload/100.0;
   iModifier *= GetBonusMul( Hook_getReloadCostMul, [ aItem ] );
 
   getReloadCost := Round(ActionCostReload*iModifier);
@@ -2551,7 +2551,7 @@ begin
     if Inv.Slot[iSlot] <> nil then
       with Inv.Slot[iSlot] do
         if KnockMod <> 0 then
-          iModifier *= (100 + KnockMod) / 100. ;
+          iModifier *= (100 + KnockMod) / 100.0 ;
   getKnockMod := Round(iModifier) ;
 end;
 
