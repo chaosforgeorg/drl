@@ -18,6 +18,8 @@
   {!SHIFT-f} -- Alternative Fire of equipped weapon (if available)
   {!r}       -- Reload equipped weapon
   {!SHIFT-r} -- Special reload weapon (depending on weapon)
+  {!m}       -- more info about targeted enemy
+  {!SHIFT-m} -- more info about self
   {!z}       -- Swap weapon (with prepared weapon)
   {!w}       -- Wait
   {!i}       -- Show inventory
