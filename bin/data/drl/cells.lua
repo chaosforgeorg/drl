@@ -32,7 +32,6 @@ function drl.register_cells()
 		asciilow   = '.',
 		color 	   = DARKGRAY,
 		set        = CELLSET_FLOORS,
-		blname     = "blood",
 		blcolor    = RED,
 		sprite     = SPRITE_RUBBLE,
 		blsprite   = SPRITE_BLOOD,

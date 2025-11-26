@@ -70,6 +70,7 @@ setmetatable(being.inv, {
 				end
 			end
 
+			---@diagnostic disable-next-line: redundant-return-value, deprecated
 			return unpack(itemlist)
 		end
 		return nil

@@ -420,7 +420,7 @@ level.data = setmetatable({}, {
 		end
 		l[k] = v
 	end,
-	__index = function (_, k,v)
+	__index = function (_, k)
 		local l = player.level_data[level.id]
 		if not l then 
 			player.level_data[level.id] = {}

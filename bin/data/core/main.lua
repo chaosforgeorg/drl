@@ -276,9 +276,7 @@ register_being         = core.register_storage( "beings", "being", function( bp 
 
 		if bp.ai_type and bp.ai_type ~= "" then
 			local ai_proto = ais[ bp.ai_type ]
-			if ai_proto == nil then
-				assert(false, "LUA: being["..bp.id.."] has unknown ai_type '"..bp.ai_type.."'!" )
-			end
+			assert(ai_proto ~= nil, "LUA: being["..bp.id.."] has unknown ai_type '"..bp.ai_type.."'!" )
 
 			local OnCreate = function( self )
 				self:add_property( "ai_type", bp.ai_type )

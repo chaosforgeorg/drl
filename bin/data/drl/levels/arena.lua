@@ -266,7 +266,7 @@ register_level "hells_arena"
 
 			for iid, amount in pairs(level.data.final_reward) do
 				if amount > 0 then
-					level:area_drop(level.data.drop_zone, iid, amount, false, true, true  )
+					level:area_drop(level.data.drop_zone, iid, amount, false, true )
 				end
 			end
 			
