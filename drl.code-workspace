@@ -5,10 +5,6 @@
 			"name": "drl"
 		},
 		{
-			"path": "bin\\modules",
-			"name": "modules"
-		},
-		{
 			"path": "bin\\data",
 			"name": "data"
 		},
