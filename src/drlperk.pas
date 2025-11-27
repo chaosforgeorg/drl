@@ -32,6 +32,8 @@ type TPerks = class( TVObject )
   constructor Create( aOwner : TNode );
   constructor CreateFromStream( aStream : TStream; aOwner : TNode ); reintroduce;
   procedure WriteToStream( aStream : TStream ); override;
+  function  CallHook( aHook : Byte; const aParams : array of Const ) : Boolean;
+  function  CallHookCheck( aHook : Byte; const aParams : array of Const ) : Boolean;
   function  GetBonus( aHook : Byte; const aParams : array of Const ) : Integer;
   function  GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single;
   procedure Add( aPerk : Integer; aDuration : LongInt = -1 );
@@ -75,6 +77,30 @@ procedure TPerks.WriteToStream( aStream : TStream );
 begin
   inherited WriteToStream( aStream );
   FList.WriteToStream( aStream );
+end;
+
+function TPerks.CallHook( aHook : Byte; const aParams : array of Const ) : Boolean;
+var i : Integer;
+begin
+  CallHook := False;
+  if aHook in FHooks then
+    for i := 0 to FList.Size-1 do
+      if aHook in PerkData[FList[i].ID].Hooks then
+      begin
+        CallHook := True;
+        LuaSystem.ProtectedCall( [ 'perks',FList[i].ID, HookNames[ aHook ] ], ConcatConstArray( [FOwner], aParams ) );
+      end;
+end;
+
+function  TPerks.CallHookCheck( aHook : Byte; const aParams : array of Const ) : Boolean;
+var i : Integer;
+begin
+  if aHook in FHooks then
+    for i := 0 to FList.Size-1 do
+      if aHook in PerkData[FList[i].ID].Hooks then
+        if not LuaSystem.ProtectedCall( [ 'perks',FList[i].ID, HookNames[ aHook ] ], ConcatConstArray( [FOwner], aParams ) ) then
+          Exit( False );
+  Exit( True );
 end;
 
 function  TPerks.GetBonus( aHook : Byte; const aParams : array of Const ) : Integer;

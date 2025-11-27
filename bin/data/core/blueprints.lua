@@ -179,6 +179,27 @@ core.register_blueprint "perk"
 	getFireCostMul   = { false, core.TFUNC },
 	getAmmoCostMul   = { false, core.TFUNC },
 	getReloadCostMul = { false, core.TFUNC },
+
+	OnPickup      = { false, core.TFUNC },
+	OnFirstPickup = { false, core.TFUNC },
+	OnPickupCheck = { false, core.TFUNC },
+	OnUse         = { false, core.TFUNC },
+	OnUseCheck    = { false, core.TFUNC },
+	OnPreReload   = { false, core.TFUNC },
+	OnReload      = { false, core.TFUNC },
+	OnAltFire     = { false, core.TFUNC },
+	OnAltReload   = { false, core.TFUNC },
+	OnEquip       = { false, core.TFUNC },
+	OnEquipTick   = { false, core.TFUNC },
+	OnEquipCheck  = { false, core.TFUNC },
+	OnKill        = { false, core.TFUNC },
+	OnHitBeing    = { false, core.TFUNC },
+	OnEnter       = { false, core.TFUNC },
+	OnFired       = { false, core.TFUNC },
+	OnFire        = { false, core.TFUNC },
+	OnPostMove    = { false, core.TFUNC },
+	OnDamage      = { false, core.TFUNC },
+	OnDieCheck    = { false, core.TFUNC },
 }
 
 core.register_blueprint "ai"
@@ -604,7 +625,7 @@ core.register_blueprint "item"
 	OnEquip       = { false, core.TFUNC },
 	OnEquipTick   = { false, core.TFUNC },
 	OnEquipCheck  = { false, core.TFUNC },
-	OnRemove      = { false, core.TFUNC },
+	OnUnequip     = { false, core.TFUNC },
 	OnKill        = { false, core.TFUNC },
 	OnHitBeing    = { false, core.TFUNC },
 	OnEnter       = { false, core.TFUNC },
@@ -625,7 +646,7 @@ core.register_blueprint "itemset"
 	trigger   = { true,  core.TNUMBER },
 
 	OnEquip   = { true,  core.TFUNC },
-	OnRemove  = { true,  core.TFUNC },
+	OnUnequip = { true,  core.TFUNC },
 }
 
 core.register_blueprint "level"

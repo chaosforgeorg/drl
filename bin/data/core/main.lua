@@ -348,13 +348,13 @@ register_item          = core.register_storage( "items", "item", function( ip )
 				end
 			end
 
-			local OnRemove = function (self,being)
+			local OnUnequip = function (self,being)
 				if being:set_items( set ) == itemsets[ set ].trigger then
 					itemsets[ set ].OnRemove(self,being)
 				end
 			end
 
-			ip.OnRemove = core.create_seq_function( OnRemove, ip.OnRemove )
+			ip.OnUnequip = core.create_seq_function( OnUnequip, ip.OnUnequip )
 			ip.OnEquip  = core.create_seq_function( OnEquip, ip.OnEquip )
 		end
 

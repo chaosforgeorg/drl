@@ -104,6 +104,7 @@ end;
 function TThing.CallHook ( aHook : Byte; const aParams : array of const ) : Boolean;
 begin
   CallHook := False;
+  if FPerks <> nil then if FPerks.CallHook( aHook, aParams ) then CallHook := True;
   if aHook in FHooks         then begin CallHook := True; LuaSystem.ProtectedRunHook(Self, HookNames[aHook], aParams ); end;
   if aHook in ChainedHooks   then begin CallHook := True; DRL.Level.CallHook( aHook, ConcatConstArray( [ Self ], aParams ) ); end;
 end;
@@ -112,6 +113,7 @@ function TThing.CallHookCheck ( aHook : Byte; const aParams : array of const ) :
 begin
   if aHook in ChainedHooks then if not DRL.Level.CallHookCheck( aHook, ConcatConstArray( [ Self ], aParams ) ) then Exit( False );
   if aHook in FHooks then if not LuaSystem.ProtectedRunHook(Self, HookNames[aHook], aParams ) then Exit( False );
+  if FPerks <> nil then if not FPerks.CallHookCheck( aHook, aParams ) then Exit( False );
   Exit( True );
 end;
 

@@ -15,7 +15,7 @@ function drl.register_unique_items()
 			end
 		end,
 
-		OnRemove = function (self,being)
+		OnUnequip = function (self,being)
 			local armor = self
 			if armor.id ~= "aarmor" then armor = being.eq.armor end
 			armor.armor = armor.armor - 4
@@ -44,7 +44,7 @@ function drl.register_unique_items()
 			end
 		end,
 
-		OnRemove = function (self,being)
+		OnUnequip = function (self,being)
 			local armor = self
 			local boots = self
 			if armor.id ~= "umarmor" then

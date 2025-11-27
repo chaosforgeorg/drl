@@ -18,7 +18,7 @@ function drl.register_exotic_items()
 			being:msg( "Suddenly you feel immobilized. You feel like a fortress!" )
 		end,
 
-		OnRemove = function (self,being)
+		OnUnequip = function (self,being)
 			being.flags[ BF_SESSILE ] = false
 			being.armor = being.armor - 2
 			being.resist.bullet   = (being.resist.bullet or 0) - 40
@@ -42,7 +42,7 @@ function drl.register_exotic_items()
 			being:msg( "You start to float!" )
 		end,
 
-		OnRemove = function (self,being)
+		OnUnequip = function (self,being)
 			being.flags[ BF_ENVIROSAFE ] = false
 			being.flags[ BF_FLY ] = false
 			being:msg( "You touch the ground." )

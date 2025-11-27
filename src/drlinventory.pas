@@ -76,7 +76,7 @@ end;
 procedure TInventory.setSlot( aIndex: TEqSlot; aItem: TItem); inline;
 begin
   if FSlots[aIndex] = aItem then Exit;
-  if FSlots[aIndex] <> nil  then FSlots[aIndex].CallHook( Hook_OnRemove, [FOwner] );
+  if FSlots[aIndex] <> nil  then FSlots[aIndex].CallHook( Hook_OnUnequip, [FOwner] );
   FSlots[aIndex] := nil;
   if aItem <> nil then aItem.CallHook( Hook_OnEquip, [FOwner] );
   if aItem <> nil then FOwner.Add( aItem );
