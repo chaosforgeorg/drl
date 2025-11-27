@@ -30,6 +30,8 @@ TItem  = class( TThing )
     function    Description : Ansistring; overload;
     function    DescriptionBox( aShort : Boolean = False ) : Ansistring;
     function    ResistDescriptionShort : AnsiString;
+    function    GetAltFireName : AnsiString;
+    function    GetAltReloadName : AnsiString;
     destructor  Destroy; override;
     function    eqSlot : TEqSlot;
     function    isStackable : Boolean;
@@ -400,75 +402,73 @@ begin
   if ( FMax > 1 ) and ( not aSingle ) then Description += ' (x'+IntToStr(FAmount)+')';
 end;
 
+function TItem.GetAltFireName : AnsiString;
+begin
+  GetAltFireName := LuaSystem.Get([ 'items', ID, 'altfirename' ], '');
+  if GetAltFireName <> '' then Exit;
+  case FProps.AltFire of
+    ALT_CHAIN     : Exit('chain fire');
+    ALT_THROW     : Exit('throw');
+    ALT_AIMED     : Exit('aimed');
+    ALT_SINGLE    : Exit('single');
+  end;
+end;
+
+function TItem.GetAltReloadName : AnsiString;
+begin
+  GetAltReloadName := LuaSystem.Get([ 'items', ID, 'altreloadname' ], '');
+  if GetAltReloadName <> '' then Exit;
+  case FProps.AltReload of
+    RELOAD_DUAL        : Exit('dual');
+    RELOAD_SINGLE      : Exit('single');
+  end;
+end;
+
 function TItem.DescriptionBox( aShort : Boolean = False ): Ansistring;
-  function Iff(expr : Boolean; str : Ansistring) : Ansistring;
-  begin
-    if expr then exit(str) else exit('');
-  end;
-  function AltFireName( aValue : TAltFire ) : AnsiString;
-  begin
-    AltFireName := LuaSystem.Get([ 'items', ID, 'altfirename' ], '');
-    if AltFireName <> '' then Exit;
-    case aValue of
-      ALT_CHAIN     : Exit('chain fire');
-      ALT_THROW     : Exit('throw');
-      ALT_AIMED     : Exit('aimed');
-      ALT_SINGLE    : Exit('single');
-    end;
-  end;
-  function AltReloadName( aValue : TAltReload ) : AnsiString;
-  begin
-    AltReloadName := LuaSystem.Get([ 'items', ID, 'altreloadname' ], '');
-    if AltReloadName <> '' then Exit;
-    case aValue of
-      RELOAD_DUAL        : Exit('dual');
-      RELOAD_SINGLE      : Exit('single');
-    end;
-  end;
 begin
   DescriptionBox := '';
   case FProps.IType of
     ITEMTYPE_ARMOR, ITEMTYPE_BOOTS : DescriptionBox :=
       'Durability  : {!'+IntToStr(FProps.MaxDurability)+'}'#10+
-      Iff(FProps.SwapTime  <> 10, 'Swap time   : {!'+Seconds(FProps.SwapTime)+'}'#10);
+      IIf(FProps.SwapTime  <> 10, 'Swap time   : {!'+Seconds(FProps.SwapTime)+'}'#10);
     ITEMTYPE_URANGED : DescriptionBox :=
       'Damage type : {!'+DamageTypeName(FProps.DamageType)+'}'#10+
-      Iff(FProps.Radius <> 0,'Expl.radius : {!'+IntToStr(FProps.Radius)+'}'#10);
+      IIf(FProps.Radius <> 0,'Expl.radius : {!'+IntToStr(FProps.Radius)+'}'#10);
     ITEMTYPE_RANGED, ITEMTYPE_NRANGED : DescriptionBox :=
-      Iff(FProps.UseTime  <> 10, 'Fire time   : {!'+Seconds(FProps.UseTime)+'}'#10)+
-      Iff(FProps.ReloadTime > 0, 'Reload time : {!'+Seconds(FProps.ReloadTime)+'}'#10)+
-      Iff(FProps.SwapTime <> 10, 'Swap time   : {!'+Seconds(FProps.SwapTime)+'}'#10)+
-      Iff(FProps.Acc       <> 0, 'Accuracy    : {!'+BonusStr(FProps.Acc)+'}'#10)+
+      IIf(FProps.UseTime  <> 10, 'Fire time   : {!'+Seconds(FProps.UseTime)+'}'#10)+
+      IIf(FProps.ReloadTime > 0, 'Reload time : {!'+Seconds(FProps.ReloadTime)+'}'#10)+
+      IIf(FProps.SwapTime <> 10, 'Swap time   : {!'+Seconds(FProps.SwapTime)+'}'#10)+
+      IIf(FProps.Acc       <> 0, 'Accuracy    : {!'+BonusStr(FProps.Acc)+'}'#10)+
       'Damage type : {!'+DamageTypeName(FProps.DamageType)+'}'#10+
-      Iff(FProps.Shots    <> 0,'Shots       : {!'+IntToStr(FProps.Shots)+'}'#10)+
-      Iff(FProps.ShotCost <> 0,'Shot cost   : {!'+IntToStr(FProps.ShotCost)+'}'#10)+
-      Iff(FProps.Radius   <> 0,'Expl.radius : {!'+IntToStr(FProps.Radius)+'}'#10)+
-      Iff(FProps.Falloff  <> 0,'Dmg. falloff: {!'+IntToStr(FProps.Falloff)+'%}'#10)+
-      Iff(FProps.Spread   <> 0,'Cone size   : {!'+IntToStr(FProps.Spread)+'}'#10)+
-      Iff(FProps.Range    <> 0,'Max range   : {!'+IntToStr(FProps.Range)+'}'#10)+
-      Iff((not aShort) and (FProps.AltFire   <> ALT_NONE   ),'Alt. fire   : {!'+AltFireName( FProps.AltFire )+'}'#10)+
-      Iff((not aShort) and (FProps.AltReload <> RELOAD_NONE),'Alt. reload : {!'+AltReloadName( FProps.AltReload )+'}'#10);
+      IIf(FProps.Shots    <> 0,'Shots       : {!'+IntToStr(FProps.Shots)+'}'#10)+
+      IIf(FProps.ShotCost <> 0,'Shot cost   : {!'+IntToStr(FProps.ShotCost)+'}'#10)+
+      IIf(FProps.Radius   <> 0,'Expl.radius : {!'+IntToStr(FProps.Radius)+'}'#10)+
+      IIf(FProps.Falloff  <> 0,'Dmg. falloff: {!'+IntToStr(FProps.Falloff)+'%}'#10)+
+      IIf(FProps.Spread   <> 0,'Cone size   : {!'+IntToStr(FProps.Spread)+'}'#10)+
+      IIf(FProps.Range    <> 0,'Max range   : {!'+IntToStr(FProps.Range)+'}'#10)+
+      IIf((not aShort) and (FProps.AltFire   <> ALT_NONE   ),'Alt. fire   : {!'+GetAltFireName+'}'#10)+
+      IIf((not aShort) and (FProps.AltReload <> RELOAD_NONE),'Alt. reload : {!'+GetAltReloadName+'}'#10);
     ITEMTYPE_MELEE : DescriptionBox :=
-      Iff(FProps.UseTime <> 10, 'Attack time : {!'+Seconds(FProps.UseTime)+'}'#10)+
-      Iff(FProps.SwapTime<> 10, 'Swap time   : {!'+Seconds(FProps.SwapTime)+'}'#10)+
-      Iff(FProps.Acc     <> 0,  'Accuracy    : {!' + BonusStr(FProps.Acc)+'}'#10)+
+      IIf(FProps.UseTime <> 10, 'Attack time : {!'+Seconds(FProps.UseTime)+'}'#10)+
+      IIf(FProps.SwapTime<> 10, 'Swap time   : {!'+Seconds(FProps.SwapTime)+'}'#10)+
+      IIf(FProps.Acc     <> 0,  'Accuracy    : {!' + BonusStr(FProps.Acc)+'}'#10)+
       'Damage type : {!'+DamageTypeName(FProps.DamageType)+'}'#10+
-      Iff((not aShort) and (FProps.AltFire <> ALT_NONE),'Alt. fire   : {!'+AltFireName( FProps.AltFire )+'}'#10);
+      IIf((not aShort) and (FProps.AltFire <> ALT_NONE),'Alt. fire   : {!'+GetAltFireName+'}'#10);
   end;
   DescriptionBox +=
-    Iff(FProps.MoveMod  <> 0,'Move speed  : {!'+Percent(FProps.MoveMod)+'}'#10)+
-    Iff(FProps.KnockMod <> 0,'Knockback   : {!'+Percent(FProps.KnockMod)+'}'#10)+
-    Iff(FProps.DodgeMod <> 0,'Dodge rate  : {!'+Percent(FProps.DodgeMod)+'}'#10);
+    IIf(FProps.MoveMod  <> 0,'Move speed  : {!'+Percent(FProps.MoveMod)+'}'#10)+
+    IIf(FProps.KnockMod <> 0,'Knockback   : {!'+Percent(FProps.KnockMod)+'}'#10)+
+    IIf(FProps.DodgeMod <> 0,'Dodge rate  : {!'+Percent(FProps.DodgeMod)+'}'#10);
 
   DescriptionBox +=
-      Iff(GetResistance('bullet')   <> 0,'Bullet res. : {!' + BonusStr(GetResistance('bullet'))+'}'#10)+
-      Iff(GetResistance('melee')    <> 0,'Melee res.  : {!' + BonusStr(GetResistance('melee'))+'}'#10)+
-      Iff(GetResistance('shrapnel') <> 0,'Shrapnel res: {!' + BonusStr(GetResistance('shrapnel'))+'}'#10)+
-      Iff(GetResistance('acid')     <> 0,'Acid res.   : {!' + BonusStr(GetResistance('acid'))+'}'#10)+
-      Iff(GetResistance('fire')     <> 0,'Fire res.   : {!' + BonusStr(GetResistance('fire'))+'}'#10)+
-      Iff(GetResistance('plasma')   <> 0,'Plasma res. : {!' + BonusStr(GetResistance('plasma'))+'}'#10)+
-      Iff(GetResistance('cold')     <> 0,'Cold res.   : {!' + BonusStr(GetResistance('cold'))+'}'#10)+
-      Iff(GetResistance('poison')   <> 0,'Poison res. : {!' + BonusStr(GetResistance('poison'))+'}'#10);
+      IIf(GetResistance('bullet')   <> 0,'Bullet res. : {!' + BonusStr(GetResistance('bullet'))+'}'#10)+
+      IIf(GetResistance('melee')    <> 0,'Melee res.  : {!' + BonusStr(GetResistance('melee'))+'}'#10)+
+      IIf(GetResistance('shrapnel') <> 0,'Shrapnel res: {!' + BonusStr(GetResistance('shrapnel'))+'}'#10)+
+      IIf(GetResistance('acid')     <> 0,'Acid res.   : {!' + BonusStr(GetResistance('acid'))+'}'#10)+
+      IIf(GetResistance('fire')     <> 0,'Fire res.   : {!' + BonusStr(GetResistance('fire'))+'}'#10)+
+      IIf(GetResistance('plasma')   <> 0,'Plasma res. : {!' + BonusStr(GetResistance('plasma'))+'}'#10)+
+      IIf(GetResistance('cold')     <> 0,'Cold res.   : {!' + BonusStr(GetResistance('cold'))+'}'#10)+
+      IIf(GetResistance('poison')   <> 0,'Poison res. : {!' + BonusStr(GetResistance('poison'))+'}'#10);
 end;
 
 function TItem.ResistDescriptionShort: AnsiString;

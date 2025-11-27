@@ -6,9 +6,9 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlmoreview;
 interface
-uses vutil, viotypes, drlio, dfdata, dfbeing;
+uses vutil, viotypes, drlio, dfdata, dfbeing, dfitem;
 
-type TMoreView = class( TIOLayer )
+type TMoreBeingView = class( TIOLayer )
   constructor Create( aBeing : TBeing );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
@@ -25,14 +25,31 @@ protected
   FTexts    : array[0..6] of TStringGArray;
 end;
 
+type TMoreItemView = class( TIOLayer )
+  constructor Create( aItem : TItem );
+  procedure Update( aDTime : Integer; aActive : Boolean ); override;
+  function IsFinished : Boolean; override;
+  function IsModal : Boolean; override;
+  destructor Destroy; override;
+protected
+  procedure ReadTexts;
+protected
+  FFinished : Boolean;
+  FSize     : TPoint;
+  FItem     : TItem;
+  FTitle    : Ansistring;
+  FDesc     : Ansistring;
+  FTexts    : array[0..2] of TStringGArray;
+end;
+
 implementation
 
-uses sysutils, vluasystem, vtig, dfplayer, dfitem, drlbase, drlperk;
+uses sysutils, vluasystem, vtig, dfplayer, drlbase, drlperk;
 
-constructor TMoreView.Create( aBeing : TBeing );
+constructor TMoreBeingView.Create( aBeing : TBeing );
 var i : Integer;
 begin
-  VTIG_ResetScroll( 'more_view' );
+  VTIG_ResetScroll( 'more_being_view' );
   VTIG_EventClear;
   FFinished := False;
   FBeing    := aBeing;
@@ -52,7 +69,7 @@ begin
   end;
 end;
 
-procedure TMoreView.ReadTexts;
+procedure TMoreBeingView.ReadTexts;
 var iTot, iTor : Integer;
     iRes       : TResistance;
     iCount, i  : Integer;
@@ -144,14 +161,14 @@ begin
   end;
 end;
 
-procedure TMoreView.Update( aDTime : Integer; aActive : Boolean );
+procedure TMoreBeingView.Update( aDTime : Integer; aActive : Boolean );
 var iString : Ansistring;
     iCount  : Integer;
 begin
   if not ModuleOption_FullBeingDescription then
   begin
     VTIG_PushStyle(@TIGStylePadless);
-    VTIG_BeginWindow(FBeing.name, 'more_view', FSize );
+    VTIG_BeginWindow(FBeing.name, 'more_being_view', FSize );
     VTIG_PopStyle();
     iCount := 0;
     if IO.Ascii.Exists(FASCII) then
@@ -170,7 +187,7 @@ begin
   end
   else
   begin
-    VTIG_BeginWindow(FBeing.name, 'more_view', FSize );
+    VTIG_BeginWindow(FBeing.name, 'more_being_view', FSize );
     VTIG_Text( FDesc );
     VTIG_Ruler;
     for iString in FTexts[0] do
@@ -198,17 +215,190 @@ begin
 end;
 
 
-function TMoreView.IsFinished : Boolean;
+function TMoreBeingView.IsFinished : Boolean;
 begin
   Exit( FFinished or ( DRL.State <> DSPlaying ) );
 end;
 
-function TMoreView.IsModal : Boolean;
+function TMoreBeingView.IsModal : Boolean;
 begin
   Exit( True );
 end;
 
-destructor TMoreView.Destroy;
+destructor TMoreBeingView.Destroy;
+var i : Integer;
+begin
+  for i := Low( FTexts ) to High( FTexts ) do
+    if FTexts[i] <> nil then
+      FreeAndNil( FTexts[i] );
+end;
+
+{ TMoreItemView }
+
+constructor TMoreItemView.Create( aItem : TItem );
+var i : Integer;
+begin
+  VTIG_ResetScroll( 'more_item_view' );
+  VTIG_EventClear;
+  FFinished := False;
+  FItem     := aItem;
+  FDesc     := LuaSystem.Get(['items',FItem.ID,'desc']);
+  FSize     := Point( 60, 25 );
+  FTitle    := '{'+VTIG_ColorChar( FItem.MenuColor ) + FItem.Description + '}';
+  for i := Low( FTexts ) to High( FTexts ) do
+    FTexts[i] := nil;
+  ReadTexts;
+end;
+
+procedure TMoreItemView.ReadTexts;
+var iPerks     : TPerkList;
+    i          : Integer;
+    iStatQueue : TStringGArray;
+  procedure AddStat( const aName : Ansistring; const aValue : Ansistring );
+  begin
+    iStatQueue.Push( Padded( aName, 13 ) + ': {!' + aValue + '}' );
+  end;
+  procedure FlushStats;
+  var iLine : Ansistring;
+      iIdx  : Integer;
+  begin
+    iIdx := 0;
+    while iIdx + 1 < iStatQueue.Size do
+    begin
+      iLine := Padded( iStatQueue[iIdx], 29 ) + ' ' + iStatQueue[iIdx + 1];
+      FTexts[0].Push( iLine );
+      iIdx += 2;
+    end;
+    if iIdx < iStatQueue.Size then
+      FTexts[0].Push( iStatQueue[iIdx] );
+    iStatQueue.Clear;
+  end;
+begin
+  // Stats
+  FTexts[0] := TStringGArray.Create;
+  iStatQueue := TStringGArray.Create;
+  
+  case FItem.IType of
+    ITEMTYPE_ARMOR, ITEMTYPE_BOOTS :
+    begin
+      AddStat( 'Durability', IntToStr(FItem.MaxDurability) );
+      AddStat( 'Swap time', Seconds(FItem.SwapTime) );
+    end;
+    ITEMTYPE_URANGED :
+    begin
+      AddStat( 'Damage type', DamageTypeName(FItem.DamageType) );
+      AddStat( 'Expl.radius', IntToStr(FItem.Radius) );
+    end;
+    ITEMTYPE_RANGED, ITEMTYPE_NRANGED :
+    begin
+      AddStat( 'Fire time', Seconds(FItem.UseTime) );
+      AddStat( 'Reload time', Seconds(FItem.ReloadTime) );
+      AddStat( 'Swap time', Seconds(FItem.SwapTime) );
+      AddStat( 'Accuracy', BonusStr(FItem.Acc) );
+      AddStat( 'Damage type', DamageTypeName(FItem.DamageType) );
+      AddStat( 'Shots', IntToStr(FItem.Shots) );
+      AddStat( 'Shot cost', IntToStr(FItem.ShotCost) );
+      AddStat( 'Expl.radius', IntToStr(FItem.Radius) );
+      AddStat( 'Dmg. falloff', IntToStr(FItem.Falloff)+'%' );
+      AddStat( 'Cone size', IntToStr(FItem.Spread) );
+      AddStat( 'Max range', IntToStr(FItem.Range) );
+      if FItem.AltFire <> ALT_NONE then
+        AddStat( 'Alt. fire', FItem.GetAltFireName );
+      if FItem.AltReload <> RELOAD_NONE then
+        AddStat( 'Alt. reload', FItem.GetAltReloadName );
+    end;
+    ITEMTYPE_MELEE :
+    begin
+      AddStat( 'Attack time', Seconds(FItem.UseTime) );
+      AddStat( 'Swap time', Seconds(FItem.SwapTime) );
+      AddStat( 'Accuracy', BonusStr(FItem.Acc) );
+      AddStat( 'Damage type', DamageTypeName(FItem.DamageType) );
+      if FItem.AltFire <> ALT_NONE then
+        AddStat( 'Alt. fire', FItem.GetAltFireName );
+    end;
+  end;
+
+  // Common stats
+  AddStat( 'Move speed', Percent(FItem.MoveMod) );
+  AddStat( 'Knockback', Percent(FItem.KnockMod) );
+  AddStat( 'Dodge rate', Percent(FItem.DodgeMod) );
+
+  FlushStats;
+  
+  // Resistances
+  if FItem.GetResistance('bullet') <> 0 then
+    AddStat( 'Bullet res.', BonusStr(FItem.GetResistance('bullet')) );
+  if FItem.GetResistance('melee') <> 0 then
+    AddStat( 'Melee res.', BonusStr(FItem.GetResistance('melee')) );
+  if FItem.GetResistance('shrapnel') <> 0 then
+    AddStat( 'Shrapnel res', BonusStr(FItem.GetResistance('shrapnel')) );
+  if FItem.GetResistance('acid') <> 0 then
+    AddStat( 'Acid res.', BonusStr(FItem.GetResistance('acid')) );
+  if FItem.GetResistance('fire') <> 0 then
+    AddStat( 'Fire res.', BonusStr(FItem.GetResistance('fire')) );
+  if FItem.GetResistance('plasma') <> 0 then
+    AddStat( 'Plasma res.', BonusStr(FItem.GetResistance('plasma')) );
+  if FItem.GetResistance('cold') <> 0 then
+    AddStat( 'Cold res.', BonusStr(FItem.GetResistance('cold')) );
+  if FItem.GetResistance('poison') <> 0 then
+    AddStat( 'Poison res.', BonusStr(FItem.GetResistance('poison')) );
+  
+  if iStatQueue.Size > 0 then
+  begin
+    FTexts[0].Push( '' ); // Empty line before resistances
+    FlushStats;
+  end;
+  
+  FreeAndNil( iStatQueue );
+
+  // Perks
+  iPerks := FItem.GetPerkList;
+  if ( iPerks <> nil ) and ( iPerks.Size > 0 ) then
+  begin
+    FTexts[1] := TStringGArray.Create;
+    for i := 0 to iPerks.Size - 1 do
+      with PerkData[ iPerks[i].ID ] do
+        if Desc <> '' then
+          FTexts[1].Push( '{' + VTIG_ColorChar( Color ) + Name + '} - ' + Desc );
+  end;
+end;
+
+procedure TMoreItemView.Update( aDTime : Integer; aActive : Boolean );
+var iString : Ansistring;
+begin
+  VTIG_BeginWindow(FTitle, 'more_item_view', FSize );
+  VTIG_Text( FDesc );
+  VTIG_Ruler;
+  if FTexts[0] <> nil then
+    for iString in FTexts[0] do
+      VTIG_Text( iString );
+  if FTexts[1] <> nil then
+  begin
+    VTIG_Ruler;
+    for iString in FTexts[1] do
+      VTIG_Text( iString );
+  end;
+  VTIG_Scrollbar;
+  VTIG_End('{l<{!{$input_up},{$input_down}}> scroll, <{!{$input_ok},{$input_escape}}> return}');
+
+  if VTIG_EventCancel or VTIG_EventConfirm or VTIG_Event( TIG_EV_MORE ) then
+  begin
+    VTIG_EventClear;
+    FFinished := True;
+  end;
+end;
+
+function TMoreItemView.IsFinished : Boolean;
+begin
+  Exit( FFinished or ( DRL.State <> DSPlaying ) );
+end;
+
+function TMoreItemView.IsModal : Boolean;
+begin
+  Exit( True );
+end;
+
+destructor TMoreItemView.Destroy;
 var i : Integer;
 begin
   for i := Low( FTexts ) to High( FTexts ) do

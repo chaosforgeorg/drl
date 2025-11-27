@@ -123,7 +123,7 @@ type TDRLIO = class( TIO )
 
   procedure RenderUIBackgroundBlock( aUL, aBR : TIOPoint; aOpacity : Single = 0.85; aZ : Integer = 0 ); virtual;
   procedure RenderUIBackground( aTexture : TTextureID; aZ : Integer = 0 ); virtual;
-  procedure FullLook( aBeing : TBeing );
+  procedure FullLook( aThing : TThing );
   procedure SetTarget( aTarget : TCoord2D; aColor : Byte; aRange : Byte ); virtual; abstract;
   procedure SetAutoTarget( aTarget : TCoord2D ); virtual;
   function ResolveSub( const aID : Ansistring ) : Ansistring;
@@ -551,11 +551,20 @@ begin
   // noop
 end;
 
-procedure TDRLIO.FullLook( aBeing : TBeing );
+procedure TDRLIO.FullLook( aThing : TThing );
 begin
-  if ( aBeing = nil ) or ( not aBeing.isVisible ) then Exit;
-  FConsole.HideCursor;
-  PushLayer( TMoreView.Create( aBeing ) );
+  if aThing = nil then Exit;
+  if aThing is TBeing then
+  begin
+    if ( not TBeing(aThing).isVisible ) then Exit;
+    FConsole.HideCursor;
+    PushLayer( TMoreBeingView.Create( TBeing(aThing) ) );
+  end
+  else if aThing is TItem then
+  begin
+    FConsole.HideCursor;
+    PushLayer( TMoreItemView.Create( TItem(aThing) ) );
+  end;
 end;
 
 procedure TDRLIO.SetAutoTarget( aTarget : TCoord2D );
@@ -1364,6 +1373,7 @@ var iState : TDRLLuaState;
 begin
   iState.Init(L);
   DRL.ResetAutoTarget;
+  Result := 0;
 end;
 
 const lua_ui_lib : array[0..19] of luaL_Reg = (
