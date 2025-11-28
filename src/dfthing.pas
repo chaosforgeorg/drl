@@ -120,6 +120,7 @@ end;
 function TThing.CallHookCan ( aHook : Byte; const aParams : array of const ) : Boolean;
 begin
   if aHook in FHooks then if LuaSystem.ProtectedRunHook(Self, HookNames[aHook], aParams ) then Exit( True );
+  if FPerks <> nil   then if FPerks.CallHookCan( aHook, aParams ) then Exit( True );
   Exit( False );
 end;
 

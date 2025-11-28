@@ -200,6 +200,7 @@ core.register_blueprint "perk"
 	OnPostMove    = { false, core.TFUNC },
 	OnDamage      = { false, core.TFUNC },
 	OnDieCheck    = { false, core.TFUNC },
+	OnCanMaxDamage= { false, core.TFUNC },
 }
 
 core.register_blueprint "ai"

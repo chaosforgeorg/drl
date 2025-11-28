@@ -59,7 +59,7 @@ TBeing = class(TThing,IPathQuery)
     procedure BloodFloor;
     procedure Knockback( aDir : TDirection; aStrength : Single );
     destructor Destroy; override;
-    function rollMeleeDamage( aSlot : TEqSlot = efWeapon ) : Integer;
+    function rollMeleeDamage( aSlot : TEqSlot = efWeapon; aTarget : TBeing = nil ) : Integer;
     function getMoveCost : LongInt;
     function getFireCost( aAltFire : TAltFire; aIsMelee : Boolean ) : LongInt;
     function getReloadCost( aItem : TItem ) : LongInt;
@@ -407,17 +407,20 @@ var iThisUID   : DWord;
     iDamageMul : Single;
     iDamage    : TDiceRoll;
     iDamageType: TDamageType;
+    iBeing     : TBeing;
 begin
   Assert( aShotGun <> nil );
   Assert( aShotGun.Flags[ IF_SHOTGUN ] );
   iThisUID := FUID;
+  iBeing   := TLevel(Parent).Being[ aTarget ];
 
   iDual := aShotGun.Flags[ IF_DUALSHOTGUN ];
   if iDual then aShotgun.PlaySound( 'fire', FPosition );
 
   iDamage.Init( aShotGun.Damage_Dice, aShotGun.Damage_Sides, aShotGun.Damage_Add + getToDam( aShotgun, aAltFire, False ) );
   if BF_MAXDAMAGE in FFlags then iDamage.Init( 0, 0, iDamage.Max );
-  iDamageMul := GetBonusMul( Hook_getDamageMul, [ aShotgun, False, aAltFire ] );
+  iDamageMul := GetBonusMul( Hook_getDamageMul, [ aShotgun, False, aAltFire, iBeing ] )
+              * aShotgun.GetBonusMul( Hook_getDamageMul, [ False, aAltFire, iBeing ] );
 
   if isPlayer then
     IO.addScreenShakeAnimation( 200+aShots*100, 0, Clampf( iDamage.max / 10, 2.0, 10.0 ), NewDirection( FPosition, aTarget ) );
@@ -1709,7 +1712,7 @@ begin
   iLevel.Kill( Self );
 end;
 
-function TBeing.rollMeleeDamage( aSlot : TEqSlot = efWeapon ) : Integer;
+function TBeing.rollMeleeDamage( aSlot : TEqSlot = efWeapon; aTarget : TBeing = nil ) : Integer;
 var iDamage   : Integer;
     iWeapon   : TItem;
 begin
@@ -1731,7 +1734,9 @@ begin
       iDamage += Max( Dice( FStrength + 1, 3 ), 1 );
   end;
 
-  iDamage := Floor( iDamage * GetBonusMul( Hook_getDamageMul, [ iWeapon, True, ALT_NONE ] ) );
+  if iWeapon <> nil 
+    then iDamage := Floor( iDamage * GetBonusMul( Hook_getDamageMul, [ iWeapon, True, ALT_NONE, aTarget ] ) * iWeapon.GetBonusMul( Hook_getDamageMul, [ True, ALT_NONE, aTarget ] ) )
+    else iDamage := Floor( iDamage * GetBonusMul( Hook_getDamageMul, [ iWeapon, True, ALT_NONE, aTarget ] ) );
   if iDamage < 0 then iDamage := 0;
   rollMeleeDamage := iDamage;
 end;
@@ -1862,7 +1867,7 @@ begin
   begin
     if ( iWeapon <> nil ) then IO.addSoundAnimation( Iif( aSecond, 100, 30 ), aTarget.Position, IO.Audio.ResolveSoundID(['flesh_blade_hit']) );
     // Damage roll
-    iDamage := rollMeleeDamage( iWeaponSlot );
+    iDamage := rollMeleeDamage( iWeaponSlot, aTarget );
 
     // Shake
     if isPlayer or aTarget.IsPlayer then
@@ -2204,14 +2209,18 @@ begin
 
   iMisslePath.Init( iLevel, iSource, aTarget );
 
-  iMaxDamage := (BF_MAXDAMAGE in FFlags) or CallHookCan( Hook_OnCanMaxDamage, [ aItem, Integer( aAltFire ) ] );
+  iMaxDamage := (BF_MAXDAMAGE in FFlags) 
+             or CallHookCan( Hook_OnCanMaxDamage, [ aItem, Integer( aAltFire ) ] )
+             or aItem.CallHookCan( Hook_OnCanMaxDamage, [ Integer( aAltFire ), iBeing ] );
   if iMaxDamage then
     iDamage := aItem.maxDamage
   else
     iDamage := aItem.rollDamage;
 
   iDamageMod := getToDam( aItem, aAltFire, False );
-  iDamageMul := GetBonusMul( Hook_getDamageMul, [ aItem, False, Integer( aAltFire ) ] );
+  iDamageMul := GetBonusMul( Hook_getDamageMul, [ aItem, False, Integer( aAltFire ), iBeing ] )
+              * aItem.GetBonusMul( Hook_getDamageMul, [ False, Integer( aAltFire ), iBeing ] );
+  IO.Msg( '%f', [iDamageMul] );
   iDamage    += iDamageMod;
   iDamage    := Floor( iDamage * iDamageMul );
 
