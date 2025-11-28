@@ -2220,7 +2220,7 @@ begin
   iDamageMod := getToDam( aItem, aAltFire, False );
   iDamageMul := GetBonusMul( Hook_getDamageMul, [ aItem, False, Integer( aAltFire ), iBeing ] )
               * aItem.GetBonusMul( Hook_getDamageMul, [ False, Integer( aAltFire ), iBeing ] );
-  IO.Msg( '%f', [iDamageMul] );
+
   iDamage    += iDamageMod;
   iDamage    := Floor( iDamage * iDamageMul );
 
