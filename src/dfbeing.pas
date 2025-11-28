@@ -1514,7 +1514,6 @@ end;
 
 procedure TBeing.Tick;
 begin
-  inherited Tick;
   FInv.Tick;
 
   if ( FHP * 100 ) > Integer( FHPMax * FHPDecayMax ) then
@@ -1523,6 +1522,7 @@ begin
         Dec( FHP );
   FSpeedCount := Min( FSpeedCount + FSpeed, 10000 );
   CallHook( Hook_OnTick, [ Player.Statistics.GameTime ] );
+  inherited Tick;
 end;
 
 function TBeing.Resurrect( aRange : Integer ) : TBeing;
