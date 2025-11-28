@@ -355,7 +355,7 @@ begin
       VTIG_Text( FInv[iSelected].Desc );
       if ( FInv[iSelected].Item <> nil ) and ( FInv[iSelected].Item.isWearable ) then
         if IO.isGamepad
-          then VTIG_FreeLabel( '  <{!A}> more', Rectangle(10,13,48,1) )
+          then VTIG_FreeLabel( '  <{!RTrigger+A}> more', Rectangle(1,13,48,1) )
           else VTIG_FreeLabel( '  <{!m}>ore', Rectangle(12,13,48,1) );
 
       VTIG_Ruler( 19 );
@@ -380,7 +380,7 @@ begin
 
   if (iSelected >= 0) then
   begin
-    if VTIG_Event( TIG_EV_MORE ) then
+    if VTIG_Event( TIG_EV_MORE ) or ( IO.IsGamepad and IO.GetPadRTrigger and VTIG_EventConfirm ) then
     begin
       if Assigned( FInv[iSelected].Item ) then
         IO.FullLook( FInv[iSelected].Item );
@@ -495,7 +495,7 @@ begin
           VTIG_Text( FEq[iSelected].Perks );
         VTIG_Text( FEq[iSelected].Stats );
         if IO.isGamepad
-          then VTIG_FreeLabel( '  <{!A}> more', Rectangle(10,8,48,1) )
+          then VTIG_FreeLabel( '  <{!RTrigger+A}> more', Rectangle(1,8,48,1) )
           else VTIG_FreeLabel( '  <{!m}>ore', Rectangle(12,8,48,1) );
       end;
       VTIG_EndGroup;
@@ -565,6 +565,12 @@ begin
 
   if (iSelected >= 0) then
   begin
+    if VTIG_Event( TIG_EV_MORE ) or ( IO.IsGamepad and IO.GetPadRTrigger and VTIG_EventConfirm ) then
+    begin
+      if Assigned( FEq[iSelected].Item ) then
+        IO.FullLook( FEq[iSelected].Item );
+    end
+    else
     if VTIG_EventConfirm then
     begin
       if Assigned( FEq[iSelected].Item ) then
@@ -603,12 +609,6 @@ begin
       if Cursed then Exit;
       InitSwapMode( TEqSlot(iSelected) );
       Exit;
-    end
-    else
-    if VTIG_Event( TIG_EV_MORE ) then
-    begin
-      if Assigned( FEq[iSelected].Item ) then
-        IO.FullLook( FEq[iSelected].Item );
     end
     else
     if Assigned( FEq[iSelected].Item ) then

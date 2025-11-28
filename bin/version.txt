@@ -1,6 +1,7 @@
 0.10.6
 [mod] -- GJ#228: affects timing now are based on ticks not turns
 [mod] -- GJ#228: berserk effect times halved to balance out the tick change
+[mod] -- GJ#259: UI - items have a "more" screen too! Access using m or RTrigger+A from inventory
 [mod] -- GJ#259: UI - use SHIFT-m to force target info on self
 [mod] -- GJ#259: UI - RTrigger+LTrigger-A will always show self info
 
