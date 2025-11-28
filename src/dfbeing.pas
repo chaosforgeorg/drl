@@ -2591,7 +2591,14 @@ end;
 function TBeing.getToHit(aItem : TItem; aAltFire : TAltFire; aIsMelee : Boolean) : Integer;
 begin
   getToHit := FAccuracy + GetBonus( Hook_getToHitBonus,  [ aItem, aIsMelee, Integer( aAltFire ) ] );
-  if (aItem <> nil) and ( aItem.isMelee = aIsMelee ) then getToHit += aItem.Acc;
+  if aItem <> nil then
+  begin
+    if ( aItem.isMelee = aIsMelee ) then
+    begin
+      getToHit += aItem.Acc;
+      getToHit += aItem.GetBonus( Hook_getToHitBonus, [ aIsMelee, Integer( aAltFire ) ] );
+    end;
+  end;
   if not isPlayer then
     getToHit += TLevel(Parent).AccuracyBonus;
 end;
@@ -2599,6 +2606,7 @@ end;
 function TBeing.getToDam(aItem : TItem; aAltFire : TAltFire; aIsMelee : Boolean) : Integer;
 begin
   getToDam := GetBonus( Hook_getDamageBonus, [ aItem, aIsMelee, Integer( aAltFire ) ] );
+  if aItem <> nil then getToDam += aItem.GetBonus( Hook_getDamageBonus, [ aIsMelee, Integer( aAltFire ) ] );
 end;
 
 destructor TBeing.Destroy;
