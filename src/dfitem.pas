@@ -618,7 +618,7 @@ end;
 procedure TItem.OnUpdate( Owner : TThing );
 var Being : TBeing;
 begin 
-  if Hook_OnEquipTick in FHooks then
+  if ( Hook_OnEquipTick in FHooks ) or ( ( FPerks <> nil ) and ( Hook_OnEquipTick in FPerks.Hooks ) ) then
     CallHook( Hook_OnEquipTick, [ Owner ] );
     
   if Owner is TBeing then Being := Owner as TBeing else Being := nil;

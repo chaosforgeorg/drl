@@ -50,7 +50,8 @@ private
   procedure UpdateHooks;
   procedure Expire( aIndex : Integer; aSilent : Boolean );
 public
-  property List : TPerkList read FList;
+  property List  : TPerkList read FList;
+  property Hooks : TFlags    read FHooks;
 end;
 
 
