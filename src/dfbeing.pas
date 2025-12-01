@@ -2523,7 +2523,7 @@ begin
   if (aItem = nil) or (aItem.isMelee) then Exit(1000);
   iModifier := aItem.ReloadTime/10.0;
   iModifier *= FTimes.Reload/100.0;
-  iModifier *= GetBonusMul( Hook_getReloadCostMul, [ aItem ] );
+  iModifier *= GetBonusMul( Hook_getReloadCostMul, [ aItem ] ) * aItem.GetBonusMul( Hook_getReloadCostMul, [] );
 
   getReloadCost := Round(ActionCostReload*iModifier);
 end;
