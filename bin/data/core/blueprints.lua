@@ -160,6 +160,8 @@ core.register_blueprint "perk"
 	color_expire   = { false, core.TNUMBER },
 	status_effect  = { false, core.TNUMBER },
 	status_strength= { false, core.TNUMBER },
+	tags           = { false, core.TTABLE, {} },
+	weight         = { false, core.TNUMBER, 0 },
 
 	OnAdd          = { false, core.TFUNC },
 	OnTick         = { false, core.TFUNC },
