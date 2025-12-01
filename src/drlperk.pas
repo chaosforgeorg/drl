@@ -144,7 +144,7 @@ begin
     for i := 0 to FList.Size - 1 do
       if FList[i].ID = aPerk then
       begin
-        if aDuration > 0 then FList[i].Time += aDuration;
+        if aDuration > 0 then FList.Data^[i].Time += aDuration;
         Exit;
       end;
   iPerk.ID   := aPerk;
