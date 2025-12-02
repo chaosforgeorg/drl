@@ -1743,7 +1743,6 @@ begin
     else iDamage := Floor( iDamage * GetBonusMul( Hook_getDamageMul, [ iWeapon, True, ALT_NONE, aTarget ] ) );
   if iDamage < 0 then iDamage := 0;
   rollMeleeDamage := iDamage;
-  IO.Msg( 'damage roll: %d',[iDamage] );
 end;
 
 function TBeing.Attack( aWhere : TCoord2D; aMoveOnKill : Boolean ) : Boolean;
