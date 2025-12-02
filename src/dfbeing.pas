@@ -516,6 +516,8 @@ begin
   GetBonus := inherited GetBonus( aHook, aParams );
   if aHook in FHooks then
     GetBonus += LuaSystem.ProtectedRunHook( Self, HookNames[ aHook ], aParams );
+  if FInv <> nil then
+    GetBonus += FInv.GetBonus( aHook, aParams );
 end;
 
 function TBeing.GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single;
@@ -523,6 +525,8 @@ begin
   GetBonusMul := inherited GetBonusMul( aHook, aParams );
   if aHook in FHooks then
     GetBonusMul *= LuaSystem.ProtectedRunHook( Self, HookNames[ aHook ], aParams );
+  if FInv <> nil then
+    GetBonusMul *= FInv.GetBonusMul( aHook, aParams );
 end;
 
 function TBeing.isActive: boolean;
@@ -1739,6 +1743,7 @@ begin
     else iDamage := Floor( iDamage * GetBonusMul( Hook_getDamageMul, [ iWeapon, True, ALT_NONE, aTarget ] ) );
   if iDamage < 0 then iDamage := 0;
   rollMeleeDamage := iDamage;
+  IO.Msg( 'damage roll: %d',[iDamage] );
 end;
 
 function TBeing.Attack( aWhere : TCoord2D; aMoveOnKill : Boolean ) : Boolean;

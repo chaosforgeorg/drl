@@ -42,6 +42,8 @@ TInventory = class( TVObject )
        function FindSlot( aItem : TItem ) : TEqSlot;
        function GetEnumerator : TInventoryEnumerator;
        function Equipped( aItem : TItem ) : Boolean;
+       function GetBonus( aHook : Byte; const aParams : array of Const ) : Integer;
+       function GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single;
        destructor Destroy; override;
        procedure setSlot( aIndex : TEqSlot; aItem : TItem ); inline;
      private
@@ -286,6 +288,20 @@ begin
     if FSlots[ iSlot ] = aItem then
       Exit( True );
   Exit( False );
+end;
+
+function TInventory.GetBonus( aHook : Byte; const aParams : array of Const ) : Integer;
+begin
+  GetBonus := 0;
+  if FSlots[ efTorso ] <> nil then GetBonus += FSlots[ efTorso ].GetBonus( aHook, aParams );
+  if FSlots[ efBoots ] <> nil then GetBonus += FSlots[ efBoots ].GetBonus( aHook, aParams );
+end;
+
+function TInventory.GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single;
+begin
+  GetBonusMul := 1.0;
+  if FSlots[ efTorso ] <> nil then GetBonusMul *= FSlots[ efTorso ].GetBonusMul( aHook, aParams );
+  if FSlots[ efBoots ] <> nil then GetBonusMul *= FSlots[ efBoots ].GetBonusMul( aHook, aParams );
 end;
 
 end.
