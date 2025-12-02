@@ -42,6 +42,7 @@ TInventory = class( TVObject )
        function FindSlot( aItem : TItem ) : TEqSlot;
        function GetEnumerator : TInventoryEnumerator;
        function Equipped( aItem : TItem ) : Boolean;
+       function CallHook( aHook : Byte; aIncludeWeapons : Boolean; const aParams : array of Const ) : Boolean;
        function GetBonus( aHook : Byte; const aParams : array of Const ) : Integer;
        function GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single;
        destructor Destroy; override;
@@ -288,6 +289,23 @@ begin
     if FSlots[ iSlot ] = aItem then
       Exit( True );
   Exit( False );
+end;
+
+function TInventory.CallHook( aHook : Byte; aIncludeWeapons : Boolean; const aParams : array of Const ) : Boolean;
+var iSlot : TEqSlot;
+begin
+  CallHook := False;
+  if aIncludeWeapons then
+  begin
+    for iSlot in TEqSlot do
+      if FSlots[ iSlot ] <> nil then
+        if FSlots[ iSlot ].CallHook( aHook, aParams ) then CallHook := True;
+  end
+  else
+  begin
+    if FSlots[ efTorso ] <> nil then if FSlots[ efTorso ].CallHook( aHook, aParams ) then CallHook := True;
+    if FSlots[ efBoots ] <> nil then if FSlots[ efBoots ].CallHook( aHook, aParams ) then CallHook := True;
+  end;
 end;
 
 function TInventory.GetBonus( aHook : Byte; const aParams : array of Const ) : Integer;

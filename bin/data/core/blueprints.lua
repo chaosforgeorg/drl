@@ -197,6 +197,7 @@ core.register_blueprint "perk"
 	OnKill        = { false, core.TFUNC },
 	OnHitBeing    = { false, core.TFUNC },
 	OnEnter       = { false, core.TFUNC },
+	OnEnterLevel  = { false, core.TFUNC },
 	OnFired       = { false, core.TFUNC },
 	OnFire        = { false, core.TFUNC },
 	OnPostMove    = { false, core.TFUNC },

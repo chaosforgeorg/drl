@@ -151,7 +151,7 @@ ItemHooks    := [ Hook_OnCreate, Hook_OnPickup, Hook_OnPickupCheck, Hook_OnFirst
   Hook_OnUnequip, Hook_OnKill, Hook_OnKillAll, Hook_OnHitBeing, Hook_OnReload,
   Hook_OnEquipTick, Hook_OnEquipCheck, Hook_OnEnter, Hook_OnFire, Hook_OnFired,
   Hook_OnAct, Hook_OnDieCheck, Hook_OnDestroy, Hook_OnPostMove, Hook_OnPreReload,
-  Hook_OnDamage, Hook_OnDescribe ];
+  Hook_OnDamage, Hook_OnDescribe, Hook_OnEnterLevel ];
 ChainedHooks := [ Hook_OnCreate, Hook_OnDie, Hook_OnDieCheck, Hook_OnPickup,
   Hook_OnPickUpItem, Hook_OnKillAll, Hook_OnPickupCheck, Hook_OnUse, Hook_OnUseCheck,
   Hook_OnFire, Hook_OnFired ];

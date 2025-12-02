@@ -1468,11 +1468,11 @@ begin
 end;
 
 procedure TBeing.HandlePostMove;
-var iSlot : TEqSlot;
 begin
-  for iSlot in TEqSlot do
-    if FInv.Slot[ iSlot ] <> nil then
-      FInv.Slot[ iSlot ].CallHook( Hook_OnPostMove, [Self, iSlot <> efWeapon2 ]  );
+  if FInv.Slot[ efWeapon ] <> nil then
+    FInv.Slot[ efWeapon ].CallHook( Hook_OnPostMove, [Self, True ]  );
+  if FInv.Slot[ efWeapon2 ] <> nil then
+    FInv.Slot[ efWeapon2 ].CallHook( Hook_OnPostMove, [Self, False ]  );
   CallHook( Hook_OnPostMove, [] );
 end;
 
