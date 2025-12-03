@@ -2032,6 +2032,7 @@ begin
     iArmor.Durability := Max( 0, iArmor.Durability - iArmorDamage );
 
     if iArmorDamage > 0 then iArmor.RechargeReset;
+    if iArmorDamage > 0 then iArmor.CallHook( Hook_OnReceiveDamage, [ aDamage, aSource, iActive ] );
 
     if (iArmor.Durability = 0) and (not iArmor.Flags[ IF_NODESTROY ]) then
     begin
