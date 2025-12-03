@@ -152,7 +152,7 @@ function drl.register_exotic_items()
 		weight   = 2,
 		group    = "pistol",
 		desc     = "This is the standard issue rechargeable energy side-arm. Cool!",
-		flags    = { IF_EXOTIC, IF_RECHARGE, IF_NOUNLOAD },
+		flags    = { IF_EXOTIC, IF_RECHARGE, IF_NORELOAD, IF_NOUNLOAD },
 
 		type          = ITEMTYPE_RANGED,
 		ammo_id       = "cell",
@@ -444,7 +444,7 @@ function drl.register_exotic_items()
 		weight   = 4,
 		group    = "plasma",
 		desc     = "A self-charging plasma rifle -- too bad it can't be manually reloaded.",
-		flags    = { IF_EXOTIC, IF_RECHARGE, IF_NOUNLOAD },
+		flags    = { IF_EXOTIC, IF_RECHARGE, IF_NORELOAD, IF_NOUNLOAD },
 
 		type          = ITEMTYPE_RANGED,
 		ammo_id       = "cell",
@@ -499,7 +499,7 @@ function drl.register_exotic_items()
 		weight   = 2,
 		group    = "bfg",
 		desc     = "A self-charging BFG9000! How much more lucky can you get?",
-		flags    = { IF_EXOTIC, IF_RECHARGE, IF_NOUNLOAD, IF_EXACTHIT },
+		flags    = { IF_EXOTIC, IF_RECHARGE, IF_NORELOAD, IF_NOUNLOAD, IF_EXACTHIT },
 
 		type          = ITEMTYPE_RANGED,
 		ammo_id       = "cell",
@@ -1098,6 +1098,7 @@ function drl.register_exotic_items()
 				end
 			else
 				item.flags[ IF_RECHARGE ] = true
+				item.flags[ IF_NORELOAD ] = true
 				item.flags[ IF_NOUNLOAD ] = true
 				item.rechargedelay = 5
 				if item.itype == ITEMTYPE_ARMOR or item.itype == ITEMTYPE_BOOTS then

@@ -659,6 +659,7 @@ function drl.register_assemblies()
 			item.flags[ IF_NOAMMO ]   = true
 			item.flags[ IF_NOUNLOAD ] = true
 			item.flags[ IF_RECHARGE ] = false
+			item.flags[ IF_NORELOAD ] = false
 		end,
 	}
 
@@ -825,6 +826,7 @@ function drl.register_assemblies()
 			-- This is the behaviour of the N-mod on 0.9.9.1.
 			-- shark said that you can get this with N2, but here we are basically allowing a *6*-mod weapon build up
 			item.flags[ IF_RECHARGE ] = true
+			item.flags[ IF_NORELOAD ] = true
 			item.flags[ IF_NOUNLOAD ] = true
 			item.rechargedelay = 0
 			item.rechargeamount = 1

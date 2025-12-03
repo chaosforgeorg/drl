@@ -161,6 +161,7 @@ IF_BLOCKSHOT      = 65;
 IF_LIGHTCOVER     = 66;
 IF_HARDCOVER      = 67;
 IF_ILLUSION       = 68;
+IF_NORELOAD       = 69;
 
 LF_NOHOMING       = 1;
 LF_UNIQUEITEM     = 2;

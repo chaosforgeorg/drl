@@ -840,7 +840,7 @@ begin
       then VTIG_FreeLabel( 'none',                                iPos + Point(31,1), iCBold )
       else
       begin
-        if iWeapon.isRanged and ( not iWeapon.Flags[ IF_NOAMMO ] ) and ( not iWeapon.Flags[ IF_RECHARGE ] ) then
+        if iWeapon.isRanged and ( not iWeapon.Flags[ IF_NOAMMO ] ) and ( not iWeapon.Flags[ IF_NORELOAD ] ) then
         begin
           if FCachedAmmo = -1 then
             FCachedAmmo := Player.Inv.CountAmount( iWeapon.AmmoID );

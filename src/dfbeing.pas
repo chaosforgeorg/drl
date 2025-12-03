@@ -789,7 +789,7 @@ begin
   iWeapon := Inv.Slot[ efWeapon ];
   if ( iWeapon = nil ) or ( not iWeapon.isRanged ) then Exit( Fail( 'You have no weapon to reload.',[] ) );
   if not iWeapon.CallHookCheck( Hook_OnPreReload, [ Self ] ) then Exit( iSCount > SCount );
-  if ( iWeapon.Flags[ IF_RECHARGE ]) then Exit( Fail( 'The weapon cannot be manually reloaded!', [] ) );
+  if ( iWeapon.Flags[ IF_NORELOAD ]) then Exit( Fail( 'The weapon cannot be manually reloaded!', [] ) );
   if ( iWeapon.Flags[ IF_NOAMMO ])   then Exit( Fail( 'The weapon doesn''t need to be reloaded!', [] ) );
   if ( iWeapon.Ammo = iWeapon.AmmoMax ) then Exit( Fail( 'Your %s is already loaded.', [ iWeapon.Name ] ) );
 
@@ -1132,7 +1132,6 @@ begin
 
   if not aItem.isUnloadable then Exit( Fail( 'This item cannot be unloaded!', [] ) );
   if aItem.Flags[ IF_NOUNLOAD ] then Exit( Fail( 'This weapon cannot be unloaded!', []) );
-  if aItem.Flags[ IF_RECHARGE ] then Exit( Fail( 'This weapon is self powered!', []) );
   if aItem.Flags[ IF_NOAMMO ] then Exit( Fail( 'This weapon doesn''t use ammo!', []) );
   if aItem.Ammo = 0 then Exit( Fail( 'The weapon isn''t loaded!', [] ) );
 
@@ -2887,7 +2886,7 @@ begin
   if iBeing <> nil then
   begin
     iWeapon := iBeing.Inv.Slot[ efWeapon ];
-    if ( iWeapon <> nil ) and ( not iWeapon.Flags[ IF_RECHARGE ] ) then
+    if ( iWeapon <> nil ) and ( not iWeapon.Flags[ IF_NORELOAD ] ) then
     begin
       iItem := iState.ToObjectOrNil(2) as TItem;
       if iItem = nil then iItem := iBeing.Inv.SeekStack( iWeapon.AmmoID );
