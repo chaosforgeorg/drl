@@ -51,7 +51,6 @@ TItem  = class( TThing )
     function    isPickupable : Boolean;
     function    canFire : Boolean;
     function MenuColor : byte;
-    procedure RechargeReset;
     procedure OnUpdate( Owner : TThing );
     function Preposition( const Item : AnsiString ) : string;
     class function Compare( a, b : TItem ) : Boolean; reintroduce;
@@ -76,9 +75,6 @@ TItem  = class( TThing )
     property NID            : Byte        read FNID;
     property MissBase       : Byte        read FProps.MissBase        write FProps.MissBase;
     property MissDist       : Byte        read FProps.MissDist        write FProps.MissDist;
-    property RechargeDelay  : Byte        read FProps.Recharge.Delay  write FProps.Recharge.Delay;
-    property RechargeAmount : Byte        read FProps.Recharge.Amount write FProps.Recharge.Amount;
-    property RechargeLimit  : Byte        read FProps.Recharge.Limit  write FProps.Recharge.Limit;
     property IType          : TItemType   read FProps.IType          write FProps.IType;
     property Durability     : Word        read FProps.Durability     write FProps.Durability;
     property MaxDurability  : Word        read FProps.MaxDurability  write FProps.MaxDurability;
@@ -227,11 +223,6 @@ begin
   FMax             := aTable.getInteger('max');
   FAmount          := aTable.getInteger('amount');
 
-  FProps.Recharge.Delay  := aTable.getInteger('rechargedelay',0);
-  FProps.Recharge.Amount := aTable.getInteger('rechargeamount',0);
-  FProps.Recharge.Limit  := aTable.getInteger('rechargelimit',0);
-  FProps.Recharge.Counter:= 0;
-
   FProps.MoveMod   := aTable.getInteger( 'movemod', 0 );
   FProps.DodgeMod  := aTable.getInteger( 'dodgemod', 0 );
   FProps.KnockMod  := aTable.getInteger( 'knockmod', 0 );
@@ -291,11 +282,6 @@ function TItem.MenuColor: byte;
 begin
   if not Option_ColoredInventory then Exit(LightGray);
   if Color = white then Exit(LightGray) else Exit(Color);
-end;
-
-procedure TItem.RechargeReset;
-begin
-  FProps.Recharge.Counter := FProps.Recharge.Delay;
 end;
 
 function    TItem.rollDamage : Integer;
@@ -616,34 +602,9 @@ begin
 end;
 
 procedure TItem.OnUpdate( Owner : TThing );
-var Being : TBeing;
 begin 
   if ( Hook_OnEquipTick in FHooks ) or ( ( FPerks <> nil ) and ( Hook_OnEquipTick in FPerks.Hooks ) ) then
     CallHook( Hook_OnEquipTick, [ Owner ] );
-    
-  if Owner is TBeing then Being := Owner as TBeing else Being := nil;
-  
-  if ( IF_RECHARGE in FFlags ) or ( ( IF_NECROCHARGE in FFlags ) and ( Being <> nil ) and ( Being.HP > 1 ) ) then
-  begin
-    if FProps.Recharge.Counter = 0 then
-    case FProps.IType of
-      ITEMTYPE_RANGED :
-        if (FProps.Ammo < FProps.AmmoMax) and ( ( FProps.Recharge.Limit = 0 ) or ( FProps.Ammo < FProps.Recharge.Limit ) )  then
-        begin
-          FProps.Ammo := Min( FProps.Ammo + FProps.Recharge.Amount, IIf( FProps.Recharge.Limit <> 0, Min( FProps.AmmoMax, FProps.Recharge.Limit ), FProps.AmmoMax ) );
-          if IF_NECROCHARGE in FFlags then Being.HP := Being.HP - 1;
-        end;
-      ITEMTYPE_ARMOR,
-      ITEMTYPE_BOOTS  :
-        if (FProps.Durability < FProps.MaxDurability) and ( ( FProps.Recharge.Limit = 0 ) or ( FProps.Durability < FProps.Recharge.Limit ) ) then
-        begin
-          FProps.Durability := Min( FProps.Durability + FProps.Recharge.Amount, IIf( FProps.Recharge.Limit <> 0, Min( FProps.MaxDurability, FProps.Recharge.Limit ), FProps.MaxDurability ) );
-          if IF_NECROCHARGE in FFlags then Being.HP := Being.HP - 1;
-        end;
-    end
-    else
-      Dec( FProps.Recharge.Counter );
-  end;
 end;
 
 function lua_item_new(L: Plua_State): Integer; cdecl;

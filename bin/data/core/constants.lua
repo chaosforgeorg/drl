@@ -120,10 +120,10 @@ IF_CURSED         = 24;
 IF_HIGHLIGHT      = 25;
 IF_RAYGUN         = 26;
 IF_GLOBE          = 27;
-IF_RECHARGE       = 28;
+
 IF_INSTANTHIT     = 29;
 IF_NOAMMO         = 30;
-IF_NECROCHARGE    = 31;
+IF_NORELOAD       = 31;
 IF_PIERCEHIT      = 32;
 IF_SINGLERELOAD   = 33;
 IF_EXACTHIT       = 34;
@@ -161,7 +161,6 @@ IF_BLOCKSHOT      = 65;
 IF_LIGHTCOVER     = 66;
 IF_HARDCOVER      = 67;
 IF_ILLUSION       = 68;
-IF_NORELOAD       = 69;
 
 LF_NOHOMING       = 1;
 LF_UNIQUEITEM     = 2;

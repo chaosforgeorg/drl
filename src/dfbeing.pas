@@ -1409,8 +1409,6 @@ begin
     end;
     if iShots < 1 then Exit( False );
 
-    aGun.RechargeReset;
-
     aGun.Ammo := aGun.Ammo - iShotsCost;
   end;
 
@@ -2030,7 +2028,6 @@ begin
     if iArmor.Flags[ IF_NODURABILITY ] then iArmorDamage := 0;
     iArmor.Durability := Max( 0, iArmor.Durability - iArmorDamage );
 
-    if iArmorDamage > 0 then iArmor.RechargeReset;
     if iArmorDamage > 0 then iArmor.CallHook( Hook_OnReceiveDamage, [ aDamage, aSource, iActive ] );
 
     if (iArmor.Durability = 0) and (not iArmor.Flags[ IF_NODESTROY ]) then

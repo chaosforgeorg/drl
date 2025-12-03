@@ -299,17 +299,9 @@ const ItemEqFilters : array[TEqSlot] of TItemTypeSet = (
                       );
 const ItemsAll      : TItemTypeSet = [Low(TItemType)..High(TItemType)];
 
-type TItemRecharge = record
-  Delay   : Byte;
-  Amount  : Byte;
-  Counter : Byte;
-  Limit   : Byte;
-end;
-
 type TItemProperties = record
   IType         : TItemType;
 
-  Recharge      : TItemRecharge;
   MoveMod       : Integer;
   DodgeMod      : Integer;
   KnockMod      : Integer;
