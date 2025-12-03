@@ -358,7 +358,7 @@ begin
     FTexts[1] := TStringGArray.Create;
     for i := 0 to iPerks.Size - 1 do
       with PerkData[ iPerks[i].ID ] do
-        if Desc <> '' then
+        if ( Name <> '' ) and ( Desc <> '' ) then
           FTexts[1].Push( '{' + VTIG_ColorChar( Color ) + Name + '} - ' + Desc );
   end;
 end;

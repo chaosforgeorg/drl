@@ -733,8 +733,10 @@ begin
     begin
       for i := 0 to iPerks.Size - 1 do
         with PerkData[ iPerks[i].ID ] do
-          iEntry.Perks += '{'+VTIG_ColorChar( Color )+Name+'}, ';
-      SetLength( iEntry.Perks, Length(iEntry.Perks)-2 );
+          if Name <> '' then
+            iEntry.Perks += '{'+VTIG_ColorChar( Color )+Name+'}, ';
+      if iEntry.Perks <> '' then
+        SetLength( iEntry.Perks, Length(iEntry.Perks)-2 );
     end;
   iEntry.Color := aItem.MenuColor;
   iEntry.QSlot := 0;
