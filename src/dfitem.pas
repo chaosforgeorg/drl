@@ -403,10 +403,6 @@ end;
 function TItem.GetAltReloadName : AnsiString;
 begin
   GetAltReloadName := LuaSystem.Get([ 'items', ID, 'altreloadname' ], '');
-  if GetAltReloadName <> '' then Exit;
-  case FProps.AltReload of
-    RELOAD_DUAL        : Exit('dual');
-  end;
 end;
 
 function TItem.DescriptionBox( aShort : Boolean = False ): Ansistring;

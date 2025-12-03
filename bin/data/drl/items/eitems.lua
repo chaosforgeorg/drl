@@ -199,7 +199,6 @@ function drl.register_exotic_items()
 		acc           = 5,
 		reloadtime    = 18,
 		altfire       = ALT_AIMED,
-		altreload     = RELOAD_DUAL,
 		miscolor      = LIGHTGRAY,
 		misdelay      = 15,
 		miss_base     = 10,

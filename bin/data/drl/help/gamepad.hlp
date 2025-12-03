@@ -16,7 +16,7 @@ and add hint info on the targeted square.
 {!X} - Fire
    (with {!RTrigger}) alternative fire (if present)
 {!Y} - Reload
-   (with {!RTrigger}) alternative reload (if present)
+   (with {!RTrigger}) alternative/dual reload (if present)
 {!Start} - open inventory (use {!Left}/{!Right} or shoulders to change
    panels), with {!RTrigger} open equipment screen
 {!Back} - game menu   

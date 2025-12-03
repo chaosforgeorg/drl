@@ -308,7 +308,6 @@ function drl.register_unique_items()
 		radius        = 1,
 		reloadtime    = 20,
 		altfire       = ALT_AIMED,
-		altreload     = RELOAD_DUAL,
 		miscolor      = LIGHTGRAY,
 		misdelay      = 15,
 		miss_base     = 10,

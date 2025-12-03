@@ -837,7 +837,7 @@ begin
     and (FInv.Slot[ efWeapon2 ].Ammo = FInv.Slot[ efWeapon2 ].AmmoMax) then
       Exit( Fail( 'Guns already loaded.', [] ) )
     else
-      Exit( Fail( 'No more ammo!', [] ) )
+      Exit( Fail( 'Can''t reload. No more ammo?', [] ) )
 end;
 
 function TBeing.ActionAltReload : Boolean;
@@ -845,12 +845,12 @@ var iWeapon : TItem;
 begin
   iWeapon := Inv.Slot[ efWeapon ];
   if ( iWeapon = nil ) or ( not iWeapon.isRanged ) then Exit( Fail( 'You have no weapon to reload.',[] ) );
-  case iWeapon.AltReload of
-    RELOAD_SCRIPT : Exit( iWeapon.CallHookCheck( Hook_OnAltReload, [Self] ) );
-    RELOAD_DUAL   : Exit( ActionDualReload );
-    else
-      Exit( Fail('This weapon has no special reload mode.', [] ) );
-  end;
+  if iWeapon.AltReload = RELOAD_SCRIPT then 
+    Exit( iWeapon.CallHookCheck( Hook_OnAltReload, [Self] ) );
+  // Implicit dual reload for dual-wieldable weapons with no alt-reload
+  if canDualWield then
+    Exit( ActionDualReload );
+  Exit( Fail('This weapon has no special reload mode.', [] ) );
 end;
 
 function TBeing.ActionFire ( aTarget : TCoord2D; aWeapon : TItem; aAltFire : Boolean; aDelay : Integer = 0; aForceSingle : Boolean = False ) : Boolean;

@@ -555,7 +555,6 @@ function drl.register_regular_items()
 		acc           = 4,
 		reloadtime    = 12,
 		altfire       = ALT_AIMED,
-		altreload     = RELOAD_DUAL,
 		miscolor      = LIGHTGRAY,
 		misdelay      = 15,
 		miss_base     = 10,

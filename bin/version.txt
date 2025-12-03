@@ -4,6 +4,7 @@
 [mod] -- GJ#259: UI - items have a "more" screen too! Access using m or RTrigger+A from inventory
 [mod] -- GJ#259: UI - use SHIFT-m to force target info on self
 [mod] -- GJ#259: UI - RTrigger+LTrigger-A will always show self info
+[mod] -- GJ#228: Game - dual-reload will always work when dual wielding if primary weapon has no alt-reload
 [mod] -- GJ#228: Game - removed niche reload-single from double shotguns
 
 0.10.5
