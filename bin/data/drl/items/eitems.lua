@@ -152,13 +152,11 @@ function drl.register_exotic_items()
 		weight   = 2,
 		group    = "pistol",
 		desc     = "This is the standard issue rechargeable energy side-arm. Cool!",
-		flags    = { IF_EXOTIC, IF_RECHARGE, IF_NORELOAD, IF_NOUNLOAD },
+		flags    = { IF_EXOTIC, IF_NORELOAD, IF_NOUNLOAD },
 
 		type          = ITEMTYPE_RANGED,
 		ammo_id       = "cell",
 		ammomax       = 10,
-		rechargeamount= 1,
-		rechargedelay = 3,
 		damage        = "2d4",
 		damagetype    = DAMAGE_PLASMA,
 		acc           = 3,
@@ -171,6 +169,12 @@ function drl.register_exotic_items()
 		miss_dist     = 5,
 		missprite     = SPRITE_SHOT,
 		hitsprite     = SPRITE_BLAST,
+
+		OnCreate = function(self)
+			self:add_perk( "perk_weapon_recharge" )
+			self.pp_recharge.delay  = 3
+			self.pp_recharge.amount = 1
+		end,
 	}
 
 	register_item "ucpistol"
@@ -444,13 +448,11 @@ function drl.register_exotic_items()
 		weight   = 4,
 		group    = "plasma",
 		desc     = "A self-charging plasma rifle -- too bad it can't be manually reloaded.",
-		flags    = { IF_EXOTIC, IF_RECHARGE, IF_NORELOAD, IF_NOUNLOAD },
+		flags    = { IF_EXOTIC, IF_NORELOAD, IF_NOUNLOAD },
 
 		type          = ITEMTYPE_RANGED,
 		ammo_id       = "cell",
 		ammomax       = 24,
-		rechargeamount= 4,
-		rechargedelay = 4,
 		damage        = "1d7",
 		damagetype    = DAMAGE_PLASMA,
 		acc           = 2,
@@ -466,6 +468,12 @@ function drl.register_exotic_items()
 		miss_dist     = 3,
 		missprite     = SPRITE_PLASMASHOT,
 		hitsprite     = SPRITE_BLAST,
+
+		OnCreate = function(self)
+			self:add_perk( "perk_weapon_recharge" )
+			self.pp_recharge.delay  = 4
+			self.pp_recharge.amount = 4
+		end,
 
 		OnAltReload = function(self, being)
 			local floor_cell = cells[ level.map[ being.position ] ]
@@ -499,13 +507,11 @@ function drl.register_exotic_items()
 		weight   = 2,
 		group    = "bfg",
 		desc     = "A self-charging BFG9000! How much more lucky can you get?",
-		flags    = { IF_EXOTIC, IF_RECHARGE, IF_NORELOAD, IF_NOUNLOAD, IF_EXACTHIT },
+		flags    = { IF_EXOTIC, IF_NORELOAD, IF_NOUNLOAD, IF_EXACTHIT },
 
 		type          = ITEMTYPE_RANGED,
 		ammo_id       = "cell",
 		ammomax       = 40,
-		rechargeamount= 1,
-		rechargedelay = 0,
 		damage        = "8d6",
 		damagetype    = DAMAGE_SPLASMA,
 		acc           = 5,
@@ -528,6 +534,12 @@ function drl.register_exotic_items()
 			flags     = { EFSELFSAFE, EFAFTERBLINK, EFCHAIN, EFNODISTANCEDROP },
 			knockback = 16,
 		},
+
+		OnCreate = function(self)
+			self:add_perk( "perk_weapon_recharge" )
+			self.pp_recharge.delay  = 0
+			self.pp_recharge.amount = 1
+		end,
 
 		OnAltReload = function(self, being)
 			local floor_cell = cells[ level.map[ being.position ] ]
@@ -1058,7 +1070,10 @@ function drl.register_exotic_items()
 		OnUseCheck = function(self,being)
 			local function filter( item )
 				if item.itype == ITEMTYPE_MELEE then return false end
-				if item.itype == ITEMTYPE_RANGED and (item.rechargedelay == 0 and item.rechargeamount >= item.ammomax) then return false end
+				if item:has_property("pp_recharge") then
+					local r = item.pp_recharge
+					if r.delay == 0 and r.amount >= item.ammomax then return false end
+				end
 				return true
 			end
 			local item, result = being:pick_item_to_mod( self, filter )
@@ -1068,11 +1083,12 @@ function drl.register_exotic_items()
 		end,
 
 		OnModDescribe = function( self, item )
-			if item.flags[ IF_RECHARGE ] then
-				if item.rechargedelay == 0 then
-					return "recharge amount {!"..item.rechargeamount.."} -> {!"..(item.rechargeamount+1).."}"
+			if item:has_property("pp_recharge") then
+				local r = item.pp_recharge
+				if r.delay == 0 then
+					return "recharge amount {!"..r.amount.."} -> {!"..(r.amount+1).."}"
 				else
-					return "recharge delay {!"..item.rechargedelay.."} -> {!"..(item.rechargedelay-5).."}"
+					return "recharge delay {!"..r.delay.."} -> {!"..math.max(0, r.delay-5).."}"
 				end
 			else
 				if item.itype == ITEMTYPE_RANGED then
@@ -1090,21 +1106,22 @@ function drl.register_exotic_items()
 			self:remove_property("chosen_item")
 			ui.msg( "You upgrade your gear!" )
 			item:add_mod( 'N', being.techbonus )
-			if item.flags[ IF_RECHARGE ] then
-				if item.rechargedelay == 0 then
-					item.rechargeamount = item.rechargeamount + 1
+			if item:has_property("pp_recharge") then
+				local r = item.pp_recharge
+				if r.delay == 0 then
+					r.amount = r.amount + 1
 				else
-					item.rechargedelay = math.max(0, item.rechargedelay - 5)
+					r.delay = math.max(0, r.delay - 5)
 				end
 			else
-				item.flags[ IF_RECHARGE ] = true
-				item.flags[ IF_NORELOAD ] = true
-				item.flags[ IF_NOUNLOAD ] = true
-				item.rechargedelay = 5
 				if item.itype == ITEMTYPE_ARMOR or item.itype == ITEMTYPE_BOOTS then
-					item.rechargeamount = 2
+					item:add_perk( "perk_armor_recharge" )
+					item.pp_recharge.delay  = 5
+					item.pp_recharge.amount = 2
 				elseif item.itype == ITEMTYPE_RANGED then
-					item.rechargeamount = 1
+					item:add_perk( "perk_weapon_recharge" )
+					item.pp_recharge.delay  = 5
+					item.pp_recharge.amount = 1
 				end
 			end
 			return true

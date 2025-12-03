@@ -106,10 +106,13 @@ function drl.register_assemblies()
 			item.resist.shrapnel = 0
 			item.resist.bullet   = 0
 
-			item.flags[ IF_RECHARGE ] = true
-			item.rechargeamount       = 2
-			item.rechargedelay        = 10
+			item:add_perk( "perk_armor_recharge" )
+			item.pp_recharge.amount = 2
+			item.pp_recharge.delay  = 10
+		end,
 
+		Match = function (item)
+			return not item.pp_recharge
 		end,
 	}
 
@@ -126,10 +129,13 @@ function drl.register_assemblies()
 			item.knockmod  = 0
 			item.armor     = 0
 
-			item.flags[ IF_RECHARGE ] = true
-			item.rechargeamount       = 2
-			item.rechargedelay        = 10
+			item:add_perk( "perk_armor_recharge" )
+			item.pp_recharge.amount = 2
+			item.pp_recharge.delay  = 10
+		end,
 
+		Match = function (item)
+			return not item.pp_recharge
 		end,
 	}
 
@@ -208,9 +214,13 @@ function drl.register_assemblies()
 			end
 			item.resist.melee        = 25
 
-			item.flags[ IF_RECHARGE ] = true
-			item.rechargeamount       = 5
-			item.rechargedelay        = 10
+			item:add_perk( "perk_armor_recharge" )
+			item.pp_recharge.amount = 5
+			item.pp_recharge.delay  = 10
+		end,
+
+		Match = function (item)
+			return not item.pp_recharge
 		end,
 	}
 
@@ -580,11 +590,15 @@ function drl.register_assemblies()
 			item.resist.fire = math.min( (item.__proto.resist.fire or 0) + 25, 95 )
 			item.resist.acid = math.min( (item.__proto.resist.acid or 0) + 25, 95 )
 			item.resist.plasma = math.min( (item.__proto.resist.plasma or 0) + 25, 95 )
-			item.flags[ IF_RECHARGE ]  = true
+			item:add_perk( "perk_armor_recharge" )
+			item.pp_recharge.amount = 1
+			item.pp_recharge.delay  = 5
 			item.flags[ IF_NODESTROY ] = true
 			item.flags[ IF_CURSED ]    = true
-			item.rechargeamount = 1
-			item.rechargedelay = 5
+		end,
+
+		Match = function (item)
+			return not item.pp_recharge
 		end,
 	}
 
@@ -658,8 +672,8 @@ function drl.register_assemblies()
 			item.ammo = math.min( item.ammo, item.ammomax )
 			item.flags[ IF_NOAMMO ]   = true
 			item.flags[ IF_NOUNLOAD ] = true
-			item.flags[ IF_RECHARGE ] = false
 			item.flags[ IF_NORELOAD ] = false
+			item:remove_perks_by_tag( "recharge" )
 		end,
 	}
 
@@ -825,11 +839,13 @@ function drl.register_assemblies()
 			item.radius       = 6
 			-- This is the behaviour of the N-mod on 0.9.9.1.
 			-- shark said that you can get this with N2, but here we are basically allowing a *6*-mod weapon build up
-			item.flags[ IF_RECHARGE ] = true
-			item.flags[ IF_NORELOAD ] = true
-			item.flags[ IF_NOUNLOAD ] = true
-			item.rechargedelay = 0
-			item.rechargeamount = 1
+			item:add_perk( "perk_weapon_recharge" )
+			item.pp_recharge.delay  = 0
+			item.pp_recharge.amount = 1
+		end,
+
+		Match = function (item)
+			return not item.pp_recharge
 		end,
 	}
 

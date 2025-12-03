@@ -739,18 +739,21 @@ function drl.register_unique_items()
 		level    = 15,
 		weight   = 2,
 		desc     = "The personal armor of the most famous Imperial Inquisitor.",
-		flags    = { IF_UNIQUE, IF_RECHARGE, IF_NODESTROY },
+		flags    = { IF_UNIQUE, IF_NODESTROY },
 		set      = "inquisitor",
 		scavenge = { "umod_nano" },
-
-		rechargeamount = 5,
-		rechargedelay  = 10,
 
 		resist = { acid = 30, fire = 30, plasma = 30 },
 
 		type       = ITEMTYPE_ARMOR,
 		armor      = 3,
 		movemod    = 20,
+
+		OnCreate = function(self)
+			self:add_perk( "perk_armor_recharge" )
+			self.pp_recharge.delay  = 10
+			self.pp_recharge.amount = 5
+		end,
 	}
 
 	register_item "ucarmor"
@@ -783,15 +786,16 @@ function drl.register_unique_items()
 		level    = 10,
 		weight   = 3,
 		desc     = "Something about this armor gives you the chills.",
-		flags    = { IF_UNIQUE, IF_NECROCHARGE, IF_NODESTROY },
-
-		rechargeamount = 5,
-		rechargedelay  = 0,
+		flags    = { IF_UNIQUE, IF_NODESTROY },
 
 		type       = ITEMTYPE_ARMOR,
 		armor      = 6,
 		movemod    = 10,
 		knockmod   = -20,
+
+		OnCreate = function(self)
+			self:add_perk( "perk_necrocharge" )
+		end,
 	}
 
 	register_item "umedparmor"
@@ -877,17 +881,20 @@ function drl.register_unique_items()
 		level    = 15,
 		weight   = 2,
 		desc     = "The famous boots of the famous Imperial Inquisitor.",
-		flags    = { IF_UNIQUE, IF_RECHARGE, IF_NODESTROY, IF_PLURALNAME },
+		flags    = { IF_UNIQUE, IF_NODESTROY, IF_PLURALNAME },
 		set      = "inquisitor",
-
-		rechargeamount = 5,
-		rechargedelay  = 10,
 
 		resist = { fire = 30, acid = 30, plasma = 30 },
 
 		type       = ITEMTYPE_BOOTS,
 		armor      = 6,
 		movemod    = 20,
+
+		OnCreate = function(self)
+			self:add_perk( "perk_armor_recharge" )
+			self.pp_recharge.delay  = 10
+			self.pp_recharge.amount = 5
+		end,
 	}
 
 	register_item "ushieldarmor"
