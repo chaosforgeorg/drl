@@ -611,7 +611,6 @@ function drl.register_regular_items()
 		reloadtime    = 20,
 		shots         = 2,
 		altfire       = ALT_SINGLE,
-		altreload     = RELOAD_SINGLE,
 		range         = 8,
 		spread        = 3,
 		falloff       = 10,

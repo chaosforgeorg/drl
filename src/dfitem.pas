@@ -406,7 +406,6 @@ begin
   if GetAltReloadName <> '' then Exit;
   case FProps.AltReload of
     RELOAD_DUAL        : Exit('dual');
-    RELOAD_SINGLE      : Exit('single');
   end;
 end;
 

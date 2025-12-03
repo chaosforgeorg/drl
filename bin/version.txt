@@ -4,6 +4,7 @@
 [mod] -- GJ#259: UI - items have a "more" screen too! Access using m or RTrigger+A from inventory
 [mod] -- GJ#259: UI - use SHIFT-m to force target info on self
 [mod] -- GJ#259: UI - RTrigger+LTrigger-A will always show self info
+[mod] -- GJ#228: Game - removed niche reload-single from double shotguns
 
 0.10.5
 [new] -- GJ#225: you can assign quickslots directly from equipment screen

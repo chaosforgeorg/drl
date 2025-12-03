@@ -841,26 +841,13 @@ begin
 end;
 
 function TBeing.ActionAltReload : Boolean;
-var iAmmoItem : TItem;
-    iWeapon   : TItem;
-    iIsPack   : Boolean;
-    iIsGround : Boolean;
+var iWeapon : TItem;
 begin
   iWeapon := Inv.Slot[ efWeapon ];
   if ( iWeapon = nil ) or ( not iWeapon.isRanged ) then Exit( Fail( 'You have no weapon to reload.',[] ) );
   case iWeapon.AltReload of
     RELOAD_SCRIPT : Exit( iWeapon.CallHookCheck( Hook_OnAltReload, [Self] ) );
     RELOAD_DUAL   : Exit( ActionDualReload );
-    RELOAD_SINGLE :
-      begin
-        if iWeapon.Ammo = iWeapon.AmmoMax then Exit( Fail( 'Your %s is already fully loaded.', [ iWeapon.Name ] ) );
-        iAmmoItem := getAmmoItem( iWeapon );
-        if iAmmoItem = nil then Exit( Fail('You have no ammo for the %s!',[ iWeapon.Name ] ) );
-        iIsPack := iAmmoItem.isAmmoPack;
-        iIsGround := ( iAmmoItem.Parent = Self.Parent );
-        Reload( iAmmoItem, True );
-        Exit( Success('You%s single-load the %s%s.', [ IIf( iIsPack, ' quickly'), iWeapon.Name, IIf( iIsGround, ' from the ground') ] ) );
-      end;
     else
       Exit( Fail('This weapon has no special reload mode.', [] ) );
   end;
