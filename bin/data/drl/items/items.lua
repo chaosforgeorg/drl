@@ -647,61 +647,7 @@ function drl.register_regular_items()
 		hitsprite     = SPRITE_BLAST,
 
 		OnCreate = function(self)
-			self:add_property( "pump_action", true )
-			self:add_property( "chamber_empty", false )
-		end,
-
-		OnPostMove = function( self, being, worn )
-			if not worn or not self.pump_action then return end
-			if self.chamber_empty and self.ammo > 0 then
-				level:play_sound( self.id, "pump", being.position )
-				self.chamber_empty = false
-				if being:is_player() then
-					ui.msg( "You pump a shell into the shotgun chamber." )
-				end
-			end
-		end,
-
-		OnFire = function( self, being )
-			if not self.pump_action then return true end
-			if self.chamber_empty and self.ammo > 0 then
-				if being:is_player() then
-					ui.msg( "Shell chamber empty - move or reload!" )
-				end
-				return false
-			end
-			return true
-		end,
-
-		OnFired = function( self, being )
-			if not self.pump_action then return end
-			self.chamber_empty = true
-		end,
-
-		OnPreReload = function( self, being )
-			if not self.pump_action then return true end
-			if self.flags[ IF_NOAMMO ] or self.ammo > 0 then
-				if self.chamber_empty then
-					self.chamber_empty = false
-					level:play_sound( self.id, "pump", being.position )
-					if being:is_player() then
-						ui.msg( "You pump a shell into the "..self.name.." chamber." )
-					end
-					being.scount = being.scount - 200
-					return false
-				end
-			end
-			return true
-		end,
-
-		OnReload = function( self, being, ammo, is_pack )
-			if not self.pump_action then return true end
-			being:reload( ammo, true, true ) -- reduces scount
-			local pack = ""
-			if is_pack then pack = "quickly " end
-			being:msg("You "..pack.."load a shell into the "..self.name..".", being:get_name(true,true).." loads a shell into his "..self.name.."." )
-			self.chamber_empty = false
-			return true
+			self:add_perk( "perk_pump_action" )
 		end,
 		
 		OnAltReload = function( self, being )
