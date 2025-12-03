@@ -189,7 +189,7 @@ function drl.register_assemblies()
 		desc = "any common armor",
 
 		Match = function (item)
-			return item.itype == ITEMTYPE_ARMOR and item.flags[IF_EXOTIC] == false and item.flags[IF_UNIQUE] == false
+			return not item:has_property("pp_recharge") and item.itype == ITEMTYPE_ARMOR and item.flags[IF_EXOTIC] == false and item.flags[IF_UNIQUE] == false
 		end,
 
 		OnApply = function (item)
@@ -217,10 +217,6 @@ function drl.register_assemblies()
 			item:add_perk( "perk_armor_recharge" )
 			item.pp_recharge.amount = 5
 			item.pp_recharge.delay  = 10
-		end,
-
-		Match = function (item)
-			return not item.pp_recharge
 		end,
 	}
 
@@ -597,7 +593,7 @@ function drl.register_assemblies()
 		end,
 
 		Match = function (item)
-			return not item.pp_recharge
+			return not item:has_property("pp_recharge")
 		end,
 	}
 
@@ -843,7 +839,7 @@ function drl.register_assemblies()
 		end,
 
 		Match = function (item)
-			return not item.pp_recharge
+			return not item:has_property("pp_recharge")
 		end,
 	}
 
