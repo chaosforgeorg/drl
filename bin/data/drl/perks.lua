@@ -50,6 +50,36 @@ function drl.register_perks()
 		end,
 	}
 
+	register_perk "perk_altreload_overcharge"
+	{
+		name   = "",
+		short  = "overcharge",
+		desc   = "boosts the weapon and destroys it after the next shot",
+		color  = LIGHTBLUE,
+		tags   = { "altreload" },
+
+		OnAltReload = function(self, being)
+			if not self:can_overcharge("This will destroy the weapon after the next shot...") then return false end
+			if self.radius > 0 then
+				-- BFG-style overcharge
+				self.misdelay      = 200
+				self.radius        = self.radius * 2
+				self.damage_dice   = self.damage_dice * 2
+				self.shotcost      = self.ammomax
+				self.ammomax       = self.shotcost
+				self.ammo          = self.shotcost
+			else
+				-- Plasma-style overcharge
+				self.shots         = self.shots * 2
+				self.ammomax       = self.shots
+				self.ammo          = self.shots
+				self.damage_sides  = self.damage_sides + 1
+				self.altfire       = ALT_NONE
+			end
+			return true
+		end,
+	}
+
 	-- Pump action perk (invisible)
 
 	register_perk "perk_pump_action"

@@ -761,7 +761,6 @@ function drl.register_regular_items()
 		reloadtime    = 20,
 		shots         = 6,
 		altfire       = ALT_CHAIN,
-		altreloadname = "overcharge",
 		misascii      = "*",
 		miscolor      = MULTIBLUE,
 		misdelay      = 10,
@@ -770,14 +769,8 @@ function drl.register_regular_items()
 		missprite     = SPRITE_PLASMASHOT,
 		hitsprite     = SPRITE_BLAST,
 
-		OnAltReload = function(self)
-			if not self:can_overcharge("This will destroy the weapon after the next shot...") then return false end
-			self.shots         = self.shots * 2
-			self.ammomax       = self.shots
-			self.ammo          = self.shots
-			self.damage_sides  = self.damage_sides + 1
-			self.altfire       = ALT_NONE
-			return true
+		OnCreate = function(self)
+			self:add_perk( "perk_altreload_overcharge" )
 		end,
 	}
 

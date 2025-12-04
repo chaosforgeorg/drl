@@ -102,7 +102,6 @@ function drl.register_exotic_items()
 		radius        = 8,
 		reloadtime    = 20,
 		shotcost      = 40,
-		altreloadname = "overcharge",
 		misascii      = "*",
 		miscolor      = WHITE,
 		misdelay      = 100,
@@ -117,6 +116,10 @@ function drl.register_exotic_items()
 			knockback = 16,
 		},
 
+		OnCreate = function(self)
+			self:add_perk( "perk_altreload_overcharge" )
+		end,
+
 		OnFirstPickup = function(self,being)
 			if not being:is_player() then return end
 			being:quick_weapon("bfg9000")
@@ -124,17 +127,6 @@ function drl.register_exotic_items()
 			ui.blink(WHITE,100,100)
 			ui.blink(LIGHTBLUE,100,200)
 			ui.msg("HELL, NOW YOU'LL GET LOOSE!")
-		end,
-
-		OnAltReload = function(self)
-			if not self:can_overcharge("This will destroy the weapon after the next shot...") then return false end
-			self.misdelay      = 200
-			self.radius        = self.radius * 2
-			self.damage_dice   = self.damage_dice * 2
-			self.shotcost      = self.ammomax
-			self.ammomax       = self.shotcost
-			self.ammo          = self.shotcost
-			return true
 		end,
 	}
 
