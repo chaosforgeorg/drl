@@ -503,7 +503,6 @@ core.register_blueprint "item"
 			shots         = { false, core.TNUMBER, 0 },
 			shotcost      = { false, core.TNUMBER, 0 },
 			altfire       = { false, core.TNUMBER, 0 },
-			altreload     = { false, core.TNUMBER, 0 },
 			altfirename   = { false, core.TSTRING },
 			altreloadname = { false, core.TSTRING },
 			scavenge      = { false, core.TARRAY(core.TIDIN("items")) },

@@ -6,7 +6,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlmoreview;
 interface
-uses vutil, viotypes, drlio, dfdata, dfbeing, dfitem;
+uses vutil, viotypes, drlio, dfdata, dfbeing, dfitem, drlhooks;
 
 type TMoreBeingView = class( TIOLayer )
   constructor Create( aBeing : TBeing );
@@ -304,7 +304,7 @@ begin
       AddStat( 'Max range', IntToStr(FItem.Range) );
       if FItem.AltFire <> ALT_NONE then
         AddStat( 'Alt. fire', FItem.GetAltFireName );
-      if FItem.AltReload <> RELOAD_NONE then
+      if FItem.HasHook( Hook_OnAltReload ) then
         AddStat( 'Alt. reload', FItem.GetAltReloadName );
     end;
     ITEMTYPE_MELEE :

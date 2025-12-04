@@ -533,7 +533,6 @@ begin
   State.RegisterEnumValues( TypeInfo(TStatusEffect) );
   State.RegisterEnumValues( TypeInfo(TDamageType) );
   State.RegisterEnumValues( TypeInfo(TAltFire) );
-  State.RegisterEnumValues( TypeInfo(TAltReload) );
   State.RegisterEnumValues( TypeInfo(TExplosionFlag) );
   State.RegisterEnumValues( TypeInfo(TResistance) );
   State.RegisterEnumValues( TypeInfo(TMoveResult) );

@@ -102,7 +102,6 @@ function drl.register_exotic_items()
 		radius        = 8,
 		reloadtime    = 20,
 		shotcost      = 40,
-		altreload     = RELOAD_SCRIPT,
 		altreloadname = "overcharge",
 		misascii      = "*",
 		miscolor      = WHITE,
@@ -230,7 +229,6 @@ function drl.register_exotic_items()
 		knockback     = 8,
 		range         = 15,
 		hitsprite     = SPRITE_BLAST,
-		altreload     = RELOAD_SCRIPT,
 		altreloadname = "full",
 
 		OnAltReload = function( self, being )
@@ -424,7 +422,6 @@ function drl.register_exotic_items()
 		miss_dist     = 5,
 		missprite     = SPRITE_ROCKETSHOT,
 		hitsprite     = SPRITE_BLAST,
-		altreload     = RELOAD_SCRIPT,
 		altreloadname = "full",
 		explosion     = {
 			delay 	= 40,
@@ -458,7 +455,6 @@ function drl.register_exotic_items()
 		reloadtime    = 20,
 		shots         = 6,
 		altfire       = ALT_CHAIN,
-		altreload     = RELOAD_SCRIPT,
 		altreloadname = "overcharge",
 		misascii      = "*",
 		miscolor      = MULTIBLUE,
@@ -518,7 +514,6 @@ function drl.register_exotic_items()
 		usetime       = 15,
 		reloadtime    = 20,
 		shotcost      = 40,
-		altreload     = RELOAD_SCRIPT,
 		altreloadname = "overcharge",
 		misascii      = "*",
 		miscolor      = WHITE,

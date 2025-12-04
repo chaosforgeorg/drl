@@ -18,7 +18,7 @@
   {!SHIFT-f} -- Alternative Fire of equipped weapon (if available)
   {!r}       -- Reload equipped weapon
   {!SHIFT-r} -- Reload both when dual-wielding or 
-                special reload weapon (depending on weapon)
+                special reload weapon (if present)
   {!m}       -- more info about targeted enemy
   {!SHIFT-m} -- more info about self
   {!z}       -- Swap weapon (with prepared weapon)

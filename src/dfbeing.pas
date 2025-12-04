@@ -845,7 +845,7 @@ var iWeapon : TItem;
 begin
   iWeapon := Inv.Slot[ efWeapon ];
   if ( iWeapon = nil ) or ( not iWeapon.isRanged ) then Exit( Fail( 'You have no weapon to reload.',[] ) );
-  if iWeapon.AltReload = RELOAD_SCRIPT then 
+  if iWeapon.HasHook( Hook_OnAltReload ) then 
     Exit( iWeapon.CallHookCheck( Hook_OnAltReload, [Self] ) );
   // Implicit dual reload for dual-wieldable weapons with no alt-reload
   if canDualWield then

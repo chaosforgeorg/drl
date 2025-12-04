@@ -101,7 +101,6 @@ TItem  = class( TThing )
     property SwapTime       : Byte        read FProps.SwapTime       write FProps.SwapTime;
     property DamageType     : TDamageType read FProps.DamageType     write FProps.DamageType;
     property AltFire        : TAltFire    read FProps.AltFire        write FProps.AltFire;
-    property AltReload      : TAltReload  read FProps.AltReload      write FProps.AltReload;
     property MisASCII       : Char        read FProps.MisASCII       write FProps.MisAscii;
     property MisColor       : Byte        read FProps.MisColor       write FProps.MisColor;
     property MisDelay       : Byte        read FProps.MisDelay       write FProps.MisDelay;
@@ -260,7 +259,6 @@ begin
   FProps.MissDist    := aTable.getInteger('miss_dist',0);
 
   FProps.AltFire     := TAltFire( aTable.getInteger('altfire',0) );
-  FProps.AltReload   := TAltReload( aTable.getInteger('altreload',0) );
 
   FProps.PCosColor := ColorZero;
   FProps.PGlowColor := ColorZero;
@@ -428,7 +426,7 @@ begin
       IIf(FProps.Spread   <> 0,'Cone size   : {!'+IntToStr(FProps.Spread)+'}'#10)+
       IIf(FProps.Range    <> 0,'Max range   : {!'+IntToStr(FProps.Range)+'}'#10)+
       IIf((not aShort) and (FProps.AltFire   <> ALT_NONE   ),'Alt. fire   : {!'+GetAltFireName+'}'#10)+
-      IIf((not aShort) and (FProps.AltReload <> RELOAD_NONE),'Alt. reload : {!'+GetAltReloadName+'}'#10);
+      IIf((not aShort) and HasHook( Hook_OnAltReload ),'Alt. reload : {!'+GetAltReloadName+'}'#10);
     ITEMTYPE_MELEE : DescriptionBox :=
       IIf(FProps.UseTime <> 10, 'Attack time : {!'+Seconds(FProps.UseTime)+'}'#10)+
       IIf(FProps.SwapTime<> 10, 'Swap time   : {!'+Seconds(FProps.SwapTime)+'}'#10)+

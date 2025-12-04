@@ -18,6 +18,7 @@ type TThing = class( TLuaEntityNode )
   constructor CreateFromStream( aStream : TStream ); override;
   function PlaySound( const aSoundID : string; aDelay : Integer = 0 ) : Boolean;
   function PlaySound( const aSoundID : string; aPosition : TCoord2D; aDelay : Integer = 0 ) : Boolean;
+  function HasHook( aHook : Word ) : Boolean; override;
   function CallHook( aHook : Byte; const aParams : array of Const ) : Boolean; virtual;
   function CallHookCheck( aHook : Byte; const aParams : array of Const ) : Boolean; virtual;
   function CallHookCan( aHook : Byte; const aParams : array of Const ) : Boolean; virtual;
@@ -99,6 +100,13 @@ begin
   if iSoundID = 0 then Exit( False );
   IO.Audio.PlaySound( iSoundID, aPosition, aDelay );
   Exit( True );
+end;
+
+function TThing.HasHook( aHook : Word ) : Boolean;
+begin
+  if inherited HasHook( aHook ) then Exit( True );
+  if ( FPerks <> nil ) and ( aHook in FPerks.Hooks ) then Exit( True );
+  Exit( False );
 end;
 
 function TThing.CallHook ( aHook : Byte; const aParams : array of const ) : Boolean;
