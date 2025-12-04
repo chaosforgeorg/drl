@@ -644,6 +644,7 @@ function drl.register_regular_items()
 		hitsprite     = SPRITE_BLAST,
 
 		OnCreate = function(self)
+			self:add_perk( "perk_altreload_full" )
 			self:add_perk( "perk_pump_action" )
 		end,
 		

@@ -231,8 +231,8 @@ function drl.register_exotic_items()
 		hitsprite     = SPRITE_BLAST,
 		altreloadname = "full",
 
-		OnAltReload = function( self, being )
-			return being:full_reload( self )
+		OnCreate = function(self)
+			self:add_perk( "perk_pump_action" )
 		end,
 	}
 
@@ -428,8 +428,8 @@ function drl.register_exotic_items()
 			color 	= RED,
 		},
 
-		OnAltReload = function( self, being )
-			return being:full_reload( self )
+		OnCreate = function(self)
+			self:add_perk( "perk_pump_action" )
 		end,
 	}
 
@@ -465,29 +465,10 @@ function drl.register_exotic_items()
 		hitsprite     = SPRITE_BLAST,
 
 		OnCreate = function(self)
+			self:add_perk( "perk_altreload_nuke" )
 			self:add_perk( "perk_weapon_recharge" )
 			self.pp_recharge.delay  = 4
 			self.pp_recharge.amount = 4
-		end,
-
-		OnAltReload = function(self, being)
-			local floor_cell = cells[ level.map[ being.position ] ]
-			if floor_cell.flags[CF_STAIRS] then
-				ui.msg("Better not do this on the stairs...");
-				return false
-			end
-			if not self:can_overcharge("This will overload the nuclear reactor...") then return false end
-			if floor_cell.flags[CF_HAZARD] then
-				ui.msg("Somehow, in an instant, you feel like an idiot...");
-				being:nuke(1)
-			else
-				ui.msg("Warning! Explosion in 10 seconds!")
-				being:nuke(100)
-			end
-			player:add_history("He overloaded a nuclear plasma rifle on @1!")
-			being.eq.weapon = nil
-			being.scount = being.scount - 1000
-			return true
 		end,
 	}
 
@@ -514,7 +495,6 @@ function drl.register_exotic_items()
 		usetime       = 15,
 		reloadtime    = 20,
 		shotcost      = 40,
-		altreloadname = "overcharge",
 		misascii      = "*",
 		miscolor      = WHITE,
 		misdelay      = 100,
@@ -530,29 +510,10 @@ function drl.register_exotic_items()
 		},
 
 		OnCreate = function(self)
+			self:add_perk( "perk_altreload_nuke" )
 			self:add_perk( "perk_weapon_recharge" )
 			self.pp_recharge.delay  = 0
 			self.pp_recharge.amount = 1
-		end,
-
-		OnAltReload = function(self, being)
-			local floor_cell = cells[ level.map[ being.position ] ]
-			if floor_cell.flags[CF_STAIRS] then
-				ui.msg("Better not do this on the stairs...");
-				return false
-			end
-			if not self:can_overcharge("This will overload the nuclear reactor...") then return false end
-			if floor_cell.flags[CF_HAZARD] then
-				ui.msg("Somehow, in an instant, you feel like an idiot...");
-				being:nuke(1)
-			else
-				ui.msg("Warning! Explosion in 10 seconds!")
-				being:nuke(100)
-			end
-			player:add_history("He overloaded a nuclear BFG 9000 on @1!")
-			being.eq.weapon = nil
-			being.scount = being.scount - 1000
-			return true
 		end,
 	}
 

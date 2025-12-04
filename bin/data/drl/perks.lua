@@ -1,5 +1,55 @@
 function drl.register_perks()
 
+	-- Alt-reload 
+
+	register_perk "perk_altreload_full"
+	{
+		name   = "",
+		short  = "full",
+		desc   = "fully reloads the weapon (max 2.5s)",
+		color  = LIGHTBLUE,
+		tags   = { "altreload" },
+
+		OnAltReload = function(self, being)
+			local scount = being.scount
+			local result = being:full_reload( self )
+			local cost   = scount - being.scount
+			if cost > 2500 then
+				being.scount = being.scount + ( cost - 2500 )
+			end
+			return result
+		end,
+	}
+
+	register_perk "perk_altreload_nuke"
+	{
+		name   = "",
+		short  = "overcharge",
+		desc   = "overloads the nuclear reactor",
+		color  = LIGHTBLUE,
+		tags   = { "altreload" },
+
+		OnAltReload = function(self, being)
+			local floor_cell = cells[ level.map[ being.position ] ]
+			if floor_cell.flags[CF_STAIRS] then
+				ui.msg("Better not do this on the stairs...")
+				return false
+			end
+			if not self:can_overcharge("This will overload the nuclear reactor...") then return false end
+			if floor_cell.flags[CF_HAZARD] then
+				ui.msg("Somehow, in an instant, you feel like an idiot...")
+				being:nuke(1)
+			else
+				ui.msg("Warning! Explosion in 10 seconds!")
+				being:nuke(100)
+			end
+			player:add_history("He overloaded a "..self.name.." on @1!")
+			being.eq.weapon = nil
+			being.scount = being.scount - 1000
+			return true
+		end,
+	}
+
 	-- Pump action perk (invisible)
 
 	register_perk "perk_pump_action"

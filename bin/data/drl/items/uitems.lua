@@ -431,6 +431,38 @@ function drl.register_unique_items()
 		hidden = true,
 	}
 
+	register_perk "perk_uberetta_altreload"
+	{
+		short = "fire mode",
+		desc  = "switch between single/burst/auto fire modes",
+		color = LIGHTBLUE,
+		tags  = { "altreload" },
+
+		OnAltReload = function(self, being)
+			if self.acc == 5 then
+				ui.msg("You switch to burst mode.")
+				self.acc          = 3
+				self.damage_dice  = 1
+				self.damage_sides = 8
+				self.shots        = 3
+			elseif self.acc == 3 then
+				ui.msg("You switch to full auto mode.")
+				self.acc          = 1
+				self.damage_dice  = 1
+				self.damage_sides = 7
+				self.shots        = 6
+			elseif self.acc == 1 then
+				ui.msg("You switch to single fire mode.")
+				self.acc          = 5
+				self.damage_dice  = 2
+				self.damage_sides = 6
+				self.shots        = 0
+			end
+			being.scount = being.scount - 200
+			return true
+		end,
+	}
+
 	register_item "uberetta"
 	{
 		name     = "Grammaton Cleric Beretta",
@@ -451,7 +483,6 @@ function drl.register_unique_items()
 		damagetype    = DAMAGE_BULLET,
 		acc           = 5,
 		reloadtime    = 20,
-		altreloadname = "firemode",
 		miscolor      = WHITE,
 		misdelay      = 10,
 		miss_base     = 10,
@@ -459,33 +490,34 @@ function drl.register_unique_items()
 		missprite     = SPRITE_SHOT,
 		hitsprite     = SPRITE_BLAST,
 
+		OnCreate = function(self)
+			self:add_perk( "perk_uberetta_altreload" )
+		end,
+
 		OnKill = function (self,being,target)
 			if target.id == "mastermind" and target.is_boss then
 				being:add_medal("cleric")
 			end
 		end,
+	}
 
-		OnAltReload = function(self,being)
-			if self.acc == 5 then
-				ui.msg("You switch to burst mode.");
-				self.acc 			= 3
-				self.damage_dice 	= 1
-				self.damage_sides 	= 8
-				self.shots 			= 3
-			elseif self.acc == 3 then
-				ui.msg("You switch to full auto mode.");
-				self.acc 			= 1
-				self.damage_dice 	= 1
-				self.damage_sides 	= 7
-				self.shots 			= 6
-			elseif self.acc == 1 then
-				ui.msg("You switch to single fire mode.");
-				self.acc 			= 5
-				self.damage_dice 	= 2
-				self.damage_sides 	= 6
-				self.shots 			= 0
+	register_perk "perk_usjack_altreload"
+	{
+		short = "trigger",
+		desc  = "switch between single/burst fire modes",
+		color = LIGHTBLUE,
+		tags  = { "altreload" },
+
+		OnAltReload = function(self, being)
+			if self.shots == 3 then
+				ui.msg("You relax your trigger finger.")
+				self.shots = 1
+			elseif self.shots == 1 then
+				ui.msg("You tense up your trigger finger.")
+				self.shots = 3
 			end
-			being.scount = being.scount - 200
+			-- Just delay the next step nominally so that we don't abuse this
+			being.scount = being.scount - 1
 			return true
 		end,
 	}
@@ -509,7 +541,6 @@ function drl.register_unique_items()
 		damage        = "8d3",
 		damagetype    = DAMAGE_SHARPNEL,
 		reloadtime    = 25,
-		altreloadname = "trigger",
 		shots         = 3,
 		hitsprite     = SPRITE_BLAST,
 		range         = 15,
@@ -517,17 +548,8 @@ function drl.register_unique_items()
 		falloff       = 5,
 		knockback     = 8,
 
-		OnAltReload = function(self,being)
-			if self.shots == 3 then
-				ui.msg("You relax your trigger finger.");
-				self.shots			= 1
-			elseif self.shots == 1 then
-				ui.msg("You tense up your trigger finger.");
-				self. shots			= 3
-			end
-			-- Just delay the next step nominally so that we don't abuse this
-			being.scount = being.scount - 1
-			return true
+		OnCreate = function(self)
+			self:add_perk( "perk_usjack_altreload" )
 		end,
 	}
 
