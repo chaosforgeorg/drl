@@ -135,6 +135,7 @@ begin
     with LuaSystem.GetTable(['perks',iID]) do
     try
       Name      := getString('name','');
+      Short     := getString('short','');
       Desc      := getString('desc','');
       Color     := getInteger('color',0);
       ColorExp  := getInteger('color_expire',0);

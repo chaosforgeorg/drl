@@ -351,6 +351,21 @@ begin
   
   FreeAndNil( iStatQueue );
 
+  // Alt-reload perk (shown separately with description)
+  if FItem.HasHook( Hook_OnAltReload ) then
+  begin
+    iPerks := FItem.GetPerkList;
+    if iPerks <> nil then
+      for i := 0 to iPerks.Size - 1 do
+        with PerkData[ iPerks[i].ID ] do
+          if Hook_OnAltReload in Hooks then
+          begin
+            FTexts[0].Push( '' );
+            FTexts[0].Push( 'Alt. reload  : {!' + Desc + '}' );
+            break;
+          end;
+  end;
+
   // Perks
   iPerks := FItem.GetPerkList;
   if ( iPerks <> nil ) and ( iPerks.Size > 0 ) then

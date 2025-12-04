@@ -154,7 +154,8 @@ core.register_blueprint "award"
 core.register_blueprint "perk"
 {
 	id             = { true,  core.TSTRING },
-	name           = { false, core.TSTRING },
+	name           = { false, core.TSTRING, "" },
+	short          = { false, core.TSTRING, "" },
 	desc 		   = { false, core.TSTRING, "" },
 	color          = { false, core.TNUMBER },
 	color_expire   = { false, core.TNUMBER },

@@ -10,6 +10,7 @@ uses classes, vutil, vnode, vgenerics, dfdata;
 
 type TPerkData = record
   Name       : Ansistring;
+  Short      : Ansistring;
   Desc       : Ansistring;
   Hooks      : TFlags;
   Color      : Byte;

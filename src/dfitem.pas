@@ -112,7 +112,7 @@ procedure SwapItem(var a, b: TItem);
 
 implementation
 
-uses vnode, drlua, vluasystem, vluaentitynode, vutil, vdebug, dfbeing, drlbase, vmath, drlhooks;
+uses vnode, drlua, vluasystem, vluaentitynode, vutil, vdebug, dfbeing, drlbase, vmath, drlhooks, drlperk;
 
 procedure SwapItem(var a, b: TItem);
 var c : TItem;
@@ -399,7 +399,18 @@ begin
 end;
 
 function TItem.GetAltReloadName : AnsiString;
+var iPerks : TPerkList;
+    i      : Integer;
 begin
+  // First check if there's a perk with OnAltReload hook
+  if ( FPerks <> nil ) and ( Hook_OnAltReload in FPerks.Hooks ) then
+  begin
+    iPerks := FPerks.List;
+    for i := 0 to iPerks.Size - 1 do
+      if Hook_OnAltReload in PerkData[ iPerks[i].ID ].Hooks then
+        Exit( PerkData[ iPerks[i].ID ].Short );
+  end;
+  // Fall back to Lua altreloadname property
   GetAltReloadName := LuaSystem.Get([ 'items', ID, 'altreloadname' ], '');
 end;
 
