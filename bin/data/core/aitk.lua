@@ -380,7 +380,7 @@ function aitk.basic_smart_idle( self )
                     if item and ( ( use_packs and item.flags[ IF_AIHEALPACK ] ) or 
                                 ( use_armor and item.itype == ITEMTYPE_ARMOR and not self.eq.armor ) ) then
                         local is_armor = item.itype == ITEMTYPE_ARMOR
-                        self:pickup( self.move_to )
+                        self:pickup( self.move_to, true )
                         if is_armor then
                             self:wear( item )
                         end

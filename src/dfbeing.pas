@@ -92,7 +92,7 @@ TBeing = class(TThing,IPathQuery)
     function ActionDualReload : Boolean;
     function ActionAltReload : Boolean;
     function ActionFire( aTarget : TCoord2D; aWeapon : TItem; aAltFire : Boolean = False; aDelay : Integer = 0; aForceSingle : Boolean = False ) : Boolean;
-    function ActionPickup : Boolean;
+    function ActionPickup( aApplyCost : Boolean = True ) : Boolean;
     function ActionUse( aItem : TItem; aTarget : TCoord2D ) : Boolean;
     function ActionUnLoad( aItem : TItem; aDisassembleID : AnsiString = '' ) : Boolean;
     function ActionMove( aTarget : TCoord2D; aVisualMultiplier : Single = 1.0; aMoveCost : Integer = -1 ) : Boolean;
@@ -930,7 +930,7 @@ begin
   Exit( True );
 end;
 
-function TBeing.ActionPickup : Boolean;
+function TBeing.ActionPickup( aApplyCost : Boolean = True ) : Boolean;
 var iAmount  : byte;
     iItem   : TItem;
     iName   : AnsiString;
@@ -950,7 +950,8 @@ begin
       iItem.CallHook(Hook_OnPickUp, [Self]);
     end;
     TLevel(Parent).DestroyItem( FPosition );
-    Dec(FSpeedCount,ActionCostPickUp);
+    if aApplyCost then
+      Dec(FSpeedCount,ActionCostPickUp);
     Exit( True );
   end;
 
@@ -978,7 +979,7 @@ begin
       if iAmount = 0 then
         TLevel(Parent).DestroyItem( FPosition )
       else iItem.Amount := iAmount;
-      Exit( Success( 'You found %d of %s.',[iCount,iName],ActionCostPickup) );
+      Exit( Success( 'You found %d of %s.',[iCount,iName],Iif( aApplyCost, ActionCostPickup, 0 ) ) );
     end else Exit( Fail('You don''t have enough room in your backpack.',[]) );
   end;
 
@@ -989,7 +990,8 @@ begin
   if isPlayer then IO.Msg('You picked up %s.',[iItem.GetName(false)]);
   Inv.Add(iItem);
   CallHook( Hook_OnPickUpItem, [iItem] );
-  Dec(FSpeedCount,ActionCostPickUp);
+  if aApplyCost then
+    Dec(FSpeedCount,ActionCostPickUp);
   iItem.CallHook(Hook_OnPickup, [Self]);
   Exit( True );
 end;
@@ -2974,7 +2976,7 @@ var iState  : TDRLLuaState;
 begin
   iState.Init(L);
   iBeing := iState.ToObject(1) as TBeing;
-  iState.Push( iBeing.ActionPickup );
+  iState.Push( iBeing.ActionPickup( iState.ToBoolean(2, false) ) );
   Result := 1;
 end;
 
