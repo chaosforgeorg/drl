@@ -221,7 +221,6 @@ function drl.register_exotic_items()
 		knockback     = 8,
 		range         = 15,
 		hitsprite     = SPRITE_BLAST,
-		altreloadname = "full",
 
 		OnCreate = function(self)
 			self:add_perk( "perk_pump_action" )
@@ -414,7 +413,6 @@ function drl.register_exotic_items()
 		miss_dist     = 5,
 		missprite     = SPRITE_ROCKETSHOT,
 		hitsprite     = SPRITE_BLAST,
-		altreloadname = "full",
 		explosion     = {
 			delay 	= 40,
 			color 	= RED,
@@ -447,7 +445,6 @@ function drl.register_exotic_items()
 		reloadtime    = 20,
 		shots         = 6,
 		altfire       = ALT_CHAIN,
-		altreloadname = "overcharge",
 		misascii      = "*",
 		miscolor      = MULTIBLUE,
 		misdelay      = 10,
@@ -509,6 +506,17 @@ function drl.register_exotic_items()
 		end,
 	}
 
+	register_perk "perk_utrans_hit"
+	{
+		OnHitBeing = function(self,being,target)
+			target:play_sound("phasing")
+			being:msg("Suddenly "..target:get_name(true,false).." blinks away!")
+			level:explosion( target.position, { range = 2, delay = 50, color = LIGHTBLUE } )
+			target:phase()
+			return false
+		end,
+	}
+
 	register_item "utrans"
 	{
 		name     = "combat translocator",
@@ -541,12 +549,8 @@ function drl.register_exotic_items()
 		missprite     = SPRITE_PLASMASHOT,
 		hitsprite     = SPRITE_BLAST,
 
-		OnHitBeing = function(self,being,target)
-			target:play_sound("phasing")
-			being:msg("Suddenly "..target:get_name(true,false).." blinks away!")
-			level:explosion( target.position, { range = 2, delay = 50, color = LIGHTBLUE } )
-			target:phase()
-			return false
+		OnCreate = function(self)
+			self:add_perk( "perk_utrans_hit" )
 		end,
 
 		OnAltFire = function(self,being)
@@ -695,6 +699,18 @@ function drl.register_exotic_items()
 		knockmod   = -70,
 	}
 
+	register_perk "perk_umedarmor"
+	{
+		OnEquipTick = function(self,being)
+			if self.durability > 20 then
+				if being.hp < being.hpmax / 2 then
+					being.hp = being.hp + 1
+					self.durability = self.durability - 1
+				end
+			end
+		end,
+	}
+
 	register_item "umedarmor"
 	{
 		name     = "medical armor",
@@ -712,13 +728,8 @@ function drl.register_exotic_items()
 		armor      = 2,
 		movemod    = -15,
 
-		OnEquipTick = function(self, being)
-			if self.durability > 20 then
-				if being.hp < being.hpmax / 2 then
-					being.hp = being.hp + 1
-					self.durability = self.durability - 1
-				end
-			end
+		OnCreate = function(self)
+			self:add_perk( "perk_umedarmor" )
 		end,
 	}
 

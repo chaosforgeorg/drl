@@ -464,11 +464,14 @@ core.register_blueprint "item"
 			dis_unique = { false, core.TBOOLEAN, false },
 			dis_other  = { false, core.TBOOLEAN, false },
 			OnUse      = { true,  core.TFUNC },
+
+			OnModDescribe = { false, core.TFUNC },
 		},
 		[ITEMTYPE_POWER]   = {
 			ascii    = { false, core.TSTRING, "^" },
 			slevel   = { false, core.TNUMBER },
 			OnPickup = { true, core.TFUNC },
+			OnEnter  = { false, core.TFUNC },
 		},
 		[ITEMTYPE_AMMO]   = {
 			ascii   = { false, core.TSTRING, "|" },
@@ -505,7 +508,6 @@ core.register_blueprint "item"
 			shotcost      = { false, core.TNUMBER, 0 },
 			altfire       = { false, core.TNUMBER, 0 },
 			altfirename   = { false, core.TSTRING },
-			altreloadname = { false, core.TSTRING },
 			scavenge      = { false, core.TARRAY(core.TIDIN("items")) },
 			misascii      = { false, core.TSTRING, "-" },
 			miscolor      = { false, core.TNUMBER },
@@ -600,6 +602,8 @@ core.register_blueprint "item"
 			desc       = { true,  core.TSTRING },
 			warning    = { false, core.TSTRING },
 			fullchance = { false, core.TNUMBER },
+
+			OnDescribe = { false, core.TFUNC },
 		},
 		[ITEMTYPE_TELE] = {
 			ascii   = { false, core.TSTRING, "*" },
@@ -617,29 +621,12 @@ core.register_blueprint "item"
 	OnCreate       = { false, core.TFUNC },
 	OnPickup       = { false, core.TFUNC },
 	OnFirstPickup  = { false, core.TFUNC },
-	OnPickupCheck  = { false, core.TFUNC },
 	OnUse          = { false, core.TFUNC },
 	OnUseCheck     = { false, core.TFUNC },
-	OnPreReload    = { false, core.TFUNC },
-	OnReload       = { false, core.TFUNC },
 	OnAltFire      = { false, core.TFUNC },
-	OnAltReload    = { false, core.TFUNC },
 	OnEquip        = { false, core.TFUNC },
-	OnEquipTick    = { false, core.TFUNC },
-	OnEquipCheck   = { false, core.TFUNC },
 	OnUnequip      = { false, core.TFUNC },
-	OnKill         = { false, core.TFUNC },
-	OnHitBeing     = { false, core.TFUNC },
-	OnEnter        = { false, core.TFUNC },
-	OnFired        = { false, core.TFUNC },
 	OnFire         = { false, core.TFUNC },
-	OnPostMove     = { false, core.TFUNC },
-	OnDamage       = { false, core.TFUNC },
-	OnDescribe     = { false, core.TFUNC },
-	OnDieCheck     = { false, core.TFUNC },
-    OnReceiveDamage= { false, core.TFUNC },
-	
-	OnModDescribe  = { false, core.TFUNC },
 }
 
 core.register_blueprint "itemset"

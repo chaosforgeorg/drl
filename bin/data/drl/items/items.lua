@@ -636,7 +636,6 @@ function drl.register_regular_items()
 		ammomax       = 5,
 		damage        = "7d3",
 		damagetype    = DAMAGE_SHARPNEL,
-		altreloadname = "full",
 		range         = 15,
 		spread        = 2,
 		falloff       = 5,
@@ -646,10 +645,6 @@ function drl.register_regular_items()
 		OnCreate = function(self)
 			self:add_perk( "perk_altreload_full" )
 			self:add_perk( "perk_pump_action" )
-		end,
-		
-		OnAltReload = function( self, being )
-			return being:full_reload( self )
 		end,
 	}
 

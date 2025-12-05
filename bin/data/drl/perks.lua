@@ -24,7 +24,7 @@ function drl.register_perks()
 	register_perk "perk_altreload_nuke"
 	{
 		name   = "",
-		short  = "overcharge",
+		short  = "overload",
 		desc   = "overloads the nuclear reactor",
 		color  = LIGHTBLUE,
 		tags   = { "altreload" },

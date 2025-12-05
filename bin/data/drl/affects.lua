@@ -18,8 +18,6 @@ function drl.register_affects()
 		name           = "running",
 		color          = YELLOW,
 		color_expire   = BROWN,
-		message_init   = "You start running!",
-		message_done   = "You stop running.",
 
 		OnAdd          = function(self)
 			self:msg("You start running!")

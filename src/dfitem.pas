@@ -402,7 +402,7 @@ function TItem.GetAltReloadName : AnsiString;
 var iPerks : TPerkList;
     i      : Integer;
 begin
-  // First check if there's a perk with OnAltReload hook
+  GetAltReloadName := '';
   if ( FPerks <> nil ) and ( Hook_OnAltReload in FPerks.Hooks ) then
   begin
     iPerks := FPerks.List;
@@ -410,8 +410,6 @@ begin
       if Hook_OnAltReload in PerkData[ iPerks[i].ID ].Hooks then
         Exit( PerkData[ iPerks[i].ID ].Short );
   end;
-  // Fall back to Lua altreloadname property
-  GetAltReloadName := LuaSystem.Get([ 'items', ID, 'altreloadname' ], '');
 end;
 
 function TItem.DescriptionBox( aShort : Boolean = False ): Ansistring;
