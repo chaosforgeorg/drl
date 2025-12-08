@@ -13,13 +13,13 @@ function drl.register_regular_items()
 		weight   = 640,
 		group    = "melee",
 		desc     = "Not what you'd really like to use, but it's better than your fists.",
-		flags    = { IF_THROWDROP, IF_EXACTHIT },
+		flags    = {},
 
 		type        = ITEMTYPE_MELEE,
 		damage      = "2d5",
 		damagetype  = DAMAGE_MELEE,
 		acc         = 1,
-		altfire     = ALT_THROW,
+		altfire     = ALT_SCRIPT,
 		miscolor    = LIGHTGRAY,
 		misdelay    = 50,
 		miss_base   = 10,
@@ -30,6 +30,7 @@ function drl.register_regular_items()
 
 		OnCreate = function(self)
 			self:add_property( "BLADE", true )
+			self:add_perk( "perk_altfire_throw" )
 		end,
 	}
 

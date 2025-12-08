@@ -187,13 +187,13 @@ function drl.register_unique_items()
 		group    = "melee",
 		scavenge = { "umod_onyx" },
 		desc     = "Forged by the dwarves Eitri and Brokk, in response to Loki's challenge, Mjollnir is an indestructible war hammer.",
-		flags    = { IF_UNIQUE, IF_NODESTROY, IF_MODABLE, IF_SINGLEMOD, IF_EXACTHIT },
+		flags    = { IF_UNIQUE, IF_NODESTROY, IF_MODABLE, IF_SINGLEMOD },
 
 		type       = ITEMTYPE_MELEE,
 		damage     = "1d25",
 		damagetype = DAMAGE_MELEE,
 		acc        = 0,
-		altfire    = ALT_THROW,
+		altfire    = ALT_SCRIPT,
 		miscolor   = LIGHTGRAY,
 		misdelay   = 50,
 		miss_base  = 10,
@@ -201,6 +201,12 @@ function drl.register_unique_items()
 		range      = 5,
 		missprite  = SPRITE_CLEAVER,
 		hitsprite  = SPRITE_BLAST,
+
+		OnCreate = function(self)
+			self:add_perk( "perk_altfire_throw" )
+			self.flags[ IF_THROWDROP ] = false
+		end,
+	}
 	}
 
 	register_item "usubtle"

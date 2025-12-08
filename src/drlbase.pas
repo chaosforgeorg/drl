@@ -712,14 +712,14 @@ begin
       IO.Msg( 'This weapon has no alternate fire mode' );
       Exit( False );
     end;
-    if iItem.AltFire in [ ALT_TARGETSCRIPT, ALT_SCRIPT ] then
+    if ( iItem.AltFire in [ ALT_TARGETSCRIPT, ALT_SCRIPT ] ) and ( not iItem.Flags[ IF_ALTTARGET ] ) then
       aAuto := False;
   end;
   if not iItem.CallHookCheck( Hook_OnFire, [Player,aAlt] ) then Exit( False );
 
   if aAlt then
   begin
-    if iItem.isMelee and ( iItem.AltFire = ALT_THROW ) then
+    if iItem.isMelee and iItem.Flags[ IF_ALTTARGET ] then
     begin
       if aMouse then
         iTarget  := IO.MTarget
@@ -729,7 +729,7 @@ begin
       begin
         iRange      := iItem.Range;
         iLimitRange := iItem.Flags[ IF_EXACTHIT ];
-        iFireTitle  := 'Choose throw target:';
+        iFireTitle  := 'Choose target ('+iItem.GetAltFireName+'):';
       end;
     end;
   end;

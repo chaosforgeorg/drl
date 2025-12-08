@@ -872,21 +872,10 @@ begin
     if (not aWeapon.isWeapon) then Exit( False );
     if aWeapon.isMelee then FMeleeAttack := True;
     if aWeapon.AltFire in [ ALT_SCRIPT, ALT_TARGETSCRIPT ] then
-      if not aWeapon.CallHookCheck( Hook_OnAltFire, [Self] ) 
+      if not aWeapon.CallHookCheck( Hook_OnAltFire, [Self, LuaCoord( aTarget ) ] ) 
         then Exit( False );
 
-    if aWeapon.isMelee then
-    begin
-      case aWeapon.AltFire of
-        ALT_THROW  :
-        begin
-          SendMissile( aTarget, aWeapon, ALT_THROW, 0, 0 );
-          Dec( FSpeedCount, 1000 );
-          Exit( True );
-        end;
-      end;
-      Exit( True );
-    end;
+    if aWeapon.isMelee then Exit( True );
   end;  
   
   if (not aWeapon.isRanged) then Exit( False );
@@ -3271,8 +3260,29 @@ begin
     end;
 end;
 
+function lua_being_send_missile( L: Plua_State ): Integer; cdecl;
+var iState     : TDRLLuaState;
+    iBeing     : TBeing;
+    iTarget    : TCoord2D;
+    iItem      : TItem;
+    iAltFire   : TAltFire;
+    iSequence  : DWord;
+    iShotCount : Integer;
+begin
+  iState.Init(L);
+  iBeing  := iState.ToObject(1) as TBeing;
+  iTarget := iState.ToPosition(2);
+  iItem   := iState.ToObject(3) as TItem;
+  if (iBeing = nil) or (iItem = nil) then Exit(0);
+  iAltFire   := TAltFire(iState.ToInteger(4, Byte(ALT_NONE)));
+  iSequence  := iState.ToInteger(5, 0);
+  iShotCount := iState.ToInteger(6, 0);
+  iState.Push(iBeing.SendMissile(iTarget, iItem, iAltFire, iSequence, iShotCount));
+  Result := 1;
+end;
 
-const lua_being_lib : array[0..35] of luaL_Reg = (
+
+const lua_being_lib : array[0..36] of luaL_Reg = (
       ( name : 'new';           func : @lua_being_new),
       ( name : 'kill';          func : @lua_being_kill),
       ( name : 'resurrect';     func : @lua_being_resurrect),
@@ -3313,6 +3323,7 @@ const lua_being_lib : array[0..35] of luaL_Reg = (
       ( name : 'wipe_marker';  func : @lua_being_wipe_marker),
 
       ( name : 'animate_bump';  func : @lua_being_animate_bump),
+      ( name : 'send_missile';  func : @lua_being_send_missile),
 
       ( name : nil;             func : nil; )
 );

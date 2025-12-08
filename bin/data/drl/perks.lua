@@ -1,5 +1,34 @@
 function drl.register_perks()
 
+	-- Alt-fire
+	
+	register_perk "perk_altfire_throw"
+	{
+		name   = "",
+		short  = "throw",
+		desc   = "throws the melee weapon at a target",
+		color  = LIGHTBLUE,
+		tags   = { "altfire" },
+
+		OnAdd = function(self)
+			self.flags[ IF_ALTTARGET ] = true
+			self.flags[ IF_THROWDROP ] = true
+			self.flags[ IF_EXACTHIT  ] = true
+		end,
+
+		OnRemove = function(self)
+			self.flags[ IF_ALTTARGET ] = false
+			self.flags[ IF_THROWDROP ] = false
+			self.flags[ IF_EXACTHIT  ] = false
+		end,
+
+		OnAltFire = function( self, being, target )
+			being:send_missile( target, self )
+			being.scount = being.scount - 1000
+			return false
+		end,
+	}
+
 	-- Alt-reload 
 
 	register_perk "perk_altreload_full"

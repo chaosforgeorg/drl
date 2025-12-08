@@ -387,12 +387,20 @@ begin
 end;
 
 function TItem.GetAltFireName : AnsiString;
+var iPerks : TPerkList;
+    i      : Integer;
 begin
+  if ( FPerks <> nil ) and ( Hook_OnAltFire in FPerks.Hooks ) then
+  begin
+    iPerks := FPerks.List;
+    for i := 0 to iPerks.Size - 1 do
+      if Hook_OnAltFire in PerkData[ iPerks[i].ID ].Hooks then
+        Exit( PerkData[ iPerks[i].ID ].Short );
+  end;
   GetAltFireName := LuaSystem.Get([ 'items', ID, 'altfirename' ], '');
   if GetAltFireName <> '' then Exit;
   case FProps.AltFire of
     ALT_CHAIN     : Exit('chain fire');
-    ALT_THROW     : Exit('throw');
     ALT_AIMED     : Exit('aimed');
     ALT_SINGLE    : Exit('single');
   end;
