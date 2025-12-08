@@ -207,7 +207,6 @@ function drl.register_unique_items()
 			self.flags[ IF_THROWDROP ] = false
 		end,
 	}
-	}
 
 	register_item "usubtle"
 	{
