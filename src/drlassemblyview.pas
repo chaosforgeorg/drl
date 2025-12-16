@@ -63,8 +63,8 @@ begin
 end;
 
 procedure TAssemblyView.ReadAssemblies;
-var iType, iFound, i : DWord;
-    iString, iID     : AnsiString;
+var iType, iFound, i    : DWord;
+    iString, iID, iDesc : AnsiString;
 const TypeName : array[0..2] of string = ('Basic','Advanced','Master');
 begin
   if FContent = nil then FContent := TStringGArray.Create;
@@ -84,9 +84,16 @@ begin
           then if iType = 0
             then iString := '  {d'+LuaSystem.Get(['mod_arrays',i,'name'])+' ({L-})}'
             else iString := '  {d  -- ? -- ({L-})}'
-          else iString := '  {y'+Padded(LuaSystem.Get(['mod_arrays',i,'name'])+' ({L'+IntToStr(iFound)+'})}',36)
-                          + '{l' + LuaSystem.Get(['mod_arrays',i,'desc'])+'}';
+          else 
+          begin 
+            iString := '  {y'+Padded(LuaSystem.Get(['mod_arrays',i,'name'])+' ({L'+IntToStr(iFound)+'})}',26)
+                       + '{l' + LuaSystem.Get(['mod_arrays',i,'request_desc'])+'}';
+            iDesc := LuaSystem.Get(['mod_arrays',i,'desc']);
+            if iDesc <> '' then
+              iString += #10'   {!*} '+iDesc;
+          end;
         FContent.Push( iString );
+        FContent.Push( '' );
       end;
       if iType <> 2 then FContent.Push('');
     end;

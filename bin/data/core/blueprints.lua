@@ -401,6 +401,7 @@ core.register_blueprint "mod_array"
 	name         = { true,  core.TSTRING },
 	mods         = { true,  core.TTABLE},
 	desc         = { false, core.TSTRING },
+	request_desc = { false, core.TSTRING },
 	request_id   = { false, core.TIDIN("items") },
 	request_type = { false, core.TNUMBER },
 	level        = { false, core.TNUMBER, 0 },

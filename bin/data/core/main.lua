@@ -91,7 +91,7 @@ register_challenge  = core.register_storage( "chal", "challenge" )
 register_itemset    = core.register_storage( "itemsets", "itemset" )
 register_mod_array = core.register_storage( "mod_arrays", "mod_array", function (m) 
 		m.sig   = core.mod_list_signature(m.mods)
-		m.desc  = core.mod_array_description(m)
+		m.request_desc  = m.request_desc or core.mod_array_description(m)
 	end
 )
 register_klass      = core.register_storage( "klasses", "klass", function(k)
@@ -626,8 +626,8 @@ function core.mod_array_description( mod_array_proto )
 		first = false
 	end
 
-	if mod_array_proto.desc then 
-		append(mod_array_proto.desc)
+	if mod_array_proto.request_desc then 
+		append(mod_array_proto.request_desc)
 	elseif mod_array_proto.request_id then 
 		append(items[mod_array_proto.request_id].name)
 	elseif mod_array_proto.request_type then 

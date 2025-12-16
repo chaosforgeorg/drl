@@ -322,7 +322,7 @@ function being:pick_item_to_mod( mod, filter )
 	if ma then
 		local entries = {
 			{ name = "Assemble "..ma.name, value = 2 },
-			{ name = "Apply mod normally", value = 1 },
+			{ name = "Apply just the mod", value = 1 },
 			{ name = "Cancel", value = -1 },
 		}
 		if filter and not filter(item) then
@@ -338,6 +338,13 @@ function being:pick_item_to_mod( mod, filter )
 			entries = entries,
 			cancel = -1,
 		}
+		if core.options.assembly_apply_last_mod then
+			ma_choice.header = ma_choice.header ..  " Mod effect will also be applied first."
+		end
+		if ma.desc and ma.desc ~= "" then
+			ma_choice.header = ma_choice.header .. "\n\n" .. "Mod      : "..proto.OnModDescribe( mod, item )
+			ma_choice.header = ma_choice.header .. "\n" .. "Assembly : "..ma.desc
+		end
 		local result = ui.choice( ma_choice )
 		if result == -1 then return nil, false end
 		if result == 2 then
