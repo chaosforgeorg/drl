@@ -348,7 +348,6 @@ function being:pick_item_to_mod( mod, filter )
 		local result = ui.choice( ma_choice )
 		if result == -1 then return nil, false end
 		if result == 2 then
-			ui.msg("You assemble the "..ma.name..".")
 			if core.options.assembly_apply_last_mod then
 				-- Apply mod effect first, then assembly transformation
 				mod:add_property("chosen_item", item)
@@ -356,6 +355,7 @@ function being:pick_item_to_mod( mod, filter )
 					mod.__proto.OnUse( mod, player )
 				end
 			end
+			ui.msg("You assemble the "..ma.name..".")
 			item:apply_mod_array( ma )
 			return nil, true
 		end
