@@ -20,6 +20,7 @@ core.options = {
 	melee_move_on_kill = false,
 	full_being_description = false,
 	percent_health = true,
+	assembly_apply_last_mod = false,
 }
 
 module = false
