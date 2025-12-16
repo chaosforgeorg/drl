@@ -354,7 +354,7 @@ register_item          = core.register_storage( "items", "item", function( ip )
 
 			local OnUnequip = function (self,being)
 				if being:set_items( set ) == itemsets[ set ].trigger then
-					itemsets[ set ].OnRemove(self,being)
+					itemsets[ set ].OnUnequip(self,being)
 				end
 			end
 
