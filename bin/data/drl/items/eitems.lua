@@ -153,7 +153,7 @@ function drl.register_exotic_items()
 		acc           = 3,
 		usetime       = 9,
 		reloadtime    = 10,
-		altfire       = ALT_AIMED,
+		altfire       = ALT_SCRIPT,
 		miscolor      = MULTIYELLOW,
 		misdelay      = 10,
 		miss_base     = 30,
@@ -162,6 +162,7 @@ function drl.register_exotic_items()
 		hitsprite     = SPRITE_BLAST,
 
 		OnCreate = function(self)
+			self:add_perk( "perk_altfire_aimed" )
 			self:add_perk( "perk_weapon_recharge" )
 			self.pp_recharge.delay  = 3
 			self.pp_recharge.amount = 1
@@ -189,13 +190,17 @@ function drl.register_exotic_items()
 		damagetype    = DAMAGE_BULLET,
 		acc           = 5,
 		reloadtime    = 18,
-		altfire       = ALT_AIMED,
+		altfire       = ALT_SCRIPT,
 		miscolor      = LIGHTGRAY,
 		misdelay      = 15,
 		miss_base     = 10,
 		miss_dist     = 3,
 		missprite     = SPRITE_SHOT,
 		hitsprite     = SPRITE_BLAST,
+
+		OnCreate = function(self)
+			self:add_perk( "perk_altfire_aimed" )
+		end,
 	}
 
 	register_item "uashotgun"

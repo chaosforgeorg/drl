@@ -2179,7 +2179,6 @@ begin
   iMaxRange := 30; //aGun.MaxRange
 
   iToHit := getToHit( aItem, aAltFire, False );
-  if aAltFire = ALT_AIMED then iToHit += 3;
   if aItem.Flags[ IF_SPREAD ] then iToHit += 10;
 
   iTarget := aTarget;
@@ -2486,7 +2485,7 @@ var iModifier : Single;
     if iBonus <> 0 then iModifier *= Max( (100.0-iBonus)/100, 0.1 );
     if iModifier < 0.1 then iModifier := 0.1;
     iModifier *= GetBonusMul( Hook_getFireCostMul, [ aWeapon, aIsMelee, Integer( aAltFire ) ] );
-    if (aAltFire = ALT_AIMED) then iModifier *= 2;
+    if aWeapon <> nil then iModifier *= aWeapon.GetBonusMul( Hook_getFireCostMul, [ aIsMelee, Integer( aAltFire ) ] );
     getWeaponFireCost := Round( ActionCostFire*iModifier );
   end;
 

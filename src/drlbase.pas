@@ -775,7 +775,6 @@ begin
         ALT_SCRIPT       : if iItem.Flags[ IF_ALTTARGET ] 
                              then iFireTitle := 'Fire target ({L'+iItem.GetAltFireName+'}):'
                              else begin iFireTitle := ''; iTarget := Player.Position; end;
-        ALT_AIMED        : iFireTitle := 'Fire target ({Laimed}):';
       end;
       if iAltFire = ALT_CHAIN then
       begin

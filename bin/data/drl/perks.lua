@@ -108,6 +108,49 @@ function drl.register_perks()
 		end,
 	}
 
+	register_perk "perk_altfire_aimed"
+	{
+		name   = "",
+		short  = "aimed",
+		desc   = "fires an aimed shot with +3 to hit, but double time taken",
+		color  = LIGHTBLUE,
+		tags   = { "altfire" },
+
+		OnAdd = function(self)
+			self:add_property( "pp_aimed", false )
+			self.flags[ IF_ALTTARGET ] = true
+		end,
+
+		OnRemove = function(self)
+			self:remove_property( "pp_aimed" )
+			self.flags[ IF_ALTTARGET ] = false
+		end,
+
+		OnAltFire = function( self, being, target )
+			self.pp_aimed = true
+			return true
+		end,
+
+		OnFired = function( self, being )
+			self.pp_aimed = false
+			return true
+		end,
+
+		getToHitBonus = function( self, is_melee, alt_fire )
+			if self.pp_aimed then
+				return 3
+			end
+			return 0
+		end,
+
+		getFireCostMul = function( self, is_melee, alt_fire )
+			if self.pp_aimed then
+				return 2.0
+			end
+			return 1.0
+		end,
+	}
+
 	-- Alt-reload 
 
 	register_perk "perk_altreload_full"

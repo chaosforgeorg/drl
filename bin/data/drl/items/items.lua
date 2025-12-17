@@ -555,13 +555,17 @@ function drl.register_regular_items()
 		damagetype    = DAMAGE_BULLET,
 		acc           = 4,
 		reloadtime    = 12,
-		altfire       = ALT_AIMED,
+		altfire       = ALT_SCRIPT,
 		miscolor      = LIGHTGRAY,
 		misdelay      = 15,
 		miss_base     = 10,
 		miss_dist     = 3,
 		missprite     = SPRITE_SHOT,
 		hitsprite     = SPRITE_BLAST,
+
+		OnCreate = function(self)
+			self:add_perk( "perk_altfire_aimed" )
+		end,
 	}
 
 	register_item "shotgun"

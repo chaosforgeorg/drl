@@ -298,7 +298,7 @@ function drl.register_unique_items()
 		acc           = 6,
 		usetime       = 7,
 		reloadtime    = 20,
-		altfire       = ALT_AIMED,
+		altfire       = ALT_SCRIPT,
 		miscolor      = LIGHTGRAY,
 		misdelay      = 15,
 		miss_base     = 10,
@@ -307,6 +307,7 @@ function drl.register_unique_items()
 		hitsprite     = SPRITE_BLAST,
 
 		OnCreate = function(self)
+			self:add_perk( "perk_altfire_aimed" )
 			self:add_perk( "perk_uni_trigun_altreload" )
 		end,
 	}
@@ -333,7 +334,7 @@ function drl.register_unique_items()
 		acc           = 4,
 		radius        = 1,
 		reloadtime    = 20,
-		altfire       = ALT_AIMED,
+		altfire       = ALT_SCRIPT,
 		miscolor      = LIGHTGRAY,
 		misdelay      = 15,
 		miss_base     = 10,
@@ -344,6 +345,10 @@ function drl.register_unique_items()
 			delay = 40,
 			color = RED,
 		},
+
+		OnCreate = function(self)
+			self:add_perk( "perk_altfire_aimed" )
+		end,
 	}
 
 	register_perk "perk_umega_kill"
