@@ -672,7 +672,6 @@ var iTarget     : TCoord2D;
     iItem       : TItem;
     iFireTitle  : AnsiString;
     iChainFire  : Byte;
-    iAltFire    : TAltFire;
     iLimitRange : Boolean;
     iRange      : Byte;
     iCommand    : Byte;
@@ -691,6 +690,13 @@ begin
     IO.Msg( 'You have no weapon.' );
     Exit( False );
   end;
+
+  if aAlt and ( not iItem.HasHook( Hook_OnAltFire ) ) then
+  begin
+    IO.Msg( 'This weapon has no alternate fire mode' );
+    Exit( False );
+  end;
+
   if not aAlt then
   begin
     if (not aMouse) and (not aAuto) and iItem.isMelee then
@@ -707,11 +713,6 @@ begin
   end
   else
   begin
-    if not iItem.HasHook( Hook_OnAltFire ) then
-    begin
-      IO.Msg( 'This weapon has no alternate fire mode' );
-      Exit( False );
-    end;
     if ( not iItem.Flags[ IF_ALTTARGET ] ) then aAuto := False;
     if iItem.Flags[ IF_ALTMANUAL ]         then aAuto := False;
   end;
@@ -766,10 +767,8 @@ begin
     end
     else
     begin
-      iAltFire    := ALT_NONE;
-      if aAlt and iItem.HasHook( Hook_OnAltFire ) then iAltFire := ALT_SCRIPT;
       iFireTitle := 'Choose fire target:';
-      if iAltFire = ALT_SCRIPT then
+      if aAlt then
       begin
         if iItem.Flags[ IF_ALTCHAIN ] then
         begin

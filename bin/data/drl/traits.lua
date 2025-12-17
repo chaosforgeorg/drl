@@ -439,14 +439,14 @@ function drl.register_traits()
 		end,
 
 		getShotsBonus = function ( self, weapon, alt )
-			if weapon and weapon.group == "pistol" and alt == ALT_NONE and weapon.shots < 2 then
+			if weapon and weapon.group == "pistol" and ( not alt ) and weapon.shots < 2 then
 				return self.trait_triggerhappy
 			end
 			return 0
 		end,
 
 		getFireCostBonus = function ( self, weapon, is_melee, alt )
-			if weapon and weapon.group == "pistol" and alt == ALT_NONE and weapon.shots < 2 then
+			if weapon and weapon.group == "pistol" and ( not alt ) and weapon.shots < 2 then
 				return -self.trait_triggerhappy * 50
 			end
 			return 0
@@ -638,7 +638,7 @@ function drl.register_traits()
 		end,
 
 		getAmmoCostMul = function( self, weapon, alt, shots )
-			if weapon and self.chainfire > 0 and alt == ALT_SCRIPT and weapon.flags[ IF_ALTCHAIN ] then
+			if alt and weapon and self.chainfire > 0 and weapon.flags[ IF_ALTCHAIN ] then
 				return 1.0 / shots
 			end
 			return 1.0

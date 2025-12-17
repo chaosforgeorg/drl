@@ -50,7 +50,7 @@ TBeing = class(TThing,IPathQuery)
     function getTotalResistance( const aResistance : AnsiString; aTarget : TBodyTarget ) : Integer;
     procedure ApplyDamage( aDamage : LongInt; aTarget : TBodyTarget; aDamageType : TDamageType; aSource : TItem; aDelay : Integer ); virtual;
     function calculateToHit( aBeing : TBeing ) : Integer;
-    function SendMissile( aTarget : TCoord2D; aItem : TItem; aAltFire : TAltFire; aSequence : DWord; aShotCount : Integer ) : Boolean;
+    function SendMissile( aTarget : TCoord2D; aItem : TItem; aAltFire : Boolean; aSequence : DWord; aShotCount : Integer ) : Boolean;
     function  isActive : boolean;
     function  WoundStatus : string;
     function  IsPlayer : Boolean;
@@ -61,14 +61,14 @@ TBeing = class(TThing,IPathQuery)
     destructor Destroy; override;
     function rollMeleeDamage( aSlot : TEqSlot = efWeapon; aTarget : TBeing = nil ) : Integer;
     function getMoveCost : LongInt;
-    function getFireCost( aAltFire : TAltFire; aIsMelee : Boolean ) : LongInt;
+    function getFireCost( aAltFire : Boolean; aIsMelee : Boolean ) : LongInt;
     function getReloadCost( aItem : TItem ) : LongInt;
     function getUseCost( aItem : TItem ) : LongInt;
     function getWearCost( aItem : TItem ) : LongInt;
     function getDodgeMod : LongInt;
     function getKnockMod : LongInt;
-    function getToHit( aItem : TItem; aAltFire : TAltFire; aIsMelee : Boolean ) : Integer;
-    function getToDam( aItem : TItem; aAltFire : TAltFire; aIsMelee : Boolean ) : Integer;
+    function getToHit( aItem : TItem; aAltFire : Boolean; aIsMelee : Boolean ) : Integer;
+    function getToDam( aItem : TItem; aAltFire : Boolean; aIsMelee : Boolean ) : Integer;
     function canDualWield : boolean;
     function canDualWieldMelee : boolean;
     function canPackReload : Boolean;
@@ -128,12 +128,11 @@ TBeing = class(TThing,IPathQuery)
     procedure BloodDecal( aFrom : TDirection; aAmount : LongInt );
     procedure LuaLoad( Table : TLuaTable ); override;
     // private
-    function FireRanged( aTarget : TCoord2D; aGun : TItem; aAlt : TAltFire = ALT_NONE; aDelay : Integer = 0 ) : Boolean;
+    function FireRanged( aTarget : TCoord2D; aGun : TItem; aAlt : Boolean = False; aDelay : Integer = 0 ) : Boolean;
     function getAmmoItem( Weapon : TItem ) : TItem;
-    function HandleShotgunFire( aTarget : TCoord2D; aShotGun : TItem; aAltFire : TAltFire; aShots : DWord ) : Boolean;
-    function HandleSpreadShots( aTarget : TCoord2D; aGun : TItem; aAltFire : TAltFire ) : Boolean;
-    function HandleShots( aTarget : TCoord2D; aGun : TItem; aShots : DWord; aAltFire : TAltFire; aDelay : Integer ) : Boolean;
-
+    function HandleShotgunFire( aTarget : TCoord2D; aShotGun : TItem; aAltFire : Boolean; aShots : DWord ) : Boolean;
+    function HandleSpreadShots( aTarget : TCoord2D; aGun : TItem; aAltFire : Boolean ) : Boolean;
+    function HandleShots( aTarget : TCoord2D; aGun : TItem; aShots : DWord; aAltFire : Boolean; aDelay : Integer ) : Boolean;
   protected
     FHPNom         : Word;
     FHPMax         : Word;
@@ -400,7 +399,7 @@ begin
   Exit( FInv.SeekStack( Weapon.AmmoID ) );
 end;
 
-function TBeing.HandleShotgunFire( aTarget : TCoord2D; aShotGun : TItem; aAltFire : TAltFire; aShots : DWord ) : Boolean;
+function TBeing.HandleShotgunFire( aTarget : TCoord2D; aShotGun : TItem; aAltFire : Boolean; aShots : DWord ) : Boolean;
 var iThisUID   : DWord;
     iDual      : Boolean;
     iCount     : DWord;
@@ -436,7 +435,7 @@ begin
   Exit( true );
 end;
 
-function TBeing.HandleSpreadShots( aTarget : TCoord2D; aGun : TItem; aAltFire : TAltFire ) : Boolean;
+function TBeing.HandleSpreadShots( aTarget : TCoord2D; aGun : TItem; aAltFire : Boolean ) : Boolean;
 var iLevel : TLevel;
 begin
   iLevel := TLevel(Parent);
@@ -448,7 +447,7 @@ begin
   Exit( True );
 end;
 
-function TBeing.HandleShots ( aTarget : TCoord2D; aGun : TItem; aShots : DWord; aAltFire : TAltFire; aDelay : Integer ) : Boolean;
+function TBeing.HandleShots ( aTarget : TCoord2D; aGun : TItem; aShots : DWord; aAltFire : Boolean; aDelay : Integer ) : Boolean;
 var iScatter     : DWord;
     iCount       : DWord;
     iSeqBase     : DWord;
@@ -463,7 +462,7 @@ begin
   if not isPlayer then iSeqBase := 100;
   iSeqBase += aDelay;
   iMissileRange := 30; // aGun.Missile.MaxRange;
-  iChaining := ( aAltFire = ALT_SCRIPT ) and ( aGun.Flags[ IF_ALTCHAIN ] ) and ( aShots > 1 );
+  iChaining := aAltFire and ( aGun.Flags[ IF_ALTCHAIN ] ) and ( aShots > 1 );
 
   if aGun.Flags[ IF_SCATTER ] then
   begin
@@ -858,16 +857,15 @@ var iChainFire : Byte;
     iLimitRange: Boolean;
     iRange     : Byte;
     iDist      : Byte;
-    iAltFire   : TAltFire;
+    iAltFire   : Boolean;
 begin
   iChainFire  := FChainFire;
-  iAltFire    := ALT_NONE;
   FChainFire  := 0;
 
   if (aWeapon = nil) then Exit( False );
-  if aAltFire and aWeapon.HasHook( Hook_OnAltFire ) then iAltFire := ALT_SCRIPT;
+  iAltFire    := aAltFire and aWeapon.HasHook( Hook_OnAltFire );
 
-  if iAltFire <> ALT_NONE then 
+  if iAltFire then 
   begin
     if (not aWeapon.isWeapon) then Exit( False );
     if aWeapon.isMelee then FMeleeAttack := True;
@@ -901,7 +899,7 @@ begin
     end;
   end;
 
-  if ( iAltFire = ALT_SCRIPT ) and aWeapon.Flags[ IF_ALTCHAIN ] then
+  if iAltFire and aWeapon.Flags[ IF_ALTCHAIN ] then
   begin
     if ( iChainFire > 0 )
       then FTargetPos := DRL.Targeting.PrevPos
@@ -1337,7 +1335,7 @@ begin
   until aAmmoItem = nil;
 end;
 
-function TBeing.FireRanged( aTarget : TCoord2D; aGun : TItem; aAlt : TAltFire; aDelay : Integer = 0 ) : Boolean;
+function TBeing.FireRanged( aTarget : TCoord2D; aGun : TItem; aAlt : Boolean; aDelay : Integer = 0 ) : Boolean;
 var iShots       : Integer;
     iShotsBonus  : Integer;
     iShotCost    : Integer;
@@ -1354,10 +1352,10 @@ begin
   iUIDW := aGun.UID;
   iUID  := FUID;
 
-  iShotsBonus  := GetBonus( Hook_getShotsBonus,  [ aGun, Integer( aAlt ) ] );
+  iShotsBonus  := GetBonus( Hook_getShotsBonus,  [ aGun, aAlt ] );
 
   iShots       := Max( aGun.Shots, 1 );
-  iChaining    := ( aAlt = ALT_SCRIPT ) and ( aGun.Flags[ IF_ALTCHAIN ] ) and ( iShots > 1 );
+  iChaining    := aAlt and ( aGun.Flags[ IF_ALTCHAIN ] ) and ( iShots > 1 );
   iShots       += iShotsBonus;
 
   if iChaining then
@@ -1376,7 +1374,7 @@ begin
   begin
     iShotCost       := Max( aGun.ShotCost, 1 );
     iShotsCost      := iShots * iShotCost;
-    iShotsCost      := Round( iShotsCost * GetBonusMul( Hook_getAmmoCostMul, [aGun, Integer( aAlt ), iShots ] ) );
+    iShotsCost      := Round( iShotsCost * GetBonusMul( Hook_getAmmoCostMul, [aGun, aAlt, iShots ] ) );
 
     if iShotsCost > aGun.Ammo then
     begin
@@ -1698,7 +1696,7 @@ var iDamage   : Integer;
 begin
   iWeapon := Inv.Slot[ aSlot ];
   if ( iWeapon <> nil ) and ( not iWeapon.isMelee ) then iWeapon := nil;
-  iDamage := getToDam( iWeapon, ALT_NONE, True );
+  iDamage := getToDam( iWeapon, False, True );
   if iWeapon <> nil then
   begin
     if BF_MAXDAMAGE in FFlags then
@@ -1715,8 +1713,8 @@ begin
   end;
 
   if iWeapon <> nil 
-    then iDamage := Floor( iDamage * GetBonusMul( Hook_getDamageMul, [ iWeapon, True, ALT_NONE, aTarget ] ) * iWeapon.GetBonusMul( Hook_getDamageMul, [ True, ALT_NONE, aTarget ] ) )
-    else iDamage := Floor( iDamage * GetBonusMul( Hook_getDamageMul, [ iWeapon, True, ALT_NONE, aTarget ] ) );
+    then iDamage := Floor( iDamage * GetBonusMul( Hook_getDamageMul, [ iWeapon, True, False, aTarget ] ) * iWeapon.GetBonusMul( Hook_getDamageMul, [ True, False, aTarget ] ) )
+    else iDamage := Floor( iDamage * GetBonusMul( Hook_getDamageMul, [ iWeapon, True, False, aTarget ] ) );
   if iDamage < 0 then iDamage := 0;
   rollMeleeDamage := iDamage;
 end;
@@ -1748,7 +1746,7 @@ begin
       else PlaySound( 'melee' );
 
     // Attack cost
-    iAttackCost := getFireCost( ALT_NONE, True );
+    iAttackCost := getFireCost( False, True );
 
     if DRL.Level.AnimationVisible( Position, Self ) then
       IO.addBumpAnimation( VisualTime( iAttackCost, AnimationSpeedAttack ), 0, iUID, iPosition, aWhere, Sprite, 0.5 );
@@ -1817,7 +1815,7 @@ begin
   iDualAttack := canDualWieldMelee;
 
   // Attack cost
-  iAttackCost := getFireCost( ALT_NONE, True );
+  iAttackCost := getFireCost( False, True );
 
   if not aSecond then
     if DRL.Level.AnimationVisible( FPosition, Self ) then
@@ -1834,7 +1832,7 @@ begin
   if aTarget.IsPlayer then iDefenderName := 'you';
 
   // Last kill
-  iToHit := getToHit( iWeapon, ALT_NONE, True ) - aTarget.GetBonus( Hook_getDefenceBonus, [True] );
+  iToHit := getToHit( iWeapon, False, True ) - aTarget.GetBonus( Hook_getDefenceBonus, [True] );
 
   if Roll( 12 + iToHit ) < 0 then
   begin
@@ -2086,7 +2084,7 @@ begin
   if (iWeapon = nil) or (iWeapon.isMelee) then
   begin
     if Distance( FPosition, aBeing.Position ) > 1 then Exit( 0 );
-    iToHit := getToHit( iWeapon, ALT_NONE, True ) - aBeing.GetBonus( Hook_getDefenceBonus, [True] );
+    iToHit := getToHit( iWeapon, False, True ) - aBeing.GetBonus( Hook_getDefenceBonus, [True] );
     Exit( toHitToChance( 12 + iToHit ) );
   end;
 
@@ -2095,7 +2093,7 @@ begin
    or iWeapon.Flags[ IF_EXACTHIT ]
    or iWeapon.Flags[ IF_AUTOHIT ] then Exit( 100 );
 
-  iToHit := getToHit( iWeapon, ALT_NONE, False );
+  iToHit := getToHit( iWeapon, False, False );
   iToHit -= aBeing.GetBonus( Hook_getDefenceBonus, [False] );
   if not iWeapon.Flags[ IF_FARHIT ] then
     iToHit -= Distance( FPosition, aBeing.Position ) div 3;
@@ -2106,7 +2104,7 @@ begin
     Result := Result div 2;
 end;
 
-function TBeing.SendMissile( aTarget : TCoord2D; aItem : TItem; aAltFire : TAltFire; aSequence : DWord; aShotCount : Integer ) : Boolean;
+function TBeing.SendMissile( aTarget : TCoord2D; aItem : TItem; aAltFire : Boolean; aSequence : DWord; aShotCount : Integer ) : Boolean;
 var iDirection  : TDirection;
     iMisslePath : TVisionRay;
     iOldCoord   : TCoord2D;
@@ -2189,16 +2187,16 @@ begin
   iMisslePath.Init( iLevel, iSource, aTarget );
 
   iMaxDamage := (BF_MAXDAMAGE in FFlags) 
-             or CallHookCan( Hook_OnCanMaxDamage, [ aItem, Integer( aAltFire ) ] )
-             or aItem.CallHookCan( Hook_OnCanMaxDamage, [ Integer( aAltFire ), iBeing ] );
+             or CallHookCan( Hook_OnCanMaxDamage, [ aItem, aAltFire ] )
+             or aItem.CallHookCan( Hook_OnCanMaxDamage, [ aAltFire, iBeing ] );
   if iMaxDamage then
     iDamage := aItem.maxDamage
   else
     iDamage := aItem.rollDamage;
 
   iDamageMod := getToDam( aItem, aAltFire, False );
-  iDamageMul := GetBonusMul( Hook_getDamageMul, [ aItem, False, Integer( aAltFire ), iBeing ] )
-              * aItem.GetBonusMul( Hook_getDamageMul, [ False, Integer( aAltFire ), iBeing ] );
+  iDamageMul := GetBonusMul( Hook_getDamageMul, [ aItem, False, aAltFire, iBeing ] )
+              * aItem.GetBonusMul( Hook_getDamageMul, [ False, aAltFire, iBeing ] );
 
   iDamage    += iDamageMod;
   iDamage    := Floor( iDamage * iDamageMul );
@@ -2470,7 +2468,7 @@ begin
   getMoveCost := Round( ActionCostMove * iModifier );
 end;
 
-function TBeing.getFireCost( aAltFire : TAltFire; aIsMelee : Boolean ) : LongInt;
+function TBeing.getFireCost( aAltFire : Boolean; aIsMelee : Boolean ) : LongInt;
 var iModifier : Single;
     iBonus    : Integer;
     iWeapon   : TItem;
@@ -2480,11 +2478,11 @@ var iModifier : Single;
     iModifier := 10;
     if aWeapon <> nil then iModifier := aWeapon.UseTime;
     iModifier *= FTimes.Fire/1000.0;
-    iBonus    := GetBonus( Hook_getFireCostBonus, [ aWeapon, aIsMelee, Integer( aAltFire ) ] );
+    iBonus    := GetBonus( Hook_getFireCostBonus, [ aWeapon, aIsMelee, aAltFire ] );
     if iBonus <> 0 then iModifier *= Max( (100.0-iBonus)/100, 0.1 );
     if iModifier < 0.1 then iModifier := 0.1;
-    iModifier *= GetBonusMul( Hook_getFireCostMul, [ aWeapon, aIsMelee, Integer( aAltFire ) ] );
-    if aWeapon <> nil then iModifier *= aWeapon.GetBonusMul( Hook_getFireCostMul, [ aIsMelee, Integer( aAltFire ) ] );
+    iModifier *= GetBonusMul( Hook_getFireCostMul, [ aWeapon, aIsMelee, aAltFire ] );
+    if aWeapon <> nil then iModifier *= aWeapon.GetBonusMul( Hook_getFireCostMul, [ aIsMelee, aAltFire ] );
     getWeaponFireCost := Round( ActionCostFire*iModifier );
   end;
 
@@ -2567,25 +2565,25 @@ begin
     and ( Pack.AmmoID = Weapon.AmmoID) );
 end;
 
-function TBeing.getToHit(aItem : TItem; aAltFire : TAltFire; aIsMelee : Boolean) : Integer;
+function TBeing.getToHit(aItem : TItem; aAltFire : Boolean; aIsMelee : Boolean) : Integer;
 begin
-  getToHit := FAccuracy + GetBonus( Hook_getToHitBonus,  [ aItem, aIsMelee, Integer( aAltFire ) ] );
+  getToHit := FAccuracy + GetBonus( Hook_getToHitBonus,  [ aItem, aIsMelee, aAltFire ] );
   if aItem <> nil then
   begin
     if ( aItem.isMelee = aIsMelee ) then
     begin
       getToHit += aItem.Acc;
-      getToHit += aItem.GetBonus( Hook_getToHitBonus, [ aIsMelee, Integer( aAltFire ) ] );
+      getToHit += aItem.GetBonus( Hook_getToHitBonus, [ aIsMelee, aAltFire ] );
     end;
   end;
   if not isPlayer then
     getToHit += TLevel(Parent).AccuracyBonus;
 end;
 
-function TBeing.getToDam(aItem : TItem; aAltFire : TAltFire; aIsMelee : Boolean) : Integer;
+function TBeing.getToDam(aItem : TItem; aAltFire : Boolean; aIsMelee : Boolean) : Integer;
 begin
-  getToDam := GetBonus( Hook_getDamageBonus, [ aItem, aIsMelee, Integer( aAltFire ) ] );
-  if aItem <> nil then getToDam += aItem.GetBonus( Hook_getDamageBonus, [ aIsMelee, Integer( aAltFire ) ] );
+  getToDam := GetBonus( Hook_getDamageBonus, [ aItem, aIsMelee, aAltFire ] );
+  if aItem <> nil then getToDam += aItem.GetBonus( Hook_getDamageBonus, [ aIsMelee, aAltFire ] );
 end;
 
 destructor TBeing.Destroy;
@@ -3189,7 +3187,7 @@ begin
   iState.Init(L);
   iBeing := iState.ToObject( 1 ) as TBeing;
   if iBeing = nil then Exit( 0 );
-  iState.Push( iBeing.getToHit( iState.ToObjectOrNil( 3 ) as TItem, ALT_NONE, iState.ToBoolean( 2, False ) ) );
+  iState.Push( iBeing.getToHit( iState.ToObjectOrNil( 3 ) as TItem, False, iState.ToBoolean( 2, False ) ) );
   Result := 1;
 end;
 
@@ -3200,7 +3198,7 @@ begin
   iState.Init(L);
   iBeing := iState.ToObject( 1 ) as TBeing;
   if iBeing = nil then Exit( 0 );
-  iState.Push( iBeing.getToDam( iState.ToObjectOrNil( 3 ) as TItem, ALT_NONE, iState.ToBoolean( 2, False ) ) );
+  iState.Push( iBeing.getToDam( iState.ToObjectOrNil( 3 ) as TItem, False, iState.ToBoolean( 2, False ) ) );
   Result := 1;
 end;
 
@@ -3265,7 +3263,7 @@ var iState     : TDRLLuaState;
     iBeing     : TBeing;
     iTarget    : TCoord2D;
     iItem      : TItem;
-    iAltFire   : TAltFire;
+    iAltFire   : Boolean;
     iSequence  : DWord;
     iShotCount : Integer;
 begin
@@ -3274,7 +3272,7 @@ begin
   iTarget := iState.ToPosition(2);
   iItem   := iState.ToObject(3) as TItem;
   if (iBeing = nil) or (iItem = nil) then Exit(0);
-  iAltFire   := TAltFire(iState.ToInteger(4, Byte(ALT_NONE)));
+  iAltFire   := iState.ToBoolean(4, False);
   iSequence  := iState.ToInteger(5, 0);
   iShotCount := iState.ToInteger(6, 0);
   iState.Push(iBeing.SendMissile(iTarget, iItem, iAltFire, iSequence, iShotCount));
