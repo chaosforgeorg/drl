@@ -91,7 +91,7 @@ register_challenge  = core.register_storage( "chal", "challenge" )
 register_itemset    = core.register_storage( "itemsets", "itemset" )
 register_mod_array = core.register_storage( "mod_arrays", "mod_array", function (m) 
 		m.sig   = core.mod_list_signature(m.mods)
-		m.request_desc  = m.request_desc or core.mod_array_description(m)
+		m.request_desc  = core.mod_array_description(m)
 	end
 )
 register_klass      = core.register_storage( "klasses", "klass", function(k)
