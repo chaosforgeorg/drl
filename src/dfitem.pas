@@ -401,7 +401,6 @@ begin
   if GetAltFireName <> '' then Exit;
   case FProps.AltFire of
     ALT_CHAIN     : Exit('chain fire');
-    ALT_AIMED     : Exit('aimed');
   end;
 end;
 
