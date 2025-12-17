@@ -865,15 +865,14 @@ begin
   FChainFire  := 0;
 
   if (aWeapon = nil) then Exit( False );
-  if aAltFire then iAltFire := aWeapon.AltFire;
+  if aAltFire and aWeapon.HasHook( Hook_OnAltFire ) then iAltFire := ALT_SCRIPT;
 
   if iAltFire <> ALT_NONE then 
   begin
     if (not aWeapon.isWeapon) then Exit( False );
     if aWeapon.isMelee then FMeleeAttack := True;
-    if aWeapon.AltFire = ALT_SCRIPT then
-      if not aWeapon.CallHookCheck( Hook_OnAltFire, [Self, LuaCoord( aTarget ) ] ) 
-        then Exit( False );
+    if not aWeapon.CallHookCheck( Hook_OnAltFire, [Self, LuaCoord( aTarget ) ] ) 
+      then Exit( False );
 
     if aWeapon.isMelee then Exit( True );
   end;  

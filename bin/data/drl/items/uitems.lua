@@ -193,7 +193,6 @@ function drl.register_unique_items()
 		damage     = "1d25",
 		damagetype = DAMAGE_MELEE,
 		acc        = 0,
-		altfire    = ALT_SCRIPT,
 		miscolor   = LIGHTGRAY,
 		misdelay   = 50,
 		miss_base  = 10,
@@ -205,6 +204,33 @@ function drl.register_unique_items()
 		OnCreate = function(self)
 			self:add_perk( "perk_altfire_throw" )
 			self.flags[ IF_THROWDROP ] = false
+		end,
+	}
+
+	register_perk "perk_usubtle_altfire"
+	{
+		name  = "",
+		short = "invoke",
+		desc  = "damage all visible enemies, at the costs health and tired",
+		color = LIGHTBLUE,
+		tags  = { "altfire" },
+
+		OnAltFire = function(self, being)
+			if being:is_perk( "tired" ) then
+				ui.msg("You are too tired to invoke the Knife!")
+			else
+				ui.msg("You feel your health drained!")
+				being.hp     = math.max( being.hp - 5, 1 )
+				being:add_perk( "tired" )
+				being.scount = being.scount - 1000
+				for b in level:beings() do
+					if not b:is_player() and b:is_visible() then
+						level:explosion( b.position, { range = 1, delay = 50, color = BLUE, damage_type = DAMAGE_SPLASMA }, self )
+						b:apply_damage( 15, TARGET_INTERNAL, DAMAGE_SPLASMA, self )
+					end
+				end
+			end
+			return false
 		end,
 	}
 
@@ -227,29 +253,10 @@ function drl.register_unique_items()
 		damage      = "3d5",
 		damagetype  = DAMAGE_SPLASMA,
 		group       = "melee",
-		altfire     = ALT_SCRIPT,
-		altfirename = "invoke",
 
 		OnCreate = function(self)
+			self:add_perk( "perk_usubtle_altfire" )
 			self:add_property( "BLADE", true )
-		end,
-
-		OnAltFire = function(self,being)
-			if being:is_perk( "tired" ) then
-				ui.msg("You are too tired to invoke the Knife!");
-			else
-				ui.msg("You feel your health drained!");
-				being.hp     = math.max( being.hp - 5, 1 )
-				being:add_perk( "tired" )
-				being.scount = being.scount - 1000
-				for b in level:beings() do
-					if not b:is_player() and b:is_visible() then
-						level:explosion( b.position, { range = 1, delay = 50, color = BLUE, damage_type = DAMAGE_SPLASMA }, self )
-						b:apply_damage( 15, TARGET_INTERNAL, DAMAGE_SPLASMA, self )
-					end
-				end
-			end
-			return false
 		end,
 	}
 
@@ -298,7 +305,6 @@ function drl.register_unique_items()
 		acc           = 6,
 		usetime       = 7,
 		reloadtime    = 20,
-		altfire       = ALT_SCRIPT,
 		miscolor      = LIGHTGRAY,
 		misdelay      = 15,
 		miss_base     = 10,
@@ -334,7 +340,6 @@ function drl.register_unique_items()
 		acc           = 4,
 		radius        = 1,
 		reloadtime    = 20,
-		altfire       = ALT_SCRIPT,
 		miscolor      = LIGHTGRAY,
 		misdelay      = 15,
 		miss_base     = 10,
@@ -746,7 +751,6 @@ function drl.register_unique_items()
 		reloadtime = 20,
 		shots      = 5,
 		shotcost   = 5,
-		altfire    = ALT_SCRIPT,
 		miscolor   = GREEN,
 		misdelay   = 15,
 		miss_base  = 30,
@@ -1153,31 +1157,13 @@ function drl.register_unique_items()
 		end,
 	}
 
-	register_item "udragon"
+	register_perk "perk_udragon_altfire"
 	{
-		name     = "Dragonslayer",
-		color    = LIGHTGREEN,
-		sprite   = SPRITE_DRAGON,
-		psprite  = SPRITE_PLAYER_DRAGON,
-		glow     = { 1.0,0.0,0.0,1.0 },
-		level    = 16,
-		weight   = 1,
-		group    = "melee",
-		desc     = "It was called the Dragonslayer, because no human could wield it...",
-		flags    = { IF_UNIQUE, IF_CURSED },
-		knockmod = -50,
+		short = "whirlwind",
+		desc  = "attack all adjacent enemies",
+		color = LIGHTBLUE,
+		tags  = { "altfire" },
 
-		type        = ITEMTYPE_MELEE,
-		damage      = "9d9",
-		damagetype  = DAMAGE_MELEE,
-		altfire     = ALT_SCRIPT,
-		altfirename = "whirlwind",
-
-		OnCreate = function(self)
-			self:add_property( "BLADE", true )
-			self:add_perk( "perk_udragon" )
-		end,
-		
 		OnAltFire = function( self, being )
 			if being:is_perk( "tired" ) then
 				ui.msg("You're too tired to do that right now!")
@@ -1198,6 +1184,30 @@ function drl.register_unique_items()
 			end
 			return false
 		end,
+	}
 
+	register_item "udragon"
+	{
+		name     = "Dragonslayer",
+		color    = LIGHTGREEN,
+		sprite   = SPRITE_DRAGON,
+		psprite  = SPRITE_PLAYER_DRAGON,
+		glow     = { 1.0,0.0,0.0,1.0 },
+		level    = 16,
+		weight   = 1,
+		group    = "melee",
+		desc     = "It was called the Dragonslayer, because no human could wield it...",
+		flags    = { IF_UNIQUE, IF_CURSED },
+		knockmod = -50,
+
+		type        = ITEMTYPE_MELEE,
+		damage      = "9d9",
+		damagetype  = DAMAGE_MELEE,
+
+		OnCreate = function(self)
+			self:add_perk( "perk_udragon_altfire" )
+			self:add_property( "BLADE", true )
+			self:add_perk( "perk_udragon" )
+		end,
 	}
 end

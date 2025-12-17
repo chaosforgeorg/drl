@@ -100,7 +100,6 @@ TItem  = class( TThing )
     property UseTime        : Byte        read FProps.UseTime        write FProps.UseTime;
     property SwapTime       : Byte        read FProps.SwapTime       write FProps.SwapTime;
     property DamageType     : TDamageType read FProps.DamageType     write FProps.DamageType;
-    property AltFire        : TAltFire    read FProps.AltFire        write FProps.AltFire;
     property MisASCII       : Char        read FProps.MisASCII       write FProps.MisAscii;
     property MisColor       : Byte        read FProps.MisColor       write FProps.MisColor;
     property MisDelay       : Byte        read FProps.MisDelay       write FProps.MisDelay;
@@ -242,7 +241,6 @@ begin
   FProps.UseTime     := aTable.getInteger('usetime',10);
   FProps.SwapTime    := aTable.getInteger('swaptime',10);
   FProps.ReloadTime  := aTable.getInteger('reloadtime',10);
-  FProps.AltFire     := TAltFire( aTable.getInteger('altfire',0) );
 
   FProps.Radius      := aTable.getInteger('radius',0);
   FProps.Range       := aTable.getInteger('range',0);
@@ -257,8 +255,6 @@ begin
   FProps.MisDelay    := aTable.getInteger('misdelay',0);
   FProps.MissBase    := aTable.getInteger('miss_base',0);
   FProps.MissDist    := aTable.getInteger('miss_dist',0);
-
-  FProps.AltFire     := TAltFire( aTable.getInteger('altfire',0) );
 
   FProps.PCosColor := ColorZero;
   FProps.PGlowColor := ColorZero;
@@ -398,7 +394,6 @@ begin
       if Hook_OnAltFire in PerkData[ iPerks[i].ID ].Hooks then
         Exit( PerkData[ iPerks[i].ID ].Short );
   end;
-  GetAltFireName := LuaSystem.Get([ 'items', ID, 'altfirename' ], '');
 end;
 
 function TItem.GetAltReloadName : AnsiString;
@@ -437,14 +432,14 @@ begin
       IIf(FProps.Falloff  <> 0,'Dmg. falloff: {!'+IntToStr(FProps.Falloff)+'%}'#10)+
       IIf(FProps.Spread   <> 0,'Cone size   : {!'+IntToStr(FProps.Spread)+'}'#10)+
       IIf(FProps.Range    <> 0,'Max range   : {!'+IntToStr(FProps.Range)+'}'#10)+
-      IIf((not aShort) and (FProps.AltFire   <> ALT_NONE   ),'Alt. fire   : {!'+GetAltFireName+'}'#10)+
+      IIf((not aShort) and HasHook( Hook_OnAltFire ),  'Alt. fire   : {!'+GetAltFireName+'}'#10)+
       IIf((not aShort) and HasHook( Hook_OnAltReload ),'Alt. reload : {!'+GetAltReloadName+'}'#10);
     ITEMTYPE_MELEE : DescriptionBox :=
       IIf(FProps.UseTime <> 10, 'Attack time : {!'+Seconds(FProps.UseTime)+'}'#10)+
       IIf(FProps.SwapTime<> 10, 'Swap time   : {!'+Seconds(FProps.SwapTime)+'}'#10)+
       IIf(FProps.Acc     <> 0,  'Accuracy    : {!' + BonusStr(FProps.Acc)+'}'#10)+
       'Damage type : {!'+DamageTypeName(FProps.DamageType)+'}'#10+
-      IIf((not aShort) and (FProps.AltFire <> ALT_NONE),'Alt. fire   : {!'+GetAltFireName+'}'#10);
+      IIf((not aShort) and HasHook( Hook_OnAltFire ),  'Alt. fire   : {!'+GetAltFireName+'}'#10);
   end;
   DescriptionBox +=
     IIf(FProps.MoveMod  <> 0,'Move speed  : {!'+Percent(FProps.MoveMod)+'}'#10)+

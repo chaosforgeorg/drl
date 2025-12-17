@@ -13,7 +13,6 @@ function drl.register_assemblies()
 			item.damage_dice  = 8
 			item.damage_sides = 2
 			item.acc          = 2
-			item.altfire      = ALT_NONE
 		end,
 	}
 

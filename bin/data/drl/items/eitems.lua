@@ -153,7 +153,6 @@ function drl.register_exotic_items()
 		acc           = 3,
 		usetime       = 9,
 		reloadtime    = 10,
-		altfire       = ALT_SCRIPT,
 		miscolor      = MULTIYELLOW,
 		misdelay      = 10,
 		miss_base     = 30,
@@ -190,7 +189,6 @@ function drl.register_exotic_items()
 		damagetype    = DAMAGE_BULLET,
 		acc           = 5,
 		reloadtime    = 18,
-		altfire       = ALT_SCRIPT,
 		miscolor      = LIGHTGRAY,
 		misdelay      = 15,
 		miss_base     = 10,
@@ -310,7 +308,6 @@ function drl.register_exotic_items()
 		acc        = 8,
 		reloadtime = 15,
 		shots      = 5,
-		altfire    = ALT_SCRIPT,
 		miscolor   = MULTIYELLOW,
 		misdelay   = 10,
 		miss_base  = 10,
@@ -385,7 +382,6 @@ function drl.register_exotic_items()
 		usetime       = 12,
 		reloadtime    = 35,
 		shots         = 8,
-		altfire       = ALT_SCRIPT,
 		miscolor      = WHITE,
 		misdelay      = 10,
 		miss_base     = 10,
@@ -457,7 +453,6 @@ function drl.register_exotic_items()
 		acc           = 2,
 		reloadtime    = 20,
 		shots         = 6,
-		altfire       = ALT_SCRIPT,
 		misascii      = "*",
 		miscolor      = MULTIBLUE,
 		misdelay      = 10,
@@ -531,6 +526,28 @@ function drl.register_exotic_items()
 		end,
 	}
 
+	register_perk "perk_utrans_altfire"
+	{
+		name  = "",
+		short = "self-target",
+		desc  = "teleport yourself randomly",
+		color = LIGHTBLUE,
+		tags  = { "altfire" },
+
+		OnAltFire = function(self, being)
+			if self.ammo < 30 then 
+				being:msg("You have not enough ammo to self-target!")
+			else
+				self.ammo = self.ammo - 30
+				being:msg("You feel yanked in a non-descript direction!")
+				level:explosion( being.position, { range = 2, delay = 50, color = LIGHTBLUE } )
+				being:phase();
+				being.scount = being.scount - 1000
+			end
+			return false
+		end,
+	}
+
 	register_item "utrans"
 	{
 		name     = "combat translocator",
@@ -558,26 +575,12 @@ function drl.register_exotic_items()
 		misdelay      = 10,
 		miss_base     = 30,
 		miss_dist     = 3,
-		altfire       = ALT_SCRIPT,
-		altfirename   = "self-target",
 		missprite     = SPRITE_PLASMASHOT,
 		hitsprite     = SPRITE_BLAST,
 
 		OnCreate = function(self)
+			self:add_perk( "perk_utrans_altfire" )
 			self:add_perk( "perk_utrans_hit" )
-		end,
-
-		OnAltFire = function(self,being)
-			if self.ammo < 30 then 
-				being:msg("You have not enough ammo to self-target!")
-			else
-				self.ammo = self.ammo - 30
-				being:msg("You feel yanked in a non-descript direction!")
-				level:explosion( being.position, { range = 2, delay = 50, color = LIGHTBLUE } )
-				being:phase();
-				being.scount = being.scount - 1000
-			end
-			return false
 		end,
 	}
 

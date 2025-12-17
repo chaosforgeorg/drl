@@ -303,7 +303,7 @@ begin
       AddStat( 'Dmg. falloff', IntToStr(FItem.Falloff)+'%' );
       AddStat( 'Cone size', IntToStr(FItem.Spread) );
       AddStat( 'Max range', IntToStr(FItem.Range) );
-      if FItem.AltFire <> ALT_NONE then
+      if FItem.HasHook( Hook_OnAltFire ) then
         AddStat( 'Alt. fire', FItem.GetAltFireName );
       if FItem.HasHook( Hook_OnAltReload ) then
         AddStat( 'Alt. reload', FItem.GetAltReloadName );
@@ -314,7 +314,7 @@ begin
       AddStat( 'Swap time', Seconds(FItem.SwapTime) );
       AddStat( 'Accuracy', BonusStr(FItem.Acc) );
       AddStat( 'Damage type', DamageTypeName(FItem.DamageType) );
-      if FItem.AltFire <> ALT_NONE then
+      if FItem.HasHook( Hook_OnAltFire ) then
         AddStat( 'Alt. fire', FItem.GetAltFireName );
     end;
   end;

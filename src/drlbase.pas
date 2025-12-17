@@ -707,15 +707,13 @@ begin
   end
   else
   begin
-    if iItem.AltFire = ALT_NONE then
+    if not iItem.HasHook( Hook_OnAltFire ) then
     begin
       IO.Msg( 'This weapon has no alternate fire mode' );
       Exit( False );
     end;
-    if ( iItem.AltFire = ALT_SCRIPT ) and ( not iItem.Flags[ IF_ALTTARGET ] ) then
-      aAuto := False;
-
-    if iItem.Flags[ IF_ALTMANUAL ] then aAuto := False;
+    if ( not iItem.Flags[ IF_ALTTARGET ] ) then aAuto := False;
+    if iItem.Flags[ IF_ALTMANUAL ]         then aAuto := False;
   end;
   if not iItem.CallHookCheck( Hook_OnFire, [Player,aAlt] ) then Exit( False );
 
@@ -769,7 +767,7 @@ begin
     else
     begin
       iAltFire    := ALT_NONE;
-      if aAlt then iAltFire := iItem.AltFire;
+      if aAlt and iItem.HasHook( Hook_OnAltFire ) then iAltFire := ALT_SCRIPT;
       iFireTitle := 'Choose fire target:';
       if iAltFire = ALT_SCRIPT then
       begin

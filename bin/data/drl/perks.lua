@@ -256,7 +256,7 @@ function drl.register_perks()
 				self.ammomax       = self.shots
 				self.ammo          = self.shots
 				self.damage_sides  = self.damage_sides + 1
-				self.altfire       = ALT_NONE
+				self.flags[ IF_ALTCHAIN ] = false
 			end
 			return true
 		end,
