@@ -151,6 +151,37 @@ function drl.register_perks()
 		end,
 	}
 
+	register_perk "perk_altfire_chainfire"
+	{
+		name   = "",
+		short  = "chainfire",
+		desc   = "spins up to fire longer bursts",
+		color  = LIGHTBLUE,
+		tags   = { "altfire" },
+
+		OnAdd = function(self)
+			self:add_property( "pp_chainfire", false )
+			self.flags[ IF_ALTTARGET ] = true
+			self.flags[ IF_ALTCHAIN  ] = true
+		end,
+
+		OnRemove = function(self)
+			self:remove_property( "pp_chainfire" )
+			self.flags[ IF_ALTTARGET ] = false
+			self.flags[ IF_ALTCHAIN  ] = false
+		end,
+
+		OnAltFire = function( self, being, target )
+			self.pp_chainfire = true
+			return true
+		end,
+
+		OnFired = function( self, being )
+			self.pp_chainfire = false
+			return true
+		end,
+	}
+
 	-- Alt-reload 
 
 	register_perk "perk_altreload_full"

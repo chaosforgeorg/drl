@@ -390,6 +390,7 @@ function TItem.GetAltFireName : AnsiString;
 var iPerks : TPerkList;
     i      : Integer;
 begin
+  GetAltFireName := '';
   if ( FPerks <> nil ) and ( Hook_OnAltFire in FPerks.Hooks ) then
   begin
     iPerks := FPerks.List;
@@ -398,10 +399,6 @@ begin
         Exit( PerkData[ iPerks[i].ID ].Short );
   end;
   GetAltFireName := LuaSystem.Get([ 'items', ID, 'altfirename' ], '');
-  if GetAltFireName <> '' then Exit;
-  case FProps.AltFire of
-    ALT_CHAIN     : Exit('chain fire');
-  end;
 end;
 
 function TItem.GetAltReloadName : AnsiString;

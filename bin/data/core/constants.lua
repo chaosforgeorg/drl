@@ -163,6 +163,7 @@ IF_HARDCOVER      = 67;
 IF_ILLUSION       = 68;
 IF_ALTTARGET      = 69;
 IF_ALTMANUAL      = 70;
+IF_ALTCHAIN       = 71;
 
 LF_NOHOMING       = 1;
 LF_UNIQUEITEM     = 2;

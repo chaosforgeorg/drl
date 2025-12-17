@@ -771,20 +771,21 @@ begin
       iAltFire    := ALT_NONE;
       if aAlt then iAltFire := iItem.AltFire;
       iFireTitle := 'Choose fire target:';
-      case iAltFire of
-        ALT_SCRIPT       : if iItem.Flags[ IF_ALTTARGET ] 
-                             then iFireTitle := 'Fire target ({L'+iItem.GetAltFireName+'}):'
-                             else begin iFireTitle := ''; iTarget := Player.Position; end;
-      end;
-      if iAltFire = ALT_CHAIN then
+      if iAltFire = ALT_SCRIPT then
       begin
-        case iChainFire of
-          0      : iFireTitle := 'Chain fire ({Ginitial}):';
-          1      : iFireTitle := 'Chain fire ({Ywarming}):';
-          2..255 : iFireTitle := 'Chain fire ({Rfull}):';
-        end;
-      end
-    end
+        if iItem.Flags[ IF_ALTCHAIN ] then
+        begin
+          case iChainFire of
+            0      : iFireTitle := 'Alternate fire ({Ginitial}):';
+            1      : iFireTitle := 'Alternate fire ({Ywarming}):';
+            2..255 : iFireTitle := 'Alternate fire ({Rfull}):';
+          end;
+        end
+        else if iItem.Flags[ IF_ALTTARGET ] 
+          then iFireTitle := 'Fire target ({L'+iItem.GetAltFireName+'}):'
+          else begin iFireTitle := ''; iTarget := Player.Position; end;
+      end;
+    end;
   end;
 
   iCommand := COMMAND_FIRE;

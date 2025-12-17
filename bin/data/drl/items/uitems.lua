@@ -746,7 +746,7 @@ function drl.register_unique_items()
 		reloadtime = 20,
 		shots      = 5,
 		shotcost   = 5,
-		altfire    = ALT_CHAIN,
+		altfire    = ALT_SCRIPT,
 		miscolor   = GREEN,
 		misdelay   = 15,
 		miss_base  = 30,
@@ -759,6 +759,10 @@ function drl.register_unique_items()
 			flags     = { EFNODISTANCEDROP },
 			knockback = 16,
 		},
+
+		OnCreate = function(self)
+			self:add_perk( "perk_altfire_chainfire" )
+		end,
 	}
 
 	register_item "urailgun"

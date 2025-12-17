@@ -310,7 +310,7 @@ function drl.register_exotic_items()
 		acc        = 8,
 		reloadtime = 15,
 		shots      = 5,
-		altfire    = ALT_CHAIN,
+		altfire    = ALT_SCRIPT,
 		miscolor   = MULTIYELLOW,
 		misdelay   = 10,
 		miss_base  = 10,
@@ -320,6 +320,10 @@ function drl.register_exotic_items()
 			coscolor   = { 1.0, 1.0, 0.0, 1.0 },
 		},
 		hitsprite     = SPRITE_BLAST,
+
+		OnCreate = function(self)
+			self:add_perk( "perk_altfire_chainfire" )
+		end,
 	}
 
 	register_item "utristar"
@@ -381,13 +385,17 @@ function drl.register_exotic_items()
 		usetime       = 12,
 		reloadtime    = 35,
 		shots         = 8,
-		altfire       = ALT_CHAIN,
+		altfire       = ALT_SCRIPT,
 		miscolor      = WHITE,
 		misdelay      = 10,
 		miss_base     = 10,
 		miss_dist     = 3,
 		missprite     = SPRITE_SHOT,
 		hitsprite     = SPRITE_BLAST,
+
+		OnCreate = function(self)
+			self:add_perk( "perk_altfire_chainfire" )
+		end,
 	}
 
 	register_item "umbazooka"
@@ -449,7 +457,7 @@ function drl.register_exotic_items()
 		acc           = 2,
 		reloadtime    = 20,
 		shots         = 6,
-		altfire       = ALT_CHAIN,
+		altfire       = ALT_SCRIPT,
 		misascii      = "*",
 		miscolor      = MULTIBLUE,
 		misdelay      = 10,
@@ -459,6 +467,7 @@ function drl.register_exotic_items()
 		hitsprite     = SPRITE_BLAST,
 
 		OnCreate = function(self)
+			self:add_perk( "perk_altfire_chainfire" )
 			self:add_perk( "perk_altreload_nuke" )
 			self:add_perk( "perk_weapon_recharge" )
 			self.pp_recharge.delay  = 4

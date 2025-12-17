@@ -716,13 +716,17 @@ function drl.register_regular_items()
 		acc           = 2,
 		reloadtime    = 25,
 		shots         = 4,
-		altfire       = ALT_CHAIN,
+		altfire       = ALT_SCRIPT,
 		miscolor      = WHITE,
 		misdelay      = 10,
 		miss_base     = 10,
 		miss_dist     = 3,
 		missprite     = SPRITE_SHOT,
 		hitsprite     = SPRITE_BLAST,
+		
+		OnCreate = function(self)
+			self:add_perk( "perk_altfire_chainfire" )
+		end,
 	}
 
 	register_item "plasma"
@@ -746,7 +750,7 @@ function drl.register_regular_items()
 		acc           = 2,
 		reloadtime    = 20,
 		shots         = 6,
-		altfire       = ALT_CHAIN,
+		altfire       = ALT_SCRIPT,
 		misascii      = "*",
 		miscolor      = MULTIBLUE,
 		misdelay      = 10,
@@ -756,6 +760,7 @@ function drl.register_regular_items()
 		hitsprite     = SPRITE_BLAST,
 
 		OnCreate = function(self)
+			self:add_perk( "perk_altfire_chainfire" )
 			self:add_perk( "perk_altreload_overcharge" )
 		end,
 	}

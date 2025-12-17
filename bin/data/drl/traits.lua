@@ -599,7 +599,7 @@ function drl.register_traits()
 		end,
 
 		getAmmoCostMul = function( self, weapon, alt, shots )
-			if weapon and weapon.altfire == ALT_CHAIN then
+			if weapon and weapon.altfire == ALT_SCRIPT and weapon.flags[ IF_ALTCHAIN ] then
 				return 1.0 / shots
 			end
 			return 1.0
@@ -638,7 +638,7 @@ function drl.register_traits()
 		end,
 
 		getAmmoCostMul = function( self, weapon, alt, shots )
-			if weapon and self.chainfire > 0 and alt == ALT_CHAIN then
+			if weapon and self.chainfire > 0 and alt == ALT_SCRIPT and weapon.flags[ IF_ALTCHAIN ] then
 				return 1.0 / shots
 			end
 			return 1.0

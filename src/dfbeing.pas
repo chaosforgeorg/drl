@@ -463,7 +463,7 @@ begin
   if not isPlayer then iSeqBase := 100;
   iSeqBase += aDelay;
   iMissileRange := 30; // aGun.Missile.MaxRange;
-  iChaining := ( aAltFire = ALT_CHAIN ) and ( aShots > 1 );
+  iChaining := ( aAltFire = ALT_SCRIPT ) and ( aGun.Flags[ IF_ALTCHAIN ] ) and ( aShots > 1 );
 
   if aGun.Flags[ IF_SCATTER ] then
   begin
@@ -902,7 +902,7 @@ begin
     end;
   end;
 
-  if (iAltFire = ALT_CHAIN) then
+  if ( iAltFire = ALT_SCRIPT ) and aWeapon.Flags[ IF_ALTCHAIN ] then
   begin
     if ( iChainFire > 0 )
       then FTargetPos := DRL.Targeting.PrevPos
@@ -1358,7 +1358,7 @@ begin
   iShotsBonus  := GetBonus( Hook_getShotsBonus,  [ aGun, Integer( aAlt ) ] );
 
   iShots       := Max( aGun.Shots, 1 );
-  iChaining    := ( aAlt = ALT_CHAIN ) and ( iShots > 1 );
+  iChaining    := ( aAlt = ALT_SCRIPT ) and ( aGun.Flags[ IF_ALTCHAIN ] ) and ( iShots > 1 );
   iShots       += iShotsBonus;
 
   if iChaining then
