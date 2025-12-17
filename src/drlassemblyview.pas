@@ -86,8 +86,8 @@ begin
             else iString := '  {d  -- ? -- ({L-})}'
           else 
           begin 
-            iString := '  {y'+Padded(LuaSystem.Get(['mod_arrays',i,'name'])+' ({L'+IntToStr(iFound)+'})}',26)
-                       + '{l' + LuaSystem.Get(['mod_arrays',i,'request_desc'])+'}';
+            iString := '  {y'+LuaSystem.Get(['mod_arrays',i,'name'])+' ({L'+IntToStr(iFound)+'})}'
+                       + ' - {l' + LuaSystem.Get(['mod_arrays',i,'request_desc'])+'}';
             iDesc := LuaSystem.Get(['mod_arrays',i,'desc']);
             if iDesc <> '' then
               iString += #10'   {!*} '+iDesc;
