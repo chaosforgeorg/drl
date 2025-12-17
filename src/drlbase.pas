@@ -712,8 +712,10 @@ begin
       IO.Msg( 'This weapon has no alternate fire mode' );
       Exit( False );
     end;
-    if ( iItem.AltFire in [ ALT_TARGETSCRIPT, ALT_SCRIPT ] ) and ( not iItem.Flags[ IF_ALTTARGET ] ) then
+    if ( iItem.AltFire = ALT_SCRIPT ) and ( not iItem.Flags[ IF_ALTTARGET ] ) then
       aAuto := False;
+
+    if iItem.Flags[ IF_ALTMANUAL ] then aAuto := False;
   end;
   if not iItem.CallHookCheck( Hook_OnFire, [Player,aAlt] ) then Exit( False );
 
@@ -770,10 +772,10 @@ begin
       if aAlt then iAltFire := iItem.AltFire;
       iFireTitle := 'Choose fire target:';
       case iAltFire of
-        ALT_SCRIPT       : begin iFireTitle := ''; iTarget := Player.Position; end;
-        ALT_TARGETSCRIPT : iFireTitle := 'Fire target ({L'+LuaSystem.Get([ 'items', iItem.ID, 'altfirename' ],'')+'}):';
+        ALT_SCRIPT       : if iItem.Flags[ IF_ALTTARGET ] 
+                             then iFireTitle := 'Fire target ({L'+iItem.GetAltFireName+'}):'
+                             else begin iFireTitle := ''; iTarget := Player.Position; end;
         ALT_AIMED        : iFireTitle := 'Fire target ({Laimed}):';
-        ALT_SINGLE       : iFireTitle := 'Fire target ({Lsingle}):';
       end;
       if iAltFire = ALT_CHAIN then
       begin

@@ -610,12 +610,16 @@ function drl.register_regular_items()
 		damagetype    = DAMAGE_SHARPNEL,
 		reloadtime    = 20,
 		shots         = 2,
-		altfire       = ALT_SINGLE,
+		altfire       = ALT_SCRIPT,
 		range         = 8,
 		spread        = 3,
 		falloff       = 10,
 		knockback     = 8,
 		hitsprite     = SPRITE_BLAST,
+
+		OnCreate = function(self)
+			self:add_perk( "perk_altfire_single" )
+		end,
 	}
 
 	register_item "ashotgun"
@@ -670,8 +674,7 @@ function drl.register_regular_items()
 		acc           = 4,
 		radius        = 4,
 		reloadtime    = 15,
-		altfire       = ALT_TARGETSCRIPT,
-		altfirename   = "rocketjump",
+		altfire       = ALT_SCRIPT,
 		miscolor      = BROWN,
 		misdelay      = 30,
 		miss_base     = 30,
@@ -683,25 +686,8 @@ function drl.register_regular_items()
 			color 	= RED,
 		},
 
-		OnAltFire = function( self, being )
-			self:set_explosion{
-				delay 	= 40,
-				color 	= RED,
-				flags = { EFSELFKNOCKBACK, EFSELFHALF },
-			}
-			self.flags[ IF_EXACTHIT ] = true
-			self.range   = 1
-			return true
-		end,
-
-		OnFire = function( self, being )
-			self:set_explosion{
-				delay 	= 40,
-				color 	= RED,
-			}
-			self.flags[ IF_EXACTHIT ] = false
-			self.range   = 0
-			return true
+		OnCreate = function(self)
+			self:add_perk( "perk_altfire_rocketjump" )
 		end,
 	}
 

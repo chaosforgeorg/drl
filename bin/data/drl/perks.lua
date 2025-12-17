@@ -29,6 +29,85 @@ function drl.register_perks()
 		end,
 	}
 
+	register_perk "perk_altfire_rocketjump"
+	{
+		name   = "",
+		short  = "rocketjump",
+		desc   = "fire at your feet with less damage and more knockback",
+		color  = LIGHTBLUE,
+		tags   = { "altfire" },
+
+		OnAdd = function(self)
+			self:add_property( "pp_rjump", {
+				exact = self.flags[ IF_EXACTHIT ],
+				range = self.range,
+			} )
+			-- TODO: should also store explosions once we have a way to to that
+			self.flags[ IF_ALTTARGET ] = true
+			self.flags[ IF_ALTMANUAL ] = true
+		end,
+
+		OnRemove = function(self)
+			self:remove_property( "pp_rjump" )
+			self.flags[ IF_ALTTARGET ] = false
+			self.flags[ IF_ALTMANUAL ] = false
+		end,
+
+		OnAltFire = function( self, being )
+			self:set_explosion{
+				delay 	= 40,
+				color 	= RED,
+				flags = { EFSELFKNOCKBACK, EFSELFHALF },
+			}
+			self.flags[ IF_EXACTHIT ] = true
+			self.range   = 1
+			return true
+		end,
+
+		OnFired = function( self, being )
+			self:set_explosion{
+				delay = 40,
+				color = RED,
+			}
+			self.flags[ IF_EXACTHIT ] = self.pp_rjump.exact
+			self.range   = self.pp_rjump.range
+			return true
+		end,
+	}
+
+	register_perk "perk_altfire_single"
+	{
+		name   = "",
+		short  = "single",
+		desc   = "fires a single shot",
+		color  = LIGHTBLUE,
+		tags   = { "altfire" },
+
+		OnAdd = function(self)
+			self.flags[ IF_ALTTARGET ] = true
+			self:add_property( "pp_altsingle", false )
+		end,
+
+		OnRemove = function(self)
+			self.flags[ IF_ALTTARGET ] = false
+			self:remove_property( "pp_altsingle" )
+		end,
+
+		OnAltFire = function( self, being, target )
+			self.pp_altsingle = self.shots
+			self.shots = 1
+			return true
+		end,
+
+		OnFired = function( self, being )
+			if self.pp_altsingle then
+				self.shots = self.pp_altsingle
+				self.pp_altsingle = false
+			end
+			return true
+		end,
+	}
+
 	-- Alt-reload 
 
 	register_perk "perk_altreload_full"

@@ -871,7 +871,7 @@ begin
   begin
     if (not aWeapon.isWeapon) then Exit( False );
     if aWeapon.isMelee then FMeleeAttack := True;
-    if aWeapon.AltFire in [ ALT_SCRIPT, ALT_TARGETSCRIPT ] then
+    if aWeapon.AltFire = ALT_SCRIPT then
       if not aWeapon.CallHookCheck( Hook_OnAltFire, [Self, LuaCoord( aTarget ) ] ) 
         then Exit( False );
 
@@ -1347,10 +1347,13 @@ var iShots       : Integer;
     iFreeShot    : Boolean;
     iResult      : Boolean;
     iSecond      : Boolean;
+    iUID, iUIDW  : TUID;
 begin
   if DRL.State <> DSPlaying then Exit( False );
   if aTarget = FPosition then Exit( False );
   if aGun = nil then Exit( False );
+  iUIDW := aGun.UID;
+  iUID  := FUID;
 
   iShotsBonus  := GetBonus( Hook_getShotsBonus,  [ aGun, Integer( aAlt ) ] );
 
@@ -1366,8 +1369,6 @@ begin
       2..255 : iShots += aGun.Shots div 2;
     end;
   end;
-
-  if aAlt = ALT_SINGLE then iShots := 1;
 
   iFreeShot := False;
   if aGun.Flags[ IF_NOAMMO ] or aGun.isUsable then iFreeShot := true;
@@ -1413,8 +1414,9 @@ begin
     iResult := HandleShots( aTarget, aGun, iShots, aAlt, aDelay );
 
   if not iResult then Exit( False );
-
+  if UIDs[ iUID ] = nil then Exit( False );
   FTargetPos := aTarget;
+  if UIDs[ iUIDW ] = nil then Exit( False );
 
   iSecond := (aGun = FInv.Slot[ efWeapon2 ]);
   aGun.CallHook( Hook_OnFired, [ Self, iSecond ] );
@@ -2490,7 +2492,7 @@ var iModifier : Single;
 
 begin
   iWeapon   := Inv.Slot[ efWeapon ];
-  if ( iWeapon <> nil ) and ( aAltFire <> ALT_SINGLE ) then
+  if ( iWeapon <> nil ) then
     if ( aIsMelee and canDualWieldMelee ) or ( (not aIsMelee) and canDualWield and (Inv.Slot[ efWeapon2 ].Ammo > 0) ) then
        Exit( ( getWeaponFireCost( iWeapon ) + getWeaponFireCost( Inv.Slot[ efWeapon2 ] ) ) div 2 );
   Exit( getWeaponFireCost( iWeapon ) );
