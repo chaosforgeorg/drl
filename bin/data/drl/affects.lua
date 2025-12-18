@@ -2,7 +2,7 @@ function drl.register_affects()
 	
 	register_perk "tired"
 	{
-		name           = "tired",
+		short          = "tired",
 		color          = DARKGRAY,
 		color_expire   = DARKGRAY,
 		
@@ -15,7 +15,7 @@ function drl.register_affects()
 
 	register_perk "running"
 	{
-		name           = "running",
+		short          = "running",
 		color          = YELLOW,
 		color_expire   = BROWN,
 
@@ -48,7 +48,7 @@ function drl.register_affects()
 
 	register_perk "berserk"
 	{
-		name           = "berserk",
+		short          = "berserk",
 		color          = LIGHTRED,
 		color_expire   = RED,
 		status_effect  = STATUSRED,
@@ -93,7 +93,7 @@ function drl.register_affects()
 
 	register_perk "inv"
 	{
-		name           = "invulnerable",
+		short          = "invulnerable",
 		color          = WHITE,
 		color_expire   = DARKGRAY,
 		status_effect  = STATUSINVERT,
@@ -121,7 +121,7 @@ function drl.register_affects()
 
 	register_perk "enviro"
 	{
-		name           = "enviro",
+		short          = "enviro",
 		color          = LIGHTGREEN,
 		color_expire   = GREEN,
 		status_effect  = STATUSGREEN,
@@ -150,7 +150,7 @@ function drl.register_affects()
 
 	register_perk "light"
 	{
-		name           = "light",
+		short          = "light",
 		color          = YELLOW,
 		color_expire   = BROWN,
 

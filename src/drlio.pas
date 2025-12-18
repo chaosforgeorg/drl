@@ -870,13 +870,13 @@ begin
     if ( iPerks <> nil ) and ( iPerks.Size > 0 ) then
       for i := 0 to iPerks.Size - 1 do
         with PerkData[ iPerks[i].ID ] do
-          if Name <> '' then
+          if Short <> '' then
           begin
             if ( iPerks[i].Time > 0 ) and ( iPerks[i].Time <= 50 )
               then iColor := ColorExp
               else iColor := Color;
-            VTIG_FreeLabel( Name, Point( iPos.X+iP+1, iBottom ), iColor );
-            iP += Length( Name ) + 1;
+            VTIG_FreeLabel( Short, Point( iPos.X+iP+1, iBottom ), iColor );
+            iP += Length( Short ) + 1;
           end;
   end;
 
