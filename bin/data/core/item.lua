@@ -196,12 +196,4 @@ function item:get_lever_description( full, good )
 	return "lever"
 end
 
-function item:remove_perks_by_tag( tag )
-	for _, perk in ipairs(perks) do
-		if perk.tags and perk.tags[tag] and self:is_perk(perk.id) then
-			self:remove_perk(perk.id)
-		end
-	end
-end
-
 setmetatable(item,getmetatable(thing))
