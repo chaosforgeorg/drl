@@ -1894,8 +1894,8 @@ function TBeing.getTotalResistance(const aResistance: AnsiString; aTarget: TBody
 var iResist : LongInt;
 begin
   iResist := GetLuaProperty( ['resist',aResistance], 0 );
-  if isPlayer and ( aTarget <> Target_Feet ) then iResist := Min( 95, iResist );
   if iResist >= 100 then Exit( 100 );
+  if isPlayer and ( aTarget <> Target_Feet ) then iResist := Min( 95, iResist );
   getTotalResistance := iResist;
   if aTarget = Target_Internal then Exit;
 
