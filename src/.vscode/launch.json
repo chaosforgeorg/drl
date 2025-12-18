@@ -11,7 +11,8 @@
             "target": "./drl.exe",
             "arguments": "-god -nosound",
             "cwd": "${workspaceRoot}/../bin",
-            "valuesFormatting": "parseText"
+            "valuesFormatting": "parseText",
+            "preLaunchTask": "Build drl.exe (debug)"
         }
     ]
 }

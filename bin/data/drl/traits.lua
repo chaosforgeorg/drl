@@ -193,14 +193,14 @@ function drl.register_traits()
 						if self.berserkerlimit > 4 - math.min( math.floor( (player.enemiesinvision + 1) / 2), 3 ) then
 							level:play_sound( "bpack", "powerup", self.position )
 							ui.blink( RED, 50 )
-							if self:is_affect( "berserk" ) then
-								local berserk = self:get_affect_time( "berserk" )
+							if self:is_perk( "berserk" ) then
+								local berserk = self:get_perk_time( "berserk" )
 								if berserk > 0 then
 									local increase = 10 - math.min( math.floor( berserk / 10 ), 9 )
-									self:set_affect( "berserk", increase )
+									self:add_perk( "berserk", increase * 5 )
 								end
 							else
-								self:set_affect( "berserk", 20 )
+								self:add_perk( "berserk", 100 )
 							end
 							ui.msg("You're going berserk!")
 							self.berserkerlimit = 0
@@ -219,7 +219,7 @@ function drl.register_traits()
 		OnReceiveDamage = function ( self, damage, weapon, active )
 			if damage >= math.max( math.floor( self.hpmax / 3 ), 10 ) then
 				ui.msg("That hurt! You're going berserk!")
-				self:set_affect( "berserk", 20 )
+				self:add_perk( "berserk", 100 )
 			end
 		end,
 	}
@@ -439,14 +439,14 @@ function drl.register_traits()
 		end,
 
 		getShotsBonus = function ( self, weapon, alt )
-			if weapon and weapon.group == "pistol" and alt == ALT_NONE and weapon.shots < 2 then
+			if weapon and weapon.group == "pistol" and ( not alt ) and weapon.shots < 2 then
 				return self.trait_triggerhappy
 			end
 			return 0
 		end,
 
 		getFireCostBonus = function ( self, weapon, is_melee, alt )
-			if weapon and weapon.group == "pistol" and alt == ALT_NONE and weapon.shots < 2 then
+			if weapon and weapon.group == "pistol" and ( not alt ) and weapon.shots < 2 then
 				return -self.trait_triggerhappy * 50
 			end
 			return 0
@@ -599,7 +599,7 @@ function drl.register_traits()
 		end,
 
 		getAmmoCostMul = function( self, weapon, alt, shots )
-			if weapon and weapon.altfire == ALT_CHAIN then
+			if weapon and weapon.flags[ IF_ALTCHAIN ] then
 				return 1.0 / shots
 			end
 			return 1.0
@@ -638,7 +638,7 @@ function drl.register_traits()
 		end,
 
 		getAmmoCostMul = function( self, weapon, alt, shots )
-			if weapon and self.chainfire > 0 and alt == ALT_CHAIN then
+			if alt and weapon and self.chainfire > 0 and weapon.flags[ IF_ALTCHAIN ] then
 				return 1.0 / shots
 			end
 			return 1.0
@@ -690,7 +690,7 @@ function drl.register_traits()
 			local weapon = being.eq.weapon
 			if weapon and weapon.itype == ITEMTYPE_RANGED then
 				if weapon.flags[ IF_NOAMMO ] or ( weapon.ammo > 0 and weapon.ammo > weapon.shotcost ) and (weapon.shots < 3) then
-					if being:is_affect( "running" ) then
+					if being:is_perk( "running" ) then
 						local target = being:get_auto_target()
 						if target then
 							local scount = being.scount

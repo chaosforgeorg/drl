@@ -136,7 +136,7 @@ function drl.register_rooms()
 		weight      = 5,
 		min_size    = 8,
 		max_size_x  = 26,
-		max_size_x  = 14,
+		max_size_y  = 14,
 		tags        = { "monsters" },
 
 		setup       = function ( room, room_meta, room_list )

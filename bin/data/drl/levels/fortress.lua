@@ -13,6 +13,27 @@ register_level "unholy_cathedral"
 
 	OnRegister = function ()
 
+		register_perk "perk_spear_altfire"
+		{
+			short = "holy flame",
+			desc  = "explosion around self",
+			color = LIGHTBLUE,
+			tags  = { "altfire" },
+
+			OnAltFire = function(self, being)
+				if being:is_perk( "tired" ) then
+					ui.msg("You are too tired to invoke the Spear!")
+				else
+					level:explosion( being.position , { range = 3, delay = 50, damage = "10d10", color = YELLOW, sound_id = "soldier.phase", damage_type = DAMAGE_FIRE, flags = { EFSELFSAFE } }, self )
+					ui.blink(YELLOW,50)
+					ui.blink(WHITE,50,50)
+					being:add_perk( "tired" )
+					being.scount = being.scount - 1000
+				end
+				return false
+			end,
+		}
+
 		register_item "spear"
 		{
 			name     = "Longinus Spear",
@@ -31,8 +52,6 @@ register_level "unholy_cathedral"
 			type        = ITEMTYPE_MELEE,
 			damage      = "8d8",
 			damagetype  = DAMAGE_PLASMA,
-			altfire     = ALT_SCRIPT,
-			altfirename = "holy flame",
 
 			OnFirstPickup = function(self,being)
 				being:quick_weapon("spear")
@@ -40,14 +59,32 @@ register_level "unholy_cathedral"
 				ui.msg("You perceive an aura of holiness around this weapon!")
 			end,
 
-			OnAltFire = function(self,being)
-				if being:is_affect( "tired" ) then
-					ui.msg("You are too tired to invoke the Spear!");
+			OnCreate = function(self)
+				self:add_perk( "perk_spear_altfire" )
+			end,
+		}
+
+		register_perk "perk_uscythe_altfire"
+		{
+			short = "whisper of death",
+			desc  = "damage all enemies, at the cost of max health",
+			color = LIGHTBLUE,
+			tags  = { "altfire" },
+
+			OnAltFire = function(self, being)
+				if being:is_perk( "tired" ) then
+					ui.msg("You are too tired to invoke the Scythe!")
 				else
-					level:explosion( being.position , { range = 3, delay = 50, damage = "10d10", color = YELLOW, sound_id = "soldier.phase", damage_type = DAMAGE_FIRE, flags = { EFSELFSAFE } }, self )
-					ui.blink(YELLOW,50)
-					ui.blink(WHITE,50,50)
-					being:set_affect( "tired" )
+					ui.blink( RED, 50 )
+					ui.msg("You feel your life energy draining away!")
+					for b in level:beings() do
+						if not b:is_player() then
+							b:apply_damage( 20, TARGET_TORSO, DAMAGE_PLASMA, self )
+						end
+					end
+					being.hpmax = math.max(being.hpmax - 5,5)
+					being.hp = math.max(being.hp - 10,1)
+					being:add_perk( "tired" )
 					being.scount = being.scount - 1000
 				end
 				return false
@@ -71,32 +108,15 @@ register_level "unholy_cathedral"
 			type        = ITEMTYPE_MELEE,
 			damage      = "9d9",
 			damagetype  = DAMAGE_PLASMA,
-			altfire     = ALT_SCRIPT,
-			altfirename = "whisper of death",
 
 			OnFirstPickup = function(self,being)
 				being:quick_weapon("uscythe")
 				ui.blink( RED, 100 )
 				ui.msg("You perceive an aura of evil around this weapon!")
 			end,
-			
-			OnAltFire = function(self,being)
-				if being:is_affect( "tired" ) then
-					ui.msg("You are too tired to invoke the Scythe!");
-				else
-					ui.blink( RED, 50 )
-					ui.msg("You feel your life energy draining away!")
-					for b in level:beings() do
-						if not b:is_player() then
-							b:apply_damage( 20, TARGET_TORSO, DAMAGE_PLASMA, self )
-						end
-					end
-					being.hpmax = math.max(being.hpmax - 5,5)
-					being.hp = math.max(being.hp - 10,1)
-					being:set_affect( "tired" )
-					being.scount = being.scount - 1000
-				end
-				return false
+
+			OnCreate = function(self)
+				self:add_perk( "perk_uscythe_altfire" )
 			end,
 		}
 

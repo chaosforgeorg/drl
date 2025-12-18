@@ -25,7 +25,7 @@ register_level "abyssal_plains"
 			['Z'] = { "gwall", flags = { LFPERMANENT } },
 			['+'] = { "door",  flags = { LFPERMANENT } },
 			['X'] = { "stairs",being = "pain" },
-			['K'] = { "floor", being = core.ifdiff( 4, "baron") or core.ifdiff( 2, "knight", "demon" ) },
+--			['K'] = { "floor", being = core.ifdiff( 4, "baron") or core.ifdiff( 2, "knight", "demon" ) },
 			['i'] = { "floor", being = core.ifdiff( 5, "nimp")  or core.ifdiff( 3, "knight", "imp" ) },
 			['I'] = { "floor", being = core.ifdiff( 2, "knight", "imp" ) },
 			['s'] = { "floor", being = core.ifdiff( 5, "pain", "lostsoul" ) },

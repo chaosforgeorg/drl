@@ -31,7 +31,8 @@ TInventory = class( TVObject )
        function  isFull : boolean;
        procedure RawSetSlot( aIndex : TEqSlot; aItem : TItem ); inline;
        procedure EqSwap( aSlot1, aSlot2 : TEqSlot );
-       procedure EqTick;
+       procedure Tick;
+       procedure OnUpdate;
        procedure ClearSlot( aItem : TItem );
        function DoWear( aItem : TItem ) : Boolean;
        // no checking if slot fits!
@@ -41,6 +42,9 @@ TInventory = class( TVObject )
        function FindSlot( aItem : TItem ) : TEqSlot;
        function GetEnumerator : TInventoryEnumerator;
        function Equipped( aItem : TItem ) : Boolean;
+       function CallHook( aHook : Byte; aIncludeWeapons : Boolean; const aParams : array of Const ) : Boolean;
+       function GetBonus( aHook : Byte; const aParams : array of Const ) : Integer;
+       function GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single;
        destructor Destroy; override;
        procedure setSlot( aIndex : TEqSlot; aItem : TItem ); inline;
      private
@@ -75,7 +79,7 @@ end;
 procedure TInventory.setSlot( aIndex: TEqSlot; aItem: TItem); inline;
 begin
   if FSlots[aIndex] = aItem then Exit;
-  if FSlots[aIndex] <> nil  then FSlots[aIndex].CallHook( Hook_OnRemove, [FOwner] );
+  if FSlots[aIndex] <> nil  then FSlots[aIndex].CallHook( Hook_OnUnequip, [FOwner] );
   FSlots[aIndex] := nil;
   if aItem <> nil then aItem.CallHook( Hook_OnEquip, [FOwner] );
   if aItem <> nil then FOwner.Add( aItem );
@@ -210,12 +214,20 @@ begin
   FSlots[aSlot2] := iItem;
 end;
 
-procedure TInventory.EqTick;
+procedure TInventory.OnUpdate;
 var iSlot : TEqSlot;
 begin
   for iSlot in TEqSlot do
     if FSlots[iSlot] <> nil then
-      FSlots[iSlot].Tick(FOwner);
+      FSlots[iSlot].OnUpdate(FOwner);
+end;
+
+procedure TInventory.Tick;
+var iSlot : TEqSlot;
+begin
+  for iSlot in TEqSlot do
+    if FSlots[iSlot] <> nil then
+      FSlots[iSlot].Tick;
 end;
 
 procedure TInventory.ClearSlot ( aItem : TItem ) ;
@@ -277,6 +289,37 @@ begin
     if FSlots[ iSlot ] = aItem then
       Exit( True );
   Exit( False );
+end;
+
+function TInventory.CallHook( aHook : Byte; aIncludeWeapons : Boolean; const aParams : array of Const ) : Boolean;
+var iSlot : TEqSlot;
+begin
+  CallHook := False;
+  if aIncludeWeapons then
+  begin
+    for iSlot in TEqSlot do
+      if FSlots[ iSlot ] <> nil then
+        if FSlots[ iSlot ].CallHook( aHook, aParams ) then CallHook := True;
+  end
+  else
+  begin
+    if FSlots[ efTorso ] <> nil then if FSlots[ efTorso ].CallHook( aHook, aParams ) then CallHook := True;
+    if FSlots[ efBoots ] <> nil then if FSlots[ efBoots ].CallHook( aHook, aParams ) then CallHook := True;
+  end;
+end;
+
+function TInventory.GetBonus( aHook : Byte; const aParams : array of Const ) : Integer;
+begin
+  GetBonus := 0;
+  if FSlots[ efTorso ] <> nil then GetBonus += FSlots[ efTorso ].GetBonus( aHook, aParams );
+  if FSlots[ efBoots ] <> nil then GetBonus += FSlots[ efBoots ].GetBonus( aHook, aParams );
+end;
+
+function TInventory.GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single;
+begin
+  GetBonusMul := 1.0;
+  if FSlots[ efTorso ] <> nil then GetBonusMul *= FSlots[ efTorso ].GetBonusMul( aHook, aParams );
+  if FSlots[ efBoots ] <> nil then GetBonusMul *= FSlots[ efBoots ].GetBonusMul( aHook, aParams );
 end;
 
 end.

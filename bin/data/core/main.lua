@@ -20,6 +20,7 @@ core.options = {
 	melee_move_on_kill = false,
 	full_being_description = false,
 	percent_health = true,
+	assembly_apply_last_mod = false,
 }
 
 module = false
@@ -80,14 +81,17 @@ end
 register_difficulty = core.register_storage( "diff", "difficulty" )
 register_medal      = core.register_storage( "medals", "medal" )
 register_badge      = core.register_storage( "badges", "badge" )
-register_affect     = core.register_storage( "affects", "affect", function (a) core.register_affect( a.nid ) end )
+register_perk       = core.register_storage( "perks", "perk", function (a) 
+	a.tags = table.toset( a.tags )
+	core.register_perk( a.nid ) 
+end )
 register_trait      = core.register_storage( "traits", "trait" )
 register_ai         = core.register_storage( "ais", "ai" )
 register_challenge  = core.register_storage( "chal", "challenge" )
 register_itemset    = core.register_storage( "itemsets", "itemset" )
 register_mod_array = core.register_storage( "mod_arrays", "mod_array", function (m) 
 		m.sig   = core.mod_list_signature(m.mods)
-		m.desc  = core.mod_array_description(m)
+		m.request_desc  = core.mod_array_description(m)
 	end
 )
 register_klass      = core.register_storage( "klasses", "klass", function(k)
@@ -276,9 +280,7 @@ register_being         = core.register_storage( "beings", "being", function( bp 
 
 		if bp.ai_type and bp.ai_type ~= "" then
 			local ai_proto = ais[ bp.ai_type ]
-			if ai_proto == nil then
-				assert(false, "LUA: being["..bp.id.."] has unknown ai_type '"..bp.ai_type.."'!" )
-			end
+			assert(ai_proto ~= nil, "LUA: being["..bp.id.."] has unknown ai_type '"..bp.ai_type.."'!" )
 
 			local OnCreate = function( self )
 				self:add_property( "ai_type", bp.ai_type )
@@ -350,13 +352,13 @@ register_item          = core.register_storage( "items", "item", function( ip )
 				end
 			end
 
-			local OnRemove = function (self,being)
+			local OnUnequip = function (self,being)
 				if being:set_items( set ) == itemsets[ set ].trigger then
-					itemsets[ set ].OnRemove(self,being)
+					itemsets[ set ].OnUnequip(self,being)
 				end
 			end
 
-			ip.OnRemove = core.create_seq_function( OnRemove, ip.OnRemove )
+			ip.OnUnequip = core.create_seq_function( OnUnequip, ip.OnUnequip )
 			ip.OnEquip  = core.create_seq_function( OnEquip, ip.OnEquip )
 		end
 
@@ -624,8 +626,8 @@ function core.mod_array_description( mod_array_proto )
 		first = false
 	end
 
-	if mod_array_proto.desc then 
-		append(mod_array_proto.desc)
+	if mod_array_proto.request_desc then 
+		append(mod_array_proto.request_desc)
 	elseif mod_array_proto.request_id then 
 		append(items[mod_array_proto.request_id].name)
 	elseif mod_array_proto.request_type then 

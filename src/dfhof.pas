@@ -535,7 +535,7 @@ begin
                    then iString += ' {d'+getString('name')+' ({L-})}'
                    else iString += ' {d  -- ? -- ({L-})}'
               end
-            else iString += Padded(' {!'+getString('name')+' ({L'+IntToStr(Count)+'})}',40) + '{l' + getString('desc')+'}';
+            else iString += Padded(' {!'+getString('name')+' ({L'+IntToStr(Count)+'})}',40) + '{l' + getString('request_desc')+'}';
           iPage.Push(iString);
           iString := '';
         end;

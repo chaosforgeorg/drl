@@ -72,7 +72,6 @@ register_level "limbo"
 		local translation = {
 			['.'] = "floor",
 			['='] = "blood",
-			['>'] = "stairs",
 			[','] = "bridge",
 			['>'] = "stairs",
 			['X'] = "gwall",

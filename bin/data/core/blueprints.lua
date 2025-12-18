@@ -151,20 +151,22 @@ core.register_blueprint "award"
 	levels    = { true,  core.TARRAY("award_level") },
 }
 
-core.register_blueprint "affect"
+core.register_blueprint "perk"
 {
 	id             = { true,  core.TSTRING },
-	name           = { true,  core.TSTRING },
-	color          = { true,  core.TNUMBER },
-	color_expire   = { true,  core.TNUMBER },
-	message_init   = { false, core.TSTRING },
-	message_ending = { false, core.TSTRING },
-	message_done   = { false, core.TSTRING },
+	name           = { false, core.TSTRING, "" },
+	short          = { false, core.TSTRING, "" },
+	desc 		   = { false, core.TSTRING, "" },
+	color          = { false, core.TNUMBER },
+	color_expire   = { false, core.TNUMBER },
 	status_effect  = { false, core.TNUMBER },
 	status_strength= { false, core.TNUMBER },
+	tags           = { false, core.TTABLE, {} },
+	weight         = { false, core.TNUMBER, 0 },
 
 	OnAdd          = { false, core.TFUNC },
-	OnUpdate       = { false, core.TFUNC },
+	OnTick         = { false, core.TFUNC },
+	OnTick10       = { false, core.TFUNC },
 	OnRemove       = { false, core.TFUNC },
 
 	getDamageBonus   = { false, core.TFUNC },
@@ -180,6 +182,30 @@ core.register_blueprint "affect"
 	getFireCostMul   = { false, core.TFUNC },
 	getAmmoCostMul   = { false, core.TFUNC },
 	getReloadCostMul = { false, core.TFUNC },
+
+	OnPickup       = { false, core.TFUNC },
+	OnFirstPickup  = { false, core.TFUNC },
+	OnPickupCheck  = { false, core.TFUNC },
+	OnUse          = { false, core.TFUNC },
+	OnUseCheck     = { false, core.TFUNC },
+	OnPreReload    = { false, core.TFUNC },
+	OnReload       = { false, core.TFUNC },
+	OnAltFire      = { false, core.TFUNC },
+	OnAltReload    = { false, core.TFUNC },
+	OnEquip        = { false, core.TFUNC },
+	OnEquipTick    = { false, core.TFUNC },
+	OnEquipCheck   = { false, core.TFUNC },
+	OnKill         = { false, core.TFUNC },
+	OnHitBeing     = { false, core.TFUNC },
+	OnEnter        = { false, core.TFUNC },
+	OnEnterLevel   = { false, core.TFUNC },
+	OnFired        = { false, core.TFUNC },
+	OnFire         = { false, core.TFUNC },
+	OnPostMove     = { false, core.TFUNC },
+	OnDamage       = { false, core.TFUNC },
+	OnDieCheck     = { false, core.TFUNC },
+	OnCanMaxDamage = { false, core.TFUNC },
+	OnReceiveDamage= { false, core.TFUNC },
 }
 
 core.register_blueprint "ai"
@@ -375,6 +401,7 @@ core.register_blueprint "mod_array"
 	name         = { true,  core.TSTRING },
 	mods         = { true,  core.TTABLE},
 	desc         = { false, core.TSTRING },
+	request_desc = { false, core.TSTRING },
 	request_id   = { false, core.TIDIN("items") },
 	request_type = { false, core.TNUMBER },
 	level        = { false, core.TNUMBER, 0 },
@@ -401,9 +428,6 @@ core.register_blueprint "item"
 	weight         = { true, core.TNUMBER },
 	set            = { false, core.TIDIN("itemsets") },
 	flags          = { false, core.TFLAGS, {} },
-	rechargeamount = { false, core.TNUMBER, 1 },
-	rechargedelay  = { false, core.TNUMBER, 5 },
-	rechargelimit  = { false, core.TNUMBER, 0 },
 	firstmsg       = { false, core.TSTRING },
 	resist         = { false, core.TTABLE },
 	tags           = { false, core.TTABLE, {} },
@@ -441,11 +465,14 @@ core.register_blueprint "item"
 			dis_unique = { false, core.TBOOLEAN, false },
 			dis_other  = { false, core.TBOOLEAN, false },
 			OnUse      = { true,  core.TFUNC },
+
+			OnModDescribe = { false, core.TFUNC },
 		},
 		[ITEMTYPE_POWER]   = {
 			ascii    = { false, core.TSTRING, "^" },
 			slevel   = { false, core.TNUMBER },
 			OnPickup = { true, core.TFUNC },
+			OnEnter  = { false, core.TFUNC },
 		},
 		[ITEMTYPE_AMMO]   = {
 			ascii   = { false, core.TSTRING, "|" },
@@ -480,10 +507,6 @@ core.register_blueprint "item"
 			swaptime      = { false, core.TNUMBER, 10 },
 			shots         = { false, core.TNUMBER, 0 },
 			shotcost      = { false, core.TNUMBER, 0 },
-			altfire       = { false, core.TNUMBER, 0 },
-			altreload     = { false, core.TNUMBER, 0 },
-			altfirename   = { false, core.TSTRING },
-			altreloadname = { false, core.TSTRING },
 			scavenge      = { false, core.TARRAY(core.TIDIN("items")) },
 			misascii      = { false, core.TSTRING, "-" },
 			miscolor      = { false, core.TNUMBER },
@@ -559,8 +582,6 @@ core.register_blueprint "item"
 			knockback   = { false, core.TNUMBER, 12 },
 			usetime     = { false, core.TNUMBER, 10 },
 			swaptime    = { false, core.TNUMBER, 10 },
-			altfire     = { false, core.TNUMBER, 0 },
-			altfirename = { false, core.TSTRING },
 			misascii    = { false, core.TSTRING, "-" },
 			miscolor    = { false, core.TNUMBER },
 			misdelay    = { false, core.TNUMBER },
@@ -578,6 +599,8 @@ core.register_blueprint "item"
 			desc       = { true,  core.TSTRING },
 			warning    = { false, core.TSTRING },
 			fullchance = { false, core.TNUMBER },
+
+			OnDescribe = { false, core.TFUNC },
 		},
 		[ITEMTYPE_TELE] = {
 			ascii   = { false, core.TSTRING, "*" },
@@ -592,31 +615,13 @@ core.register_blueprint "item"
 		},
 	}},
 
-	OnCreate      = { false, core.TFUNC },
-	OnPickup      = { false, core.TFUNC },
-	OnFirstPickup = { false, core.TFUNC },
-	OnPickupCheck = { false, core.TFUNC },
-	OnUse         = { false, core.TFUNC },
-	OnUseCheck    = { false, core.TFUNC },
-	OnPreReload   = { false, core.TFUNC },
-	OnReload      = { false, core.TFUNC },
-	OnAltFire     = { false, core.TFUNC },
-	OnAltReload   = { false, core.TFUNC },
-	OnEquip       = { false, core.TFUNC },
-	OnEquipTick   = { false, core.TFUNC },
-	OnEquipCheck  = { false, core.TFUNC },
-	OnRemove      = { false, core.TFUNC },
-	OnKill        = { false, core.TFUNC },
-	OnHitBeing    = { false, core.TFUNC },
-	OnEnter       = { false, core.TFUNC },
-	OnFired       = { false, core.TFUNC },
-	OnFire        = { false, core.TFUNC },
-	OnPostMove    = { false, core.TFUNC },
-	OnDamage      = { false, core.TFUNC },
-	OnDescribe    = { false, core.TFUNC },
-	OnDieCheck    = { false, core.TFUNC },
-
-	OnModDescribe = { false, core.TFUNC },
+	OnCreate       = { false, core.TFUNC },
+	OnPickup       = { false, core.TFUNC },
+	OnFirstPickup  = { false, core.TFUNC },
+	OnUse          = { false, core.TFUNC },
+	OnUseCheck     = { false, core.TFUNC },
+	OnEquip        = { false, core.TFUNC },
+	OnUnequip      = { false, core.TFUNC },
 }
 
 core.register_blueprint "itemset"
@@ -626,7 +631,7 @@ core.register_blueprint "itemset"
 	trigger   = { true,  core.TNUMBER },
 
 	OnEquip   = { true,  core.TFUNC },
-	OnRemove  = { true,  core.TFUNC },
+	OnUnequip = { true,  core.TFUNC },
 }
 
 core.register_blueprint "level"

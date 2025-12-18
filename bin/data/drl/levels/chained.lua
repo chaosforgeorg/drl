@@ -24,11 +24,11 @@ register_level "the_chained_court"
 
 			OnUse = function(self,being)
 				if not being:is_player() then return false end
-				if being:is_affect( "tired" ) then
+				if being:is_perk( "tired" ) then
 					ui.msg("You're too tired to use the staff now.")
 					return false
 				end
-				being:set_affect( "tired" )
+				being:add_perk( "tired" )
 				ui.msg("You raise your arms!")
 				if level.id == "the_vaults" and level.status < 2 then
 					ui.msg("With a sudden inspiration you yell \"OPEN SESAME!\"!")
