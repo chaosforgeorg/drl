@@ -360,6 +360,7 @@ function ToProperFilename(s : string) : string;
 function toHitToChance( aEffSkill : Integer ) : Integer;
 function toHitPercent( aEffSkill : Integer ) : string;
 function BonusStr(i : integer) : string;
+function ResistStr(i : integer) : string;
 function UnitsToPercent(Value : Integer) : string;
 function Percent(Value : Integer) : string;
 function Seconds(Value : Integer) : string;
@@ -783,6 +784,12 @@ function BonusStr(i: integer): string;
 begin
   if i < 0 then BonusStr := IntToStr(i)
            else BonusStr := '+'+IntToStr(i);
+end;
+
+function ResistStr(i: integer): string;
+begin
+  if i < 0 then ResistStr := '{R' + IntToStr(i) + '%}'
+           else ResistStr := '{!' + BonusStr(i) + '%}';
 end;
 
 function ReadSprite( aTable : TLuaTable; var aSprite : TSprite ) : Boolean;

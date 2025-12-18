@@ -114,8 +114,8 @@ begin
     if (iTot <> 0) or (iTor <> 0) then
     begin
       if (iTot <> iTor)
-        then FTexts[1].Push( Format( Padded(ResNames[iRes],7)+' : {!%d%%}, torso {!%d%%}',[ iTot, iTor ] ) )
-        else FTexts[1].Push( Format( Padded(ResNames[iRes],7)+' : {!%d%%}',[ iTot ] ) );
+        then FTexts[1].Push( Padded(ResNames[iRes],7)+' : '+ResistStr(iTot)+', torso '+ResistStr(iTor) )
+        else FTexts[1].Push( Padded(ResNames[iRes],7)+' : '+ResistStr(iTot) );
     end;
   end;
   iCount := 2;

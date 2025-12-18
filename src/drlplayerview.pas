@@ -542,9 +542,9 @@ begin
       if (iTot <> 0) or (iTor <> 0) or (iFeet <> 0) then
       begin
         Inc( iY );
-        VTIG_FreeLabel( '{d'+Padded(ResNames[iRes],7)+'{!'+Padded(BonusStr(iTot)+'%',5)+
-             '} Torso{!'+Padded(BonusStr(iTor)+'%',5)+
-             '} Feet{!'+Padded(BonusStr(iFeet)+'%',5)+'}', Point( iR, iY ) );
+        VTIG_FreeLabel( '{d'+Padded(ResNames[iRes],7)+Padded(ResistStr(iTot),8)+
+             ' Torso'+Padded(ResistStr(iTor),8)+
+             ' Feet'+Padded(ResistStr(iFeet),8)+'}', Point( iR, iY ) );
       end;
     end;
 
