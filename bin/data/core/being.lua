@@ -388,6 +388,13 @@ function being:apply_timed_perk( id, max_duration, resist )
 	return true
 end
 
+function being:refresh_perk( id, max_duration )
+	local current = self:get_perk_time( id )
+	if current < max_duration then
+		self:add_perk( id, max_duration - current )
+	end
+end
+
 function being:full_reload( weapon )
 	if not weapon then return false end
 	local is_player = self:is_player()
