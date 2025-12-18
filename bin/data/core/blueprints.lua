@@ -620,10 +620,8 @@ core.register_blueprint "item"
 	OnFirstPickup  = { false, core.TFUNC },
 	OnUse          = { false, core.TFUNC },
 	OnUseCheck     = { false, core.TFUNC },
-	OnAltFire      = { false, core.TFUNC },
 	OnEquip        = { false, core.TFUNC },
 	OnUnequip      = { false, core.TFUNC },
-	OnFire         = { false, core.TFUNC },
 }
 
 core.register_blueprint "itemset"
