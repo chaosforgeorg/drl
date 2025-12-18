@@ -935,7 +935,8 @@ begin
       CallHook( Hook_OnPickUpItem, [iItem] );
       iItem.CallHook(Hook_OnPickUp, [Self]);
     end;
-    TLevel(Parent).DestroyItem( FPosition );
+    if not iItem.Flags[ IF_NODESTROY ] then
+      TLevel(Parent).DestroyItem( FPosition );
     if aApplyCost then
       Dec(FSpeedCount,ActionCostPickUp);
     Exit( True );
