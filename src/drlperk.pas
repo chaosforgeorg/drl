@@ -58,7 +58,7 @@ end;
 
 implementation
 
-uses sysutils, vluasystem, vuid, drlhooks, drlbase;
+uses sysutils, vluasystem, vuid, drlhooks, drlbase, dfplayer;
 
 constructor TPerks.Create( aOwner : TNode );
 begin
@@ -171,24 +171,32 @@ begin
 end;
 
 procedure TPerks.OnTick;
-var i    : Integer;
-    iUID : TUID;
+var i     : Integer;
+    iUID  : TUID;
+    iTime : LongInt;
 begin
   if FList.Size = 0 then Exit;
   iUID := FOwner.UID;
   for i := 0 to FList.Size - 1 do
     with FList[i] do
+    begin
       if Time > 0 then
       begin
         Dec( FList.Data^[i].Time );
-        if Hook_OnTick10 in FHooks then
-          if Time mod 10 = 0 then
-            if Hook_OnTick10 in PerkData[ID].Hooks then
-            begin
-              LuaSystem.ProtectedCall( [ 'perks', ID, 'OnTick10' ], [ FOwner, Time div 10 ] );              
-              if not DRL.Level.isAlive( iUID ) then Exit;
-            end;
-      end;
+        iTime := Time;
+      end
+      else if Time < 0 then
+        iTime := Player.Statistics.GameTime
+      else
+        Continue;
+      if Hook_OnTick10 in FHooks then
+        if iTime mod 10 = 0 then
+          if Hook_OnTick10 in PerkData[ID].Hooks then
+          begin
+            LuaSystem.ProtectedCall( [ 'perks', ID, 'OnTick10' ], [ FOwner, iTime div 10 ] );
+            if not DRL.Level.isAlive( iUID ) then Exit;
+          end;
+    end;
   i := 0;
   while i < FList.Size do
     if FList[i].Time = 0
