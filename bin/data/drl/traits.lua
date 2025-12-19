@@ -655,7 +655,7 @@ function drl.register_traits()
 
 		OnPick = function (self)
 			self:add_property( "MEDKIT_OVERHEAL" )
-			self:add_property( "MEDKIT_BONUS", 2 )
+			self:add_property( "MEDKIT_BONUS", self:get_property( "MEDKIT_BONUS", 1 ) + 1 )
 			self.flags[ BF_HARDY ] = true
 		end,
 	}
