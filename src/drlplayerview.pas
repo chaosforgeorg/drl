@@ -925,8 +925,8 @@ begin
     if FKills.NoDamageSequence > iKillRecord then iKillRecord := FKills.NoDamageSequence;
 
     FCharacter.Push( Format( '{!%s}, level {!%d} {!%s},',[ Name, ExpLevel, AnsiString(LuaSystem.Get(['klasses',Klass,'name']))] ) );
-    FCharacter.Push( Format( 'currently at {!%s}. ', [ DRL.Level.Name ] ) );
-    FCharacter.Push( Format( 'He survived {!%d} turns, which took him {!%d} seconds. ', [ Statistics['game_time'], Statistics['real_time'] ] ) );
+    FCharacter.Push( Format( 'currently at {!%s}, for {!%d} turns. ', [ DRL.Level.Name, DRL.Level.LTime ] ) );
+    FCharacter.Push( Format( 'He survived {!%d} turns, which took him {!%d} seconds realtime. ', [ Statistics['game_time'], Statistics['real_time'] ] ) );
     FCharacter.Push( Format( 'He took {!%d} damage, {!%d} on this floor alone. ', [ Statistics['damage_taken'], Statistics['damage_on_level'] ] ) );
     FCharacter.Push( Format( 'He killed {!%d} out of {!%d} enemies ({!%d%%}). ', [ Statistics['unique_kills'], Statistics['max_unique_kills'], Percent( Statistics['unique_kills'], Statistics['max_unique_kills'] ) ] ) );
     if Statistics['kills'] <> Statistics['unique_kills'] then

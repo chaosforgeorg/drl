@@ -179,6 +179,7 @@ TLevel = class(TLuaMapNode, ITextMap)
     property SpriteTop    [ Index : TCoord2D ] : TSprite read getSpriteTop;
     property SpriteBottom [ Index : TCoord2D ] : TSprite read getSpriteBottom;
   published
+    property LTime        : DWord      read FLTime;
     property Boss         : TUID       read FBoss        write FBoss;
     property Empty        : Boolean    read FEmpty;
     property Status       : Word       read FStatus      write FStatus;
