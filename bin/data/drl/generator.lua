@@ -7,6 +7,8 @@ generator.wall_to_ice = {
 	blood  = "water",
 }
 
+---@diagnostic disable: duplicate-set-field
+
 function generator.run( gen )
 	generator.reset()
 	core.log("generator.run > generating level type : "..gen.id)
@@ -47,7 +49,7 @@ function generator.run( gen )
 			gen.rooms() 
 		elseif type( gen.rooms ) == "table" and room_list then
 			local settings = { count = math.random( gen.rooms[1], gen.rooms[2] ) }
-			generator.handle_rooms( room_list, settings, room_list )
+			generator.handle_rooms( room_list, settings )
 			generator.restore_walls( generator.styles[ level.style ].wall, generator.cell_sets[ CELLSET_FLUIDS ] )
 		end
 	end
@@ -235,7 +237,7 @@ function generator.generate_caves_dungeon()
 	if dlevel >= 30 then
 		fluid = table.random_pick{ "lava", "lava", "acid", "blood" }
 	elseif dlevel > 20 and fluid == "lava" and DIFFICULTY >= DIFF_HARD then
-		fluid = math.random{ "lava", "lava", "blood" }
+		fluid = table.random_pick{ "lava", "lava", "blood" }
 	end
 
 	local drunk = function( amount, step, cell )
@@ -485,3 +487,5 @@ function generator.generate_barrels()
 		level:drop_item( cell2, barrel_coord(), true )
 	end
 end
+
+---@diagnostic enable: duplicate-set-field

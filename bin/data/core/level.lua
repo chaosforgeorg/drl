@@ -1,3 +1,12 @@
+function level:flood_tile( pos, cell )
+	local cell_data = cells[ level:get_cell( pos ) ]
+	if not cell_data.flags[ CF_CRITICAL ] then
+		level:set_cell( pos, cell )
+	end
+	if cell_data.OnDestroy then cell_data.OnDestroy(pos) end
+	level:try_destroy_item( pos )
+end
+
 function level:destroy_to( c, cell_id )
 	local cell = cells[ level.map[ c ] ]
 	if not cell.flags[ CF_NOCHANGE ] then
@@ -420,7 +429,7 @@ level.data = setmetatable({}, {
 		end
 		l[k] = v
 	end,
-	__index = function (_, k,v)
+	__index = function (_, k)
 		local l = player.level_data[level.id]
 		if not l then 
 			player.level_data[level.id] = {}

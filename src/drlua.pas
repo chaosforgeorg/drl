@@ -45,9 +45,10 @@ end;
 implementation
 
 uses typinfo, variants,
-     vnode, vdebug, vluatools, vluadungen, vluaentitynode,
+     vnode, vdebug, vluatools, vluadungen, vluaentitynode, vmath,
      vtextures, vtigstyle, vvector,
-     dfplayer, dflevel, dfmap, drlhooks, drlhelp, dfhof, drlbase, drlio, drlgfxio, drlspritemap;
+     dfplayer, dflevel, dfmap, drlhooks, drlhelp, dfhof, drlbase, drlio, drlperk,
+     drlgfxio, drlspritemap;
 
 var SpriteSheetCounter : Integer = -1;
 
@@ -115,31 +116,36 @@ begin
   Exit(1);
 end;
 
-function lua_core_register_affect(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
-    mID : Integer;
+function lua_core_register_perk(L: Plua_State): Integer; cdecl;
+var iState : TDRLLuaState;
+    iID    : Integer;
 begin
-  State.Init(L);
-  if High(Affects) = -1 then SetLength(Affects,MAXAFFECT);
-  mID := State.ToInteger(1);
-  if mID > High(Affects) then
-    raise Exception.Create('Maximum number of registered affects reached!');
-  with Affects[mID] do
-  with LuaSystem.GetTable(['affects',mID]) do
-  try
-    Name       := getString('name');
-    Color      := getInteger('color');
-    Color_exp  := getInteger('color_expire');
-    AffHooks      := [];
-    StatusEff  := TStatusEffect( getInteger('status_effect',0) );
-    StatusStr  := getInteger('status_strength',0);
-    if isFunction('OnUpdate') then Include(AffHooks, AffectHookOnUpdate);
-    if isFunction('OnAdd')    then Include(AffHooks, AffectHookOnAdd);
-    if isFunction('OnRemove') then Include(AffHooks, AffectHookOnRemove);
-  finally
-    Free;
+  iState.Init(L);
+  iID := iState.ToInteger(1);
+
+  if iID >= High( PerkData ) then
+  begin
+    SetLength( PerkData, Max( High( PerkData ) * 2, 100 ) );
+    PerkDataMax := iID;
   end;
-  Affects[mID].Hooks := LoadHooks( ['affects',mID] );
+  if iID > PerkDataMax then PerkDataMax := iID;
+
+  with PerkData[iID] do
+  begin
+    with LuaSystem.GetTable(['perks',iID]) do
+    try
+      Name      := getString('name','');
+      Short     := getString('short','');
+      Desc      := getString('desc','');
+      Color     := getInteger('color',0);
+      ColorExp  := getInteger('color_expire',0);
+      StatusEff := TStatusEffect( getInteger('status_effect',0) );
+      StatusStr := getInteger('status_strength',0);
+    finally
+      Free;
+    end;
+    Hooks := LoadHooks( ['perks',iID] );
+  end;
   Result := 0;
 end;
 
@@ -474,7 +480,7 @@ const lua_core_lib : array[0..10] of luaL_Reg = (
     ( name : 'time_ms';        func : @lua_core_time_ms),
     ( name : 'is_playing';func : @lua_core_is_playing),
     ( name : 'register_cell';   func : @lua_core_register_cell),
-    ( name : 'register_affect'; func : @lua_core_register_affect),
+    ( name : 'register_perk';   func : @lua_core_register_perk),
 
     ( name : 'play_music';func : @lua_core_play_music),
 
@@ -527,8 +533,6 @@ begin
   State.RegisterEnumValues( TypeInfo(TEqSlot) );
   State.RegisterEnumValues( TypeInfo(TStatusEffect) );
   State.RegisterEnumValues( TypeInfo(TDamageType) );
-  State.RegisterEnumValues( TypeInfo(TAltFire) );
-  State.RegisterEnumValues( TypeInfo(TAltReload) );
   State.RegisterEnumValues( TypeInfo(TExplosionFlag) );
   State.RegisterEnumValues( TypeInfo(TResistance) );
   State.RegisterEnumValues( TypeInfo(TMoveResult) );
@@ -539,6 +543,7 @@ begin
   TNode.RegisterLuaAPI( 'game_object' );
 
   TLuaEntityNode.RegisterLuaAPI( 'thing' );
+  TThing.RegisterLuaAPI();
 
   TItem.RegisterLuaAPI();
   TBeing.RegisterLuaAPI();

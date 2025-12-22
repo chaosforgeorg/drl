@@ -18,6 +18,7 @@ const TIG_EV_NONE      = 0;
       TIG_EV_CHARACTER = 4;
       TIG_EV_TRAITS    = 5;
       TIG_EV_MORE      = 6;
+      TIG_EV_MORESELF  = 7;
       //TIG_EV_QUICK_0   = 10;
       //TIG_EV_QUICK_1   = 11;
       //TIG_EV_QUICK_2   = 12;
@@ -122,7 +123,7 @@ type TDRLIO = class( TIO )
 
   procedure RenderUIBackgroundBlock( aUL, aBR : TIOPoint; aOpacity : Single = 0.85; aZ : Integer = 0 ); virtual;
   procedure RenderUIBackground( aTexture : TTextureID; aZ : Integer = 0 ); virtual;
-  procedure FullLook( aBeing : TBeing );
+  procedure FullLook( aThing : TThing );
   procedure SetTarget( aTarget : TCoord2D; aColor : Byte; aRange : Byte ); virtual; abstract;
   procedure SetAutoTarget( aTarget : TCoord2D ); virtual;
   function ResolveSub( const aID : Ansistring ) : Ansistring;
@@ -187,7 +188,7 @@ implementation
 uses math, video, dateutils, variants,
      vsound, vluasystem, vuid, vlog, vdebug, vuiconsole, vmath,
      vsdlio, vglconsole, vtig, vtigio, vvector,
-     dflevel, dfplayer, dfitem, dfhof,
+     dflevel, dfplayer, dfitem, dfhof, drlperk,
      drlconfiguration, drlbase, drlmoreview, drlchoiceview, drlua, drlmodulechoiceview,
      drlhudviews, drlplotview;
 
@@ -486,6 +487,7 @@ begin
         INPUT_TRAITS     : VTIG_GetIOState.EventState.SetState( TIG_EV_TRAITS,    aEvent.Key.Pressed );
         INPUT_PLAYERINFO : VTIG_GetIOState.EventState.SetState( TIG_EV_CHARACTER, aEvent.Key.Pressed );
         INPUT_MORE       : VTIG_GetIOState.EventState.SetState( TIG_EV_MORE,      aEvent.Key.Pressed );
+        INPUT_MORESELF   : VTIG_GetIOState.EventState.SetState( TIG_EV_MORE,      aEvent.Key.Pressed );
       end;
     end;
   end;
@@ -549,11 +551,20 @@ begin
   // noop
 end;
 
-procedure TDRLIO.FullLook( aBeing : TBeing );
+procedure TDRLIO.FullLook( aThing : TThing );
 begin
-  if ( aBeing = nil ) or ( not aBeing.isVisible ) then Exit;
-  FConsole.HideCursor;
-  PushLayer( TMoreView.Create( aBeing ) );
+  if aThing = nil then Exit;
+  if aThing is TBeing then
+  begin
+    if ( not TBeing(aThing).isVisible ) then Exit;
+    FConsole.HideCursor;
+    PushLayer( TMoreBeingView.Create( TBeing(aThing) ) );
+  end
+  else if aThing is TItem then
+  begin
+    FConsole.HideCursor;
+    PushLayer( TMoreItemView.Create( TItem(aThing) ) );
+  end;
 end;
 
 procedure TDRLIO.SetAutoTarget( aTarget : TCoord2D );
@@ -737,6 +748,7 @@ var iCon        : TUIConsole;
     iCurrent    : DWord;
     iOffset     : Integer;
     iBoss       : TBeing;
+    iPerks      : TPerkList;
 
   function ArmorColor( aValue : Integer ) : TUIColor;
   begin
@@ -828,7 +840,7 @@ begin
       then VTIG_FreeLabel( 'none',                                iPos + Point(31,1), iCBold )
       else
       begin
-        if iWeapon.isRanged and ( not iWeapon.Flags[ IF_NOAMMO ] ) and ( not iWeapon.Flags[ IF_RECHARGE ] ) then
+        if iWeapon.isRanged and ( not iWeapon.Flags[ IF_NOAMMO ] ) and ( not iWeapon.Flags[ IF_NORELOAD ] ) then
         begin
           if FCachedAmmo = -1 then
             FCachedAmmo := Player.Inv.CountAmount( iWeapon.AmmoID );
@@ -854,15 +866,18 @@ begin
     VTIG_FreeLabel( DRL.Level.Name, Point( -2-Length( DRL.Level.Name), iBottom ), iColor );
 
     iP := 0;
-    for i := 1 to MAXAFFECT do
-      if Player.Affects.IsActive(i) then
-      begin
-        if Player.Affects.IsExpiring(i)
-          then iColor := Affects[i].Color_exp
-          else iColor := Affects[i].Color;
-        VTIG_FreeLabel( Affects[i].name, Point( iPos.X+iP+1, iBottom ), iColor );
-        iP += Length( Affects[i].name ) + 1;
-      end;
+    iPerks := Player.GetPerkList;
+    if ( iPerks <> nil ) and ( iPerks.Size > 0 ) then
+      for i := 0 to iPerks.Size - 1 do
+        with PerkData[ iPerks[i].ID ] do
+          if Short <> '' then
+          begin
+            if ( iPerks[i].Time > 0 ) and ( iPerks[i].Time <= 50 )
+              then iColor := ColorExp
+              else iColor := Color;
+            VTIG_FreeLabel( Short, Point( iPos.X+iP+1, iBottom ), iColor );
+            iP += Length( Short ) + 1;
+          end;
   end;
 
   iOffset := -2;
@@ -1359,6 +1374,7 @@ var iState : TDRLLuaState;
 begin
   iState.Init(L);
   DRL.ResetAutoTarget;
+  Result := 0;
 end;
 
 const lua_ui_lib : array[0..19] of luaL_Reg = (

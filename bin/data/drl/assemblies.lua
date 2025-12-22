@@ -13,7 +13,6 @@ function drl.register_assemblies()
 			item.damage_dice  = 8
 			item.damage_sides = 2
 			item.acc          = 2
-			item.altfire      = ALT_NONE
 		end,
 	}
 
@@ -106,10 +105,13 @@ function drl.register_assemblies()
 			item.resist.shrapnel = 0
 			item.resist.bullet   = 0
 
-			item.flags[ IF_RECHARGE ] = true
-			item.rechargeamount       = 2
-			item.rechargedelay        = 10
+			item:add_perk( "perk_armor_recharge" )
+			item.pp_recharge.amount = 2
+			item.pp_recharge.delay  = 10
+		end,
 
+		Match = function (item)
+			return not item.pp_recharge
 		end,
 	}
 
@@ -126,10 +128,13 @@ function drl.register_assemblies()
 			item.knockmod  = 0
 			item.armor     = 0
 
-			item.flags[ IF_RECHARGE ] = true
-			item.rechargeamount       = 2
-			item.rechargedelay        = 10
+			item:add_perk( "perk_armor_recharge" )
+			item.pp_recharge.amount = 2
+			item.pp_recharge.delay  = 10
+		end,
 
+		Match = function (item)
+			return not item.pp_recharge
 		end,
 	}
 
@@ -157,7 +162,7 @@ function drl.register_assemblies()
 	{
 		name  = "high power weapon",
 		mods  = { P = 1, B = 1 },
-		desc  = "ranged, non-shotgun, magazine > 5",
+		request_desc  = "ranged, non-shotgun, magazine > 5",
 		request_type = ITEMTYPE_RANGED,
 
 		Match = function (item)
@@ -180,10 +185,10 @@ function drl.register_assemblies()
 	{
 		name  = "power armor",
 		mods  = { P = 1, N = 1 },
-		desc = "any common armor",
+		request_desc = "any common armor",
 
 		Match = function (item)
-			return item.itype == ITEMTYPE_ARMOR and item.flags[IF_EXOTIC] == false and item.flags[IF_UNIQUE] == false
+			return not item:has_property("pp_recharge") and item.itype == ITEMTYPE_ARMOR and item.flags[IF_EXOTIC] == false and item.flags[IF_UNIQUE] == false
 		end,
 
 		OnApply = function (item)
@@ -208,9 +213,9 @@ function drl.register_assemblies()
 			end
 			item.resist.melee        = 25
 
-			item.flags[ IF_RECHARGE ] = true
-			item.rechargeamount       = 5
-			item.rechargedelay        = 10
+			item:add_perk( "perk_armor_recharge" )
+			item.pp_recharge.amount = 5
+			item.pp_recharge.delay  = 10
 		end,
 	}
 
@@ -227,9 +232,8 @@ function drl.register_assemblies()
 			item.damage_sides = 3
 			item.usetime      = 10
 			item.ammomax      = 5
-			if item:has_property("pump_action") then
-				item.pump_action = false
-				item.chamber_empty = false
+			if item:is_perk("perk_pump_action") then
+				item:remove_perk("perk_pump_action")
 			end
 		end,
 	}
@@ -313,7 +317,7 @@ function drl.register_assemblies()
 	{
 		name  = "plasmatic shrapnel",
 		mods  = {  P = 1, S = 1 },
-		desc  = "any shotgun",
+		request_desc  = "any shotgun",
 
 		Match = function (item)
 			return item.group == "shotgun"
@@ -410,7 +414,7 @@ function drl.register_assemblies()
 		name  = "storm bolter pistol",
 		mods  = { B = 2, T = 1 },
 		level = 1,
-		desc = "any pistol",
+		request_desc = "any pistol",
 
 		Match = function (item)
 			return (item.itype == ITEMTYPE_RANGED) and (item.group == "pistol")
@@ -434,7 +438,7 @@ function drl.register_assemblies()
 		name  = "assault rifle",
 		mods  = { A = 3 },
 		level = 1,
-		desc = "any rapid-fire",
+		request_desc = "any rapid-fire",
 
 		Match = function (item)
 			return (item.itype == ITEMTYPE_RANGED) and (item.group == "chain" or item.group == "plasma") and item.flags[IF_UNIQUE] == false
@@ -456,7 +460,7 @@ function drl.register_assemblies()
 		name  = "energy pistol",
 		mods  = { P = 2, T = 1 },
 		level = 1,
-		desc = "any pistol",
+		request_desc = "any pistol",
 
 		Match = function (item)
 			return (item.itype == ITEMTYPE_RANGED) and (item.group == "pistol")
@@ -478,7 +482,7 @@ function drl.register_assemblies()
 		name  = "burst cannon",
 		mods  = { P = 1, B = 2 },
 		level = 1,
-		desc = "any rapid-fire",
+		request_desc = "any rapid-fire",
 
 		Match = function(item)
 			return (item.itype == ITEMTYPE_RANGED) and (item.group == "chain" or item.group == "plasma") and item.flags[IF_UNIQUE] == false
@@ -500,7 +504,7 @@ function drl.register_assemblies()
 		name  = "VBFG9000",
 		mods  = {P = 3},
 		level = 1,
-		desc = "any BFG9000",
+		request_desc = "any BFG9000",
 
 		Match = function(item)
 			return (item.itype == ITEMTYPE_RANGED) and (item.group == "bfg") and item.flags[IF_UNIQUE] == false
@@ -580,11 +584,15 @@ function drl.register_assemblies()
 			item.resist.fire = math.min( (item.__proto.resist.fire or 0) + 25, 95 )
 			item.resist.acid = math.min( (item.__proto.resist.acid or 0) + 25, 95 )
 			item.resist.plasma = math.min( (item.__proto.resist.plasma or 0) + 25, 95 )
-			item.flags[ IF_RECHARGE ]  = true
+			item:add_perk( "perk_armor_recharge" )
+			item.pp_recharge.amount = 1
+			item.pp_recharge.delay  = 5
 			item.flags[ IF_NODESTROY ] = true
 			item.flags[ IF_CURSED ]    = true
-			item.rechargeamount = 1
-			item.rechargedelay = 5
+		end,
+
+		Match = function (item)
+			return not item:has_property("pp_recharge")
 		end,
 	}
 
@@ -646,7 +654,7 @@ function drl.register_assemblies()
 		name  = "nanomanufacture ammo",
 		mods  = {N = 1, B = 3},
 		level = 2,
-		desc  = "non-sg/non-bfg ranged weapon",
+		request_desc  = "non-sg/non-bfg ranged weapon",
 
 		Match = function (item)
 			return item.group ~= "shotgun" and (item.itype == ITEMTYPE_RANGED) and (item.radius < 5)
@@ -658,7 +666,8 @@ function drl.register_assemblies()
 			item.ammo = math.min( item.ammo, item.ammomax )
 			item.flags[ IF_NOAMMO ]   = true
 			item.flags[ IF_NOUNLOAD ] = true
-			item.flags[ IF_RECHARGE ] = false
+			item.flags[ IF_NORELOAD ] = false
+			item:remove_perks_by_tag( "recharge" )
 		end,
 	}
 
@@ -667,7 +676,7 @@ function drl.register_assemblies()
 		name  = "nano-shrapnel",
 		mods  = { P = 3, N = 1 },
 		level = 2,
-		desc  = "any shotgun",
+		request_desc  = "any shotgun",
 
 		Match = function (item)
 			return item.group == "shotgun"
@@ -678,9 +687,8 @@ function drl.register_assemblies()
 			item.damage_dice = item.__proto.damage_dice - 3
 			item.damagetype   = DAMAGE_IGNOREARMOR
 			item.flags[ IF_NOAMMO ] = true
-			if item:has_property("pump_action") then
-				item.pump_action = false
-				item.chamber_empty = false
+			if item:is_perk("perk_pump_action") then
+				item:remove_perk("perk_pump_action")
 			end
 		end,
 	}
@@ -690,7 +698,7 @@ function drl.register_assemblies()
 		name  = "demolition ammo",
 		mods  = { P = 1, T = 2, F = 1 },
 		level = 2,
-		desc  = "10mm weapon",
+		request_desc  = "10mm weapon",
 
 		Match = function (item)
 			return item.itype == ITEMTYPE_RANGED and items[ item.ammoid ].id == "ammo"
@@ -733,7 +741,7 @@ function drl.register_assemblies()
 		name  = "biggest fucking gun",
 		mods  = { B = 2, F = 2 },
 		level = 2,
-		desc = "any BFG9000",
+		request_desc = "any BFG9000",
 
 		Match = function(item)
 			return (item.itype == ITEMTYPE_RANGED) and (item.group == "bfg") and item.flags[IF_UNIQUE] == false
@@ -824,10 +832,13 @@ function drl.register_assemblies()
 			item.radius       = 6
 			-- This is the behaviour of the N-mod on 0.9.9.1.
 			-- shark said that you can get this with N2, but here we are basically allowing a *6*-mod weapon build up
-			item.flags[ IF_RECHARGE ] = true
-			item.flags[ IF_NOUNLOAD ] = true
-			item.rechargedelay = 0
-			item.rechargeamount = 1
+			item:add_perk( "perk_weapon_recharge" )
+			item.pp_recharge.delay  = 0
+			item.pp_recharge.amount = 1
+		end,
+
+		Match = function (item)
+			return not item:has_property("pp_recharge")
 		end,
 	}
 

@@ -58,7 +58,7 @@ function drl.register_events()
 		on_tick    = function()
 			local function chill( b )
 				if b.hp > b.hpmax / 4 and not b.flags[BF_INV] then
-					if not b:is_player() or not b:is_affect("enviro") then
+					if not b:is_player() or not b:is_perk("enviro") then
 						b:msg( "You feel a deadly chill!" )
 						b.hp = b.hp - 1
 					end

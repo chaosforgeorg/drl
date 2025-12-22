@@ -30,6 +30,8 @@ TItem  = class( TThing )
     function    Description : Ansistring; overload;
     function    DescriptionBox( aShort : Boolean = False ) : Ansistring;
     function    ResistDescriptionShort : AnsiString;
+    function    GetAltFireName : AnsiString;
+    function    GetAltReloadName : AnsiString;
     destructor  Destroy; override;
     function    eqSlot : TEqSlot;
     function    isStackable : Boolean;
@@ -49,8 +51,7 @@ TItem  = class( TThing )
     function    isPickupable : Boolean;
     function    canFire : Boolean;
     function MenuColor : byte;
-    procedure RechargeReset;
-    procedure Tick( Owner : TThing );
+    procedure OnUpdate( Owner : TThing );
     function Preposition( const Item : AnsiString ) : string;
     class function Compare( a, b : TItem ) : Boolean; reintroduce;
     class procedure RegisterLuaAPI();
@@ -74,9 +75,6 @@ TItem  = class( TThing )
     property NID            : Byte        read FNID;
     property MissBase       : Byte        read FProps.MissBase        write FProps.MissBase;
     property MissDist       : Byte        read FProps.MissDist        write FProps.MissDist;
-    property RechargeDelay  : Byte        read FProps.Recharge.Delay  write FProps.Recharge.Delay;
-    property RechargeAmount : Byte        read FProps.Recharge.Amount write FProps.Recharge.Amount;
-    property RechargeLimit  : Byte        read FProps.Recharge.Limit  write FProps.Recharge.Limit;
     property IType          : TItemType   read FProps.IType          write FProps.IType;
     property Durability     : Word        read FProps.Durability     write FProps.Durability;
     property MaxDurability  : Word        read FProps.MaxDurability  write FProps.MaxDurability;
@@ -102,8 +100,6 @@ TItem  = class( TThing )
     property UseTime        : Byte        read FProps.UseTime        write FProps.UseTime;
     property SwapTime       : Byte        read FProps.SwapTime       write FProps.SwapTime;
     property DamageType     : TDamageType read FProps.DamageType     write FProps.DamageType;
-    property AltFire        : TAltFire    read FProps.AltFire        write FProps.AltFire;
-    property AltReload      : TAltReload  read FProps.AltReload      write FProps.AltReload;
     property MisASCII       : Char        read FProps.MisASCII       write FProps.MisAscii;
     property MisColor       : Byte        read FProps.MisColor       write FProps.MisColor;
     property MisDelay       : Byte        read FProps.MisDelay       write FProps.MisDelay;
@@ -115,7 +111,7 @@ procedure SwapItem(var a, b: TItem);
 
 implementation
 
-uses vnode, drlua, vluasystem, vluaentitynode, vutil, vdebug, dfbeing, drlbase, vmath, drlhooks;
+uses vnode, drlua, vluasystem, vluaentitynode, vutil, vdebug, dfbeing, drlbase, vmath, drlhooks, drlperk;
 
 procedure SwapItem(var a, b: TItem);
 var c : TItem;
@@ -225,11 +221,6 @@ begin
   FMax             := aTable.getInteger('max');
   FAmount          := aTable.getInteger('amount');
 
-  FProps.Recharge.Delay  := aTable.getInteger('rechargedelay',0);
-  FProps.Recharge.Amount := aTable.getInteger('rechargeamount',0);
-  FProps.Recharge.Limit  := aTable.getInteger('rechargelimit',0);
-  FProps.Recharge.Counter:= 0;
-
   FProps.MoveMod   := aTable.getInteger( 'movemod', 0 );
   FProps.DodgeMod  := aTable.getInteger( 'dodgemod', 0 );
   FProps.KnockMod  := aTable.getInteger( 'knockmod', 0 );
@@ -250,7 +241,6 @@ begin
   FProps.UseTime     := aTable.getInteger('usetime',10);
   FProps.SwapTime    := aTable.getInteger('swaptime',10);
   FProps.ReloadTime  := aTable.getInteger('reloadtime',10);
-  FProps.AltFire     := TAltFire( aTable.getInteger('altfire',0) );
 
   FProps.Radius      := aTable.getInteger('radius',0);
   FProps.Range       := aTable.getInteger('range',0);
@@ -265,9 +255,6 @@ begin
   FProps.MisDelay    := aTable.getInteger('misdelay',0);
   FProps.MissBase    := aTable.getInteger('miss_base',0);
   FProps.MissDist    := aTable.getInteger('miss_dist',0);
-
-  FProps.AltFire     := TAltFire( aTable.getInteger('altfire',0) );
-  FProps.AltReload   := TAltReload( aTable.getInteger('altreload',0) );
 
   FProps.PCosColor := ColorZero;
   FProps.PGlowColor := ColorZero;
@@ -289,11 +276,6 @@ function TItem.MenuColor: byte;
 begin
   if not Option_ColoredInventory then Exit(LightGray);
   if Color = white then Exit(LightGray) else Exit(Color);
-end;
-
-procedure TItem.RechargeReset;
-begin
-  FProps.Recharge.Counter := FProps.Recharge.Delay;
 end;
 
 function    TItem.rollDamage : Integer;
@@ -400,75 +382,79 @@ begin
   if ( FMax > 1 ) and ( not aSingle ) then Description += ' (x'+IntToStr(FAmount)+')';
 end;
 
+function TItem.GetAltFireName : AnsiString;
+var iPerks : TPerkList;
+    i      : Integer;
+begin
+  GetAltFireName := '';
+  if ( FPerks <> nil ) and ( Hook_OnAltFire in FPerks.Hooks ) then
+  begin
+    iPerks := FPerks.List;
+    for i := 0 to iPerks.Size - 1 do
+      if Hook_OnAltFire in PerkData[ iPerks[i].ID ].Hooks then
+        Exit( PerkData[ iPerks[i].ID ].Short );
+  end;
+end;
+
+function TItem.GetAltReloadName : AnsiString;
+var iPerks : TPerkList;
+    i      : Integer;
+begin
+  GetAltReloadName := '';
+  if ( FPerks <> nil ) and ( Hook_OnAltReload in FPerks.Hooks ) then
+  begin
+    iPerks := FPerks.List;
+    for i := 0 to iPerks.Size - 1 do
+      if Hook_OnAltReload in PerkData[ iPerks[i].ID ].Hooks then
+        Exit( PerkData[ iPerks[i].ID ].Short );
+  end;
+end;
+
 function TItem.DescriptionBox( aShort : Boolean = False ): Ansistring;
-  function Iff(expr : Boolean; str : Ansistring) : Ansistring;
-  begin
-    if expr then exit(str) else exit('');
-  end;
-  function AltFireName( aValue : TAltFire ) : AnsiString;
-  begin
-    AltFireName := LuaSystem.Get([ 'items', ID, 'altfirename' ], '');
-    if AltFireName <> '' then Exit;
-    case aValue of
-      ALT_CHAIN     : Exit('chain fire');
-      ALT_THROW     : Exit('throw');
-      ALT_AIMED     : Exit('aimed');
-      ALT_SINGLE    : Exit('single');
-    end;
-  end;
-  function AltReloadName( aValue : TAltReload ) : AnsiString;
-  begin
-    AltReloadName := LuaSystem.Get([ 'items', ID, 'altreloadname' ], '');
-    if AltReloadName <> '' then Exit;
-    case aValue of
-      RELOAD_DUAL        : Exit('dual');
-      RELOAD_SINGLE      : Exit('single');
-    end;
-  end;
 begin
   DescriptionBox := '';
   case FProps.IType of
     ITEMTYPE_ARMOR, ITEMTYPE_BOOTS : DescriptionBox :=
       'Durability  : {!'+IntToStr(FProps.MaxDurability)+'}'#10+
-      Iff(FProps.SwapTime  <> 10, 'Swap time   : {!'+Seconds(FProps.SwapTime)+'}'#10);
+      IIf(FProps.SwapTime  <> 10, 'Swap time   : {!'+Seconds(FProps.SwapTime)+'}'#10);
     ITEMTYPE_URANGED : DescriptionBox :=
       'Damage type : {!'+DamageTypeName(FProps.DamageType)+'}'#10+
-      Iff(FProps.Radius <> 0,'Expl.radius : {!'+IntToStr(FProps.Radius)+'}'#10);
+      IIf(FProps.Radius <> 0,'Expl.radius : {!'+IntToStr(FProps.Radius)+'}'#10);
     ITEMTYPE_RANGED, ITEMTYPE_NRANGED : DescriptionBox :=
-      Iff(FProps.UseTime  <> 10, 'Fire time   : {!'+Seconds(FProps.UseTime)+'}'#10)+
-      Iff(FProps.ReloadTime > 0, 'Reload time : {!'+Seconds(FProps.ReloadTime)+'}'#10)+
-      Iff(FProps.SwapTime <> 10, 'Swap time   : {!'+Seconds(FProps.SwapTime)+'}'#10)+
-      Iff(FProps.Acc       <> 0, 'Accuracy    : {!'+BonusStr(FProps.Acc)+'}'#10)+
+      IIf(FProps.UseTime  <> 10, 'Fire time   : {!'+Seconds(FProps.UseTime)+'}'#10)+
+      IIf(FProps.ReloadTime > 0, 'Reload time : {!'+Seconds(FProps.ReloadTime)+'}'#10)+
+      IIf(FProps.SwapTime <> 10, 'Swap time   : {!'+Seconds(FProps.SwapTime)+'}'#10)+
+      IIf(FProps.Acc       <> 0, 'Accuracy    : {!'+BonusStr(FProps.Acc)+'}'#10)+
       'Damage type : {!'+DamageTypeName(FProps.DamageType)+'}'#10+
-      Iff(FProps.Shots    <> 0,'Shots       : {!'+IntToStr(FProps.Shots)+'}'#10)+
-      Iff(FProps.ShotCost <> 0,'Shot cost   : {!'+IntToStr(FProps.ShotCost)+'}'#10)+
-      Iff(FProps.Radius   <> 0,'Expl.radius : {!'+IntToStr(FProps.Radius)+'}'#10)+
-      Iff(FProps.Falloff  <> 0,'Dmg. falloff: {!'+IntToStr(FProps.Falloff)+'%}'#10)+
-      Iff(FProps.Spread   <> 0,'Cone size   : {!'+IntToStr(FProps.Spread)+'}'#10)+
-      Iff(FProps.Range    <> 0,'Max range   : {!'+IntToStr(FProps.Range)+'}'#10)+
-      Iff((not aShort) and (FProps.AltFire   <> ALT_NONE   ),'Alt. fire   : {!'+AltFireName( FProps.AltFire )+'}'#10)+
-      Iff((not aShort) and (FProps.AltReload <> RELOAD_NONE),'Alt. reload : {!'+AltReloadName( FProps.AltReload )+'}'#10);
+      IIf(FProps.Shots    <> 0,'Shots       : {!'+IntToStr(FProps.Shots)+'}'#10)+
+      IIf(FProps.ShotCost <> 0,'Shot cost   : {!'+IntToStr(FProps.ShotCost)+'}'#10)+
+      IIf(FProps.Radius   <> 0,'Expl.radius : {!'+IntToStr(FProps.Radius)+'}'#10)+
+      IIf(FProps.Falloff  <> 0,'Dmg. falloff: {!'+IntToStr(FProps.Falloff)+'%}'#10)+
+      IIf(FProps.Spread   <> 0,'Cone size   : {!'+IntToStr(FProps.Spread)+'}'#10)+
+      IIf(FProps.Range    <> 0,'Max range   : {!'+IntToStr(FProps.Range)+'}'#10)+
+      IIf((not aShort) and HasHook( Hook_OnAltFire ),  'Alt. fire   : {!'+GetAltFireName+'}'#10)+
+      IIf((not aShort) and HasHook( Hook_OnAltReload ),'Alt. reload : {!'+GetAltReloadName+'}'#10);
     ITEMTYPE_MELEE : DescriptionBox :=
-      Iff(FProps.UseTime <> 10, 'Attack time : {!'+Seconds(FProps.UseTime)+'}'#10)+
-      Iff(FProps.SwapTime<> 10, 'Swap time   : {!'+Seconds(FProps.SwapTime)+'}'#10)+
-      Iff(FProps.Acc     <> 0,  'Accuracy    : {!' + BonusStr(FProps.Acc)+'}'#10)+
+      IIf(FProps.UseTime <> 10, 'Attack time : {!'+Seconds(FProps.UseTime)+'}'#10)+
+      IIf(FProps.SwapTime<> 10, 'Swap time   : {!'+Seconds(FProps.SwapTime)+'}'#10)+
+      IIf(FProps.Acc     <> 0,  'Accuracy    : {!' + BonusStr(FProps.Acc)+'}'#10)+
       'Damage type : {!'+DamageTypeName(FProps.DamageType)+'}'#10+
-      Iff((not aShort) and (FProps.AltFire <> ALT_NONE),'Alt. fire   : {!'+AltFireName( FProps.AltFire )+'}'#10);
+      IIf((not aShort) and HasHook( Hook_OnAltFire ),  'Alt. fire   : {!'+GetAltFireName+'}'#10);
   end;
   DescriptionBox +=
-    Iff(FProps.MoveMod  <> 0,'Move speed  : {!'+Percent(FProps.MoveMod)+'}'#10)+
-    Iff(FProps.KnockMod <> 0,'Knockback   : {!'+Percent(FProps.KnockMod)+'}'#10)+
-    Iff(FProps.DodgeMod <> 0,'Dodge rate  : {!'+Percent(FProps.DodgeMod)+'}'#10);
+    IIf(FProps.MoveMod  <> 0,'Move speed  : {!'+Percent(FProps.MoveMod)+'}'#10)+
+    IIf(FProps.KnockMod <> 0,'Knockback   : {!'+Percent(FProps.KnockMod)+'}'#10)+
+    IIf(FProps.DodgeMod <> 0,'Dodge rate  : {!'+Percent(FProps.DodgeMod)+'}'#10);
 
   DescriptionBox +=
-      Iff(GetResistance('bullet')   <> 0,'Bullet res. : {!' + BonusStr(GetResistance('bullet'))+'}'#10)+
-      Iff(GetResistance('melee')    <> 0,'Melee res.  : {!' + BonusStr(GetResistance('melee'))+'}'#10)+
-      Iff(GetResistance('shrapnel') <> 0,'Shrapnel res: {!' + BonusStr(GetResistance('shrapnel'))+'}'#10)+
-      Iff(GetResistance('acid')     <> 0,'Acid res.   : {!' + BonusStr(GetResistance('acid'))+'}'#10)+
-      Iff(GetResistance('fire')     <> 0,'Fire res.   : {!' + BonusStr(GetResistance('fire'))+'}'#10)+
-      Iff(GetResistance('plasma')   <> 0,'Plasma res. : {!' + BonusStr(GetResistance('plasma'))+'}'#10)+
-      Iff(GetResistance('cold')     <> 0,'Cold res.   : {!' + BonusStr(GetResistance('cold'))+'}'#10)+
-      Iff(GetResistance('poison')   <> 0,'Poison res. : {!' + BonusStr(GetResistance('poison'))+'}'#10);
+      IIf(GetResistance('bullet')   <> 0,'Bullet res. : {!' + BonusStr(GetResistance('bullet'))+'}'#10)+
+      IIf(GetResistance('melee')    <> 0,'Melee res.  : {!' + BonusStr(GetResistance('melee'))+'}'#10)+
+      IIf(GetResistance('shrapnel') <> 0,'Shrapnel res: {!' + BonusStr(GetResistance('shrapnel'))+'}'#10)+
+      IIf(GetResistance('acid')     <> 0,'Acid res.   : {!' + BonusStr(GetResistance('acid'))+'}'#10)+
+      IIf(GetResistance('fire')     <> 0,'Fire res.   : {!' + BonusStr(GetResistance('fire'))+'}'#10)+
+      IIf(GetResistance('plasma')   <> 0,'Plasma res. : {!' + BonusStr(GetResistance('plasma'))+'}'#10)+
+      IIf(GetResistance('cold')     <> 0,'Cold res.   : {!' + BonusStr(GetResistance('cold'))+'}'#10)+
+      IIf(GetResistance('poison')   <> 0,'Poison res. : {!' + BonusStr(GetResistance('poison'))+'}'#10);
 end;
 
 function TItem.ResistDescriptionShort: AnsiString;
@@ -615,35 +601,10 @@ begin
   Exit( True );
 end;
 
-procedure TItem.Tick( Owner : TThing );
-var Being : TBeing;
+procedure TItem.OnUpdate( Owner : TThing );
 begin 
-  if Hook_OnEquipTick in FHooks then
+  if ( Hook_OnEquipTick in FHooks ) or ( ( FPerks <> nil ) and ( Hook_OnEquipTick in FPerks.Hooks ) ) then
     CallHook( Hook_OnEquipTick, [ Owner ] );
-    
-  if Owner is TBeing then Being := Owner as TBeing else Being := nil;
-  
-  if ( IF_RECHARGE in FFlags ) or ( ( IF_NECROCHARGE in FFlags ) and ( Being <> nil ) and ( Being.HP > 1 ) ) then
-  begin
-    if FProps.Recharge.Counter = 0 then
-    case FProps.IType of
-      ITEMTYPE_RANGED :
-        if (FProps.Ammo < FProps.AmmoMax) and ( ( FProps.Recharge.Limit = 0 ) or ( FProps.Ammo < FProps.Recharge.Limit ) )  then
-        begin
-          FProps.Ammo := Min( FProps.Ammo + FProps.Recharge.Amount, IIf( FProps.Recharge.Limit <> 0, Min( FProps.AmmoMax, FProps.Recharge.Limit ), FProps.AmmoMax ) );
-          if IF_NECROCHARGE in FFlags then Being.HP := Being.HP - 1;
-        end;
-      ITEMTYPE_ARMOR,
-      ITEMTYPE_BOOTS  :
-        if (FProps.Durability < FProps.MaxDurability) and ( ( FProps.Recharge.Limit = 0 ) or ( FProps.Durability < FProps.Recharge.Limit ) ) then
-        begin
-          FProps.Durability := Min( FProps.Durability + FProps.Recharge.Amount, IIf( FProps.Recharge.Limit <> 0, Min( FProps.MaxDurability, FProps.Recharge.Limit ), FProps.MaxDurability ) );
-          if IF_NECROCHARGE in FFlags then Being.HP := Being.HP - 1;
-        end;
-    end
-    else
-      Dec( FProps.Recharge.Counter );
-  end;
 end;
 
 function lua_item_new(L: Plua_State): Integer; cdecl;

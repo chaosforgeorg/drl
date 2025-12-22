@@ -5,16 +5,15 @@
 			"name": "drl"
 		},
 		{
-			"path": "bin\\modules",
-			"name": "modules"
-		},
-		{
 			"path": "bin\\data",
 			"name": "data"
 		},
 		{
 			"path": "..\\fpcvalkyrie\\src",
 			"name": "fpcValkyrie"
+		},
+		{
+			"path": "../fpcvalkyrie/libs"
 		}
 	],
 	"settings": {}

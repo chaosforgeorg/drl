@@ -74,6 +74,7 @@ type TInputKey = (
   INPUT_MESSAGES,
   INPUT_ASSEMBLIES,
   INPUT_MORE,
+  INPUT_MORESELF,
 
   // Helper keybindings
   INPUT_QUICKKEY_1,
@@ -187,6 +188,7 @@ const KeyInfo : array[TInputKey] of TKeyInfoEntry = (
     (ID: 'input_messages';       Group: 'keybindings_ui';           Default: VKEY_S;                Name: 'Show messages screen'; Description: 'Show log of previous messages.'),
     (ID: 'input_assemblies';     Group: 'keybindings_ui';           Default: VKEY_A;                Name: 'Show assemblies screen'; Description: 'Open up known assemblies screen.'),
     (ID: 'input_more';           Group: 'keybindings_ui';           Default: VKEY_M;                Name: 'More info on target'; Description: 'Open up target information screen.'),
+    (ID: 'input_selfmore';       Group: 'keybindings_ui';           Default: VKEY_M + IOKeyCodeShiftMask; Name: 'More info on self'; Description: 'Open up target information screen for self.'),
 
     // Helper keybindings
     (ID: 'input_quickkey_1';     Group: 'keybindings_helper';       Default: VKEY_1;                Name: 'Quickkey 1';       Description: 'Mark and use quickslot 1.'),

@@ -127,8 +127,6 @@ type
     TEqSlot         = ( efTorso, efWeapon, efBoots, efWeapon2 );
     TStatusEffect   = ( StatusNormal, StatusInvert, StatusRed, StatusGreen, StatusBlue, StatusCyan, StatusMagenta, StatusYellow, StatusGray, StatusWhite );
     TDamageType     = ( Damage_Bullet, Damage_Melee, Damage_Pierce, Damage_Sharpnel, Damage_Acid, Damage_Fire, Damage_Cold, Damage_Poison, Damage_Plasma, Damage_SPlasma, Damage_IgnoreArmor );
-    TAltFire        = ( ALT_NONE, ALT_CHAIN, ALT_THROW, ALT_SCRIPT, ALT_TARGETSCRIPT, ALT_AIMED, ALT_SINGLE );
-    TAltReload      = ( RELOAD_NONE, RELOAD_SCRIPT, RELOAD_DUAL, RELOAD_SINGLE );
     TExplosionFlag  = ( efSelfHalf, efSelfKnockback, efSelfSafe, efAfterBlink, efChain, efRandomContent, efNoDistanceDrop, efAlwaysVisible );
     TResistance     = ( Resist_Bullet, Resist_Melee, Resist_Shrapnel, Resist_Acid, Resist_Fire, Resist_Plasma, Resist_Cold, Resist_Poison );
 
@@ -280,21 +278,6 @@ const
 
   ActSoundChance    = 30;
 
-type
-
-  TAffectData = record
-    Name       : Ansistring;
-    Color      : Byte;
-    Color_exp  : Byte;
-    AffHooks   : set of (AffectHookOnAdd,AffectHookOnUpdate,AffectHookOnRemove);
-    Hooks      : TFlags;
-    StatusEff  : TStatusEffect;
-    StatusStr  : DWord;
-  end;
-
-var
-  Affects   : array of TAffectData;
-
 const
 
   StatusEffect  : TStatusEffect = StatusNormal;
@@ -314,17 +297,9 @@ const ItemEqFilters : array[TEqSlot] of TItemTypeSet = (
                       );
 const ItemsAll      : TItemTypeSet = [Low(TItemType)..High(TItemType)];
 
-type TItemRecharge = record
-  Delay   : Byte;
-  Amount  : Byte;
-  Counter : Byte;
-  Limit   : Byte;
-end;
-
 type TItemProperties = record
   IType         : TItemType;
 
-  Recharge      : TItemRecharge;
   MoveMod       : Integer;
   DodgeMod      : Integer;
   KnockMod      : Integer;
@@ -351,8 +326,6 @@ type TItemProperties = record
   DamageType    : TDamageType;
   MissBase      : Byte;
   MissDist      : Byte;
-  AltFire       : TAltFire;
-  AltReload     : TAltReload;
 
   MisASCII      : Char;
   MisColor      : Byte;
@@ -387,6 +360,7 @@ function ToProperFilename(s : string) : string;
 function toHitToChance( aEffSkill : Integer ) : Integer;
 function toHitPercent( aEffSkill : Integer ) : string;
 function BonusStr(i : integer) : string;
+function ResistStr(i : integer) : string;
 function UnitsToPercent(Value : Integer) : string;
 function Percent(Value : Integer) : string;
 function Seconds(Value : Integer) : string;
@@ -583,7 +557,7 @@ end;
 
 function Seconds(Value : Integer) : string;
 begin
-  Seconds := FloatToStrF(Value/10.,ffFixed,0,1)+'s';
+  Seconds := FloatToStrF(Value/10.0,ffFixed,0,1)+'s';
 end;
 
 function ItemTypeSetFromFlags( const aFlags: TFlags ): TItemTypeSet;
@@ -810,6 +784,12 @@ function BonusStr(i: integer): string;
 begin
   if i < 0 then BonusStr := IntToStr(i)
            else BonusStr := '+'+IntToStr(i);
+end;
+
+function ResistStr(i: integer): string;
+begin
+  if i < 0 then ResistStr := '{R' + IntToStr(i) + '%}'
+           else ResistStr := '{!' + BonusStr(i) + '%}';
 end;
 
 function ReadSprite( aTable : TLuaTable; var aSprite : TSprite ) : Boolean;

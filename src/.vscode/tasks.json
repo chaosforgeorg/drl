@@ -76,10 +76,7 @@
             },
             "problemMatcher": {
                 "owner": "objectpascal",
-                "fileLocation": [
-                    "relative",
-                    "${workspaceFolder}"
-                ],
+                "fileLocation": "absolute",
                 "pattern": {
                     "kind": "location",
                     "regexp": "^(.*)\\((\\d.*),(\\d.*)\\) (Warning|Error|Fatal): (.*)$",
@@ -122,10 +119,7 @@
             },
             "problemMatcher": {
                 "owner": "objectpascal",
-                "fileLocation": [
-                    "relative",
-                    "${workspaceFolder}"
-                ],
+                "fileLocation": "absolute",
                 "pattern": {
                     "kind": "location",
                     "regexp": "^(.*)\\((\\d.*),(\\d.*)\\) (Warning|Error|Fatal): (.*)$",
@@ -173,10 +167,7 @@
             },
             "problemMatcher": {
                 "owner": "objectpascal",
-                "fileLocation": [
-                    "relative",
-                    "${workspaceFolder}"
-                ],
+                "fileLocation": "absolute",
                 "pattern": {
                     "kind": "location",
                     "regexp": "^(.*)\\((\\d.*),(\\d.*)\\) (Warning|Error|Fatal): (.*)$",
@@ -206,10 +197,7 @@
             },
             "problemMatcher": {
                 "owner": "objectpascal",
-                "fileLocation": [
-                    "relative",
-                    "${workspaceFolder}"
-                ],
+                "fileLocation": "absolute",
                 "pattern": {
                     "kind": "location",
                     "regexp": "^(.*)\\((\\d.*),(\\d.*)\\) (Warning|Error|Fatal): (.*)$",
@@ -260,7 +248,7 @@
                 "${config:drlBasePath}\\${config:tmpPath}\\*"
             ],
             "presentation": {
-                "focus": "true"
+                "focus": true
             },
             "problemMatcher": []
         },
@@ -299,10 +287,7 @@
             },
             "problemMatcher": {
                 "owner": "objectpascal",
-                "fileLocation": [
-                    "relative",
-                    "${workspaceFolder}"
-                ],
+                "fileLocation": "absolute",
                 "pattern": {
                     "kind": "location",
                     "regexp": "^(.*)\\((\\d.*),(\\d.*)\\) (Warning|Error|Fatal): (.*)$",

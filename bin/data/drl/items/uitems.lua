@@ -15,7 +15,7 @@ function drl.register_unique_items()
 			end
 		end,
 
-		OnRemove = function (self,being)
+		OnUnequip = function (self,being)
 			local armor = self
 			if armor.id ~= "aarmor" then armor = being.eq.armor end
 			armor.armor = armor.armor - 4
@@ -44,7 +44,7 @@ function drl.register_unique_items()
 			end
 		end,
 
-		OnRemove = function (self,being)
+		OnUnequip = function (self,being)
 			local armor = self
 			local boots = self
 			if armor.id ~= "umarmor" then
@@ -59,6 +59,21 @@ function drl.register_unique_items()
 	}
 
   --Uniques --
+
+	register_perk "perk_unullpointer_hit"
+	{
+		OnHitBeing = function(self,being,target)
+			target:play_sound("phasing")
+			being:msg("Suddenly "..target:get_name(true,false).." crashes!")
+			if target:has_property("is_boss") and target.is_boss then
+				target.scount = math.max( target.scount - 500, 1000 )
+			else
+				target.scount = math.max( target.scount - 1000, 1000 )
+			end
+			level:explosion( target.position, { range = 1, delay = 50, damage = "10d1", color = LIGHTBLUE, sound_id = "soldier.phase", damage_type = DAMAGE_SPLASMA }, self )
+			return false
+		end,
+	}
 
 	register_item "unullpointer"
 	{
@@ -90,16 +105,8 @@ function drl.register_unique_items()
 		missprite     = SPRITE_PLASMASHOT,
 		hitsprite     = SPRITE_BLAST,
 
-		OnHitBeing = function(self,being,target)
-			target:play_sound("phasing")
-			being:msg("Suddenly "..target:get_name(true,false).." crashes!")
-			if target:has_property("is_boss") and target.is_boss then
-				target.scount = math.max( target.scount - 500, 1000 )
-			else
-				target.scount = math.max( target.scount - 1000, 1000 )
-			end
-			level:explosion( target.position, { range = 1, delay = 50, damage = "10d1", color = LIGHTBLUE, sound_id = "soldier.phase", damage_type = DAMAGE_SPLASMA }, self )
-			return false
+		OnCreate = function(self)
+			self:add_perk( "perk_unullpointer_hit" )
 		end,
 	}
 
@@ -118,16 +125,28 @@ function drl.register_unique_items()
 
 		OnUse = function(self,being)
 			if not being:is_player() then return false end
-			if being:is_affect( "tired" ) then
+			if being:is_perk( "tired" ) then
 				ui.msg("You're too tired to use it now.")
 				return false
 			end;
-			being:set_affect( "tired" )
+			being:add_perk( "tired" )
 			being:play_sound("phasing")
 			ui.msg("You feel yanked in a non-existing direction!")
 			being:phase()
 			being.scount = being.scount - 1000
 			return false
+		end,
+	}
+
+	register_perk "perk_ubutcher_kill"
+	{
+		OnKill = function ( self, being, target )
+			if not being then return end
+			if being:is_player() then
+				if player:get_trait( traits["blademaster"].nid ) > 0 then return end
+				ui.msg("Next!")
+			end
+			being.scount = 5001
 		end,
 	}
 
@@ -152,15 +171,7 @@ function drl.register_unique_items()
 
 		OnCreate = function(self)
 			self:add_property( "BLADE", true )
-		end,
-
-		OnKill = function ( self, being, target )
-			if not being then return end
-			if being:is_player() then
-				if player:get_trait( traits["blademaster"].nid ) > 0 then return end
-				ui.msg("Next!")
-			end
-			being.scount = 5001
+			self:add_perk( "perk_ubutcher_kill" )
 		end,
 	}
 
@@ -176,13 +187,12 @@ function drl.register_unique_items()
 		group    = "melee",
 		scavenge = { "umod_onyx" },
 		desc     = "Forged by the dwarves Eitri and Brokk, in response to Loki's challenge, Mjollnir is an indestructible war hammer.",
-		flags    = { IF_UNIQUE, IF_NODESTROY, IF_MODABLE, IF_SINGLEMOD, IF_EXACTHIT },
+		flags    = { IF_UNIQUE, IF_NODESTROY, IF_MODABLE, IF_SINGLEMOD },
 
 		type       = ITEMTYPE_MELEE,
 		damage     = "1d25",
 		damagetype = DAMAGE_MELEE,
 		acc        = 0,
-		altfire    = ALT_THROW,
 		miscolor   = LIGHTGRAY,
 		misdelay   = 50,
 		miss_base  = 10,
@@ -190,6 +200,38 @@ function drl.register_unique_items()
 		range      = 5,
 		missprite  = SPRITE_CLEAVER,
 		hitsprite  = SPRITE_BLAST,
+
+		OnCreate = function(self)
+			self:add_perk( "perk_altfire_throw" )
+			self.flags[ IF_THROWDROP ] = false
+		end,
+	}
+
+	register_perk "perk_usubtle_altfire"
+	{
+		name  = "",
+		short = "invoke",
+		desc  = "damage all visible enemies, at the costs health and tired",
+		color = LIGHTBLUE,
+		tags  = { "altfire" },
+
+		OnAltFire = function(self, being)
+			if being:is_perk( "tired" ) then
+				ui.msg("You are too tired to invoke the Knife!")
+			else
+				ui.msg("You feel your health drained!")
+				being.hp     = math.max( being.hp - 5, 1 )
+				being:add_perk( "tired" )
+				being.scount = being.scount - 1000
+				for b in level:beings() do
+					if not b:is_player() and b:is_visible() then
+						level:explosion( b.position, { range = 1, delay = 50, color = BLUE, damage_type = DAMAGE_SPLASMA }, self )
+						b:apply_damage( 15, TARGET_INTERNAL, DAMAGE_SPLASMA, self )
+					end
+				end
+			end
+			return false
+		end,
 	}
 
 	register_item "usubtle"
@@ -211,26 +253,30 @@ function drl.register_unique_items()
 		damage      = "3d5",
 		damagetype  = DAMAGE_SPLASMA,
 		group       = "melee",
-		altfire     = ALT_SCRIPT,
-		altfirename = "invoke",
 
 		OnCreate = function(self)
+			self:add_perk( "perk_usubtle_altfire" )
 			self:add_property( "BLADE", true )
 		end,
+	}
 
-		OnAltFire = function(self,being)
-			if being:is_affect( "tired" ) then
-				ui.msg("You are too tired to invoke the Knife!");
-			else
-				ui.msg("You feel your health drained!");
-				being.hp     = math.max( being.hp - 5, 1 )
-				being:set_affect( "tired" )
-				being.scount = being.scount - 1000
-				for b in level:beings() do
-					if not b:is_player() and b:is_visible() then
-						level:explosion( b.position, { range = 1, delay = 50, color = BLUE, damage_type = DAMAGE_SPLASMA }, self )
-						b:apply_damage( 15, TARGET_INTERNAL, DAMAGE_SPLASMA, self )
-					end
+	register_perk "perk_uni_trigun_altreload"
+	{
+		short = "Angel Arm",
+		desc  = "It will probably kill you",
+		color = LIGHTBLUE,
+		tags  = { "altreload" },
+
+		OnAltReload = function(self, being)
+			if being:is_player() and being.hpmax > 10 then
+				if ui.confirm( "Do you want to use the dangerous Angel Arm? You will probably die.") then
+					ui.msg("You activate the Angel Arm! Your life is drained!")
+					player:add_history("He activated the Angel Arm on @1!")
+					being.hpmax = math.max( being.hpmax - 5, 10 )
+					being.hp = math.max( being.hp - 5, 1 )
+					being.scount = being.scount - 1000
+					being:nuke(1)
+					return true
 				end
 			end
 			return false
@@ -259,9 +305,6 @@ function drl.register_unique_items()
 		acc           = 6,
 		usetime       = 7,
 		reloadtime    = 20,
-		altfire       = ALT_AIMED,
-		altreload     = RELOAD_SCRIPT,
-		altreloadname = "Angel Arm",
 		miscolor      = LIGHTGRAY,
 		misdelay      = 15,
 		miss_base     = 10,
@@ -269,19 +312,9 @@ function drl.register_unique_items()
 		missprite     = SPRITE_SHOT,
 		hitsprite     = SPRITE_BLAST,
 
-		OnAltReload = function(self,being)
-			if being:is_player() and being.hpmax > 10 then
-				if ui.confirm( "Do you want to use the dangerous Angel Arm?") then
-					ui.msg("You activate the Angel Arm! Your life is drained!")
-					player:add_history("He activated the Angel Arm on @1!")
-					being.hpmax = math.max( being.hpmax - 5, 10 )
-					being.hp = math.max( being.hp - 5, 1 )
-					being.scount = being.scount - 1000
-					being:nuke(1)
-					return true
-				end
-			end
-			return false
+		OnCreate = function(self)
+			self:add_perk( "perk_altfire_aimed" )
+			self:add_perk( "perk_uni_trigun_altreload" )
 		end,
 	}
 
@@ -307,8 +340,6 @@ function drl.register_unique_items()
 		acc           = 4,
 		radius        = 1,
 		reloadtime    = 20,
-		altfire       = ALT_AIMED,
-		altreload     = RELOAD_DUAL,
 		miscolor      = LIGHTGRAY,
 		misdelay      = 15,
 		miss_base     = 10,
@@ -319,37 +350,14 @@ function drl.register_unique_items()
 			delay = 40,
 			color = RED,
 		},
+
+		OnCreate = function(self)
+			self:add_perk( "perk_altfire_aimed" )
+		end,
 	}
 
-	register_item "umega"
+	register_perk "perk_umega_kill"
 	{
-		name     = "Mega Buster",
-		sound_id = "chaingun",
-		color    = LIGHTGREEN,
-		sprite   = SPRITE_PLASMA,
-		psprite  = SPRITE_PLAYER_PLASMA,
-		level    = 15,
-		weight   = 1,
-		group    = "chain",
-		desc     = "You suddenly wish to slaughter the forces of Hell to 8-bit chiptune music.",
-		flags    = { IF_UNIQUE },
-
-		type          = ITEMTYPE_RANGED,
-		ammo_id       = "ammo",
-		ammomax       = 60,
-		damage        = "1d8",
-		damagetype    = DAMAGE_BULLET,
-		acc           = 2,
-		reloadtime    = 35,
-		shots         = 3,
-		shotcost      = 3,
-		miscolor      = WHITE,
-		misdelay      = 10,
-		miss_base     = 10,
-		miss_dist     = 3,
-		missprite     = SPRITE_SHOT,
-		hitsprite     = SPRITE_BLAST,
-
 		OnKill = function (self,being,target)
 			local damage = DAMAGE_BULLET
 			if target.eq.weapon then 
@@ -426,11 +434,77 @@ function drl.register_unique_items()
 		end,
 	}
 
+	register_item "umega"
+	{
+		name     = "Mega Buster",
+		sound_id = "chaingun",
+		color    = LIGHTGREEN,
+		sprite   = SPRITE_PLASMA,
+		psprite  = SPRITE_PLAYER_PLASMA,
+		level    = 15,
+		weight   = 1,
+		group    = "chain",
+		desc     = "You suddenly wish to slaughter the forces of Hell to 8-bit chiptune music.",
+		flags    = { IF_UNIQUE },
+
+		type          = ITEMTYPE_RANGED,
+		ammo_id       = "ammo",
+		ammomax       = 60,
+		damage        = "1d8",
+		damagetype    = DAMAGE_BULLET,
+		acc           = 2,
+		reloadtime    = 35,
+		shots         = 3,
+		shotcost      = 3,
+		miscolor      = WHITE,
+		misdelay      = 10,
+		miss_base     = 10,
+		miss_dist     = 3,
+		missprite     = SPRITE_SHOT,
+		hitsprite     = SPRITE_BLAST,
+
+		OnCreate = function(self)
+			self:add_perk( "perk_umega_kill" )
+		end,
+	}
+
 	register_medal "cleric"
 	{
 		name = "Grammaton Cleric Cross",
 		desc = "Mastermind killed with the Cleric Beretta",
 		hidden = true,
+	}
+
+	register_perk "perk_uberetta_altreload"
+	{
+		short = "fire mode",
+		desc  = "switch between single/burst/auto fire modes",
+		color = LIGHTBLUE,
+		tags  = { "altreload" },
+
+		OnAltReload = function(self, being)
+			if self.acc == 5 then
+				ui.msg("You switch to burst mode.")
+				self.acc          = 3
+				self.damage_dice  = 1
+				self.damage_sides = 8
+				self.shots        = 3
+			elseif self.acc == 3 then
+				ui.msg("You switch to full auto mode.")
+				self.acc          = 1
+				self.damage_dice  = 1
+				self.damage_sides = 7
+				self.shots        = 6
+			elseif self.acc == 1 then
+				ui.msg("You switch to single fire mode.")
+				self.acc          = 5
+				self.damage_dice  = 2
+				self.damage_sides = 6
+				self.shots        = 0
+			end
+			being.scount = being.scount - 200
+			return true
+		end,
 	}
 
 	register_item "uberetta"
@@ -453,8 +527,6 @@ function drl.register_unique_items()
 		damagetype    = DAMAGE_BULLET,
 		acc           = 5,
 		reloadtime    = 20,
-		altreload     = RELOAD_SCRIPT,
-		altreloadname = "firemode",
 		miscolor      = WHITE,
 		misdelay      = 10,
 		miss_base     = 10,
@@ -462,33 +534,38 @@ function drl.register_unique_items()
 		missprite     = SPRITE_SHOT,
 		hitsprite     = SPRITE_BLAST,
 
+		OnCreate = function(self)
+			self:add_perk( "perk_uberetta_altreload" )
+			self:add_perk( "perk_uberetta_kill" )
+		end,
+	}
+
+	register_perk "perk_uberetta_kill"
+	{
 		OnKill = function (self,being,target)
 			if target.id == "mastermind" and target.is_boss then
 				being:add_medal("cleric")
 			end
 		end,
+	}
 
-		OnAltReload = function(self,being)
-			if self.acc == 5 then
-				ui.msg("You switch to burst mode.");
-				self.acc 			= 3
-				self.damage_dice 	= 1
-				self.damage_sides 	= 8
-				self.shots 			= 3
-			elseif self.acc == 3 then
-				ui.msg("You switch to full auto mode.");
-				self.acc 			= 1
-				self.damage_dice 	= 1
-				self.damage_sides 	= 7
-				self.shots 			= 6
-			elseif self.acc == 1 then
-				ui.msg("You switch to single fire mode.");
-				self.acc 			= 5
-				self.damage_dice 	= 2
-				self.damage_sides 	= 6
-				self.shots 			= 0
+	register_perk "perk_usjack_altreload"
+	{
+		short = "trigger",
+		desc  = "switch between single/burst fire modes",
+		color = LIGHTBLUE,
+		tags  = { "altreload" },
+
+		OnAltReload = function(self, being)
+			if self.shots == 3 then
+				ui.msg("You relax your trigger finger.")
+				self.shots = 1
+			elseif self.shots == 1 then
+				ui.msg("You tense up your trigger finger.")
+				self.shots = 3
 			end
-			being.scount = being.scount - 200
+			-- Just delay the next step nominally so that we don't abuse this
+			being.scount = being.scount - 1
 			return true
 		end,
 	}
@@ -512,8 +589,6 @@ function drl.register_unique_items()
 		damage        = "8d3",
 		damagetype    = DAMAGE_SHARPNEL,
 		reloadtime    = 25,
-		altreload     = RELOAD_SCRIPT,
-		altreloadname = "trigger",
 		shots         = 3,
 		hitsprite     = SPRITE_BLAST,
 		range         = 15,
@@ -521,17 +596,8 @@ function drl.register_unique_items()
 		falloff       = 5,
 		knockback     = 8,
 
-		OnAltReload = function(self,being)
-			if self.shots == 3 then
-				ui.msg("You relax your trigger finger.");
-				self.shots			= 1
-			elseif self.shots == 1 then
-				ui.msg("You tense up your trigger finger.");
-				self. shots			= 3
-			end
-			-- Just delay the next step nominally so that we don't abuse this
-			being.scount = being.scount - 1
-			return true
+		OnCreate = function(self)
+			self:add_perk( "perk_usjack_altreload" )
 		end,
 	}
 
@@ -597,6 +663,27 @@ function drl.register_unique_items()
 		},
 	}
 
+	register_perk "perk_uacid"
+	{
+		OnPreReload = function( self, being )
+			if self.ammo == self.ammomax  then 
+				ui.msg("Your weapon is already loaded!")
+				return false
+			end
+			local pos  = being.position
+			if level.map[ pos ] == cells[ "acid" ].nid then
+				ui.msg("Slurp!")
+				self.ammo = math.min( self.ammo + 1, self.ammomax )
+				being.scount = being.scount - 1000
+				level.map[ pos ] = "water"
+			else
+				ui.msg("Hmm, there's no magazine here...")
+			end
+			return false
+		end,
+	}
+
+
 	register_item "uacid"
 	{
 		name     = "Acid Spitter",
@@ -635,24 +722,8 @@ function drl.register_unique_items()
 		},
 
 		OnCreate = function( self )
+			self:add_perk( "perk_uacid" )
 			self.ammo = 0
-		end,
-
-		OnPreReload = function( self, being )
-			if self.ammo == self.ammomax  then 
-				ui.msg("Your weapon is already loaded!")
-				return false
-			end
-			local pos  = being.position
-			if level.map[ pos ] == cells[ "acid" ].nid then
-				ui.msg("Slurp!")
-				self.ammo = math.min( self.ammo + 1, self.ammomax )
-				being.scount = being.scount - 1000
-				level.map[ pos ] = "water"
-			else
-				ui.msg("Hmm, there's no magazine here...")
-			end
-			return false
 		end,
 	}
 
@@ -680,7 +751,6 @@ function drl.register_unique_items()
 		reloadtime = 20,
 		shots      = 5,
 		shotcost   = 5,
-		altfire    = ALT_CHAIN,
 		miscolor   = GREEN,
 		misdelay   = 15,
 		miss_base  = 30,
@@ -693,6 +763,10 @@ function drl.register_unique_items()
 			flags     = { EFNODISTANCEDROP },
 			knockback = 16,
 		},
+
+		OnCreate = function(self)
+			self:add_perk( "perk_altfire_chainfire" )
+		end,
 	}
 
 	register_item "urailgun"
@@ -739,18 +813,21 @@ function drl.register_unique_items()
 		level    = 15,
 		weight   = 2,
 		desc     = "The personal armor of the most famous Imperial Inquisitor.",
-		flags    = { IF_UNIQUE, IF_RECHARGE, IF_NODESTROY },
+		flags    = { IF_UNIQUE, IF_NODESTROY },
 		set      = "inquisitor",
 		scavenge = { "umod_nano" },
-
-		rechargeamount = 5,
-		rechargedelay  = 10,
 
 		resist = { acid = 30, fire = 30, plasma = 30 },
 
 		type       = ITEMTYPE_ARMOR,
 		armor      = 3,
 		movemod    = 20,
+
+		OnCreate = function(self)
+			self:add_perk( "perk_armor_recharge" )
+			self.pp_recharge.delay  = 10
+			self.pp_recharge.amount = 5
+		end,
 	}
 
 	register_item "ucarmor"
@@ -783,15 +860,28 @@ function drl.register_unique_items()
 		level    = 10,
 		weight   = 3,
 		desc     = "Something about this armor gives you the chills.",
-		flags    = { IF_UNIQUE, IF_NECROCHARGE, IF_NODESTROY },
-
-		rechargeamount = 5,
-		rechargedelay  = 0,
+		flags    = { IF_UNIQUE, IF_NODESTROY },
 
 		type       = ITEMTYPE_ARMOR,
 		armor      = 6,
 		movemod    = 10,
 		knockmod   = -20,
+
+		OnCreate = function(self)
+			self:add_perk( "perk_necrocharge" )
+		end,
+	}
+
+	register_perk "perk_umedparmor"
+	{
+		OnEquipTick = function(self, being)
+			if self.durability > 20 then
+				if being.hp < being.hpmax / 2 then
+					being.hp = being.hp + 1
+					self.durability = self.durability - 1
+				end
+			end
+		end,
 	}
 
 	register_item "umedparmor"
@@ -810,11 +900,17 @@ function drl.register_unique_items()
 		armor      = 6,
 		movemod    = -15,
 
+		OnCreate = function(self)
+			self:add_perk( "perk_umedparmor" )
+		end,
+	}
+
+	register_perk "perk_ulavaarmor"
+	{
 		OnEquipTick = function(self, being)
-			if self.durability > 20 then
-				if being.hp < being.hpmax / 2 then
-					being.hp = being.hp + 1
-					self.durability = self.durability - 1
+			if self.durability < self.maxdurability then
+				if level.map[ being.position ] == cells[ "lava" ].nid then
+					self.durability = math.min( self.durability + 5, self.maxdurability )
 				end
 			end
 		end,
@@ -840,12 +936,8 @@ function drl.register_unique_items()
 		movemod    = -15,
 		knockmod   = -20,
 
-		OnEquipTick = function(self, being)
-			if self.durability < self.maxdurability then
-				if level.map[ being.position ] == cells[ "lava" ].nid then
-					self.durability = math.min( self.durability + 5, self.maxdurability )
-				end
-			end
+		OnCreate = function(self)
+			self:add_perk( "perk_ulavaarmor" )
 		end,
 	}
 
@@ -877,17 +969,20 @@ function drl.register_unique_items()
 		level    = 15,
 		weight   = 2,
 		desc     = "The famous boots of the famous Imperial Inquisitor.",
-		flags    = { IF_UNIQUE, IF_RECHARGE, IF_NODESTROY, IF_PLURALNAME },
+		flags    = { IF_UNIQUE, IF_NODESTROY, IF_PLURALNAME },
 		set      = "inquisitor",
-
-		rechargeamount = 5,
-		rechargedelay  = 10,
 
 		resist = { fire = 30, acid = 30, plasma = 30 },
 
 		type       = ITEMTYPE_BOOTS,
 		armor      = 6,
 		movemod    = 20,
+
+		OnCreate = function(self)
+			self:add_perk( "perk_armor_recharge" )
+			self.pp_recharge.delay  = 10
+			self.pp_recharge.amount = 5
+		end,
 	}
 
 	register_item "ushieldarmor"
@@ -955,27 +1050,8 @@ function drl.register_unique_items()
 		armor      = 7,
 	}
 
-	register_item "uberarmor"
+	register_perk "perk_uberarmor"
 	{
-		name     = "Berserker Armor",
-		color    = LIGHTGREEN,
-		sprite   = SPRITE_ARMOR,
-		coscolor = { 0.1,0.0,0.0,1.0 },
-		pcoscolor= { 0.1,0.0,0.0,1.0 },
-		glow     = { 1.0,0.0,0.0,1.0 },
-		pglow    = { 1.0,0.0,0.0,1.0 },
-		level    = 10,
-		weight   = 1,
-		desc     = "How in the world could one wear that???",
-		flags    = { IF_UNIQUE, IF_CURSED, IF_NODESTROY, IF_NODURABILITY },
-
-		type       = ITEMTYPE_ARMOR,
-		armor      = 0,
-		movemod    = -70,
-		knockmod   = -90,
-
-		resist = { shrapnel = 50, melee = 50, bullet = 50 },
-
 		OnPickupCheck = function (self,being)
 			if not being:is_player() then return false end
 			return true
@@ -1002,6 +1078,32 @@ function drl.register_unique_items()
 		end,
 	}
 
+	register_item "uberarmor"
+	{
+		name     = "Berserker Armor",
+		color    = LIGHTGREEN,
+		sprite   = SPRITE_ARMOR,
+		coscolor = { 0.1,0.0,0.0,1.0 },
+		pcoscolor= { 0.1,0.0,0.0,1.0 },
+		glow     = { 1.0,0.0,0.0,1.0 },
+		pglow    = { 1.0,0.0,0.0,1.0 },
+		level    = 10,
+		weight   = 1,
+		desc     = "How in the world could one wear that???",
+		flags    = { IF_UNIQUE, IF_CURSED, IF_NODESTROY, IF_NODURABILITY },
+
+		type       = ITEMTYPE_ARMOR,
+		armor      = 0,
+		movemod    = -70,
+		knockmod   = -90,
+
+		resist = { shrapnel = 50, melee = 50, bullet = 50 },
+
+		OnCreate = function(self)
+			self:add_perk( "perk_uberarmor" )
+		end,
+	}
+
 	register_medal "dragonslayer"
 	{
 		name = "Gutts' Heart",
@@ -1016,6 +1118,72 @@ function drl.register_unique_items()
 		desc = "Awarded for dying with the Dragonslayer",
 		hidden = true,
 		condition = function() return player.hp <= 0 and (player.eq.weapon and player.eq.weapon.id == "udragon") end,
+	}
+
+	register_perk "perk_udragon"
+	{
+		OnKill = function (self,being,target)
+			if target.id == "mastermind" and target.is_boss then
+				being:add_medal("dragonslayer")
+			end
+		end,
+
+		OnEquipTick = function(self, being)
+			if math.random(40) == 1 then
+				-- The DS shouldn't be an easy I-Win! button.  Make YAAM harder.
+				local demon = level:summon( "ndemon" )
+				if demon then
+					demon.flags[ BF_NOEXP ] = true
+				end
+			end
+		end,
+
+		OnPickupCheck = function (self,being)
+			-- XXX Maybe we should allow Barons of Hell to wield it since they are not really human...
+			if not being:is_player() then return false end
+			if being:is_perk("berserk") and being.eq:empty() then
+				return true
+			end
+			ui.msg("It's too heavy! No human could ever wield this thing...")
+			return false
+		end,
+
+		OnPickup = function (self,being)
+			being:quick_weapon("udragon")
+			ui.blink(RED,50)
+			ui.blink(LIGHTRED,50,50)
+			ui.msg("Release the power of the BERSERKER!")
+			being:add_perk( "berserk" )
+		end,
+	}
+
+	register_perk "perk_udragon_altfire"
+	{
+		short = "whirlwind",
+		desc  = "attack all adjacent enemies",
+		color = LIGHTBLUE,
+		tags  = { "altfire" },
+
+		OnAltFire = function( self, being )
+			if being:is_perk( "tired" ) then
+				ui.msg("You're too tired to do that right now!")
+			else
+				local scount = being.scount
+				local pos    = being.position
+				local use    = self.usetime
+				self.usetime = 4
+				ui.msg("Whirlwind!")
+				for c in area.around( pos, 1 )() do
+					if c ~= pos and area.FULL:contains( c ) then
+						being:attack( c )
+					end
+				end
+				self.usetime = use
+				being:add_perk( "tired" )
+				being.scount = scount - math.max( ( self.usetime * being.firetime * 8 - 5000 ), 8 * being.speed )
+			end
+			return false
+		end,
 	}
 
 	register_item "udragon"
@@ -1035,66 +1203,11 @@ function drl.register_unique_items()
 		type        = ITEMTYPE_MELEE,
 		damage      = "9d9",
 		damagetype  = DAMAGE_MELEE,
-		altfire     = ALT_SCRIPT,
-		altfirename = "whirlwind",
 
 		OnCreate = function(self)
+			self:add_perk( "perk_udragon_altfire" )
 			self:add_property( "BLADE", true )
-		end,
-		
-		OnPickupCheck = function (self,being)
-			-- XXX Maybe we should allow Barons of Hell to wield it since they are not really human...
-			if not being:is_player() then return false end
-			if being:is_affect("berserk") and being.eq:empty() then
-				return true
-			end
-			ui.msg("It's too heavy! No human could ever wield this thing...")
-			return false
-		end,
-
-		OnAltFire = function( self, being )
-			if being:is_affect( "tired" ) then
-				ui.msg("You're too tired to do that right now!")
-			else
-				local scount = being.scount
-				local pos    = being.position
-				local use    = self.usetime
-				self.usetime = 4
-				ui.msg("Whirlwind!")
-				for c in area.around( pos, 1 )() do
-					if c ~= pos and area.FULL:contains( c ) then
-						being:attack( c )
-					end
-				end
-				self.usetime = use
-				being:set_affect( "tired" )
-				being.scount = scount - math.max( ( self.usetime * being.firetime * 8 - 5000 ), 8 * being.speed )
-			end
-			return false
-		end,
-
-		OnPickup = function (self,being)
-			being:quick_weapon("udragon")
-			ui.blink(RED,50)
-			ui.blink(LIGHTRED,50,50)
-			ui.msg("Release the power of the BERSERKER!")
-			being:set_affect( "berserk" )
-		end,
-
-		OnKill = function (self,being,target)
-			if target.id == "mastermind" and target.is_boss then
-				being:add_medal("dragonslayer")
-			end
-		end,
-
-		OnEquipTick = function(self, being)
-			if math.random(40) == 1 then
-				-- The DS shouldn't be an easy I-Win! button.  Make YAAM harder.
-				local demon = level:summon( "ndemon" )
-				if demon then
-					demon.flags[ BF_NOEXP ] = true
-				end
-			end
+			self:add_perk( "perk_udragon" )
 		end,
 	}
 end

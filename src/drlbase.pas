@@ -458,7 +458,7 @@ end;
 procedure TDRL.PreAction;
 begin
   FLevel.CalculateVision( Player.Position );
-  StatusEffect := Player.Affects.getEffect;
+  StatusEffect := Player.GetPerkEffect;
   IO.PreAction;
   IO.Focus( Player.Position );
   Player.UpdateVisual;
@@ -672,7 +672,6 @@ var iTarget     : TCoord2D;
     iItem       : TItem;
     iFireTitle  : AnsiString;
     iChainFire  : Byte;
-    iAltFire    : TAltFire;
     iLimitRange : Boolean;
     iRange      : Byte;
     iCommand    : Byte;
@@ -691,6 +690,13 @@ begin
     IO.Msg( 'You have no weapon.' );
     Exit( False );
   end;
+
+  if aAlt and ( not iItem.HasHook( Hook_OnAltFire ) ) then
+  begin
+    IO.Msg( 'This weapon has no alternate fire mode' );
+    Exit( False );
+  end;
+
   if not aAlt then
   begin
     if (not aMouse) and (not aAuto) and iItem.isMelee then
@@ -707,19 +713,14 @@ begin
   end
   else
   begin
-    if iItem.AltFire = ALT_NONE then
-    begin
-      IO.Msg( 'This weapon has no alternate fire mode' );
-      Exit( False );
-    end;
-    if iItem.AltFire in [ ALT_TARGETSCRIPT, ALT_SCRIPT ] then
-      aAuto := False;
+    if ( not iItem.Flags[ IF_ALTTARGET ] ) then aAuto := False;
+    if iItem.Flags[ IF_ALTMANUAL ]         then aAuto := False;
   end;
   if not iItem.CallHookCheck( Hook_OnFire, [Player,aAlt] ) then Exit( False );
 
   if aAlt then
   begin
-    if iItem.isMelee and ( iItem.AltFire = ALT_THROW ) then
+    if iItem.isMelee and iItem.Flags[ IF_ALTTARGET ] then
     begin
       if aMouse then
         iTarget  := IO.MTarget
@@ -729,7 +730,7 @@ begin
       begin
         iRange      := iItem.Range;
         iLimitRange := iItem.Flags[ IF_EXACTHIT ];
-        iFireTitle  := 'Choose throw target:';
+        iFireTitle  := 'Choose target ('+iItem.GetAltFireName+'):';
       end;
     end;
   end;
@@ -766,24 +767,22 @@ begin
     end
     else
     begin
-      iAltFire    := ALT_NONE;
-      if aAlt then iAltFire := iItem.AltFire;
       iFireTitle := 'Choose fire target:';
-      case iAltFire of
-        ALT_SCRIPT       : begin iFireTitle := ''; iTarget := Player.Position; end;
-        ALT_TARGETSCRIPT : iFireTitle := 'Fire target ({L'+LuaSystem.Get([ 'items', iItem.ID, 'altfirename' ],'')+'}):';
-        ALT_AIMED        : iFireTitle := 'Fire target ({Laimed}):';
-        ALT_SINGLE       : iFireTitle := 'Fire target ({Lsingle}):';
-      end;
-      if iAltFire = ALT_CHAIN then
+      if aAlt then
       begin
-        case iChainFire of
-          0      : iFireTitle := 'Chain fire ({Ginitial}):';
-          1      : iFireTitle := 'Chain fire ({Ywarming}):';
-          2..255 : iFireTitle := 'Chain fire ({Rfull}):';
-        end;
-      end
-    end
+        if iItem.Flags[ IF_ALTCHAIN ] then
+        begin
+          case iChainFire of
+            0      : iFireTitle := 'Alternate fire ({Ginitial}):';
+            1      : iFireTitle := 'Alternate fire ({Ywarming}):';
+            2..255 : iFireTitle := 'Alternate fire ({Rfull}):';
+          end;
+        end
+        else if iItem.Flags[ IF_ALTTARGET ] 
+          then iFireTitle := 'Fire target ({L'+iItem.GetAltFireName+'}):'
+          else begin iFireTitle := ''; iTarget := Player.Position; end;
+      end;
+    end;
   end;
 
   iCommand := COMMAND_FIRE;
@@ -847,7 +846,7 @@ begin
   end;
 
   if (not aItem.isAmmoPack) and Player.Flags[ BF_SCAVENGER ] and
-    ((not aItem.isRanged) or (aItem.Ammo = 0) or aItem.Flags[ IF_NOUNLOAD ] or aItem.Flags[ IF_RECHARGE ] or aItem.Flags[ IF_NOAMMO ]) and
+    ((not aItem.isRanged) or (aItem.Ammo = 0) or aItem.Flags[ IF_NOUNLOAD ] or aItem.Flags[ IF_NORELOAD ] or aItem.Flags[ IF_NOAMMO ]) and
     (aItem.Flags[ IF_EXOTIC ] or aItem.Flags[ IF_UNIQUE ] or aItem.Flags[ IF_ASSEMBLED ] or aItem.Flags[ IF_MODIFIED ]) then
   begin
     iID := LuaSystem.ProtectedCall( [ CoreModuleID,'GetDisassembleId'], [ aItem ] );
@@ -1042,8 +1041,12 @@ begin
   begin // Move target mode
     if IO.GetPadLDir.NotZero then
       Exit( MoveTargetEvent( FTargeting.List.Current + IO.GetPadLDir ) );
-    if (FTargeting.List.Current <> Player.Position) and (Level.Being[FTargeting.List.Current] <> nil) then
+    if ( not IO.GetPadLTrigger ) and (FTargeting.List.Current <> Player.Position) and (Level.Being[FTargeting.List.Current] <> nil) then
+    begin
       IO.FullLook( Level.Being[FTargeting.List.Current] );
+      Exit( False );
+    end;
+    IO.FullLook( Player );
     Exit( False );
   end;
 
@@ -1171,6 +1174,7 @@ begin
       INPUT_EQUIPMENT  : begin FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_EQUIPMENT ) ); Exit; end;
       INPUT_ASSEMBLIES : begin IO.PushLayer( TAssemblyView.Create ); Exit; end;
       INPUT_MORE       : begin IO.FullLook( Level.Being[FTargeting.List.Current] ); Exit; end;
+      INPUT_MORESELF   : begin IO.FullLook( Player ); Exit; end;
       INPUT_LEGACYUSE  : begin FPlayerView := IO.PushLayer( TPlayerView.CreateCommand( COMMAND_USE ) ); Exit; end;
       INPUT_LEGACYDROP : begin FPlayerView := IO.PushLayer( TPlayerView.CreateCommand( COMMAND_DROP ) ); Exit; end;
       INPUT_UNLOAD     : begin HandleUnloadCommand( nil ); Exit; end;

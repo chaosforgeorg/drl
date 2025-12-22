@@ -21,6 +21,7 @@ require( "drl:plot" )
 require( "drl:challenge" )
 require( "drl:assemblies" )
 require( "drl:klass" )
+require( "drl:perks" )
 
 require( "drl:items/items" )
 require( "drl:items/eitems" )
@@ -64,6 +65,7 @@ function drl.OnLoad()
 	drl.register_base_data()
 	drl.register_affects()
 	drl.register_cells()
+	drl.register_perks()
 	drl.register_regular_items()
 	drl.register_exotic_items()
 	drl.register_unique_items()
@@ -271,16 +273,16 @@ function drl.register_base_data()
 			if klasses[player.klass].OnUseActive then
 				return klasses[player.klass].OnUseActive( self )
 			end
-			if self:is_affect( "berserk" ) then return false end
-			if self:is_affect( "tired" ) then
+			if self:is_perk( "berserk" ) then return false end
+			if self:is_perk( "tired" ) then
 				ui.msg( "Too tired to do that right now.")
 				return false
 			end
-			if self:is_affect( "running" ) then
-				self:remove_affect( "running", false )
+			if self:is_perk( "running" ) then
+				self:remove_perk( "running", false )
 				return false
 			else
-				self:set_affect( "running", self.runningtime )
+				self:add_perk( "running", self.runningtime * 10 )
 				self.scount = self.scount - 100
 				return true
 			end
@@ -290,8 +292,8 @@ function drl.register_base_data()
 end
 
 function drl.OnEnterLevel()
-	player:remove_affect( "running", true )
-	player:remove_affect( "tired", true )
+	player:remove_perk( "running", true )
+	player:remove_perk( "tired", true )
 end
 
 function drl.GetDisassembleId( it )

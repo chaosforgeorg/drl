@@ -71,7 +71,7 @@ TLevel = class(TLuaMapNode, ITextMap)
     function CallHookCheck( Hook : Byte; const Params : array of Const ) : Boolean;
 
     procedure DropCorpse( aCoord : TCoord2D; CellID : Byte );
-    function DamageTile( aCoord : TCoord2D; aDamage : Integer; aDamageType : TDamageType ) : Boolean;
+    function DamageTile( aCoord : TCoord2D; aDamage : Integer; aDamageType : TDamageType; aFloor : Boolean = True ) : Boolean;
     procedure Explosion( aDelay : Integer; aCoord : TCoord2D; aData : TExplosionData; aItem : TItem; aKnockback : TDirection; aDirectHit : Boolean = False; aDamageMult : Single = 1.0 );
     procedure Shotgun( aSource, aTarget : TCoord2D; aDamage : TDiceRoll; aDamageMul : Single; aDamageType : TDamageType; aItem : TItem );
     function Respawn( aCoord : TCoord2D ) : TBeing; overload;
@@ -179,6 +179,7 @@ TLevel = class(TLuaMapNode, ITextMap)
     property SpriteTop    [ Index : TCoord2D ] : TSprite read getSpriteTop;
     property SpriteBottom [ Index : TCoord2D ] : TSprite read getSpriteBottom;
   published
+    property LTime        : DWord      read FLTime;
     property Boss         : TUID       read FBoss        write FBoss;
     property Empty        : Boolean    read FEmpty;
     property Status       : Word       read FStatus      write FStatus;
@@ -796,7 +797,7 @@ begin
 end;
 
 
-function TLevel.DamageTile( aCoord : TCoord2D; aDamage : Integer; aDamageType : TDamageType ) : Boolean;
+function TLevel.DamageTile( aCoord : TCoord2D; aDamage : Integer; aDamageType : TDamageType; aFloor : Boolean = True ) : Boolean;
 var iCellID  : Byte;
     iHeavy   : Boolean;
     iFeature : TItem;
@@ -814,7 +815,10 @@ begin
   if Assigned( iFeature ) and ( not iFeature.isFeature ) then
     iFeature := nil;
 
-  if ( Cells[ iCellID ].DR > 0 ) and ( Cells[ iCellID ].DR < aDamage ) and ( iHeavy or ( CF_FRAGILE in Cells[ iCellID ].Flags ) ) then
+  if ( not aFloor ) and ( CF_CORPSE in Cells[ iCellID ].Flags ) then
+    iCellID := 0;
+
+  if ( iCellID > 0 ) and ( Cells[ iCellID ].DR > 0 ) and ( Cells[ iCellID ].DR < aDamage ) and ( iHeavy or ( CF_FRAGILE in Cells[ iCellID ].Flags ) ) then
   begin
     iDamage := aDamage - Cells[ iCellID ].DR;
     if CF_CORPSE in Cells[ iCellID ].Flags then
@@ -1083,7 +1087,7 @@ begin
           if ( aItem <> nil ) and ( UIDs[ iItemUID ] = nil ) then aItem := nil;
         end;
         
-        DamageTile( iTC, iDmg, aDamageType );
+        DamageTile( iTC, iDmg, aDamageType, False );
         if isVisible( iTC ) and ( not isPassable( iTC ) ) then
           IO.addMarkAnimation( 199, 0, iTC, iHSprite, LightGray,'*' );
       end;

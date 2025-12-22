@@ -24,6 +24,7 @@ type TItemViewEntry = record
   Name  : Ansistring;
   Desc  : Ansistring;
   Stats : Ansistring;
+  Perks : Ansistring;
   Item  : TItem;
   Color : Byte;
   QSlot : Byte;
@@ -59,10 +60,10 @@ protected
   function MarkQSlot( aItem : TItem; aValue : Byte ) : Boolean;
   function QSlotChar( aQSlot : Byte ) : Char;
   procedure Initialize;
-  procedure UpdateInventory;
-  procedure UpdateEquipment;
-  procedure UpdateCharacter;
-  procedure UpdateTraits;
+  procedure UpdateInventory( aActive : Boolean );
+  procedure UpdateEquipment( aActive : Boolean );
+  procedure UpdateCharacter( aActive : Boolean );
+  procedure UpdateTraits( aActive : Boolean );
   procedure PushItem( aItem : TItem; aArray : TItemViewArray );
   procedure ReadInv;
   procedure ReadEq;
@@ -118,7 +119,7 @@ implementation
 uses sysutils, math, variants,
      vutil, vtig, vtigio, vluasystem,
      dfplayer,
-     drlcommand, drlbase, drlinventory;
+     drlcommand, drlbase, drlinventory, drlperk;
 
 constructor TPlayerView.Create( aInitialState : TPlayerViewState = PLAYERVIEW_INVENTORY );
 begin
@@ -191,15 +192,15 @@ begin
   end;
 
   case FState of
-    PLAYERVIEW_INVENTORY : UpdateInventory;
-    PLAYERVIEW_EQUIPMENT : UpdateEquipment;
-    PLAYERVIEW_CHARACTER : UpdateCharacter;
-    PLAYERVIEW_TRAITS    : UpdateTraits;
+    PLAYERVIEW_INVENTORY : UpdateInventory( aActive );
+    PLAYERVIEW_EQUIPMENT : UpdateEquipment( aActive );
+    PLAYERVIEW_CHARACTER : UpdateCharacter( aActive );
+    PLAYERVIEW_TRAITS    : UpdateTraits( aActive );
   end;
 
   if (( DRL.State <> DSPlaying ) and ( not iTraitFirst )) or IsFinished or (FState = PLAYERVIEW_CLOSING) or (FState = PLAYERVIEW_PENDING) then Exit;
 
-  if ( not FSwapMode ) and ( not FTraitMode ) and ( FCommandMode = 0 ) then
+  if (aActive) and ( not FSwapMode ) and ( not FTraitMode ) and ( FCommandMode = 0 ) then
   begin
     if VTIG_Event( VTIG_IE_LEFT ) then
     begin
@@ -241,7 +242,7 @@ begin
     end;
   end;
 
-  if ( FState <> PLAYERVIEW_DONE ) and VTIG_EventCancel then
+  if aActive and ( FState <> PLAYERVIEW_DONE ) and VTIG_EventCancel then
   begin
     if ( not FTraitMode )
       then FState := PLAYERVIEW_DONE
@@ -315,7 +316,7 @@ begin
   Exit( Chr(Ord('0') + aQSlot ) );
 end;
 
-procedure TPlayerView.UpdateInventory;
+procedure TPlayerView.UpdateInventory( aActive : Boolean );
 var iEntry    : TItemViewEntry;
     iSelected : Integer;
     iCommand  : Byte;
@@ -347,8 +348,15 @@ begin
     VTIG_BeginGroup;
     if iSelected >= 0 then
     begin
+      if FInv[iSelected].Perks <> '' then
+        VTIG_Text( FInv[iSelected].Perks );
+      if FInv[iSelected].Stats <> '' then
+        VTIG_Text( FInv[iSelected].Stats );
       VTIG_Text( FInv[iSelected].Desc );
-      VTIG_FreeLabel( FInv[iSelected].Stats, Point( 0, 7 ) );
+      if ( FInv[iSelected].Item <> nil ) and ( FInv[iSelected].Item.isWearable ) then
+        if IO.isGamepad
+          then VTIG_FreeLabel( '  <{!RTrigger+A}> more', Rectangle(1,13,48,1) )
+          else VTIG_FreeLabel( '  <{!m}>ore', Rectangle(12,13,48,1) );
 
       VTIG_Ruler( 19 );
       VTIG_Text( '<{!{$input_ok}}> {0}',[FAction] );
@@ -367,8 +375,17 @@ begin
     then VTIG_End('{l<{!{$input_up},{$input_down}}> select, <{!{$input_escape}}> exit}')
     else VTIG_End('{l<{!{$input_left},{$input_right}}> panels, <{!{$input_up},{$input_down}}> select, <{!{$input_escape}}> exit}');
 
+
+  if not aActive then Exit;
+
   if (iSelected >= 0) then
   begin
+    if VTIG_Event( TIG_EV_MORE ) or ( IO.IsGamepad and IO.GetPadRTrigger and VTIG_EventConfirm ) then
+    begin
+      if Assigned( FInv[iSelected].Item ) then
+        IO.FullLook( FInv[iSelected].Item );
+    end
+    else
     if FSwapMode then
     begin
       if VTIG_EventConfirm then
@@ -435,7 +452,7 @@ begin
   end;
 end;
 
-procedure TPlayerView.UpdateEquipment;
+procedure TPlayerView.UpdateEquipment( aActive : Boolean );
 var iEntry            : TItemViewEntry;
     iSelected,iY      : Integer;
     iB, iA, iR, iK    : Integer;
@@ -473,7 +490,14 @@ begin
 
       VTIG_BeginGroup;
       if ( iSelected >= 0 ) and Assigned( FEq[iSelected].Item ) then
-        VTIG_FreeLabel( FEq[iSelected].Stats, Point(0,0) );
+      begin
+        if FEq[iSelected].Perks <> '' then
+          VTIG_Text( FEq[iSelected].Perks );
+        VTIG_Text( FEq[iSelected].Stats );
+        if IO.isGamepad
+          then VTIG_FreeLabel( '  <{!RTrigger+A}> more', Rectangle(1,8,48,1) )
+          else VTIG_FreeLabel( '  <{!m}>ore', Rectangle(12,8,48,1) );
+      end;
       VTIG_EndGroup;
 
     VTIG_EndGroup( True );
@@ -518,9 +542,9 @@ begin
       if (iTot <> 0) or (iTor <> 0) or (iFeet <> 0) then
       begin
         Inc( iY );
-        VTIG_FreeLabel( '{d'+Padded(ResNames[iRes],7)+'{!'+Padded(BonusStr(iTot)+'%',5)+
-             '} Torso{!'+Padded(BonusStr(iTor)+'%',5)+
-             '} Feet{!'+Padded(BonusStr(iFeet)+'%',5)+'}', Point( iR, iY ) );
+        VTIG_FreeLabel( '{d'+Padded(ResNames[iRes],7)+Padded(ResistStr(iTot),8)+
+             ' Torso'+Padded(ResistStr(iTor),8)+
+             ' Feet'+Padded(ResistStr(iFeet),8)+'}', Point( iR, iY ) );
       end;
     end;
 
@@ -537,8 +561,16 @@ begin
     end;
   VTIG_End('{l<{!{$input_left},{$input_right}}> panels, <{!{$input_up},{$input_down}}> select, <{!{$input_escape}}> exit}');
 
+  if not aActive then Exit;
+
   if (iSelected >= 0) then
   begin
+    if VTIG_Event( TIG_EV_MORE ) or ( IO.IsGamepad and IO.GetPadRTrigger and VTIG_EventConfirm ) then
+    begin
+      if Assigned( FEq[iSelected].Item ) then
+        IO.FullLook( FEq[iSelected].Item );
+    end
+    else
     if VTIG_EventConfirm then
     begin
       if Assigned( FEq[iSelected].Item ) then
@@ -601,7 +633,7 @@ begin
   end;
 end;
 
-procedure TPlayerView.UpdateCharacter;
+procedure TPlayerView.UpdateCharacter( aActive : Boolean );
 var iString : Ansistring;
     iCount  : Integer;
 begin
@@ -619,7 +651,7 @@ begin
   VTIG_End('{l<{!{$input_left},{$input_right}}> panels, <{!{$input_escape}}> exit}');
 end;
 
-procedure TPlayerView.UpdateTraits;
+procedure TPlayerView.UpdateTraits( aActive : Boolean );
 var iSelected : Integer;
     iEntry    : TTraitViewEntry;
 begin
@@ -686,12 +718,26 @@ end;
 
 procedure TPlayerView.PushItem( aItem : TItem; aArray : TItemViewArray );
 var iEntry : TItemViewEntry;
+    iPerks : TPerkList;
+    i      : Integer;
     iSet   : AnsiString;
 begin
   iEntry.Item  := aItem;
   iEntry.Name  := aItem.Description;
   if Length( iEntry.Name ) > 47 then iEntry.Name := Copy(iEntry.Name, 1, 47 );
   iEntry.Stats := aItem.DescriptionBox;
+  iEntry.Perks := '';
+  iPerks       := aItem.GetPerkList;
+  if iPerks <> nil then
+    if iPerks.Size > 0 then
+    begin
+      for i := 0 to iPerks.Size - 1 do
+        with PerkData[ iPerks[i].ID ] do
+          if Name <> '' then
+            iEntry.Perks += '{'+VTIG_ColorChar( Color )+Name+'}, ';
+      if iEntry.Perks <> '' then
+        SetLength( iEntry.Perks, Length(iEntry.Perks)-2 );
+    end;
   iEntry.Color := aItem.MenuColor;
   iEntry.QSlot := 0;
 
@@ -736,6 +782,7 @@ begin
           iEntry.Item  := nil;
           iEntry.Name  := SlotName( iSlot );
           iEntry.Stats := '';
+          iEntry.Perks := '';
           iEntry.Desc  := '';
           iEntry.Color := DarkGray;
           iEntry.QSlot := 0;
@@ -878,8 +925,8 @@ begin
     if FKills.NoDamageSequence > iKillRecord then iKillRecord := FKills.NoDamageSequence;
 
     FCharacter.Push( Format( '{!%s}, level {!%d} {!%s},',[ Name, ExpLevel, AnsiString(LuaSystem.Get(['klasses',Klass,'name']))] ) );
-    FCharacter.Push( Format( 'currently at {!%s}. ', [ DRL.Level.Name ] ) );
-    FCharacter.Push( Format( 'He survived {!%d} turns, which took him {!%d} seconds. ', [ Statistics['game_time'], Statistics['real_time'] ] ) );
+    FCharacter.Push( Format( 'currently at {!%s}, for {!%d} turns. ', [ DRL.Level.Name, DRL.Level.LTime ] ) );
+    FCharacter.Push( Format( 'He survived {!%d} turns, which took him {!%d} seconds realtime. ', [ Statistics['game_time'], Statistics['real_time'] ] ) );
     FCharacter.Push( Format( 'He took {!%d} damage, {!%d} on this floor alone. ', [ Statistics['damage_taken'], Statistics['damage_on_level'] ] ) );
     FCharacter.Push( Format( 'He killed {!%d} out of {!%d} enemies ({!%d%%}). ', [ Statistics['unique_kills'], Statistics['max_unique_kills'], Percent( Statistics['unique_kills'], Statistics['max_unique_kills'] ) ] ) );
     if Statistics['kills'] <> Statistics['unique_kills'] then
@@ -887,10 +934,10 @@ begin
     FCharacter.Push( Format( 'His current killing spree is {!%d}, with a record of {!%d}. ', [ FKills.NoDamageSequence, iKillRecord ] ) );
     FCharacter.Push( '' );
     FCharacter.Push( Format( 'Current movement speed is {!%.2f} second/move.', [getMoveCost/(Speed*10.0)] ) );
-    FCharacter.Push( Format( 'Current fire speed is {!%.2f} second/%s.', [getFireCost( ALT_NONE, False )/(Speed*10.0),IIf(canDualWield,'dualshot','shot')] ) );
+    FCharacter.Push( Format( 'Current fire speed is {!%.2f} second/%s.', [getFireCost( False, False )/(Speed*10.0),IIf(canDualWield,'dualshot','shot')] ) );
     FCharacter.Push( Format( 'Current reload speed is {!%.2f} second/reload.', [getReloadCost(Inv.Slot[efWeapon]) /(Speed*10.0)] ) );
-    FCharacter.Push( Format( 'Current to hit chance (point blank) is {!%s}.',[toHitPercent(10+getToHit(Inv.Slot[efWeapon], ALT_NONE, False))]));
-    FCharacter.Push( Format( 'Current melee hit chance is {!%s}.',[toHitPercent(10+getToHit(Inv.Slot[efWeapon], ALT_NONE, True))]));
+    FCharacter.Push( Format( 'Current to hit chance (point blank) is {!%s}.',[toHitPercent(10+getToHit(Inv.Slot[efWeapon], False, False))]));
+    FCharacter.Push( Format( 'Current melee hit chance is {!%s}.',[toHitPercent(10+getToHit(Inv.Slot[efWeapon], False, True))]));
     FCharacter.Push( '' );
 
     iDodgeBonus := getDodgeMod;

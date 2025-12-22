@@ -18,7 +18,7 @@ function drl.register_exotic_items()
 			being:msg( "Suddenly you feel immobilized. You feel like a fortress!" )
 		end,
 
-		OnRemove = function (self,being)
+		OnUnequip = function (self,being)
 			being.flags[ BF_SESSILE ] = false
 			being.armor = being.armor - 2
 			being.resist.bullet   = (being.resist.bullet or 0) - 40
@@ -42,7 +42,7 @@ function drl.register_exotic_items()
 			being:msg( "You start to float!" )
 		end,
 
-		OnRemove = function (self,being)
+		OnUnequip = function (self,being)
 			being.flags[ BF_ENVIROSAFE ] = false
 			being.flags[ BF_FLY ] = false
 			being:msg( "You touch the ground." )
@@ -71,11 +71,11 @@ function drl.register_exotic_items()
 			if not being:is_player() then return end
 			ui.blink(LIGHTRED,100)
 			-- XXX Should this be given on first pick-up ALWAYS or only when in chain court?
-			being:set_affect( "berserk",40*diff[DIFFICULTY].powerfactor)
+			being:add_perk( "berserk",200*diff[DIFFICULTY].powerfactor)
 			if not being.flags[ BF_NOHEAL ] and being.hp < being.hpmax then
 				being.hp = being.hpmax
 			end
-			being:remove_affect( "tired" )
+			being:remove_perk( "tired" )
 			being:quick_weapon("chainsaw")
 			ui.msg("BLOOD! BLOOD FOR ARMOK, GOD OF BLOOD!")
 		end
@@ -102,8 +102,6 @@ function drl.register_exotic_items()
 		radius        = 8,
 		reloadtime    = 20,
 		shotcost      = 40,
-		altreload     = RELOAD_SCRIPT,
-		altreloadname = "overcharge",
 		misascii      = "*",
 		miscolor      = WHITE,
 		misdelay      = 100,
@@ -118,6 +116,10 @@ function drl.register_exotic_items()
 			knockback = 16,
 		},
 
+		OnCreate = function(self)
+			self:add_perk( "perk_altreload_overcharge" )
+		end,
+
 		OnFirstPickup = function(self,being)
 			if not being:is_player() then return end
 			being:quick_weapon("bfg9000")
@@ -125,17 +127,6 @@ function drl.register_exotic_items()
 			ui.blink(WHITE,100,100)
 			ui.blink(LIGHTBLUE,100,200)
 			ui.msg("HELL, NOW YOU'LL GET LOOSE!")
-		end,
-
-		OnAltReload = function(self)
-			if not self:can_overcharge("This will destroy the weapon after the next shot...") then return false end
-			self.misdelay      = 200
-			self.radius        = self.radius * 2
-			self.damage_dice   = self.damage_dice * 2
-			self.shotcost      = self.ammomax
-			self.ammomax       = self.shotcost
-			self.ammo          = self.shotcost
-			return true
 		end,
 	}
 
@@ -152,25 +143,29 @@ function drl.register_exotic_items()
 		weight   = 2,
 		group    = "pistol",
 		desc     = "This is the standard issue rechargeable energy side-arm. Cool!",
-		flags    = { IF_EXOTIC, IF_RECHARGE, IF_NOUNLOAD },
+		flags    = { IF_EXOTIC, IF_NORELOAD, IF_NOUNLOAD },
 
 		type          = ITEMTYPE_RANGED,
 		ammo_id       = "cell",
 		ammomax       = 10,
-		rechargeamount= 1,
-		rechargedelay = 3,
 		damage        = "2d4",
 		damagetype    = DAMAGE_PLASMA,
 		acc           = 3,
 		usetime       = 9,
 		reloadtime    = 10,
-		altfire       = ALT_AIMED,
 		miscolor      = MULTIYELLOW,
 		misdelay      = 10,
 		miss_base     = 30,
 		miss_dist     = 5,
 		missprite     = SPRITE_SHOT,
 		hitsprite     = SPRITE_BLAST,
+
+		OnCreate = function(self)
+			self:add_perk( "perk_altfire_aimed" )
+			self:add_perk( "perk_weapon_recharge" )
+			self.pp_recharge.delay  = 3
+			self.pp_recharge.amount = 1
+		end,
 	}
 
 	register_item "ucpistol"
@@ -194,14 +189,16 @@ function drl.register_exotic_items()
 		damagetype    = DAMAGE_BULLET,
 		acc           = 5,
 		reloadtime    = 18,
-		altfire       = ALT_AIMED,
-		altreload     = RELOAD_DUAL,
 		miscolor      = LIGHTGRAY,
 		misdelay      = 15,
 		miss_base     = 10,
 		miss_dist     = 3,
 		missprite     = SPRITE_SHOT,
 		hitsprite     = SPRITE_BLAST,
+
+		OnCreate = function(self)
+			self:add_perk( "perk_altfire_aimed" )
+		end,
 	}
 
 	register_item "uashotgun"
@@ -227,11 +224,9 @@ function drl.register_exotic_items()
 		knockback     = 8,
 		range         = 15,
 		hitsprite     = SPRITE_BLAST,
-		altreload     = RELOAD_SCRIPT,
-		altreloadname = "full",
 
-		OnAltReload = function( self, being )
-			return being:full_reload( self )
+		OnCreate = function(self)
+			self:add_perk( "perk_pump_action" )
 		end,
 	}
 
@@ -313,7 +308,6 @@ function drl.register_exotic_items()
 		acc        = 8,
 		reloadtime = 15,
 		shots      = 5,
-		altfire    = ALT_CHAIN,
 		miscolor   = MULTIYELLOW,
 		misdelay   = 10,
 		miss_base  = 10,
@@ -323,6 +317,10 @@ function drl.register_exotic_items()
 			coscolor   = { 1.0, 1.0, 0.0, 1.0 },
 		},
 		hitsprite     = SPRITE_BLAST,
+
+		OnCreate = function(self)
+			self:add_perk( "perk_altfire_chainfire" )
+		end,
 	}
 
 	register_item "utristar"
@@ -384,13 +382,16 @@ function drl.register_exotic_items()
 		usetime       = 12,
 		reloadtime    = 35,
 		shots         = 8,
-		altfire       = ALT_CHAIN,
 		miscolor      = WHITE,
 		misdelay      = 10,
 		miss_base     = 10,
 		miss_dist     = 3,
 		missprite     = SPRITE_SHOT,
 		hitsprite     = SPRITE_BLAST,
+
+		OnCreate = function(self)
+			self:add_perk( "perk_altfire_chainfire" )
+		end,
 	}
 
 	register_item "umbazooka"
@@ -421,15 +422,13 @@ function drl.register_exotic_items()
 		miss_dist     = 5,
 		missprite     = SPRITE_ROCKETSHOT,
 		hitsprite     = SPRITE_BLAST,
-		altreload     = RELOAD_SCRIPT,
-		altreloadname = "full",
 		explosion     = {
 			delay 	= 40,
 			color 	= RED,
 		},
 
-		OnAltReload = function( self, being )
-			return being:full_reload( self )
+		OnCreate = function(self)
+			self:add_perk( "perk_pump_action" )
 		end,
 	}
 
@@ -444,21 +443,16 @@ function drl.register_exotic_items()
 		weight   = 4,
 		group    = "plasma",
 		desc     = "A self-charging plasma rifle -- too bad it can't be manually reloaded.",
-		flags    = { IF_EXOTIC, IF_RECHARGE, IF_NOUNLOAD },
+		flags    = { IF_EXOTIC, IF_NORELOAD, IF_NOUNLOAD },
 
 		type          = ITEMTYPE_RANGED,
 		ammo_id       = "cell",
 		ammomax       = 24,
-		rechargeamount= 4,
-		rechargedelay = 4,
 		damage        = "1d7",
 		damagetype    = DAMAGE_PLASMA,
 		acc           = 2,
 		reloadtime    = 20,
 		shots         = 6,
-		altfire       = ALT_CHAIN,
-		altreload     = RELOAD_SCRIPT,
-		altreloadname = "overcharge",
 		misascii      = "*",
 		miscolor      = MULTIBLUE,
 		misdelay      = 10,
@@ -467,24 +461,12 @@ function drl.register_exotic_items()
 		missprite     = SPRITE_PLASMASHOT,
 		hitsprite     = SPRITE_BLAST,
 
-		OnAltReload = function(self, being)
-			local floor_cell = cells[ level.map[ being.position ] ]
-			if floor_cell.flags[CF_STAIRS] then
-				ui.msg("Better not do this on the stairs...");
-				return false
-			end
-			if not self:can_overcharge("This will overload the nuclear reactor...") then return false end
-			if floor_cell.flags[CF_HAZARD] then
-				ui.msg("Somehow, in an instant, you feel like an idiot...");
-				being:nuke(1)
-			else
-				ui.msg("Warning! Explosion in 10 seconds!")
-				being:nuke(100)
-			end
-			player:add_history("He overloaded a nuclear plasma rifle on @1!")
-			being.eq.weapon = nil
-			being.scount = being.scount - 1000
-			return true
+		OnCreate = function(self)
+			self:add_perk( "perk_altfire_chainfire" )
+			self:add_perk( "perk_altreload_nuke" )
+			self:add_perk( "perk_weapon_recharge" )
+			self.pp_recharge.delay  = 4
+			self.pp_recharge.amount = 4
 		end,
 	}
 
@@ -499,13 +481,11 @@ function drl.register_exotic_items()
 		weight   = 2,
 		group    = "bfg",
 		desc     = "A self-charging BFG9000! How much more lucky can you get?",
-		flags    = { IF_EXOTIC, IF_RECHARGE, IF_NOUNLOAD, IF_EXACTHIT },
+		flags    = { IF_EXOTIC, IF_NORELOAD, IF_NOUNLOAD, IF_EXACTHIT },
 
 		type          = ITEMTYPE_RANGED,
 		ammo_id       = "cell",
 		ammomax       = 40,
-		rechargeamount= 1,
-		rechargedelay = 0,
 		damage        = "8d6",
 		damagetype    = DAMAGE_SPLASMA,
 		acc           = 5,
@@ -513,8 +493,6 @@ function drl.register_exotic_items()
 		usetime       = 15,
 		reloadtime    = 20,
 		shotcost      = 40,
-		altreload     = RELOAD_SCRIPT,
-		altreloadname = "overcharge",
 		misascii      = "*",
 		miscolor      = WHITE,
 		misdelay      = 100,
@@ -529,24 +507,44 @@ function drl.register_exotic_items()
 			knockback = 16,
 		},
 
-		OnAltReload = function(self, being)
-			local floor_cell = cells[ level.map[ being.position ] ]
-			if floor_cell.flags[CF_STAIRS] then
-				ui.msg("Better not do this on the stairs...");
-				return false
-			end
-			if not self:can_overcharge("This will overload the nuclear reactor...") then return false end
-			if floor_cell.flags[CF_HAZARD] then
-				ui.msg("Somehow, in an instant, you feel like an idiot...");
-				being:nuke(1)
+		OnCreate = function(self)
+			self:add_perk( "perk_altreload_nuke" )
+			self:add_perk( "perk_weapon_recharge" )
+			self.pp_recharge.delay  = 0
+			self.pp_recharge.amount = 1
+		end,
+	}
+
+	register_perk "perk_utrans_hit"
+	{
+		OnHitBeing = function(self,being,target)
+			target:play_sound("phasing")
+			being:msg("Suddenly "..target:get_name(true,false).." blinks away!")
+			level:explosion( target.position, { range = 2, delay = 50, color = LIGHTBLUE } )
+			target:phase()
+			return false
+		end,
+	}
+
+	register_perk "perk_utrans_altfire"
+	{
+		name  = "",
+		short = "self-target",
+		desc  = "teleport yourself randomly",
+		color = LIGHTBLUE,
+		tags  = { "altfire" },
+
+		OnAltFire = function(self, being)
+			if self.ammo < 30 then 
+				being:msg("You have not enough ammo to self-target!")
 			else
-				ui.msg("Warning! Explosion in 10 seconds!")
-				being:nuke(100)
+				self.ammo = self.ammo - 30
+				being:msg("You feel yanked in a non-descript direction!")
+				level:explosion( being.position, { range = 2, delay = 50, color = LIGHTBLUE } )
+				being:phase();
+				being.scount = being.scount - 1000
 			end
-			player:add_history("He overloaded a nuclear BFG 9000 on @1!")
-			being.eq.weapon = nil
-			being.scount = being.scount - 1000
-			return true
+			return false
 		end,
 	}
 
@@ -577,30 +575,12 @@ function drl.register_exotic_items()
 		misdelay      = 10,
 		miss_base     = 30,
 		miss_dist     = 3,
-		altfire       = ALT_SCRIPT,
-		altfirename   = "self-target",
 		missprite     = SPRITE_PLASMASHOT,
 		hitsprite     = SPRITE_BLAST,
 
-		OnHitBeing = function(self,being,target)
-			target:play_sound("phasing")
-			being:msg("Suddenly "..target:get_name(true,false).." blinks away!")
-			level:explosion( target.position, { range = 2, delay = 50, color = LIGHTBLUE } )
-			target:phase()
-			return false
-		end,
-
-		OnAltFire = function(self,being)
-			if self.ammo < 30 then 
-				being:msg("You have not enough ammo to self-target!")
-			else
-				self.ammo = self.ammo - 30
-				being:msg("You feel yanked in a non-descript direction!")
-				level:explosion( being.position, { range = 2, delay = 50, color = LIGHTBLUE } )
-				being:phase();
-				being.scount = being.scount - 1000
-			end
-			return false
+		OnCreate = function(self)
+			self:add_perk( "perk_utrans_altfire" )
+			self:add_perk( "perk_utrans_hit" )
 		end,
 	}
 
@@ -736,6 +716,18 @@ function drl.register_exotic_items()
 		knockmod   = -70,
 	}
 
+	register_perk "perk_umedarmor"
+	{
+		OnEquipTick = function(self,being)
+			if self.durability > 20 then
+				if being.hp < being.hpmax / 2 then
+					being.hp = being.hp + 1
+					self.durability = self.durability - 1
+				end
+			end
+		end,
+	}
+
 	register_item "umedarmor"
 	{
 		name     = "medical armor",
@@ -753,13 +745,8 @@ function drl.register_exotic_items()
 		armor      = 2,
 		movemod    = -15,
 
-		OnEquipTick = function(self, being)
-			if self.durability > 20 then
-				if being.hp < being.hpmax / 2 then
-					being.hp = being.hp + 1
-					self.durability = self.durability - 1
-				end
-			end
+		OnCreate = function(self)
+			self:add_perk( "perk_umedarmor" )
 		end,
 	}
 
@@ -1058,7 +1045,10 @@ function drl.register_exotic_items()
 		OnUseCheck = function(self,being)
 			local function filter( item )
 				if item.itype == ITEMTYPE_MELEE then return false end
-				if item.itype == ITEMTYPE_RANGED and (item.rechargedelay == 0 and item.rechargeamount >= item.ammomax) then return false end
+				if item:has_property("pp_recharge") then
+					local r = item.pp_recharge
+					if r.delay == 0 and r.amount >= item.ammomax then return false end
+				end
 				return true
 			end
 			local item, result = being:pick_item_to_mod( self, filter )
@@ -1068,11 +1058,12 @@ function drl.register_exotic_items()
 		end,
 
 		OnModDescribe = function( self, item )
-			if item.flags[ IF_RECHARGE ] then
-				if item.rechargedelay == 0 then
-					return "recharge amount {!"..item.rechargeamount.."} -> {!"..(item.rechargeamount+1).."}"
+			if item:has_property("pp_recharge") then
+				local r = item.pp_recharge
+				if r.delay == 0 then
+					return "recharge amount {!"..r.amount.."} -> {!"..(r.amount+1).."}"
 				else
-					return "recharge delay {!"..item.rechargedelay.."} -> {!"..(item.rechargedelay-5).."}"
+					return "recharge delay {!"..r.delay.."} -> {!"..math.max(0, r.delay-5).."}"
 				end
 			else
 				if item.itype == ITEMTYPE_RANGED then
@@ -1090,20 +1081,22 @@ function drl.register_exotic_items()
 			self:remove_property("chosen_item")
 			ui.msg( "You upgrade your gear!" )
 			item:add_mod( 'N', being.techbonus )
-			if item.flags[ IF_RECHARGE ] then
-				if item.rechargedelay == 0 then
-					item.rechargeamount = item.rechargeamount + 1
+			if item:has_property("pp_recharge") then
+				local r = item.pp_recharge
+				if r.delay == 0 then
+					r.amount = r.amount + 1
 				else
-					item.rechargedelay = math.max(0, item.rechargedelay - 5)
+					r.delay = math.max(0, r.delay - 5)
 				end
 			else
-				item.flags[ IF_RECHARGE ] = true
-				item.flags[ IF_NOUNLOAD ] = true
-				item.rechargedelay = 5
 				if item.itype == ITEMTYPE_ARMOR or item.itype == ITEMTYPE_BOOTS then
-					item.rechargeamount = 2
+					item:add_perk( "perk_armor_recharge" )
+					item.pp_recharge.delay  = 5
+					item.pp_recharge.amount = 2
 				elseif item.itype == ITEMTYPE_RANGED then
-					item.rechargeamount = 1
+					item:add_perk( "perk_weapon_recharge" )
+					item.pp_recharge.delay  = 5
+					item.pp_recharge.amount = 1
 				end
 			end
 			return true
@@ -1197,7 +1190,7 @@ function drl.register_exotic_items()
 					level.map[ c ] = "bloodpool"
 					being:play_sound( "gib" )
 					being.hp = math.min( being.hp + 5, being.hpmax * 2 )
-					being:remove_affect( "tired" )
+					being:remove_perk( "tired" )
 				end
 			end
 			return true
@@ -1260,8 +1253,8 @@ function drl.register_exotic_items()
 				end
 			end
 			if count > 0 then
-				being:remove_affect( "tired" )
-				being:set_affect( "berserk", count * 5 )
+				being:remove_perk( "tired" )
+				being:add_perk( "berserk", count * 30 )
 			end
 			return true
 		end,

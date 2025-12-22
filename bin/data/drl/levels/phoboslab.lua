@@ -153,7 +153,7 @@ register_level "phobos_lab"
 				ui.msg("The walls lower!")
 				level:transmute( "wall", "floor", level.data.trap11 )
 				level:transmute( "wall", "floor", level.data.trap12 )
-				player:remove_affect("enviro")
+				player:remove_perk("enviro")
 				level:play_sound( "door.open", player.position )
 				level.status = 2
 			end
@@ -162,7 +162,7 @@ register_level "phobos_lab"
 				ui.msg("The walls lower!")
 				level:transmute( "wall", "floor", level.data.trap21 )
 				level:transmute( "wall", "floor", level.data.trap22 )
-				player:remove_affect("enviro")
+				player:remove_perk("enviro")
 				level:play_sound( "door.open", player.position )
 				level.status = 3
 			end

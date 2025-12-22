@@ -64,199 +64,199 @@
         <IsPartOfProject Value="True"/>
       </Unit2>
       <Unit3>
-        <Filename Value="dfaffect.pas"/>
+        <Filename Value="dfbeing.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit3>
       <Unit4>
-        <Filename Value="dfbeing.pas"/>
+        <Filename Value="dfdata.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit4>
       <Unit5>
-        <Filename Value="dfdata.pas"/>
+        <Filename Value="dfhof.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit5>
       <Unit6>
-        <Filename Value="dfhof.pas"/>
+        <Filename Value="dfitem.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit6>
       <Unit7>
-        <Filename Value="dfitem.pas"/>
+        <Filename Value="dflevel.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit7>
       <Unit8>
-        <Filename Value="dflevel.pas"/>
+        <Filename Value="dfmap.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit8>
       <Unit9>
-        <Filename Value="dfmap.pas"/>
+        <Filename Value="dfplayer.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit9>
       <Unit10>
-        <Filename Value="dfplayer.pas"/>
+        <Filename Value="drlbase.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit10>
       <Unit11>
-        <Filename Value="drlbase.pas"/>
+        <Filename Value="drlhelp.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit11>
       <Unit12>
-        <Filename Value="drlhelp.pas"/>
+        <Filename Value="dfthing.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit12>
       <Unit13>
-        <Filename Value="dfthing.pas"/>
+        <Filename Value="drltraits.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit13>
       <Unit14>
-        <Filename Value="drltraits.pas"/>
+        <Filename Value="..\bin\version.txt"/>
         <IsPartOfProject Value="True"/>
       </Unit14>
       <Unit15>
-        <Filename Value="..\bin\version.txt"/>
+        <Filename Value="drlanimation.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit15>
       <Unit16>
-        <Filename Value="drlanimation.pas"/>
+        <Filename Value="drlconfig.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit16>
       <Unit17>
-        <Filename Value="drlconfig.pas"/>
+        <Filename Value="..\bin\version_api.txt"/>
         <IsPartOfProject Value="True"/>
       </Unit17>
       <Unit18>
-        <Filename Value="..\bin\version_api.txt"/>
+        <Filename Value="drlinventory.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit18>
       <Unit19>
-        <Filename Value="drlinventory.pas"/>
+        <Filename Value="drlhooks.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit19>
       <Unit20>
-        <Filename Value="drlhooks.pas"/>
+        <Filename Value="drlio.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit20>
       <Unit21>
-        <Filename Value="drlio.pas"/>
+        <Filename Value="drlspritemap.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit21>
       <Unit22>
-        <Filename Value="drlspritemap.pas"/>
+        <Filename Value="drlaudio.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit22>
       <Unit23>
-        <Filename Value="drlaudio.pas"/>
+        <Filename Value="drlgfxio.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit23>
       <Unit24>
-        <Filename Value="drlgfxio.pas"/>
+        <Filename Value="drltextio.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit24>
       <Unit25>
-        <Filename Value="drltextio.pas"/>
+        <Filename Value="drlplayerview.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit25>
       <Unit26>
-        <Filename Value="drlplayerview.pas"/>
+        <Filename Value="drlingamemenuview.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit26>
       <Unit27>
-        <Filename Value="drlingamemenuview.pas"/>
+        <Filename Value="drlmoreview.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit27>
       <Unit28>
-        <Filename Value="drlmoreview.pas"/>
+        <Filename Value="drlhelpview.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit28>
       <Unit29>
-        <Filename Value="drlhelpview.pas"/>
+        <Filename Value="drlassemblyview.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit29>
       <Unit30>
-        <Filename Value="drlassemblyview.pas"/>
+        <Filename Value="drlconfirmview.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit30>
       <Unit31>
-        <Filename Value="drlconfirmview.pas"/>
+        <Filename Value="drlconfiguration.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit31>
       <Unit32>
-        <Filename Value="drlconfiguration.pas"/>
+        <Filename Value="drlsettingsview.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit32>
       <Unit33>
-        <Filename Value="drlsettingsview.pas"/>
+        <Filename Value="drlkeybindings.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit33>
       <Unit34>
-        <Filename Value="drlkeybindings.pas"/>
+        <Filename Value="drlpagedview.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit34>
       <Unit35>
-        <Filename Value="drlpagedview.pas"/>
+        <Filename Value="drlrankupview.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit35>
       <Unit36>
-        <Filename Value="drlrankupview.pas"/>
+        <Filename Value="drlmainmenuview.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit36>
       <Unit37>
-        <Filename Value="drlmainmenuview.pas"/>
+        <Filename Value="drlloadingview.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit37>
       <Unit38>
-        <Filename Value="drlloadingview.pas"/>
+        <Filename Value="drlchoiceview.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit38>
       <Unit39>
-        <Filename Value="drlchoiceview.pas"/>
+        <Filename Value="drlhudviews.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit39>
       <Unit40>
-        <Filename Value="drlhudviews.pas"/>
+        <Filename Value="drlplotview.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit40>
       <Unit41>
-        <Filename Value="drlplotview.pas"/>
+        <Filename Value="drlmessagesview.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit41>
       <Unit42>
-        <Filename Value="drlmessagesview.pas"/>
+        <Filename Value="drlmodule.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit42>
       <Unit43>
-        <Filename Value="drlmodule.pas"/>
+        <Filename Value="drlminimap.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit43>
       <Unit44>
-        <Filename Value="drlminimap.pas"/>
+        <Filename Value="drlstatistics.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit44>
       <Unit45>
-        <Filename Value="drlstatistics.pas"/>
+        <Filename Value="drlmultimove.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit45>
       <Unit46>
-        <Filename Value="drlmultimove.pas"/>
+        <Filename Value="drlmarkers.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit46>
       <Unit47>
-        <Filename Value="drlmarkers.pas"/>
+        <Filename Value="drldecals.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit47>
       <Unit48>
-        <Filename Value="drldecals.pas"/>
+        <Filename Value="drlcommand.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit48>
       <Unit49>
-        <Filename Value="drlcommand.pas"/>
+        <Filename Value="drlmodulechoiceview.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit49>
       <Unit50>
-        <Filename Value="drlmodulechoiceview.pas"/>
+        <Filename Value="drlworkshop.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit50>
       <Unit51>
-        <Filename Value="drlworkshop.pas"/>
+        <Filename Value="drlperk.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit51>
     </Units>

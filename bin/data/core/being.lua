@@ -70,6 +70,7 @@ setmetatable(being.inv, {
 				end
 			end
 
+			---@diagnostic disable-next-line: redundant-return-value, deprecated
 			return unpack(itemlist)
 		end
 		return nil
@@ -321,7 +322,7 @@ function being:pick_item_to_mod( mod, filter )
 	if ma then
 		local entries = {
 			{ name = "Assemble "..ma.name, value = 2 },
-			{ name = "Apply mod normally", value = 1 },
+			{ name = "Apply just the mod", value = 1 },
 			{ name = "Cancel", value = -1 },
 		}
 		if filter and not filter(item) then
@@ -337,9 +338,23 @@ function being:pick_item_to_mod( mod, filter )
 			entries = entries,
 			cancel = -1,
 		}
+		if core.options.assembly_apply_last_mod then
+			ma_choice.header = ma_choice.header ..  " Mod effect will also be applied first."
+		end
+		if ma.desc and ma.desc ~= "" then
+			ma_choice.header = ma_choice.header .. "\n\n" .. "Mod      : "..proto.OnModDescribe( mod, item )
+			ma_choice.header = ma_choice.header .. "\n" .. "Assembly : "..ma.desc
+		end
 		local result = ui.choice( ma_choice )
 		if result == -1 then return nil, false end
 		if result == 2 then
+			if core.options.assembly_apply_last_mod then
+				-- Apply mod effect first, then assembly transformation
+				mod:add_property("chosen_item", item)
+				if mod.__proto.OnUse then
+					mod.__proto.OnUse( mod, player )
+				end
+			end
 			ui.msg("You assemble the "..ma.name..".")
 			item:apply_mod_array( ma )
 			return nil, true
@@ -352,7 +367,7 @@ function being:pick_item_to_mod( mod, filter )
 	return item, true
 end
 
-function being:apply_affect( id, max_duration, resist )
+function being:apply_timed_perk( id, max_duration, resist )
 	if resist and self.resist and self.resist[ resist ] then
 		local rvalue = self.resist[ resist ]
 		if rvalue > 0 then
@@ -362,15 +377,22 @@ function being:apply_affect( id, max_duration, resist )
 			return false
 		end
 	end
-	local current = self:get_affect_time( id )
+	local current = self:get_perk_time( id )
 	if current > 0 then
 		if current < max_duration then
-			self:set_affect( id, max_duration - current )
+			self:add_perk( id, max_duration - current )
 		end
 	else
-		self:set_affect( id, max_duration )
+		self:add_perk( id, max_duration )
 	end
 	return true
+end
+
+function being:refresh_perk( id, max_duration )
+	local current = self:get_perk_time( id )
+	if current < max_duration then
+		self:add_perk( id, max_duration - current )
+	end
 end
 
 function being:full_reload( weapon )

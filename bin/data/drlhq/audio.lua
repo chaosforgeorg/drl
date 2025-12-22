@@ -113,7 +113,7 @@ sound = {
 
 	-- Hellgate
 	
-	teleport = {
+	hellportal = {
 		use			= "sound/dstelept.wav",
 	},
 	

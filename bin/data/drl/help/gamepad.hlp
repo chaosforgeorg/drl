@@ -16,7 +16,7 @@ and add hint info on the targeted square.
 {!X} - Fire
    (with {!RTrigger}) alternative fire (if present)
 {!Y} - Reload
-   (with {!RTrigger}) alternative reload (if present)
+   (with {!RTrigger}) alternative/dual reload (if present)
 {!Start} - open inventory (use {!Left}/{!Right} or shoulders to change
    panels), with {!RTrigger} open equipment screen
 {!Back} - game menu   
@@ -26,6 +26,8 @@ press {!RStick} - swap weapon with prepared weapon
    (with {!RTrigger}) unload weapon from ground or inventory
 {!D-pad} -  move targeting reticule (might be removed in the future)
 {!LTrigger} -- hold to show quickslots, {!DPad} direction to use
+{!RTrigger}+{!A} -- more info on targeted enemy (or self if none)
+            hold both triggers to force self info
 
 {rUI}
 

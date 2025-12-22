@@ -106,7 +106,7 @@ register_level "the_asmos_den"
 				end
 				if being.hp - 5 < 1 then
 					being.hp = 1
-					if not player:is_affect("inv") then
+					if not player:is_perk("inv") then
 						being.flags[ BF_INV ] = false
 					end
 				else

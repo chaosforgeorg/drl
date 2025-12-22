@@ -13,13 +13,12 @@ function drl.register_regular_items()
 		weight   = 640,
 		group    = "melee",
 		desc     = "Not what you'd really like to use, but it's better than your fists.",
-		flags    = { IF_THROWDROP, IF_EXACTHIT },
+		flags    = {},
 
 		type        = ITEMTYPE_MELEE,
 		damage      = "2d5",
 		damagetype  = DAMAGE_MELEE,
 		acc         = 1,
-		altfire     = ALT_THROW,
 		miscolor    = LIGHTGRAY,
 		misdelay    = 50,
 		miss_base   = 10,
@@ -30,6 +29,7 @@ function drl.register_regular_items()
 
 		OnCreate = function(self)
 			self:add_property( "BLADE", true )
+			self:add_perk( "perk_altfire_throw" )
 		end,
 	}
 
@@ -160,7 +160,7 @@ function drl.register_regular_items()
 
 		OnPickup = function(self,being)
 			being:msg("You feel better.")
-			being:remove_affect( "tired" )
+			being:remove_perk( "tired" )
 			local amount = math.floor( 10 * diff[DIFFICULTY].powerfactor * being:get_property( "MEDKIT_BONUS", 1 ) )
 			being.hp = math.min( being.hp +  amount, 2*being.hpmax )
 		end,
@@ -177,11 +177,11 @@ function drl.register_regular_items()
 		type    = ITEMTYPE_POWER,
 
 		OnPickup = function(self,being)
-			being:set_affect("berserk",core.power_duration(40))
+			being:add_perk("berserk",core.power_duration(200))
 			if (not being.flags[ BF_NOHEAL ]) and being.hp < being.hpmax then
 				being.hp = being.hpmax
 			end
-			being:remove_affect( "tired" )
+			being:remove_perk( "tired" )
 		end,
 	}
 
@@ -197,8 +197,8 @@ function drl.register_regular_items()
 		type    = ITEMTYPE_POWER,
 
 		OnPickup = function(self,being)
-			being:set_affect("inv",core.power_duration(50))
-			being:remove_affect( "tired" )
+			being:add_perk("inv",core.power_duration(500))
+			being:remove_perk( "tired" )
 		end,
 	}
 
@@ -218,7 +218,7 @@ function drl.register_regular_items()
 			being:msg("SuperCharge!")
 			ui.blink(LIGHTBLUE,100)
 			being.hp = 2 * being.hpmax
-			being:remove_affect( "tired" )
+			being:remove_perk( "tired" )
 		end,
 	}
 
@@ -235,7 +235,7 @@ function drl.register_regular_items()
 
 		OnPickup = function(self,being)
 			being:msg("You feel like new!")
-			being:remove_affect( "tired" )
+			being:remove_perk( "tired" )
 			local amount = math.floor( 10 * diff[DIFFICULTY].powerfactor * being:get_property( "MEDKIT_BONUS", 1 ) )
 			being.hp = math.min( being.hp + amount, 2*being.hpmax )
 			if being.hp < being.hpmax then
@@ -261,7 +261,7 @@ function drl.register_regular_items()
 			if not being.flags[ BF_NOHEAL ] then
 				being.hp = 2*being.hpmax
 			end
-			being:remove_affect( "tired" )
+			being:remove_perk( "tired" )
 			if being.eq.armor then being.eq.armor:fix() end
 			if being.eq.boots then being.eq.boots:fix() end
 		end,
@@ -332,7 +332,7 @@ function drl.register_regular_items()
 		type    = ITEMTYPE_POWER,
 
 		OnPickup = function(self,being)
-			being:set_affect("light",core.power_duration(60))
+			being:add_perk("light",core.power_duration(600))
 		end,
 	}
 
@@ -554,14 +554,16 @@ function drl.register_regular_items()
 		damagetype    = DAMAGE_BULLET,
 		acc           = 4,
 		reloadtime    = 12,
-		altfire       = ALT_AIMED,
-		altreload     = RELOAD_DUAL,
 		miscolor      = LIGHTGRAY,
 		misdelay      = 15,
 		miss_base     = 10,
 		miss_dist     = 3,
 		missprite     = SPRITE_SHOT,
 		hitsprite     = SPRITE_BLAST,
+
+		OnCreate = function(self)
+			self:add_perk( "perk_altfire_aimed" )
+		end,
 	}
 
 	register_item "shotgun"
@@ -610,13 +612,15 @@ function drl.register_regular_items()
 		damagetype    = DAMAGE_SHARPNEL,
 		reloadtime    = 20,
 		shots         = 2,
-		altfire       = ALT_SINGLE,
-		altreload     = RELOAD_SINGLE,
 		range         = 8,
 		spread        = 3,
 		falloff       = 10,
 		knockback     = 8,
 		hitsprite     = SPRITE_BLAST,
+
+		OnCreate = function(self)
+			self:add_perk( "perk_altfire_single" )
+		end,
 	}
 
 	register_item "ashotgun"
@@ -638,8 +642,6 @@ function drl.register_regular_items()
 		ammomax       = 5,
 		damage        = "7d3",
 		damagetype    = DAMAGE_SHARPNEL,
-		altreload     = RELOAD_SCRIPT,
-		altreloadname = "full",
 		range         = 15,
 		spread        = 2,
 		falloff       = 5,
@@ -647,65 +649,8 @@ function drl.register_regular_items()
 		hitsprite     = SPRITE_BLAST,
 
 		OnCreate = function(self)
-			self:add_property( "pump_action", true )
-			self:add_property( "chamber_empty", false )
-		end,
-
-		OnPostMove = function( self, being, worn )
-			if not worn or not self.pump_action then return end
-			if self.chamber_empty and self.ammo > 0 then
-				level:play_sound( self.id, "pump", being.position )
-				self.chamber_empty = false
-				if being:is_player() then
-					ui.msg( "You pump a shell into the shotgun chamber." )
-				end
-			end
-		end,
-
-		OnFire = function( self, being )
-			if not self.pump_action then return true end
-			if self.chamber_empty and self.ammo > 0 then
-				if being:is_player() then
-					ui.msg( "Shell chamber empty - move or reload!" )
-				end
-				return false
-			end
-			return true
-		end,
-
-		OnFired = function( self, being )
-			if not self.pump_action then return end
-			self.chamber_empty = true
-		end,
-
-		OnPreReload = function( self, being )
-			if not self.pump_action then return true end
-			if self.flags[ IF_NOAMMO ] or self.ammo > 0 then
-				if self.chamber_empty then
-					self.chamber_empty = false
-					level:play_sound( self.id, "pump", being.position )
-					if being:is_player() then
-						ui.msg( "You pump a shell into the "..self.name.." chamber." )
-					end
-					being.scount = being.scount - 200
-					return false
-				end
-			end
-			return true
-		end,
-
-		OnReload = function( self, being, ammo, is_pack )
-			if not self.pump_action then return true end
-			being:reload( ammo, true, true ) -- reduces scount
-			local pack = ""
-			if is_pack then pack = "quickly " end
-			being:msg("You "..pack.."load a shell into the "..self.name..".", being:get_name(true,true).." loads a shell into his "..self.name.."." )
-			self.chamber_empty = false
-			return true
-		end,
-		
-		OnAltReload = function( self, being )
-			return being:full_reload( self )
+			self:add_perk( "perk_altreload_full" )
+			self:add_perk( "perk_pump_action" )
 		end,
 	}
 
@@ -730,8 +675,6 @@ function drl.register_regular_items()
 		acc           = 4,
 		radius        = 4,
 		reloadtime    = 15,
-		altfire       = ALT_TARGETSCRIPT,
-		altfirename   = "rocketjump",
 		miscolor      = BROWN,
 		misdelay      = 30,
 		miss_base     = 30,
@@ -743,25 +686,8 @@ function drl.register_regular_items()
 			color 	= RED,
 		},
 
-		OnAltFire = function( self, being )
-			self:set_explosion{
-				delay 	= 40,
-				color 	= RED,
-				flags = { EFSELFKNOCKBACK, EFSELFHALF },
-			}
-			self.flags[ IF_EXACTHIT ] = true
-			self.range   = 1
-			return true
-		end,
-
-		OnFire = function( self, being )
-			self:set_explosion{
-				delay 	= 40,
-				color 	= RED,
-			}
-			self.flags[ IF_EXACTHIT ] = false
-			self.range   = 0
-			return true
+		OnCreate = function(self)
+			self:add_perk( "perk_altfire_rocketjump" )
 		end,
 	}
 
@@ -786,13 +712,16 @@ function drl.register_regular_items()
 		acc           = 2,
 		reloadtime    = 25,
 		shots         = 4,
-		altfire       = ALT_CHAIN,
 		miscolor      = WHITE,
 		misdelay      = 10,
 		miss_base     = 10,
 		miss_dist     = 3,
 		missprite     = SPRITE_SHOT,
 		hitsprite     = SPRITE_BLAST,
+		
+		OnCreate = function(self)
+			self:add_perk( "perk_altfire_chainfire" )
+		end,
 	}
 
 	register_item "plasma"
@@ -816,9 +745,6 @@ function drl.register_regular_items()
 		acc           = 2,
 		reloadtime    = 20,
 		shots         = 6,
-		altfire       = ALT_CHAIN,
-		altreload     = RELOAD_SCRIPT,
-		altreloadname = "overcharge",
 		misascii      = "*",
 		miscolor      = MULTIBLUE,
 		misdelay      = 10,
@@ -827,14 +753,9 @@ function drl.register_regular_items()
 		missprite     = SPRITE_PLASMASHOT,
 		hitsprite     = SPRITE_BLAST,
 
-		OnAltReload = function(self)
-			if not self:can_overcharge("This will destroy the weapon after the next shot...") then return false end
-			self.shots         = self.shots * 2
-			self.ammomax       = self.shots
-			self.ammo          = self.shots
-			self.damage_sides  = self.damage_sides + 1
-			self.altfire       = ALT_NONE
-			return true
+		OnCreate = function(self)
+			self:add_perk( "perk_altfire_chainfire" )
+			self:add_perk( "perk_altreload_overcharge" )
 		end,
 	}
 
@@ -859,7 +780,7 @@ function drl.register_regular_items()
 				being:msg("Nothing happens.")
 			else
 				if isPlayer then 
-					being:remove_affect( "tired" )
+					being:remove_perk( "tired" )
 				end
 				local overheal = being:has_property("MEDKIT_OVERHEAL")
 				if being.hp >= being.hpmax * 2 or ( not overheal and being.hp >= being.hpmax ) then
@@ -894,7 +815,7 @@ function drl.register_regular_items()
 				being:msg("Nothing happens.")
 			else
 				if isPlayer then 
-					being:remove_affect( "tired" )
+					being:remove_perk( "tired" )
 				end
 				local overheal = being:has_property("MEDKIT_OVERHEAL")
 				if being.hp >= being.hpmax * 2 or ( (not overheal) and being.hp >= being.hpmax ) then
@@ -980,7 +901,7 @@ function drl.register_regular_items()
 
 		OnUse = function(self,being)
 			if being:is_player() then
-				being:set_affect("enviro",core.power_duration(70))
+				being:add_perk("enviro",core.power_duration(700))
 			end
 			return true
 		end,
@@ -1012,7 +933,7 @@ function drl.register_regular_items()
 				local floor = level.map[ being.position ]
 				if floor == "acid" or floor == "lava" then
 					-- Added to make it sound less idiotic when invulnerable
-					if not being:is_affect("inv") then
+					if not being:is_perk("inv") then
 						ui.msg('Somehow, in an instant, you feel like an idiot...');
 					end
 					being:nuke(1)
@@ -1740,7 +1661,7 @@ function drl.register_regular_items()
 
 		OnUse = function(self,being)
 			ui.msg("MediTech depot. Proceeding with treatment...")
-			being:remove_affect( "tired" )
+			being:remove_perk( "tired" )
 			self.charges = self.charges - 1
 			local heal = (being.hpmax * diff[DIFFICULTY].powerfactor) / 4 + 2
 			being.hp = math.min( being.hp + heal,being.hpmax )
@@ -1873,7 +1794,7 @@ function drl.register_regular_items()
 		OnUse = function(self,being)
 			if being:is_player() then
 				being:play_sound( "phasing" )
-				being:set_affect("inv",core.power_duration(9))
+				being:add_perk("inv",core.power_duration(90))
 			end
 			return true
 		end,
