@@ -74,6 +74,7 @@ var iTot, iTor : Integer;
     iRes       : TResistance;
     iCount, i  : Integer;
     iPerks     : TPerkList;
+    iName      : Ansistring;
   procedure DescribeItem( aItem : TItem );
   var iBox    : Ansistring;
       iPos, i : Integer;
@@ -131,9 +132,11 @@ begin
           FTexts[iCount] :=  TStringGArray.Create;
           FTexts[iCount].Push( '{!Status effects}' );
         end;
+        iName := Name;
+        if iName = '' then iName := Short;
         if iPerks[i].Time > 0
-          then FTexts[iCount].Push( '  {' + VTIG_ColorChar( Color ) + Name + '} ({!' + FloatToStr( iPerks[i].Time / 10 ) + '}s) - ' + Desc )
-          else FTexts[iCount].Push( '  {' + VTIG_ColorChar( Color ) + Name + '} - ' + Desc );
+          then FTexts[iCount].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} ({!' + FloatToStr( iPerks[i].Time / 10 ) + '}s) - ' + Desc )
+          else FTexts[iCount].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} - ' + Desc );
       end;
     if FTexts[iCount] <> nil then Inc( iCount );
   end;
