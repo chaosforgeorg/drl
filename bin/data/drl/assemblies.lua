@@ -111,7 +111,7 @@ function drl.register_assemblies()
 		end,
 
 		Match = function (item)
-			return not item.pp_recharge
+			return not item:has_property("pp_recharge")
 		end,
 	}
 
@@ -134,7 +134,7 @@ function drl.register_assemblies()
 		end,
 
 		Match = function (item)
-			return not item.pp_recharge
+			return not item:has_property("pp_recharge")
 		end,
 	}
 
