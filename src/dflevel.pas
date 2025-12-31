@@ -1245,9 +1245,20 @@ begin
 
     if DRL.State = DSPlaying then
     begin
-      for iNode in Self do
+      iNode := Child;
+      if iNode <> nil then
+      repeat
+        FNextNode    := iNode.Next;
+        FActiveBeing := nil;
         if iNode is TBeing then
-            TBeing(iNode).Tick;
+        begin
+          FActiveBeing := TBeing(iNode);
+          FActiveBeing.Tick;
+        end;
+        if DRL.State <> DSPlaying then Break;
+        iNode := FNextNode;
+      until (iNode = Child) or (iNode = nil);
+      FActiveBeing := nil;
     end;
 
     if DRL.State = DSPlaying then
