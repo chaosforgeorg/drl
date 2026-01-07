@@ -70,6 +70,7 @@ try
     Title := 'DRL';
     SetConsoleTitle(PChar(Title));
     Sleep(40);
+    DisableAccessibilityShortcuts;
     {$ENDIF}
     ColorOverrides := nil;
 
