@@ -36,6 +36,7 @@ protected
   FHP        : Integer;
   FArmor     : Integer;
   FSprite    : TSprite;
+  FMelSprite : TSprite;
   FSoundID   : String16;
   FAnimCount : Word;
   FPerks     : TPerks;
@@ -43,6 +44,7 @@ protected
 public
   property SoundID    : String16 read FSoundID          write FSoundID;
   property Sprite     : TSprite  read GetSprite         write FSprite;
+  property MelSprite  : TSprite  read FMelSprite        write FMelSprite;
   property AnimCount  : Word     read FAnimCount        write FAnimCount;
 published
   property SpriteID   : DWord    read FSprite.SpriteID[0] write FSprite.SpriteID[0];
@@ -77,6 +79,8 @@ begin
 
   FillChar( FSprite, SizeOf( FSprite ), 0 );
   ReadSprite( Table, FSprite );
+  FillChar( FMelSprite, SizeOf( FMelSprite ), 0 );
+  ReadSprite( Table, 'melsprite', FMelSprite );
 
   iColorID := FID;
   if Table.IsString('color_id') then iColorID := Table.getString('color_id');

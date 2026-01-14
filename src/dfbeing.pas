@@ -1750,7 +1750,14 @@ begin
     iAttackCost := getFireCost( False, True );
 
     if DRL.Level.AnimationVisible( Position, Self ) then
+    begin
       IO.addBumpAnimation( VisualTime( iAttackCost, AnimationSpeedAttack ), 0, iUID, iPosition, aWhere, Sprite, 0.5 );
+      // Melee FX animation - weapon sprite takes priority, fallback to attacker's melsprite
+      if ( iWeapon <> nil ) and ( iWeapon.MelSprite.SpriteID[0] > 0 ) then
+        IO.addFXAnimation( VisualTime( iAttackCost, iWeapon.MelSprite.Frames * iWeapon.MelSprite.Frametime ), 0, aWhere, iWeapon.MelSprite )
+      else if FMelSprite.SpriteID[0] > 0 then
+        IO.addFXAnimation( VisualTime( iAttackCost, FMelSprite.Frames * FMelSprite.Frametime ), 0, aWhere, FMelSprite );
+    end;
 
     if not ( BF_ILLUSION in FFlags ) then
       Result := iLevel.DamageTile( aWhere, rollMeleeDamage( iSlot ), Damage_Melee );
@@ -1818,9 +1825,17 @@ begin
   // Attack cost
   iAttackCost := getFireCost( False, True );
 
-  if not aSecond then
-    if DRL.Level.AnimationVisible( FPosition, Self ) then
+  if DRL.Level.AnimationVisible( FPosition, Self ) then
+  begin
+    // Bump animation only on first attack
+    if not aSecond then
       IO.addBumpAnimation( VisualTime( iAttackCost, AnimationSpeedAttack ), 0, FUID, Position, aTarget.Position, Sprite, 0.5 );
+    // Melee FX animation - weapon sprite takes priority, fallback to attacker's melsprite
+    if ( iWeapon <> nil ) and ( iWeapon.MelSprite.SpriteID[0] > 0 ) then
+      IO.addFXAnimation( VisualTime( iAttackCost, iWeapon.MelSprite.Frames * iWeapon.MelSprite.Frametime ) div Iif( aSecond, 2, 1 ), Iif( aSecond, VisualTime( iAttackCost, iWeapon.MelSprite.Frames * iWeapon.MelSprite.Frametime ) div 2, 0 ), aTarget.Position, iWeapon.MelSprite )
+    else if FMelSprite.SpriteID[0] > 0 then
+      IO.addFXAnimation( VisualTime( iAttackCost, FMelSprite.Frames * FMelSprite.Frametime ) div Iif( aSecond, 2, 1 ), Iif( aSecond, VisualTime( iAttackCost, FMelSprite.Frames * FMelSprite.Frametime ) div 2, 0 ), aTarget.Position, FMelSprite );
+  end;
 
   if iDualAttack or aSecond
     then Dec( FSpeedCount, iAttackCost div 2 )

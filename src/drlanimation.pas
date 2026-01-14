@@ -50,6 +50,16 @@ private
   FCoord  : TCoord2D;
 end;
 
+{ TGFXFXAnimation }
+
+TGFXFXAnimation = class(TAnimation)
+  constructor Create( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite );
+  procedure OnDraw; override;
+private
+  FSprite : TSprite;
+  FCoord  : TCoord2D;
+end;
+
 { TGFXExplodeMarkAnimation }
 
 TGFXExplodeMarkAnimation = class(TAnimation)
@@ -285,6 +295,27 @@ end;
 procedure TGFXMarkAnimation.OnDraw;
 begin
   SpriteMap.PushSpriteFX( FCoord, FSprite, FTime )
+end;
+
+{ TGFXFXAnimation }
+
+constructor TGFXFXAnimation.Create( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite );
+begin
+  inherited Create( aDuration, aDelay, 0 );
+  FCoord  := aCoord;
+  FSprite := aSprite;
+end;
+
+procedure TGFXFXAnimation.OnDraw;
+var iSprite  : TSprite;
+    iSegment : Integer;
+begin
+  iSprite  := FSprite;
+  iSegment := ( FTime * FSprite.Frames ) div FDuration;
+  if iSegment >= FSprite.Frames then iSegment := FSprite.Frames - 1;
+  iSprite.SpriteID[0] += iSegment * DRL_COLS;
+  iSprite.Frames      := 0;
+  SpriteMap.PushSpriteFX( FCoord, iSprite );
 end;
 
 { TGFXExplodeMarkAnimation }
