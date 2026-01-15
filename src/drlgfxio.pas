@@ -26,8 +26,9 @@ type
     procedure UpdateMinimap;
     destructor Destroy; override;
 
-    procedure WaitForAnimation; override;
+    procedure WaitForAnimation( aStrict : Boolean = True ); override;
     function AnimationsRunning : Boolean; override;
+    function AnimationsBlockingFinished : Boolean; override;
     procedure AnimationWipe; override;
     procedure Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0); override;
     procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ); override;
@@ -416,16 +417,23 @@ begin
   inherited Destroy;
 end;
 
-procedure TDRLGFXIO.WaitForAnimation;
+procedure TDRLGFXIO.WaitForAnimation( aStrict : Boolean = True );
 begin
-  inherited WaitForAnimation;
-  FAnimations.Clear;
+  inherited WaitForAnimation( aStrict );
+  if aStrict then
+    FAnimations.Clear;
 end;
 
 function TDRLGFXIO.AnimationsRunning : Boolean;
 begin
   if DRL.State <> DSPlaying then Exit(False);
   Exit( not FAnimations.Finished );
+end;
+
+function TDRLGFXIO.AnimationsBlockingFinished : Boolean;
+begin
+  if DRL.State <> DSPlaying then Exit(True);
+  Exit( FAnimations.BlockingFinished );
 end;
 
 procedure TDRLGFXIO.AnimationWipe;

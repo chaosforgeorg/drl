@@ -81,8 +81,9 @@ type TDRLIO = class( TIO )
 
   procedure BloodSlideDown( aDelayTime : Word );
 
-  procedure WaitForAnimation; virtual;
+  procedure WaitForAnimation( aStrict : Boolean = True ); virtual;
   function AnimationsRunning : Boolean; virtual; abstract;
+  function AnimationsBlockingFinished : Boolean; virtual; abstract;
   procedure AnimationWipe; virtual; abstract;
   procedure Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0); virtual; abstract;
   procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ); virtual;
@@ -232,21 +233,36 @@ begin
 }
 end;
 
-procedure TDRLIO.WaitForAnimation;
+procedure TDRLIO.WaitForAnimation( aStrict : Boolean = True );
 var iTime : DWord;
 begin
   if FWaiting then Exit;
   if DRL.State <> DSPlaying then Exit;
   FWaiting := True;
   iTime := IO.Driver.GetMs;
-  while AnimationsRunning do
+  if aStrict then
   begin
-    IO.Delay(5);
-    if ( IO.Driver.GetMs - iTime ) > 2000 then
-      begin
-        Log(LOGWARN, 'Emergency animation break!' );
-        AnimationWipe;
-      end;
+    while AnimationsRunning do
+    begin
+      IO.Delay(5);
+      if ( IO.Driver.GetMs - iTime ) > 2000 then
+        begin
+          Log(LOGWARN, 'Emergency animation break!' );
+          AnimationWipe;
+        end;
+    end;
+  end
+  else
+  begin
+    while not AnimationsBlockingFinished do
+    begin
+      IO.Delay(5);
+      if ( IO.Driver.GetMs - iTime ) > 2000 then
+        begin
+          Log(LOGWARN, 'Emergency animation break!' );
+          AnimationWipe;
+        end;
+    end;
   end;
   FWaiting := False;
   DRL.Level.RevealBeings;

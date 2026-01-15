@@ -16,8 +16,9 @@ type TDRLTextIO = class( TDRLIO )
     destructor Destroy; override;
     procedure Update( aMSec : DWord ); override;
 
-    procedure WaitForAnimation; override;
+    procedure WaitForAnimation( aStrict : Boolean = True ); override;
     function AnimationsRunning : Boolean; override;
+    function AnimationsBlockingFinished : Boolean; override;
     procedure AnimationWipe; override;
     procedure Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0); override;
     procedure addMissileAnimation( aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aColor : Byte; aPic : Char; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False ); override;
@@ -102,16 +103,23 @@ begin
   VTIG_EventClear;
 end;
 
-procedure TDRLTextIO.WaitForAnimation;
+procedure TDRLTextIO.WaitForAnimation( aStrict : Boolean = True );
 begin
-  inherited WaitForAnimation;
-  FTextMap.ClearAnimations;
+  inherited WaitForAnimation( aStrict );
+  if aStrict then
+    FTextMap.ClearAnimations;
 end;
 
 function TDRLTextIO.AnimationsRunning : Boolean;
 begin
   if DRL.State <> DSPlaying then Exit(False);
   Exit( not FTextMap.AnimationsFinished );
+end;
+
+function TDRLTextIO.AnimationsBlockingFinished : Boolean;
+begin
+  if DRL.State <> DSPlaying then Exit(True);
+  Exit( FTextMap.AnimationsBlockingFinished );
 end;
 
 procedure TDRLTextIO.AnimationWipe;

@@ -1769,7 +1769,7 @@ begin
       ActionMove( aWhere, 1.0, 0 )
     else
       if IsPlayer
-        then IO.WaitForAnimation;
+        then IO.WaitForAnimation( False );
   end;
 end;
 

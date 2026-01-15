@@ -302,8 +302,9 @@ end;
 constructor TGFXFXAnimation.Create( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite );
 begin
   inherited Create( aDuration, aDelay, 0 );
-  FCoord  := aCoord;
-  FSprite := aSprite;
+  FCoord    := aCoord;
+  FSprite   := aSprite;
+  FBlocking := False;
 end;
 
 procedure TGFXFXAnimation.OnDraw;
@@ -361,6 +362,7 @@ begin
   inherited Create( 1, aDelay, 0 );
   FPosition := aPosition;
   FSoundID  := aSoundID;
+  FBlocking := False;
 end;
 
 procedure TSoundEventAnimation.OnStart;
@@ -374,6 +376,7 @@ constructor TGFXBlinkAnimation.Create( aDuration : DWord; aDelay : DWord; aColor
 begin
   inherited Create( aDuration, aDelay, 0 );
   FGColor   := NewColor( aColor );
+  FBlocking := False;
 end;
 
 procedure TGFXBlinkAnimation.OnDraw;
@@ -390,6 +393,7 @@ begin
   FLow      := aLow;
   FHigh     := aHigh;
   FDur      := aDuration;
+  FBlocking := False;
 end;
 
 procedure TRumbleEventAnimation.OnStart;
@@ -690,6 +694,7 @@ begin
   FFrequencyX := 0.05 + 0.8*Random;
   FFrequencyY := 0.05 + 0.8*Random;
   FDirection  := aDirection;
+  FBlocking   := False;
 end;
 
 class function TGFXScreenShakeAnimation.Update( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ) : Boolean;
