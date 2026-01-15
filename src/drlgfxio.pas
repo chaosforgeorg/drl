@@ -26,8 +26,9 @@ type
     procedure UpdateMinimap;
     destructor Destroy; override;
 
-    procedure WaitForAnimation; override;
+    procedure WaitForAnimation( aStrict : Boolean = True ); override;
     function AnimationsRunning : Boolean; override;
+    function AnimationsBlockingFinished : Boolean; override;
     procedure AnimationWipe; override;
     procedure Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0); override;
     procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ); override;
@@ -39,6 +40,7 @@ type
     procedure addKillAnimation( aDuration : DWord; aDelay : DWord; aBeing : TThing; aReverse : Boolean = False ); override;
     procedure addMissileAnimation( aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aColor : Byte; aPic : Char; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False ); override;
     procedure addMarkAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aColor : Byte; aPic : Char ); override;
+    procedure addFXAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite ); override;
     procedure addSoundAnimation( aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord ); override;
     procedure addRumbleAnimation( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord ); override;
     function getUIDPosition( aUID : TUID; var aPosition : TVec2i ) : Boolean;
@@ -415,16 +417,23 @@ begin
   inherited Destroy;
 end;
 
-procedure TDRLGFXIO.WaitForAnimation;
+procedure TDRLGFXIO.WaitForAnimation( aStrict : Boolean = True );
 begin
-  inherited WaitForAnimation;
-  FAnimations.Clear;
+  inherited WaitForAnimation( aStrict );
+  if aStrict then
+    FAnimations.Clear;
 end;
 
 function TDRLGFXIO.AnimationsRunning : Boolean;
 begin
   if DRL.State <> DSPlaying then Exit(False);
   Exit( not FAnimations.Finished );
+end;
+
+function TDRLGFXIO.AnimationsBlockingFinished : Boolean;
+begin
+  if DRL.State <> DSPlaying then Exit(True);
+  Exit( FAnimations.BlockingFinished );
 end;
 
 procedure TDRLGFXIO.AnimationWipe;
@@ -524,6 +533,13 @@ procedure TDRLGFXIO.addMarkAnimation(aDuration: DWord; aDelay: DWord;
 begin
   if DRL.State <> DSPlaying then Exit;
   FAnimations.addAnimation( TGFXMarkAnimation.Create(aDuration, aDelay, aCoord, aSprite ) )
+end;
+
+procedure TDRLGFXIO.addFXAnimation(aDuration: DWord; aDelay: DWord;
+  aCoord: TCoord2D; aSprite : TSprite);
+begin
+  if DRL.State <> DSPlaying then Exit;
+  FAnimations.addAnimation( TGFXFXAnimation.Create(aDuration, aDelay, aCoord, aSprite) )
 end;
 
 procedure TDRLGFXIO.addSoundAnimation(aDelay: DWord; aPosition: TCoord2D; aSoundID: DWord);

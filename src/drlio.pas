@@ -81,8 +81,9 @@ type TDRLIO = class( TIO )
 
   procedure BloodSlideDown( aDelayTime : Word );
 
-  procedure WaitForAnimation; virtual;
+  procedure WaitForAnimation( aStrict : Boolean = True ); virtual;
   function AnimationsRunning : Boolean; virtual; abstract;
+  function AnimationsBlockingFinished : Boolean; virtual; abstract;
   procedure AnimationWipe; virtual; abstract;
   procedure Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0); virtual; abstract;
   procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ); virtual;
@@ -95,6 +96,7 @@ type TDRLIO = class( TIO )
   procedure addKillAnimation( aDuration : DWord; aDelay : DWord; aBeing : TThing; aReverse : Boolean = False ); virtual;
   procedure addMissileAnimation( aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aColor : Byte; aPic : Char; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False ); virtual; abstract;
   procedure addMarkAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aColor : Byte; aPic : Char ); virtual; abstract;
+  procedure addFXAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite ); virtual;
   procedure addSoundAnimation( aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord ); virtual; abstract;
   procedure addRumbleAnimation( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord ); virtual;
   procedure Explosion( aDelay : Integer; aWhere : TCoord2D; aData : TExplosionData ); virtual;
@@ -231,21 +233,36 @@ begin
 }
 end;
 
-procedure TDRLIO.WaitForAnimation;
+procedure TDRLIO.WaitForAnimation( aStrict : Boolean = True );
 var iTime : DWord;
 begin
   if FWaiting then Exit;
   if DRL.State <> DSPlaying then Exit;
   FWaiting := True;
   iTime := IO.Driver.GetMs;
-  while AnimationsRunning do
+  if aStrict then
   begin
-    IO.Delay(5);
-    if ( IO.Driver.GetMs - iTime ) > 2000 then
-      begin
-        Log(LOGWARN, 'Emergency animation break!' );
-        AnimationWipe;
-      end;
+    while AnimationsRunning do
+    begin
+      IO.Delay(5);
+      if ( IO.Driver.GetMs - iTime ) > 2000 then
+        begin
+          Log(LOGWARN, 'Emergency animation break!' );
+          AnimationWipe;
+        end;
+    end;
+  end
+  else
+  begin
+    while not AnimationsBlockingFinished do
+    begin
+      IO.Delay(5);
+      if ( IO.Driver.GetMs - iTime ) > 2000 then
+        begin
+          Log(LOGWARN, 'Emergency animation break!' );
+          AnimationWipe;
+        end;
+    end;
   end;
   FWaiting := False;
   DRL.Level.RevealBeings;
@@ -287,6 +304,11 @@ begin
 end;
 
 procedure TDRLIO.addKillAnimation( aDuration : DWord; aDelay : DWord; aBeing : TThing; aReverse : Boolean = False );
+begin
+
+end;
+
+procedure TDRLIO.addFXAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite );
 begin
 
 end;

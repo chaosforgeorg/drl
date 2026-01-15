@@ -231,6 +231,7 @@ core.register_blueprint "being"
 	coscolor    = { false, core.TTABLE },
 	glow        = { false, core.TTABLE },
 	overlay     = { false, core.TTABLE },
+	melsprite   = { false, core.TANY },
 	sflags      = { false, core.TFLAGS, {} },
 	sframes     = { false, core.TNUMBER, 0 },
 	sftime      = { false, core.TNUMBER, FRAME_TIME },
@@ -589,6 +590,7 @@ core.register_blueprint "item"
 			miss_dist   = { false, core.TNUMBER, 0 },
 			hitsprite   = { false, core.TANY },
 			missprite   = { false, core.TANY },
+			melsprite   = { false, core.TANY },
 			scavenge    = { false, core.TARRAY(core.TIDIN("items")) },
 		},
 		[ITEMTYPE_LEVER] = {

@@ -50,6 +50,16 @@ private
   FCoord  : TCoord2D;
 end;
 
+{ TGFXFXAnimation }
+
+TGFXFXAnimation = class(TAnimation)
+  constructor Create( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite );
+  procedure OnDraw; override;
+private
+  FSprite : TSprite;
+  FCoord  : TCoord2D;
+end;
+
 { TGFXExplodeMarkAnimation }
 
 TGFXExplodeMarkAnimation = class(TAnimation)
@@ -287,6 +297,28 @@ begin
   SpriteMap.PushSpriteFX( FCoord, FSprite, FTime )
 end;
 
+{ TGFXFXAnimation }
+
+constructor TGFXFXAnimation.Create( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite );
+begin
+  inherited Create( aDuration, aDelay, 0 );
+  FCoord    := aCoord;
+  FSprite   := aSprite;
+  FBlocking := False;
+end;
+
+procedure TGFXFXAnimation.OnDraw;
+var iSprite  : TSprite;
+    iSegment : Integer;
+begin
+  iSprite  := FSprite;
+  iSegment := ( FTime * FSprite.Frames ) div FDuration;
+  if iSegment >= FSprite.Frames then iSegment := FSprite.Frames - 1;
+  iSprite.SpriteID[0] += iSegment * DRL_COLS;
+  iSprite.Frames      := 0;
+  SpriteMap.PushSpriteFX( FCoord, iSprite );
+end;
+
 { TGFXExplodeMarkAnimation }
 
 constructor TGFXExplodeMarkAnimation.Create( aDuration : DWord; aDelay : DWord; aCoord: TCoord2D; aColor: Byte );
@@ -330,6 +362,7 @@ begin
   inherited Create( 1, aDelay, 0 );
   FPosition := aPosition;
   FSoundID  := aSoundID;
+  FBlocking := False;
 end;
 
 procedure TSoundEventAnimation.OnStart;
@@ -343,6 +376,7 @@ constructor TGFXBlinkAnimation.Create( aDuration : DWord; aDelay : DWord; aColor
 begin
   inherited Create( aDuration, aDelay, 0 );
   FGColor   := NewColor( aColor );
+  FBlocking := False;
 end;
 
 procedure TGFXBlinkAnimation.OnDraw;
@@ -359,6 +393,7 @@ begin
   FLow      := aLow;
   FHigh     := aHigh;
   FDur      := aDuration;
+  FBlocking := False;
 end;
 
 procedure TRumbleEventAnimation.OnStart;
@@ -659,6 +694,7 @@ begin
   FFrequencyX := 0.05 + 0.8*Random;
   FFrequencyY := 0.05 + 0.8*Random;
   FDirection  := aDirection;
+  FBlocking   := False;
 end;
 
 class function TGFXScreenShakeAnimation.Update( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ) : Boolean;
