@@ -844,6 +844,21 @@ begin
   Result := 0;
 end;
 
+function lua_player_add_trait(L: Plua_State): Integer; cdecl;
+var State   : TDRLLuaState;
+    Being   : TBeing;
+    iTraitID : AnsiString;
+    iTrait   : Integer;
+begin
+  State.Init(L);
+  Being := State.ToObject(1) as TBeing;
+  if not (Being is TPlayer) then Exit(0);
+  iTraitID := State.ToString(2);
+  iTrait := LuaSystem.Get(['traits',iTraitID,'nid']);
+  Player.Traits.Upgrade( 0, iTrait );
+  Result := 0;
+end;
+
 function lua_player_get_trait(L: Plua_State): Integer; cdecl;
 var State   : TDRLLuaState;
     Being   : TBeing;
@@ -904,12 +919,13 @@ begin
   Result := 0;
 end;
 
-const lua_player_lib : array[0..15] of luaL_Reg = (
+const lua_player_lib : array[0..16] of luaL_Reg = (
       ( name : 'set_achievement'; func : @lua_player_set_achievement),
       ( name : 'store_inc_stat';  func : @lua_player_store_inc_stat),
       ( name : 'store_mark_stat'; func : @lua_player_store_mark_stat),
       ( name : 'add_exp';         func : @lua_player_add_exp),
       ( name : 'has_won';         func : @lua_player_has_won),
+      ( name : 'add_trait';       func : @lua_player_add_trait),
       ( name : 'get_trait';       func : @lua_player_get_trait),
       ( name : 'get_trait_hist';  func : @lua_player_get_trait_hist),
       ( name : 'resort_stacks';   func : @lua_player_resort_stacks),
