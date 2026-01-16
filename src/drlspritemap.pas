@@ -108,7 +108,7 @@ private
   procedure PushSprite( aPos : TVec2i; const aSprite : TSprite; aLight : Byte; aZ : Integer );
   procedure PushMultiSpriteTerrain( aCoord : TCoord2D; const aSprite : TSprite; aZ : Integer; aRotation : Byte );
   procedure PushSpriteTerrainPart( aCoord : TCoord2D; const aSprite : TSprite; aZ : Integer; aPart : TSpritePart = F );
-  function GetSprite( aSprite : TSprite; aTime : Integer = -1 ) : TSprite;
+  function GetSprite( aSprite : TSprite; aCoord : TCoord2D; aTime : Integer = -1 ) : TSprite;
   function GetSprite( aCell, aStyle : Byte ) : TSprite;
   procedure DrawMarker;
   function GetEmissive( aSprite : TSprite ) : TColor;
@@ -546,7 +546,7 @@ var iSprite   : TSprite;
     Rotated.y := Round( pY * cos( aRotation ) + pX * sin( aRotation ) + aPos.Y );
   end;
 begin
-  iSprite   := GetSprite( aSprite );
+  iSprite   := GetSprite( aSprite, ZeroCoord2D );
   iLayer    := FSpriteEngine.Layers[ iSprite.SpriteID[0] div 100000 ];
   iSpriteID := iSprite.SpriteID[0] mod 100000;
 
@@ -811,7 +811,7 @@ var iLight  : Byte;
     iSprite : TSprite;
     iZ      : DWord;
 begin
-  iSprite := GetSprite( aSprite );
+  iSprite := GetSprite( aSprite, aCoord );
   if aLight = -1 then
     iLight := VariableLight( aCoord )
   else
@@ -831,7 +831,7 @@ end;
 
 procedure TDRLSpriteMap.PushSpriteFX( aCoord : TCoord2D; const aSprite : TSprite; aTime : Integer = -1; aZOffset : Integer = 0 ) ;
 begin
-  PushSprite( Vec2i( (aCoord.X-1) * FSpriteEngine.Grid.X, (aCoord.Y-1) * FSpriteEngine.Grid.Y ), GetSprite( aSprite, aTime ), 255, DRL_Z_FX + aZOffset );
+  PushSprite( Vec2i( (aCoord.X-1) * FSpriteEngine.Grid.X, (aCoord.Y-1) * FSpriteEngine.Grid.Y ), GetSprite( aSprite, ZeroCoord2D, aTime ), 255, DRL_Z_FX + aZOffset );
 end;
 
 procedure TDRLSpriteMap.PushSpriteTerrain( aCoord : TCoord2D; const aSprite : TSprite; aZ : Integer; aTSX : Single; aTSY : Single ) ;
@@ -1098,12 +1098,12 @@ begin
             if SF_COSPLAY in iSpr.Flags then
             begin
               iColor     := iSpr.Color;
-              iSpr       := GetSprite( iCell.Deco[ iDeco ] );
+              iSpr       := GetSprite( iCell.Deco[ iDeco ], iCoord );
               iSpr.Color := iColor;
               Include( iSpr.Flags, SF_COSPLAY );
             end
             else
-              iSpr := GetSprite( iCell.Deco[ iDeco ] );
+              iSpr := GetSprite( iCell.Deco[ iDeco ], iCoord );
             PushSpriteTerrain( iCoord, iSpr, iZ + DRL_Z_ENVIRO + 1 );
           end;
         end;
@@ -1176,7 +1176,7 @@ begin
       if iVisible or DRL.Level.ItemExplored(iCoord, iItem) then
         if (iItem.AnimCount = 0) then
         begin
-          iSprite := GetSprite( iItem.Sprite );
+          iSprite := GetSprite( iItem.Sprite, iCoord );
           iOff := 0;
           if iItem.Appear > 0 then
           begin
@@ -1317,12 +1317,13 @@ begin
     else
       Result.SpriteID[0] += DRL_COLS * Result.Frames;
   end
-  else Exit( GetSprite( Result ) );
+  else Exit( GetSprite( Result, aBeing.Position ) );
 end;
 
-function TDRLSpriteMap.GetSprite( aSprite : TSprite; aTime : Integer = -1 ) : TSprite;
+function TDRLSpriteMap.GetSprite( aSprite : TSprite; aCoord : TCoord2D; aTime : Integer = -1 ) : TSprite;
 var iFrame : DWord;
     iTime  : DWord;
+    iSeed  : DWord;
 begin
   Result := aSprite;
   if ( Result.Frames > 0 ) and ( Result.FrameTime > 0 ) then
@@ -1331,6 +1332,12 @@ begin
       then iTime := aTime
       else iTime := FTimer;
     iFrame := ( ( iTime div Result.Frametime ) mod Result.Frames );
+    // Randomize start frame based on position if SF_RANDFRAME is set
+    if ( SF_RANDFRAME in Result.Flags ) and ( aCoord <> ZeroCoord2D ) then
+    begin
+      iSeed := ( aCoord.X * 73856093 ) xor ( aCoord.Y * 19349663 );
+      iFrame := ( iFrame + iSeed ) mod Result.Frames;
+    end;
     if SF_LARGE in Result.Flags then
       Result.SpriteID[0] += DRL_COLS * 2 * iFrame
     else
