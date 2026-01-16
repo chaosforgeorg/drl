@@ -518,6 +518,7 @@ begin
   SetValue('VERSION_STRING', VERSION_STRING);
   SetValue('VERSION_BETA',   VERSION_BETA);
   SetValue('GRAPHICSVERSION',GraphicsVersion);
+  SetValue('GODMODE',        GodMode);
 
   for Count := 0 to 15 do SetValue(ColorNames[Count],Count);
   TDRLIO.RegisterLuaAPI( State );
