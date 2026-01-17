@@ -1332,11 +1332,10 @@ begin
       then iTime := aTime
       else iTime := FTimer;
     iFrame := ( ( iTime div Result.Frametime ) mod Result.Frames );
-    // Randomize start frame based on position if SF_RANDFRAME is set
     if ( SF_RANDFRAME in Result.Flags ) and ( aCoord <> ZeroCoord2D ) then
     begin
-      iSeed := ( aCoord.X * 73856093 ) xor ( aCoord.Y * 19349663 );
-      iFrame := ( iFrame + iSeed ) mod Result.Frames;
+      iSeed := DWord( QWord(aCoord.X) * 73856093 ) xor DWord( QWord(aCoord.Y) * 19349663 );
+      iFrame := ( iFrame + ( iSeed mod DWord(Result.Frames) ) ) mod Result.Frames;
     end;
     if SF_LARGE in Result.Flags then
       Result.SpriteID[0] += DRL_COLS * 2 * iFrame
