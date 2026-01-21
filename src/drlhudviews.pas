@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlhudviews;
 interface
 uses vutil, viotypes, vgenerics, vcolor, vioevent, vrltools,
-     dfdata, dfitem, drlkeybindings;
+     dfdata, dfitem, drlkeybindings, drlhooks;
 
 type TLookModeView = class( TIOLayer )
   constructor Create;
@@ -537,9 +537,8 @@ begin
     if Slot[ efWeapon ]  <> nil then
     begin
       FArray.Push( Slot[ efWeapon ] );
-      if Slot[ efWeapon ].Flags[ IF_CURSED ] then
+      if not Slot[ efWeapon ].CallHookCheck( Hook_OnUnequipCheck, [ Player, False ] ) then
       begin
-        IO.Msg('You can''t!');
         FFinished := True;
         Exit;
       end;

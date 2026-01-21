@@ -122,9 +122,9 @@ const
   AnimationSpeedAttack = 100;
 
 type
-    TItemType       = ( ItemType_None, ItemType_Ranged, ItemType_NRanged, ItemType_URanged, ItemType_Armor, ItemType_Melee, ItemType_Ammo, ItemType_Pack, ItemType_Power, ItemType_Boots, ItemType_Tele, ItemType_Lever, ItemType_Feature, ItemType_AmmoPack );
+    TItemType       = ( ItemType_None, ItemType_Ranged, ItemType_NRanged, ItemType_URanged, ItemType_Armor, ItemType_Melee, ItemType_Ammo, ItemType_Pack, ItemType_Power, ItemType_Boots, ItemType_Tele, ItemType_Lever, ItemType_Feature, ItemType_AmmoPack, ItemType_Relic );
     TBodyTarget     = ( Target_Internal, Target_Torso, Target_Feet );
-    TEqSlot         = ( efTorso, efWeapon, efBoots, efWeapon2 );
+    TEqSlot         = ( efTorso, efWeapon, efBoots, efWeapon2, efRelic );
     TStatusEffect   = ( StatusNormal, StatusInvert, StatusRed, StatusGreen, StatusBlue, StatusCyan, StatusMagenta, StatusYellow, StatusGray, StatusWhite );
     TDamageType     = ( Damage_Bullet, Damage_Melee, Damage_Pierce, Damage_Sharpnel, Damage_Acid, Damage_Fire, Damage_Cold, Damage_Poison, Damage_Plasma, Damage_SPlasma, Damage_IgnoreArmor );
     TExplosionFlag  = ( efSelfHalf, efSelfKnockback, efSelfSafe, efAfterBlink, efChain, efRandomContent, efNoDistanceDrop, efAlwaysVisible );

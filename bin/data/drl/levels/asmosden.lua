@@ -83,10 +83,14 @@ register_level "the_asmos_den"
 			level    = 200,
 			weight   = 0,
 			desc     = "The material glows a vibrant red. What's the worst that could happen?",
-			flags    = { IF_UNIQUE, IF_CURSED, IF_NODURABILITY },
+			flags    = { IF_UNIQUE, IF_NODURABILITY },
 
 			type       = ITEMTYPE_ARMOR,
 			armor      = 0,
+
+			OnCreate = function(self)
+				self:add_perk( "perk_cursed" )
+			end,
 
 			OnEquip = function(self, being)
 				if not being.flags[ BF_INV ] then

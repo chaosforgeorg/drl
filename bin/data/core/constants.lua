@@ -116,7 +116,6 @@ BF_NOBLEED      = 58;
 IF_UNIQUE         = 21;
 IF_EXOTIC         = 22;
 IF_MODIFIED       = 23;
-IF_CURSED         = 24;
 IF_HIGHLIGHT      = 25;
 IF_RAYGUN         = 26;
 IF_GLOBE          = 27;

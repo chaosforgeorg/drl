@@ -588,7 +588,7 @@ function drl.register_assemblies()
 			item.pp_recharge.amount = 1
 			item.pp_recharge.delay  = 5
 			item.flags[ IF_NODESTROY ] = true
-			item.flags[ IF_CURSED ]    = true
+			item:add_perk( "perk_cursed" )
 		end,
 
 		Match = function (item)
@@ -732,7 +732,7 @@ function drl.register_assemblies()
 			item.armor      = item.__proto.armor + 4
 			item.flags[ IF_NODURABILITY ] = true
 			item.flags[ IF_NODESTROY ]    = true
-			item.flags[ IF_CURSED ]       = true
+			item:add_perk( "perk_cursed" )
 		end,
 	}
 

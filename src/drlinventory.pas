@@ -245,7 +245,7 @@ begin
   if aItem.Hooks[ Hook_OnEquipCheck ] then
     if not aItem.CallHookCheck( Hook_OnEquipCheck,[FOwner] ) then Exit( False );
   iItem := FSlots[aItem.eqSlot];
-  if (iItem <> nil) and iItem.Flags[ IF_CURSED ] then begin IO.Msg('You can''t, your '+iItem.Name+' is cursed!'); Exit( False ); end;
+  if (iItem <> nil) and ( not iItem.CallHookCheck( Hook_OnUnequipCheck, [FOwner, False] ) ) then Exit( False );
   IO.Msg('You wear/wield : '+aItem.GetName(false));
   Wear( aItem );
   Exit( True );
@@ -258,7 +258,7 @@ begin
   if aItem.Hooks[ Hook_OnEquipCheck ] then
     if not aItem.CallHookCheck( Hook_OnEquipCheck,[FOwner] ) then Exit( False );
   iItem := FSlots[aSlot];
-  if (iItem <> nil) and iItem.Flags[ IF_CURSED ] then begin IO.Msg('You can''t, your '+iItem.Name+' is cursed!'); Exit( False ); end;
+  if (iItem <> nil) and ( not iItem.CallHookCheck( Hook_OnUnequipCheck, [FOwner, False] ) ) then Exit( False );
   IO.Msg('You wear/wield : '+aItem.GetName(false));
   setSlot( aSlot, aItem );
   Exit( True );

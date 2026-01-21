@@ -206,6 +206,7 @@ core.register_blueprint "perk"
 	OnDieCheck     = { false, core.TFUNC },
 	OnCanMaxDamage = { false, core.TFUNC },
 	OnReceiveDamage= { false, core.TFUNC },
+	OnUnequipCheck = { false, core.TFUNC },
 }
 
 core.register_blueprint "ai"
@@ -471,6 +472,13 @@ core.register_blueprint "item"
 		},
 		[ITEMTYPE_POWER]   = {
 			ascii    = { false, core.TSTRING, "^" },
+			slevel   = { false, core.TNUMBER },
+			OnPickup = { true, core.TFUNC },
+			OnEnter  = { false, core.TFUNC },
+		},
+		[ITEMTYPE_RELIC]   = {
+			ascii    = { false, core.TSTRING, "^" },
+			desc     = { false, core.TSTRING },
 			slevel   = { false, core.TNUMBER },
 			OnPickup = { true, core.TFUNC },
 			OnEnter  = { false, core.TFUNC },

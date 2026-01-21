@@ -611,7 +611,7 @@ begin
   if Inv.Slot[ efWeapon ] <> nil then
   begin
     if Inv.Slot[ efWeapon ].ID = aWeaponID then Exit( Fail( 'You already have %s in your hands.', [ Inv.Slot[ efWeapon ].GetName(true) ] ) );
-    if Inv.Slot[ efWeapon ].Flags[ IF_CURSED ] then Exit( Fail( 'You can''t!', [] ) );
+    if not Inv.Slot[ efWeapon ].CallHookCheck( Hook_OnUnequipCheck, [ Self, False ] ) then Exit( False );
   end;
 
   if Inv.Slot[ efWeapon2 ] <> nil then
@@ -644,7 +644,7 @@ end;
 
 function TBeing.ActionSwapWeapon : boolean;
 begin
-  if ( Inv.Slot[ efWeapon ] <> nil ) and Inv.Slot[ efWeapon ].Flags[ IF_CURSED ] then Exit( False );
+  if ( Inv.Slot[ efWeapon ] <> nil ) and ( not Inv.Slot[ efWeapon ].CallHookCheck( Hook_OnUnequipCheck, [ Self, True ] ) ) then Exit( False );
   if ( Inv.Slot[ efWeapon2 ] <> nil ) and ( Inv.Slot[ efWeapon2 ].isAmmoPack )   then Exit( False );
 
   Inv.EqSwap( efWeapon, efWeapon2 );
@@ -763,7 +763,7 @@ var iWeapon : Boolean;
     iItem   : TItem;
 begin
   iItem := FInv.Slot[aSlot];
-  if (iItem = nil) or iItem.Flags[ IF_CURSED ] then
+  if (iItem = nil) or ( not iItem.CallHookCheck( Hook_OnUnequipCheck, [ Self, True ] ) ) then
     Exit( False );
   iWeapon := iItem.isEqWeapon;
   FInv.setSlot( aSlot, nil );

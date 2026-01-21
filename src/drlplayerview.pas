@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlplayerview;
 interface
 uses viotypes, vgenerics, vtigstyle,
-     dfitem, dfdata,
+     dfitem, dfdata, drlhooks,
      drlio, drltraits, drlconfirmview;
 
 type TPlayerViewState = (
@@ -460,14 +460,19 @@ var iEntry            : TItemViewEntry;
     iCount            : Integer;
     iRes              : TResistance;
     iName             : Ansistring;
-  function Cursed : Boolean;
+  function CannotUnequip : Boolean;
+  var iSavedState : TPlayerViewState;
   begin
-    if ( FEq[iSelected].Item <> nil ) and FEq[iSelected].Item.Flags[ IF_CURSED ] then
+    if ( FEq[iSelected].Item <> nil ) then
     begin
+      iSavedState := FState;
       FState := PLAYERVIEW_CLOSING;
-      IO.Msg('You can''t, it''s cursed!');
-      FState := PLAYERVIEW_DONE;
-      Exit( True );
+      if not FEq[iSelected].Item.CallHookCheck( Hook_OnUnequipCheck, [ Player, False ] ) then
+      begin
+        FState := PLAYERVIEW_DONE;
+        Exit( True );
+      end;
+      FState := iSavedState;
     end;
     Exit( False );
   end;
@@ -584,14 +589,14 @@ begin
             FState := PLAYERVIEW_DONE;
             Exit;
           end;
-          if Cursed then Exit;
+          if CannotUnequip then Exit;
           FState := PLAYERVIEW_CLOSING;
           DRL.HandleCommand( TCommand.Create( COMMAND_DROP, FEq[iSelected].Item ) );
           FState := PLAYERVIEW_DONE;
         end
         else
         begin
-          if Cursed then Exit;
+          if CannotUnequip then Exit;
           FState := PLAYERVIEW_CLOSING;
           DRL.HandleCommand( TCommand.Create( COMMAND_TAKEOFF, nil, TEqSlot(iSelected) ) );
           FState := PLAYERVIEW_DONE;
@@ -606,7 +611,7 @@ begin
     else
     if VTIG_Event( VTIG_IE_TAB ) then
     begin
-      if Cursed then Exit;
+      if CannotUnequip then Exit;
       InitSwapMode( TEqSlot(iSelected) );
       Exit;
     end
@@ -615,7 +620,7 @@ begin
     begin
       if VTIG_Event( VTIG_IE_BACKSPACE ) then
       begin
-        if Cursed then Exit;
+        if CannotUnequip then Exit;
         FState := PLAYERVIEW_CLOSING;
         DRL.HandleCommand( TCommand.Create( COMMAND_DROP, FEq[iSelected].Item, VTIG_Event( VTIG_IE_SHIFT ) or IO.GetPadRTrigger ) );
         FState := PLAYERVIEW_DONE;
@@ -1090,9 +1095,8 @@ end;
 
 procedure TNoRoomConfirmView.OnConfirm;
 begin
-  if FItem.Flags[ IF_CURSED ]
-    then IO.Msg('You can''t, it''s cursed!')
-    else DRL.HandleCommand( TCommand.Create( COMMAND_DROP, FItem ) );
+  if FItem.CallHookCheck( Hook_OnUnequipCheck, [ Player, False ] )
+    then DRL.HandleCommand( TCommand.Create( COMMAND_DROP, FItem ) );
 end;
 
 
