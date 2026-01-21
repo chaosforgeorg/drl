@@ -228,7 +228,7 @@ function register_master_badge( id )
 			set   = id,
 			klass = b.klass,
 			condition = function()
-				return player:get_trait( traits[b.mid].nid ) > 0 and check_condition( b.platinum )
+				return player:has_trait( b.mid ) and check_condition( b.platinum )
 			end
 		}
 		register_badge ( id.."_5" )
@@ -239,7 +239,7 @@ function register_master_badge( id )
 			set   = id,
 			klass = b.klass,
 			condition = function()
-				return player:get_trait( traits[b.mid].nid ) > 0 and check_condition( b.diamond )
+				return player:has_trait( b.mid ) and check_condition( b.diamond )
 			end
 		}
 	end

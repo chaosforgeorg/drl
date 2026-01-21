@@ -143,7 +143,7 @@ function drl.register_unique_items()
 		OnKill = function ( self, being, target )
 			if not being then return end
 			if being:is_player() then
-				if player:get_trait( traits["blademaster"].nid ) > 0 then return end
+				if player:has_trait( "blademaster" ) then return end
 				ui.msg("Next!")
 			end
 			being.scount = 5001

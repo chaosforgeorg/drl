@@ -227,7 +227,7 @@ register_level "unholy_cathedral"
 				player:add_badge("death3")
 				if DIFFICULTY >= DIFF_NIGHTMARE then
 					player:add_badge("death4")
-					if player:get_trait( traits["brute"].nid ) == 0 then player:add_badge("death5") end
+					if not player:has_trait( "brute" ) then player:add_badge("death5") end
 				end
 			end
 		end

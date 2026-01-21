@@ -1031,8 +1031,8 @@ function drl.register_challenges()
 		OnMortem = function ()
 			if player:has_won() then
 				player:add_badge("masochism3")
-				if DIFFICULTY >= DIFF_HARD and player:get_trait( traits["badass"].nid ) == 0 then player:add_badge("masochism4") end
-				if DIFFICULTY >= DIFF_NIGHTMARE and player:get_trait( traits["badass"].nid ) + player:get_trait( traits["ironman"].nid ) == 0 then player:add_badge("masochism5") end
+				if DIFFICULTY >= DIFF_HARD and not player:has_trait( "badass" ) then player:add_badge("masochism4") end
+				if DIFFICULTY >= DIFF_NIGHTMARE and not player:has_trait( "badass" ) and not player:has_trait( "ironman" ) then player:add_badge("masochism5") end
 				if ARCHANGEL and DIFFICULTY >= DIFF_NIGHTMARE then player:add_badge("masochism6") end
 			end
 		end,

@@ -760,12 +760,12 @@ begin
 end;
 
 function lua_player_choose_trait(L: Plua_State): Integer; cdecl;
-var State   : TDRLLuaState;
-    Being   : TBeing;
+var iState : TDRLLuaState;
+    iBeing : TBeing;
 begin
-  State.Init(L);
-  Being := State.ToObject(1) as TBeing;
-  if not (Being is TPlayer) then Exit(0);
+  iState.Init(L);
+  iBeing := iState.ToObject(1) as TBeing;
+  if not (iBeing is TPlayer) then Exit(0);
   Player.doUpgradeTrait();
   Result := 0;
 end;
@@ -845,39 +845,48 @@ begin
 end;
 
 function lua_player_add_trait(L: Plua_State): Integer; cdecl;
-var State   : TDRLLuaState;
-    Being   : TBeing;
-    iTraitID : AnsiString;
-    iTrait   : Integer;
+var iState : TDRLLuaState;
+    iBeing : TBeing;
+    iTrait : DWord;
 begin
-  State.Init(L);
-  Being := State.ToObject(1) as TBeing;
-  if not (Being is TPlayer) then Exit(0);
-  iTraitID := State.ToString(2);
-  iTrait := LuaSystem.Get(['traits',iTraitID,'nid']);
+  iState.Init(L);
+  iBeing := iState.ToObject(1) as TBeing;
+  if not (iBeing is TPlayer) then Exit(0);
+  iTrait := iState.ToID(2);
   Player.Traits.Upgrade( 0, iTrait );
   Result := 0;
 end;
 
 function lua_player_get_trait(L: Plua_State): Integer; cdecl;
-var State   : TDRLLuaState;
-    Being   : TBeing;
+var iState : TDRLLuaState;
+    iBeing : TBeing;
 begin
-  State.Init(L);
-  Being := State.ToObject(1) as TBeing;
-  if not (Being is TPlayer) then Exit(0);
-  State.Push( Player.Traits[ State.ToInteger( 2 ) ] );
+  iState.Init(L);
+  iBeing := iState.ToObject(1) as TBeing;
+  if not (iBeing is TPlayer) then Exit(0);
+  iState.Push( Player.Traits[ iState.ToID( 2 ) ] );
+  Result := 1;
+end;
+
+function lua_player_has_trait(L: Plua_State): Integer; cdecl;
+var iState : TDRLLuaState;
+    iBeing : TBeing;
+begin
+  iState.Init(L);
+  iBeing := iState.ToObject(1) as TBeing;
+  if not (iBeing is TPlayer) then Exit(0);
+  iState.Push( Player.Traits[ iState.ToID( 2 ) ] > 0 );
   Result := 1;
 end;
 
 function lua_player_get_trait_hist(L: Plua_State): Integer; cdecl;
-var State   : TDRLLuaState;
-    Being   : TBeing;
+var iState : TDRLLuaState;
+    iBeing : TBeing;
 begin
-  State.Init(L);
-  Being := State.ToObject(1) as TBeing;
-  if not (Being is TPlayer) then Exit(0);
-  State.Push( Player.Traits.GetHistory );
+  iState.Init(L);
+  iBeing := iState.ToObject(1) as TBeing;
+  if not (iBeing is TPlayer) then Exit(0);
+  iState.Push( Player.Traits.GetHistory );
   Result := 1;
 end;
 
@@ -919,7 +928,7 @@ begin
   Result := 0;
 end;
 
-const lua_player_lib : array[0..16] of luaL_Reg = (
+const lua_player_lib : array[0..17] of luaL_Reg = (
       ( name : 'set_achievement'; func : @lua_player_set_achievement),
       ( name : 'store_inc_stat';  func : @lua_player_store_inc_stat),
       ( name : 'store_mark_stat'; func : @lua_player_store_mark_stat),
@@ -927,6 +936,7 @@ const lua_player_lib : array[0..16] of luaL_Reg = (
       ( name : 'has_won';         func : @lua_player_has_won),
       ( name : 'add_trait';       func : @lua_player_add_trait),
       ( name : 'get_trait';       func : @lua_player_get_trait),
+      ( name : 'has_trait';       func : @lua_player_has_trait),
       ( name : 'get_trait_hist';  func : @lua_player_get_trait_hist),
       ( name : 'resort_stacks';   func : @lua_player_resort_stacks),
       ( name : 'win';             func : @lua_player_win),
