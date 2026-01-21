@@ -528,6 +528,7 @@ end;
 
 destructor  TItem.Destroy;
 begin
+  Detach;
   inherited Destroy;
 end;
 

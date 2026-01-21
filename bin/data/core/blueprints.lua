@@ -192,7 +192,6 @@ core.register_blueprint "perk"
 	OnReload       = { false, core.TFUNC },
 	OnAltFire      = { false, core.TFUNC },
 	OnAltReload    = { false, core.TFUNC },
-	OnEquip        = { false, core.TFUNC },
 	OnEquipTick    = { false, core.TFUNC },
 	OnEquipCheck   = { false, core.TFUNC },
 	OnKill         = { false, core.TFUNC },
@@ -207,6 +206,8 @@ core.register_blueprint "perk"
 	OnCanMaxDamage = { false, core.TFUNC },
 	OnReceiveDamage= { false, core.TFUNC },
 	OnUnequipCheck = { false, core.TFUNC },
+	OnEquip        = { false, core.TFUNC },
+	OnUnequip      = { false, core.TFUNC },
 }
 
 core.register_blueprint "ai"
