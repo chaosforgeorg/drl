@@ -205,6 +205,7 @@ var
   ModuleOption_MeleeMoveOnKill           : Boolean = False;
   ModuleOption_FullBeingDescription      : Boolean = False;
   ModuleOption_PercentHealth             : Boolean = False;
+  ModuleOption_RelicSlot                 : Boolean = False;
   ModuleOption_DefaultExplosionKnockback : Integer = 8;
 
 var
@@ -293,7 +294,8 @@ const ItemEqFilters : array[TEqSlot] of TItemTypeSet = (
                        [ItemType_Armor],
                        [ItemType_Melee,ItemType_Ranged,ItemType_NRanged],
                        [ItemType_Boots],
-                       [ItemType_Melee,ItemType_Ranged,ItemType_AmmoPack]
+                       [ItemType_Melee,ItemType_Ranged,ItemType_AmmoPack],
+                       [ItemType_Relic]
                       );
 const ItemsAll      : TItemTypeSet = [Low(TItemType)..High(TItemType)];
 
@@ -505,6 +507,7 @@ begin
     efWeapon  : Exit('[ Weapon     ]');
     efBoots   : Exit('[ Boots      ]');
     efWeapon2 : Exit('[ Prepared   ]');
+    efRelic   : Exit('[ Relic      ]');
   end;
 end;
 

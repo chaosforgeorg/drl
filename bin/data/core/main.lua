@@ -21,6 +21,7 @@ core.options = {
 	full_being_description = false,
 	percent_health = true,
 	assembly_apply_last_mod = false,
+	relic_slot = false,
 }
 
 module = false
@@ -609,6 +610,7 @@ core.type_name = {
 	[ITEMTYPE_BOOTS]   = "boots",
 	[ITEMTYPE_TELE]    = "teleporter",
 	[ITEMTYPE_LEVER]   = "lever",
+	[ITEMTYPE_RELIC]   = "relic",
 }
 
 function core.being_plural( id, amount )

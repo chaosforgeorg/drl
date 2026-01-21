@@ -775,6 +775,8 @@ begin
   FEq.Clear;
 
   for iSlot := Low(TEqSlot) to High(TEqSlot) do
+  begin
+    if (iSlot = efRelic) and (not ModuleOption_RelicSlot) then Continue;
     if Player.Inv.Slot[iSlot] <> nil
       then PushItem( Player.Inv.Slot[iSlot], FEq )
       else
@@ -788,6 +790,7 @@ begin
           iEntry.QSlot := 0;
           FEq.Push( iEntry );
         end;
+  end;
 
   ReadQuickSlots;
 end;

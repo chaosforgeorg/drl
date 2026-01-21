@@ -153,9 +153,10 @@ function mortem.print_traits()
 end
 
 function mortem.print_equipment()
-	local slot_name = { "[ Armor      ]", "[ Weapon     ]", "[ Boots      ]", "[ Prepared   ]" }
+	local slot_name = { "[ Armor      ]", "[ Weapon     ]", "[ Boots      ]", "[ Prepared   ]", "[ Relic      ]" }
+	local eq_size = core.options.relic_slot and MAX_EQ_SIZE or (MAX_EQ_SIZE - 1)
 
-	for i = 0,MAX_EQ_SIZE-1 do
+	for i = 0,eq_size-1 do
 		local it = player.eq[i]
 		if it then
 			player:mortem_print( "    "..slot_name[i+1].."   {!"..it.desc.."}" )

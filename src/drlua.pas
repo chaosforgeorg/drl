@@ -397,7 +397,7 @@ begin
   ModuleOption_MeleeMoveOnKill      := LuaSystem.Get( ['core','options','melee_move_on_kill'], False );
   ModuleOption_FullBeingDescription := LuaSystem.Get( ['core','options','full_being_description'], False );
   ModuleOption_PercentHealth        := LuaSystem.Get( ['core','options','percent_health'], False );
-
+  ModuleOption_RelicSlot            := LuaSystem.Get( ['core','options','relic_slot'], False );
 
   if ModdedGame then Log( LOGINFO, 'Game is modded.');
 end;

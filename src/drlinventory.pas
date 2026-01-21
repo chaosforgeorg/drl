@@ -305,6 +305,7 @@ begin
   begin
     if FSlots[ efTorso ] <> nil then if FSlots[ efTorso ].CallHook( aHook, aParams ) then CallHook := True;
     if FSlots[ efBoots ] <> nil then if FSlots[ efBoots ].CallHook( aHook, aParams ) then CallHook := True;
+    if FSlots[ efRelic ] <> nil then if FSlots[ efRelic ].CallHook( aHook, aParams ) then CallHook := True;
   end;
 end;
 
@@ -313,6 +314,7 @@ begin
   GetBonus := 0;
   if FSlots[ efTorso ] <> nil then GetBonus += FSlots[ efTorso ].GetBonus( aHook, aParams );
   if FSlots[ efBoots ] <> nil then GetBonus += FSlots[ efBoots ].GetBonus( aHook, aParams );
+  if FSlots[ efRelic ] <> nil then GetBonus += FSlots[ efRelic ].GetBonus( aHook, aParams );
 end;
 
 function TInventory.GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single;
@@ -320,6 +322,7 @@ begin
   GetBonusMul := 1.0;
   if FSlots[ efTorso ] <> nil then GetBonusMul *= FSlots[ efTorso ].GetBonusMul( aHook, aParams );
   if FSlots[ efBoots ] <> nil then GetBonusMul *= FSlots[ efBoots ].GetBonusMul( aHook, aParams );
+  if FSlots[ efRelic ] <> nil then GetBonusMul *= FSlots[ efRelic ].GetBonusMul( aHook, aParams );
 end;
 
 end.
