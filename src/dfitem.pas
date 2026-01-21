@@ -528,6 +528,7 @@ end;
 
 destructor  TItem.Destroy;
 begin
+  // This is needed to be able to call OnUnequip before TThing perks are destroyed
   Detach;
   inherited Destroy;
 end;
