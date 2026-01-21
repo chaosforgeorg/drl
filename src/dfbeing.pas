@@ -927,7 +927,7 @@ begin
   if iItem = nil            then Exit( Fail( 'But there is nothing here!', [] ) );
   if not iItem.isPickupable then Exit( Fail( 'But there is nothing here to pick up!', [] ) );
 
-  if iItem.isPower then
+  if iItem.isPower or iItem.isRelic then
   begin
     if iItem.CallHookCheck(Hook_OnPickupCheck,[Self]) then
     begin

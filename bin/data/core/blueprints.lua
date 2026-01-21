@@ -477,11 +477,13 @@ core.register_blueprint "item"
 			OnEnter  = { false, core.TFUNC },
 		},
 		[ITEMTYPE_RELIC]   = {
-			ascii    = { false, core.TSTRING, "^" },
-			desc     = { false, core.TSTRING },
-			slevel   = { false, core.TNUMBER },
-			OnPickup = { true, core.TFUNC },
-			OnEnter  = { false, core.TFUNC },
+			ascii         = { false, core.TSTRING, "^" },
+			desc          = { false, core.TSTRING },
+			perk_id       = { false, core.TIDIN("perks") },
+			OnPickup      = { false, core.TFUNC },
+			OnPickupCheck = { false, core.TFUNC },
+			OnUnequipCheck= { false, core.TFUNC },
+			OnEnter       = { false, core.TFUNC },
 		},
 		[ITEMTYPE_AMMO]   = {
 			ascii   = { false, core.TSTRING, "|" },

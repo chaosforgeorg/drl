@@ -32,6 +32,7 @@ TItem  = class( TThing )
     function    ResistDescriptionShort : AnsiString;
     function    GetAltFireName : AnsiString;
     function    GetAltReloadName : AnsiString;
+    function    GetFirstPerkDescription : AnsiString;
     destructor  Destroy; override;
     function    eqSlot : TEqSlot;
     function    isStackable : Boolean;
@@ -42,6 +43,7 @@ TItem  = class( TThing )
     function    isEqWeapon : Boolean;
     function    isTele : Boolean;
     function    isLever : Boolean;
+    function    isRelic : Boolean;
     function    isPower : Boolean;
     function    isPack : Boolean;
     function    isUsable : Boolean;
@@ -410,9 +412,23 @@ begin
   end;
 end;
 
+function TItem.GetFirstPerkDescription : AnsiString;
+var iPerks : TPerkList;
+    i      : Integer;
+begin
+  GetFirstPerkDescription := '';
+  if FPerks <> nil then
+  begin
+    iPerks := FPerks.List;
+    if iPerks.Size = 0 then Exit('');
+    Exit( PerkData[ iPerks[0].ID ].Desc );
+  end;
+end;
+
 function TItem.DescriptionBox( aShort : Boolean = False ): Ansistring;
 begin
   DescriptionBox := '';
+  if FProps.IType = ITEMTYPE_RELIC then Exit( GetFirstPerkDescription );
   case FProps.IType of
     ITEMTYPE_ARMOR, ITEMTYPE_BOOTS : DescriptionBox :=
       'Durability  : {!'+IntToStr(FProps.MaxDurability)+'}'#10+
@@ -560,6 +576,11 @@ begin
   Exit(FProps.IType = ITEMTYPE_POWER);
 end;
 
+function TItem.isRelic : boolean;
+begin
+  Exit(FProps.IType = ITEMTYPE_RELIC);
+end;
+
 function TItem.isPack : boolean;
 begin
   Exit(FProps.IType = ITEMTYPE_PACK);
@@ -582,7 +603,7 @@ end;
 
 function TItem.isWearable : boolean;
 begin
-  Exit(FProps.IType in [ITEMTYPE_RANGED,ITEMTYPE_NRANGED,ITEMTYPE_ARMOR,ITEMTYPE_MELEE,ITEMTYPE_BOOTS,ITEMTYPE_AMMOPACK]);
+  Exit(FProps.IType in [ITEMTYPE_RANGED,ITEMTYPE_NRANGED,ITEMTYPE_ARMOR,ITEMTYPE_MELEE,ITEMTYPE_BOOTS,ITEMTYPE_AMMOPACK,ITEMTYPE_RELIC]);
 end;
 
 function TItem.isPickupable : Boolean;

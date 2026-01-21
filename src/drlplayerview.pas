@@ -282,7 +282,7 @@ end;
 function TPlayerView.MarkQSlot( aItem : TItem; aValue : Byte ) : Boolean;
 var i : Integer;
 begin
-  if aItem.isWearable then
+  if aItem.isWearable and ( not aItem.isRelic ) then
   begin
     if Player.FQuickSlots[ aValue ].UID = aItem.UID
       then Player.FQuickSlots[ aValue ].UID := 0
