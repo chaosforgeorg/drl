@@ -228,6 +228,22 @@ function level:roll_item( params )
 	return self:roll_item_list( self:get_item_table( params.level, weights, reqs ) )
 end
 
+function level:roll_items( params )
+	local params = params or {}
+	params.weights = params.weights or {}
+	local result = {}
+	local count  = params.count or 1
+	for i=1,count do
+		local id = self:roll_item( params )
+		if id then
+			params.weights[ id ] = 0
+			table.insert( result, id )
+		end
+	end
+	return result
+end
+
+
 function level:summon(t,opt)
 	local count  = 1
 	local where  = nil
