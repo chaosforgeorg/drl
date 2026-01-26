@@ -1850,12 +1850,13 @@ begin
   // Last kill
   iToHit := getToHit( iWeapon, False, True ) - aTarget.GetBonus( Hook_getDefenceBonus, [True] );
 
-  if Roll( 12 + iToHit ) < 0 then
-  begin
-    if IsPlayer then iResult := ' miss ' else iResult := ' misses ';
-    if isVisible then IO.Msg( Capitalized(iName) + iResult + iDefenderName + '.' );
-    iMissed := True;
-  end;
+  if ( iWeapon = nil ) or ( not iWeapon.Flags[ IF_AUTOHIT ] ) then
+    if Roll( 12 + iToHit ) < 0 then
+    begin
+      if IsPlayer then iResult := ' miss ' else iResult := ' misses ';
+      if isVisible then IO.Msg( Capitalized(iName) + iResult + iDefenderName + '.' );
+      iMissed := True;
+    end;
 
   if not iMissed then
   begin
