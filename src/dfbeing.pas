@@ -2134,6 +2134,7 @@ var iDirection  : TDirection;
     iSource     : TCoord2D;
     iCoord      : TCoord2D;
     iColor      : Byte;
+    iBaseToHit  : Integer;
     iToHit      : Integer;
     iDamage     : Integer;
     iBeing      : TBeing;
@@ -2197,8 +2198,8 @@ begin
 
   iMaxRange := 30; //aGun.MaxRange
 
-  iToHit := getToHit( aItem, aAltFire, False );
-  if aItem.Flags[ IF_SPREAD ] then iToHit += 10;
+  iBaseToHit := getToHit( aItem, aAltFire, False );
+  if aItem.Flags[ IF_SPREAD ] then iBaseToHit += 10;
 
   iTarget := aTarget;
   iSource := FPosition;
@@ -2281,12 +2282,13 @@ begin
       if iBeing = iAimedBeing then
         iDodged := False;
 
+      iToHit := iBaseToHit;
       if aItem.Flags[ IF_LOB ] and ( iCoord <> iTarget ) then iToHit := -iToHit;
       iToHit -= iBeing.GetBonus( Hook_getDefenceBonus, [False] );
 
       if aItem.Flags[ IF_FARHIT ]
         then iIsHit := Roll( 10 + iToHit) >= 0
-	else iIsHit := Roll( 10 - (distance(FPosition, iCoord ) div 3 ) + iToHit) >= 0;
+        else iIsHit := Roll( 10 - (distance(FPosition, iCoord ) div 3 ) + iToHit) >= 0;
       
       if iIsHit and ( not iLevel.isVisible( iCoord ) ) and ( not aItem.Flags[ IF_UNSEENHIT ] ) then
         iIsHit := (Random(10) > 4);
