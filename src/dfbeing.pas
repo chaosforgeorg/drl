@@ -1642,7 +1642,12 @@ begin
   if (aKiller <> nil) then
   begin
     iMeleeKill := aKiller.MeleeAttack;
-    aKiller.CallHook( Hook_OnKill, [ Self, aWeapon, aKiller.MeleeAttack ] );
+    aKiller.CallHook( Hook_OnKill, [ Self, aWeapon, iMeleeKill ] );
+  end;
+
+  if DRL.State = DSPlaying then
+  begin
+    iLevel.CallHook( Hook_OnKill,[ Self, aKiller, aWeapon, iMeleeKill ] );
   end;
 
   if not aOverkill then

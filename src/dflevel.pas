@@ -1160,7 +1160,7 @@ begin
     else LightFlag[ coord, LFBLOOD ] := True;
 end;
 
-procedure TLevel.Kill ( aBeing : TBeing ) ;
+procedure TLevel.Kill( aBeing : TBeing );
 var iEnemiesLeft       : Integer;
     iUniqueEnemiesLeft : Integer;
 begin
@@ -1168,10 +1168,6 @@ begin
   if Being[ aBeing.Position ] = aBeing then
     SetBeing( aBeing.Position, nil );
 
-  if DRL.State = DSPlaying then
-  begin
-    CallHook(Hook_OnKill,[ aBeing ]);
-  end;
   FMarkers.Wipe( aBeing.UID );
   FreeAndNil(aBeing);
   if DRL.State <> DSPlaying then Exit;
