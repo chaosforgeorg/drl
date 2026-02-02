@@ -224,7 +224,7 @@ begin
     if FSName = '' then FSName := FName;
     Call('Create',[]);
     if ( LuaPlayerX > 0 ) and ( LuaPlayerY > 0 ) then
-      Place( Player, DropCoord( NewCoord2D(LuaPlayerX,LuaPlayerY), [ EF_NOBEINGS ] ) );
+      Place( Player, DropCoord( NewCoord2D(LuaPlayerX,LuaPlayerY), [ EF_NOBEINGS ], False ) );
     Include( FFlags, LF_SCRIPT );
   finally
     Free;
@@ -874,8 +874,8 @@ begin
   DropItem := true;
   if aItem = nil then Exit;
   if aNoHazard
-    then aCoord := DropCoord( aCoord, [ EF_NOITEMS,EF_NOBLOCK,EF_NOHARM,EF_NOSTAIRS ] )
-    else aCoord := DropCoord( aCoord, [ EF_NOITEMS,EF_NOBLOCK,EF_NOSTAIRS ] );
+    then aCoord := DropCoord( aCoord, [ EF_NOITEMS,EF_NOBLOCK,EF_NOHARM,EF_NOSTAIRS ], True )
+    else aCoord := DropCoord( aCoord, [ EF_NOITEMS,EF_NOBLOCK,EF_NOSTAIRS ], True );
   if aDropAnim and isVisible( aCoord ) then aItem.Appear := 1;
   Add( aItem, aCoord );
 
@@ -889,7 +889,7 @@ end;
 procedure TLevel.DropBeing( aBeing : TBeing; aCoord : TCoord2D );
 begin
   if aBeing = nil then Exit;
-  aCoord := DropCoord( aCoord, [ EF_NOTELE,EF_NOBEINGS,EF_NOBLOCK,EF_NOSTAIRS ] );
+  aCoord := DropCoord( aCoord, [ EF_NOTELE,EF_NOBEINGS,EF_NOBLOCK,EF_NOSTAIRS ], False );
   Add( aBeing, aCoord );
   if ( not aBeing.IsPlayer ) and ( not aBeing.Flags[ BF_FRIENDLY ] ) and ( not aBeing.Flags[ BF_ILLUSION ] ) then
   begin

@@ -1,5 +1,6 @@
 0.10.7
 [mod] -- GJ#227: Game - shotgun falloff is counted from range 1 (full damage), not from player position
+[mod] -- GJ#234: Game - better tile pick when dropping items
 [mod] -- GH#337: UI - Windows - disabled StickyKeys, ToggleKeys and FilterKeys on game start
 [fix] -- GJ#255: Game - fixed internal tohit chances when targeting enemies behind enemies
 
