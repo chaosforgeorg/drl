@@ -1061,7 +1061,7 @@ begin
   for iTC in FArea do
     if LightFlag[ iTC, lfDamage ] then
       begin
-        iDmg := Round( aDamage.Roll * (1.0-0.01*iFalloff*Max(1,Distance( aSource, iTC ))) );
+        iDmg := Round( aDamage.Roll * (1.0-0.01*iFalloff*Max(0,Distance( aSource, iTC )-1)) );
         iDmg := Floor( iDmg * aDamageMul );
 
         if iDmg < 1 then iDmg := 1;
