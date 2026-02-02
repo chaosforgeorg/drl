@@ -43,6 +43,7 @@ type TPerks = class( TVObject )
   procedure OnTick;
   function  IsActive( aPerk : Integer ) : Boolean;
   function  getTime( aPerk : Integer ) : Integer;
+  procedure Clear;
   destructor Destroy; override;
 private
   FOwner : TNode;
@@ -241,6 +242,12 @@ begin
   UpdateHooks;
   if Hook_OnRemove in PerkData[iPerk].Hooks then
     LuaSystem.ProtectedCall( [ 'perks', iPerk, 'OnRemove' ], [FOwner, aSilent] );
+end;
+
+procedure TPerks.Clear;
+begin
+  FList.Clear;
+  FHooks := [];
 end;
 
 destructor TPerks.Destroy;

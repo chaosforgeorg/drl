@@ -11,7 +11,7 @@ uses SysUtils, Classes,
      vluaentitynode, vutil, vvision, viotypes, vrltools, vnode,
      vluamapnode, vtextmap,
      dfdata, dfmap, dfthing, dfbeing, dfitem,
-     drlhooks,
+     drlhooks, drlperk,
      drlmarkers, drldecals;
 
 const CellWalls   : TCellSet = [];
@@ -120,6 +120,9 @@ TLevel = class(TLuaMapNode, ITextMap)
 
     class procedure RegisterLuaAPI();
 
+    function HasHook( aHook : Word ) : Boolean; override;
+    function GetPerkList : TPerkList;
+
   private
     function CellToID( const aCell : Byte ) : AnsiString; override;
     procedure RawCallHook( Hook : Byte; const aParams : array of const ); overload;
@@ -153,6 +156,7 @@ TLevel = class(TLuaMapNode, ITextMap)
 
     FMarkers       : TMarkerStore;
     FDecals        : TDecalStore;
+    FPerks         : TPerks;
   private
     function getCellBottom( Index : TCoord2D ): Byte;
     function getCellTop( Index : TCoord2D ): Byte;
@@ -449,6 +453,7 @@ begin
 
   FMarkers     := TMarkerStore.CreateFromStream( aStream );
   FDecals      := TDecalStore.CreateFromStream( aStream );
+  FPerks       := TPerks.CreateFromStream( aStream, Self );
 
   FActiveBeing := nil;
   FNextNode    := nil;
@@ -480,6 +485,7 @@ begin
 
   FMarkers.WriteToStream( aStream );
   FDecals.WriteToStream( aStream );
+  FPerks.WriteToStream( aStream );
 
 //    FActiveBeing : TBeing;
 //    FNextNode    : TNode;
@@ -508,6 +514,7 @@ begin
 
   FMarkers := TMarkerStore.Create;
   FDecals  := TDecalStore.Create;
+  FPerks   := TPerks.Create( Self );
   FIndex   := 0;
 end;
 
@@ -658,6 +665,7 @@ begin
   ClearEntities;
   FMarkers.Clear;
   FDecals.Clear;
+  FPerks.Clear;
 end;
 
 procedure TLevel.FullClear;
@@ -765,6 +773,18 @@ begin
     else CallHook := False;
 end;
 
+function TLevel.HasHook( aHook : Word ) : Boolean;
+begin
+  if inherited HasHook( aHook ) then Exit( True );
+  if aHook in FPerks.Hooks then Exit( True );
+  Exit( False );
+end;
+
+function TLevel.GetPerkList : TPerkList;
+begin
+  Exit( FPerks.List );
+end;
+
 procedure TLevel.RawCallHook(Hook: Byte; const aParams : array of const );
 begin
   if not (Hook in FHooks) then Exit;
@@ -785,7 +805,8 @@ end;
 
 procedure TLevel.CallHook( Hook : Byte; const Params : array of const ) ;
 begin
-  if Hook in FHooks           then RawCallHook( Hook, Params );
+  if Hook in FHooks then RawCallHook( Hook, Params );
+  FPerks.CallHook( Hook, Params );
   DRL.CallHook( Hook, Params );
 end;
 
@@ -793,6 +814,7 @@ function TLevel.CallHookCheck( Hook : Byte; const Params : array of const ) : Bo
 begin
   if not DRL.CallHookCheck( Hook, Params ) then Exit( False );
   if Hook in FHooks then if not RawCallHookCheck( Hook, Params ) then Exit( False );
+  if not FPerks.CallHookCheck( Hook, Params ) then Exit( False );
   Exit( True );
 end;
 
@@ -866,6 +888,7 @@ begin
   Clear;
   FreeAndNil( FMarkers );
   FreeAndNil( FDecals );
+  FreeAndNil( FPerks );
   inherited Destroy;
 end;
 
@@ -1226,6 +1249,7 @@ begin
   repeat
 
     Inc(FLTime);
+    FPerks.OnTick;
     Player.Statistics.OnTick;
 
     CallHook( Hook_OnTick,[ FLTime ] );
@@ -1914,7 +1938,48 @@ begin
   Exit( 1 );
 end;
 
-const lua_level_lib : array[0..21] of luaL_Reg = (
+function lua_level_add_perk(L: Plua_State): Integer; cdecl;
+var iState : TDRLLuaState;
+    iLevel : TLevel;
+begin
+  iState.Init(L);
+  iLevel := iState.ToObject(1) as TLevel;
+  if iLevel = nil then Exit( 0 );
+  iLevel.FPerks.Add( iState.ToId(2), iState.ToInteger(3,-1) );
+  Result := 0;
+end;
+
+function lua_level_get_perk_time(L: Plua_State): Integer; cdecl;
+var iState : TDRLLuaState;
+    iLevel : TLevel;
+begin
+  iState.Init(L);
+  iLevel := iState.ToObject(1) as TLevel;
+  iState.Push( iLevel.FPerks.getTime( iState.ToId(2) ) );
+  Result := 1;
+end;
+
+function lua_level_remove_perk(L: Plua_State): Integer; cdecl;
+var iState : TDRLLuaState;
+    iLevel : TLevel;
+begin
+  iState.Init(L);
+  iLevel := iState.ToObject(1) as TLevel;
+  iLevel.FPerks.Remove( iState.ToId(2), iState.ToBoolean( 3, False ) );
+  Result := 0;
+end;
+
+function lua_level_is_perk(L: Plua_State): Integer; cdecl;
+var iState : TDRLLuaState;
+    iLevel : TLevel;
+begin
+  iState.Init(L);
+  iLevel := iState.ToObject(1) as TLevel;
+  iState.Push( iLevel.FPerks.IsActive( iState.ToId( 2 ) ) );
+  Result := 1;
+end;
+
+const lua_level_lib : array[0..25] of luaL_Reg = (
       ( name : 'drop_item';  func : @lua_level_drop_item),
       ( name : 'drop_being'; func : @lua_level_drop_being),
       ( name : 'player';     func : @lua_level_player),
@@ -1936,6 +2001,10 @@ const lua_level_lib : array[0..21] of luaL_Reg = (
       ( name : 'reset';         func : @lua_level_reset),
       ( name : 'post_generate'; func : @lua_level_post_generate),
       ( name : 'get_enemies_left'; func : @lua_level_get_enemies_left),
+      ( name : 'add_perk';      func : @lua_level_add_perk),
+      ( name : 'get_perk_time'; func : @lua_level_get_perk_time),
+      ( name : 'remove_perk';   func : @lua_level_remove_perk),
+      ( name : 'is_perk';       func : @lua_level_is_perk),
       ( name : nil;          func : nil; )
 );
 
