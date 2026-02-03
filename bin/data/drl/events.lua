@@ -1,13 +1,19 @@
 function drl.register_events()
 
-	register_event "ice_event"
+	-- Ice Event
+	register_perk "event_ice"
 	{
+		name   = "Frozen Hell",
+		desc   = "The walls of this level have turned to ice.",
+		color  = LIGHTCYAN,
 		min_dlevel = 16,
 		weight     = 2,
-		history    = "On @1, hell froze over!",
-		message    = "Yes... Hell just froze over...",
-		
-		setup      = function()
+		tags   = { "event" },
+
+		OnAdd = function( self )
+			ui.msg_feel( "Yes... Hell just froze over..." )
+			player:add_history( "On @1, hell froze over!" )
+
 			generator.wall_to_ice[ generator.styles[ level.style ].wall ] = "iwall"
 
 			for c in area.FULL:coords() do
@@ -19,43 +25,57 @@ function drl.register_events()
 		end,
 	}
 
-	register_event "perma_event"
+	-- Perma Event
+	register_perk "event_perma"
 	{
-		history    = "@1 was a hard nut to crack!",
-		message    = "The walls here seem tough!",
+		name   = "Bulwark",
+		desc   = "The walls on this level are reinforced and cannot be destroyed.",
+		color  = BROWN,
 		min_dlevel = 8,
 		weight     = 4,
-		
-		setup      = function()
+		tags   = { "event", "perma" },
+
+		OnAdd = function( self )
+			ui.msg_feel( "The walls here seem tough!" )
+			player:add_history( "@1 was a hard nut to crack!" )
 			generator.set_permanence( area.FULL )
 		end,
 	}
 
-	register_event "alarm_event"
+	-- Alarm Event
+	register_perk "event_alarm"
 	{
-		history    = "He sounded the alarm on @1!",
-		message    = "As you enter, some weird alarm starts howling!",
+		name   = "Alarm",
+		desc   = "An alarm has been triggered, all enemies are hunting you.",
+		color  = YELLOW,
 		min_dlevel = 8,
 		weight     = 2,
+		tags   = { "event", "enemy" },
 
-		setup      = function()
+		OnAdd = function( self )
+			ui.msg_feel( "As you enter, some weird alarm starts howling!" )
+			player:add_history( "He sounded the alarm on @1!" )
 			for b in level:beings() do b.flags[ BF_HUNTING ] = true end
 		end,
 	}
 
-	register_event "deadly_air_event"
+	-- Deadly Air Event
+	register_perk "event_deadly_air"
 	{
-		history    = "@1 blasted him with an unholy atmosphere!",
-		message    = "The air seems deadly here, you better leave quick!",
+		name   = "Deadly Air",
+		desc   = "The atmosphere is toxic, dealing damage over time to beings with more than 25% health.",
+		color  = LIGHTRED,
 		min_dlevel = 16,
 		min_diff   = 2,
 		weight     = 2,
+		tags   = { "event", "damage" },
 
-		setup      = function()
-			level.data.event.timer = 0
-			level.data.event.step  = 100 - DIFFICULTY * 5
+		OnAdd = function( self )
+			ui.msg_feel( "The air seems deadly here, you better leave quick!" )
+			player:add_history( "@1 blasted him with an unholy atmosphere!" )
 		end,
-		on_tick    = function()
+
+		OnTick = function( self, time )
 			local function chill( b )
 				if b.hp > b.hpmax / 4 and not b.flags[BF_INV] then
 					if not b:is_player() or not b:is_perk("enviro") then
@@ -64,53 +84,62 @@ function drl.register_events()
 					end
 				end
 			end
-			local data = level.data.event
-			data.timer = data.timer + 1
-			if data.timer == data.step then
-				data.timer = 0
+			local step = 100 - DIFFICULTY * 5
+			if time % step == 0 then
 				for b in level:beings() do
 					chill(b)
 				end
 				chill(player)
 			end
-		end
+		end,
 	}
 
-	register_event "nuke_event"
+	-- Nuke Event
+	register_perk "event_nuke"
 	{
-		history    = "On @1 he encountered an armed nuke!",
+		name   = "Armed Nuke",
+		desc   = "A thermonuclear bomb has been deployed on this level.",
+		color  = RED,
 		min_dlevel = 16,
 		min_diff   = 2,
 		weight     = 2,
+		tags   = { "event", "nuke" },
 
-		setup      = function()
+		OnAdd = function( self )
 			local minutes = 10 - DIFFICULTY
-			ui.msg_feel("Descending the staircase you spot a familiar object...")
-			ui.msg_feel("\"Thermonuclear bomb deployed. "..minutes.." minutes till explosion.\"")
+			ui.msg_feel( "Descending the staircase you spot a familiar object..." )
+			ui.msg_feel( "\"Thermonuclear bomb deployed. "..minutes.." minutes till explosion.\"" )
+			player:add_history( "On @1 he encountered an armed nuke!" )
 			player:nuke( minutes*60*10 )
 		end,
 	}
 
-	register_event "flood_acid_event"
+	-- Flood Acid Event
+	register_perk "event_flood_acid"
 	{
-		message    = "You feel the sudden need to run!!!",
-		history    = "On @1 he ran for his life from acid!" ,
+		name   = "Acid Flood",
+		desc   = "Acid is flooding the level from one side.",
+		color  = GREEN,
 		min_dlevel = 8,
 		weight     = 1,
+		tags   = { "event", "flood", "damage" },
 
-		setup      = function()
+		OnAdd = function( self )
+			ui.msg_feel( "You feel the sudden need to run!!!" )
+			player:add_history( "On @1 he ran for his life from acid!" )
+
 			local data      = level.data.event
 			data.timer      = 0
 			data.step       = math.max( 200 - level.danger_level - DIFFICULTY * 5, 60 )
 			data.direction  = (math.random(2)*2)-3
 			data.flood_min  = 0
-			data.cell		= "acid"
+			data.cell       = "acid"
 			if data.direction == -1 then
 				data.flood_min = 80
 			else
 				data.direction = 1
 			end
-		
+
 			local left  = generator.safe_empty_coord( area(2,2,20,19) )
 			local right = generator.safe_empty_coord( area(60,2,78,19) )
 
@@ -122,30 +151,39 @@ function drl.register_events()
 			player:displace( right )
 			level.map[ left ] = "stairs"
 		end,
-		on_tick = generator.events_flood_tick,
+
+		OnTick = function( self, time )
+			generator.events_flood_tick()
+		end,
 	}
 
-	register_event "flood_lava_event"
+	-- Flood Lava Event
+	register_perk "event_flood_lava"
 	{
-		message    = "You feel the sudden need to run!!!",
-		history    = "On @1 he ran for his life from lava!" ,
-		weight     = 4,
+		name   = "Lava Flood",
+		desc   = "Lava is flooding the level from one side.",
+		color  = RED,
 		min_dlevel = 17,
 		min_diff   = 3,
+		weight     = 4,
+		tags   = { "event", "flood", "damage" },
 
-		setup      = function()
+		OnAdd = function( self )
+			ui.msg_feel( "You feel the sudden need to run!!!" )
+			player:add_history( "On @1 he ran for his life from lava!" )
+
 			local data      = level.data.event
 			data.timer      = 0
 			data.step       = math.max( 200 - level.danger_level - DIFFICULTY * 5, 40 )
 			data.direction  = (math.random(2)*2)-3
 			data.flood_min  = 0
-			data.cell		= "lava"
+			data.cell       = "lava"
 			if data.direction == -1 then
 				data.flood_min = 80
 			else
 				data.direction = 1
 			end
-			
+
 			if level.danger_level > 20 and math.random(5) == 1 then
 				data.step = 25
 			end
@@ -161,22 +199,32 @@ function drl.register_events()
 			player:displace( right )
 			level.map[ left ] = "stairs"
 		end,
-		on_tick = generator.events_flood_tick,
+
+		OnTick = function( self, time )
+			generator.events_flood_tick()
+		end,
 	}
 
-	register_event "targeted_event"
+	-- Targeted Event
+	register_perk "event_targeted"
 	{
-		message    = "You feel you're being targeted!",
-		history    = "On @1 he was targeted for extermination!" ,
-		weight     = 2,
+		name   = "Targeted",
+		desc   = "Enemies periodically teleport towards your position.",
+		color  = MAGENTA,
 		min_dlevel = 17,
 		min_diff   = 3,
+		weight     = 2,
+		tags   = { "event", "enemy" },
 
-		setup      = function()
+		OnAdd = function( self )
+			ui.msg_feel( "You feel you're being targeted!" )
+			player:add_history( "On @1 he was targeted for extermination!" )
+
 			level.data.event.timer = 0
 			level.data.event.step  = math.max( 100 - DIFFICULTY * 10, 50 )
 		end,
-		on_tick    = function()
+
+		OnTick = function( self, time )
 			level.data.event.timer = level.data.event.timer + 1
 			if level.data.event.timer == level.data.event.step then
 				level.data.event.timer = 0
@@ -189,12 +237,12 @@ function drl.register_events()
 				end
 				if #list == 0 then return end
 				local near_area = area.around( cp, 8 )
-				local c 
+				local c
 				local count = 0
 				repeat
 					if count > 50 then return end
 					c = level:random_empty_coord( { EF_NOBEINGS, EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN }, near_area )
-					if c == nil then return end -- If the random coordinate selector didn't find a space, just dump.  No need to call it 50 times.
+					if c == nil then return end
 					count = count + 1
 				until c:distance( cp ) > 2 and level:eye_contact( c, cp )
 				local b = table.random_pick( list )
@@ -205,19 +253,24 @@ function drl.register_events()
 				b.scount = b.scount - math.max( 1000 - DIFFICULTY * 50, 500 )
 				level:explosion( b.position, { range = 1, delay = 50, color = LIGHTBLUE } )
 			end
-		end
-
+		end,
 	}
 
-	register_event "explosion_event"
+	-- Explosion Event
+	register_perk "event_explosion"
 	{
-		message    = "You hear sounds of hellish mortars!",
-		history    = "On @1 he was bombarded!" ,
-		weight     = 1,
+		name   = "Bombardment",
+		desc   = "The level is being bombarded with hellish mortars.",
+		color  = LIGHTRED,
 		min_dlevel = 18,
 		min_diff   = 2,
+		weight     = 1,
+		tags   = { "event", "explosion", "damage" },
 
-		setup      = function()
+		OnAdd = function( self )
+			ui.msg_feel( "You hear sounds of hellish mortars!" )
+			player:add_history( "On @1 he was bombarded!" )
+
 			local data   = level.data.event
 			data.enext   = math.max( 100 - DIFFICULTY * 10, 50 )
 			data.hstep   = math.ceil( data.enext / 2 )
@@ -225,18 +278,27 @@ function drl.register_events()
 			data.dice    = math.min( math.max( math.ceil( (level.danger_level + 2*DIFFICULTY) / 10 ), 2 ), 5 )
 			data.content = nil
 		end,
-		on_tick    = generator.events_explosion_tick,
+
+		OnTick = function( self, time )
+			generator.events_explosion_tick()
+		end,
 	}
 
-	register_event "explosion_lava_event"
+	-- Explosion Lava Event
+	register_perk "event_explosion_lava"
 	{
-		message    = "You hear sounds of hellish mortars! They rolled out the BIG GUNS!",
-		history    = "On @1 he was walking in fire!" ,
-		weight     = 1,
+		name   = "Lava Bombardment",
+		desc   = "The level is being bombarded with napalm.",
+		color  = RED,
 		min_dlevel = 25,
 		min_diff   = 3,
+		weight     = 1,
+		tags   = { "event", "explosion", "damage" },
 
-		setup      = function()
+		OnAdd = function( self )
+			ui.msg_feel( "You hear sounds of hellish mortars! They rolled out the BIG GUNS!" )
+			player:add_history( "On @1 he was walking in fire!" )
+
 			local data   = level.data.event
 			data.enext   = math.max( 100 - DIFFICULTY * 10, 50 )
 			data.hstep   = math.ceil( data.enext / 2 )
@@ -244,18 +306,27 @@ function drl.register_events()
 			data.dice    = math.min( math.max( math.ceil( (level.danger_level + 5*DIFFICULTY) / 25 ), 3 ), 6 )
 			data.content = "lava"
 		end,
-		on_tick    = generator.events_explosion_tick,
+
+		OnTick = function( self, time )
+			generator.events_explosion_tick()
+		end,
 	}
 
-	register_event "darkness_event"
+	-- Darkness Event
+	register_perk "event_darkness"
 	{
-		message    = "This floor is pitch-black!",
-		history    = "On @1 he was stumbling in the dark!",
-		weight     = 2,
+		name   = "Pitch Black",
+		desc   = "This floor is shrouded in darkness, reducing vision.",
+		color  = DARKGRAY,
 		min_dlevel = 9,
 		min_diff   = 2,
+		weight     = 2,
+		tags   = { "event", "vision" },
 
-		setup      = function ()
+		OnAdd = function( self )
+			ui.msg_feel( "This floor is pitch-black!" )
+			player:add_history( "On @1 he was stumbling in the dark!" )
+
 			local data = level.data.event
 			data.old_stairsense = player.flags[ BF_STAIRSENSE ]
 			data.old_darkness   = player.flags[ BF_DARKNESS ]
@@ -263,13 +334,17 @@ function drl.register_events()
 			player.flags[ BF_DARKNESS ]   = true
 			player.flags[ BF_STAIRSENSE ] = false
 		end,
-		on_leave      = function ()
+
+		OnRemove = function( self, silent )
 			local data = level.data.event
-			player.flags[ BF_DARKNESS ]   = data.old_darkness
-			player.flags[ BF_STAIRSENSE ] = data.old_stairsense
-			player.vision = player.vision + 2
+			if data then
+				player.flags[ BF_DARKNESS ]   = data.old_darkness
+				player.flags[ BF_STAIRSENSE ] = data.old_stairsense
+				player.vision = player.vision + 2
+			end
 		end,
 	}
+
 end
 
 function generator.events_explosion_tick()

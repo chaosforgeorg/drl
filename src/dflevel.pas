@@ -24,7 +24,7 @@ type
 TLevel = class(TLuaMapNode, ITextMap)
     constructor Create; reintroduce;
     procedure Init( aStyle : byte; aName : Ansistring; aIndex : Integer; aDangerLevel : Word );
-    procedure AfterGeneration( aGenerated : Boolean );
+    procedure AfterGeneration;
     procedure PreEnter;
     procedure RecalcFluids;
     procedure Leave;
@@ -67,8 +67,8 @@ TLevel = class(TLuaMapNode, ITextMap)
     function CallHook( coord : TCoord2D;  Hook : TCellHook ) : Variant; overload;
     function CallHook( coord : TCoord2D; aCellID : Word; Hook : TCellHook ) : Variant; overload;
     function CallHook( coord : TCoord2D; What : TThing; Hook : TCellHook ) : Variant; overload;
-    procedure CallHook( Hook : Byte; const Params : array of Const );
-    function CallHookCheck( Hook : Byte; const Params : array of Const ) : Boolean;
+    procedure CallHook( aHook : Byte; const aParams : array of const );
+    function CallHookCheck( aHook : Byte; const aParams : array of const ) : Boolean;
 
     procedure DropCorpse( aCoord : TCoord2D; CellID : Byte );
     function DamageTile( aCoord : TCoord2D; aDamage : Integer; aDamageType : TDamageType; aFloor : Boolean = True ) : Boolean;
@@ -125,8 +125,6 @@ TLevel = class(TLuaMapNode, ITextMap)
 
   private
     function CellToID( const aCell : Byte ) : AnsiString; override;
-    procedure RawCallHook( Hook : Byte; const aParams : array of const ); overload;
-    function RawCallHookCheck( Hook : Byte; const aParams : array of const ) : boolean;
     function  getCell( const aWhere : TCoord2D ) : byte; override;
     procedure putCell( const aWhere : TCoord2D; const aWhat : byte ); override;
     function  getBeing( const coord : TCoord2D ) : TBeing; override;
@@ -235,7 +233,7 @@ begin
   end;
   FHooks := LoadHooks( [ 'levels', script ] ) * LevelHooks;
 
-  AfterGeneration( False );
+  AfterGeneration;
 end;
 
 function TLevel.RandomCoord( EmptyFlags: TFlags32 ) : TCoord2D;
@@ -545,7 +543,7 @@ begin
   FAccuracyBonus := LuaSystem.Get(['diff',DRL.Difficulty,'accuracybonus']);
 end;
 
-procedure TLevel.AfterGeneration( aGenerated : Boolean );
+procedure TLevel.AfterGeneration;
 var iCoord : TCoord2D;
     iCell  : Word;
     iFlags : TFlags;
@@ -566,9 +564,6 @@ begin
       PutCell(iCoord,iCell);
     end;
   end;
-
-  if not aGenerated then Exit;
-  FHooks := LoadHooks( [ 'generator' ] ) * LevelHooks;
 end;
 
 procedure TLevel.CalculateRotation( aCoord : TCoord2D ); inline;
@@ -785,36 +780,23 @@ begin
   Exit( FPerks.List );
 end;
 
-procedure TLevel.RawCallHook(Hook: Byte; const aParams : array of const );
+procedure TLevel.CallHook( aHook : Byte; const aParams : array of const ) ;
 begin
-  if not (Hook in FHooks) then Exit;
-  if LF_SCRIPT in FFlags then
-    LuaSystem.ProtectedCall( [ 'levels', FID, HookNames[Hook] ], aParams )
-  else
-    LuaSystem.ProtectedCall( [ 'generator', HookNames[Hook] ], aParams );
+  FPerks.CallHook( aHook, aParams );
+  if aHook in FHooks then 
+    if LF_SCRIPT in FFlags then // not needed?
+      LuaSystem.ProtectedCall( [ 'levels', FID, HookNames[aHook] ], aParams );
+  DRL.CallHook( aHook, aParams );
 end;
 
-function TLevel.RawCallHookCheck(Hook: Byte; const aParams : array of const ): boolean;
+function TLevel.CallHookCheck( aHook : Byte; const aParams : array of const ) : Boolean;
 begin
-  if not (Hook in FHooks) then Exit(False);
-  if LF_SCRIPT in FFlags then
-    RawCallHookCheck := LuaSystem.ProtectedCall( [ 'levels', FID, HookNames[Hook] ], aParams )
-  else
-    RawCallHookCheck := LuaSystem.ProtectedCall( [ 'generator', HookNames[Hook] ], aParams );
-end;
-
-procedure TLevel.CallHook( Hook : Byte; const Params : array of const ) ;
-begin
-  if Hook in FHooks then RawCallHook( Hook, Params );
-  FPerks.CallHook( Hook, Params );
-  DRL.CallHook( Hook, Params );
-end;
-
-function TLevel.CallHookCheck( Hook : Byte; const Params : array of const ) : Boolean;
-begin
-  if not DRL.CallHookCheck( Hook, Params ) then Exit( False );
-  if Hook in FHooks then if not RawCallHookCheck( Hook, Params ) then Exit( False );
-  if not FPerks.CallHookCheck( Hook, Params ) then Exit( False );
+  if not DRL.CallHookCheck( aHook, aParams ) then Exit( False );
+  if aHook in FHooks then 
+    if LF_SCRIPT in FFlags then
+      if not LuaSystem.ProtectedCall( [ 'levels', FID, HookNames[aHook] ], aParams ) then 
+        Exit( False );
+  if not FPerks.CallHookCheck( aHook, aParams ) then Exit( False );
   Exit( True );
 end;
 
@@ -1921,7 +1903,7 @@ begin
   State.Init(L);
   IO.MsgUpDate;
   Level := State.ToObject(1) as TLevel;
-  Level.AfterGeneration( False );
+  Level.AfterGeneration;
   Level.PreEnter;
   Level.CalculateVision( Player.Position );
   Player.PreAction;

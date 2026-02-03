@@ -163,6 +163,8 @@ core.register_blueprint "perk"
 	status_strength= { false, core.TNUMBER },
 	tags           = { false, core.TTABLE, {} },
 	weight         = { false, core.TNUMBER, 0 },
+	min_dlevel     = { false, core.TNUMBER, 0 },
+	min_diff       = { false, core.TNUMBER, 0 },
 
 	OnAdd          = { false, core.TFUNC },
 	OnTick         = { false, core.TFUNC },
@@ -676,20 +678,6 @@ core.register_blueprint "level"
 	OnExit           = { false, core.TFUNC },
 	OnTick           = { false, core.TFUNC },
 	OnNuked          = { false, core.TFUNC },
-}
-
-core.register_blueprint "event"
-{
-	id         = { true,  core.TSTRING },
-	min_dlevel = { false, core.TNUMBER, 0 },
-	weight     = { true,  core.TNUMBER },
-	tags       = { false, core.TTABLE, {} },
-	min_diff   = { false, core.TNUMBER, 0 },
-	history    = { false, core.TSTRING },
-	message    = { false, core.TSTRING },
-	setup      = { true,  core.TFUNC },
-	on_tick    = { false, core.TFUNC },
-	on_leave   = { false, core.TFUNC },
 }
 
 core.register_blueprint "room"

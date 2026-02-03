@@ -510,49 +510,30 @@ function generator.roll_event( weights )
 
 	local lvl = level.danger_level
 	local choice = weight_table.new()
-	for _,e in ipairs(events) do
-		if lvl >= e.min_dlevel and DIFFICULTY >= e.min_diff then 
-			local weight = e.weight or 1
-			if type( weights ) == "table" then
-				weight = core.proto_weight( e, weights )
+	for _,p in ipairs(perks) do
+		if p.tags and p.tags.event then
+			local min_dlevel = p.min_dlevel or 0
+			local min_diff   = p.min_diff or 0
+			if lvl >= min_dlevel and DIFFICULTY >= min_diff then
+				local weight = p.weight or 1
+				if type( weights ) == "table" then
+					weight = core.proto_weight( p, weights )
+				end
+				choice:add( p, weight )
 			end
-			choice:add( e, weight )
 		end
 	end
 	if choice:size() == 0 then return end
-	local event = choice:roll()
+	local perk = choice:roll()
 
-	core.log("generator.roll_event() > setting up event : "..event.id)
-	level.data.event = {}
-	level.data.event.id = event.id
-	event.setup()
-	generator.OnTick = event.on_tick
-	generator.OnExit = event.on_leave
-	if event.message then ui.msg_feel( event.message ) end
-	if event.history then player:add_history( event.history ) end
-end
-
-function generator.on_save()
-	generator.OnTick = nil
-	generator.OnExit = nil
-end
-
-function generator.on_load()
-	if level.data.event then
-		generator.OnTick = events[ level.data.event.id ].on_tick
-		generator.OnExit = events[ level.data.event.id ].on_leave
-	end
+	core.log("generator.roll_event() > adding event perk : "..perk.id)
+	level:add_perk( perk.id )
 end
 
 function generator.reset()
 	core.log("generator.reset()")
+	level.data.event = {}
 	ui.clear_feel()
-	generator.OnKill       = nil
-	generator.OnKillAll    = nil
-	generator.OnEnterLevel = nil
-	generator.OnExit       = nil
-	generator.OnTick       = nil
-
 	level:set_generator_style( level.style )
 	level:fill( generator.styles[ level.style ].floor )
 	level:fill_edges( generator.styles[ level.style ].wall )

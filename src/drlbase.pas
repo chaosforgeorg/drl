@@ -1336,7 +1336,7 @@ repeat
         begin
           IO.Msg('You enter %s.',[ FLevel.Name ] );
           CallHookCheck(Hook_OnGenerate,[]);
-          FLevel.AfterGeneration( True );
+          FLevel.AfterGeneration;
         end;
     end;
     iFullLoad := State = DSLoading;
@@ -1553,7 +1553,6 @@ begin
         FLevel := TLevel.CreateFromStream( iStream );
         FLevel.Place( Player, Player.Position );
         LuaSystem.SetValue('level', FLevel );
-        LuaSystem.ProtectedCall( [ 'generator', 'on_load' ], [] );
       end;
     finally
       iStream.Destroy;
@@ -1609,8 +1608,6 @@ end;
 procedure TDRL.WriteSaveFile( aCrash : Boolean );
 var Stream : TStream;
 begin
-  LuaSystem.ProtectedCall( [ 'generator', 'on_save' ], [] );
-
   Player.Statistics.OnSaveFile;
 
   Stream := TGZFileStream.Create( ModuleUserPath + 'save',gzOpenWrite );

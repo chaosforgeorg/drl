@@ -70,18 +70,16 @@ register_level "halls_of_carnage"
 		local tick = core.bydiff{ 80, 60, 50, 30, 20 }
 
 		level.data.event = {
-			id         = "flood_lava_event",
 			timer      = 0,
 			step       = tick,
 			direction  = 1,
 			flood_min  = 0,
 			cell		= "lava",
 		}
-		generator.OnTick = events.flood_lava_event.on_tick
 	end,
 
 	OnTick = function()
-		generator.OnTick()
+		generator.events_flood_tick()
 	end,
 
 	OnExit = function ()

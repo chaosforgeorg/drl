@@ -75,10 +75,6 @@ register_room       = core.register_storage( "rooms", "room", function( r )
 	r.tags = table.toset( r.tags )
 end
 )
-register_event      = core.register_storage( "events", "event", function( r )
-	r.tags = table.toset( r.tags )
-end
-)
 register_difficulty = core.register_storage( "diff", "difficulty" )
 register_medal      = core.register_storage( "medals", "medal" )
 register_badge      = core.register_storage( "badges", "badge" )
