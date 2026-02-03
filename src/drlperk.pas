@@ -245,8 +245,15 @@ begin
 end;
 
 procedure TPerks.Clear;
+var i : Integer;
 begin
-  FList.Clear;
+  if FList.Size > 0 then
+  begin
+    for i := 0 to FList.Size - 1 do
+      if Hook_OnRemove in PerkData[FList[i].ID].Hooks then
+        LuaSystem.ProtectedCall( [ 'perks', FList[i].ID, 'OnRemove' ], [FOwner, True] );
+    FList.Clear;
+  end;
   FHooks := [];
 end;
 
