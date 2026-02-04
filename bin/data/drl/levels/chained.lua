@@ -34,8 +34,8 @@ register_level "the_chained_court"
 					ui.msg("With a sudden inspiration you yell \"OPEN SESAME!\"!")
 					player:play_sound( "lever.use" )
 					for c in level:each( "rwall", area.FULL_SHRINKED ) do
-						if level.light[ c ][ LFBLOOD ] then
-							level.light[ c ][ LFPERMANENT ] = false
+						if level:get_light_flag( c, LFBLOOD ) then
+							level:set_light_flag( c, LFPERMANENT, false )
 							level.map[ c ] = "floor"
 						end
 					end

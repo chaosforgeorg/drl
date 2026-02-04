@@ -117,7 +117,7 @@ register_level "mt_erebus"
 		level.data.zone3  = area(55,  9, 59, 12)
 		level.data.mountain = area(49, 3, 65, 18)
 
-		level.light[ level.data.mountain ][ LFNOTELE ] = true
+		level:set_light_flag( level.data.mountain, LFNOTELE, true )
 
 		level:player(4,11)
 		level.status = 0

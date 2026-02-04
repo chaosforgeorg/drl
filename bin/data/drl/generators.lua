@@ -134,7 +134,7 @@ function drl.register_generators()
 			local tdim = tile:get_size_coord()
 			local hdim = coord( math.floor( tdim.x / 2 ), math.floor( tdim.y / 2 ) )
 			generator.tile_place( level, center - hdim, tile )
-			level.light[ area( center - hdim, center + hdim ) ][ LFNOSPAWN ] = true
+			level:set_light_flag( area( center - hdim, center + hdim ), LFNOSPAWN, true )
 			
 			local linfo = player.episode[ level.index ]
 			if linfo.special then

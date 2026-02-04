@@ -128,7 +128,7 @@ function generator.scatter_blood(scatter_area,good,count)
 	if type(good) == "string" then good = cells[good].nid end
 	for c = 1, count do
 		local c = scatter_area:random_coord()
-		if not good or level:get_cell(c) == good then level.light[ c ][ LFBLOOD ] = true end
+		if not good or level:get_cell(c) == good then level:set_light_flag( c, LFBLOOD, true ) end
 	end
 end
 
@@ -166,7 +166,7 @@ function generator.place_dungen_tile( code, tile_object, tile_pos )
 			end
 			if tile_entry.flags then
 				for _, flag in ipairs(tile_entry.flags) do
-					level.light[p][flag] = true
+					level:set_light_flag( p, flag, true )
 				end
 			end
 			if tile_entry.raw_style then
@@ -287,13 +287,13 @@ function generator.set_permanence( ar, val, tile )
 	if tile then
 		tile = cells[ tile ].nid
 		for c in level:each( tile, ar ) do
-			level.light[ c ][ LFPERMANENT ] = val
+			level:set_light_flag( c, LFPERMANENT, val )
 		end
 	else
 		for c in ar:coords() do
 			local id = level:get_cell( c )
 			if generator.cell_sets[ CELLSET_WALLS ][ id ] then
-				level.light[ c ][ LFPERMANENT ] = val
+				level:set_light_flag( c, LFPERMANENT, val )
 			end
 		end
 	end
@@ -304,10 +304,10 @@ function generator.set_blood( ar, val, tile )
 	if tile then
 		tile = cells[ tile ].nid
 		for c in level:each( tile, ar ) do
-			level.light[ c ][ LFBLOOD ] = val
+			level:set_light_flag( c, LFBLOOD, val )
 		end
 	else
-		level.light[ ar ][ LFBLOOD ] = true
+		level:set_light_flag( ar, LFBLOOD, true )
 	end
 end
 
@@ -899,7 +899,7 @@ function generator.destroy_cell( c )
 	else
 		level.map[c] = generator.styles[ level.style ].floor
 	end
-	level.light[c][LFPERMANENT] = false
+	level:set_light_flag( c, LFPERMANENT, false )
 end
 
 function generator.wallin_cell( c, cell_id )
@@ -912,7 +912,7 @@ function generator.wallin_cell( c, cell_id )
 	local item = level:get_item(c)
 	if item then item:destroy() end
 	level.map[c] = cell_id
-	level.light[c][LFPERMANENT] = true
+	level:set_light_flag( c, LFPERMANENT, true )
 	return true
 end
 
