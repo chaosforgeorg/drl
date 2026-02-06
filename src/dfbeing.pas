@@ -44,8 +44,8 @@ TBeing = class(TThing,IPathQuery)
     function Resurrect( aRange : Integer ) : TBeing;
     procedure Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer ); virtual;
     procedure Blood( aFrom : TDirection; aAmount : LongInt );
-    function Attack( aWhere : TCoord2D; aMoveOnKill : Boolean ) : Boolean; overload;
-    function Attack( aTarget : TBeing; aSecond : Boolean = False ) : Boolean; overload;
+    function Attack( aWhere : TCoord2D; aMoveOnKill : Boolean; aForceSingle : Boolean = False ) : Boolean; overload;
+    function Attack( aTarget : TBeing; aSecond : Boolean = False; aForceSingle : Boolean = False ) : Boolean; overload;
     function meleeWeaponSlot : TEqSlot;
     function getTotalResistance( const aResistance : AnsiString; aTarget : TBodyTarget ) : Integer;
     procedure ApplyDamage( aDamage : LongInt; aTarget : TBodyTarget; aDamageType : TDamageType; aSource : TItem; aDelay : Integer ); virtual;
@@ -1725,7 +1725,7 @@ begin
   rollMeleeDamage := iDamage;
 end;
 
-function TBeing.Attack( aWhere : TCoord2D; aMoveOnKill : Boolean ) : Boolean;
+function TBeing.Attack( aWhere : TCoord2D; aMoveOnKill : Boolean; aForceSingle : Boolean = False ) : Boolean;
 var iSlot       : TEqSlot;
     iWeapon     : TItem;
     iAttackCost : DWord;
@@ -1741,7 +1741,7 @@ begin
   iLevel    := TLevel(Parent);
   iPosition := Position;
   if iLevel.Being[ aWhere ] <> nil then
-    Result := Attack( iLevel.Being[ aWhere ] )
+    Result := Attack( iLevel.Being[ aWhere ], False, aForceSingle )
   else
   begin
     iSlot := meleeWeaponSlot;
@@ -1778,7 +1778,7 @@ begin
   end;
 end;
 
-function TBeing.Attack( aTarget : TBeing; aSecond : Boolean = False ) : Boolean;
+function TBeing.Attack( aTarget : TBeing; aSecond : Boolean = False; aForceSingle : Boolean = False ) : Boolean;
 var iName          : string;
     iDefenderName  : string;
     iResult        : string;
@@ -1825,7 +1825,10 @@ begin
   else
     PlaySound( 'melee' );
 
-  iDualAttack := canDualWieldMelee;
+  if aForceSingle then
+    iDualAttack := False
+  else
+    iDualAttack := canDualWieldMelee;
 
   // Attack cost
   iAttackCost := getFireCost( False, True );
@@ -2842,11 +2845,11 @@ begin
   State.Init(L);
   Being := State.ToObject(1) as TBeing;
   if State.IsObject(2) then
-    Being.Attack( State.ToObject(2) as TBeing )
+    Being.Attack( State.ToObject(2) as TBeing, False, State.ToBoolean(3, False) )
   else
   begin
     if State.IsNil(2) then Exit(0);
-    Being.Attack( State.ToCoord(2), State.ToBoolean(3) );
+    Being.Attack( State.ToCoord(2), State.ToBoolean(3), State.ToBoolean(4, False) );
   end;
   Result := 1;
 end;
