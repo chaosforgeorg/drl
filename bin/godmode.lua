@@ -55,7 +55,7 @@ Keytable["F5"] = function()
 	for c in area.FULL() do
 		local cell = cells[ level.map[ c ] ]
 		if cell.flags[ CF_BLOCKMOVE ] or cell.flags[ CF_NOCHANGE ] then
-			level.light[ c ][LFEXPLORED] = true
+			level:set_light_flag( c, LFEXPLORED, true )
 		end
 	end
 	level.flags[ LF_BEINGSVISIBLE ] = not level.flags[ LF_BEINGSVISIBLE ]
