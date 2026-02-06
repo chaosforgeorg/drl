@@ -367,9 +367,9 @@ function being:pick_item_to_mod( mod, filter )
 	return item, true
 end
 
-function being:apply_timed_perk( id, max_duration, resist )
-	if resist and self.resist and self.resist[ resist ] then
-		local rvalue = self.resist[ resist ]
+function being:apply_timed_perk( id, max_duration, resist, target )
+	if resist then
+		local rvalue = self:get_total_resistance( resist, target or TARGET_TORSO )
 		if rvalue > 0 then
 			max_duration = math.floor( max_duration * ( 1 - rvalue / 100 ) )
 		end
