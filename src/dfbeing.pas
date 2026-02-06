@@ -44,8 +44,8 @@ TBeing = class(TThing,IPathQuery)
     function Resurrect( aRange : Integer ) : TBeing;
     procedure Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer ); virtual;
     procedure Blood( aFrom : TDirection; aAmount : LongInt );
-    function Attack( aWhere : TCoord2D; aMoveOnKill : Boolean; aForceSingle : Boolean = False ) : Boolean; overload;
-    function Attack( aTarget : TBeing; aSecond : Boolean = False; aForceSingle : Boolean = False ) : Boolean; overload;
+    function Attack( aWhere : TCoord2D; aMoveOnKill : Boolean; aWeapon : TItem = nil ) : Boolean; overload;
+    function Attack( aTarget : TBeing; aSecond : Boolean = False; aWeapon : TItem = nil ) : Boolean; overload;
     function meleeWeaponSlot : TEqSlot;
     function getTotalResistance( const aResistance : AnsiString; aTarget : TBodyTarget ) : Integer;
     procedure ApplyDamage( aDamage : LongInt; aTarget : TBodyTarget; aDamageType : TDamageType; aSource : TItem; aDelay : Integer ); virtual;
@@ -59,7 +59,7 @@ TBeing = class(TThing,IPathQuery)
     procedure BloodFloor;
     procedure Knockback( aDir : TDirection; aStrength : Single );
     destructor Destroy; override;
-    function rollMeleeDamage( aSlot : TEqSlot = efWeapon; aTarget : TBeing = nil ) : Integer;
+    function rollMeleeDamage( aWeapon : TItem = nil; aTarget : TBeing = nil ) : Integer;
     function getMoveCost : LongInt;
     function getFireCost( aAltFire : Boolean; aIsMelee : Boolean ) : LongInt;
     function getReloadCost( aItem : TItem ) : LongInt;
@@ -1696,19 +1696,16 @@ begin
   iLevel.Kill( Self );
 end;
 
-function TBeing.rollMeleeDamage( aSlot : TEqSlot = efWeapon; aTarget : TBeing = nil ) : Integer;
-var iDamage   : Integer;
-    iWeapon   : TItem;
+function TBeing.rollMeleeDamage( aWeapon : TItem = nil; aTarget : TBeing = nil ) : Integer;var iDamage   : Integer;
 begin
-  iWeapon := Inv.Slot[ aSlot ];
-  if ( iWeapon <> nil ) and ( not iWeapon.isMelee ) then iWeapon := nil;
-  iDamage := getToDam( iWeapon, False, True );
-  if iWeapon <> nil then
+  if ( aWeapon <> nil ) and ( not aWeapon.isMelee ) then aWeapon := nil;
+  iDamage := getToDam( aWeapon, False, True );
+  if aWeapon <> nil then
   begin
     if BF_MAXDAMAGE in FFlags then
-      iDamage += iWeapon.maxDamage
+      iDamage += aWeapon.maxDamage
     else
-      iDamage += iWeapon.rollDamage;
+      iDamage += aWeapon.rollDamage;
   end
   else
   begin
@@ -1718,14 +1715,14 @@ begin
       iDamage += Max( Dice( FStrength + 1, 3 ), 1 );
   end;
 
-  if iWeapon <> nil 
-    then iDamage := Floor( iDamage * GetBonusMul( Hook_getDamageMul, [ iWeapon, True, False, aTarget ] ) * iWeapon.GetBonusMul( Hook_getDamageMul, [ True, False, aTarget ] ) )
-    else iDamage := Floor( iDamage * GetBonusMul( Hook_getDamageMul, [ iWeapon, True, False, aTarget ] ) );
+  if aWeapon <> nil 
+    then iDamage := Floor( iDamage * GetBonusMul( Hook_getDamageMul, [ aWeapon, True, False, aTarget ] ) * aWeapon.GetBonusMul( Hook_getDamageMul, [ True, False, aTarget ] ) )
+    else iDamage := Floor( iDamage * GetBonusMul( Hook_getDamageMul, [ aWeapon, True, False, aTarget ] ) );
   if iDamage < 0 then iDamage := 0;
   rollMeleeDamage := iDamage;
 end;
 
-function TBeing.Attack( aWhere : TCoord2D; aMoveOnKill : Boolean; aForceSingle : Boolean = False ) : Boolean;
+function TBeing.Attack( aWhere : TCoord2D; aMoveOnKill : Boolean; aWeapon : TItem = nil ) : Boolean;
 var iSlot       : TEqSlot;
     iWeapon     : TItem;
     iAttackCost : DWord;
@@ -1741,7 +1738,7 @@ begin
   iLevel    := TLevel(Parent);
   iPosition := Position;
   if iLevel.Being[ aWhere ] <> nil then
-    Result := Attack( iLevel.Being[ aWhere ], False, aForceSingle )
+    Result := Attack( iLevel.Being[ aWhere ], False, aWeapon )
   else
   begin
     iSlot := meleeWeaponSlot;
@@ -1765,7 +1762,7 @@ begin
     end;
 
     if not ( BF_ILLUSION in FFlags ) then
-      Result := iLevel.DamageTile( aWhere, rollMeleeDamage( iSlot ), Damage_Melee );
+      Result := iLevel.DamageTile( aWhere, rollMeleeDamage( iWeapon ), Damage_Melee );
     Dec( FSpeedCount, iAttackCost )
   end;
   if iLevel.isAlive( iUID ) then
@@ -1778,14 +1775,13 @@ begin
   end;
 end;
 
-function TBeing.Attack( aTarget : TBeing; aSecond : Boolean = False; aForceSingle : Boolean = False ) : Boolean;
+function TBeing.Attack( aTarget : TBeing; aSecond : Boolean = False; aWeapon : TItem = nil ) : Boolean;
 var iName          : string;
     iDefenderName  : string;
     iResult        : string;
     iLevel         : TLevel;
     iDamage        : Integer;
     iWeaponSlot    : TEqSlot;
-    iWeapon        : TItem;
     iDamageType    : TDamageType;
     iToHit         : Integer;
     iDualAttack    : Boolean;
@@ -1803,32 +1799,32 @@ begin
   iTargetUID   := aTarget.UID;
   iUID         := UID;
   iMissed      := False;
+  iDamageType  := Damage_Melee;
 
-  // Choose weaponSlot
-  iWeaponSlot := meleeWeaponSlot;
-  if aSecond then iWeaponSlot := efWeapon2;
-
-  iDamageType := Damage_Melee;
-  if iWeaponSlot in [ efWeapon, efWeapon2 ] then
-    iWeapon := Inv.Slot[ iWeaponSlot ]
-  else
-    iWeapon := nil;
-
-  if ( iWeapon <> nil ) and ( not iWeapon.isMelee ) then iWeapon := nil;
-  
-  // Play Sound
-  if (iWeapon <> nil) then
-  begin
-    iWeapon.PlaySound( 'fire', FPosition );
-    iDamageType := iWeapon.DamageType;
-  end
-  else
-    PlaySound( 'melee' );
-
-  if aForceSingle then
+  if aWeapon <> nil then
     iDualAttack := False
   else
     iDualAttack := canDualWieldMelee;
+
+  if aWeapon = nil then
+  begin
+    iWeaponSlot := meleeWeaponSlot;
+    if aSecond then iWeaponSlot := efWeapon2;
+    if iWeaponSlot in [ efWeapon, efWeapon2 ] then
+      aWeapon := Inv.Slot[ iWeaponSlot ]
+    else
+      aWeapon := nil;
+    if ( aWeapon <> nil ) and ( not aWeapon.isMelee ) then aWeapon := nil;
+  end;
+  
+  // Play Sound
+  if aWeapon <> nil then
+  begin
+    aWeapon.PlaySound( 'fire', FPosition );
+    iDamageType := aWeapon.DamageType;
+  end
+  else
+    PlaySound( 'melee' );
 
   // Attack cost
   iAttackCost := getFireCost( False, True );
@@ -1839,8 +1835,8 @@ begin
     if not aSecond then
       IO.addBumpAnimation( VisualTime( iAttackCost, AnimationSpeedAttack ), 0, FUID, Position, aTarget.Position, Sprite, 0.5 );
     // Melee FX animation - weapon sprite takes priority, fallback to attacker's melsprite
-    if ( iWeapon <> nil ) and ( iWeapon.MelSprite.SpriteID[0] > 0 ) then
-      IO.addFXAnimation( VisualTime( iAttackCost, iWeapon.MelSprite.Frames * iWeapon.MelSprite.Frametime ) div Iif( aSecond, 2, 1 ), Iif( aSecond, VisualTime( iAttackCost, iWeapon.MelSprite.Frames * iWeapon.MelSprite.Frametime ) div 2, 0 ), aTarget.Position, iWeapon.MelSprite )
+    if ( aWeapon <> nil ) and ( aWeapon.MelSprite.SpriteID[0] > 0 ) then
+      IO.addFXAnimation( VisualTime( iAttackCost, aWeapon.MelSprite.Frames * aWeapon.MelSprite.Frametime ) div Iif( aSecond, 2, 1 ), Iif( aSecond, VisualTime( iAttackCost, aWeapon.MelSprite.Frames * aWeapon.MelSprite.Frametime ) div 2, 0 ), aTarget.Position, aWeapon.MelSprite )
     else if FMelSprite.SpriteID[0] > 0 then
       IO.addFXAnimation( VisualTime( iAttackCost, FMelSprite.Frames * FMelSprite.Frametime ) div Iif( aSecond, 2, 1 ), Iif( aSecond, VisualTime( iAttackCost, FMelSprite.Frames * FMelSprite.Frametime ) div 2, 0 ), aTarget.Position, FMelSprite );
   end;
@@ -1856,9 +1852,9 @@ begin
   if aTarget.IsPlayer then iDefenderName := 'you';
 
   // Last kill
-  iToHit := getToHit( iWeapon, False, True ) - aTarget.GetBonus( Hook_getDefenceBonus, [True] );
+  iToHit := getToHit( aWeapon, False, True ) - aTarget.GetBonus( Hook_getDefenceBonus, [True] );
 
-  if ( iWeapon = nil ) or ( not iWeapon.Flags[ IF_AUTOHIT ] ) then
+  if ( aWeapon = nil ) or ( not aWeapon.Flags[ IF_AUTOHIT ] ) then
     if Roll( 12 + iToHit ) < 0 then
     begin
       if IsPlayer then iResult := ' miss ' else iResult := ' misses ';
@@ -1868,9 +1864,9 @@ begin
 
   if not iMissed then
   begin
-    if ( iWeapon <> nil ) then IO.addSoundAnimation( Iif( aSecond, 100, 30 ), aTarget.Position, IO.Audio.ResolveSoundID(['flesh_blade_hit']) );
+    if ( aWeapon <> nil ) then IO.addSoundAnimation( Iif( aSecond, 100, 30 ), aTarget.Position, IO.Audio.ResolveSoundID(['flesh_blade_hit']) );
     // Damage roll
-    iDamage := rollMeleeDamage( iWeaponSlot, aTarget );
+    iDamage := rollMeleeDamage( aWeapon, aTarget );
 
     // Shake
     if isPlayer or aTarget.IsPlayer then
@@ -1882,12 +1878,12 @@ begin
 
     // Apply damage
     if not ( BF_ILLUSION in FFlags ) then
-      aTarget.ApplyDamage( iDamage, Target_Torso, iDamageType, iWeapon, 0 );
+      aTarget.ApplyDamage( iDamage, Target_Torso, iDamageType, aWeapon, 0 );
     if ( DRL.State <> DSPlaying ) or ( not iLevel.isAlive( iUID ) ) then Exit;
   end;
 
-  if iWeapon <> nil then iWeapon.CallHook( Hook_OnFired, [ Self, aSecond ] );
-  CallHook( Hook_OnFired, [ iWeapon, aSecond ] );
+  if aWeapon <> nil then aWeapon.CallHook( Hook_OnFired, [ Self, aSecond ] );
+  CallHook( Hook_OnFired, [ aWeapon, aSecond ] );
 
   Result := not TLevel(Parent).isAlive( iTargetUID );
 
@@ -2845,11 +2841,11 @@ begin
   State.Init(L);
   Being := State.ToObject(1) as TBeing;
   if State.IsObject(2) then
-    Being.Attack( State.ToObject(2) as TBeing, False, State.ToBoolean(3, False) )
+    Being.Attack( State.ToObject(2) as TBeing, False, State.ToObjectOrNil(3) as TItem )
   else
   begin
     if State.IsNil(2) then Exit(0);
-    Being.Attack( State.ToCoord(2), State.ToBoolean(3), State.ToBoolean(4, False) );
+    Being.Attack( State.ToCoord(2), State.ToBoolean(3), State.ToObjectOrNil(4) as TItem );
   end;
   Result := 1;
 end;
