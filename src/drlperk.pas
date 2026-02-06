@@ -147,7 +147,10 @@ begin
     for i := 0 to FList.Size - 1 do
       if FList[i].ID = aPerk then
       begin
-        if aDuration > 0 then FList.Data^[i].Time += aDuration;
+        if FList.Data^[i].Time < 0 then Exit; // permanent
+        if aDuration < 0
+          then FList.Data^[i].Time := aDuration   // upgrade to permanent
+          else FList.Data^[i].Time += aDuration;  // extend timed
         Exit;
       end;
   iPerk.ID   := aPerk;
