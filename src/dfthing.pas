@@ -26,6 +26,7 @@ type TThing = class( TLuaEntityNode )
   function GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single; virtual;
   function GetSprite : TSprite; virtual;
   function GetPerkList : TPerkList;
+  function GetTraitString( aInvMode : Boolean = False ) : AnsiString;
   procedure Tick; virtual;
   procedure WriteToStream( aStream : TStream ); override;
   destructor Destroy; override;
@@ -55,7 +56,7 @@ end;
 implementation
 
 uses typinfo, variants,
-     vluasystem, vdebug,
+     vluasystem, vdebug, vtig,
      drlbase, drlio, drlua;
 
 constructor TThing.Create( const aID : AnsiString );
@@ -157,6 +158,32 @@ function TThing.GetPerkList : TPerkList;
 begin
   if FPerks = nil then Exit( nil );
   Exit( FPerks.List );
+end;
+
+function TThing.GetTraitString( aInvMode : Boolean = False ) : AnsiString;
+var iPerks : TPerkList;
+    i      : Integer;
+    iColor : Byte;
+    iText  : AnsiString;
+begin
+  Result := '';
+  iPerks := GetPerkList;
+  if ( iPerks = nil ) or ( iPerks.Size = 0 ) then Exit;
+  for i := 0 to iPerks.Size - 1 do
+    with PerkData[ iPerks[i].ID ] do
+    begin
+      if aInvMode then iText := Name else iText := Short;
+      if iText = '' then Continue;
+      if ( iPerks[i].Time > 0 ) and ( iPerks[i].Time <= 50 )
+        then iColor := ColorExp
+        else iColor := Color;
+      Result += '{' + VTIG_ColorChar( iColor ) + iText + '}';
+      if aInvMode then Result += ', ' else Result += ' ';
+    end;
+  if Result <> '' then
+    if aInvMode
+      then SetLength( Result, Length(Result) - 2 )
+      else SetLength( Result, Length(Result) - 1 );
 end;
 
 procedure TThing.Tick;

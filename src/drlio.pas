@@ -155,6 +155,7 @@ protected
   FHint        : AnsiString;
   FHintOverlay : AnsiString;
   FHintTarget  : AnsiString;
+  FHintStatus  : AnsiString;
   FCachedAmmo  : Integer;
 
   // Textmode only
@@ -173,6 +174,7 @@ public
   property ASCII       : TASCIIImageMap read FASCII;
   property HintOverlay : AnsiString     read FHintOverlay write FHintOverlay;
   property Targeting   : Boolean        read FTargeting   write FTargeting;
+  property HintStatus  : AnsiString     read FHintStatus  write FHintStatus;
   property Time        : QWord          read FTime;
   property NarrowMode  : Boolean        read FNarrowMode;
 
@@ -190,7 +192,7 @@ implementation
 uses math, video, dateutils, variants,
      vsound, vluasystem, vuid, vlog, vdebug, vuiconsole, vmath,
      vsdlio, vglconsole, vtig, vtigio, vvector,
-     dflevel, dfplayer, dfitem, dfhof, drlperk,
+     dflevel, dfplayer, dfitem, dfhof,
      drlconfiguration, drlbase, drlmoreview, drlchoiceview, drlua, drlmodulechoiceview,
      drlhudviews, drlplotview;
 
@@ -448,6 +450,7 @@ begin
   FNarrowMode  := False;
   FHint        := '';
   FHintOverlay := '';
+  FHintStatus  := '';
 
   FTargetEnabled := False;
   FTargetLast    := False;
@@ -592,6 +595,9 @@ end;
 procedure TDRLIO.SetAutoTarget( aTarget : TCoord2D );
 begin
   FHintTarget := DRL.Level.GetTargetDescription( aTarget );
+  if DRL.Level.isVisible( aTarget ) and ( DRL.Level.Being[ aTarget ] <> nil ) 
+    then FHintStatus := DRL.Level.Being[ aTarget ].GetTraitString
+    else FHintStatus := '';
 end;
 
 function TDRLIO.ResolveSub( const aID : Ansistring ) : Ansistring;
@@ -759,7 +765,7 @@ end;
 procedure TDRLIO.DrawHud;
 var iCon        : TUIConsole;
     iWeapon     : TItem;
-    i, iP       : Integer;
+    i           : Integer;
     iColor      : TUIColor;
     iHPP        : Integer;
     iPos        : TIOPoint;
@@ -770,7 +776,7 @@ var iCon        : TUIConsole;
     iCurrent    : DWord;
     iOffset     : Integer;
     iBoss       : TBeing;
-    iPerks      : TPerkList;
+    iTraitStr   : Ansistring;
 
   function ArmorColor( aValue : Integer ) : TUIColor;
   begin
@@ -887,30 +893,23 @@ begin
 
     VTIG_FreeLabel( DRL.Level.Name, Point( -2-Length( DRL.Level.Name), iBottom ), iColor );
 
-    iP := 0;
-    iPerks := Player.GetPerkList;
-    if ( iPerks <> nil ) and ( iPerks.Size > 0 ) then
-      for i := 0 to iPerks.Size - 1 do
-        with PerkData[ iPerks[i].ID ] do
-          if Short <> '' then
-          begin
-            if ( iPerks[i].Time > 0 ) and ( iPerks[i].Time <= 50 )
-              then iColor := ColorExp
-              else iColor := Color;
-            VTIG_FreeLabel( Short, Point( iPos.X+iP+1, iBottom ), iColor );
-            iP += Length( Short ) + 1;
-          end;
+    iTraitStr := Player.GetTraitString;
+    if iTraitStr <> '' then
+      VTIG_FreeLabel( iTraitStr, Point( iPos.X+1, iBottom ) );
   end;
 
   iOffset := -2;
 
   if FHintOverlay <> ''
-    then VTIG_FreeLabel( ' '+FHintOverlay+' ', Point( iOffset-Length( FHintOverlay ), 2 ), Yellow )
+    then VTIG_FreeLabel( ' '+FHintOverlay+' ', Point( iOffset-VTIG_Length( FHintOverlay ), 2 ), Yellow )
     else if ( (FHint <> '') and ( not GraphicsVersion ) )
-      then VTIG_FreeLabel( ' '+FHint+' ', Point( iOffset-Length( FHint ), 2 ), Yellow )
+      then VTIG_FreeLabel( ' '+FHint+' ', Point( iOffset-VTIG_Length( FHint ), 2 ), Yellow )
       else if (FHintTarget <> '') and Setting_AutoTarget
-        then VTIG_FreeLabel( ' '+FHintTarget+' ', Point( iOffset-Length( FHintTarget ), 2 ), Brown );
+        then VTIG_FreeLabel( ' '+FHintTarget+' ', Point( iOffset-VTIG_Length( FHintTarget ), 2 ), Brown );
 
+  if GraphicsVersion and ( FHintStatus <> '' ) and ( ( FHintOverlay <> '' ) or ( FHintTarget <> '' ) ) then
+    VTIG_FreeLabel( ' '+FHintStatus+' ', Point( iOffset-VTIG_Length( FHintStatus ), 3 ), Yellow );
+  
   if GraphicsVersion and ( FHint <> '' ) then
     VTIG_FreeLabel( ' '+FHint+' ', Point( 20, 4 ), Yellow );
 
@@ -1134,9 +1133,12 @@ begin
   LookDesc := DRL.Level.GetLookDescription( aWhere );
   if Option_BlindMode then LookDesc += ' | '+BlindCoord( aWhere - Player.Position );
   if DRL.Level.isVisible(aWhere) and (DRL.Level.Being[aWhere] <> nil) then
+  begin
     if isGamepad
       then LookDesc += ' | <{LA}> more'
       else LookDesc += ' | <{Lm}>ore';
+    FHintStatus := DRL.Level.Being[ aWhere ].GetTraitString;
+  end;
   FHintOverlay := LookDesc;
 end;
 

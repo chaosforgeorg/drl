@@ -723,26 +723,13 @@ end;
 
 procedure TPlayerView.PushItem( aItem : TItem; aArray : TItemViewArray );
 var iEntry : TItemViewEntry;
-    iPerks : TPerkList;
-    i      : Integer;
     iSet   : AnsiString;
 begin
   iEntry.Item  := aItem;
   iEntry.Name  := aItem.Description;
   if Length( iEntry.Name ) > 47 then iEntry.Name := Copy(iEntry.Name, 1, 47 );
   iEntry.Stats := aItem.DescriptionBox;
-  iEntry.Perks := '';
-  iPerks       := aItem.GetPerkList;
-  if iPerks <> nil then
-    if iPerks.Size > 0 then
-    begin
-      for i := 0 to iPerks.Size - 1 do
-        with PerkData[ iPerks[i].ID ] do
-          if Name <> '' then
-            iEntry.Perks += '{'+VTIG_ColorChar( Color )+Name+'}, ';
-      if iEntry.Perks <> '' then
-        SetLength( iEntry.Perks, Length(iEntry.Perks)-2 );
-    end;
+  iEntry.Perks := aItem.GetTraitString( True );
   iEntry.Color := aItem.MenuColor;
   iEntry.QSlot := 0;
 

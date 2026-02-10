@@ -1234,6 +1234,7 @@ end;
 function TBeing.TryMove( aWhere : TCoord2D ) : TMoveResult;
 var iLevel : TLevel;
 begin
+  Log( 'Trying to move to %d,%d', [ aWhere.x, aWhere.y ] );
   iLevel := TLevel(Parent);
   if not iLevel.isProperCoord( aWhere )          then Exit( MoveBlock );
   if iLevel.cellFlagSet( aWhere, CF_OPENABLE )   then Exit( MoveDoor  );
@@ -1289,6 +1290,7 @@ begin
   if BF_WALKSOUND in FFlags then
     PlaySound( 'hoof' );
   HandlePostDisplace;
+  if not IsPlayer then CallHook( Hook_OnPostMove, [] );
   Exit( iMoveResult );
 end;
 

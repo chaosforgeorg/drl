@@ -454,8 +454,16 @@ begin
       begin
         if not IO.IsModal then
           if DRL.Level.isVisible(iCoord) and ( DRL.Level.Being[ iCoord ] <> nil )
-            then IO.HintOverlay := DRL.Level.GetTargetDescription(iCoord)
-            else IO.HintOverlay := DRL.Level.GetLookDescription(iCoord);
+            then 
+            begin 
+              IO.HintOverlay := DRL.Level.GetTargetDescription(iCoord);
+              IO.HintStatus  := DRL.Level.Being[ iCoord ].GetTraitString;
+            end
+            else 
+            begin
+              IO.HintOverlay := DRL.Level.GetLookDescription(iCoord);
+              IO.HintStatus  := '';
+            end;
         FLastCoord := iCoord;
       end;
 
