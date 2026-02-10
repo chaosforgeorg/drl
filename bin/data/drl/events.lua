@@ -127,29 +127,12 @@ function drl.register_events()
 		OnAdd = function( self )
 			ui.msg_feel( "You feel the sudden need to run!!!" )
 			player:add_history( "On @1 he ran for his life from acid!" )
-
-			local data      = level.data.event
-			data.timer      = 0
-			data.step       = math.max( 200 - level.danger_level - DIFFICULTY * 5, 60 )
-			data.direction  = (math.random(2)*2)-3
-			data.flood_min  = 0
-			data.cell       = "acid"
-			if data.direction == -1 then
-				data.flood_min = 80
-			else
-				data.direction = 1
-			end
-
-			local left  = generator.safe_empty_coord( area(2,2,20,19) )
-			local right = generator.safe_empty_coord( area(60,2,78,19) )
-
-			for c in level:each("stairs") do
-				level.map[ c ] = generator.styles[ level.style ].floor
-			end
-
-			if data.direction == 1 then left, right = right, left end
-			player:displace( right )
-			level.map[ left ] = "stairs"
+			generator.event_flood_setup {
+				cell       = "acid",
+				stairs     = "stairs",
+				min_step   = 60,
+				destroy    = true,
+			}
 		end,
 
 		OnTick = function( self, time )
@@ -171,33 +154,41 @@ function drl.register_events()
 		OnAdd = function( self )
 			ui.msg_feel( "You feel the sudden need to run!!!" )
 			player:add_history( "On @1 he ran for his life from lava!" )
+			generator.event_flood_setup {
+				cell        = "lava",
+				stairs      = "stairs",
+				min_step    = 40,
+				destroy     = true,
+				rush_danger = 20,
+			}
+		end,
 
-			local data      = level.data.event
-			data.timer      = 0
-			data.step       = math.max( 200 - level.danger_level - DIFFICULTY * 5, 40 )
-			data.direction  = (math.random(2)*2)-3
-			data.flood_min  = 0
-			data.cell       = "lava"
-			if data.direction == -1 then
-				data.flood_min = 80
-			else
-				data.direction = 1
-			end
+		OnTick = function( self, time )
+			generator.events_flood_tick()
+		end,
+	}
 
-			if level.danger_level > 20 and math.random(5) == 1 then
-				data.step = 25
-			end
+	-- Flood Blood Event
+	register_perk "event_flood_blood"
+	{
+		name   = "Blood Flood",
+		desc   = "Blood is flooding the level from one side.",
+		color  = RED,
+		min_dlevel = 20,
+		min_diff   = 4,
+		weight     = 3,
+		tags   = { "event", "flood", "damage" },
 
-			local left  = generator.safe_empty_coord( area(2,2,20,19) )
-			local right = generator.safe_empty_coord( area(60,2,78,19) )
-
-			for c in level:each("stairs") do
-				level.map[ c ] = generator.styles[ level.style ].floor
-			end
-
-			if data.direction == 1 then left, right = right, left end
-			player:displace( right )
-			level.map[ left ] = "stairs"
+		OnAdd = function( self )
+			ui.msg_feel( "Unholy energy fills the air!!!" )
+			player:add_history( "On @1 he ran for his life from blood!" )
+			generator.event_flood_setup {
+				cell        = "blood",
+				stairs      = "stairs",
+				min_step    = 40,
+				destroy     = false,
+				rush_danger = 30,
+			}
 		end,
 
 		OnTick = function( self, time )
@@ -363,35 +354,4 @@ function generator.events_explosion_tick()
 end
 
 
-function generator.events_flood_tick()
-	local flood_tile = function( pos, cell )
-		local cell_data = cells[ level:get_cell( pos ) ]
-		if not cell_data.flags[ CF_CRITICAL ] then
-			level:set_cell( pos, cell )
-		end
-		if cell_data.OnDestroy then cell_data.OnDestroy(pos) end
-		level:try_destroy_item( pos )
-	end
-	local data = level.data.event
-	data.timer = data.timer + 1
-	if data.timer == data.step then
-		data.timer = 0
-		data.flood_min = data.flood_min + data.direction
-		if data.flood_min >= 1 and data.flood_min <= MAXX then
-			for y = 1,MAXY do
-				flood_tile( coord( data.flood_min, y ), data.cell )
-			end
-		end
-		if data.flood_min + data.direction >= 1 and data.flood_min + data.direction  <= MAXX then
-			local switch = false
-			for y = 1,MAXY do
-				if switch then
-					flood_tile( coord( data.flood_min + data.direction, y ), data.cell )
-				end
-				if math.random(4) == 1 then switch = not switch end
-			end
-		end
-	end
-	level:recalc_fluids()
-end
 

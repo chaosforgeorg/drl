@@ -1222,3 +1222,69 @@ function generator.generate_rivers( settings )
 		end
 	end
 end
+
+function generator.event_flood_setup( params )
+	assert( params.cell, "event_flood_setup: .cell required!" )
+	assert( params.stairs, "event_flood_setup: .stairs required!" )
+	local data      = level.data.event
+	data.timer      = 0
+	data.step       = math.max( 200 - level.danger_level - DIFFICULTY * 5, params.min_step or 40 )
+	data.direction  = (math.random(2)*2)-3
+	data.flood_min  = 0
+	data.destroy    = params.destroy or false
+	data.cell       = params.cell
+	if data.direction == -1 then
+		data.flood_min = 80
+	else
+		data.direction = 1
+	end
+
+	if params.rush_danger and level.danger_level > params.rush_danger and math.random(5) == 1 then
+		data.step = 25
+	end
+
+	local left  = generator.safe_empty_coord( area(2,2,20,19) )
+	local right = generator.safe_empty_coord( area(60,2,78,19) )
+
+	for c in level:each( params.stairs ) do
+		level.map[ c ] = generator.styles[ level.style ].floor
+	end
+
+	if data.direction == 1 then left, right = right, left end
+	player:displace( right )
+	level.map[ left ] = params.stairs
+end
+
+function generator.events_flood_tick()
+	local flood_tile = function( pos, cell, destroy )
+		local cell_data = cells[ level:get_cell( pos ) ]
+		if not cell_data.flags[ CF_CRITICAL ] then
+			level:set_cell( pos, cell )
+		end
+		if destroy then
+			if cell_data.OnDestroy then cell_data.OnDestroy(pos) end
+			level:try_destroy_item( pos )
+		end
+	end
+	local data = level.data.event
+	data.timer = data.timer + 1
+	if data.timer == data.step then
+		data.timer = 0
+		data.flood_min = data.flood_min + data.direction
+		if data.flood_min >= 1 and data.flood_min <= MAXX then
+			for y = 1,MAXY do
+				flood_tile( coord( data.flood_min, y ), data.cell, data.destroy )
+			end
+		end
+		if data.flood_min + data.direction >= 1 and data.flood_min + data.direction  <= MAXX then
+			local switch = false
+			for y = 1,MAXY do
+				if switch then
+					flood_tile( coord( data.flood_min + data.direction, y ), data.cell, data.destroy )
+				end
+				if math.random(4) == 1 then switch = not switch end
+			end
+		end
+	end
+	level:recalc_fluids()
+end
