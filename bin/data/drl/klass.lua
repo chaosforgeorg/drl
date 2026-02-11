@@ -34,7 +34,7 @@ function drl.register_klasses()
 			{ id = "survivalist",  requires = {{ "nails",        2 },                                      }, blocks = { "berserker",  "bitch",                   }, reqlevel = 5, master = true },
 		},
 
-		desc = "Marines are the backbone of the UAC, resilient and hardy. They start with 10 more health points, +20% fire/acid/plasma resistance and powerups they use have a +50% duration bonus (+25% on Nightmare).",
+		desc = "Marines are the backbone of the UAC, resilient and hardy. They start with 10 more health points, +10% fire/acid/plasma resistance and powerups they use have a +50% duration bonus (+25% on Nightmare).",
 
 		OnPick = function( being )
 			if DIFFICULTY >= DIFF_NIGHTMARE then
@@ -43,6 +43,7 @@ function drl.register_klasses()
 				being:add_property( "POWER_BONUS", 50 )
 			end
 			being.hpmax = being.hpmax + 10
+			being.hpnom = being.hpnom + 10
 			being.hp    = being.hp + 10
 
 			being.eq.weapon = "pistol"

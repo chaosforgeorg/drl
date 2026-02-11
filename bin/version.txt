@@ -6,6 +6,10 @@
 [fix] -- GJ#255: Game - fixed internal tohit chances when targeting enemies behind enemies
 [fix] -- GJ#255: Game - fixed multiple "On level X he" messages in history log
 [fix] -- GJ#255: Game - fixed permanent berserk effect
+[fix] -- GH#---: UI - fixed marine resistance values in klass description
+[fix] -- GH#---: UI - fixed AoHu/ArchoHu HP description (20% of HP)
+[fix] -- GH#---: UI - clarified Scavenger trait description
+[fix] -- GH#---: Game - marines get +12 HP instead of +10 from Ironman
 
 0.10.6
 [mod] -- GJ#228: affects timing now are based on ticks not turns
