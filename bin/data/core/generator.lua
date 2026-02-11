@@ -1256,16 +1256,6 @@ function generator.event_flood_setup( params )
 end
 
 function generator.events_flood_tick()
-	local flood_tile = function( pos, cell, destroy )
-		local cell_data = cells[ level:get_cell( pos ) ]
-		if not cell_data.flags[ CF_CRITICAL ] then
-			level:set_cell( pos, cell )
-		end
-		if destroy then
-			if cell_data.OnDestroy then cell_data.OnDestroy(pos) end
-			level:try_destroy_item( pos )
-		end
-	end
 	local data = level.data.event
 	data.timer = data.timer + 1
 	if data.timer == data.step then
@@ -1273,14 +1263,14 @@ function generator.events_flood_tick()
 		data.flood_min = data.flood_min + data.direction
 		if data.flood_min >= 1 and data.flood_min <= MAXX then
 			for y = 1,MAXY do
-				flood_tile( coord( data.flood_min, y ), data.cell, data.destroy )
+				level:flood_tile( coord( data.flood_min, y ), data.cell, data.destroy )
 			end
 		end
 		if data.flood_min + data.direction >= 1 and data.flood_min + data.direction  <= MAXX then
 			local switch = false
 			for y = 1,MAXY do
 				if switch then
-					flood_tile( coord( data.flood_min + data.direction, y ), data.cell, data.destroy )
+					level:flood_tile( coord( data.flood_min + data.direction, y ), data.cell, data.destroy )
 				end
 				if math.random(4) == 1 then switch = not switch end
 			end
