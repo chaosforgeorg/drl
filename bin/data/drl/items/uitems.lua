@@ -66,9 +66,9 @@ function drl.register_unique_items()
 			target:play_sound("phasing")
 			being:msg("Suddenly "..target:get_name(true,false).." crashes!")
 			if target:has_property("is_boss") and target.is_boss then
-				target.scount = math.max( target.scount - 500, 1000 )
-			else
 				target.scount = math.max( target.scount - 1000, 1000 )
+			else
+				target.scount = math.max( target.scount - 2000, 1000 )
 			end
 			level:explosion( target.position, { range = 1, delay = 50, damage = "10d1", color = LIGHTBLUE, sound_id = "soldier.phase", damage_type = DAMAGE_SPLASMA }, self )
 			return false

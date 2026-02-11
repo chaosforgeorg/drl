@@ -709,7 +709,7 @@ function drl.register_regular_items()
 		ammomax       = 40,
 		damage        = "1d6",
 		damagetype    = DAMAGE_BULLET,
-		acc           = 2,
+		acc           = 3,
 		reloadtime    = 25,
 		shots         = 4,
 		miscolor      = WHITE,
