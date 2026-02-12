@@ -79,7 +79,7 @@ protected
   FSize        : TIOPoint;
   FInv         : TItemViewArray;
   FEq          : TItemViewArray;
-  FCharacter   : TStringGArray;
+  FCharacter   : array[0..5] of TStringGArray;
   FTraitsStyle : TTIGStyle;
   FAction      : AnsiString;
   FITitle      : AnsiString;
@@ -270,12 +270,14 @@ begin
 end;
 
 destructor TPlayerView.Destroy;
+var i : Integer;
 begin
   DRL.ClearPlayerView;
   FreeAndNil( FEq );
   FreeAndNil( FInv );
   FreeAndNil( FTraits );
-  FreeAndNil( FCharacter );
+  for i := Low( FCharacter ) to High( FCharacter ) do
+    FreeAndNil( FCharacter[i] );
   inherited Destroy;
 end;
 
@@ -642,18 +644,19 @@ procedure TPlayerView.UpdateCharacter( aActive : Boolean );
 var iString : Ansistring;
     iCount  : Integer;
 begin
-  if FCharacter = nil then ReadCharacter;
+  if FCharacter[0] = nil then ReadCharacter;
   VTIG_BeginWindow(FCTitle, 'character', FSize );
-  iCount := 0;
-  if Assigned( IO.Ascii[Player.ASCIIMoreCode] ) then
-    for iString in IO.Ascii[Player.ASCIIMoreCode] do
-    begin
-      VTIG_FreeLabel( iString, Point( 47, iCount ) );
-      Inc( iCount );
-    end;
-  for iString in FCharacter do
+  for iString in FCharacter[0] do
     VTIG_Text( iString );
-  VTIG_End('{l<{!{$input_left},{$input_right}}> panels, <{!{$input_escape}}> exit}');
+  for iCount := 1 to High( FCharacter ) do
+    if FCharacter[iCount] <> nil then
+    begin
+      VTIG_Ruler;
+      for iString in FCharacter[iCount] do
+        VTIG_Text( iString );
+    end;
+  VTIG_Scrollbar;
+  VTIG_End('{l<{!{$input_left},{$input_right}}> panels, <{!{$input_up},{$input_down}}> scroll, <{!{$input_escape}}> exit}');
 end;
 
 procedure TPlayerView.UpdateTraits( aActive : Boolean );
@@ -900,13 +903,16 @@ var iKillRecord   : Integer;
     iDodgeBonus   : Integer;
     iKnockMod     : Integer;
     iLeft, iULeft : DWord;
+    i             : Integer;
+    iPerks        : TPerkList;
+    iName         : Ansistring;
   function Percent( aCurrent, aMax : Integer ) : Integer;
   begin
     Exit( Floor( ( aCurrent / aMax ) * 100.0 ) );
   end;
 begin
-  if FCharacter = nil then FCharacter := TStringGArray.Create;
-  FCharacter.Clear;
+  for i := Low( FCharacter ) to High( FCharacter ) do
+    FreeAndNil( FCharacter[i] );
 
   FCTitle := LuaSystem.Get([ 'diff', DRL.Difficulty, 'code' ]);
   if DRL.Challenge <> ''  then FCTitle += ' / ' + LuaSystem.Get(['chal',DRL.Challenge,'abbr']);
@@ -918,48 +924,105 @@ begin
     Statistics.Update();
     iKillRecord := Statistics['kills_non_damage'];
     if FKills.NoDamageSequence > iKillRecord then iKillRecord := FKills.NoDamageSequence;
-
-    FCharacter.Push( Format( '{!%s}, level {!%d} {!%s},',[ Name, ExpLevel, AnsiString(LuaSystem.Get(['klasses',Klass,'name']))] ) );
-    FCharacter.Push( Format( 'currently at {!%s}, for {!%d} turns. ', [ DRL.Level.Name, DRL.Level.LTime ] ) );
-    FCharacter.Push( Format( 'He survived {!%d} turns, which took him {!%d} seconds realtime. ', [ Statistics['game_time'], Statistics['real_time'] ] ) );
-    FCharacter.Push( Format( 'He took {!%d} damage, {!%d} on this floor alone. ', [ Statistics['damage_taken'], Statistics['damage_on_level'] ] ) );
-    FCharacter.Push( Format( 'He killed {!%d} out of {!%d} enemies ({!%d%%}). ', [ Statistics['unique_kills'], Statistics['max_unique_kills'], Percent( Statistics['unique_kills'], Statistics['max_unique_kills'] ) ] ) );
-    if Statistics['kills'] <> Statistics['unique_kills'] then
-      FCharacter.Push( Format( 'He killed {!%d} out of {!%d} enemy spawns total. ', [ Statistics['kills'], Statistics['max_kills'] ] ) );
-    FCharacter.Push( Format( 'His current killing spree is {!%d}, with a record of {!%d}. ', [ FKills.NoDamageSequence, iKillRecord ] ) );
-    FCharacter.Push( '' );
-    FCharacter.Push( Format( 'Current movement speed is {!%.2f} second/move.', [getMoveCost/(Speed*10.0)] ) );
-    FCharacter.Push( Format( 'Current fire speed is {!%.2f} second/%s.', [getFireCost( False, False )/(Speed*10.0),IIf(canDualWield,'dualshot','shot')] ) );
-    FCharacter.Push( Format( 'Current reload speed is {!%.2f} second/reload.', [getReloadCost(Inv.Slot[efWeapon]) /(Speed*10.0)] ) );
-    FCharacter.Push( Format( 'Current to hit chance (point blank) is {!%s}.',[toHitPercent(10+getToHit(Inv.Slot[efWeapon], False, False))]));
-    FCharacter.Push( Format( 'Current melee hit chance is {!%s}.',[toHitPercent(10+getToHit(Inv.Slot[efWeapon], False, True))]));
-    FCharacter.Push( '' );
-
     iDodgeBonus := getDodgeMod;
     iKnockMod   := getKnockMod;
 
-    if iDodgeBonus <> 0
-      then FCharacter.Push( Format( 'He has a {!%d%%} bonus toward dodging attacks.', [iDodgeBonus]))
-      else FCharacter.Push( 'He has no bonus toward dodging attacks.' );
+    // Section 0: Player
+    FCharacter[0] := TStringGArray.Create;
+    FCharacter[0].Push( '{!' + Name + '} - level {!' + IntToStr(ExpLevel) + '} ' + AnsiString(LuaSystem.Get(['klasses',Klass,'name'])) );
+    if ExpLevel < MaxPlayerLevel - 1
+      then FCharacter[0].Push( Format( '  Experience   : {!%d} ({!%d} more needed for level {!%d})', [ Exp, ExpTable[ExpLevel+1] - Exp, ExpLevel+1 ] ) )
+      else FCharacter[0].Push( Format( '  Experience   : {!%d} ({!max level reached!})', [ Exp ] ) );
+    FCharacter[0].Push( Format( '  Kills        : {!%d}/{!%d} ({!%d%%}), spree {!%d} (record {!%d})',
+      [ Statistics['unique_kills'], Statistics['max_unique_kills'], Percent( Statistics['unique_kills'], Statistics['max_unique_kills'] ),
+        FKills.NoDamageSequence, iKillRecord ] ) );
+    if Statistics['kills'] <> Statistics['unique_kills'] then
+      FCharacter[0].Push( Format( '  Total kills  : {!%d}/{!%d}', [ Statistics['kills'], Statistics['max_kills'] ] ) );
+    FCharacter[0].Push( Format( '  Damage taken : {!%d} ({!%d} this floor)', [ Statistics['damage_taken'], Statistics['damage_on_level'] ] ) );
+    FCharacter[0].Push( Format( '  Game time    : {!%d} turns, {!%d}s realtime', [ Statistics['game_time'], Statistics['real_time'] ] ) );
+    FCharacter[0].Push( '' );
 
-    { Knockback Modifier }
-    if ( iKnockMod <> 100 ) then
+    // Speeds, Accuracy, Bonuses
+    FCharacter[0].Push(
+      Padded( '{!Current speeds}', 26 ) +
+      Padded( '{!Accuracy}', 24 ) +
+      '{!Bonuses}' );
+    FCharacter[0].Push(
+      Padded( '  ' + Padded('Movement', 8) + ' : {!' + Format('%.2f', [getMoveCost/(Speed*10.0)]) + '}s', 24 ) +
+      Padded( '    ' + Padded('Ranged', 8) + ' : {!' + toHitPercent(10+getToHit(Inv.Slot[efWeapon], False, False)) + '}', 24 ) +
+      '    ' + Padded('Dodge', 9) + ' : {!' + BonusStr(iDodgeBonus) + '%%}' );
+    FCharacter[0].Push(
+      Padded( '  ' + Padded('Fire', 8) + ' : {!' + Format('%.2f', [getFireCost( False, False )/(Speed*10.0)]) + '}s/' + IIf(canDualWield,'dualshot','shot'), 24 ) +
+      Padded( '    ' + Padded('Melee', 8) + ' : {!' + toHitPercent(12+getToHit(Inv.Slot[efWeapon], False, True)) + '}', 24 ) +
+      '    ' + Padded('Knockback', 9) + ' : {!' + IntToStr(iKnockMod) + '%%}' );
+    FCharacter[0].Push(
+      '  ' + Padded('Reload', 8) + ' : {!' + Format('%.2f', [getReloadCost(Inv.Slot[efWeapon])/(Speed*10.0)]) + '}s' );
+
+    // Player perks: status effects
+    iPerks := GetPerkList;
+    if ( iPerks <> nil ) and ( iPerks.Size > 0 ) then
     begin
-      if ( iKnockMod < 100 )
-       then FCharacter.Push( Format( 'He resists {!%d%%} of knockback.', [100-iKnockMod]))
-       else FCharacter.Push( Format( 'He receives {!%d%%} extra knockback.', [iKnockMod-100]))
-    end
-    else
-      FCharacter.Push( 'He has no resistance to knockback.' );
-    FCharacter.Push( '' );
+      for i := 0 to iPerks.Size - 1 do
+        with PerkData[ iPerks[i].ID ] do
+        if ( Desc <> '' ) and ( ColorExp <> 0 ) then
+        begin
+          FCharacter[0].Push( '' );
+          FCharacter[0].Push( '{!Status effects}' );
+          break;
+        end;
+      for i := 0 to iPerks.Size - 1 do
+        with PerkData[ iPerks[i].ID ] do
+        if ( Desc <> '' ) and ( ColorExp <> 0 ) then
+        begin
+          iName := Name;
+          if iName = '' then iName := Short;
+          if iPerks[i].Time > 0
+            then FCharacter[0].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} ({!' + FloatToStr( iPerks[i].Time / 10 ) + '}s) - ' + Desc )
+            else FCharacter[0].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} - ' + Desc );
+        end;
+
+      // Player perks: permanents
+      for i := 0 to iPerks.Size - 1 do
+        with PerkData[ iPerks[i].ID ] do
+        if ( Desc <> '' ) and ( ColorExp = 0 ) then
+        begin
+          FCharacter[0].Push( '' );
+          FCharacter[0].Push( '{!Permanents}' );
+          break;
+        end;
+      for i := 0 to iPerks.Size - 1 do
+        with PerkData[ iPerks[i].ID ] do
+        if ( Desc <> '' ) and ( ColorExp = 0 ) then
+          FCharacter[0].Push( '  {' + VTIG_ColorChar( Color ) + Name + '} - ' + Desc );
+    end;
+
+    // Section 1: Level
+    FCharacter[1] := TStringGArray.Create;
+    FCharacter[1].Push( Format( '{!%s}', [ DRL.Level.Name ] ) );
     iLeft  := DRL.Level.EnemiesLeft;
     iULeft := DRL.Level.EnemiesLeft( True );
     if iLeft = iULeft
-      then FCharacter.Push( Format( 'Enemies left : {!%d}', [DRL.Level.EnemiesLeft] ) )
-      else FCharacter.Push( Format( 'Enemies left : {!%d} (%d respawned)', [iLeft, iLeft-iULeft] ) );
-
+      then FCharacter[1].Push( Padded( Format( '  Turns taken  : {!%d}', [ DRL.Level.LTime ] ), 32 ) + Format( 'Enemies left : {!%d}', [iLeft] ) )
+      else FCharacter[1].Push( Padded( Format( '  Turns taken  : {!%d}', [ DRL.Level.LTime ] ), 32 ) + Format( 'Enemies left : {!%d} (%d respawned)', [iLeft, iLeft-iULeft] ) );
     if DRL.Level.Feeling <> '' then
-      FCharacter.Push( Format( 'Level feel : {!%s}', [DRL.Level.Feeling] ) )
+      FCharacter[1].Push( Format( '  Level feel   : {!%s}', [DRL.Level.Feeling] ) );
+
+    // Level perks
+    iPerks := DRL.Level.GetPerkList;
+    if ( iPerks <> nil ) and ( iPerks.Size > 0 ) then
+    begin
+      FCharacter[1].Push( '' );
+      for i := 0 to iPerks.Size - 1 do
+        with PerkData[ iPerks[i].ID ] do
+        if ( Desc <> '' ) then
+        begin
+          iName := Name;
+          if iName = '' then iName := Short;
+          if iPerks[i].Time > 0
+            then FCharacter[1].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} ({!' + FloatToStr( iPerks[i].Time / 10 ) + '}s) - ' + Desc )
+            else FCharacter[1].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} - ' + Desc );
+        end;
+    end;
   end;
 
 end;
