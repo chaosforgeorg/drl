@@ -1138,7 +1138,9 @@ begin
       then LookDesc += ' | <{LA}> more'
       else LookDesc += ' | <{Lm}>ore';
     FHintStatus := DRL.Level.Being[ aWhere ].GetTraitString;
-  end;
+  end
+  else
+    FHintStatus := '';
   FHintOverlay := LookDesc;
 end;
 
