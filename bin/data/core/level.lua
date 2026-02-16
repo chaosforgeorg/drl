@@ -1,11 +1,22 @@
-function level:flood_tile( pos, cell )
+function level:flood_tile( pos, cell, destroy )
 	local cell_data = cells[ level:get_cell( pos ) ]
 	if not cell_data.flags[ CF_CRITICAL ] then
 		level:set_cell( pos, cell )
+		if destroy then 
+			if cell_data.OnDestroy then cell_data.OnDestroy(pos) end
+			level:try_destroy_item( pos )
+		end
 	end
-	if cell_data.OnDestroy then cell_data.OnDestroy(pos) end
-	level:try_destroy_item( pos )
 end
+
+function level:flood( tile, flood_area )
+	local hazard = cells[tile].flags[ CF_HAZARD ]
+	for c in flood_area() do
+		level:flood_tile( c, tile, hazard )
+	end
+	self:recalc_fluids()
+end
+
 
 function level:destroy_to( c, cell_id )
 	local cell = cells[ level.map[ c ] ]
@@ -228,6 +239,22 @@ function level:roll_item( params )
 	return self:roll_item_list( self:get_item_table( params.level, weights, reqs ) )
 end
 
+function level:roll_items( params )
+	local params = params or {}
+	params.weights = params.weights or {}
+	local result = {}
+	local count  = params.count or 1
+	for i=1,count do
+		local id = self:roll_item( params )
+		if id then
+			params.weights[ id ] = 0
+			table.insert( result, id )
+		end
+	end
+	return result
+end
+
+
 function level:summon(t,opt)
 	local count  = 1
 	local where  = nil
@@ -333,21 +360,6 @@ end
 function level:try_destroy_item( coord )
 	local item = self:get_item( coord )
 	if item and not item.flags[ IF_UNIQUE ] and not item.flags[ IF_NODESTROY ] then item:destroy() end
-end
-
-function level:flood( tile, flood_area )
-	local hazard = cells[tile].flags[ CF_HAZARD ]
-	local nid    = cells[tile].nid
-	for c in flood_area() do
-		local cell_proto = cells[self:get_cell(c)]
-		if cell_proto.set == CELLSET_FLOORS or cell_proto.flags[ CF_LIQUID ] then
-			self:set_cell(c,nid)
-		end
-		if hazard then
-			self:try_destroy_item(c)
-		end
-	end
-	self:recalc_fluids()
 end
 
 function level:is_corpse( c )

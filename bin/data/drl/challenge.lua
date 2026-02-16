@@ -1031,8 +1031,8 @@ function drl.register_challenges()
 		OnMortem = function ()
 			if player:has_won() then
 				player:add_badge("masochism3")
-				if DIFFICULTY >= DIFF_HARD and player:get_trait( traits["badass"].nid ) == 0 then player:add_badge("masochism4") end
-				if DIFFICULTY >= DIFF_NIGHTMARE and player:get_trait( traits["badass"].nid ) + player:get_trait( traits["ironman"].nid ) == 0 then player:add_badge("masochism5") end
+				if DIFFICULTY >= DIFF_HARD and not player:has_trait( "badass" ) then player:add_badge("masochism4") end
+				if DIFFICULTY >= DIFF_NIGHTMARE and not player:has_trait( "badass" ) and not player:has_trait( "ironman" ) then player:add_badge("masochism5") end
 				if ARCHANGEL and DIFFICULTY >= DIFF_NIGHTMARE then player:add_badge("masochism6") end
 			end
 		end,
@@ -1362,7 +1362,7 @@ You can rest easy knowing that you're Boss. Yet at the last level you sensed som
 	register_challenge "challenge_aohu"
 	{
 		name        = "Angel of Humanity",
-		description = "You're no hero. Try beating the game with a mere 10 HP. Oh, and don't count on Ironman, it will only give you +2 HP per level. To ease your suffering a little, you gain some useful junk at start. Yes, you will get instakilled a lot, go ahead and cry.",
+		description = "You're no hero. Try beating the game with a mere 20% of your HP. Oh, and don't count on Ironman, it will only give you +2 HP per level. To ease your suffering a little, you gain some useful junk at start. Yes, you will get instakilled a lot, go ahead and cry.",
 		rating      = "BLADE",
 		rank        = 6,
 		abbr        = "AoHu",
@@ -1371,7 +1371,7 @@ You can rest easy knowing that you're Boss. Yet at the last level you sensed som
 		secondary   = { "AoCn", "AoOC", "A100", "AoI", "AoP", "AoRA", "AoD", "AoMs" },
 
 		arch_name        = "Archangel of Humanity",
-		arch_description = "You're no hero. Try beating the game with a mere 10 HP. Oh, and don't count on Ironman, it will only give you +2 HP per level. To ease your suffering a little, you gain some useful junk at start. Actually, traits are so unrealistic, take just one at the start.",
+		arch_description = "You're no hero. Try beating the game with a mere 20% of your HP. Oh, and don't count on Ironman, it will only give you +2 HP per level. To ease your suffering a little, you gain some useful junk at start. Actually, traits are so unrealistic, take just one at the start.",
 		arch_rating      = "TORMUSE",
 		arch_rank        = 9,
 

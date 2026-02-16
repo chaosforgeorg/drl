@@ -284,7 +284,7 @@ function drl.register_regular_items()
 			for c in area.FULL() do
 				local cell = cells[ level.map[ c ] ]
 				if cell.flags[ CF_BLOCKMOVE ] or cell.flags[ CF_NOCHANGE ] then
-					level.light[ c ][LFEXPLORED] = true
+					level:set_light_flag( c, LFEXPLORED, true )
 				end
 			end
 			level.flags[ LF_ITEMSVISIBLE ] = true
@@ -312,7 +312,7 @@ function drl.register_regular_items()
 			for c in area.FULL() do
 				local cell = cells[ level.map[ c ] ]
 				if cell.flags[ CF_BLOCKMOVE ] or cell.flags[ CF_NOCHANGE ] then
-					level.light[ c ][LFEXPLORED] = true
+					level:set_light_flag( c, LFEXPLORED, true )
 				end
 			end
 			level.flags[ LF_ITEMSVISIBLE ] = true
@@ -709,7 +709,7 @@ function drl.register_regular_items()
 		ammomax       = 40,
 		damage        = "1d6",
 		damagetype    = DAMAGE_BULLET,
-		acc           = 2,
+		acc           = 3,
 		reloadtime    = 25,
 		shots         = 4,
 		miscolor      = WHITE,

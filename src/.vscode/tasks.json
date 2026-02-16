@@ -72,7 +72,9 @@
                 "${config:drlMainFile}" //The compilation file
             ],
             "presentation": {
-                "focus": true
+                "reveal": "always",
+                "focus": true,
+                "panel": "shared"
             },
             "problemMatcher": {
                 "owner": "objectpascal",

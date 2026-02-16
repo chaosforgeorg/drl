@@ -1,3 +1,23 @@
+0.10.7
+[new] -- GJ#229: Game - blood flood event added
+[new] -- GJ#276: UI - Character screen reformated and showing more data
+[mod] -- GJ#227: Game - shotgun falloff is counted from range 1 (full damage), not from player position
+[mod] -- GJ#234: Game - better tile pick when dropping items
+[mod] -- GH#337: UI - Windows - disabled StickyKeys, ToggleKeys and FilterKeys on game start
+[mod] -- GH#337: Game - chaingun accuracy +2->+3
+[mod] -- GH#337: Game - tristar blaster damage 4d5->4d6
+[mod] -- GH#337: Game - blood skull healing 5->10
+[mod] -- GH#337: Game - blaster made twice as common
+[mod] -- GH#337: Game - Charch's Null Pointer - doubled speed count drain
+[fix] -- GJ#255: Game - fixed internal tohit chances when targeting enemies behind enemies
+[fix] -- GJ#255: Game - fixed multiple "On level X he" messages in history log
+[fix] -- GJ#255: Game - fixed permanent berserk effect
+[fix] -- GH#---: UI - fixed melee tohit value in Character screen
+[fix] -- GH#---: UI - fixed marine resistance values in klass description
+[fix] -- GH#---: UI - fixed AoHu/ArchoHu HP description (20% of HP)
+[fix] -- GH#---: UI - clarified Scavenger trait description
+[fix] -- GH#---: Game - marines get +12 HP instead of +10 from Ironman
+
 0.10.6
 [mod] -- GJ#228: affects timing now are based on ticks not turns
 [mod] -- GJ#228: berserk effect times halved to balance out the tick change

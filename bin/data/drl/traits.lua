@@ -707,7 +707,7 @@ function drl.register_traits()
 	{
 		name   = "Scavenger",
 		quote  = "\"I do need a gun. I need a big gun. I need a really big gun...\"",
-		desc   = "Whether it's a unique, exotic, assembled or modified gun, you can always make use of it! Just Unload it once it's fully unloaded and you can scrap it for a useful mod pack!",
+		desc   = "Whether it's a unique, exotic, assembled or modified item, you can always make use of it! Just Unload it once it's fully unloaded and you can scrap it for a useful mod pack (works on armors and boots too)!",
 		abbr   = "MSc",
 		master = true,
 

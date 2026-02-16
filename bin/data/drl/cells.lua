@@ -335,15 +335,15 @@ function drl.register_cells()
 
 		OnEnter = function(c,being)
 			local linfo = player.episode[level.index]
-			local sinfo = player.episode[linfo.special]
-			if sinfo and sinfo.script and levels[sinfo.script].entry then
-				player:add_history( levels[sinfo.script].entry )
-			end
 			being:msg("There are stairs leading to "..player.episode[linfo.special].name.." here.")
 		end,
 
 		OnExit = function(c)
 			local linfo = player.episode[level.index]
+			local sinfo = player.episode[linfo.special]
+			if sinfo and sinfo.script and levels[sinfo.script].entry then
+				player:add_history( levels[sinfo.script].entry )
+			end
 			player:exit( linfo.special, 0.5 )
 		end,
 

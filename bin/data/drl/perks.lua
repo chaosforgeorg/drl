@@ -1,5 +1,22 @@
 function drl.register_perks()
 
+	-- Cursed item perk
+	register_perk "perk_cursed"
+	{
+		name   = "",
+		short  = "cursed",
+		desc   = "cannot be unequipped",
+		color  = RED,
+		tags   = {},
+
+		OnUnequipCheck = function(self, being, silent)
+			if not silent then
+				ui.msg("You can't, it's cursed!")
+			end
+			return false
+		end,
+	}
+
 	-- Alt-fire
 	
 	register_perk "perk_altfire_throw"

@@ -210,7 +210,7 @@ function drl.register_rooms()
 			end
 
 			generator.scatter_blood(vault,nil,30)
-			level.light[ vault ][ LFNOSPAWN ] = true
+			level:set_light_flag( vault, LFNOSPAWN, true )
 
 			ui.msg_feel( table.random_pick{
 				"You feel excited!",

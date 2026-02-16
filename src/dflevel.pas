@@ -11,7 +11,7 @@ uses SysUtils, Classes,
      vluaentitynode, vutil, vvision, viotypes, vrltools, vnode,
      vluamapnode, vtextmap,
      dfdata, dfmap, dfthing, dfbeing, dfitem,
-     drlhooks,
+     drlhooks, drlperk,
      drlmarkers, drldecals;
 
 const CellWalls   : TCellSet = [];
@@ -24,7 +24,7 @@ type
 TLevel = class(TLuaMapNode, ITextMap)
     constructor Create; reintroduce;
     procedure Init( aStyle : byte; aName : Ansistring; aIndex : Integer; aDangerLevel : Word );
-    procedure AfterGeneration( aGenerated : Boolean );
+    procedure AfterGeneration;
     procedure PreEnter;
     procedure RecalcFluids;
     procedure Leave;
@@ -67,8 +67,8 @@ TLevel = class(TLuaMapNode, ITextMap)
     function CallHook( coord : TCoord2D;  Hook : TCellHook ) : Variant; overload;
     function CallHook( coord : TCoord2D; aCellID : Word; Hook : TCellHook ) : Variant; overload;
     function CallHook( coord : TCoord2D; What : TThing; Hook : TCellHook ) : Variant; overload;
-    procedure CallHook( Hook : Byte; const Params : array of Const );
-    function CallHookCheck( Hook : Byte; const Params : array of Const ) : Boolean;
+    procedure CallHook( aHook : Byte; const aParams : array of const );
+    function CallHookCheck( aHook : Byte; const aParams : array of const ) : Boolean;
 
     procedure DropCorpse( aCoord : TCoord2D; CellID : Byte );
     function DamageTile( aCoord : TCoord2D; aDamage : Integer; aDamageType : TDamageType; aFloor : Boolean = True ) : Boolean;
@@ -120,10 +120,11 @@ TLevel = class(TLuaMapNode, ITextMap)
 
     class procedure RegisterLuaAPI();
 
+    function HasHook( aHook : Word ) : Boolean; override;
+    function GetPerkList : TPerkList;
+
   private
     function CellToID( const aCell : Byte ) : AnsiString; override;
-    procedure RawCallHook( Hook : Byte; const aParams : array of const ); overload;
-    function RawCallHookCheck( Hook : Byte; const aParams : array of const ) : boolean;
     function  getCell( const aWhere : TCoord2D ) : byte; override;
     procedure putCell( const aWhere : TCoord2D; const aWhat : byte ); override;
     function  getBeing( const coord : TCoord2D ) : TBeing; override;
@@ -153,6 +154,7 @@ TLevel = class(TLuaMapNode, ITextMap)
 
     FMarkers       : TMarkerStore;
     FDecals        : TDecalStore;
+    FPerks         : TPerks;
   private
     function getCellBottom( Index : TCoord2D ): Byte;
     function getCellTop( Index : TCoord2D ): Byte;
@@ -224,14 +226,14 @@ begin
     if FSName = '' then FSName := FName;
     Call('Create',[]);
     if ( LuaPlayerX > 0 ) and ( LuaPlayerY > 0 ) then
-      Place( Player, DropCoord( NewCoord2D(LuaPlayerX,LuaPlayerY), [ EF_NOBEINGS ] ) );
+      Place( Player, DropCoord( NewCoord2D(LuaPlayerX,LuaPlayerY), [ EF_NOBEINGS ], False ) );
     Include( FFlags, LF_SCRIPT );
   finally
     Free;
   end;
   FHooks := LoadHooks( [ 'levels', script ] ) * LevelHooks;
 
-  AfterGeneration( False );
+  AfterGeneration;
 end;
 
 function TLevel.RandomCoord( EmptyFlags: TFlags32 ) : TCoord2D;
@@ -449,6 +451,7 @@ begin
 
   FMarkers     := TMarkerStore.CreateFromStream( aStream );
   FDecals      := TDecalStore.CreateFromStream( aStream );
+  FPerks       := TPerks.CreateFromStream( aStream, Self );
 
   FActiveBeing := nil;
   FNextNode    := nil;
@@ -480,6 +483,7 @@ begin
 
   FMarkers.WriteToStream( aStream );
   FDecals.WriteToStream( aStream );
+  FPerks.WriteToStream( aStream );
 
 //    FActiveBeing : TBeing;
 //    FNextNode    : TNode;
@@ -508,6 +512,7 @@ begin
 
   FMarkers := TMarkerStore.Create;
   FDecals  := TDecalStore.Create;
+  FPerks   := TPerks.Create( Self );
   FIndex   := 0;
 end;
 
@@ -538,7 +543,7 @@ begin
   FAccuracyBonus := LuaSystem.Get(['diff',DRL.Difficulty,'accuracybonus']);
 end;
 
-procedure TLevel.AfterGeneration( aGenerated : Boolean );
+procedure TLevel.AfterGeneration;
 var iCoord : TCoord2D;
     iCell  : Word;
     iFlags : TFlags;
@@ -559,9 +564,6 @@ begin
       PutCell(iCoord,iCell);
     end;
   end;
-
-  if not aGenerated then Exit;
-  FHooks := LoadHooks( [ 'generator' ] ) * LevelHooks;
 end;
 
 procedure TLevel.CalculateRotation( aCoord : TCoord2D ); inline;
@@ -658,6 +660,7 @@ begin
   ClearEntities;
   FMarkers.Clear;
   FDecals.Clear;
+  FPerks.Clear;
 end;
 
 procedure TLevel.FullClear;
@@ -765,34 +768,35 @@ begin
     else CallHook := False;
 end;
 
-procedure TLevel.RawCallHook(Hook: Byte; const aParams : array of const );
+function TLevel.HasHook( aHook : Word ) : Boolean;
 begin
-  if not (Hook in FHooks) then Exit;
-  if LF_SCRIPT in FFlags then
-    LuaSystem.ProtectedCall( [ 'levels', FID, HookNames[Hook] ], aParams )
-  else
-    LuaSystem.ProtectedCall( [ 'generator', HookNames[Hook] ], aParams );
+  if inherited HasHook( aHook ) then Exit( True );
+  if aHook in FPerks.Hooks then Exit( True );
+  Exit( False );
 end;
 
-function TLevel.RawCallHookCheck(Hook: Byte; const aParams : array of const ): boolean;
+function TLevel.GetPerkList : TPerkList;
 begin
-  if not (Hook in FHooks) then Exit(False);
-  if LF_SCRIPT in FFlags then
-    RawCallHookCheck := LuaSystem.ProtectedCall( [ 'levels', FID, HookNames[Hook] ], aParams )
-  else
-    RawCallHookCheck := LuaSystem.ProtectedCall( [ 'generator', HookNames[Hook] ], aParams );
+  Exit( FPerks.List );
 end;
 
-procedure TLevel.CallHook( Hook : Byte; const Params : array of const ) ;
+procedure TLevel.CallHook( aHook : Byte; const aParams : array of const ) ;
 begin
-  if Hook in FHooks           then RawCallHook( Hook, Params );
-  DRL.CallHook( Hook, Params );
+  FPerks.CallHook( aHook, aParams );
+  if aHook in FHooks then 
+    if LF_SCRIPT in FFlags then // not needed?
+      LuaSystem.ProtectedCall( [ 'levels', FID, HookNames[aHook] ], aParams );
+  DRL.CallHook( aHook, aParams );
 end;
 
-function TLevel.CallHookCheck( Hook : Byte; const Params : array of const ) : Boolean;
+function TLevel.CallHookCheck( aHook : Byte; const aParams : array of const ) : Boolean;
 begin
-  if not DRL.CallHookCheck( Hook, Params ) then Exit( False );
-  if Hook in FHooks then if not RawCallHookCheck( Hook, Params ) then Exit( False );
+  if not DRL.CallHookCheck( aHook, aParams ) then Exit( False );
+  if aHook in FHooks then 
+    if LF_SCRIPT in FFlags then
+      if not LuaSystem.ProtectedCall( [ 'levels', FID, HookNames[aHook] ], aParams ) then 
+        Exit( False );
+  if not FPerks.CallHookCheck( aHook, aParams ) then Exit( False );
   Exit( True );
 end;
 
@@ -866,6 +870,7 @@ begin
   Clear;
   FreeAndNil( FMarkers );
   FreeAndNil( FDecals );
+  FreeAndNil( FPerks );
   inherited Destroy;
 end;
 
@@ -874,8 +879,8 @@ begin
   DropItem := true;
   if aItem = nil then Exit;
   if aNoHazard
-    then aCoord := DropCoord( aCoord, [ EF_NOITEMS,EF_NOBLOCK,EF_NOHARM,EF_NOSTAIRS ] )
-    else aCoord := DropCoord( aCoord, [ EF_NOITEMS,EF_NOBLOCK,EF_NOSTAIRS ] );
+    then aCoord := DropCoord( aCoord, [ EF_NOITEMS,EF_NOBLOCK,EF_NOHARM,EF_NOSTAIRS ], True )
+    else aCoord := DropCoord( aCoord, [ EF_NOITEMS,EF_NOBLOCK,EF_NOSTAIRS ], True );
   if aDropAnim and isVisible( aCoord ) then aItem.Appear := 1;
   Add( aItem, aCoord );
 
@@ -889,7 +894,7 @@ end;
 procedure TLevel.DropBeing( aBeing : TBeing; aCoord : TCoord2D );
 begin
   if aBeing = nil then Exit;
-  aCoord := DropCoord( aCoord, [ EF_NOTELE,EF_NOBEINGS,EF_NOBLOCK,EF_NOSTAIRS ] );
+  aCoord := DropCoord( aCoord, [ EF_NOTELE,EF_NOBEINGS,EF_NOBLOCK,EF_NOSTAIRS ], False );
   Add( aBeing, aCoord );
   if ( not aBeing.IsPlayer ) and ( not aBeing.Flags[ BF_FRIENDLY ] ) and ( not aBeing.Flags[ BF_ILLUSION ] ) then
   begin
@@ -1061,7 +1066,7 @@ begin
   for iTC in FArea do
     if LightFlag[ iTC, lfDamage ] then
       begin
-        iDmg := Round( aDamage.Roll * (1.0-0.01*iFalloff*Max(1,Distance( aSource, iTC ))) );
+        iDmg := Round( aDamage.Roll * (1.0-0.01*iFalloff*Max(0,Distance( aSource, iTC )-1)) );
         iDmg := Floor( iDmg * aDamageMul );
 
         if iDmg < 1 then iDmg := 1;
@@ -1160,7 +1165,7 @@ begin
     else LightFlag[ coord, LFBLOOD ] := True;
 end;
 
-procedure TLevel.Kill ( aBeing : TBeing ) ;
+procedure TLevel.Kill( aBeing : TBeing );
 var iEnemiesLeft       : Integer;
     iUniqueEnemiesLeft : Integer;
 begin
@@ -1168,10 +1173,6 @@ begin
   if Being[ aBeing.Position ] = aBeing then
     SetBeing( aBeing.Position, nil );
 
-  if DRL.State = DSPlaying then
-  begin
-    CallHook(Hook_OnKill,[ aBeing ]);
-  end;
   FMarkers.Wipe( aBeing.UID );
   FreeAndNil(aBeing);
   if DRL.State <> DSPlaying then Exit;
@@ -1230,6 +1231,7 @@ begin
   repeat
 
     Inc(FLTime);
+    FPerks.OnTick;
     Player.Statistics.OnTick;
 
     CallHook( Hook_OnTick,[ FLTime ] );
@@ -1901,7 +1903,7 @@ begin
   State.Init(L);
   IO.MsgUpDate;
   Level := State.ToObject(1) as TLevel;
-  Level.AfterGeneration( False );
+  Level.AfterGeneration;
   Level.PreEnter;
   Level.CalculateVision( Player.Position );
   Player.PreAction;
@@ -1918,7 +1920,48 @@ begin
   Exit( 1 );
 end;
 
-const lua_level_lib : array[0..21] of luaL_Reg = (
+function lua_level_add_perk(L: Plua_State): Integer; cdecl;
+var iState : TDRLLuaState;
+    iLevel : TLevel;
+begin
+  iState.Init(L);
+  iLevel := iState.ToObject(1) as TLevel;
+  if iLevel = nil then Exit( 0 );
+  iLevel.FPerks.Add( iState.ToId(2), iState.ToInteger(3,-1) );
+  Result := 0;
+end;
+
+function lua_level_get_perk_time(L: Plua_State): Integer; cdecl;
+var iState : TDRLLuaState;
+    iLevel : TLevel;
+begin
+  iState.Init(L);
+  iLevel := iState.ToObject(1) as TLevel;
+  iState.Push( iLevel.FPerks.getTime( iState.ToId(2) ) );
+  Result := 1;
+end;
+
+function lua_level_remove_perk(L: Plua_State): Integer; cdecl;
+var iState : TDRLLuaState;
+    iLevel : TLevel;
+begin
+  iState.Init(L);
+  iLevel := iState.ToObject(1) as TLevel;
+  iLevel.FPerks.Remove( iState.ToId(2), iState.ToBoolean( 3, False ) );
+  Result := 0;
+end;
+
+function lua_level_is_perk(L: Plua_State): Integer; cdecl;
+var iState : TDRLLuaState;
+    iLevel : TLevel;
+begin
+  iState.Init(L);
+  iLevel := iState.ToObject(1) as TLevel;
+  iState.Push( iLevel.FPerks.IsActive( iState.ToId( 2 ) ) );
+  Result := 1;
+end;
+
+const lua_level_lib : array[0..25] of luaL_Reg = (
       ( name : 'drop_item';  func : @lua_level_drop_item),
       ( name : 'drop_being'; func : @lua_level_drop_being),
       ( name : 'player';     func : @lua_level_player),
@@ -1940,6 +1983,10 @@ const lua_level_lib : array[0..21] of luaL_Reg = (
       ( name : 'reset';         func : @lua_level_reset),
       ( name : 'post_generate'; func : @lua_level_post_generate),
       ( name : 'get_enemies_left'; func : @lua_level_get_enemies_left),
+      ( name : 'add_perk';      func : @lua_level_add_perk),
+      ( name : 'get_perk_time'; func : @lua_level_get_perk_time),
+      ( name : 'remove_perk';   func : @lua_level_remove_perk),
+      ( name : 'is_perk';       func : @lua_level_is_perk),
       ( name : nil;          func : nil; )
 );
 

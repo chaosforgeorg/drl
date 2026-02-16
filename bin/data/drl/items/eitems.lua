@@ -140,7 +140,7 @@ function drl.register_exotic_items()
 		sprite   = SPRITE_PISTOL,
 		psprite  = SPRITE_PLAYER_PISTOL,
 		level    = 8,
-		weight   = 2,
+		weight   = 4,
 		group    = "pistol",
 		desc     = "This is the standard issue rechargeable energy side-arm. Cool!",
 		flags    = { IF_EXOTIC, IF_NORELOAD, IF_NOUNLOAD },
@@ -340,7 +340,7 @@ function drl.register_exotic_items()
 		type       = ITEMTYPE_RANGED,
 		ammo_id    = "cell",
 		ammomax    = 45,
-		damage     = "4d5",
+		damage     = "4d6",
 		damagetype = DAMAGE_PLASMA,
 		acc        = 5,
 		radius     = 2,
@@ -1189,7 +1189,7 @@ function drl.register_exotic_items()
 				if coord.distance( c, p ) <= 8 and level:is_corpse( c ) then
 					level.map[ c ] = "bloodpool"
 					being:play_sound( "gib" )
-					being.hp = math.min( being.hp + 5, being.hpmax * 2 )
+					being.hp = math.min( being.hp + 10, being.hpmax * 2 )
 					being:remove_perk( "tired" )
 				end
 			end

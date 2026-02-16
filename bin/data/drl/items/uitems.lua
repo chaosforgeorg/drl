@@ -66,9 +66,9 @@ function drl.register_unique_items()
 			target:play_sound("phasing")
 			being:msg("Suddenly "..target:get_name(true,false).." crashes!")
 			if target:has_property("is_boss") and target.is_boss then
-				target.scount = math.max( target.scount - 500, 1000 )
-			else
 				target.scount = math.max( target.scount - 1000, 1000 )
+			else
+				target.scount = math.max( target.scount - 2000, 1000 )
 			end
 			level:explosion( target.position, { range = 1, delay = 50, damage = "10d1", color = LIGHTBLUE, sound_id = "soldier.phase", damage_type = DAMAGE_SPLASMA }, self )
 			return false
@@ -143,7 +143,7 @@ function drl.register_unique_items()
 		OnKill = function ( self, being, target )
 			if not being then return end
 			if being:is_player() then
-				if player:get_trait( traits["blademaster"].nid ) > 0 then return end
+				if player:has_trait( "blademaster" ) then return end
 				ui.msg("Next!")
 			end
 			being.scount = 5001
@@ -839,7 +839,7 @@ function drl.register_unique_items()
 		pcoscolor= { 0.9,0.9,1.0,1.0 },
 		level    = 10,
 		weight   = 2,
-		flags    = { IF_UNIQUE, IF_CURSED, IF_NODESTROY, IF_MODABLE },
+		flags    = { IF_UNIQUE, IF_NODESTROY, IF_MODABLE },
 		desc     = "All those cybernetic dongles look fishy!",
 
 		type       = ITEMTYPE_ARMOR,
@@ -848,6 +848,10 @@ function drl.register_unique_items()
 		knockmod   = -30,
 
 		resist = { shrapnel = 20, melee = 20, bullet = 20, acid = 20, fire = 20, plasma = 20  },
+
+		OnCreate = function(self)
+			self:add_perk( "perk_cursed" )
+		end,
 	}
 
 	register_item "unarmor"
@@ -1090,7 +1094,7 @@ function drl.register_unique_items()
 		level    = 10,
 		weight   = 1,
 		desc     = "How in the world could one wear that???",
-		flags    = { IF_UNIQUE, IF_CURSED, IF_NODESTROY, IF_NODURABILITY },
+		flags    = { IF_UNIQUE, IF_NODESTROY, IF_NODURABILITY },
 
 		type       = ITEMTYPE_ARMOR,
 		armor      = 0,
@@ -1100,6 +1104,7 @@ function drl.register_unique_items()
 		resist = { shrapnel = 50, melee = 50, bullet = 50 },
 
 		OnCreate = function(self)
+			self:add_perk( "perk_cursed" )
 			self:add_perk( "perk_uberarmor" )
 		end,
 	}
@@ -1197,7 +1202,7 @@ function drl.register_unique_items()
 		weight   = 1,
 		group    = "melee",
 		desc     = "It was called the Dragonslayer, because no human could wield it...",
-		flags    = { IF_UNIQUE, IF_CURSED },
+		flags    = { IF_UNIQUE },
 		knockmod = -50,
 
 		type        = ITEMTYPE_MELEE,
@@ -1205,6 +1210,7 @@ function drl.register_unique_items()
 		damagetype  = DAMAGE_MELEE,
 
 		OnCreate = function(self)
+			self:add_perk( "perk_cursed" )
 			self:add_perk( "perk_udragon_altfire" )
 			self:add_property( "BLADE", true )
 			self:add_perk( "perk_udragon" )

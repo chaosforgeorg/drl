@@ -26,6 +26,7 @@ type TThing = class( TLuaEntityNode )
   function GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single; virtual;
   function GetSprite : TSprite; virtual;
   function GetPerkList : TPerkList;
+  function GetTraitString( aInvMode : Boolean = False ) : AnsiString;
   procedure Tick; virtual;
   procedure WriteToStream( aStream : TStream ); override;
   destructor Destroy; override;
@@ -36,6 +37,7 @@ protected
   FHP        : Integer;
   FArmor     : Integer;
   FSprite    : TSprite;
+  FMelSprite : TSprite;
   FSoundID   : String16;
   FAnimCount : Word;
   FPerks     : TPerks;
@@ -43,6 +45,7 @@ protected
 public
   property SoundID    : String16 read FSoundID          write FSoundID;
   property Sprite     : TSprite  read GetSprite         write FSprite;
+  property MelSprite  : TSprite  read FMelSprite        write FMelSprite;
   property AnimCount  : Word     read FAnimCount        write FAnimCount;
 published
   property SpriteID   : DWord    read FSprite.SpriteID[0] write FSprite.SpriteID[0];
@@ -53,7 +56,7 @@ end;
 implementation
 
 uses typinfo, variants,
-     vluasystem, vdebug,
+     vluasystem, vdebug, vtig,
      drlbase, drlio, drlua;
 
 constructor TThing.Create( const aID : AnsiString );
@@ -77,6 +80,8 @@ begin
 
   FillChar( FSprite, SizeOf( FSprite ), 0 );
   ReadSprite( Table, FSprite );
+  FillChar( FMelSprite, SizeOf( FMelSprite ), 0 );
+  ReadSprite( Table, 'melsprite', FMelSprite );
 
   iColorID := FID;
   if Table.IsString('color_id') then iColorID := Table.getString('color_id');
@@ -153,6 +158,32 @@ function TThing.GetPerkList : TPerkList;
 begin
   if FPerks = nil then Exit( nil );
   Exit( FPerks.List );
+end;
+
+function TThing.GetTraitString( aInvMode : Boolean = False ) : AnsiString;
+var iPerks : TPerkList;
+    i      : Integer;
+    iColor : Byte;
+    iText  : AnsiString;
+begin
+  Result := '';
+  iPerks := GetPerkList;
+  if ( iPerks = nil ) or ( iPerks.Size = 0 ) then Exit;
+  for i := 0 to iPerks.Size - 1 do
+    with PerkData[ iPerks[i].ID ] do
+    begin
+      if aInvMode then iText := Name else iText := Short;
+      if iText = '' then Continue;
+      if ( iPerks[i].Time > 0 ) and ( iPerks[i].Time <= 50 )
+        then iColor := ColorExp
+        else iColor := Color;
+      Result += '{' + VTIG_ColorChar( iColor ) + iText + '}';
+      if aInvMode then Result += ', ' else Result += ' ';
+    end;
+  if Result <> '' then
+    if aInvMode
+      then SetLength( Result, Length(Result) - 2 )
+      else SetLength( Result, Length(Result) - 1 );
 end;
 
 procedure TThing.Tick;

@@ -163,6 +163,8 @@ core.register_blueprint "perk"
 	status_strength= { false, core.TNUMBER },
 	tags           = { false, core.TTABLE, {} },
 	weight         = { false, core.TNUMBER, 0 },
+	min_dlevel     = { false, core.TNUMBER, 0 },
+	min_diff       = { false, core.TNUMBER, 0 },
 
 	OnAdd          = { false, core.TFUNC },
 	OnTick         = { false, core.TFUNC },
@@ -192,9 +194,9 @@ core.register_blueprint "perk"
 	OnReload       = { false, core.TFUNC },
 	OnAltFire      = { false, core.TFUNC },
 	OnAltReload    = { false, core.TFUNC },
-	OnEquip        = { false, core.TFUNC },
 	OnEquipTick    = { false, core.TFUNC },
 	OnEquipCheck   = { false, core.TFUNC },
+	OnPreAction    = { false, core.TFUNC },
 	OnKill         = { false, core.TFUNC },
 	OnHitBeing     = { false, core.TFUNC },
 	OnEnter        = { false, core.TFUNC },
@@ -206,6 +208,9 @@ core.register_blueprint "perk"
 	OnDieCheck     = { false, core.TFUNC },
 	OnCanMaxDamage = { false, core.TFUNC },
 	OnReceiveDamage= { false, core.TFUNC },
+	OnUnequipCheck = { false, core.TFUNC },
+	OnEquip        = { false, core.TFUNC },
+	OnUnequip      = { false, core.TFUNC },
 }
 
 core.register_blueprint "ai"
@@ -231,6 +236,7 @@ core.register_blueprint "being"
 	coscolor    = { false, core.TTABLE },
 	glow        = { false, core.TTABLE },
 	overlay     = { false, core.TTABLE },
+	melsprite   = { false, core.TANY },
 	sflags      = { false, core.TFLAGS, {} },
 	sframes     = { false, core.TNUMBER, 0 },
 	sftime      = { false, core.TNUMBER, FRAME_TIME },
@@ -474,6 +480,15 @@ core.register_blueprint "item"
 			OnPickup = { true, core.TFUNC },
 			OnEnter  = { false, core.TFUNC },
 		},
+		[ITEMTYPE_RELIC]   = {
+			ascii         = { false, core.TSTRING, "^" },
+			desc          = { false, core.TSTRING },
+			perk_id       = { false, core.TIDIN("perks") },
+			OnPickup      = { false, core.TFUNC },
+			OnPickupCheck = { false, core.TFUNC },
+			OnUnequipCheck= { false, core.TFUNC },
+			OnEnter       = { false, core.TFUNC },
+		},
 		[ITEMTYPE_AMMO]   = {
 			ascii   = { false, core.TSTRING, "|" },
 			desc    = { true, core.TSTRING },
@@ -589,6 +604,7 @@ core.register_blueprint "item"
 			miss_dist   = { false, core.TNUMBER, 0 },
 			hitsprite   = { false, core.TANY },
 			missprite   = { false, core.TANY },
+			melsprite   = { false, core.TANY },
 			scavenge    = { false, core.TARRAY(core.TIDIN("items")) },
 		},
 		[ITEMTYPE_LEVER] = {
@@ -663,20 +679,6 @@ core.register_blueprint "level"
 	OnExit           = { false, core.TFUNC },
 	OnTick           = { false, core.TFUNC },
 	OnNuked          = { false, core.TFUNC },
-}
-
-core.register_blueprint "event"
-{
-	id         = { true,  core.TSTRING },
-	min_dlevel = { false, core.TNUMBER, 0 },
-	weight     = { true,  core.TNUMBER },
-	tags       = { false, core.TTABLE, {} },
-	min_diff   = { false, core.TNUMBER, 0 },
-	history    = { false, core.TSTRING },
-	message    = { false, core.TSTRING },
-	setup      = { true,  core.TFUNC },
-	on_tick    = { false, core.TFUNC },
-	on_leave   = { false, core.TFUNC },
 }
 
 core.register_blueprint "room"

@@ -21,6 +21,7 @@ core.options = {
 	full_being_description = false,
 	percent_health = true,
 	assembly_apply_last_mod = false,
+	relic_slot = false,
 }
 
 module = false
@@ -71,10 +72,6 @@ function register_corpse( being_proto, index, no_resurrect )
 end
 
 register_room       = core.register_storage( "rooms", "room", function( r )
-	r.tags = table.toset( r.tags )
-end
-)
-register_event      = core.register_storage( "events", "event", function( r )
 	r.tags = table.toset( r.tags )
 end
 )
@@ -228,7 +225,7 @@ function register_master_badge( id )
 			set   = id,
 			klass = b.klass,
 			condition = function()
-				return player:get_trait( traits[b.mid].nid ) > 0 and check_condition( b.platinum )
+				return player:has_trait( b.mid ) and check_condition( b.platinum )
 			end
 		}
 		register_badge ( id.."_5" )
@@ -239,7 +236,7 @@ function register_master_badge( id )
 			set   = id,
 			klass = b.klass,
 			condition = function()
-				return player:get_trait( traits[b.mid].nid ) > 0 and check_condition( b.diamond )
+				return player:has_trait( b.mid ) and check_condition( b.diamond )
 			end
 		}
 	end
@@ -609,6 +606,7 @@ core.type_name = {
 	[ITEMTYPE_BOOTS]   = "boots",
 	[ITEMTYPE_TELE]    = "teleporter",
 	[ITEMTYPE_LEVER]   = "lever",
+	[ITEMTYPE_RELIC]   = "relic",
 }
 
 function core.being_plural( id, amount )

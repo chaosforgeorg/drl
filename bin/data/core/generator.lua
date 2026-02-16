@@ -128,7 +128,7 @@ function generator.scatter_blood(scatter_area,good,count)
 	if type(good) == "string" then good = cells[good].nid end
 	for c = 1, count do
 		local c = scatter_area:random_coord()
-		if not good or level:get_cell(c) == good then level.light[ c ][ LFBLOOD ] = true end
+		if not good or level:get_cell(c) == good then level:set_light_flag( c, LFBLOOD, true ) end
 	end
 end
 
@@ -166,7 +166,7 @@ function generator.place_dungen_tile( code, tile_object, tile_pos )
 			end
 			if tile_entry.flags then
 				for _, flag in ipairs(tile_entry.flags) do
-					level.light[p][flag] = true
+					level:set_light_flag( p, flag, true )
 				end
 			end
 			if tile_entry.raw_style then
@@ -287,13 +287,13 @@ function generator.set_permanence( ar, val, tile )
 	if tile then
 		tile = cells[ tile ].nid
 		for c in level:each( tile, ar ) do
-			level.light[ c ][ LFPERMANENT ] = val
+			level:set_light_flag( c, LFPERMANENT, val )
 		end
 	else
 		for c in ar:coords() do
 			local id = level:get_cell( c )
 			if generator.cell_sets[ CELLSET_WALLS ][ id ] then
-				level.light[ c ][ LFPERMANENT ] = val
+				level:set_light_flag( c, LFPERMANENT, val )
 			end
 		end
 	end
@@ -304,10 +304,10 @@ function generator.set_blood( ar, val, tile )
 	if tile then
 		tile = cells[ tile ].nid
 		for c in level:each( tile, ar ) do
-			level.light[ c ][ LFBLOOD ] = val
+			level:set_light_flag( c, LFBLOOD, val )
 		end
 	else
-		level.light[ ar ][ LFBLOOD ] = true
+		level:set_light_flag( ar, LFBLOOD, true )
 	end
 end
 
@@ -510,49 +510,30 @@ function generator.roll_event( weights )
 
 	local lvl = level.danger_level
 	local choice = weight_table.new()
-	for _,e in ipairs(events) do
-		if lvl >= e.min_dlevel and DIFFICULTY >= e.min_diff then 
-			local weight = e.weight or 1
-			if type( weights ) == "table" then
-				weight = core.proto_weight( e, weights )
+	for _,p in ipairs(perks) do
+		if p.tags and p.tags.event then
+			local min_dlevel = p.min_dlevel or 0
+			local min_diff   = p.min_diff or 0
+			if lvl >= min_dlevel and DIFFICULTY >= min_diff then
+				local weight = p.weight or 1
+				if type( weights ) == "table" then
+					weight = core.proto_weight( p, weights )
+				end
+				choice:add( p, weight )
 			end
-			choice:add( e, weight )
 		end
 	end
 	if choice:size() == 0 then return end
-	local event = choice:roll()
+	local perk = choice:roll()
 
-	core.log("generator.roll_event() > setting up event : "..event.id)
-	level.data.event = {}
-	level.data.event.id = event.id
-	event.setup()
-	generator.OnTick = event.on_tick
-	generator.OnExit = event.on_leave
-	if event.message then ui.msg_feel( event.message ) end
-	if event.history then player:add_history( event.history ) end
-end
-
-function generator.on_save()
-	generator.OnTick = nil
-	generator.OnExit = nil
-end
-
-function generator.on_load()
-	if level.data.event then
-		generator.OnTick = events[ level.data.event.id ].on_tick
-		generator.OnExit = events[ level.data.event.id ].on_leave
-	end
+	core.log("generator.roll_event() > adding event perk : "..perk.id)
+	level:add_perk( perk.id )
 end
 
 function generator.reset()
 	core.log("generator.reset()")
+	level.data.event = {}
 	ui.clear_feel()
-	generator.OnKill       = nil
-	generator.OnKillAll    = nil
-	generator.OnEnterLevel = nil
-	generator.OnExit       = nil
-	generator.OnTick       = nil
-
 	level:set_generator_style( level.style )
 	level:fill( generator.styles[ level.style ].floor )
 	level:fill_edges( generator.styles[ level.style ].wall )
@@ -918,7 +899,7 @@ function generator.destroy_cell( c )
 	else
 		level.map[c] = generator.styles[ level.style ].floor
 	end
-	level.light[c][LFPERMANENT] = false
+	level:set_light_flag( c, LFPERMANENT, false )
 end
 
 function generator.wallin_cell( c, cell_id )
@@ -931,7 +912,7 @@ function generator.wallin_cell( c, cell_id )
 	local item = level:get_item(c)
 	if item then item:destroy() end
 	level.map[c] = cell_id
-	level.light[c][LFPERMANENT] = true
+	level:set_light_flag( c, LFPERMANENT, true )
 	return true
 end
 
@@ -1240,4 +1221,60 @@ function generator.generate_rivers( settings )
 			end
 		end
 	end
+end
+
+function generator.event_flood_setup( params )
+	assert( params.cell, "event_flood_setup: .cell required!" )
+	assert( params.stairs, "event_flood_setup: .stairs required!" )
+	local data      = level.data.event
+	data.timer      = 0
+	data.step       = math.max( 200 - level.danger_level - DIFFICULTY * 5, params.min_step or 40 )
+	data.direction  = (math.random(2)*2)-3
+	data.flood_min  = 0
+	data.destroy    = params.destroy or false
+	data.cell       = params.cell
+	if data.direction == -1 then
+		data.flood_min = 80
+	else
+		data.direction = 1
+	end
+
+	if params.rush_danger and level.danger_level > params.rush_danger and math.random(5) == 1 then
+		data.step = 25
+	end
+
+	local left  = generator.safe_empty_coord( area(2,2,20,19) )
+	local right = generator.safe_empty_coord( area(60,2,78,19) )
+
+	for c in level:each( params.stairs ) do
+		level.map[ c ] = generator.styles[ level.style ].floor
+	end
+
+	if data.direction == 1 then left, right = right, left end
+	player:displace( right )
+	level.map[ left ] = params.stairs
+end
+
+function generator.events_flood_tick()
+	local data = level.data.event
+	data.timer = data.timer + 1
+	if data.timer == data.step then
+		data.timer = 0
+		data.flood_min = data.flood_min + data.direction
+		if data.flood_min >= 1 and data.flood_min <= MAXX then
+			for y = 1,MAXY do
+				level:flood_tile( coord( data.flood_min, y ), data.cell, data.destroy )
+			end
+		end
+		if data.flood_min + data.direction >= 1 and data.flood_min + data.direction  <= MAXX then
+			local switch = false
+			for y = 1,MAXY do
+				if switch then
+					level:flood_tile( coord( data.flood_min + data.direction, y ), data.cell, data.destroy )
+				end
+				if math.random(4) == 1 then switch = not switch end
+			end
+		end
+	end
+	level:recalc_fluids()
 end

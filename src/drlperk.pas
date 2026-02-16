@@ -43,6 +43,7 @@ type TPerks = class( TVObject )
   procedure OnTick;
   function  IsActive( aPerk : Integer ) : Boolean;
   function  getTime( aPerk : Integer ) : Integer;
+  procedure Clear;
   destructor Destroy; override;
 private
   FOwner : TNode;
@@ -146,7 +147,10 @@ begin
     for i := 0 to FList.Size - 1 do
       if FList[i].ID = aPerk then
       begin
-        if aDuration > 0 then FList.Data^[i].Time += aDuration;
+        if FList.Data^[i].Time < 0 then Exit; // permanent
+        if aDuration < 0
+          then FList.Data^[i].Time := aDuration   // upgrade to permanent
+          else FList.Data^[i].Time += aDuration;  // extend timed
         Exit;
       end;
   iPerk.ID   := aPerk;
@@ -241,6 +245,19 @@ begin
   UpdateHooks;
   if Hook_OnRemove in PerkData[iPerk].Hooks then
     LuaSystem.ProtectedCall( [ 'perks', iPerk, 'OnRemove' ], [FOwner, aSilent] );
+end;
+
+procedure TPerks.Clear;
+var i : Integer;
+begin
+  if FList.Size > 0 then
+  begin
+    for i := 0 to FList.Size - 1 do
+      if Hook_OnRemove in PerkData[FList[i].ID].Hooks then
+        LuaSystem.ProtectedCall( [ 'perks', FList[i].ID, 'OnRemove' ], [FOwner, True] );
+    FList.Clear;
+  end;
+  FHooks := [];
 end;
 
 destructor TPerks.Destroy;
