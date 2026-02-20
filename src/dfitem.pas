@@ -141,6 +141,7 @@ begin
     ITEMTYPE_NRANGED  : Exit(efWeapon);
     ITEMTYPE_BOOTS    : Exit(efBoots);
     ITEMTYPE_AMMOPACK : Exit(efWeapon2);
+    ITEMTYPE_RELIC    : Exit(efRelic);
   end;
   raise EItemException.CreateFmt('eqSlot -- unsupported IType: %d',[ Byte( FProps.Itype ) ]);
 end;
