@@ -164,6 +164,7 @@ begin
   VTIG_ResetSelect( 'equipment' );
   VTIG_ResetSelect( 'traits' );
   VTIG_ResetSelect( 'unload_confirm' );
+  VTIG_ResetScroll( 'character' );
   FState       := PLAYERVIEW_INVENTORY;
   FSize        := Point( 80, 25 );
   if IO.NarrowMode then FSize := Point( 76, 25 );
@@ -950,11 +951,11 @@ begin
     FCharacter[0].Push(
       Padded( '  ' + Padded('Movement', 8) + ' : {!' + Format('%.2f', [getMoveCost/(Speed*10.0)]) + '}s', 24 ) +
       Padded( '    ' + Padded('Ranged', 8) + ' : {!' + toHitPercent(10+getToHit(Inv.Slot[efWeapon], False, False)) + '}', 24 ) +
-      '    ' + Padded('Dodge', 9) + ' : {!' + BonusStr(iDodgeBonus) + '%%}' );
+      '    ' + Padded('Dodge', 9) + ' : {!' + BonusStr(iDodgeBonus) + '%}' );
     FCharacter[0].Push(
       Padded( '  ' + Padded('Fire', 8) + ' : {!' + Format('%.2f', [getFireCost( False, False )/(Speed*10.0)]) + '}s/' + IIf(canDualWield,'dualshot','shot'), 24 ) +
       Padded( '    ' + Padded('Melee', 8) + ' : {!' + toHitPercent(12+getToHit(Inv.Slot[efWeapon], False, True)) + '}', 24 ) +
-      '    ' + Padded('Knockback', 9) + ' : {!' + IntToStr(iKnockMod) + '%%}' );
+      '    ' + Padded('Knockback', 9) + ' : {!' + IntToStr(iKnockMod) + '%}' );
     FCharacter[0].Push(
       '  ' + Padded('Reload', 8) + ' : {!' + Format('%.2f', [getReloadCost(Inv.Slot[efWeapon])/(Speed*10.0)]) + '}s' );
 

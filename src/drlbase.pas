@@ -880,6 +880,8 @@ begin
     IO.Msg( 'There''s nothing to use on the ground!' );
     Exit( False );
   end;
+  if iItem.isRelic then
+    Exit( HandleCommand( TCommand.Create( COMMAND_PICKUP ) ) );
   if iItem.IType = ITEMTYPE_URANGED
     then Exit( DRL.HandleUsableCommand( iItem ) );
   Exit( HandleCommand( TCommand.Create( COMMAND_USE, iItem ) ) );
