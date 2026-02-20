@@ -1598,6 +1598,7 @@ begin
       else iBeing := TBeing.Create( State.ToId(2) );
     Level.DropBeing( iBeing, State.ToCoord(3) );
     State.Push( iBeing );
+    Level.FEmpty := False;
   except
     on EPlacementException do
     begin
