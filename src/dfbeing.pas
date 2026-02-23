@@ -102,17 +102,17 @@ TBeing = class(TThing,IPathQuery)
 
     // Always returns False.
     //
-    // aText (VFormatted with aParams is emoted if Being is player.
+    // aText (Formatted with aParams is emoted if Being is player.
     function Fail( const aText : AnsiString; const aParams : array of Const ) : Boolean;
 
     // Always returns True.
     //
-    // aText (VFormatted with aParams is emoted if Being is player.
+    // aText (Formatted with aParams is emoted if Being is player.
     function Success( const aText : AnsiString; const aParams : array of Const; aCost : DWord = 0 ) : Boolean;
 
     // Always returns True.
     //
-    // aPlayerText (VFormatted with aParams is emoted if Being is player, aBeingText (same format) otherwise.
+    // aPlayerText (Formatted with aParams is emoted if Being is player, aBeingText (same format) otherwise.
     function Success( const aPlayerText, aBeingText : AnsiString; const aParams : array of Const; aCost : DWord = 0 ) : Boolean;
 
     procedure Emote( const aPlayerText, aBeingText : AnsiString; const aParams : array of Const );
