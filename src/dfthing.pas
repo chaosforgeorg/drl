@@ -32,7 +32,7 @@ type TThing = class( TLuaEntityNode )
   destructor Destroy; override;
   class procedure RegisterLuaAPI();
 protected
-  procedure LuaLoad( Table : TLuaTable ); virtual;
+  procedure LuaLoad( aTable : TLuaTable ); virtual;
 protected
   FHP        : Integer;
   FArmor     : Integer;
@@ -66,28 +66,30 @@ begin
   FPerks     := nil;
 end;
 
-procedure TThing.LuaLoad(Table: TLuaTable);
+procedure TThing.LuaLoad( aTable : TLuaTable );
 var iColorID : AnsiString;
 begin
   FAnimCount   := 0;
   FPerks       := nil;
-  FGylph.ASCII := Table.getChar('ascii');
-  FGylph.Color := Table.getInteger('color');
-  FSoundID     := Table.getString('sound_id','');
-  Name         := Table.getString('name');
-  FHP          := Table.getInteger('hp',0);
-  FArmor       := Table.getInteger('armor',0);
+  FGylph.ASCII := aTable.getChar('ascii');
+  FGylph.Color := aTable.getInteger('color');
+  FSoundID     := aTable.getString('sound_id','');
+  Name         := aTable.getString('name');
+  FHP          := aTable.getInteger('hp',0);
+  FArmor       := aTable.getInteger('armor',0);
 
   FillChar( FSprite, SizeOf( FSprite ), 0 );
-  ReadSprite( Table, FSprite );
+  ReadSprite( aTable, FSprite );
   FillChar( FMelSprite, SizeOf( FMelSprite ), 0 );
-  ReadSprite( Table, 'melsprite', FMelSprite );
+  ReadSprite( aTable, 'melsprite', FMelSprite );
 
   iColorID := FID;
-  if Table.IsString('color_id') then iColorID := Table.getString('color_id');
+  if aTable.IsString('color_id') then iColorID := aTable.getString('color_id');
 
   if ColorOverrides.Exists(iColorID) then
     FGylph.Color := ColorOverrides[iColorID];
+
+  FHooks += LoadCallbacks( aTable );
 end;
 
 function TThing.PlaySound( const aSoundID : string; aDelay : Integer = 0 ) : Boolean;

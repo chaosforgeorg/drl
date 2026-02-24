@@ -351,8 +351,6 @@ begin
   inherited LuaLoad( Table );
   Initialize;
 
-  FHooks := FHooks * BeingHooks;
-
   FTimes.Move       := Table.getInteger('movetime',100);
   FTimes.Fire       := Table.getInteger('firetime',100);
   FTimes.Reload     := Table.getInteger('reloadtime',100);

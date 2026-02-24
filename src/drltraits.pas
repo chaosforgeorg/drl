@@ -203,7 +203,7 @@ begin
     if aHook in FHooks[i] then
     begin
       CallHook := True;
-      LuaSystem.ProtectedCall( [ 'traits', i, HookNames[aHook] ], ConcatConstArray( [Player], aParams ) )
+      LuaSystem.ProtectedCall( [ 'traits', i, Lua.HookName(aHook) ], ConcatConstArray( [Player], aParams ) )
     end;
 end;
 

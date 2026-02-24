@@ -231,7 +231,7 @@ begin
   finally
     Free;
   end;
-  FHooks := LoadHooks( [ 'levels', script ] ) * LevelHooks;
+  FHooks := LoadHooks( [ 'levels', script ], LevelHooks );
 
   AfterGeneration;
 end;

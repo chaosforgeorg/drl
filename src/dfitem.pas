@@ -213,7 +213,6 @@ procedure TItem.LuaLoad( aTable : TLuaTable; aOnFloor: boolean );
 var i : Byte;
 begin
   inherited LuaLoad( aTable );
-  FHooks := FHooks * ItemHooks;
 
   FProps.itype := TItemType( aTable.getInteger('type') );
 

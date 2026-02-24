@@ -6,7 +6,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlhooks;
 interface
-uses vutil, dfdata;
+uses vutil, vluasystem, dfdata;
 
 const
   Hook_OnCreate        = 0;   // Being and Item -> Level, Module, Challenge, Core (Chained)
@@ -115,10 +115,9 @@ const HookNames : array[ 0..HookAmount-1 ] of AnsiString = (
 
 function LoadHooks( const aTable : array of Const ) : TFlags;
 function LoadHooks( const aTable : array of Const; aHooks : TFlags ) : TFlags;
+function LoadCallbacks( aTable : TLuaTable ) : TFlags;
 
 implementation
-
-uses vluasystem;
 
 function LoadHooks ( const aTable : array of Const ) : TFlags;
 begin
@@ -126,17 +125,34 @@ begin
 end;
 
 function LoadHooks ( const aTable : array of Const; aHooks : TFlags ) : TFlags;
-var Hook  : Byte;
+var iHook    : Byte;
+    i, iSize : DWord;
 begin
   with LuaSystem.GetTable( aTable ) do
   try
     LoadHooks := [];
-    for Hook in aHooks do
-      if isFunction(HookNames[Hook]) then
-        Include(LoadHooks,Hook);
+    for iHook in aHooks do
+      if isFunction(HookNames[iHook]) then
+        Include(LoadHooks,iHook);
+    iSize := LuaSystem.GetTableSize( 'core.callbacks' );
+    if iSize > 0 then
+      for i := 1 to iSize do
+        if isFunction( LuaSystem.Get( ['core','callbacks', i] ) ) then
+          Include( LoadHooks, i + 200 );
   finally
     Free;
   end;
+end;
+
+function LoadCallbacks( aTable : TLuaTable ) : TFlags;
+var i, iSize : DWord;
+begin
+  iSize := LuaSystem.GetTableSize( 'core.callbacks' );
+  if iSize = 0 then Exit( [] );
+  LoadCallbacks := [];
+  for i := 1 to iSize do
+    if aTable.isFunction( LuaSystem.Get( ['core','callbacks', i] ) ) then
+      Include( LoadCallbacks, i + 200 );
 end;
 
 initialization

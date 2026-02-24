@@ -21,6 +21,7 @@ TDRLLua = class(TLuaSystem)
        constructor Create; reintroduce;
        procedure OnError(const ErrorString : Ansistring); override;
        procedure RegisterPlayer(Thing: TThing);
+       function HookName( aHook : Byte ) : AnsiString;
        destructor Destroy; override;
      private
        procedure ReadWad;
@@ -571,6 +572,18 @@ begin
 
   ReadWAD;
 
+end;
+
+function TDRLLua.HookName( aHook : Byte ) : AnsiString;
+begin
+  if aHook < HookAmount then
+    Exit( HookNames[aHook] )
+  else if aHook > 200 then
+  begin
+    Exit( LuaSystem.Get( ['core','callbacks', aHook - 200] ) ) 
+  end
+  else
+    raise ELuaException.Create('Invalid hook ID: '+IntToStr( aHook ) );
 end;
 
 { TDRLLuaState }

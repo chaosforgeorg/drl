@@ -190,10 +190,10 @@ end;
 
 procedure TDRL.CallHook( Hook : Byte; const Params : array of const ) ;
 begin
-  if (Hook in FModuleHooks) then LuaSystem.ProtectedCall([CoreModuleID,HookNames[Hook]],Params);
-  if (FChallenge <> '')  and (Hook in FChallengeHooks) then LuaSystem.ProtectedCall(['chal',FChallenge,HookNames[Hook]],Params);
-  if (FSChallenge <> '') and (Hook in FSChallengeHooks) then LuaSystem.ProtectedCall(['chal',FSChallenge,HookNames[Hook]],Params);
-  if (Hook in FCoreHooks) then LuaSystem.ProtectedCall(['core',HookNames[Hook]],Params);
+  if (Hook in FModuleHooks) then LuaSystem.ProtectedCall([CoreModuleID,Lua.HookName(Hook)],Params);
+  if (FChallenge <> '')  and (Hook in FChallengeHooks) then LuaSystem.ProtectedCall(['chal',FChallenge,Lua.HookName(Hook)],Params);
+  if (FSChallenge <> '') and (Hook in FSChallengeHooks) then LuaSystem.ProtectedCall(['chal',FSChallenge,Lua.HookName(Hook)],Params);
+  if (Hook in FCoreHooks) then LuaSystem.ProtectedCall(['core',Lua.HookName(Hook)],Params);
 end;
 
 function TDRL.CallHookCheck ( Hook : Byte; const Params : array of const ) : Boolean;
@@ -296,8 +296,8 @@ begin
   LuaSystem := iLua;
   LuaSystem.CallDefaultResult := True;
 //  Modules.RegisterAwards( LuaSystem.Raw );
-  FCoreHooks   := LoadHooks( [ 'core' ] ) * GlobalHooks;
-  FModuleHooks := LoadHooks( [CoreModuleID] ) * GlobalHooks;
+  FCoreHooks   := LoadHooks( [ 'core' ], GlobalHooks );
+  FModuleHooks := LoadHooks( [CoreModuleID], GlobalHooks );
 
   SafeCallModuleHook( Hook_OnLoad, [] );
   Reconfigure;
@@ -451,8 +451,8 @@ begin
 
   FChallengeHooks := [];
   FSChallengeHooks := [];
-  if FChallenge  <> '' then FChallengeHooks  := LoadHooks( ['chal',FChallenge] ) * GlobalHooks;
-  if FSChallenge <> '' then FSChallengeHooks := LoadHooks( ['chal',FSChallenge] ) * GlobalHooks;
+  if FChallenge  <> '' then FChallengeHooks  := LoadHooks( ['chal',FChallenge], GlobalHooks );
+  if FSChallenge <> '' then FSChallengeHooks := LoadHooks( ['chal',FSChallenge], GlobalHooks );
 end;
 
 procedure TDRL.PreAction;
