@@ -134,7 +134,7 @@ begin
     for iHook in aHooks do
       if isFunction(HookNames[iHook]) then
         Include(LoadHooks,iHook);
-    iSize := LuaSystem.GetTableSize( 'core.callbacks' );
+    iSize := LuaSystem.GetTableSize( ['core','callbacks'] );
     if iSize > 0 then
       for i := 1 to iSize do
         if isFunction( LuaSystem.Get( ['core','callbacks', i] ) ) then
@@ -147,7 +147,7 @@ end;
 function LoadCallbacks( aTable : TLuaTable ) : TFlags;
 var i, iSize : DWord;
 begin
-  iSize := LuaSystem.GetTableSize( 'core.callbacks' );
+  iSize := LuaSystem.GetTableSize( ['core','callbacks'] );
   if iSize = 0 then Exit( [] );
   LoadCallbacks := [];
   for i := 1 to iSize do

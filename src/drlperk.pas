@@ -102,7 +102,7 @@ begin
   if aHook in FHooks then
     for i := 0 to FList.Size-1 do
       if aHook in PerkData[FList[i].ID].Hooks then
-        if not LuaSystem.ProtectedCall( [ 'perks',FList[i].ID, HookNames[aHook], ConcatConstArray( [FOwner], aParams ) ) then
+        if not LuaSystem.ProtectedCall( [ 'perks',FList[i].ID, HookNames[aHook] ], ConcatConstArray( [FOwner], aParams ) ) then
           Exit( False );
   Exit( True );
 end;

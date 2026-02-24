@@ -41,7 +41,7 @@ end;
 
 implementation
 
-uses vluasystem, dfplayer;
+uses vluasystem, dfplayer, drlbase;
 
 function TTraits.CanPick( aKlass : Byte; aTrait : Byte; aCharLevel : Byte ): Boolean;
 var iOther, iValue : DWord;

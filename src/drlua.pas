@@ -46,7 +46,7 @@ end;
 implementation
 
 uses typinfo, variants,
-     vnode, vdebug, vluatools, vluadungen, vluaentitynode, vmath,
+     vnode, vdebug, vluatools, vluadungen, vluaentitynode, vluatype, vmath,
      vtextures, vtigstyle, vvector,
      dfplayer, dflevel, dfmap, drlhooks, drlhelp, dfhof, drlbase, drlio, drlperk,
      drlgfxio, drlspritemap;
@@ -475,7 +475,65 @@ const lua_player_data_lib : array[0..4] of luaL_Reg = (
 );
 
 
-const lua_core_lib : array[0..10] of luaL_Reg = (
+function lua_core_resolve_callback( L: Plua_State; aIndex : Integer ) : Integer;
+var iName : AnsiString;
+    i, n  : Integer;
+begin
+  iName := lua_tolstring( L, aIndex, nil );
+  // search standard hooks first
+  for i := 0 to HookAmount - 1 do
+    if HookNames[i] = iName then
+      Exit( i );
+  // search core.callbacks
+  lua_getglobal( L, 'core' );
+  lua_getfield( L, -1, 'callbacks' );
+  n := lua_objlen( L, -1 );
+  for i := 1 to n do
+  begin
+    lua_rawgeti( L, -1, i );
+    if lua_tolstring( L, -1, nil ) = iName then
+    begin
+      lua_pop( L, 3 );
+      Exit( i + 200 );
+    end;
+    lua_pop( L, 1 );
+  end;
+  lua_pop( L, 2 );
+  luaL_error( L, 'core.callback - unknown callback "%s"!', lua_tolstring( L, aIndex, nil ) );
+  Result := -1;
+end;
+
+function lua_core_callback(L: Plua_State): Integer; cdecl;
+var iState  : TDRLLuaState;
+    iThing  : TThing;
+    iHook   : Integer;
+    iTop    : Integer;
+    i       : Integer;
+    iParams : array of TVarRec;
+begin
+  iState.Init(L);
+  iThing := iState.ToObject( 1 ) as TThing;
+  luaL_checktype( L, 2, LUA_TSTRING );
+  iHook := lua_core_resolve_callback( L, 2 );
+  iTop := lua_gettop( L );
+  if iTop > 2 then
+  begin
+    SetLength( iParams, iTop - 2 );
+    for i := 3 to iTop do
+    begin
+      iParams[i-3].vtype   := vtObject;
+      iParams[i-3].vObject := LuaStackRef( L, i );
+    end;
+    iThing.CallHook( iHook, iParams );
+    for i := 0 to High( iParams ) do
+      TObject( iParams[i].vObject ).Free;
+  end
+  else
+    iThing.CallHook( iHook, [] );
+  Result := 0;
+end;
+
+const lua_core_lib : array[0..11] of luaL_Reg = (
     ( name : 'add_to_cell_set';func : @lua_core_add_to_cell_set),
     ( name : 'game_time';      func : @lua_core_game_time),
     ( name : 'time_ms';        func : @lua_core_time_ms),
@@ -488,6 +546,7 @@ const lua_core_lib : array[0..10] of luaL_Reg = (
     ( name : 'texture_upload';        func : @lua_core_texture_upload),
     ( name : 'register_sprite_sheet'; func : @lua_core_register_sprite_sheet),
     ( name : 'set_vision_base_value'; func : @lua_core_set_vision_base_value),
+    ( name : 'callback';              func : @lua_core_callback),
 
     ( name : nil;          func : nil; )
 );
