@@ -243,7 +243,7 @@ function drl.register_perks()
 				being:nuke(100)
 			end
 			player:add_history("He overloaded a "..self.name.." on @1!")
-			being.eq.weapon = nil
+			self.flags[ IF_DESTROY ] = true
 			being.scount = being.scount - 1000
 			return true
 		end,

@@ -842,8 +842,16 @@ var iWeapon : TItem;
 begin
   iWeapon := Inv.Slot[ efWeapon ];
   if ( iWeapon = nil ) or ( not iWeapon.isRanged ) then Exit( Fail( 'You have no weapon to reload.',[] ) );
-  if iWeapon.HasHook( Hook_OnAltReload ) then 
-    Exit( iWeapon.CallHookCheck( Hook_OnAltReload, [Self] ) );
+  if iWeapon.HasHook( Hook_OnAltReload ) then
+  begin
+    Result := iWeapon.CallHookCheck( Hook_OnAltReload, [Self] );
+    if iWeapon.Flags[ IF_DESTROY ] then
+    begin
+      FInv.setSlot( efWeapon, nil );
+      FreeAndNil( iWeapon );
+    end;
+    Exit;
+  end;
   // Implicit dual reload for dual-wieldable weapons with no alt-reload
   if canDualWield then
     Exit( ActionDualReload );
@@ -1419,7 +1427,7 @@ begin
   aGun.CallHook( Hook_OnFired, [ Self, iSecond ] );
   CallHook( Hook_OnFired, [ aGun, iSecond ] );
 
-  if aGun.Flags[ IF_DESTROY ] then
+  if aGun.Flags[ IF_FIREDESTROY ] then
     FreeAndNil( aGun );
 
   Exit( True );
@@ -3302,7 +3310,17 @@ begin
 end;
 
 
-const lua_being_lib : array[0..36] of luaL_Reg = (
+function lua_being_get_last_position(L: Plua_State): Integer; cdecl;
+var iState : TDRLLuaState;
+    iBeing : TBeing;
+begin
+  iState.Init(L);
+  iBeing := iState.ToObject(1) as TBeing;
+  iState.PushCoord( iBeing.FLastPos );
+  Result := 1;
+end;
+
+const lua_being_lib : array[0..37] of luaL_Reg = (
       ( name : 'new';           func : @lua_being_new),
       ( name : 'kill';          func : @lua_being_kill),
       ( name : 'resurrect';     func : @lua_being_resurrect),
@@ -3344,6 +3362,7 @@ const lua_being_lib : array[0..36] of luaL_Reg = (
 
       ( name : 'animate_bump';  func : @lua_being_animate_bump),
       ( name : 'send_missile';  func : @lua_being_send_missile),
+      ( name : 'get_last_position'; func : @lua_being_get_last_position),
 
       ( name : nil;             func : nil; )
 );

@@ -1,3 +1,6 @@
+0.10.8
+[fix] -- GJ#---: Game - fixed nuclear overload access violation
+
 0.10.7
 [new] -- GJ#229: Game - blood flood event added
 [new] -- GJ#276: UI - Character screen reformated and showing more data

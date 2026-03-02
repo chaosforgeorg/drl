@@ -99,7 +99,7 @@ function item:get_mod_ids()
 end
 
 function item:can_overcharge( msg )
-	if self.flags[ IF_DESTROY ] then
+	if self.flags[ IF_FIREDESTROY ] then
 		ui.msg("The "..self.name.." is already overcharged!")
 		return false
 	end
@@ -111,8 +111,8 @@ function item:can_overcharge( msg )
 		ui.msg("Chicken.")
 		return false
 	end
-	self.flags[ IF_DESTROY ]  = true
-	self.flags[ IF_NOUNLOAD ] = true
+	self.flags[ IF_FIREDESTROY ] = true
+	self.flags[ IF_NOUNLOAD ]    = true
 	ui.msg("You overcharge the "..self.name.."!")
 	self.name          = "overcharged "..self.name
 	return true

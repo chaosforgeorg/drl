@@ -143,7 +143,7 @@ IF_NODESTROY      = 48;
 IF_NONMODABLE     = 49;
 IF_NOREPAIR       = 50;
 IF_ASSEMBLED      = 51;
-IF_DESTROY        = 52;
+IF_FIREDESTROY    = 52;
 IF_SERIESSOUND    = 53;
 IF_DESTRUCTIVE    = 54;
 IF_FARHIT         = 55;
@@ -163,6 +163,7 @@ IF_ILLUSION       = 68;
 IF_ALTTARGET      = 69;
 IF_ALTMANUAL      = 70;
 IF_ALTCHAIN       = 71;
+IF_DESTROY        = 72;
 
 LF_NOHOMING       = 1;
 LF_UNIQUEITEM     = 2;
