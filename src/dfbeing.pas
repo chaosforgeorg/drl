@@ -859,11 +859,12 @@ begin
 end;
 
 function TBeing.ActionFire ( aTarget : TCoord2D; aWeapon : TItem; aAltFire : Boolean; aDelay : Integer = 0; aForceSingle : Boolean = False ) : Boolean;
-var iChainFire : Byte;
-    iLimitRange: Boolean;
-    iRange     : Byte;
-    iDist      : Byte;
-    iAltFire   : Boolean;
+var iChainFire  : Byte;
+    iLimitRange : Boolean;
+    iRange      : Byte;
+    iDist       : Byte;
+    iAltFire    : Boolean;
+    iTargetUID  : TUID;
 begin
   iChainFire  := FChainFire;
   FChainFire  := 0;
@@ -915,9 +916,17 @@ begin
 
   Dec( FSpeedCount, getFireCost( iAltFire, False ) );
 
+  iTargetUID := 0;
+  if TLevel(Parent).Being[ aTarget ] <> nil then
+    iTargetUID := TLevel(Parent).Being[ aTarget ].UID;
+
   if ( not FireRanged( aTarget, aWeapon, iAltFire, aDelay )) or Player.Dead then Exit( True );
   if ( not aForceSingle ) and canDualWield and ( Inv.Slot[ efWeapon2 ].Flags[ IF_NOAMMO ] or ( Inv.Slot[ efWeapon2 ].Ammo > 0 ) ) then
+  begin
+    if ( iTargetUID <> 0 ) and ( UIDs[ iTargetUID ] <> nil ) then
+      aTarget := TBeing( UIDs[ iTargetUID ] ).Position;
     if ( not FireRanged( aTarget, Inv.Slot[ efWeapon2 ], iAltFire, aDelay + 100 )) or Player.Dead then Exit( True );
+  end;
 
   Exit( True );
 end;
