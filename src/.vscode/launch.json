@@ -9,7 +9,7 @@
             "type": "gdb",
             "request": "launch",
             "target": "./drl.exe",
-            "arguments": "-god -nosound",
+            "arguments": "-god",
             "cwd": "${workspaceRoot}/../bin",
             "valuesFormatting": "parseText",
             "preLaunchTask": "Build drl.exe (debug)"

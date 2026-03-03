@@ -2820,16 +2820,6 @@ begin
   Result := 1;
 end;
 
-function lua_being_play_sound(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
-    Being : TBeing;
-begin
-  State.Init(L);
-  Being := State.ToObject(1) as TBeing;
-  Being.playSound( State.ToString(2), State.ToInteger(3,0) );
-  Result := 0;
-end;
-
 function lua_being_quick_swap(L: Plua_State): Integer; cdecl;
 var State  : TDRLLuaState;
     Being  : TBeing;
@@ -3329,7 +3319,7 @@ begin
   Result := 1;
 end;
 
-const lua_being_lib : array[0..37] of luaL_Reg = (
+const lua_being_lib : array[0..36] of luaL_Reg = (
       ( name : 'new';           func : @lua_being_new),
       ( name : 'kill';          func : @lua_being_kill),
       ( name : 'resurrect';     func : @lua_being_resurrect),
@@ -3339,7 +3329,6 @@ const lua_being_lib : array[0..37] of luaL_Reg = (
       ( name : 'get_eq_item';   func : @lua_being_get_eq_item),
       ( name : 'set_eq_item';   func : @lua_being_set_eq_item),
       ( name : 'add_inv_item';  func : @lua_being_add_inv_item),
-      ( name : 'play_sound';    func : @lua_being_play_sound),
       ( name : 'get_total_resistance';func : @lua_being_get_total_resistance),
 
       ( name : 'quick_swap';    func : @lua_being_quick_swap),

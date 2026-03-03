@@ -276,12 +276,25 @@ begin
   Result := 1;
 end;
 
+function lua_thing_play_sound(L: Plua_State): Integer; cdecl;
+var iState : TDRLLuaState;
+    iThing : TThing;
+begin
+  iState.Init(L);
+  iThing := iState.ToObject(1) as TThing;
+  if iState.IsCoord(3)
+    then iThing.PlaySound( iState.ToString(2), iState.ToPosition(3), iState.ToInteger(4,0) )
+    else iThing.PlaySound( iState.ToString(2), iState.ToInteger(3,0) );
+  Result := 0;
+end;
 
-const lua_thing_lib : array[0..4] of luaL_Reg = (
+
+const lua_thing_lib : array[0..5] of luaL_Reg = (
   ( name : 'add_perk';      func : @lua_thing_set_perk),
   ( name : 'get_perk_time'; func : @lua_thing_get_perk_time),
   ( name : 'remove_perk';   func : @lua_thing_remove_perk),
   ( name : 'is_perk';       func : @lua_thing_is_perk),
+  ( name : 'play_sound';    func : @lua_thing_play_sound),
   ( name : nil;             func : nil; )
 );
 

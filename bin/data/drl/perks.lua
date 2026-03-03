@@ -296,7 +296,7 @@ function drl.register_perks()
 		OnPostMove = function(self, being, worn)
 			if not worn or not self.pump_action then return end
 			if self.chamber_empty and self.ammo > 0 then
-				level:play_sound( self.id, "pump", being.position )
+				self:play_sound( "pump", being.position )
 				self.chamber_empty = false
 				if being:is_player() then
 					ui.msg( "You pump a shell into the shotgun chamber." )
@@ -325,7 +325,7 @@ function drl.register_perks()
 			if self.flags[ IF_NOAMMO ] or self.ammo > 0 then
 				if self.chamber_empty then
 					self.chamber_empty = false
-					level:play_sound( self.id, "pump", being.position )
+					self:play_sound( "pump", being.position )
 					if being:is_player() then
 						ui.msg( "You pump a shell into the "..self.name.." chamber." )
 					end
