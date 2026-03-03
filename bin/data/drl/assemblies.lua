@@ -197,19 +197,19 @@ function drl.register_assemblies()
 			item.movemod          = item.__proto.movemod + 20
 			item.knockmod         = -25
 			if (item.resist.bullet or 0) > 0 then
-				item.resist.bullet   = math.min( (item.resist.bullet or 0) * 5, 95 )
+				item.resist.bullet   = math.min( (item.resist.bullet or 0) * 5, core.options.resist_cap )
 			end
 			if (item.resist.shrapnel or 0) > 0 then
-				item.resist.shrapnel = math.min( (item.resist.shrapnel or 0) * 5, 95 )
+				item.resist.shrapnel = math.min( (item.resist.shrapnel or 0) * 5, core.options.resist_cap )
 			end
 			if (item.resist.fire or 0) > 0 then
-				item.resist.fire     = math.min( (item.resist.fire or 0) * 2, 95 )
+				item.resist.fire     = math.min( (item.resist.fire or 0) * 2, core.options.resist_cap )
 			end
 			if (item.resist.acid or 0) > 0 then
-				item.resist.acid     = math.min( (item.resist.acid or 0) * 2, 95 )
+				item.resist.acid     = math.min( (item.resist.acid or 0) * 2, core.options.resist_cap )
 			end
 			if (item.resist.plasma or 0) > 0 then
-				item.resist.plasma   = math.min( (item.resist.plasma or 0) * 3, 95 )
+				item.resist.plasma   = math.min( (item.resist.plasma or 0) * 3, core.options.resist_cap )
 			end
 			item.resist.melee        = 25
 
@@ -273,7 +273,7 @@ function drl.register_assemblies()
 			item.knockmod      = item.__proto.knockmod
 			item:reset_resistances()
 			item.resist.melee     = (item.resist.melee or 0) - 30
-			item.resist.fire      =  math.min( (item.resist.fire or 0) + 30, 95 )
+			item.resist.fire      =  math.min( (item.resist.fire or 0) + 30, core.options.resist_cap )
 		end,
 	}
 
@@ -289,7 +289,7 @@ function drl.register_assemblies()
 			item.maxdurability = 100
 			item.knockmod      = item.__proto.knockmod
 			item:reset_resistances()
-			item.resist.fire      =  math.min( (item.resist.fire or 0) + 30, 95 )
+			item.resist.fire      =  math.min( (item.resist.fire or 0) + 30, core.options.resist_cap )
 		end,
 	}
 
@@ -304,9 +304,9 @@ function drl.register_assemblies()
 			item.movemod       = item.__proto.movemod
 			item.knockmod      = item.__proto.knockmod
 			item:reset_resistances()
-			item.resist.melee     = math.min( (item.resist.melee or 0) + 40, 95 )
-			item.resist.bullet    = math.min( (item.resist.bullet or 0) + 40, 95 )
-			item.resist.shrapnel  = math.min( (item.resist.shrapnel or 0) + 40, 95 )
+			item.resist.melee     = math.min( (item.resist.melee or 0) + 40, core.options.resist_cap )
+			item.resist.bullet    = math.min( (item.resist.bullet or 0) + 40, core.options.resist_cap )
+			item.resist.shrapnel  = math.min( (item.resist.shrapnel or 0) + 40, core.options.resist_cap )
 			item.resist.fire      = (item.resist.fire or 0) - 20
 			item.resist.plasma    = 0
 			item.resist.acid      = 0
@@ -541,9 +541,9 @@ function drl.register_assemblies()
 			item.durability    = math.min( item.durability, item.maxdurability )
 			local presist = item.__proto.resist or {}
 			item:reset_resistances()
-			item.resist.fire      = math.min( (presist.fire or 0) + 95,   95 )
-			item.resist.acid      = math.min( (presist.acid or 0) + 95,   95 )
-			item.resist.plasma    = math.min( (presist.plasma or 0) + 20, 95 )
+			item.resist.fire      = math.min( (presist.fire or 0) + core.options.resist_cap,   core.options.resist_cap )
+			item.resist.acid      = math.min( (presist.acid or 0) + core.options.resist_cap,   core.options.resist_cap )
+			item.resist.plasma    = math.min( (presist.plasma or 0) + 20, core.options.resist_cap )
 		end,
 	}
 
@@ -558,7 +558,7 @@ function drl.register_assemblies()
 			item.name          = "fire shield"
 			item.movemod       = -20
 			item.knockmod      = 0
-			item.resist.fire      = 95
+			item.resist.fire      = core.options.resist_cap
 			item.maxdurability = 200
 			item.durability    = item.maxdurability
 			item.flags[ IF_NOREPAIR ] = true
@@ -578,12 +578,12 @@ function drl.register_assemblies()
 		OnApply = function (item)
 			item.name         = "nanoskin "..item.name
 			item.armor        = item.__proto.armor
-			item.resist.bullet   = math.min( (item.__proto.resist.bullet or 0) + 25, 95 )
-			item.resist.shrapnel = math.min( (item.__proto.resist.shrapnel or 0) + 25, 95 )
-			item.resist.melee = math.min( (item.__proto.resist.melee or 0) + 25, 95 )
-			item.resist.fire = math.min( (item.__proto.resist.fire or 0) + 25, 95 )
-			item.resist.acid = math.min( (item.__proto.resist.acid or 0) + 25, 95 )
-			item.resist.plasma = math.min( (item.__proto.resist.plasma or 0) + 25, 95 )
+			item.resist.bullet   = math.min( (item.__proto.resist.bullet or 0) + 25, core.options.resist_cap )
+			item.resist.shrapnel = math.min( (item.__proto.resist.shrapnel or 0) + 25, core.options.resist_cap )
+			item.resist.melee = math.min( (item.__proto.resist.melee or 0) + 25, core.options.resist_cap )
+			item.resist.fire = math.min( (item.__proto.resist.fire or 0) + 25, core.options.resist_cap )
+			item.resist.acid = math.min( (item.__proto.resist.acid or 0) + 25, core.options.resist_cap )
+			item.resist.plasma = math.min( (item.__proto.resist.plasma or 0) + 25, core.options.resist_cap )
 			item:add_perk( "perk_armor_recharge" )
 			item.pp_recharge.amount = 1
 			item.pp_recharge.delay  = 5

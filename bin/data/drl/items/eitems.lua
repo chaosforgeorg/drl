@@ -782,7 +782,7 @@ function drl.register_exotic_items()
 		desc     = "Maybe too specialized for most tastes.",
 		flags    = { IF_EXOTIC },
 
-		resist = { bullet  = 95 },
+		resist = { bullet  = core.options.resist_cap },
 
 		type       = ITEMTYPE_ARMOR,
 		armor      = 1,
@@ -836,7 +836,7 @@ function drl.register_exotic_items()
 		desc     = "Under some circumstances, this is the best thing... too bad it can't be repaired.",
 		flags    = { IF_EXOTIC, IF_NOREPAIR, IF_NONMODABLE, IF_NODEGRADE },
 
-		resist = { plasma  = 95 },
+		resist = { plasma  = core.options.resist_cap },
 
 		type       = ITEMTYPE_ARMOR,
 		armor      = 0,
@@ -872,7 +872,7 @@ function drl.register_exotic_items()
 		desc     = "Under some circumstances, this is the best thing... too bad it can't be repaired.",
 		flags    = { IF_EXOTIC, IF_NOREPAIR, IF_NONMODABLE, IF_NODEGRADE },
 
-		resist = { bullet = 95, melee = 95, shrapnel = 95 },
+		resist = { bullet = core.options.resist_cap, melee = core.options.resist_cap, shrapnel = core.options.resist_cap },
 
 		type       = ITEMTYPE_ARMOR,
 		armor      = 0,

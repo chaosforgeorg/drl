@@ -22,6 +22,7 @@ core.options = {
 	percent_health = true,
 	assembly_apply_last_mod = false,
 	relic_slot = false,
+	resist_cap = 95,
 }
 
 module = false

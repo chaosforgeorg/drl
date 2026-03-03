@@ -206,6 +206,7 @@ var
   ModuleOption_FullBeingDescription      : Boolean = False;
   ModuleOption_PercentHealth             : Boolean = False;
   ModuleOption_RelicSlot                 : Boolean = False;
+  ModuleOption_ResistCap                 : Integer = 95;
   ModuleOption_DefaultExplosionKnockback : Integer = 8;
 
 var
