@@ -1391,7 +1391,7 @@ begin
   begin
     iShotCost       := Max( aGun.ShotCost, 1 );
     iShotsCost      := iShots * iShotCost;
-    iShotsCost      := Round( iShotsCost * GetBonusMul( Hook_getAmmoCostMul, [aGun, aAlt, iShots ] ) );
+    iShotsCost      := Round( iShotsCost * GetBonusMul( Hook_getAmmoCostMul, [aGun, aAlt, iShots, DRL.Level.getBeing(aTarget) ] ) );
 
     if iShotsCost > aGun.Ammo then
     begin
@@ -1919,10 +1919,10 @@ begin
   begin
     if (Inv.Slot[meleeWeaponSlot] <> nil) and Inv.Slot[meleeWeaponSlot].isMelee then
     begin
-      if not DRL.CallHookCheck(Hook_OnFire,[Inv.Slot[meleeWeaponSlot], Self]) then Exit(efTorso);
+      if not DRL.CallHookCheck(Hook_OnUseCheck,[Inv.Slot[meleeWeaponSlot], Self]) then Exit(efTorso);
     end
     else
-      if not DRL.CallHookCheck(Hook_OnFire,[nil, Self]) then Exit(efTorso);
+      if not DRL.CallHookCheck(Hook_OnUseCheck,[nil, Self]) then Exit(efTorso);
   end;
 end;
 

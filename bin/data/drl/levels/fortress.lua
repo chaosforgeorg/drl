@@ -206,7 +206,7 @@ register_level "unholy_cathedral"
 		end
 	end,
 
-	OnFire = function(item,being)
+	OnUseCheck = function(item,being)
 		if being:is_player() and item and item.itype == ITEMTYPE_RANGED then
 			ui.msg("You pull the trigger... nothing happens!")
 			return false

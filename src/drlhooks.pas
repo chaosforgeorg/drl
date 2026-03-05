@@ -38,7 +38,7 @@ const
   Hook_OnDestroy       = 26;  // Item
   Hook_OnEnter         = 27;  // Item (separate)
   Hook_OnEnterLevel    = 28;  // Level, Module, Challenge, Core (chained)
-  Hook_OnFire          = 29;  // Item, Level, Module, Challenge, Core (Chained)
+  Hook_OnFire          = 29;  // Item (not chained)
   Hook_OnFired         = 30;  // Trait (separate), Item, Level, Module, Challenge, Core (Chained)
   Hook_OnExit          = 31;  // Level, Module, Challenge, Core (Chained)
   Hook_OnTick          = 32;  // Perk, Being (Separate), Level, Module, Challenge, Core (Chained)
@@ -170,7 +170,7 @@ ItemHooks    := [ Hook_OnCreate, Hook_OnPickup, Hook_OnFirstPickup,
   Hook_OnUnequipCheck ];
 ChainedHooks := [ Hook_OnCreate, Hook_OnDie, Hook_OnDieCheck, Hook_OnPickup,
   Hook_OnPickUpItem, Hook_OnKillAll, Hook_OnPickupCheck, Hook_OnUse, Hook_OnUseCheck,
-  Hook_OnFire, Hook_OnFired ];
+  Hook_OnFired ];
 LevelHooks   := ChainedHooks + [ Hook_OnEnterLevel, Hook_OnKill, Hook_OnExit, Hook_OnTick,
   Hook_OnNuked ];
 GlobalHooks  := LevelHooks + [ Hook_OnEnterLevel, Hook_OnKill, Hook_OnExit, Hook_OnTick,

@@ -716,6 +716,7 @@ begin
     if ( not iItem.Flags[ IF_ALTTARGET ] ) then aAuto := False;
     if iItem.Flags[ IF_ALTMANUAL ]         then aAuto := False;
   end;
+  if not FLevel.CallHookCheck( Hook_OnUseCheck, [iItem, Player] ) then Exit( False );
   if not iItem.CallHookCheck( Hook_OnFire, [Player,aAlt] ) then Exit( False );
 
   if aAlt then
