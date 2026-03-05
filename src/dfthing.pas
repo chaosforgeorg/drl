@@ -231,7 +231,7 @@ begin
   inherited Destroy;
 end;
 
-function lua_thing_set_perk(L: Plua_State): Integer; cdecl;
+function lua_thing_add_perk(L: Plua_State): Integer; cdecl;
 var iState : TDRLLuaState;
     iThing : TThing;
 begin
@@ -291,7 +291,7 @@ end;
 
 
 const lua_thing_lib : array[0..5] of luaL_Reg = (
-  ( name : 'add_perk';      func : @lua_thing_set_perk),
+  ( name : 'add_perk';      func : @lua_thing_add_perk),
   ( name : 'get_perk_time'; func : @lua_thing_get_perk_time),
   ( name : 'remove_perk';   func : @lua_thing_remove_perk),
   ( name : 'is_perk';       func : @lua_thing_is_perk),
