@@ -304,7 +304,7 @@ function drl.register_perks()
 			end
 		end,
 
-		OnFire = function(self, being)
+		OnUseCheck = function(self, being)
 			if not self.pump_action then return true end
 			if self.chamber_empty and self.ammo > 0 then
 				if being:is_player() then

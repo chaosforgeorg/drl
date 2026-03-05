@@ -906,6 +906,9 @@ begin
     end;
   end;
 
+  FTargetPos := aTarget;
+  if not aWeapon.CallHookCheck( Hook_OnFire, [Self, aAltFire] ) then Exit( False );
+
   if iAltFire and aWeapon.Flags[ IF_ALTCHAIN ] then
   begin
     if ( iChainFire > 0 )
@@ -2869,7 +2872,7 @@ begin
   iWeapon := iState.ToObject( 3 ) as TItem;
   iDelay  := iState.ToInteger( 4, 0 );
   if ( iBeing = nil ) or ( iWeapon = nil ) then Exit( 0 );
-  if iWeapon.CallHookCheck( Hook_OnFire, [ iBeing ] )
+  if iWeapon.CallHookCheck( Hook_OnUseCheck, [ iBeing ] )
     then iState.Push( iBeing.ActionFire( iTarget, iWeapon, False, iDelay, iState.ToBoolean( 5, False ) ) )
     else iState.Push( False );
   Result := 1;
@@ -3319,7 +3322,17 @@ begin
   Result := 1;
 end;
 
-const lua_being_lib : array[0..36] of luaL_Reg = (
+function lua_being_get_target(L: Plua_State): Integer; cdecl;
+var iState : TDRLLuaState;
+    iBeing : TBeing;
+begin
+  iState.Init(L);
+  iBeing := iState.ToObject(1) as TBeing;
+  iState.PushCoord( iBeing.FTargetPos );
+  Result := 1;
+end;
+
+const lua_being_lib : array[0..37] of luaL_Reg = (
       ( name : 'new';           func : @lua_being_new),
       ( name : 'kill';          func : @lua_being_kill),
       ( name : 'resurrect';     func : @lua_being_resurrect),
@@ -3361,6 +3374,7 @@ const lua_being_lib : array[0..36] of luaL_Reg = (
       ( name : 'animate_bump';  func : @lua_being_animate_bump),
       ( name : 'send_missile';  func : @lua_being_send_missile),
       ( name : 'get_last_position'; func : @lua_being_get_last_position),
+      ( name : 'get_target';         func : @lua_being_get_target),
 
       ( name : nil;             func : nil; )
 );
