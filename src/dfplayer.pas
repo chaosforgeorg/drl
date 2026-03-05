@@ -208,7 +208,7 @@ begin
   CallHook := FTraits.CallHook( aHook, aParams );
   if inherited CallHook( aHook, aParams ) then
     CallHook := True;
-  if FInv.CallHook( aHook, False, aParams ) then
+  if FInv.CallHook( aHook, aHook in FullInvHooks, aParams ) then
     CallHook := True;
 end;
 
