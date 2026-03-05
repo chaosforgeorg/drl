@@ -261,9 +261,10 @@ var iState : TDRLLuaState;
 begin
   iState.Init(L);
   iThing := iState.ToObject(1) as TThing;
-  if iThing.FPerks <> nil then
-    iThing.FPerks.Remove( iState.ToId(2), iState.ToBoolean( 3, False ) );
-  Result := 0;
+  if iThing.FPerks <> nil 
+    then iState.Push( iThing.FPerks.Remove( iState.ToId(2), iState.ToBoolean( 3, False ) ) )
+    else iState.Push( False );
+  Result := 1;
 end;
 
 function lua_thing_is_perk(L: Plua_State): Integer; cdecl;
