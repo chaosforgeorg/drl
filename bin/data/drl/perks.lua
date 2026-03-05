@@ -374,8 +374,9 @@ function drl.register_perks()
 			end
 		end,
 
-		OnFired = function(self, being)
+		OnFire = function(self, being)
 			self.pp_recharge.timer = 0
+			return true
 		end,
 
 		OnRemove = function(self)

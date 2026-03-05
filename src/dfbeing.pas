@@ -130,9 +130,9 @@ TBeing = class(TThing,IPathQuery)
     // private
     function FireRanged( aTarget : TCoord2D; aGun : TItem; aAlt : Boolean = False; aDelay : Integer = 0 ) : Boolean;
     function getAmmoItem( Weapon : TItem ) : TItem;
-    function HandleShotgunFire( aTarget : TCoord2D; aShotGun : TItem; aAltFire : Boolean; aShots : DWord ) : Boolean;
-    function HandleSpreadShots( aTarget : TCoord2D; aGun : TItem; aAltFire : Boolean ) : Boolean;
-    function HandleShots( aTarget : TCoord2D; aGun : TItem; aShots : DWord; aAltFire : Boolean; aDelay : Integer ) : Boolean;
+    procedure HandleShotgunFire( aTarget : TCoord2D; aShotGun : TItem; aAltFire : Boolean; aShots : DWord );
+    procedure HandleSpreadShots( aTarget : TCoord2D; aGun : TItem; aAltFire : Boolean );
+    procedure HandleShots( aTarget : TCoord2D; aGun : TItem; aShots : DWord; aAltFire : Boolean; aDelay : Integer );
   protected
     FHPNom         : Word;
     FHPMax         : Word;
@@ -397,7 +397,7 @@ begin
   Exit( FInv.SeekStack( Weapon.AmmoID ) );
 end;
 
-function TBeing.HandleShotgunFire( aTarget : TCoord2D; aShotGun : TItem; aAltFire : Boolean; aShots : DWord ) : Boolean;
+procedure TBeing.HandleShotgunFire( aTarget : TCoord2D; aShotGun : TItem; aAltFire : Boolean; aShots : DWord );
 var iThisUID   : DWord;
     iDual      : Boolean;
     iCount     : DWord;
@@ -427,25 +427,23 @@ begin
     iDamageType := aShotGun.DamageType;
     if (BF_ARMYDEAD in FFlags) and (iDamageType = DAMAGE_SHARPNEL) then iDamageType := Damage_IgnoreArmor;
     TLevel(Parent).ShotGun( FPosition, aTarget, iDamage, iDamageMul, iDamageType, aShotgun );
-    if UIDs[ iThisUID ] = nil then Exit( false );
+    if UIDs[ iThisUID ] = nil then Exit;
     if (not iDual) and (aShotGun.Shots > 1) then IO.Delay(30);
   end;
-  Exit( true );
 end;
 
-function TBeing.HandleSpreadShots( aTarget : TCoord2D; aGun : TItem; aAltFire : Boolean ) : Boolean;
+procedure TBeing.HandleSpreadShots( aTarget : TCoord2D; aGun : TItem; aAltFire : Boolean );
 var iLevel : TLevel;
 begin
   iLevel := TLevel(Parent);
   Assert( aGun <> nil );
-  if TLevel(Parent).Being[ aTarget ] <> nil then aTarget := TLevel(Parent).Being[ aTarget ].FLastPos;
-  if not SendMissile( iLevel.Area.Clamped(NewCoord2D(aTarget.x+Sgn(aTarget.y-FPosition.y),aTarget.y-Sgn(aTarget.x-FPosition.x))),aGun,aAltFire,0,0 ) then Exit( False );
-  if not SendMissile( iLevel.Area.Clamped(NewCoord2D(aTarget.x-Sgn(aTarget.y-FPosition.y),aTarget.y+Sgn(aTarget.x-FPosition.x))),aGun,aAltFire,0,0 ) then Exit( False );
-  if not SendMissile( aTarget, aGun,aAltFire,0,0 ) then Exit( False );
-  Exit( True );
+  if iLevel.Being[ aTarget ] <> nil then aTarget := iLevel.Being[ aTarget ].FLastPos;
+  if not SendMissile( iLevel.Area.Clamped(NewCoord2D(aTarget.x+Sgn(aTarget.y-FPosition.y),aTarget.y-Sgn(aTarget.x-FPosition.x))),aGun,aAltFire,0,0 ) then Exit;
+  if not SendMissile( iLevel.Area.Clamped(NewCoord2D(aTarget.x-Sgn(aTarget.y-FPosition.y),aTarget.y+Sgn(aTarget.x-FPosition.x))),aGun,aAltFire,0,0 ) then Exit;
+  SendMissile( aTarget, aGun,aAltFire,0,0 );
 end;
 
-function TBeing.HandleShots ( aTarget : TCoord2D; aGun : TItem; aShots : DWord; aAltFire : Boolean; aDelay : Integer ) : Boolean;
+procedure TBeing.HandleShots ( aTarget : TCoord2D; aGun : TItem; aShots : DWord; aAltFire : Boolean; aDelay : Integer );
 var iScatter     : DWord;
     iCount       : DWord;
     iSeqBase     : DWord;
@@ -487,15 +485,14 @@ begin
     if iChaining then aTarget := RotateTowards( FPosition, aTarget, iChainTarget, PI/6 );
     if aGun.Flags[ IF_SCATTER ] then
        begin
-            if not SendMissile( TLevel(Parent).Area.Clamped(aTarget.RandomShifted( iScatter )), aGun, aAltFire, iSeqBase+(iCount-1)*aGun.MisDelay*3, iCount-1 ) then Exit( False );
+            if not SendMissile( TLevel(Parent).Area.Clamped(aTarget.RandomShifted( iScatter )), aGun, aAltFire, iSeqBase+(iCount-1)*aGun.MisDelay*3, iCount-1 ) then Exit;
        end
     else
        begin
-            if not SendMissile( aTarget, aGun, aAltFire, iSeqBase+(iCount-1)*aGun.MisDelay*3, iCount-1 ) then Exit( False );
+            if not SendMissile( aTarget, aGun, aAltFire, iSeqBase+(iCount-1)*aGun.MisDelay*3, iCount-1 ) then Exit;
        end;
-    if DRL.State <> DSPlaying then Exit( False );
+    if DRL.State <> DSPlaying then Exit;
   end;
-  Exit( True );
 end;
 
 function TBeing.VisualTime( aActionCost : Word = 1000; aBaseTime : Word = 100 ) : Word;
@@ -1377,6 +1374,7 @@ begin
   iShots       := Max( aGun.Shots, 1 );
   iChaining    := aAlt and ( aGun.Flags[ IF_ALTCHAIN ] ) and ( iShots > 1 );
   iShots       += iShotsBonus;
+  iSecond      := (aGun = FInv.Slot[ efWeapon2 ]);
 
   if iChaining then
   begin
@@ -1424,23 +1422,23 @@ begin
 
 
   if aGun.Flags[ IF_SHOTGUN ] then
-    iResult := HandleShotgunFire( aTarget, aGun, aAlt, iShots )
+    HandleShotgunFire( aTarget, aGun, aAlt, iShots )
   else if aGun.Flags[ IF_SPREAD ] then
-    iResult := HandleSpreadShots( aTarget, aGun, aAlt )
+    HandleSpreadShots( aTarget, aGun, aAlt )
   else
-    iResult := HandleShots( aTarget, aGun, iShots, aAlt, aDelay );
+    HandleShots( aTarget, aGun, iShots, aAlt, aDelay );
 
-  if not iResult then Exit( False );
+  if not (DRL.State in [DSPlaying,DSNextLevel]) then Exit( False );
   if UIDs[ iUID ] = nil then Exit( False );
   FTargetPos := aTarget;
-  if UIDs[ iUIDW ] = nil then Exit( False );
+  if UIDs[ iUIDW ] = nil then aGun := nil;
 
-  iSecond := (aGun = FInv.Slot[ efWeapon2 ]);
-  aGun.CallHook( Hook_OnFired, [ Self, iSecond ] );
-  CallHook( Hook_OnFired, [ aGun, iSecond ] );
+  if aGun <> nil then aGun.CallHook( Hook_OnFired, [ Self, iSecond, DRL.State <> DSPlaying ] );
+  CallHook( Hook_OnFired, [ aGun, iSecond, DRL.State <> DSPlaying ] );
 
-  if aGun.Flags[ IF_FIREDESTROY ] then
-    FreeAndNil( aGun );
+  if aGun <> nil then
+    if aGun.Flags[ IF_FIREDESTROY ] then
+      FreeAndNil( aGun );
 
   Exit( True );
 end;
