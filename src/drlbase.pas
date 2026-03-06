@@ -676,6 +676,7 @@ var iTarget     : TCoord2D;
     iRange      : Byte;
     iCommand    : Byte;
     iEmpty      : Boolean;
+    iShotCost   : Integer;
 begin
   IO.MsgUpdate;
   iLimitRange := False;
@@ -740,8 +741,9 @@ begin
     iEmpty := False;
     if not iItem.Flags[ IF_NOAMMO ] then
     begin
+      iShotCost := iItem.getShotCost( aAlt );
            if iItem.Ammo = 0              then begin IO.Msg( 'Your weapon is empty.' ); iEmpty := True; end
-      else if iItem.Ammo < iItem.ShotCost then begin IO.Msg( 'You don''t have enough ammo to fire the %s!', [iItem.Name] ); iEmpty := True; end;
+      else if iItem.Ammo < iShotCost      then begin IO.Msg( 'You don''t have enough ammo to fire the %s!', [iItem.Name] ); iEmpty := True; end;
     end;
 
     if iEmpty then

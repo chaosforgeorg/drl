@@ -884,7 +884,7 @@ begin
   if ( not aWeapon.Flags[ IF_NOAMMO ] ) and ( not aWeapon.isUsable ) then
   begin
     if aWeapon.Ammo = 0 then Exit( False );
-    if aWeapon.Ammo < aWeapon.ShotCost then Exit( False );
+    if aWeapon.Ammo < aWeapon.getShotCost( iAltFire ) then Exit( False );
   end;
   
   iRange := aWeapon.Range;
@@ -1362,6 +1362,7 @@ var iShots       : Integer;
     iResult      : Boolean;
     iSecond      : Boolean;
     iUID, iUIDW  : TUID;
+    iTargetBeing : TBeing;
 begin
   if DRL.State <> DSPlaying then Exit( False );
   if aTarget = FPosition then Exit( False );
@@ -1390,9 +1391,11 @@ begin
 
   if not iFreeShot then
   begin
-    iShotCost       := Max( aGun.ShotCost, 1 );
+    iTargetBeing := nil;
+    if TLevel(Parent).isProperCoord( aTarget ) then
+      iTargetBeing := TLevel(Parent).Being[ aTarget ];
+    iShotCost       := aGun.getShotCost( aAlt, iTargetBeing );
     iShotsCost      := iShots * iShotCost;
-    iShotsCost      := Round( iShotsCost * GetBonusMul( Hook_getAmmoCostMul, [aGun, aAlt, iShots, DRL.Level.getBeing(aTarget) ] ) );
 
     if iShotsCost > aGun.Ammo then
     begin
@@ -2236,7 +2239,6 @@ begin
   iDamageMod := getToDam( aItem, aAltFire, False );
   iDamageMul := GetBonusMul( Hook_getDamageMul, [ aItem, False, aAltFire, iBeing ] )
               * aItem.GetBonusMul( Hook_getDamageMul, [ False, aAltFire, iBeing ] );
-
   iDamage    += iDamageMod;
   iDamage    := Floor( iDamage * iDamageMul );
 

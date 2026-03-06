@@ -8,7 +8,7 @@ unit drltraits;
 interface
 uses classes, sysutils, vutil, vnode, dfdata, drlhooks;
 
-const   MAXTRAITS  = 50;
+const   MAXTRAITS  = 80;
         MAXKLASS   = 10;
 
 type TTraits = class( TVObject )
