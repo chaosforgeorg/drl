@@ -343,7 +343,8 @@ begin
       FlagStr := '';
       if IF_MODIFIED in FFlags then
       for Count := Ord('A') to Ord('Z') do
-        if FMods[Count] > 0 then FlagStr += Chr(Count);
+          if FMods[Count] > 0 then
+            FlagStr += Chr(Count) + Iif( FMods[Count] > 1, IntToStr(FMods[Count]), '' );
       if FArmor <> 0 then Description += ' ['+IntToStr(FArmor)+']';
       if FlagStr <> '' then Description += ' ('+FlagStr+')';
       Description += ResistDescriptionShort;
@@ -357,7 +358,8 @@ begin
         FlagStr := '';
         if IF_MODIFIED in FFlags then
         for Count := Ord('A') to Ord('Z') do
-          if FMods[Count] > 0 then FlagStr += Chr(Count);
+          if FMods[Count] > 0 then
+            FlagStr += Chr(Count) + Iif( FMods[Count] > 1, IntToStr(FMods[Count]), '' );
         if FlagStr <> '' then Description += ' ('+FlagStr+')';
         //Description += ResistDescriptionShort;
       end;
