@@ -20,7 +20,7 @@ function item:can_mod( c, tech_bonus )
 	local max = 0
 	if self.itype == ITEMTYPE_RANGED then
 		max = 1 + 2 * tech_bonus
-	elseif self.itupe == ITEMTYPE_MELEE then
+	elseif self.itype == ITEMTYPE_MELEE then
 		max = 1 + player:get_property( "MELEE_MODCAP_MULTIPLIER", 1 ) * tech_bonus
 	elseif self.itype == ITEMTYPE_ARMOR then
 		max = 1 + player:get_property( "ARMOR_MODCAP_MULTIPLIER", 1 ) * tech_bonus
