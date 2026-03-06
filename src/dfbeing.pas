@@ -1394,8 +1394,9 @@ begin
     iTargetBeing := nil;
     if TLevel(Parent).isProperCoord( aTarget ) then
       iTargetBeing := TLevel(Parent).Being[ aTarget ];
-    iShotCost       := aGun.getShotCost( aAlt, iTargetBeing );
-    iShotsCost      := iShots * iShotCost;
+    iShotCost       := aGun.getShotCost( aAlt, 1, iTargetBeing );
+    iShotsCost      := iShotCost;
+    if iShots > 1 then iShotsCost := aGun.getShotCost( aAlt, iShots, iTargetBeing );
 
     if iShotsCost > aGun.Ammo then
     begin

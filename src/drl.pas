@@ -127,7 +127,7 @@ try
 
     Logger.AddSink( TTextFileLogSink.Create( LOGDEBUG, WritePath + 'runtime.log', False ) );
     LogSystemInfo();
-    Logger.Log( LOGINFO, 'Log path set to - ' + WritePath );
+    Logger.Log( LOGINFO, 'Log set to - ' + WritePath );
 
     ErrorLogFileName := WritePath + 'error.log';
     Randomize;

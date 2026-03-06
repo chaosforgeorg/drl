@@ -51,7 +51,7 @@ TItem  = class( TThing )
     function    isFeature : Boolean;
     function    isWearable : Boolean;
     function    isPickupable : Boolean;
-    function    getShotCost( aAltFire : Boolean = False; aTarget : TThing = nil ) : Integer;
+    function    getShotCost( aAltFire : Boolean = False; aShots : Integer = 1; aTarget : TThing = nil ) : Integer;
     function    canFire : Boolean;
     function MenuColor : byte;
     procedure OnUpdate( Owner : TThing );
@@ -617,12 +617,12 @@ begin
   Exit( not ( FProps.IType in [ ITEMTYPE_FEATURE, ITEMTYPE_TELE, ITEMTYPE_LEVER ] ) );
 end;
 
-function TItem.getShotCost( aAltFire : Boolean = False; aTarget : TThing = nil ) : Integer;
+function TItem.getShotCost( aAltFire : Boolean = False; aShots : Integer = 1; aTarget : TThing = nil ) : Integer;
 var iShotCost : Integer;
 begin
   iShotCost := math.Max( ShotCost, 1 );
   if ( Parent <> nil ) and ( Parent is TBeing ) then
-    iShotCost := Round( iShotCost * (Parent as TBeing).GetBonusMul( Hook_getAmmoCostMul, [ Self, aAltFire, 1, aTarget ] ) );
+    iShotCost := Round( aShots * iShotCost * (Parent as TBeing).GetBonusMul( Hook_getAmmoCostMul, [ Self, aAltFire, aShots, aTarget ] ) );
   Exit( math.Max( iShotCost, 1 ) );
 end;
 
