@@ -2,6 +2,7 @@
 [fix] -- GJ#298: Game - fixed dual weapon second shot targeting after knockback
 [fix] -- GJ#---: Game - fixed nuclear overload access violation
 [fix] -- GJ#299: Game - fixed rare interaction that bricked rocket launchers
+[fix] -- GJ#---: Game - fixed sprite visibility issues when dying from multi-shot weapons
 
 0.10.7
 [new] -- GJ#229: Game - blood flood event added

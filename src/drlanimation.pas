@@ -173,6 +173,7 @@ private
   FCoord      : TCoord2D;
   FSprites    : array[0..3] of Integer;
   FCount      : Integer;
+  FLeadDelay  : DWord;
   FReverse    : Boolean;
 end;
 
@@ -612,6 +613,13 @@ var iBeing      : TBeing;
 begin
   inherited Create( aDuration, aDelay, aUID );
   FReverse := aReverse;
+  FLeadDelay := 0;
+  if not aReverse then
+  begin
+    FLeadDelay := aDelay;
+    FDelay := 0;
+    FDuration += FLeadDelay;
+  end;
   iBeing   := UIDs.Get( FUID ) as TBeing;
   if iBeing = nil then Exit;
   FCount      := 2;
@@ -661,6 +669,8 @@ end;
 
 procedure TGFXKillAnimation.OnDraw;
 var iBeing    : TBeing;
+    iElapsed  : DWord;
+    iDuration : DWord;
     iSprite   : TSprite;
     iSegment  : Integer;
     iPosition : TVec2i;
@@ -670,7 +680,19 @@ begin
   iBeing    := UIDs.Get( FUID ) as TBeing;
   if iBeing <> nil then
     iPosition.Init( (iBeing.Position.X - 1)*SpriteMap.GetGridSize,(iBeing.Position.Y - 1)*SpriteMap.GetGridSize);
-  iSegment := Min( ( FTime * FCount ) div FDuration, FCount - 1 );
+  if ( not FReverse ) and ( FLeadDelay > 0 ) then
+  begin
+    if FTime <= FLeadDelay then
+      iSegment := 0
+    else
+    begin
+      iElapsed  := FTime - FLeadDelay;
+      iDuration := Max( FDuration - FLeadDelay, DWord(1) );
+      iSegment  := Min( ( iElapsed * FCount ) div iDuration, FCount - 1 );
+    end;
+  end
+  else
+    iSegment := Min( ( FTime * FCount ) div FDuration, FCount - 1 );
   iSprite.SpriteID[0] := FSprites[iSegment];
   SpriteMap.PushSpriteBeing( iPosition, iSprite, FLight );
 end;
