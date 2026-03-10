@@ -23,6 +23,7 @@ core.options = {
 	assembly_apply_last_mod = false,
 	relic_slot = false,
 	resist_cap = 95,
+	maintain_groups = false,
 }
 
 module = false
