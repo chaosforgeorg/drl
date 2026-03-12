@@ -683,22 +683,28 @@ begin
   iState.Init(L);
   iItem := iState.ToObject(1) as TItem;
   if iItem = nil then Exit(0);
-  iType := iState.ToString(2);
-  iPSprite := nil;
-  if iType = 'spr' then
-    iPSprite := @iItem.FSprite
-  else if iType = 'mis' then
-    iPSprite := @iItem.FProps.MisSprite
-  else if iType = 'hit' then
-    iPSprite := @iItem.FProps.HitSprite
-  else if iType = 'exp' then
-    iPSprite := @iItem.FProps.Explosion.Sprite;
-  if iPSprite = nil then
+
+  iPSprite := @iItem.FSprite;
+  iType := '';
+  if iState.IsString(2) then
   begin
-    iState.Error('sprite type expected as parameter #1!');
-    Exit( 0 );
-  end;
-  iTable := iState.ToTable(3);
+    iType := iState.ToString(2);
+    if iType = 'mis' then
+      iPSprite := @iItem.FProps.MisSprite
+    else if iType = 'hit' then
+      iPSprite := @iItem.FProps.HitSprite
+    else if iType = 'exp' then
+      iPSprite := @iItem.FProps.Explosion.Sprite
+    else
+    begin
+      iState.Error('sprite type expected as parameter #2!');
+      Exit( 0 );
+    end;
+    iTable := iState.ToTable(3);
+  end
+  else
+    iTable := iState.ToTable(2);
+
   if iTable = nil then Exit( 0 );
   FillChar( iPSprite^, SizeOf( TSprite ), 0 );
   ReadSprite( iTable, iPSprite^ );
