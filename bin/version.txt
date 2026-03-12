@@ -1,4 +1,5 @@
 0.10.8
+[mod] -- GJ#---: Game - vaults can now drop boots and melee weapons (no knives, steel boots rarer)
 [fix] -- GJ#298: Game - fixed dual weapon second shot targeting after knockback
 [fix] -- GJ#---: Game - fixed nuclear overload access violation
 [fix] -- GJ#299: Game - fixed rare interaction that bricked rocket launchers

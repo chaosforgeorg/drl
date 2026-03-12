@@ -202,9 +202,13 @@ function drl.register_rooms()
 				if not pos then break end
 				local item = level:roll_item{
 					level = roll+3,
-					type = { ITEMTYPE_ARMOR, ITEMTYPE_AMMO, ITEMTYPE_RANGED, ITEMTYPE_PACK },
+					type = { ITEMTYPE_ARMOR, ITEMTYPE_BOOTS, ITEMTYPE_MELEE, ITEMTYPE_AMMO, ITEMTYPE_RANGED, ITEMTYPE_PACK },
 					unique_mod = unique_mod,
 					exotic_mod = exotic_mod,
+					weights = {
+						knife = 0,
+						sboots = 0.25,
+					},
 				}
 				level:drop_item( item, pos, true )
 			end
