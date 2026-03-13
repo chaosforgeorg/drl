@@ -197,7 +197,10 @@ function drl.register_traits()
 								local berserk = self:get_perk_time( "berserk" )
 								if berserk > 0 then
 									local increase = 10 - math.min( math.floor( berserk / 10 ), 9 )
-									self:add_perk( "berserk", increase * 5 )
+									local add_amount = math.min( increase * 5, math.max( 0, 300 - berserk ) )
+									if add_amount > 0 then
+										self:add_perk( "berserk", add_amount )
+									end
 								end
 							else
 								self:add_perk( "berserk", 100 )
