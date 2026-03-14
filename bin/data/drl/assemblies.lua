@@ -188,7 +188,7 @@ function drl.register_assemblies()
 		request_desc = "any common armor",
 
 		Match = function (item)
-			return not item:has_property("pp_recharge") and item.itype == ITEMTYPE_ARMOR and item.flags[IF_EXOTIC] == false and item.flags[IF_UNIQUE] == false
+			return ( not item:has_property("pp_recharge") or item:get_mod("N") > 0 ) and item.itype == ITEMTYPE_ARMOR and item.flags[IF_EXOTIC] == false and item.flags[IF_UNIQUE] == false
 		end,
 
 		OnApply = function (item)
@@ -213,7 +213,10 @@ function drl.register_assemblies()
 			end
 			item.resist.melee        = 25
 
-			item:add_perk( "perk_armor_recharge" )
+			if not item:has_property("pp_recharge") then
+				item:add_perk( "perk_armor_recharge" )
+			end
+
 			item.pp_recharge.amount = 5
 			item.pp_recharge.delay  = 10
 		end,
@@ -584,7 +587,9 @@ function drl.register_assemblies()
 			item.resist.fire = math.min( (item.__proto.resist.fire or 0) + 25, core.options.resist_cap )
 			item.resist.acid = math.min( (item.__proto.resist.acid or 0) + 25, core.options.resist_cap )
 			item.resist.plasma = math.min( (item.__proto.resist.plasma or 0) + 25, core.options.resist_cap )
-			item:add_perk( "perk_armor_recharge" )
+			if not item:has_property("pp_recharge") then
+				item:add_perk( "perk_armor_recharge" )
+			end
 			item.pp_recharge.amount = 1
 			item.pp_recharge.delay  = 5
 			item.flags[ IF_NODESTROY ] = true
@@ -592,7 +597,7 @@ function drl.register_assemblies()
 		end,
 
 		Match = function (item)
-			return not item:has_property("pp_recharge")
+			return not item:has_property("pp_recharge") or item:get_mod("N") > 0
 		end,
 	}
 
@@ -733,6 +738,7 @@ function drl.register_assemblies()
 			item.flags[ IF_NODURABILITY ] = true
 			item.flags[ IF_NODESTROY ]    = true
 			item:add_perk( "perk_cursed" )
+			item:remove_perk( "perk_armor_recharge" )
 		end,
 	}
 
@@ -832,13 +838,16 @@ function drl.register_assemblies()
 			item.radius       = 6
 			-- This is the behaviour of the N-mod on 0.9.9.1.
 			-- shark said that you can get this with N2, but here we are basically allowing a *6*-mod weapon build up
-			item:add_perk( "perk_weapon_recharge" )
+			
+			if not item:has_property("pp_recharge") then
+				item:add_perk( "perk_weapon_recharge" )
+			end
 			item.pp_recharge.delay  = 0
 			item.pp_recharge.amount = 1
 		end,
 
 		Match = function (item)
-			return not item:has_property("pp_recharge")
+			return not item:has_property("pp_recharge") or item:get_mod("N") > 0
 		end,
 	}
 

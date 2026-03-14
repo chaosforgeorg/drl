@@ -8,7 +8,8 @@
 [fix] -- GJ#---: Game - missile launcher no longer needs pumping, has full reload and rocket jump
 [fix] -- GJ#---: Game - assault shotgun no longer needs pumping, has full reload
 [fix] -- GJ#---: Game - nightmare imps regained their explosion radius
-[fix] -- GJ#---: Game - fix a source of Mastemind crashes
+[fix] -- GJ#---: Game - fix a source of Mastermind crashes
+[fix] -- GJ#---: Game - fixed power armor, nanofibre skin and Mother-In-Law assemblies when N wasn't last mod
 
 0.10.7
 [new] -- GJ#229: Game - blood flood event added
