@@ -957,7 +957,7 @@ begin
       Padded( '    ' + Padded('Ranged', 8) + ' : {!' + toHitPercent(10+getToHit(Inv.Slot[efWeapon], False, False)) + '}', 24 ) +
       '    ' + Padded('Dodge', 9) + ' : {!' + BonusStr(iDodgeBonus) + '%}' );
     FCharacter[0].Push(
-      Padded( '  ' + Padded(Iff(iMelee,'Attack','Fire'), 8) + ' : {!' + Format('%.2f', [getFireCost( False, iMelee )/(Speed*10.0)]) + '}s/' + IIf(canDualWield,'dualshot','shot'), 24 ) +
+      Padded( '  ' + Padded(Iif(iMelee,'Attack','Fire'), 8) + ' : {!' + Format('%.2f', [getFireCost( False, iMelee )/(Speed*10.0)]) + '}s/' + IIf(canDualWield,'dualshot','shot'), 24 ) +
       Padded( '    ' + Padded('Melee', 8) + ' : {!' + toHitPercent(12+getToHit(Inv.Slot[efWeapon], False, True)) + '}', 24 ) +
       '    ' + Padded('Knockback', 9) + ' : {!' + IntToStr(iKnockMod) + '%}' );
     FCharacter[0].Push(
