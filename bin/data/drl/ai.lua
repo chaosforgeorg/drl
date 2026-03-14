@@ -598,12 +598,14 @@ register_ai "mastermind_ai"
 			if #best_moves > 0 then
 				moves = best_moves
 			end
+
+			local move
 			if #moves == 0 then
 				move = level:random_empty_coord({ EF_NOBEINGS, EF_NOBLOCK }, area.around( self.position ))
+			else
+				move = table.random_pick( moves )
 			end
-
-			local move = table.random_pick( moves )
-			if self:direct_seek( move ) ~= MOVEOK then
+			if (not move) or self:direct_seek( move ) ~= MOVEOK then
                 self.scount = self.scount - 1000
             end
 			return "hunt"
