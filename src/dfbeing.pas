@@ -1997,6 +1997,7 @@ begin
 
   if FDying or ( BF_INV in FFlags ) then Exit;
 
+  iResist := 0;
   if aDamageType <> Damage_IgnoreArmor then
   begin
     case aDamageType of
@@ -2012,17 +2013,21 @@ begin
       Damage_Pierce      : iResist := 0;
     else iResist := 0;
     end;
-    if iResist >= 100 then Exit;
-    if iResist <> 0 then
-      aDamage := Max( Round( aDamage * ( (100-iResist) / 100 ) ), 1 );
+    if iResist >= 100 
+      then aDamage := 0
+      else if iResist <> 0 then
+        aDamage := Max( Round( aDamage * ( (100-iResist) / 100 ) ), 1 );
   end;
 
-  if isPlayer then
+  if iResist < 100 then
   begin
-    if ( aTarget = Target_Torso ) and ( aDamage > 4 ) then
-      PlaySound( 'pain' )
-  end
-  else PlaySound( 'hit' );
+    if isPlayer then
+    begin
+      if ( aTarget = Target_Torso ) and ( aDamage > 4 ) then
+        PlaySound( 'pain' )
+    end
+    else PlaySound( 'hit' );
+  end;
 
   iArmor := nil;
   iSlot := efWeapon;
@@ -2036,14 +2041,13 @@ begin
   if Inv.Slot[ efWeapon ] <> nil then
      iArmorValue += Inv.Slot[ efWeapon ].Armor;
 
-  
   if iArmor <> nil then
   begin
     iProtection := iArmor.GetProtection;
     iArmorValue += iProtection;
 
     iArmorDamage := Max( aDamage - iProtection , 1 );
-    if aDamageType = Damage_Acid then iArmorDamage *= 2;
+    if (aDamageType = Damage_Acid) and (iResist < 100) then iArmorDamage *= 2;
     if iArmor.Flags[ IF_NODURABILITY ] then iArmorDamage := 0;
     iArmor.Durability := Max( 0, iArmor.Durability - iArmorDamage );
 
@@ -2061,6 +2065,7 @@ begin
                                 else IO.Msg('Your '+iArmor.Name+' are damaged!');
 
   end;
+  if iResist >= 100 then Exit;
 
   if aDamageType = DAMAGE_SHARPNEL then iArmorValue := iArmorValue * 2;
   if aDamageType = DAMAGE_PLASMA   then iArmorValue := iArmorValue div 2;
