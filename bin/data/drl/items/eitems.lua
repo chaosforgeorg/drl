@@ -226,7 +226,7 @@ function drl.register_exotic_items()
 		hitsprite     = SPRITE_BLAST,
 
 		OnCreate = function(self)
-			self:add_perk( "perk_pump_action" )
+			self:add_perk( "perk_altreload_full" )
 		end,
 	}
 
@@ -428,7 +428,8 @@ function drl.register_exotic_items()
 		},
 
 		OnCreate = function(self)
-			self:add_perk( "perk_pump_action" )
+			self:add_perk( "perk_altfire_rocketjump" )
+			self:add_perk( "perk_altreload_full" )
 		end,
 	}
 

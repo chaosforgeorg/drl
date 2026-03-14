@@ -5,6 +5,8 @@
 [fix] -- GJ#---: Game - fixed nuclear overload access violation
 [fix] -- GJ#299: Game - fixed rare interaction that bricked rocket launchers
 [fix] -- GJ#---: Game - fixed sprite visibility issues when dying from multi-shot weapons
+[fix] -- GJ#---: Game - missile launcher no longer needs pumping, has full reload and rocket jump
+[fix] -- GJ#---: Game - assault shotgun no longer needs pumping, has full reload
 
 0.10.7
 [new] -- GJ#229: Game - blood flood event added
