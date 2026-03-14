@@ -748,6 +748,7 @@ function drl.register_beings()
 			damagetype = DAMAGE_PLASMA,
 			miss_base  = 20,
 			miss_dist  = 4,
+			radius     = 1,
 			misascii  = "*",
 			miscolor  = LIGHTMAGENTA,
 			misdelay  = 15,
