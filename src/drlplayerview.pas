@@ -907,6 +907,7 @@ var iKillRecord   : Integer;
     i             : Integer;
     iPerks        : TPerkList;
     iName         : Ansistring;
+    iMelee        : Boolean;
   function Percent( aCurrent, aMax : Integer ) : Integer;
   begin
     Exit( Floor( ( aCurrent / aMax ) * 100.0 ) );
@@ -944,6 +945,9 @@ begin
     FCharacter[0].Push( '' );
 
     // Speeds, Accuracy, Bonuses
+    iMelee := True;
+    if Inv.Slot[efWeapon] <> nil then
+      iMelee := not Inv.Slot[efWeapon].isRanged;
     FCharacter[0].Push(
       Padded( '{!Current speeds}', 26 ) +
       Padded( '{!Accuracy}', 24 ) +
@@ -953,7 +957,7 @@ begin
       Padded( '    ' + Padded('Ranged', 8) + ' : {!' + toHitPercent(10+getToHit(Inv.Slot[efWeapon], False, False)) + '}', 24 ) +
       '    ' + Padded('Dodge', 9) + ' : {!' + BonusStr(iDodgeBonus) + '%}' );
     FCharacter[0].Push(
-      Padded( '  ' + Padded('Fire', 8) + ' : {!' + Format('%.2f', [getFireCost( False, False )/(Speed*10.0)]) + '}s/' + IIf(canDualWield,'dualshot','shot'), 24 ) +
+      Padded( '  ' + Padded(Iff(iMelee,'Attack','Fire'), 8) + ' : {!' + Format('%.2f', [getFireCost( False, iMelee )/(Speed*10.0)]) + '}s/' + IIf(canDualWield,'dualshot','shot'), 24 ) +
       Padded( '    ' + Padded('Melee', 8) + ' : {!' + toHitPercent(12+getToHit(Inv.Slot[efWeapon], False, True)) + '}', 24 ) +
       '    ' + Padded('Knockback', 9) + ' : {!' + IntToStr(iKnockMod) + '%}' );
     FCharacter[0].Push(
