@@ -220,9 +220,10 @@ function drl.register_traits()
 		end,
 
 		OnReceiveDamage = function ( self, damage, weapon, active )
+			if active == self then return end
 			if damage >= math.max( math.floor( self.hpmax / 3 ), 10 ) then
 				ui.msg("That hurt! You're going berserk!")
-				self:add_perk( "berserk", 100 )
+				self:apply_timed_perk( "berserk", 100 )
 			end
 		end,
 	}
