@@ -244,3 +244,60 @@ jobs:
         with:
           files: artifacts/*
           generate_release_notes: true
+
+  # ── Nightly release (development pushes only) ────────────────────────
+
+  nightly:
+    if: github.ref == 'refs/heads/development'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v5
+        with:
+          name: drl-win
+          path: nightly
+
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v5
+        with:
+          name: drl-linux
+          path: nightly
+
+      - name: Keep only LQ packages
+        run: |
+          cd nightly
+          echo "--- before filter ---"
+          ls -la
+
+          # Remove everything that isn't an LQ package
+          find . -maxdepth 1 -type f ! -name '*-lq.*' -delete
+
+          # Rename to stable "nightly" filenames for permanent URLs
+          for f in drl-win-*-lq.zip; do
+            [ -f "$f" ] && mv "$f" drl-win-nightly-lq.zip
+          done
+          for f in drl-linux-*-lq.tar.gz; do
+            [ -f "$f" ] && mv "$f" drl-linux-nightly-lq.tar.gz
+          done
+
+          echo "--- after filter ---"
+          ls -la
+
+      - name: Update nightly release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly
+          name: Nightly Build
+          body: |
+            Latest development build from the `development` branch.
+            Updated automatically on each push.
+
+            **Downloads:**
+            - [Windows LQ](https://github.com/${{ github.repository }}/releases/download/nightly/drl-win-nightly-lq.zip)
+            - [Linux LQ](https://github.com/${{ github.repository }}/releases/download/nightly/drl-linux-nightly-lq.tar.gz)
+          prerelease: true
+          make_latest: false
+          files: nightly/*
