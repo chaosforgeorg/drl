@@ -113,6 +113,18 @@ makefile = {
 			local path = make.publish( "deploy", "jhc" )
 			make.steam( path, os.pwd().."\\bin\\data\\jhc\\setup\\app_build_3126530.vdf" )
 		end,
+		jhc_build = function()
+			os.execute_in_dir( "makewad jhc", "bin" )
+			make.publish( "deploy", "jhc" )
+		end,
+		jhc_push = function()
+			local s = os.path_sep
+			make.steam( ".", os.pwd()..s.."bin"..s.."data"..s.."jhc"..s.."setup"..s.."app_build_3126530.vdf" )
+		end,
+		jhc_demo_push = function()
+			local s = os.path_sep
+			make.steam( ".", os.pwd()..s.."bin"..s.."data"..s.."jhc"..s.."setup"..s.."demo"..s.."app_build_3256910.vdf" )
+		end,
 		lq = function()
 			if not BUILT then
 				os.execute_in_dir( "makewad", "bin" )
@@ -129,6 +141,7 @@ makefile = {
 		end,
 		drl_mod = function()
 			os.execute_in_dir( "makewad drl drlhq", "bin" )
+			os.mkdir( "bin/deploy/drl" )
 			os.copy( "bin/drl.wad", "bin/deploy/drl/drl.wad" )
 			os.execute_in_dir( "drl -publish drl -god", "bin" )
 		end,
@@ -200,4 +213,6 @@ makefile = {
 }
 
 make.compile()
-make.command( arg[1] )
+for i = 1, #arg do
+	make.command( arg[i] )
+end
