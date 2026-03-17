@@ -17,7 +17,7 @@ jobs:
         include:
           - os: windows-latest
             short: win
-          - os: ubuntu-latest
+          - os: ubuntu-22.04
             short: linux
           - os: macos-latest
             short: osx
