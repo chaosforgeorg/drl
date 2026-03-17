@@ -39,7 +39,8 @@ makefile = {
 		},
 		MACOSX = {	
 			"-dOSX_APP_BUNDLE",
-			"-k-macosx_version_min -k10.4",
+			"-Fl/usr/local/lib",
+			"-k-macos_version_min -k11.0",
 		},
 	},
 	pre_build = function()
