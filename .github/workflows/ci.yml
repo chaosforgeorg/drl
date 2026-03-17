@@ -28,12 +28,12 @@ jobs:
 
     steps:
       - name: Checkout DRL
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: drl
 
       - name: Checkout fpcvalkyrie
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: chaosforgeorg/fpcvalkyrie
           ref: development
@@ -126,8 +126,10 @@ jobs:
           sudo ln -sf /usr/local/bin/lua /usr/local/bin/lua5.1
 
           # FPC static linking needs liblua5.1.a
+          # Homebrew FPC on ARM searches /opt/homebrew/lib, not /usr/local/lib
           if [ -f /usr/local/lib/liblua.a ]; then
-            sudo ln -sf /usr/local/lib/liblua.a /usr/local/lib/liblua5.1.a
+            sudo cp /usr/local/lib/liblua.a /usr/local/lib/liblua5.1.a
+            sudo cp /usr/local/lib/liblua.a /opt/homebrew/lib/liblua5.1.a 2>/dev/null || true
           fi
 
       # ── Stage Windows runtime libraries ────────────────────────────────
@@ -213,7 +215,7 @@ jobs:
           ls -la dist/
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: drl-${{ matrix.short }}
           path: drl/dist/*
@@ -229,7 +231,7 @@ jobs:
 
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: artifacts
           merge-multiple: true
