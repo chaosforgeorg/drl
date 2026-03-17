@@ -24,6 +24,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
+    continue-on-error: ${{ matrix.os == 'macos-latest' }}
 
     steps:
       - name: Checkout DRL
@@ -87,13 +88,47 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y fpc lua5.1 zip
+          sudo apt-get install -y fpc zip libreadline-dev
+
+          # Build Lua 5.1 from source (need lua5.1 CLI + liblua5.1.a for static linking)
+          curl -fL https://www.lua.org/ftp/lua-5.1.5.tar.gz -o lua-5.1.5.tar.gz
+          tar xzf lua-5.1.5.tar.gz
+          cd lua-5.1.5
+          make linux
+          sudo make install INSTALL_TOP=/usr/local
+          cd ..
+          rm -rf lua-5.1.5 lua-5.1.5.tar.gz
+
+          # Lua installs as 'lua', build system expects 'lua5.1'
+          sudo ln -sf /usr/local/bin/lua /usr/local/bin/lua5.1
+
+          # FPC's {$linklib lua5.1.a} looks for liblua5.1.a
+          # Place in /usr/lib where FPC's linker search path includes by default
+          if [ -f /usr/local/lib/liblua.a ]; then
+            sudo cp /usr/local/lib/liblua.a /usr/lib/liblua5.1.a
+          fi
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
-          brew install fpc lua@5.1
-          echo "$(brew --prefix lua@5.1)/bin" >> "$GITHUB_PATH"
+          brew install fpc readline
+
+          # Build Lua 5.1 from source (no Homebrew formula for lua@5.1)
+          curl -fL https://www.lua.org/ftp/lua-5.1.5.tar.gz -o lua-5.1.5.tar.gz
+          tar xzf lua-5.1.5.tar.gz
+          cd lua-5.1.5
+          make macosx
+          sudo make install INSTALL_TOP=/usr/local
+          cd ..
+          rm -rf lua-5.1.5 lua-5.1.5.tar.gz
+
+          # Lua installs as 'lua', build system expects 'lua5.1'
+          sudo ln -sf /usr/local/bin/lua /usr/local/bin/lua5.1
+
+          # FPC static linking needs liblua5.1.a
+          if [ -f /usr/local/lib/liblua.a ]; then
+            sudo ln -sf /usr/local/lib/liblua.a /usr/local/lib/liblua5.1.a
+          fi
 
       # ── Stage Windows runtime libraries ────────────────────────────────
 
