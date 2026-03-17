@@ -1,0 +1,209 @@
+name: DRL CI
+
+on:
+  push:
+    branches: [ development ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            short: win
+          - os: ubuntu-latest
+            short: linux
+          - os: macos-latest
+            short: osx
+
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout DRL
+        uses: actions/checkout@v4
+        with:
+          path: drl
+
+      - name: Checkout fpcvalkyrie
+        uses: actions/checkout@v4
+        with:
+          repository: chaosforgeorg/fpcvalkyrie
+          ref: development
+          path: fpcvalkyrie
+
+      # ── Platform-specific dependency installation ──────────────────────
+
+      - name: Install dependencies (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          choco feature enable -n=allowGlobalConfirmation
+          choco install lazarus innosetup zip
+
+          # Locate 64-bit FPC binary directory
+          $fpcBin = 'C:\lazarus\fpc\3.2.2\bin\x86_64-win64'
+          if (-not (Test-Path $fpcBin)) {
+            $ver = Get-ChildItem 'C:\lazarus\fpc' -Directory -ErrorAction SilentlyContinue |
+                   Sort-Object Name -Descending | Select-Object -First 1
+            if ($ver) {
+              $try = Join-Path $ver.FullName 'bin\x86_64-win64'
+              if (Test-Path $try) { $fpcBin = $try }
+            }
+          }
+          if (-not (Test-Path $fpcBin)) { Write-Error "64-bit FPC bin not found under C:\lazarus\fpc"; exit 1 }
+
+          $fpcRoot = Split-Path (Split-Path $fpcBin -Parent) -Parent
+          $fpcBin | Out-File -FilePath $env:GITHUB_PATH -Append
+
+          # Regenerate fpc.cfg so unit search paths are correct
+          $fpcmkcfg = Join-Path $fpcBin 'fpcmkcfg.exe'
+          if (-not (Test-Path $fpcmkcfg)) { Write-Error "fpcmkcfg.exe not found in $fpcBin"; exit 1 }
+          $cfgPath = Join-Path $fpcBin 'fpc.cfg'
+          if (Test-Path $cfgPath) { Remove-Item $cfgPath -Force }
+          & $fpcmkcfg -d basepath="$fpcRoot" -o "$cfgPath"
+          if (-not (Test-Path $cfgPath)) { Write-Error "Failed to generate fpc.cfg"; exit 1 }
+
+          "PPC_CONFIG_PATH=$fpcBin" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "FPCDIR=$fpcRoot"         | Out-File -FilePath $env:GITHUB_ENV -Append
+
+          # Add InnoSetup to PATH
+          $isccDir = 'C:\Program Files (x86)\Inno Setup 6'
+          if (Test-Path $isccDir) {
+            $isccDir | Out-File -FilePath $env:GITHUB_PATH -Append
+          }
+
+          # lua5.1.exe lives in drl\bin after staging; add to PATH
+          $luaDir = Join-Path $env:GITHUB_WORKSPACE 'drl\bin'
+          $luaDir | Out-File -FilePath $env:GITHUB_PATH -Append
+
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fpc lua5.1 zip
+
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install fpc lua@5.1
+          echo "$(brew --prefix lua@5.1)/bin" >> "$GITHUB_PATH"
+
+      # ── Stage Windows runtime libraries ────────────────────────────────
+
+      - name: Stage runtime (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        working-directory: drl
+        run: |
+          if (Test-Path "ext\windows") {
+            & "$env:SystemRoot\System32\robocopy.exe" ext\windows bin /E
+            $code = $LASTEXITCODE
+            if ($code -gt 3) { exit $code } else { $global:LASTEXITCODE = 0 }
+          } else {
+            Write-Error "drl\ext\windows not found"; exit 1
+          }
+
+      # ── Download audio assets (gitignored) ─────────────────────────────
+
+      - name: Download audio assets
+        shell: bash
+        working-directory: drl
+        run: |
+          set -e
+          base_url="https://drl.chaosforge.org"
+
+          mkdir -p bin/data/drlhq/music bin/data/drlhq/sound
+          mkdir -p bin/data/drllq/music bin/data/drllq/sound
+
+          curl -fL "$base_url/music_hq.zip"  -o music_hq.zip
+          curl -fL "$base_url/sound_hq.zip"  -o sound_hq.zip
+          curl -fL "$base_url/music_lq.zip"  -o music_lq.zip
+          curl -fL "$base_url/sound_lq.zip"  -o sound_lq.zip
+
+          unzip -o music_hq.zip  -d bin/data/drlhq/music/
+          unzip -o sound_hq.zip  -d bin/data/drlhq/sound/
+          unzip -o music_lq.zip  -d bin/data/drllq/music/
+          unzip -o sound_lq.zip  -d bin/data/drllq/sound/
+
+          rm -f music_hq.zip sound_hq.zip music_lq.zip sound_lq.zip
+
+      # ── Build packages ─────────────────────────────────────────────────
+
+      - name: Build
+        shell: bash
+        working-directory: drl
+        run: |
+          set -e
+          mkdir -p tmp pkg
+
+          lua5.1 makefile.lua lq
+          lua5.1 makefile.lua hq
+
+      - name: Build installer (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        working-directory: drl
+        run: |
+          set -e
+          lua5.1 makefile.lua installhq
+
+      # ── Upload artifacts ───────────────────────────────────────────────
+
+      - name: Collect packages
+        id: packages
+        shell: bash
+        working-directory: drl
+        run: |
+          set -e
+          mkdir -p dist
+
+          # Zip / tar.gz packages produced by makefile.lua
+          for f in drl-${{ matrix.short }}-*.zip drl-${{ matrix.short }}-*.tar.gz; do
+            [ -f "$f" ] && cp "$f" dist/ || true
+          done
+
+          # Windows InnoSetup installer
+          for f in pkg/drl-*.exe; do
+            [ -f "$f" ] && cp "$f" dist/ || true
+          done
+
+          echo "--- dist contents ---"
+          ls -la dist/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: drl-${{ matrix.short }}
+          path: drl/dist/*
+          if-no-files-found: error
+
+  # ── GitHub Release (tag pushes only) ─────────────────────────────────
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List release files
+        run: ls -laR artifacts/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true

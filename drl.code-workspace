@@ -14,6 +14,9 @@
 		},
 		{
 			"path": "../fpcvalkyrie/libs"
+		},
+		{
+			"path": "../fpcvalkyrie/scripts"
 		}
 	],
 	"settings": {}
