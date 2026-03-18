@@ -89,10 +89,10 @@ makefile = {
 			files = { "config.lua", "font.dat" },
 			os = {
 				WINDOWS = { "steam_api64.dll", "fmod64.dll", "lua5.1.dll", "SDL3.dll", "SDL3_image.dll", "drl_console.bat" },
-				LINUX   = { "unix_notes.txt", "drl_gnome-terminal", "drl_konsole", "drl_xterm",  dos2unix = true, },
+				LINUX   = { "libsteam_api.so", "libfmod.so", "libSDL3.so.0.4.0", "libSDL3_image.so.0.4.0" },
 				MACOSX  = { "unix_notes.txt" },
 			},
-			other = { "jhc.wad", "core.wad" },
+			other = { "jhc.wad", "core.wad", "version.txt" },
 		}
 	},
 	commands = {
@@ -116,6 +116,12 @@ makefile = {
 		jhc_build = function()
 			os.execute_in_dir( "makewad jhc", "bin" )
 			make.publish( "deploy", "jhc" )
+		end,
+		jhc_demo_build = function()
+			set_demo("bin/data/jhc/main.lua", true)
+			os.execute_in_dir( "makewad jhc demo.txt", "bin" )
+			set_demo("bin/data/jhc/main.lua", false)
+			make.publish( "deploy-demo", "jhc" )
 		end,
 		jhc_push = function()
 			local s = os.path_sep
