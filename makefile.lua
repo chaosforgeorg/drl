@@ -89,7 +89,7 @@ makefile = {
 			files = { "config.lua", "font.dat" },
 			os = {
 				WINDOWS = { "steam_api64.dll", "fmod64.dll", "lua5.1.dll", "SDL3.dll", "SDL3_image.dll", "drl_console.bat" },
-				LINUX   = { "libsteam_api.so", "libfmod.so", "libSDL3.so.0.4.0", "libSDL3_image.so.0.4.0" },
+				LINUX   = { "libsteam_api.so", "libfmod.so", "libSDL3.so.0.4.0", "libSDL3_image.so.0.4.0", "run_jhc.sh" },
 				MACOSX  = { "unix_notes.txt" },
 			},
 			other = { "jhc.wad", "core.wad", "version.txt" },
