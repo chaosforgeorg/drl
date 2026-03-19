@@ -692,3 +692,32 @@ core.register_blueprint "room"
 	setup       = { true,  core.TFUNC },
 }
 
+core.register_blueprint "emitter"
+{
+	id              = { true,  core.TSTRING },
+	shape           = { false, core.TSTRING, "point" },
+	shape_params    = { false, core.TANY, {} },
+	direction       = { false, core.TANY, {0,-1,0} },
+	spread_angle    = { false, core.TNUMBER, 0 },
+	speed           = { false, core.TANY, 0 },
+	accel           = { false, core.TANY, {0,0,0} },
+	lifetime        = { false, core.TANY, 1.0 },
+	scale           = { false, core.TANY, 1.0 },
+	rotation        = { false, core.TANY, 0 },
+	rot_speed       = { false, core.TANY, 0 },
+	color_start     = { false, core.TANY, {255,255,255} },
+	color_end       = { false, core.TANY },
+	sprite          = { false, core.TANY, 0 },
+	sub_id          = { false, core.TNUMBER, 0 },
+	anim_frames     = { false, core.TNUMBER, 1 },
+	anim_frame_time = { false, core.TNUMBER, 0 },
+	decal_sprite    = { false, core.TANY, 0 },
+	flags           = { false, core.TFLAGS, {} },
+	rate            = { false, core.TNUMBER, 0 },
+	burst_count     = { false, core.TNUMBER, 0 },
+	duration        = { false, core.TNUMBER, 0 },
+	max_particles   = { false, core.TNUMBER, 50 },
+	looping         = { false, core.TBOOL, false },
+	attached        = { false, core.TBOOL, false },
+}
+
