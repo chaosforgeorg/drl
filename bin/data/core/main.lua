@@ -90,6 +90,7 @@ register_challenge  = core.register_storage( "chal", "challenge" )
 register_itemset    = core.register_storage( "itemsets", "itemset" )
 register_emitter    = core.register_storage( "emitters", "emitter", function( e )
 	if #e.shape_params == 0 then e.shape_params = {0, 0, 0} end
+	core.register_emitter( e.nid )
 end )
 register_mod_array = core.register_storage( "mod_arrays", "mod_array", function (m) 
 		m.sig   = core.mod_list_signature(m.mods)

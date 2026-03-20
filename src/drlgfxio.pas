@@ -251,7 +251,7 @@ begin
 
   FTextures  := TTextureManager.Create( Option_Blending );
   SpriteMap  := TDRLSpriteMap.Create( Vec2i( iWidth, iHeight ) );
-  FParticleEngine := TParticleEngine.Create( SpriteMap.Engine );
+  FParticleEngine := TParticleEngine.Create;
   TSDLIODriver( FIODriver ).ShowMouse( False );
 
   FMCursor   := TDRLMouseCursor.Create;
@@ -839,6 +839,8 @@ begin
     //if not UI.AnimationsRunning then SpriteMap.NewShift := SpriteMap.ShiftValue( Player.Position );
 
     SpriteMap.Update( aMSec, FProjection );
+    DRL.Particles.Update( aMSec * 0.001 );
+    FParticleEngine.Render( SpriteMap.Engine );
     FAnimations.Draw;
     glEnable( GL_DEPTH_TEST );
     SpriteMap.Draw;
