@@ -194,7 +194,6 @@ core.register_blueprint "perk"
 	OnReload       = { false, core.TFUNC },
 	OnAltFire      = { false, core.TFUNC },
 	OnAltReload    = { false, core.TFUNC },
-	OnEquipTick    = { false, core.TFUNC },
 	OnEquipCheck   = { false, core.TFUNC },
 	OnPreAction    = { false, core.TFUNC },
 	OnPostAction   = { false, core.TFUNC },

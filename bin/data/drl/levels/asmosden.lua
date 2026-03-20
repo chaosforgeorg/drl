@@ -98,7 +98,7 @@ register_level "the_asmos_den"
 				end
 			end,
 
-			OnEquipTick = function(self, being)
+			OnTick = function(self, being)
 				if not level.flags[ LF_NUKED ] then
 					ui.msg("Looks like even the armor of Hell couldn't handle an explosion ")
 					ui.msg("THAT big. At least it kept you alive.")

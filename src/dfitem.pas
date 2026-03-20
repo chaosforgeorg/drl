@@ -54,7 +54,6 @@ TItem  = class( TThing )
     function    getShotCost( aAltFire : Boolean = False; aShots : Integer = 1; aTarget : TThing = nil ) : Integer;
     function    canFire : Boolean;
     function MenuColor : byte;
-    procedure OnUpdate( Owner : TThing );
     function Preposition( const Item : AnsiString ) : string;
     class function Compare( a, b : TItem ) : Boolean; reintroduce;
     class procedure RegisterLuaAPI();
@@ -635,12 +634,6 @@ begin
     if Ammo < getShotCost then Exit( False );
   end;
   Exit( True );
-end;
-
-procedure TItem.OnUpdate( Owner : TThing );
-begin 
-  if ( Hook_OnEquipTick in FHooks ) or ( ( FPerks <> nil ) and ( Hook_OnEquipTick in FPerks.Hooks ) ) then
-    CallHook( Hook_OnEquipTick, [ Owner ] );
 end;
 
 function lua_item_new(L: Plua_State): Integer; cdecl;

@@ -32,7 +32,7 @@ const
   Hook_OnKillAll       = 20;  // Level, Module, Challenge, Core (Chained)
   Hook_OnHitBeing      = 21;  // Item
   Hook_OnReload        = 22;  // Item
-  Hook_OnEquipTick     = 23;  // Item
+  Hook_OnDescribe      = 23;  // Item
   Hook_OnEquipCheck    = 24;  // Item
   Hook_OnAct           = 25;  // Item
   Hook_OnDestroy       = 26;  // Item
@@ -66,24 +66,22 @@ const
   Hook_OnCanDualWield  = 52;   // Trait
   Hook_OnCanMaxDamage  = 53;   // Trait
 
-  Hook_OnDescribe      = 54; // Item
+  Hook_getDamageBonus  = 54; // Trait, Being, Affects
+  Hook_getToHitBonus   = 55; // Trait, Being, Affects
+  Hook_getShotsBonus   = 56; // Trait, Being, Affects
+  Hook_getFireCostBonus= 57; // Trait, Being, Affects
+  Hook_getDefenceBonus = 58; // Trait, Being, Affects
+  Hook_getDodgeBonus   = 59; // Trait, Being, Affects
+  Hook_getMoveBonus    = 60; // Trait, Being, Affects
+  Hook_getBodyBonus    = 61; // Trait, Being, Affects
+  Hook_getResistBonus  = 62; // Trait, Being, Affects
+  Hook_getDamageMul    = 63; // Trait, Being, Affects
+  Hook_getFireCostMul  = 64; // Trait, Being, Affects
+  Hook_getAmmoCostMul  = 65; // Trait, Being, Affects
+  Hook_getReloadCostMul= 66; // Trait, Being, Affects
+  Hook_OnUnequipCheck  = 67; // Item
 
-  Hook_getDamageBonus  = 55; // Trait, Being, Affects
-  Hook_getToHitBonus   = 56; // Trait, Being, Affects
-  Hook_getShotsBonus   = 57; // Trait, Being, Affects
-  Hook_getFireCostBonus= 58; // Trait, Being, Affects
-  Hook_getDefenceBonus = 59; // Trait, Being, Affects
-  Hook_getDodgeBonus   = 60; // Trait, Being, Affects
-  Hook_getMoveBonus    = 61; // Trait, Being, Affects
-  Hook_getBodyBonus    = 62; // Trait, Being, Affects
-  Hook_getResistBonus  = 63; // Trait, Being, Affects
-  Hook_getDamageMul    = 64; // Trait, Being, Affects
-  Hook_getFireCostMul  = 65; // Trait, Being, Affects
-  Hook_getAmmoCostMul  = 66; // Trait, Being, Affects
-  Hook_getReloadCostMul= 67; // Trait, Being, Affects
-  Hook_OnUnequipCheck  = 68; // Item
-
-  HookAmount           = 69;
+  HookAmount           = 68;
 
 const AllHooks      : TFlags = [ 0..HookAmount-1 ];
 
@@ -100,14 +98,14 @@ const HookNames : array[ 0..HookAmount-1 ] of AnsiString = (
       'OnCreate', 'OnAction', 'OnAttacked', 'OnUseActive', 'OnDie', 'OnDieCheck',
       'OnPickupItem', 'OnPickup','OnPickupCheck','OnFirstPickup','OnUse','OnUseCheck',
       'OnAltFire', 'OnAltReload', 'OnEquip', 'OnUnequip', 'OnAdd', 'OnRemove', 'OnTick10', 'OnKill', 'OnKillAll',
-      'OnHitBeing', 'OnReload', 'OnEquipTick', 'OnEquipCheck', 'OnAct', 'OnDestroy', 'OnEnter', 'OnEnterLevel',
+      'OnHitBeing', 'OnReload', 'OnDescribe', 'OnEquipCheck', 'OnAct', 'OnDestroy', 'OnEnter', 'OnEnterLevel',
       'OnFire', 'OnFired', 'OnExit', 'OnTick', 'OnNuked',
       'OnLoad','OnLoaded','OnUnLoad', 'OnCreatePlayer', 'OnLevelUp','OnPreLevelUp',
       'OnWinGame', 'OnMortem', 'OnMortemPrint', 'OnCreateEpisode', 'OnIntro' , 'OnGenerate',
 
       'OnPostMove', 'OnPreReload', 'OnDamage', 'OnReceiveDamage', 'OnPreAction', 'OnPostAction',
       'OnCanDualWield', 'OnCanMaxDamage',
-      'OnDescribe',
+
       'getDamageBonus', 'getToHitBonus', 'getShotsBonus', 'getFireCostBonus',
       'getDefenceBonus', 'getDodgeBonus', 'getMoveBonus', 'getBodyBonus', 'getResistBonus',
       'getDamageMul', 'getFireCostMul', 'getAmmoCostMul', 'getReloadCostMul',

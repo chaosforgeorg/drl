@@ -1,3 +1,6 @@
+0.10.9
+[mod] -- GJ#326: Game - fixed broken recharge rates, buffed some recharge items
+
 0.10.8
 [mod] -- GJ#---: Game - vaults can now drop boots and melee weapons (no knives, steel boots rarer)
 [mod] -- GJ#316: Game - Berserker stacking limited to 30s, Berserk Pack +50% duration
