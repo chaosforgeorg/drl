@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlgfxio;
 interface
 uses vglquadrenderer, vgltypes, vluaconfig, vioevent, viotypes, vuielement, vimage,
-     vrltools, vutil, vtextures, vvector, vbitmapfont, vio,
+     vrltools, vutil, vtextures, vvector, vbitmapfont, vio, vparticleengine,
      drlio, drlspritemap, drlanimation, drlminimap, dfdata, dfthing;
 
 type
@@ -116,8 +116,9 @@ type
     FMCursor       : TDRLMouseCursor;
     FMinimap       : TMinimap;
 
-    FAnimations     : TAnimationManager;
-    FTextures       : TTextureManager;
+    FAnimations       : TAnimationManager;
+    FTextures         : TTextureManager;
+    FParticleEngine   : TParticleEngine;
 
     FFadeDirection  : Integer;
     FFadeAlpha      : Single;
@@ -134,7 +135,8 @@ type
     property TileScale   : Single      read FTileScale;
     property ScaledScreen: TGLVec2i    read FScaledScreen;
     property MCursor     : TDRLMouseCursor read FMCursor;
-    property Textures    : TTextureManager read FTextures;
+    property Textures       : TTextureManager read FTextures;
+    property ParticleEngine  : TParticleEngine read FParticleEngine;
   end;
 
 implementation
@@ -249,6 +251,7 @@ begin
 
   FTextures  := TTextureManager.Create( Option_Blending );
   SpriteMap  := TDRLSpriteMap.Create( Vec2i( iWidth, iHeight ) );
+  FParticleEngine := TParticleEngine.Create( SpriteMap.Engine );
   TSDLIODriver( FIODriver ).ShowMouse( False );
 
   FMCursor   := TDRLMouseCursor.Create;
@@ -411,6 +414,7 @@ begin
   FreeAndNil( FMinimap );
   FreeAndNil( FAnimations );
 
+  FreeAndNil( FParticleEngine );
   FreeAndNil( SpriteMap );
   FreeAndNil( FTextures );
 
