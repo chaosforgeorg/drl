@@ -106,8 +106,9 @@ function drl.register_assemblies()
 			item.resist.bullet   = 0
 
 			item:add_perk( "perk_armor_recharge" )
-			item.pp_recharge.amount = 2
-			item.pp_recharge.delay  = 10
+			item.pp_recharge.amount = 1
+			item.pp_recharge.tick   = 5
+			item.pp_recharge.delay  = 50
 		end,
 
 		Match = function (item)
@@ -129,8 +130,9 @@ function drl.register_assemblies()
 			item.armor     = 0
 
 			item:add_perk( "perk_armor_recharge" )
-			item.pp_recharge.amount = 2
-			item.pp_recharge.delay  = 10
+			item.pp_recharge.amount = 1
+			item.pp_recharge.tick   = 5
+			item.pp_recharge.delay  = 50
 		end,
 
 		Match = function (item)
@@ -217,8 +219,9 @@ function drl.register_assemblies()
 				item:add_perk( "perk_armor_recharge" )
 			end
 
-			item.pp_recharge.amount = 5
-			item.pp_recharge.delay  = 10
+			item.pp_recharge.amount = 1
+			item.pp_recharge.tick   = 3
+			item.pp_recharge.delay  = 50
 		end,
 	}
 
@@ -590,8 +593,9 @@ function drl.register_assemblies()
 			if not item:has_property("pp_recharge") then
 				item:add_perk( "perk_armor_recharge" )
 			end
+			item.pp_recharge.delay  = 50
+			item.pp_recharge.tick   = 5
 			item.pp_recharge.amount = 1
-			item.pp_recharge.delay  = 5
 			item.flags[ IF_NODESTROY ] = true
 			item:add_perk( "perk_cursed" )
 		end,
@@ -843,6 +847,7 @@ function drl.register_assemblies()
 				item:add_perk( "perk_weapon_recharge" )
 			end
 			item.pp_recharge.delay  = 0
+			item.pp_recharge.tick   = 10
 			item.pp_recharge.amount = 1
 		end,
 

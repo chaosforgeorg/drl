@@ -311,7 +311,6 @@ begin
 
   MasterDodge := False;
   if DRL.State <> DSPlaying then Exit( False );
-  Inv.OnUpdate;
   FLastPos := FPosition;
   FMeleeAttack := False;
   Exit( True );

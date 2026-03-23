@@ -356,20 +356,21 @@ function drl.register_perks()
 		OnAdd = function(self)
 			self:add_property( "pp_recharge", {
 				timer  = 0,
-				delay  = 5,
+				delay  = 50,
+				tick   = 10,
 				amount = 1,
 				limit  = 0,
 			})
 		end,
 
-		OnEquipTick = function(self, being)
-			local r = self.pp_recharge
+		OnTick = function(self)
+			local r   = self.pp_recharge
 			local max = r.limit > 0 and math.min(r.limit, self.ammomax) or self.ammomax
 			if self.ammo < max then
 				r.timer = r.timer + 1
-				if r.timer > r.delay then
+				if r.timer >= r.delay + r.tick then
 					self.ammo = math.min(self.ammo + r.amount, max)
-					r.timer = 0
+					r.timer = r.timer - r.tick
 				end
 			end
 		end,
@@ -391,20 +392,21 @@ function drl.register_perks()
 		OnAdd = function(self)
 			self:add_property( "pp_recharge", {
 				timer  = 0,
-				delay  = 5,
+				delay  = 50,
+				tick   = 10,
 				amount = 1,
 				limit  = 0,
 			})
 		end,
 
-		OnEquipTick = function(self, being)
+		OnTick = function(self, being)
 			local r = self.pp_recharge
 			local max = r.limit > 0 and math.min(r.limit, self.maxdurability) or self.maxdurability
 			if self.durability < max then
 				r.timer = r.timer + 1
-				if r.timer > r.delay then
+				if r.timer >= r.delay + r.tick then
 					self.durability = math.min(self.durability + r.amount, max)
-					r.timer = 0
+					r.timer = r.timer - r.tick
 				end
 			end
 		end,
@@ -427,22 +429,26 @@ function drl.register_perks()
 		OnAdd = function(self)
 			self:add_property( "pp_recharge", {
 				timer  = 0,
-				delay  = 0,
+				delay  = 30,
 				amount = 5,
+				tick   = 10,
 				limit  = 0,
 			})
 		end,
 
-		OnEquipTick = function(self, being)
+		OnTick = function(self)
+			local being = self.parent
 			local r = self.pp_recharge
-			if being.hp > 1 and self.durability < self.maxdurability then
+			if being and being.hp > 1 and self.durability < self.maxdurability then
 				r.timer = r.timer + 1
-				if r.timer > r.delay then
+				if r.timer > r.delay + r.tick then
 					local max = r.limit > 0 and math.min(r.limit, self.maxdurability) or self.maxdurability
 					self.durability = math.min(self.durability + r.amount, max)
 					being.hp = being.hp - 1
-					r.timer = 0
+					r.timer = r.timer - r.tick
 				end
+			else 
+				r.timer = 0
 			end
 		end,
 
