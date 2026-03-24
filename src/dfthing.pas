@@ -227,6 +227,7 @@ end;
 
 destructor TThing.Destroy;
 begin
+  DRL.Particles.Wipe( UID );
   FreeAndNil( FPerks );
   inherited Destroy;
 end;
@@ -295,8 +296,8 @@ var iState : TDRLLuaState;
 begin
   iState.Init(L);
   iThing := iState.ToObject(1) as TThing;
-  iState.Push( DRL.Particles.AddEmitterToUID( iState.ToId(2), iThing.UID,
-    Vec3f( ( iThing.Position.X - 1 ) * 32, ( iThing.Position.Y - 1 ) * 32, 0 ) ) );
+  iState.Push( DRL.Particles.AddEmitter( iState.ToId(2), iThing.UID,
+    Vec3f( ( iThing.Position.X - 1 ) * 32 + 16, ( iThing.Position.Y - 1 ) * 32 + 16, 0 ) ) );
   Result := 1;
 end;
 
@@ -306,7 +307,7 @@ var iState : TDRLLuaState;
 begin
   iState.Init(L);
   iThing := iState.ToObject(1) as TThing;
-  iState.Push( DRL.Particles.RemoveEmitterFromUID( iState.ToId(2), iThing.UID ) );
+  iState.Push( DRL.Particles.RemoveEmitter( iState.ToId(2), iThing.UID ) );
   Result := 1;
 end;
 

@@ -17,11 +17,14 @@ type
     procedure Initialize( aEngine : TParticleEngine );
     procedure Update( aDeltaSec : Single );
     procedure Clear;
+    procedure ClearParticles;
     destructor Destroy; override;
 
     // Template-based API
-    function  AddEmitterToUID( aNID : Word; aUID : TUID; aWorldPos : TVec3f ) : Boolean;
-    function  RemoveEmitterFromUID( aNID : Word; aUID : TUID ) : Boolean;
+    function  AddEmitter( aNID : Word; aUID : TUID; aWorldPos : TVec3f ) : Boolean;
+    function  RemoveEmitter( aNID : Word; aUID : TUID ) : Boolean;
+    function  Kill( aUID : TUID ) : Boolean;
+    function  Wipe( aUID : TUID ) : Boolean;
 
     // Save/Load
     procedure WriteToStream( aStream : TStream );
@@ -95,6 +98,12 @@ begin
   FBindingCount := 0;
 end;
 
+procedure TParticleStore.ClearParticles;
+begin
+  if FEngine <> nil then
+    FEngine.ClearParticles;
+end;
+
 destructor TParticleStore.Destroy;
 begin
   FEngine := nil;
@@ -121,10 +130,14 @@ begin
     iShape := iTable.GetString( 'shape', 'point' );
     if iShape = 'sphere' then iE^.Shape := ES_SPHERE
     else if iShape = 'base_ring' then iE^.Shape := ES_BASE_RING
+    else if iShape = 'base_ellipse' then iE^.Shape := ES_BASE_ELLIPSE
     else iE^.Shape := ES_POINT;
 
     if not iTable.IsNil( 'shape_params' ) then
       iE^.ShapeParams := iTable.GetVec3f( 'shape_params' );
+
+    if not iTable.IsNil( 'offset' ) then
+      iE^.PositionOffset := iTable.GetVec3f( 'offset' );
 
     // Direction
     if not iTable.IsNil( 'direction' ) then
@@ -202,7 +215,7 @@ end;
 
 // Template-based API
 
-function TParticleStore.AddEmitterToUID( aNID : Word; aUID : TUID; aWorldPos : TVec3f ) : Boolean;
+function TParticleStore.AddEmitter( aNID : Word; aUID : TUID; aWorldPos : TVec3f ) : Boolean;
 var iData : PParticleEmitterData;
 begin
   Result := False;
@@ -226,7 +239,7 @@ begin
   Result := True;
 end;
 
-function TParticleStore.RemoveEmitterFromUID( aNID : Word; aUID : TUID ) : Boolean;
+function TParticleStore.RemoveEmitter( aNID : Word; aUID : TUID ) : Boolean;
 var iIdx : Integer;
 begin
   Result := False;
@@ -238,6 +251,34 @@ begin
   Result := True;
 end;
 
+function TParticleStore.Kill( aUID : TUID ) : Boolean;
+var i : Integer;
+begin
+  Result := False;
+  for i := FBindingCount - 1 downto 0 do
+    if FBindings[i].UID = aUID then
+    begin
+      if ( FEngine <> nil ) and ( FBindings[i].PoolIndex >= 0 ) then
+        FEngine.EmitStop( FBindings[i].PoolIndex );
+      RemoveBinding( i );
+      Result := True;
+    end;
+end;
+
+function TParticleStore.Wipe( aUID : TUID ) : Boolean;
+var i : Integer;
+begin
+  Result := False;
+  for i := FBindingCount - 1 downto 0 do
+    if FBindings[i].UID = aUID then
+    begin
+      if ( FEngine <> nil ) and ( FBindings[i].PoolIndex >= 0 ) then
+        FEngine.EmitKill( FBindings[i].PoolIndex );
+      RemoveBinding( i );
+      Result := True;
+    end;
+end;
+
 procedure TParticleStore.UpdateBoundEmitters;
 var i      : Integer;
     iNode  : TNode;
@@ -246,6 +287,12 @@ begin
   if FEngine = nil then Exit;
   for i := FBindingCount - 1 downto 0 do
   begin
+    // Check if emitter slot was auto-freed (burst/duration expired)
+    if ( FBindings[i].PoolIndex >= 0 ) and ( not FEngine.IsEmitterUsed( FBindings[i].PoolIndex ) ) then
+    begin
+      RemoveBinding( i );
+      Continue;
+    end;
     iNode := UIDs.Get( FBindings[i].UID );
     if iNode = nil then
     begin
@@ -257,7 +304,7 @@ begin
     begin
       iCoord := TLuaEntityNode( iNode ).Position;
       FEngine.EmitSetPosition( FBindings[i].PoolIndex,
-        Vec3f( ( iCoord.X - 1 ) * 32, ( iCoord.Y - 1 ) * 32, 0 ) );
+        Vec3f( ( iCoord.X - 1 ) * 32 + 16, ( iCoord.Y - 1 ) * 32 + 16, 0 ) );
     end;
   end;
 end;

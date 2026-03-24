@@ -696,6 +696,7 @@ core.register_blueprint "emitter"
 	id              = { true,  core.TSTRING },
 	shape           = { false, core.TSTRING, "point" },
 	shape_params    = { false, core.TANY, {} },
+	offset          = { false, core.TANY, {0,0,0} },
 	direction       = { false, core.TANY, {0,-1,0} },
 	spread_angle    = { false, core.TNUMBER, 0 },
 	speed           = { false, core.TANY, 0 },

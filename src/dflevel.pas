@@ -1174,6 +1174,7 @@ begin
     SetBeing( aBeing.Position, nil );
 
   FMarkers.Wipe( aBeing.UID );
+  DRL.Particles.Kill( aBeing.UID );
   FreeAndNil(aBeing);
   if DRL.State <> DSPlaying then Exit;
 

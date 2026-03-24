@@ -1434,6 +1434,7 @@ repeat
       Player.Score := Player.Score + 1000;
       if FGameWon and (State <> DSNextLevel) then Player.WriteMemorial;
       FLevel.Clear;
+      FParticles.ClearParticles;
     end;
     IO.SetHint('');
   until (State <> DSNextLevel);
