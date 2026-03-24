@@ -961,7 +961,6 @@ begin
     if iItem.isUsable then
       begin
         if isPlayer then IO.Msg('No time to waste.');
-        CallHook( Hook_OnPickUpItem, [iItem] );
         if iItem.isPack then Exit( ActionUse( iItem, FPosition ) );
         if DRL.Targeting.List.Current <> FPosition
           then Exit( ActionUse( iItem, DRL.Targeting.List.Current ) )
@@ -976,6 +975,7 @@ begin
     begin
       iItem.playSound( 'pickup', FPosition );
       CallHook( Hook_OnPickUpItem, [iItem] );
+      iItem.CallHook( Hook_OnPickup, [Self] );
       iName := iItem.Name;
       iCount := iItem.Amount-iAmount;
       if iAmount = 0 then
