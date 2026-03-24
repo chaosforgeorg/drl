@@ -186,6 +186,7 @@ core.register_blueprint "perk"
 	getReloadCostMul = { false, core.TFUNC },
 
 	OnPickup       = { false, core.TFUNC },
+	OnDrop         = { false, core.TFUNC },
 	OnFirstPickup  = { false, core.TFUNC },
 	OnPickupCheck  = { false, core.TFUNC },
 	OnUse          = { false, core.TFUNC },
