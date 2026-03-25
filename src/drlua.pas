@@ -49,7 +49,7 @@ uses typinfo, variants,
      vnode, vdebug, vluatools, vluadungen, vluaentitynode, vluatype, vmath,
      vtextures, vtigstyle, vvector,
      dfplayer, dflevel, dfmap, drlhooks, drlhelp, dfhof, drlbase, drlio, drlperk,
-     drlgfxio, drlspritemap;
+     drlgfxio, drlspritemap, vparticleengine;
 
 var SpriteSheetCounter : Integer = -1;
 
@@ -226,6 +226,14 @@ var State : TDRLLuaState;
 begin
   State.Init(L);
   Cells.RegisterCell(State.ToInteger(1));
+  Result := 0;
+end;
+
+function lua_core_register_emitter(L: Plua_State): Integer; cdecl;
+var State : TDRLLuaState;
+begin
+  State.Init(L);
+  DRL.Particles.RegisterEmitter( Word( State.ToInteger(1) ) );
   Result := 0;
 end;
 
@@ -534,12 +542,13 @@ begin
   Result := 0;
 end;
 
-const lua_core_lib : array[0..11] of luaL_Reg = (
+const lua_core_lib : array[0..12] of luaL_Reg = (
     ( name : 'add_to_cell_set';func : @lua_core_add_to_cell_set),
     ( name : 'game_time';      func : @lua_core_game_time),
     ( name : 'time_ms';        func : @lua_core_time_ms),
     ( name : 'is_playing';func : @lua_core_is_playing),
     ( name : 'register_cell';   func : @lua_core_register_cell),
+    ( name : 'register_emitter'; func : @lua_core_register_emitter),
     ( name : 'register_perk';   func : @lua_core_register_perk),
 
     ( name : 'play_music';func : @lua_core_play_music),
@@ -590,6 +599,7 @@ begin
   Register( 'player_data', @lua_player_data_lib );
   Register( 'core', lua_core_lib );
 
+  State.RegisterEnumValues( TypeInfo(TParticleFlag) );
   State.RegisterEnumValues( TypeInfo(TItemType) );
   State.RegisterEnumValues( TypeInfo(TBodyTarget) );
   State.RegisterEnumValues( TypeInfo(TEqSlot) );

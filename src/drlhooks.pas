@@ -80,8 +80,10 @@ const
   Hook_getAmmoCostMul  = 65; // Trait, Being, Affects
   Hook_getReloadCostMul= 66; // Trait, Being, Affects
   Hook_OnUnequipCheck  = 67; // Item
+  Hook_OnDrop          = 68; // Item
+  Hook_OnDropItem      = 69; // Item
 
-  HookAmount           = 68;
+  HookAmount           = 70;
 
 const AllHooks      : TFlags = [ 0..HookAmount-1 ];
 
@@ -109,7 +111,8 @@ const HookNames : array[ 0..HookAmount-1 ] of AnsiString = (
       'getDamageBonus', 'getToHitBonus', 'getShotsBonus', 'getFireCostBonus',
       'getDefenceBonus', 'getDodgeBonus', 'getMoveBonus', 'getBodyBonus', 'getResistBonus',
       'getDamageMul', 'getFireCostMul', 'getAmmoCostMul', 'getReloadCostMul',
-      'OnUnequipCheck'
+      'OnUnequipCheck',
+      'OnDrop', 'OnDropItem'
       );
 
 function LoadHooks( const aTable : array of Const ) : TFlags;
@@ -158,7 +161,7 @@ initialization
 
 AllHooks     := [ 0..HookAmount-1 ];
 BeingHooks   := [ Hook_OnCreate, Hook_OnAction, Hook_OnAttacked, Hook_OnUseActive,
-  Hook_OnDie, Hook_OnDieCheck, Hook_OnPickUpItem, Hook_OnPostMove, Hook_OnKill,
+  Hook_OnDie, Hook_OnDieCheck, Hook_OnPickUpItem, Hook_OnDropItem, Hook_OnPostMove, Hook_OnKill,
   Hook_OnDamage, Hook_OnReceiveDamage, Hook_OnPreAction, Hook_OnEnterLevel,
   Hook_getDamageBonus, Hook_getToHitBonus, Hook_getShotsBonus, Hook_getFireCostBonus,
   Hook_getDefenceBonus, Hook_getDodgeBonus, Hook_getMoveBonus, Hook_getBodyBonus,
@@ -167,12 +170,12 @@ FullInvHooks := [ Hook_OnPreAction, Hook_OnPostAction, Hook_OnTick ];
 ItemHooks    := [ Hook_OnCreate, Hook_OnPickup, Hook_OnFirstPickup,
   Hook_OnUse, Hook_OnUseCheck, Hook_OnAltFire, Hook_OnEquip, Hook_OnUnequip,
   Hook_OnEnter, Hook_OnFire, Hook_OnAct, Hook_OnDestroy, Hook_OnDescribe, Hook_OnPickupCheck, 
-  Hook_OnUnequipCheck ];
+  Hook_OnUnequipCheck, Hook_OnDrop ];
 ChainedHooks := [ Hook_OnCreate, Hook_OnDie, Hook_OnDieCheck, Hook_OnPickup,
   Hook_OnPickUpItem, Hook_OnKillAll, Hook_OnPickupCheck, Hook_OnUse, Hook_OnUseCheck,
-  Hook_OnFired ];
+  Hook_OnFired, Hook_OnDrop, Hook_OnDropItem ];
 LevelHooks   := ChainedHooks + [ Hook_OnEnterLevel, Hook_OnKill, Hook_OnExit, Hook_OnTick,
-  Hook_OnNuked ];
+  Hook_OnNuked, Hook_OnDrop, Hook_OnDropItem ];
 GlobalHooks  := LevelHooks + [ Hook_OnEnterLevel, Hook_OnKill, Hook_OnExit, Hook_OnTick,
   Hook_OnLoad, Hook_OnLoaded, Hook_OnUnLoad, Hook_OnCreatePlayer, Hook_OnLevelUp,
   Hook_OnPreLevelUp, Hook_OnWinGame, Hook_OnMortem, Hook_OnMortemPrint, Hook_OnCreateEpisode,

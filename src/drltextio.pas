@@ -22,7 +22,7 @@ type TDRLTextIO = class( TDRLIO )
     function AnimationsBlockingFinished : Boolean; override;
     procedure AnimationWipe; override;
     procedure Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0); override;
-    procedure addMissileAnimation( aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aColor : Byte; aPic : Char; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False ); override;
+    procedure addMissileAnimation( aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aColor : Byte; aPic : Char; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False; aTrailNID : Word = 0 ); override;
     procedure addMarkAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aColor : Byte; aPic : Char ); override;
     procedure addSoundAnimation( aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord ); override;
     procedure Explosion( aDelay : Integer; aWhere : TCoord2D; aData : TExplosionData ); override;
@@ -149,7 +149,7 @@ end;
 
 procedure TDRLTextIO.addMissileAnimation(aDuration: DWord; aDelay: DWord; aSource,
   aTarget: TCoord2D; aColor: Byte; aPic: Char; aDrawDelay: Word;
-  aSprite: TSprite; aRay: Boolean);
+  aSprite: TSprite; aRay: Boolean; aTrailNID : Word);
 begin
   if DRL.State <> DSPlaying then Exit;
   if aRay

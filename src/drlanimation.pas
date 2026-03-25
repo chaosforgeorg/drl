@@ -17,9 +17,10 @@ type TAnimation        = vanimation.TAnimation;
 { TGFXMissileAnimation }
 
 TGFXMissileAnimation = class(TAnimation)
-  constructor Create( aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False );
+  constructor Create( aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False; aTrailNID : Word = 0 );
   procedure OnUpdate( aTime : DWord ); override;
   procedure OnDraw; override;
+  destructor Destroy; override;
 private
   FSource   : TVec2i;
   FTarget   : TVec2i;
@@ -29,6 +30,7 @@ private
   FSprite   : TSprite;
   FStepDelay: DWord;
   FStep     : Word;
+  FEmitter  : Integer;
 end;
 
 { TMessageAnimation }
@@ -200,12 +202,12 @@ implementation
 
 uses viotypes, vuid, vlog, vdebug,
      dfbeing, dfthing,
-     drlbase, drlgfxio, drlio, drlspritemap;
+     drlbase, drlgfxio, drlio, drlspritemap, drlparticles;
 
 { TGFXMissileAnimation }
 
 constructor TGFXMissileAnimation.Create(aDuration : DWord; aDelay : DWord; aSource, aTarget: TCoord2D; aDrawDelay: Word; aSprite : TSprite;
-  aRay: Boolean);
+  aRay: Boolean; aTrailNID : Word);
 var iSize : Word;
 begin
   inherited Create( aDuration, aDelay, 0 );
@@ -214,6 +216,7 @@ begin
   FStepDelay := Max( FDuration div Max( ( aSource - aTarget ).LargerLength, 1 ), 1 );
   FRay    := aRay;
   FStep   := 0;
+  FEmitter := -1;
   FPath.Next;
   FPath.Prev := aSource;
   iSize := SpriteMap.GetGridSize;
@@ -222,6 +225,17 @@ begin
   FTarget.Init( aTarget.X*iSize-iSize div 2, aTarget.Y*iSize-iSize div 2 );
   FHeading := -arctan2( aTarget.X - aSource.X, aTarget.Y - aSource.Y );
   if FHeading < 0 then FHeading := FHeading + 2*PI;
+
+  if ( aTrailNID > 0 ) and ( not aRay ) then
+    FEmitter := DRL.Particles.AddEmitterDirect( aTrailNID,
+      Vec3f( FSource.X / SpriteMap.Engine.Scale, FSource.Y / SpriteMap.Engine.Scale, 0 ) );
+end;
+
+destructor TGFXMissileAnimation.Destroy;
+begin
+  if FEmitter >= 0 then
+    DRL.Particles.Engine.EmitStop( FEmitter );
+  inherited Destroy;
 end;
 
 procedure TGFXMissileAnimation.OnUpdate( aTime : DWord );
@@ -246,6 +260,16 @@ var iPos    : TVec2i;
     iLength : Single;
     iStep   : Single;
 begin
+  if not FRay then
+    iPos := Lerp( FSource, FTarget, Minf(FTime / FDuration, 1.0) );
+
+  if ( not FRay ) and ( FEmitter >= 0 ) then
+  begin
+    DRL.Particles.Engine.EmitSetPosition( FEmitter,
+      Vec3f( iPos.X / SpriteMap.Engine.Scale, iPos.Y / SpriteMap.Engine.Scale, 0 ) );
+    DRL.Particles.Engine.EmitSetSpriteRotation( FEmitter, ( FHeading + PI / 2 ) * 180 / PI );
+  end;
+
   if ( not DRL.Level.isProperCoord( FPath.GetC ) ) or (not DRL.Level.isVisible( FPath.GetC ) ) then
     Exit;
   if FRay then
@@ -261,10 +285,7 @@ begin
     Exit;
   end
   else
-  begin
-    iPos := Lerp( FSource, FTarget, Minf(FTime / FDuration, 1.0) );
-    SpriteMap.PushSpriteFXRotated( iPos, FSprite, FHeading + PI/2)
-  end;
+    SpriteMap.PushSpriteFXRotated( iPos, FSprite, FHeading + PI/2);
 end;
 
 { TMessageAnimation }

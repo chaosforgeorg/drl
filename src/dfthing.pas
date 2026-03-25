@@ -56,7 +56,7 @@ end;
 implementation
 
 uses typinfo, variants,
-     vluasystem, vdebug, vtig,
+     vluasystem, vdebug, vtig, vvector,
      drlbase, drlio, drlua;
 
 constructor TThing.Create( const aID : AnsiString );
@@ -227,6 +227,7 @@ end;
 
 destructor TThing.Destroy;
 begin
+  DRL.Particles.Wipe( UID );
   FreeAndNil( FPerks );
   inherited Destroy;
 end;
@@ -289,14 +290,36 @@ begin
   Result := 0;
 end;
 
+function lua_thing_add_emitter(L: Plua_State): Integer; cdecl;
+var iState : TDRLLuaState;
+    iThing : TThing;
+begin
+  iState.Init(L);
+  iThing := iState.ToObject(1) as TThing;
+  iState.Push( DRL.Particles.AddEmitter( iState.ToId(2), iThing.UID,
+    Vec3f( ( iThing.Position.X - 1 ) * 32 + 16, ( iThing.Position.Y - 1 ) * 32 + 16, 0 ) ) );
+  Result := 1;
+end;
 
-const lua_thing_lib : array[0..5] of luaL_Reg = (
-  ( name : 'add_perk';      func : @lua_thing_add_perk),
-  ( name : 'get_perk_time'; func : @lua_thing_get_perk_time),
-  ( name : 'remove_perk';   func : @lua_thing_remove_perk),
-  ( name : 'is_perk';       func : @lua_thing_is_perk),
-  ( name : 'play_sound';    func : @lua_thing_play_sound),
-  ( name : nil;             func : nil; )
+function lua_thing_remove_emitter(L: Plua_State): Integer; cdecl;
+var iState : TDRLLuaState;
+    iThing : TThing;
+begin
+  iState.Init(L);
+  iThing := iState.ToObject(1) as TThing;
+  iState.Push( DRL.Particles.RemoveEmitter( iState.ToId(2), iThing.UID ) );
+  Result := 1;
+end;
+
+const lua_thing_lib : array[0..7] of luaL_Reg = (
+  ( name : 'add_perk';        func : @lua_thing_add_perk),
+  ( name : 'get_perk_time';   func : @lua_thing_get_perk_time),
+  ( name : 'remove_perk';     func : @lua_thing_remove_perk),
+  ( name : 'is_perk';         func : @lua_thing_is_perk),
+  ( name : 'play_sound';      func : @lua_thing_play_sound),
+  ( name : 'add_emitter';     func : @lua_thing_add_emitter),
+  ( name : 'remove_emitter';  func : @lua_thing_remove_emitter),
+  ( name : nil;               func : nil; )
 );
 
 class procedure TThing.RegisterLuaAPI();

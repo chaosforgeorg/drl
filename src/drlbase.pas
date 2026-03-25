@@ -9,7 +9,7 @@ interface
 
 uses vnode, vutil, vuid, viotypes, vrltools, vluasystem, vioevent, vstoreinterface,
      dflevel, dfdata, dfhof, dfitem,
-     drlhooks, drlua, drlcommand, drlkeybindings, drlmodule;
+     drlhooks, drlua, drlcommand, drlkeybindings, drlmodule, drlparticles;
 
 type TTargeting = class
   constructor Create;
@@ -101,6 +101,7 @@ TDRL = class(TVObject)
        FDataLoaded      : Boolean;
        FGameWon         : Boolean;
        FCrashSave       : Boolean;
+       FParticles       : TParticleStore;
      public
        property GameWon : Boolean read FGameWon write FGameWon;
        property Difficulty : Byte read FDifficulty;
@@ -113,6 +114,7 @@ TDRL = class(TVObject)
        property State : TDRLState read FState;
        property Targeting : TTargeting read FTargeting;
        property DamagedLastTurn : Boolean read FDamagedLastTurn write FDamagedLastTurn;
+       property Particles : TParticleStore read FParticles;
      end;
 
 var DRL : TDRL;
@@ -350,14 +352,19 @@ end;
 
 constructor TDRL.Create;
 begin
+  FParticles := TParticleStore.Create;
   FTargeting := TTargeting.Create;
   Reset;
   FStore     := TStoreInterface.Get;
   Log( VersionToString( ArrayToVersion(VERSION_ARRAY) ) );
   Reconfigure;
-  if GraphicsVersion
-    then IO := TDRLGFXIO.Create
-    else IO := TDRLTextIO.Create;
+  if GraphicsVersion then
+  begin
+    IO := TDRLGFXIO.Create;
+    FParticles.Initialize( TDRLGFXIO(IO).ParticleEngine );
+  end
+  else
+    IO := TDRLTextIO.Create;
 
   ModErrors := TStringGArray.Create;
 
@@ -397,6 +404,7 @@ begin
   FPlayerView      := nil;
   FPadMoveActive   := False;
 
+  FParticles.Clear;
   if IO <> nil then IO.Reset;
 end;
 
@@ -1426,6 +1434,7 @@ repeat
       Player.Score := Player.Score + 1000;
       if FGameWon and (State <> DSNextLevel) then Player.WriteMemorial;
       FLevel.Clear;
+      FParticles.ClearParticles;
     end;
     IO.SetHint('');
   until (State <> DSNextLevel);
@@ -1557,6 +1566,7 @@ begin
         FLevel := TLevel.CreateFromStream( iStream );
         FLevel.Place( Player, Player.Position );
         LuaSystem.SetValue('level', FLevel );
+        FParticles.ReadFromStream( iStream );
       end;
     finally
       iStream.Destroy;
@@ -1634,7 +1644,10 @@ begin
     else Stream.WriteByte( 0 );
 
   if not aCrash then
+  begin
     FLevel.WriteToStream( Stream );
+    FParticles.WriteToStream( Stream );
+  end;
 
   FreeAndNil( Stream );
   FLevel.Clear;
@@ -1650,11 +1663,13 @@ end;
 destructor TDRL.Destroy;
 begin
   UnLoad;
+  FParticles.Initialize( nil );
   FreeAndNil( ModErrors );
   FreeAndNil( FModules );
   FreeAndNil( Config );
   FreeAndNil( FTargeting );
   FreeAndNil( IO );
+  FreeAndNil( FParticles );
   FreeAndNil( UIDs );
   Log('DRL destroyed.');
   inherited Destroy;

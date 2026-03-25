@@ -961,7 +961,6 @@ begin
     if iItem.isUsable then
       begin
         if isPlayer then IO.Msg('No time to waste.');
-        CallHook( Hook_OnPickUpItem, [iItem] );
         if iItem.isPack then Exit( ActionUse( iItem, FPosition ) );
         if DRL.Targeting.List.Current <> FPosition
           then Exit( ActionUse( iItem, DRL.Targeting.List.Current ) )
@@ -976,6 +975,7 @@ begin
     begin
       iItem.playSound( 'pickup', FPosition );
       CallHook( Hook_OnPickUpItem, [iItem] );
+      iItem.CallHook( Hook_OnPickup, [Self] );
       iName := iItem.Name;
       iCount := iItem.Amount-iAmount;
       if iAmount = 0 then
@@ -2405,7 +2405,7 @@ begin
       iDuration := (iSource - iMisslePath.GetC).LargerLength * iDelay;
       iMarkSeq  := iDuration + aSequence;
     end;
-    IO.addMissileAnimation( iDuration, aSequence,iSource,iMisslePath.GetC,iColor,aItem.MisASCII,iDelay,iSprite,aItem.Flags[ IF_RAYGUN ]);
+    IO.addMissileAnimation( iDuration, aSequence,iSource,iMisslePath.GetC,iColor,aItem.MisASCII,iDelay,iSprite,aItem.Flags[ IF_RAYGUN ],aItem.MissTrail);
     if iHit and iLevel.isVisible( iMisslePath.GetC ) then
     begin
       IO.addSoundAnimation( iMarkSeq, iMisslePath.GetC, IO.Audio.ResolveSoundID([Iif( iIsHit, 'flesh_bullet_hit', 'concrete_bullet_hit' )]) );

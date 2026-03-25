@@ -881,6 +881,11 @@ begin
   if aNoHazard
     then aCoord := DropCoord( aCoord, [ EF_NOITEMS,EF_NOBLOCK,EF_NOHARM,EF_NOSTAIRS ], True )
     else aCoord := DropCoord( aCoord, [ EF_NOITEMS,EF_NOBLOCK,EF_NOSTAIRS ], True );
+
+  aItem.CallHook( Hook_OnDrop, [aItem.Parent] );
+  if (aItem.Parent <> nil) and (aItem.Parent is TBeing) then
+    TBeing(aItem.Parent).CallHook( Hook_OnDropItem, [aItem] );
+
   if aDropAnim and isVisible( aCoord ) then aItem.Appear := 1;
   Add( aItem, aCoord );
 
@@ -1174,6 +1179,7 @@ begin
     SetBeing( aBeing.Position, nil );
 
   FMarkers.Wipe( aBeing.UID );
+  DRL.Particles.Kill( aBeing.UID );
   FreeAndNil(aBeing);
   if DRL.State <> DSPlaying then Exit;
 

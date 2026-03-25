@@ -329,6 +329,7 @@ type TItemProperties = record
   DamageType    : TDamageType;
   MissBase      : Byte;
   MissDist      : Byte;
+  MissTrail     : Word;
 
   MisASCII      : Char;
   MisColor      : Byte;

@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlgfxio;
 interface
 uses vglquadrenderer, vgltypes, vluaconfig, vioevent, viotypes, vuielement, vimage,
-     vrltools, vutil, vtextures, vvector, vbitmapfont, vio,
+     vrltools, vutil, vtextures, vvector, vbitmapfont, vio, vparticleengine,
      drlio, drlspritemap, drlanimation, drlminimap, dfdata, dfthing;
 
 type
@@ -38,7 +38,7 @@ type
     procedure addCellAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aValue : Integer ); override;
     procedure addItemAnimation( aDuration : DWord; aDelay : DWord; aItem : TThing; aValue : Integer ); override;
     procedure addKillAnimation( aDuration : DWord; aDelay : DWord; aBeing : TThing; aReverse : Boolean = False ); override;
-    procedure addMissileAnimation( aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aColor : Byte; aPic : Char; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False ); override;
+    procedure addMissileAnimation( aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aColor : Byte; aPic : Char; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False; aTrailNID : Word = 0 ); override;
     procedure addMarkAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aColor : Byte; aPic : Char ); override;
     procedure addFXAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite ); override;
     procedure addSoundAnimation( aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord ); override;
@@ -116,8 +116,9 @@ type
     FMCursor       : TDRLMouseCursor;
     FMinimap       : TMinimap;
 
-    FAnimations     : TAnimationManager;
-    FTextures       : TTextureManager;
+    FAnimations       : TAnimationManager;
+    FTextures         : TTextureManager;
+    FParticleEngine   : TParticleEngine;
 
     FFadeDirection  : Integer;
     FFadeAlpha      : Single;
@@ -134,7 +135,8 @@ type
     property TileScale   : Single      read FTileScale;
     property ScaledScreen: TGLVec2i    read FScaledScreen;
     property MCursor     : TDRLMouseCursor read FMCursor;
-    property Textures    : TTextureManager read FTextures;
+    property Textures       : TTextureManager read FTextures;
+    property ParticleEngine  : TParticleEngine read FParticleEngine;
   end;
 
 implementation
@@ -249,6 +251,7 @@ begin
 
   FTextures  := TTextureManager.Create( Option_Blending );
   SpriteMap  := TDRLSpriteMap.Create( Vec2i( iWidth, iHeight ) );
+  FParticleEngine := TParticleEngine.Create;
   TSDLIODriver( FIODriver ).ShowMouse( False );
 
   FMCursor   := TDRLMouseCursor.Create;
@@ -411,6 +414,7 @@ begin
   FreeAndNil( FMinimap );
   FreeAndNil( FAnimations );
 
+  FreeAndNil( FParticleEngine );
   FreeAndNil( SpriteMap );
   FreeAndNil( FTextures );
 
@@ -520,12 +524,12 @@ end;
 
 procedure TDRLGFXIO.addMissileAnimation(aDuration: DWord; aDelay: DWord; aSource,
   aTarget: TCoord2D; aColor: Byte; aPic: Char; aDrawDelay: Word;
-  aSprite: TSprite; aRay: Boolean);
+  aSprite: TSprite; aRay: Boolean; aTrailNID : Word);
 begin
   if DRL.State <> DSPlaying then Exit;
   FAnimations.addAnimation(
     TGFXMissileAnimation.Create( aDuration, aDelay, aSource,
-      aTarget, aDrawDelay, aSprite, aRay ) );
+      aTarget, aDrawDelay, aSprite, aRay, aTrailNID ) );
 end;
 
 procedure TDRLGFXIO.addMarkAnimation(aDuration: DWord; aDelay: DWord;
@@ -835,6 +839,8 @@ begin
     //if not UI.AnimationsRunning then SpriteMap.NewShift := SpriteMap.ShiftValue( Player.Position );
 
     SpriteMap.Update( aMSec, FProjection );
+    DRL.Particles.Update( aMSec * 0.001 );
+    FParticleEngine.Render( SpriteMap.Engine );
     FAnimations.Draw;
     glEnable( GL_DEPTH_TEST );
     SpriteMap.Draw;
