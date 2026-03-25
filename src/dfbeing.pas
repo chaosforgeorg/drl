@@ -925,7 +925,8 @@ begin
   begin
     if ( iTargetUID <> 0 ) and ( UIDs[ iTargetUID ] <> nil ) then
       aTarget := TBeing( UIDs[ iTargetUID ] ).Position;
-    if ( not FireRanged( aTarget, Inv.Slot[ efWeapon2 ], iAltFire, aDelay + 100 )) or Player.Dead then Exit( True );
+    if Inv.Slot[ efWeapon2 ].CallHookCheck( Hook_OnFire, [Self, aAltFire] ) then
+      if ( not FireRanged( aTarget, Inv.Slot[ efWeapon2 ], iAltFire, aDelay + 100 )) or Player.Dead then Exit( True );
   end;
 
   Exit( True );
