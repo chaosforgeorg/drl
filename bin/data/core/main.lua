@@ -615,6 +615,8 @@ core.type_name = {
 	[ITEMTYPE_RELIC]   = "relic",
 }
 
+core.weapon_group_name = {}
+
 function core.being_plural( id, amount )
 	if amount and amount == 1 then
 		return beings[ id ].name

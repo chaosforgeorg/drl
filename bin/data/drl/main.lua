@@ -60,6 +60,15 @@ function drl.OnLoaded()
 end
 
 function drl.OnLoad()
+	core.weapon_group_name = {
+		melee   = "melee",
+		pistol  = "pistol",
+		shotgun = "shotgun",
+		rocket  = "rocket",
+		chain   = "chaingun",
+		plasma  = "plasma",
+		bfg     = "BFG",
+	}
 	drl.register_sprites()
 	drl.register_difficulties()
 	drl.register_base_data()

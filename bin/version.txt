@@ -1,5 +1,6 @@
 0.10.9
 [mod] -- GJ#326: Game - fixed broken recharge rates, buffed some recharge items
+[mod] -- GJ#326: Game - Item [m]ore info has explicitly listed weapon group and ammo type
 [fix] -- GH#---: ASCII - fixed name input and look mode cursor [joseph-hlucny]
 
 0.10.8

@@ -258,6 +258,8 @@ var iPerks     : TPerkList;
     iHasFire   : Boolean;
     i          : Integer;
     iStatQueue : TStringGArray;
+    iGroup     : AnsiString;
+    iGroupName : AnsiString;
   procedure AddStat( const aName : Ansistring; const aValue : Ansistring );
   begin
     iStatQueue.Push( Padded( aName, 13 ) + ': {!' + aValue + '}' );
@@ -281,7 +283,16 @@ begin
   // Stats
   FTexts[0] := TStringGArray.Create;
   iStatQueue := TStringGArray.Create;
-  
+
+  iGroup := LuaSystem.Get(['items', FItem.ID, 'group'], '');
+  if iGroup <> '' then
+  begin
+    iGroupName := LuaSystem.Get(['core', 'weapon_group_name', iGroup], iGroup);
+    AddStat( 'Weapon group', iGroupName );
+  end;
+  if (FItem.AmmoID > 0) and (not FItem.Flags[ IF_NOAMMO ]) then
+    AddStat( 'Ammo type', LuaSystem.Get(['items', FItem.AmmoID, 'name'], '') );
+
   case FItem.IType of
     ITEMTYPE_ARMOR, ITEMTYPE_BOOTS :
     begin
