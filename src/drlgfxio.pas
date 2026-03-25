@@ -38,7 +38,7 @@ type
     procedure addCellAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aValue : Integer ); override;
     procedure addItemAnimation( aDuration : DWord; aDelay : DWord; aItem : TThing; aValue : Integer ); override;
     procedure addKillAnimation( aDuration : DWord; aDelay : DWord; aBeing : TThing; aReverse : Boolean = False ); override;
-    procedure addMissileAnimation( aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aColor : Byte; aPic : Char; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False ); override;
+    procedure addMissileAnimation( aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aColor : Byte; aPic : Char; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False; aTrailNID : Word = 0 ); override;
     procedure addMarkAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aColor : Byte; aPic : Char ); override;
     procedure addFXAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite ); override;
     procedure addSoundAnimation( aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord ); override;
@@ -524,12 +524,12 @@ end;
 
 procedure TDRLGFXIO.addMissileAnimation(aDuration: DWord; aDelay: DWord; aSource,
   aTarget: TCoord2D; aColor: Byte; aPic: Char; aDrawDelay: Word;
-  aSprite: TSprite; aRay: Boolean);
+  aSprite: TSprite; aRay: Boolean; aTrailNID : Word);
 begin
   if DRL.State <> DSPlaying then Exit;
   FAnimations.addAnimation(
     TGFXMissileAnimation.Create( aDuration, aDelay, aSource,
-      aTarget, aDrawDelay, aSprite, aRay ) );
+      aTarget, aDrawDelay, aSprite, aRay, aTrailNID ) );
 end;
 
 procedure TDRLGFXIO.addMarkAnimation(aDuration: DWord; aDelay: DWord;

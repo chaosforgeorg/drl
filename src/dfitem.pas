@@ -102,6 +102,7 @@ TItem  = class( TThing )
     property UseTime        : Byte        read FProps.UseTime        write FProps.UseTime;
     property SwapTime       : Byte        read FProps.SwapTime       write FProps.SwapTime;
     property DamageType     : TDamageType read FProps.DamageType     write FProps.DamageType;
+    property MissTrail      : Word        read FProps.MissTrail      write FProps.MissTrail;
     property MisASCII       : Char        read FProps.MisASCII       write FProps.MisAscii;
     property MisColor       : Byte        read FProps.MisColor       write FProps.MisColor;
     property MisDelay       : Byte        read FProps.MisDelay       write FProps.MisDelay;
@@ -211,7 +212,8 @@ begin
 end;
 
 procedure TItem.LuaLoad( aTable : TLuaTable; aOnFloor: boolean );
-var i : Byte;
+var i   : Byte;
+    iID : AnsiString;
 begin
   inherited LuaLoad( aTable );
 
@@ -258,6 +260,10 @@ begin
   FProps.MisDelay    := aTable.getInteger('misdelay',0);
   FProps.MissBase    := aTable.getInteger('miss_base',0);
   FProps.MissDist    := aTable.getInteger('miss_dist',0);
+  FProps.MissTrail   := 0;
+  iID                := aTable.getString('miss_trail','');
+  if iID <> '' then
+    FProps.MissTrail := LuaSystem.Defines[ iID ];
 
   FProps.PCosColor := ColorZero;
   FProps.PGlowColor := ColorZero;

@@ -7,7 +7,7 @@ type
   TEmitterBinding = record
     NID       : Word;
     UID       : TUID;
-    PoolIndex : SmallInt;
+    PoolIndex : Integer;
   end;
 
 { TParticleStore }
@@ -26,6 +26,9 @@ type
     function  Kill( aUID : TUID ) : Boolean;
     function  Wipe( aUID : TUID ) : Boolean;
 
+    // Direct emitter API (no binding, caller manages lifetime)
+    function  AddEmitterDirect( aNID : Word; aWorldPos : TVec3f ) : Integer;
+
     // Save/Load
     procedure WriteToStream( aStream : TStream );
     procedure ReadFromStream( aStream : TStream );
@@ -43,6 +46,8 @@ type
     function  FindBinding( aNID : Word; aUID : TUID ) : Integer;
     procedure RemoveBinding( aIndex : Integer );
     procedure UpdateBoundEmitters;
+  public
+    property Engine : TParticleEngine read FEngine;
   end;
 
 implementation
@@ -165,7 +170,7 @@ begin
     iE^.SpriteID := DWord( iTable.GetInteger( 'sprite', 0 ) );
     iE^.SubID := Byte( iTable.GetInteger( 'sub_id', 0 ) );
     iE^.AnimFrames := Byte( iTable.GetInteger( 'anim_frames', 1 ) );
-    iE^.AnimFrameTime := Word( iTable.GetInteger( 'anim_frame_time', 0 ) );
+    iE^.AnimFrameTime := iTable.GetFloat( 'anim_frame_time', 0.25 );
     iE^.DecalSprite := DWord( iTable.GetInteger( 'decal_sprite', 0 ) );
 
     // Particle flags
@@ -237,6 +242,16 @@ begin
     FBindings[FBindingCount].PoolIndex := -1;
   Inc( FBindingCount );
   Result := True;
+end;
+
+function TParticleStore.AddEmitterDirect( aNID : Word; aWorldPos : TVec3f ) : Integer;
+var iData : PParticleEmitterData;
+begin
+  Result := -1;
+  if ( aNID = 0 ) or ( FEngine = nil ) then Exit;
+  iData := GetEmitterData( aNID );
+  if iData = nil then Exit;
+  Result := FEngine.EmitStart( iData, aWorldPos );
 end;
 
 function TParticleStore.RemoveEmitter( aNID : Word; aUID : TUID ) : Boolean;

@@ -714,7 +714,7 @@ core.register_blueprint "emitter"
 	sprite          = { false, core.TANY, 0 },
 	sub_id          = { false, core.TNUMBER, 0 },
 	anim_frames     = { false, core.TNUMBER, 1 },
-	anim_frame_time = { false, core.TNUMBER, 250 },
+	anim_frame_time = { false, core.TNUMBER, 0.25 },
 	decal_sprite    = { false, core.TANY, 0 },
 	flags           = { false, core.TFLAGS, {} },
 	rate            = { false, core.TNUMBER, 0 },
