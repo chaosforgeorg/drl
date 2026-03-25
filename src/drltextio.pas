@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drltextio;
 interface
 
-uses vrltools, vtextmap, drlio, dfdata;
+uses vrltools, vtextmap, vioevent, drlio, dfdata;
 
 type TDRLTextIO = class( TDRLIO )
     constructor Create; reintroduce;
@@ -15,6 +15,7 @@ type TDRLTextIO = class( TDRLIO )
     procedure Initialize; override;
     destructor Destroy; override;
     procedure Update( aMSec : DWord ); override;
+    function OnEvent( const aEvent : TIOEvent ) : Boolean; override;
 
     procedure WaitForAnimation( aStrict : Boolean = True ); override;
     function AnimationsRunning : Boolean; override;
@@ -101,6 +102,17 @@ begin
      then FConsole.ShowCursor;
   inherited Update( aMSec );
   VTIG_EventClear;
+end;
+
+function TDRLTextIO.OnEvent( const aEvent : TIOEvent ) : Boolean;
+var iWide : WideString;
+begin
+  if ( aEvent.EType = VEVENT_KEYDOWN ) and ( aEvent.Key.ASCII <> #0 ) then
+  begin
+    iWide := UTF8Decode( UTF8String( aEvent.Key.ASCII ) );
+    VTIG_GetIOState.EventState.AppendText( PWideChar( iWide ) );
+  end;
+  Exit( inherited OnEvent( aEvent ) );
 end;
 
 procedure TDRLTextIO.WaitForAnimation( aStrict : Boolean = True );

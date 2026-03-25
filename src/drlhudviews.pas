@@ -129,6 +129,7 @@ end;
 procedure TLookModeView.Update( aDTime : Integer; aActive : Boolean );
 begin
   if FFirst then UpdateTarget;
+  if IO.IsTopLayer( Self ) and ( not GraphicsVersion ) then IO.Console.ShowCursor;
   VTIG_FreeLabel( ' = LOOK MODE =', Point( -15, 1 ), Yellow )
 end;
 
