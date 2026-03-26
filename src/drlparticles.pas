@@ -170,7 +170,7 @@ begin
     iE^.SpriteID := DWord( iTable.GetInteger( 'sprite', 0 ) );
     iE^.SubID := Byte( iTable.GetInteger( 'sub_id', 0 ) );
     iE^.AnimFrames := Byte( iTable.GetInteger( 'anim_frames', 1 ) );
-    iE^.AnimFrameTime := iTable.GetFloat( 'anim_frame_time', 0.25 );
+    iE^.AnimFrameTime := iTable.GetFloat( 'anim_ftime', 0.25 );
     iE^.DecalSprite := DWord( iTable.GetInteger( 'decal_sprite', 0 ) );
 
     // Particle flags
@@ -317,6 +317,7 @@ begin
     end
     else if ( iNode is TThing ) and ( FBindings[i].PoolIndex >= 0 ) then
     begin
+      FEngine.EmitSetVisible( FBindings[i].PoolIndex, TThing( iNode ).isVisible );
       iDraw  := TThing( iNode ).GetDrawPosition;
       FEngine.EmitSetPosition( FBindings[i].PoolIndex,
         Vec3f( iDraw.X / SpriteMap.Engine.Scale + 16.0, iDraw.Y / SpriteMap.Engine.Scale + 16.0, 0 ) );
