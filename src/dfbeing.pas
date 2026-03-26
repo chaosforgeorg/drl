@@ -1881,6 +1881,7 @@ begin
     if not aWeapon.CallHookCheck( Hook_OnFire, [Self, False] ) then Exit( False );
   if not CallHookCheck( Hook_OnFire, [aWeapon, False] ) then Exit( False );
 
+  if not ( BF_AUTOHIT in FFlags ) then
   if ( aWeapon = nil ) or ( not aWeapon.Flags[ IF_AUTOHIT ] ) then
     if Roll( 12 + iToHit ) < 0 then
     begin
@@ -2155,7 +2156,8 @@ begin
   if iWeapon.Flags[ IF_SHOTGUN ]
    or iWeapon.Flags[ IF_INSTANTHIT ]
    or iWeapon.Flags[ IF_EXACTHIT ]
-   or iWeapon.Flags[ IF_AUTOHIT ] then Exit( 100 );
+   or iWeapon.Flags[ IF_AUTOHIT ]
+   or ( BF_AUTOHIT in FFlags ) then Exit( 100 );
 
   iToHit := getToHit( iWeapon, False, False );
   iToHit -= aBeing.GetBonus( Hook_getDefenceBonus, [False] );
@@ -2334,7 +2336,7 @@ begin
       if iIsHit and ( not iLevel.isVisible( iCoord ) ) and ( not aItem.Flags[ IF_UNSEENHIT ] ) then
         iIsHit := (Random(10) > 4);
       
-      if aItem.Flags[ IF_AUTOHIT ] then iIsHit := True;
+      if aItem.Flags[ IF_AUTOHIT ] or ( BF_AUTOHIT in FFlags ) then iIsHit := True;
 
       if iIsHit and ( iBeing <> iAimedBeing ) then
         if ( isPlayer and iBeing.Flags[ BF_FRIENDLY ] ) or
