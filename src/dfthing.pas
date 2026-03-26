@@ -66,7 +66,7 @@ constructor TThing.Create( const aID : AnsiString );
 begin
   inherited Create( aID );
   FAnimCount    := 0;
-  FMovePosition := Vec2i( 0, 0 );
+  FDrawPosition := Vec2i( 0, 0 );
   FPerks        := nil;
 end;
 
