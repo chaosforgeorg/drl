@@ -344,6 +344,10 @@ begin
     addRumbleAnimation( aDelay, Clamp( $2000 * aData.Range, $2000, $E000 ), $6000, Clamp( 100 * aData.Range, 100, 300 ) );
   end;
 
+  if GraphicsVersion and ( aData.EmitterID > 0 ) then
+    DRL.Particles.AddEmitterDirect( aData.EmitterID,
+      Vec3f( ( aWhere.X - 1 ) * 32 + 16, ( aWhere.Y - 1 ) * 32 + 16, 0 ) );
+
   for iCoord in NewArea( aWhere, aData.Range ).Clamped( iLevel.Area ) do
     begin
       if not ( efAlwaysVisible in aData.Flags ) then
