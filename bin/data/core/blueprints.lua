@@ -62,6 +62,7 @@ core.register_blueprint "trait"
 	OnPickupItem    = { false, core.TFUNC },
 	OnPostMove      = { false, core.TFUNC },
 	OnKill          = { false, core.TFUNC },
+	OnFire          = { false, core.TFUNC },
 	OnFired         = { false, core.TFUNC },
 	OnDamage        = { false, core.TFUNC },
 	OnTick          = { false, core.TFUNC },
@@ -83,6 +84,7 @@ core.register_blueprint "trait"
 	getFireCostMul   = { false, core.TFUNC },
 	getAmmoCostMul   = { false, core.TFUNC },
 	getReloadCostMul = { false, core.TFUNC },
+	getGibMul        = { false, core.TFUNC },
 }
 
 core.register_blueprint "klass_trait"
@@ -184,6 +186,7 @@ core.register_blueprint "perk"
 	getFireCostMul   = { false, core.TFUNC },
 	getAmmoCostMul   = { false, core.TFUNC },
 	getReloadCostMul = { false, core.TFUNC },
+	getGibMul        = { false, core.TFUNC },
 
 	OnPickup       = { false, core.TFUNC },
 	OnDrop         = { false, core.TFUNC },

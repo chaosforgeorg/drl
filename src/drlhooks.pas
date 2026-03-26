@@ -38,7 +38,7 @@ const
   Hook_OnDestroy       = 26;  // Item
   Hook_OnEnter         = 27;  // Item (separate)
   Hook_OnEnterLevel    = 28;  // Level, Module, Challenge, Core (chained)
-  Hook_OnFire          = 29;  // Item (not chained)
+  Hook_OnFire          = 29;  // Trait (separate), Item (not chained)
   Hook_OnFired         = 30;  // Trait (separate), Item, Level, Module, Challenge, Core (Chained)
   Hook_OnExit          = 31;  // Level, Module, Challenge, Core (Chained)
   Hook_OnTick          = 32;  // Perk, Being (Separate), Level, Module, Challenge, Core (Chained)
@@ -79,11 +79,12 @@ const
   Hook_getFireCostMul  = 64; // Trait, Being, Affects
   Hook_getAmmoCostMul  = 65; // Trait, Being, Affects
   Hook_getReloadCostMul= 66; // Trait, Being, Affects
-  Hook_OnUnequipCheck  = 67; // Item
-  Hook_OnDrop          = 68; // Item
-  Hook_OnDropItem      = 69; // Item
+  Hook_getGibMul       = 67; // Trait, Being, Affects
+  Hook_OnUnequipCheck  = 68; // Item
+  Hook_OnDrop          = 69; // Item
+  Hook_OnDropItem      = 70; // Item
 
-  HookAmount           = 70;
+  HookAmount           = 71;
 
 const AllHooks      : TFlags = [ 0..HookAmount-1 ];
 
@@ -111,6 +112,7 @@ const HookNames : array[ 0..HookAmount-1 ] of AnsiString = (
       'getDamageBonus', 'getToHitBonus', 'getShotsBonus', 'getFireCostBonus',
       'getDefenceBonus', 'getDodgeBonus', 'getMoveBonus', 'getBodyBonus', 'getResistBonus',
       'getDamageMul', 'getFireCostMul', 'getAmmoCostMul', 'getReloadCostMul',
+      'getGibMul',
       'OnUnequipCheck',
       'OnDrop', 'OnDropItem'
       );

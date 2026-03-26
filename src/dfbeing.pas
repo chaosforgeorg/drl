@@ -905,6 +905,7 @@ begin
 
   FTargetPos := aTarget;
   if not aWeapon.CallHookCheck( Hook_OnFire, [Self, aAltFire] ) then Exit( False );
+  if not CallHookCheck( Hook_OnFire, [aWeapon, aAltFire] ) then Exit( False );
 
   if iAltFire and aWeapon.Flags[ IF_ALTCHAIN ] then
   begin
@@ -1876,6 +1877,10 @@ begin
   // Last kill
   iToHit := getToHit( aWeapon, False, True ) - aTarget.GetBonus( Hook_getDefenceBonus, [True] );
 
+  if (aWeapon <> nil) then
+    if not aWeapon.CallHookCheck( Hook_OnFire, [Self, False] ) then Exit( False );
+  if not CallHookCheck( Hook_OnFire, [aWeapon, False] ) then Exit( False );
+
   if ( aWeapon = nil ) or ( not aWeapon.Flags[ IF_AUTOHIT ] ) then
     if Roll( 12 + iToHit ) < 0 then
     begin
@@ -1972,6 +1977,8 @@ var iDirection     : TDirection;
     iArmorValue    : Byte;
     iOverKillValue : LongInt;
     iResist        : LongInt;
+    iGibMul        : Single;
+    iForceOverkill : Boolean;
 begin
   if ( aDamage < 0 ) or (BF_INV in FFlags) or FDying then Exit;
 
@@ -2098,6 +2105,15 @@ begin
     iOverKillValue := FHPMax * 4;
   end;
 
+  iGibMul := 1.0;
+  if iActive <> nil then
+    iGibMul := iActive.GetBonusMul( Hook_getGibMul, [ aSource, Byte(aDamageType) ] );
+  if aSource <> nil then
+    iGibMul := iGibMul * aSource.GetBonusMul( Hook_getGibMul, [ iActive, Byte(aDamageType) ] );
+  iForceOverkill := iGibMul >= 10.0;
+  if (not iForceOverkill) and (iGibMul > 1.0) then
+    iOverKillValue := Max( 1, Round( iOverKillValue / iGibMul ) );
+
   if IsPlayer then
   begin
     Player.Statistics.OnDamage( aDamage );
@@ -2115,7 +2131,7 @@ begin
     if isVisible then IO.Msg(Capitalized(GetName(true))+' dies.')
                  else IO.Msg('You hear the scream of a freed soul!');
   if Dead
-    then Kill( Min( aDamage div 2, 15), aDamage >= iOverKillValue, iActive, aSource, aDelay )
+    then Kill( Min( aDamage div 2, 15), (aDamage >= iOverKillValue) or iForceOverkill, iActive, aSource, aDelay )
     else begin
       CallHook( Hook_OnAttacked, [ iActive, aSource ] );
       // TODO: handle Delay?
