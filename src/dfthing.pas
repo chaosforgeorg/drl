@@ -8,7 +8,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit dfthing;
 interface
 uses SysUtils, Classes, vluaentitynode, vutil, vrltools, vluatable,
-     dfdata, drlhooks, drlperk;
+     vvector, dfdata, drlhooks, drlperk;
 
 type String16 = string[16];
 
@@ -25,6 +25,7 @@ type TThing = class( TLuaEntityNode )
   function GetBonus( aHook : Byte; const aParams : array of Const ) : Integer; virtual;
   function GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single; virtual;
   function GetSprite : TSprite; virtual;
+  function GetDrawPosition : TVec2i;
   function GetPerkList : TPerkList;
   function GetTraitString( aInvMode : Boolean = False ) : AnsiString;
   procedure Tick; virtual;
@@ -34,19 +35,21 @@ type TThing = class( TLuaEntityNode )
 protected
   procedure LuaLoad( aTable : TLuaTable ); virtual;
 protected
-  FHP        : Integer;
-  FArmor     : Integer;
-  FSprite    : TSprite;
-  FMelSprite : TSprite;
-  FSoundID   : String16;
-  FAnimCount : Word;
-  FPerks     : TPerks;
+  FHP           : Integer;
+  FArmor        : Integer;
+  FSprite       : TSprite;
+  FMelSprite    : TSprite;
+  FSoundID      : String16;
+  FAnimCount    : Word;
+  FDrawPosition : TVec2i;
+  FPerks        : TPerks;
   {$TYPEINFO ON}
 public
-  property SoundID    : String16 read FSoundID          write FSoundID;
-  property Sprite     : TSprite  read GetSprite         write FSprite;
-  property MelSprite  : TSprite  read FMelSprite        write FMelSprite;
-  property AnimCount  : Word     read FAnimCount        write FAnimCount;
+  property SoundID      : String16 read FSoundID          write FSoundID;
+  property Sprite       : TSprite  read GetSprite         write FSprite;
+  property MelSprite    : TSprite  read FMelSprite        write FMelSprite;
+  property AnimCount    : Word     read FAnimCount        write FAnimCount;
+  property DrawPosition : TVec2i   read FDrawPosition     write FDrawPosition;
 published
   property SpriteID   : DWord    read FSprite.SpriteID[0] write FSprite.SpriteID[0];
   property HP         : Integer  read FHP                 write FHP;
@@ -56,14 +59,15 @@ end;
 implementation
 
 uses typinfo, variants,
-     vluasystem, vdebug, vtig, vvector,
-     drlbase, drlio, drlua;
+     vluasystem, vdebug, vtig,
+     drlbase, drlio, drlua, drlspritemap;
 
 constructor TThing.Create( const aID : AnsiString );
 begin
   inherited Create( aID );
-  FAnimCount := 0;
-  FPerks     := nil;
+  FAnimCount    := 0;
+  FMovePosition := Vec2i( 0, 0 );
+  FPerks        := nil;
 end;
 
 procedure TThing.LuaLoad( aTable : TLuaTable );
@@ -154,6 +158,15 @@ end;
 function TThing.GetSprite: TSprite;
 begin
   Exit(FSprite);
+end;
+
+function TThing.GetDrawPosition : TVec2i;
+var iSize : Word;
+begin
+  if ( FDrawPosition.X <> 0 ) or ( FDrawPosition.Y <> 0 ) then
+    Exit( FDrawPosition );
+  iSize := SpriteMap.GetGridSize;
+  Result.Init( ( FPosition.X - 1 ) * iSize, ( FPosition.Y - 1 ) * iSize );
 end;
 
 function TThing.GetPerkList : TPerkList;

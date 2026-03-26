@@ -470,14 +470,17 @@ procedure TGFXMoveAnimation.OnDraw;
 var iValue : Single;
     iLight : Byte;
     iBeing : TBeing;
+    iThing : TThing;
 begin
   iValue    := Clampf( FTime / FDuration, 0, 1 );
   iLight    := Lerp( FLightStart, FLightEnd, iValue );
   FPosition := Lerp( FSource, FTarget, iValue );
+  iThing := UIDs.Get( FUID ) as TThing;
+  if iThing <> nil then iThing.DrawPosition := FPosition;
   if FBeing
     then
     begin
-      iBeing := UIDs.Get( FUID ) as TBeing;
+      iBeing := iThing as TBeing;
       if iBeing <> nil
         then SpriteMap.PushSpriteBeing( FPosition, SpriteMap.GetBeingSprite( iBeing ), iLight )
         else SpriteMap.PushSpriteBeing( FPosition, FSprite, iLight );
@@ -489,7 +492,11 @@ destructor TGFXMoveAnimation.Destroy;
 var iThing : TThing;
 begin
   iThing := UIDs.Get( FUID ) as TThing;
-  if Started and ( iThing <> nil ) then iThing.AnimCount := Max( 0, iThing.AnimCount - 1 );
+  if iThing <> nil then
+  begin
+    iThing.DrawPosition := Vec2i( 0, 0 );
+    if Started then iThing.AnimCount := Max( 0, iThing.AnimCount - 1 );
+  end;
   inherited Destroy;
 end;
 

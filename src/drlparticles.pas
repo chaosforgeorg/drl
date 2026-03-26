@@ -53,7 +53,7 @@ type
 implementation
 
 uses Math, vluasystem, vluatable, vluaentitynode, vuid,
-     dfdata, dflevel, drldecals, drlbase, drlspritemap;
+     dfdata, dfthing, dflevel, drldecals, drlbase, drlspritemap;
 
 function FlagsToParticleFlags( const aFlags : TFlags ) : TParticleFlags;
 var i : Byte;
@@ -297,7 +297,7 @@ end;
 procedure TParticleStore.UpdateBoundEmitters;
 var i      : Integer;
     iNode  : TNode;
-    iCoord : TCoord2D;
+    iDraw  : TVec2i;
 begin
   if FEngine = nil then Exit;
   for i := FBindingCount - 1 downto 0 do
@@ -315,11 +315,11 @@ begin
         FEngine.EmitStop( FBindings[i].PoolIndex );
       RemoveBinding( i );
     end
-    else if ( iNode is TLuaEntityNode ) and ( FBindings[i].PoolIndex >= 0 ) then
+    else if ( iNode is TThing ) and ( FBindings[i].PoolIndex >= 0 ) then
     begin
-      iCoord := TLuaEntityNode( iNode ).Position;
+      iDraw  := TThing( iNode ).GetDrawPosition;
       FEngine.EmitSetPosition( FBindings[i].PoolIndex,
-        Vec3f( ( iCoord.X - 1 ) * 32 + 16, ( iCoord.Y - 1 ) * 32 + 16, 0 ) );
+        Vec3f( iDraw.X / SpriteMap.Engine.Scale + 16.0, iDraw.Y / SpriteMap.Engine.Scale + 16.0, 0 ) );
     end;
   end;
 end;
