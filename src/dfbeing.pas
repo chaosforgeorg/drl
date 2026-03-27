@@ -61,7 +61,7 @@ TBeing = class(TThing,IPathQuery)
     destructor Destroy; override;
     function rollMeleeDamage( aWeapon : TItem = nil; aTarget : TBeing = nil ) : Integer;
     function getMoveCost : LongInt;
-    function getFireCost( aAltFire : Boolean; aIsMelee : Boolean ) : LongInt;
+    function getFireCost( aAltFire : Boolean; aIsMelee : Boolean; aWeaponOverride : TItem = nil ) : LongInt;
     function getReloadCost( aItem : TItem ) : LongInt;
     function getUseCost( aItem : TItem ) : LongInt;
     function getWearCost( aItem : TItem ) : LongInt;
@@ -915,7 +915,9 @@ begin
   end;
   FChainFire := iChainFire;
 
-  Dec( FSpeedCount, getFireCost( iAltFire, False ) );
+  if aWeapon <> Inv.Slot[ efWeapon ]
+    then Dec( FSpeedCount, getFireCost( iAltFire, False, aWeapon ) )
+    else Dec( FSpeedCount, getFireCost( iAltFire, False ) );
 
   iTargetUID := 0;
   if TLevel(Parent).Being[ aTarget ] <> nil then
@@ -2581,7 +2583,7 @@ begin
   getMoveCost := Round( ActionCostMove * iModifier );
 end;
 
-function TBeing.getFireCost( aAltFire : Boolean; aIsMelee : Boolean ) : LongInt;
+function TBeing.getFireCost( aAltFire : Boolean; aIsMelee : Boolean; aWeaponOverride : TItem = nil ) : LongInt;
 var iModifier : Single;
     iBonus    : Integer;
     iWeapon   : TItem;
@@ -2598,9 +2600,9 @@ var iModifier : Single;
     if aWeapon <> nil then iModifier *= aWeapon.GetBonusMul( Hook_getFireCostMul, [ aIsMelee, aAltFire ] );
     getWeaponFireCost := Round( ActionCostFire*iModifier );
   end;
-
 begin
-  iWeapon   := Inv.Slot[ efWeapon ];
+  if aWeaponOverride <> nil then Exit( getWeaponFireCost( aWeaponOverride ) );
+  iWeapon := Inv.Slot[ efWeapon ];
   if ( iWeapon <> nil ) then
     if ( aIsMelee and canDualWieldMelee ) or ( (not aIsMelee) and canDualWield and (Inv.Slot[ efWeapon2 ].Ammo > 0) ) then
        Exit( ( getWeaponFireCost( iWeapon ) + getWeaponFireCost( Inv.Slot[ efWeapon2 ] ) ) div 2 );
