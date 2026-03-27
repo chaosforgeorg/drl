@@ -1994,7 +1994,7 @@ begin
   if iActive <> nil then
   begin
     iMeleeAttack := iActive.MeleeAttack;
-    if ( ( aSource <> nil ) and ( iActive.Inv.Equipped( aSource ) ) ) then
+    if ( aSource <> nil ) and ( iActive.Inv.Equipped( aSource ) or ( aSource.IType = ITEMTYPE_URANGED ) ) then
     begin
       iActive.CallHook( Hook_OnDamage, [ Self, aDamage, aSource, aSource.isMelee ] );
       aSource.CallHook( Hook_OnDamage, [ Self, aDamage, iActive ] );
