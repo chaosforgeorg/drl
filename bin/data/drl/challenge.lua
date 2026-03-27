@@ -916,7 +916,7 @@ function drl.register_challenges()
 	register_challenge "challenge_aomc"
 	{
 		name        = "Angel of Max Carnage",
-		description = "You hate chance, you hate games of chance, you hate dice so much that you crush them when you see them. As a result, your guns do max damage and you are almost guaranteed to hit. However this also applies to your enemies...",
+		description = "You hate chance, you hate games of chance, you hate dice so much that you crush them when you see them. As a result, your guns do max damage and you are guaranteed to hit visible targets. However this also applies to your enemies...",
 		rating      = "EASY",
 		rank        = 5,
 		abbr        = "AoMC",
@@ -925,8 +925,8 @@ function drl.register_challenges()
 
 		OnCreate = function ( this )
 			if this:is_being() then
-				this.accuracy = this.accuracy + 12
 				this.flags[ BF_MAXDAMAGE ] = true
+				this.flags[ BF_AUTOHIT ] = true
 			end
 		end,
 

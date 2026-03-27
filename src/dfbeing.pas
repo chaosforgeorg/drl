@@ -904,8 +904,8 @@ begin
   end;
 
   FTargetPos := aTarget;
-  if not aWeapon.CallHookCheck( Hook_OnFire, [Self, aAltFire] ) then Exit( False );
-  if not CallHookCheck( Hook_OnFire, [aWeapon, aAltFire] ) then Exit( False );
+  if not aWeapon.CallHookCheck( Hook_OnFire, [Self, False, aAltFire] ) then Exit( False );
+  if not CallHookCheck( Hook_OnFire, [aWeapon, False, aAltFire] ) then Exit( False );
 
   if iAltFire and aWeapon.Flags[ IF_ALTCHAIN ] then
   begin
@@ -926,7 +926,7 @@ begin
   begin
     if ( iTargetUID <> 0 ) and ( UIDs[ iTargetUID ] <> nil ) then
       aTarget := TBeing( UIDs[ iTargetUID ] ).Position;
-    if Inv.Slot[ efWeapon2 ].CallHookCheck( Hook_OnFire, [Self, aAltFire] ) then
+    if Inv.Slot[ efWeapon2 ].CallHookCheck( Hook_OnFire, [Self, False, aAltFire] ) then
       if ( not FireRanged( aTarget, Inv.Slot[ efWeapon2 ], iAltFire, aDelay + 100 )) or Player.Dead then Exit( True );
   end;
 
@@ -1878,8 +1878,8 @@ begin
   iToHit := getToHit( aWeapon, False, True ) - aTarget.GetBonus( Hook_getDefenceBonus, [True] );
 
   if (aWeapon <> nil) then
-    if not aWeapon.CallHookCheck( Hook_OnFire, [Self, False] ) then Exit( False );
-  if not CallHookCheck( Hook_OnFire, [aWeapon, False] ) then Exit( False );
+    if not aWeapon.CallHookCheck( Hook_OnFire, [Self, True, False] ) then Exit( False );
+  if not CallHookCheck( Hook_OnFire, [aWeapon, True, False] ) then Exit( False );
 
   if not ( BF_AUTOHIT in FFlags ) then
   if ( aWeapon = nil ) or ( not aWeapon.Flags[ IF_AUTOHIT ] ) then
@@ -1980,6 +1980,7 @@ var iDirection     : TDirection;
     iResist        : LongInt;
     iGibMul        : Single;
     iForceOverkill : Boolean;
+    iMeleeAttack   : Boolean;
 begin
   if ( aDamage < 0 ) or (BF_INV in FFlags) or FDying then Exit;
 
@@ -1992,14 +1993,21 @@ begin
   iActive := TLevel(Parent).ActiveBeing;
   if iActive <> nil then
   begin
-     if ( ( aSource <> nil ) and ( iActive.Inv.Equipped( aSource ) ) ) then
-     begin
-       iActive.CallHook( Hook_OnDamage, [ Self, aDamage, aSource, aSource.isMelee ] );
-       aSource.CallHook( Hook_OnDamage, [ Self, aDamage, iActive ] );
-     end
-     else if iActive.MeleeAttack then
-       iActive.CallHook( Hook_OnDamage, [ Self, aDamage, aSource, True ] );
+    iMeleeAttack := iActive.MeleeAttack;
+    if ( ( aSource <> nil ) and ( iActive.Inv.Equipped( aSource ) ) ) then
+    begin
+      iActive.CallHook( Hook_OnDamage, [ Self, aDamage, aSource, aSource.isMelee ] );
+      aSource.CallHook( Hook_OnDamage, [ Self, aDamage, iActive ] );
+    end
+    else if iMeleeAttack then
+      iActive.CallHook( Hook_OnDamage, [ Self, aDamage, aSource, True ] );
+  end
+  else
+  begin
+    iMeleeAttack := False;
+    if aSource <> nil then iMeleeAttack := aSource.isMelee;
   end;
+
   if FDying then Exit;
 
   CallHook( Hook_OnReceiveDamage, [ aDamage, aSource, iActive ] );
@@ -2108,9 +2116,9 @@ begin
 
   iGibMul := 1.0;
   if iActive <> nil then
-    iGibMul := iActive.GetBonusMul( Hook_getGibMul, [ aSource, Byte(aDamageType) ] );
+    iGibMul := iActive.GetBonusMul( Hook_getGibMul, [ aSource, Byte(aDamageType), iMeleeAttack ] );
   if aSource <> nil then
-    iGibMul := iGibMul * aSource.GetBonusMul( Hook_getGibMul, [ iActive, Byte(aDamageType) ] );
+    iGibMul := iGibMul * aSource.GetBonusMul( Hook_getGibMul, [ iActive, Byte(aDamageType), iMeleeAttack ] );
   iForceOverkill := iGibMul >= 10.0;
   if (not iForceOverkill) and (iGibMul > 1.0) then
     iOverKillValue := Max( 1, Round( iOverKillValue / iGibMul ) );
@@ -2332,11 +2340,12 @@ begin
       if aItem.Flags[ IF_FARHIT ]
         then iIsHit := Roll( 10 + iToHit) >= 0
         else iIsHit := Roll( 10 - (distance(FPosition, iCoord ) div 3 ) + iToHit) >= 0;
-      
+
+      if ( BF_AUTOHIT in FFlags ) or aItem.Flags[ IF_AUTOHIT ] then 
+        iIsHit := True;
+
       if iIsHit and ( not iLevel.isVisible( iCoord ) ) and ( not aItem.Flags[ IF_UNSEENHIT ] ) then
         iIsHit := (Random(10) > 4);
-      
-      if aItem.Flags[ IF_AUTOHIT ] or ( BF_AUTOHIT in FFlags ) then iIsHit := True;
 
       if iIsHit and ( iBeing <> iAimedBeing ) then
         if ( isPlayer and iBeing.Flags[ BF_FRIENDLY ] ) or

@@ -1,6 +1,8 @@
 0.10.9
 [mod] -- GJ#326: Game - fixed broken recharge rates, buffed some recharge items
 [mod] -- GJ#326: Game - Item [m]ore info has explicitly listed weapon group and ammo type
+[mod] -- GJ#284: Game - on Angel of Max Carnage everyone will now always hit instead of 98%
+[mod] -- GJ#284: Game - AUTOHIT effects still have 50% miss rate in the dark and don't apply to non-target enemies
 [fix] -- GH#---: ASCII - fixed name input and look mode cursor [joseph-hlucny]
 
 0.10.8
