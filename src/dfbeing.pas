@@ -1013,9 +1013,15 @@ var isOnGround : Boolean;
     iSlot      : TEqSlot;
     iUseCost   : Integer;
     iUID       : TUID;
+    iOldItem   : TItem;
+    iOldName   : AnsiString;
+    iDropOld   : Boolean;
 	
 begin
   isFailed   := False;
+  iDropOld   := False;
+  iOldItem   := nil;
+  iOldName   := '';
   isOnGround := TLevel(Parent).Item[ FPosition ] = aItem;
   if aItem = nil then Exit( false );
   if (not aItem.isLever) and (not aItem.isUsable) and (not aItem.isAmmoPack) and (not aItem.isWearable) then Exit( False );
@@ -1045,13 +1051,34 @@ begin
 		  if (Inv.Slot[ aItem.eqSlot ] = nil) or isPrepared then
 		    begin
 			  if (Inv.Slot[ aItem.eqSlot ] = nil) then iSlot := aItem.eqSlot
-			  else if isPrepared then iSlot := efWeapon2;
-			  Emote( 'You equip %s from the ground.', 'equips %s.', [ aItem.GetName(false) ] );
+			  else if isPrepared then
+			    begin
+			      if ( Inv.Slot[ efWeapon ] <> nil ) and ( not Inv.Slot[ efWeapon ].CallHookCheck( Hook_OnUnequipCheck, [ Self, False ] ) ) then
+			      begin
+              isFailed := True;
+              isPrepared := False;
+            end
+			      else
+			        begin
+			          Inv.EqSwap( efWeapon, efWeapon2 );
+			          iSlot := efWeapon;
+			        end;
+			    end;
+			  if not isFailed then
+			    Emote( 'You equip %s from the ground.', 'equips %s.', [ aItem.GetName(false) ] );
 			end
 		  else
 			begin
-			  Emote( 'You must unequip first!', '', [ aItem.GetName(false) ] );
-			  isFailed := True;
+			  iSlot := aItem.eqSlot;
+			  iOldItem := Inv.Slot[ iSlot ];
+			  if not iOldItem.CallHookCheck( Hook_OnUnequipCheck, [ Self, False ] ) then
+			    isFailed := True
+			  else
+			    begin
+			      iOldName := iOldItem.GetName(false);
+			      iDropOld := Inv.isFull;
+			      Emote( 'You swap %s from the ground.', 'swaps %s.', [ aItem.GetName(false) ] );
+			    end;
 			end;
 		end;
 	end
@@ -1071,6 +1098,16 @@ begin
     begin
       CallHook( Hook_OnPickUpItem, [aItem] );
       aItem.CallHook( Hook_OnPickup,[Self] )
+    end;
+  if isEquip and (iOldItem <> nil) then
+    begin
+      if iDropOld then
+        begin
+          if not TLevel(Parent).DropItem( iOldItem, FPosition, False, True )
+            then Emote( 'You drop %s and it is destroyed!', '', [ iOldName ] );
+        end
+      else
+        Emote( 'You put %s in inventory.', '', [ iOldName ] );
     end;
   if isUse then
   begin

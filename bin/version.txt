@@ -1,4 +1,5 @@
 0.10.9
+[new] -- GJ#242: UI - SHIFT-G will now equip items from ground if at all possible (old one goes to inv, or ground if full)
 [mod] -- GJ#326: Game - fixed broken recharge rates, buffed some recharge items
 [mod] -- GJ#326: Game - Item [m]ore info has explicitly listed weapon group and ammo type
 [mod] -- GJ#284: Game - on Angel of Max Carnage everyone will now always hit instead of 98%
