@@ -272,7 +272,20 @@ function drl.register_traits()
 			if level == 1 then
 				being.flags[ BF_POWERSENSE  ] = true
 			elseif level == 2 then
-				being.flags[ BF_BEINGSENSE  ] = true
+				being:add_property( "INTUITION_RANGE", 2 )
+			end
+		end,
+
+		OnPreAction = function (self)
+			if not self:has_property( "INTUITION_RANGE" ) then return end
+			for b in level:beings() do
+				b.flags[ BF_INTUITED ] = false
+			end
+			local range = self.vision + self.INTUITION_RANGE
+			for b in level:beings_in_range( self, range ) do
+				if not b:is_player() then
+					b.flags[ BF_INTUITED ] = true
+				end
 			end
 		end,
 	}

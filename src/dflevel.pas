@@ -723,8 +723,7 @@ end;
 function TLevel.BeingIntuited( coord: TCoord2D; aBeing: TBeing ) : boolean;
 begin
   if aBeing = nil then Exit(False);
-  if not Player.Flags[ BF_BEINGSENSE ] then Exit(False);
-  Exit(Distance( Player.Position, coord ) <= Player.Vision + 2);
+  Exit(aBeing.Flags[ BF_INTUITED ]);
 end;
 
 function TLevel.AnimationVisible( aCoord : TCoord2D; aBeing : TBeing ) : boolean;

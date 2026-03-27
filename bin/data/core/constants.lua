@@ -72,7 +72,7 @@ BF_AUTOHIT        = 14;
 BF_DARKNESS       = 15;
 
 BF_POWERSENSE     = 17;
-BF_BEINGSENSE     = 18;
+BF_INTUITED       = 18;
 
 
 BF_NOMELEE      = 21;
