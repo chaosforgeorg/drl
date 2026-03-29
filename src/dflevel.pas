@@ -1044,9 +1044,9 @@ var iDiff,iC : TCoord2D;
       until iCount = iRange;
     end;
 begin
-  iRange   := aItem.Range;
-  iSpread  := aItem.Spread;
-  iFalloff := aItem.Falloff;
+  iRange   := Max( aItem.Range, 1 );
+  iSpread  := Max( aItem.Spread, 1 );
+  iFalloff := Max( aItem.Falloff, 0 );
   iKnock   := aItem.Knockback;
   iHSprite := aItem.HitSprite;
   if ( iSpread <= 0 ) then Exit;
