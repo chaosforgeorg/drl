@@ -421,7 +421,8 @@ end;
 function TDRLSpriteMap.GetEmissive( aSprite : TSprite ) : TColor;
 begin
   if aSprite.Emissive.A <> 0 then Exit( aSprite.Emissive );
-  Exit( aSprite.Color );
+  Result := aSprite.Color;
+  if Result.A = 0 then Result.A := 255;
 end;
 
 procedure TDRLSpriteMap.Draw;
