@@ -44,7 +44,7 @@ end;
 
 implementation
 
-uses sysutils, vluasystem, vtig, dfplayer, drlbase, drlperk;
+uses math, sysutils, vluasystem, vtig, dfplayer, drlbase, drlperk;
 
 constructor TMoreBeingView.Create( aBeing : TBeing );
 var i : Integer;
@@ -311,12 +311,12 @@ begin
       AddStat( 'Swap time', Seconds(FItem.SwapTime) );
       AddStat( 'Accuracy', BonusStr(FItem.Acc) );
       AddStat( 'Damage type', DamageTypeName(FItem.DamageType) );
-      AddStat( 'Shots', IntToStr(FItem.Shots) );
-      AddStat( 'Shot cost', IntToStr(FItem.ShotCost) );
+      AddStat( 'Shots', IntToStr(math.Max(FItem.Shots, 1)) );
+      AddStat( 'Shot cost', IntToStr(Iif(FItem.Flags[IF_NOAMMO], 0, math.Max(FItem.ShotCost,1))) );
       AddStat( 'Expl.radius', IntToStr(FItem.Radius) );
       AddStat( 'Dmg. falloff', IntToStr(FItem.Falloff)+'%' );
       AddStat( 'Cone size', IntToStr(FItem.Spread) );
-      AddStat( 'Max range', IntToStr(FItem.Range) );
+      AddStat( 'Max range', IIf( FItem.Range > 0, IntToStr(FItem.Range), 'N/A' ) );
       if FItem.HasHook( Hook_OnAltFire ) then
         AddStat( 'Alt. fire', FItem.GetAltFireName );
       if FItem.HasHook( Hook_OnAltReload ) then
