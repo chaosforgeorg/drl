@@ -174,7 +174,7 @@ const KeyInfo : array[TInputKey] of TKeyInfoEntry = (
     (ID: 'input_swapweapon';     Group: 'keybindings_actions';      Default: VKEY_Z;                Name: 'Swap weapon';      Description: 'Swap your current and prepared weapon.'),
     (ID: 'input_active';         Group: 'keybindings_actions';      Default: VKEY_X;                Name: 'Use active skill'; Description: 'Use active skill.'),
     (ID: 'input_unload';         Group: 'keybindings_actions';      Default: VKEY_U;                Name: 'Unload weapon';    Description: 'Unload weapon from ground (if present) or inventory.'),
-    (ID: 'input_altpickup';      Group: 'keybindings_actions';      Default: VKEY_G + IOKeyCodeShiftMask; Name: 'Alternative pickup'; Description: 'Use item from ground if possible.'),
+    (ID: 'input_altpickup';      Group: 'keybindings_actions';      Default: VKEY_G + IOKeyCodeShiftMask; Name: 'Alternative pickup'; Description: 'Equip/use item from ground if possible.'),
     (ID: 'input_altfire';        Group: 'keybindings_actions';      Default: VKEY_F + IOKeyCodeShiftMask; Name: 'Alternative fire';   Description: 'Use weapons alternative fire mode (if present).'),
     (ID: 'input_alttarget';      Group: 'keybindings_actions';      Default: VKEY_T + IOKeyCodeShiftMask; Name: 'Alternative target'; Description: 'Target and use weapons alternative fire mode (if present).'),
     (ID: 'input_altreload';      Group: 'keybindings_actions';      Default: VKEY_R + IOKeyCodeShiftMask; Name: 'Alternative reload'; Description: 'Use weapons alternative reload (if present).'),

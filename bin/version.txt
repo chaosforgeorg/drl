@@ -1,12 +1,9 @@
-0.10.9
+0.10.8
 [new] -- GJ#242: UI - SHIFT-G will now equip items from ground if at all possible (old one goes to inv, or ground if full)
 [mod] -- GJ#326: Game - fixed broken recharge rates, buffed some recharge items
 [mod] -- GJ#326: Game - Item [m]ore info has explicitly listed weapon group and ammo type
 [mod] -- GJ#284: Game - on Angel of Max Carnage everyone will now always hit instead of 98%
 [mod] -- GJ#284: Game - AUTOHIT effects still have 50% miss rate in the dark and don't apply to non-target enemies
-[fix] -- GH#---: ASCII - fixed name input and look mode cursor [joseph-hlucny]
-
-0.10.8
 [mod] -- GJ#---: Game - vaults can now drop boots and melee weapons (no knives, steel boots rarer)
 [mod] -- GJ#316: Game - Berserker stacking limited to 30s, Berserk Pack +50% duration
 [mod] -- GJ#---: Game - armor/boots based 100% resistances will not fully prevent armor degradation
@@ -21,6 +18,7 @@
 [fix] -- GJ#---: Game - nightmare imps regained their explosion radius
 [fix] -- GJ#---: Game - fix a source of Mastermind crashes
 [fix] -- GJ#---: Game - fixed power armor, nanofibre skin and Mother-In-Law assemblies when N wasn't last mod
+[fix] -- GH#---: ASCII - fixed name input and look mode cursor [joseph-hlucny]
 
 0.10.7
 [new] -- GJ#229: Game - blood flood event added
