@@ -23,6 +23,12 @@ end
 
 function aitk.get_patrol_area( self, range, can_wander )
     if not self.patrol_area then
+        if core.options.maintain_groups and self:has_property("LEADER") then
+            local leader = uids.get( self.LEADER )
+            if leader then
+                return area.around( leader.position, math.max( math.floor(range / 2), 2 ) ):clamped( area.FULL )
+            end
+        end
         if can_wander and (not self:has_property("GROUPED")) and ( math.random(2) == 1 ) then
             self.patrol_area = area.FULL_SHRINKED
         else

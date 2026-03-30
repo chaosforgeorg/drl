@@ -20,19 +20,33 @@ function item:can_mod( c, tech_bonus )
 	local max = 0
 	if self.itype == ITEMTYPE_RANGED then
 		max = 1 + 2 * tech_bonus
-	else
-		max = 1 + tech_bonus
+	elseif self.itype == ITEMTYPE_MELEE then
+		max = 1 + player:get_property( "MELEE_MODCAP_MULTIPLIER", 1 ) * tech_bonus
+	elseif self.itype == ITEMTYPE_ARMOR then
+		max = 1 + player:get_property( "ARMOR_MODCAP_MULTIPLIER", 1 ) * tech_bonus
+	elseif self.itype == ITEMTYPE_BOOTS then
+		max = 1 + player:get_property( "BOOTS_MODCAP_MULTIPLIER", 1 ) * tech_bonus
 	end
 
 	if sum >= max then return false end
 
+	local modlevel_bonus = nil
+	local modlevel_base = 0
 	if self.itype == ITEMTYPE_RANGED then
-		if self:get_mod(c) > 2 then return false end
-	elseif self.itype == ITEMTYPE_MELEE or self.itype == ITEMTYPE_ARMOR or self.itype == ITEMTYPE_BOOTS then
-		if self:get_mod(c) > 0 then return false end
+		modlevel_base = 2
+		modlevel_bonus = player:get_property( "RANGED_MODLEVEL_BONUS", 0 )
+	elseif self.itype == ITEMTYPE_MELEE then
+		modlevel_bonus = player:get_property( "MELEE_MODLEVEL_BONUS", 0 )
+	elseif self.itype == ITEMTYPE_ARMOR then
+		modlevel_bonus = player:get_property( "ARMOR_MODLEVEL_BONUS", 0 )
+	elseif self.itype == ITEMTYPE_BOOTS then
+		modlevel_bonus = player:get_property( "BOOTS_MODLEVEL_BONUS", 0 )
 	else
 		return false
 	end
+
+	local max_mod_level = 1 + modlevel_base + modlevel_bonus
+	if self:get_mod(c) >= max_mod_level then return false end
 
 	return true
 end
@@ -99,7 +113,7 @@ function item:get_mod_ids()
 end
 
 function item:can_overcharge( msg )
-	if self.flags[ IF_DESTROY ] then
+	if self.flags[ IF_FIREDESTROY ] then
 		ui.msg("The "..self.name.." is already overcharged!")
 		return false
 	end
@@ -111,8 +125,8 @@ function item:can_overcharge( msg )
 		ui.msg("Chicken.")
 		return false
 	end
-	self.flags[ IF_DESTROY ]  = true
-	self.flags[ IF_NOUNLOAD ] = true
+	self.flags[ IF_FIREDESTROY ] = true
+	self.flags[ IF_NOUNLOAD ]    = true
 	ui.msg("You overcharge the "..self.name.."!")
 	self.name          = "overcharged "..self.name
 	return true

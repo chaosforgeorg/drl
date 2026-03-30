@@ -51,9 +51,9 @@ TItem  = class( TThing )
     function    isFeature : Boolean;
     function    isWearable : Boolean;
     function    isPickupable : Boolean;
+    function    getShotCost( aAltFire : Boolean = False; aShots : Integer = 1; aTarget : TThing = nil ) : Integer;
     function    canFire : Boolean;
     function MenuColor : byte;
-    procedure OnUpdate( Owner : TThing );
     function Preposition( const Item : AnsiString ) : string;
     class function Compare( a, b : TItem ) : Boolean; reintroduce;
     class procedure RegisterLuaAPI();
@@ -102,6 +102,7 @@ TItem  = class( TThing )
     property UseTime        : Byte        read FProps.UseTime        write FProps.UseTime;
     property SwapTime       : Byte        read FProps.SwapTime       write FProps.SwapTime;
     property DamageType     : TDamageType read FProps.DamageType     write FProps.DamageType;
+    property MissTrail      : Word        read FProps.MissTrail      write FProps.MissTrail;
     property MisASCII       : Char        read FProps.MisASCII       write FProps.MisAscii;
     property MisColor       : Byte        read FProps.MisColor       write FProps.MisColor;
     property MisDelay       : Byte        read FProps.MisDelay       write FProps.MisDelay;
@@ -113,7 +114,8 @@ procedure SwapItem(var a, b: TItem);
 
 implementation
 
-uses vnode, drlua, vluasystem, vluaentitynode, vutil, vdebug, dfbeing, drlbase, vmath, drlhooks, drlperk;
+uses vnode, drlua, vluasystem, vluaentitynode, vutil, vdebug, dfbeing, drlbase, 
+     vmath, drlhooks, drlperk;
 
 procedure SwapItem(var a, b: TItem);
 var c : TItem;
@@ -210,10 +212,10 @@ begin
 end;
 
 procedure TItem.LuaLoad( aTable : TLuaTable; aOnFloor: boolean );
-var i : Byte;
+var i   : Byte;
+    iID : AnsiString;
 begin
   inherited LuaLoad( aTable );
-  FHooks := FHooks * ItemHooks;
 
   FProps.itype := TItemType( aTable.getInteger('type') );
 
@@ -258,6 +260,10 @@ begin
   FProps.MisDelay    := aTable.getInteger('misdelay',0);
   FProps.MissBase    := aTable.getInteger('miss_base',0);
   FProps.MissDist    := aTable.getInteger('miss_dist',0);
+  FProps.MissTrail   := 0;
+  iID                := aTable.getString('miss_trail','');
+  if iID <> '' then
+    FProps.MissTrail := LuaSystem.Defines[ iID ];
 
   FProps.PCosColor := ColorZero;
   FProps.PGlowColor := ColorZero;
@@ -344,7 +350,8 @@ begin
       FlagStr := '';
       if IF_MODIFIED in FFlags then
       for Count := Ord('A') to Ord('Z') do
-        if FMods[Count] > 0 then FlagStr += Chr(Count);
+          if FMods[Count] > 0 then
+            FlagStr += Chr(Count) + Iif( FMods[Count] > 1, IntToStr(FMods[Count]), '' );
       if FArmor <> 0 then Description += ' ['+IntToStr(FArmor)+']';
       if FlagStr <> '' then Description += ' ('+FlagStr+')';
       Description += ResistDescriptionShort;
@@ -358,7 +365,8 @@ begin
         FlagStr := '';
         if IF_MODIFIED in FFlags then
         for Count := Ord('A') to Ord('Z') do
-          if FMods[Count] > 0 then FlagStr += Chr(Count);
+          if FMods[Count] > 0 then
+            FlagStr += Chr(Count) + Iif( FMods[Count] > 1, IntToStr(FMods[Count]), '' );
         if FlagStr <> '' then Description += ' ('+FlagStr+')';
         //Description += ResistDescriptionShort;
       end;
@@ -614,21 +622,24 @@ begin
   Exit( not ( FProps.IType in [ ITEMTYPE_FEATURE, ITEMTYPE_TELE, ITEMTYPE_LEVER ] ) );
 end;
 
+function TItem.getShotCost( aAltFire : Boolean = False; aShots : Integer = 1; aTarget : TThing = nil ) : Integer;
+var iShotCost : Integer;
+begin
+  iShotCost := math.Max( ShotCost, 1 );
+  if ( Parent <> nil ) and ( Parent is TBeing ) then
+    iShotCost := Round( aShots * iShotCost * (Parent as TBeing).GetBonusMul( Hook_getAmmoCostMul, [ Self, aAltFire, aShots, aTarget ] ) );
+  Exit( math.Max( iShotCost, 1 ) );
+end;
+
 function TItem.canFire: boolean;
 begin
   if not isRanged then Exit( False );
   if not Flags[ IF_NOAMMO ] then
   begin
     if Ammo = 0        then Exit( False );
-    if Ammo < ShotCost then Exit( False );
+    if Ammo < getShotCost then Exit( False );
   end;
   Exit( True );
-end;
-
-procedure TItem.OnUpdate( Owner : TThing );
-begin 
-  if ( Hook_OnEquipTick in FHooks ) or ( ( FPerks <> nil ) and ( Hook_OnEquipTick in FPerks.Hooks ) ) then
-    CallHook( Hook_OnEquipTick, [ Owner ] );
 end;
 
 function lua_item_new(L: Plua_State): Integer; cdecl;
@@ -671,22 +682,28 @@ begin
   iState.Init(L);
   iItem := iState.ToObject(1) as TItem;
   if iItem = nil then Exit(0);
-  iType := iState.ToString(2);
-  iPSprite := nil;
-  if iType = 'spr' then
-    iPSprite := @iItem.FSprite
-  else if iType = 'mis' then
-    iPSprite := @iItem.FProps.MisSprite
-  else if iType = 'hit' then
-    iPSprite := @iItem.FProps.HitSprite
-  else if iType = 'exp' then
-    iPSprite := @iItem.FProps.Explosion.Sprite;
-  if iPSprite = nil then
+
+  iPSprite := @iItem.FSprite;
+  iType := '';
+  if iState.IsString(2) then
   begin
-    iState.Error('sprite type expected as parameter #1!');
-    Exit( 0 );
-  end;
-  iTable := iState.ToTable(3);
+    iType := iState.ToString(2);
+    if iType = 'mis' then
+      iPSprite := @iItem.FProps.MisSprite
+    else if iType = 'hit' then
+      iPSprite := @iItem.FProps.HitSprite
+    else if iType = 'exp' then
+      iPSprite := @iItem.FProps.Explosion.Sprite
+    else
+    begin
+      iState.Error('sprite type expected as parameter #2!');
+      Exit( 0 );
+    end;
+    iTable := iState.ToTable(3);
+  end
+  else
+    iTable := iState.ToTable(2);
+
   if iTable = nil then Exit( 0 );
   FillChar( iPSprite^, SizeOf( TSprite ), 0 );
   ReadSprite( iTable, iPSprite^ );

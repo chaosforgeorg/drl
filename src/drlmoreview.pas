@@ -44,7 +44,7 @@ end;
 
 implementation
 
-uses sysutils, vluasystem, vtig, dfplayer, drlbase, drlperk;
+uses math, sysutils, vluasystem, vtig, dfplayer, drlbase, drlperk;
 
 constructor TMoreBeingView.Create( aBeing : TBeing );
 var i : Integer;
@@ -258,6 +258,8 @@ var iPerks     : TPerkList;
     iHasFire   : Boolean;
     i          : Integer;
     iStatQueue : TStringGArray;
+    iGroup     : AnsiString;
+    iGroupName : AnsiString;
   procedure AddStat( const aName : Ansistring; const aValue : Ansistring );
   begin
     iStatQueue.Push( Padded( aName, 13 ) + ': {!' + aValue + '}' );
@@ -281,7 +283,16 @@ begin
   // Stats
   FTexts[0] := TStringGArray.Create;
   iStatQueue := TStringGArray.Create;
-  
+
+  iGroup := LuaSystem.Get(['items', FItem.ID, 'group'], '');
+  if iGroup <> '' then
+  begin
+    iGroupName := LuaSystem.Get(['core', 'weapon_group_name', iGroup], iGroup);
+    AddStat( 'Weapon group', iGroupName );
+  end;
+  if (FItem.AmmoID > 0) and (not FItem.Flags[ IF_NOAMMO ]) then
+    AddStat( 'Ammo type', LuaSystem.Get(['items', FItem.AmmoID, 'name'], '') );
+
   case FItem.IType of
     ITEMTYPE_ARMOR, ITEMTYPE_BOOTS :
     begin
@@ -300,12 +311,12 @@ begin
       AddStat( 'Swap time', Seconds(FItem.SwapTime) );
       AddStat( 'Accuracy', BonusStr(FItem.Acc) );
       AddStat( 'Damage type', DamageTypeName(FItem.DamageType) );
-      AddStat( 'Shots', IntToStr(FItem.Shots) );
-      AddStat( 'Shot cost', IntToStr(FItem.ShotCost) );
+      AddStat( 'Shots', IntToStr(math.Max(FItem.Shots, 1)) );
+      AddStat( 'Shot cost', IntToStr(Iif(FItem.Flags[IF_NOAMMO], 0, math.Max(FItem.ShotCost,1))) );
       AddStat( 'Expl.radius', IntToStr(FItem.Radius) );
       AddStat( 'Dmg. falloff', IntToStr(FItem.Falloff)+'%' );
       AddStat( 'Cone size', IntToStr(FItem.Spread) );
-      AddStat( 'Max range', IntToStr(FItem.Range) );
+      AddStat( 'Max range', IIf( FItem.Range > 0, IntToStr(FItem.Range), 'N/A' ) );
       if FItem.HasHook( Hook_OnAltFire ) then
         AddStat( 'Alt. fire', FItem.GetAltFireName );
       if FItem.HasHook( Hook_OnAltReload ) then

@@ -8,7 +8,7 @@ unit drltraits;
 interface
 uses classes, sysutils, vutil, vnode, dfdata, drlhooks;
 
-const   MAXTRAITS  = 50;
+const   MAXTRAITS  = 80;
         MAXKLASS   = 10;
 
 type TTraits = class( TVObject )
@@ -41,7 +41,7 @@ end;
 
 implementation
 
-uses vluasystem, dfplayer;
+uses vluasystem, dfplayer, drlbase;
 
 function TTraits.CanPick( aKlass : Byte; aTrait : Byte; aCharLevel : Byte ): Boolean;
 var iOther, iValue : DWord;
@@ -203,7 +203,7 @@ begin
     if aHook in FHooks[i] then
     begin
       CallHook := True;
-      LuaSystem.ProtectedCall( [ 'traits', i, HookNames[aHook] ], ConcatConstArray( [Player], aParams ) )
+      LuaSystem.ProtectedCall( [ 'traits', i, Lua.HookName(aHook) ], ConcatConstArray( [Player], aParams ) )
     end;
 end;
 

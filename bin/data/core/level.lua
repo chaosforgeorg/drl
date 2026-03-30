@@ -133,6 +133,7 @@ function level:flood_monsters( params )
 			break
 		end
 		if bp.is_group then
+			local leader
 			for _,group in ipairs(bp.beings) do
 				local count = core.resolve_range(group.amount or 1)
 				for i=1,count do
@@ -141,6 +142,11 @@ function level:flood_monsters( params )
 					count  = count - 1
 					if b then 
 						b:add_property( "GROUPED" )
+						if not leader then 
+							leader = b	
+						else
+							b:add_property( "LEADER", leader.uid )
+						end
 					end
 				end
 			end

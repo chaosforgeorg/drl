@@ -94,7 +94,7 @@ type TDRLIO = class( TIO )
   procedure addCellAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aValue : Integer ); virtual;
   procedure addItemAnimation( aDuration : DWord; aDelay : DWord; aItem : TThing; aValue : Integer ); virtual;
   procedure addKillAnimation( aDuration : DWord; aDelay : DWord; aBeing : TThing; aReverse : Boolean = False ); virtual;
-  procedure addMissileAnimation( aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aColor : Byte; aPic : Char; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False ); virtual; abstract;
+  procedure addMissileAnimation( aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aColor : Byte; aPic : Char; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False; aTrailNID : Word = 0 ); virtual; abstract;
   procedure addMarkAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aColor : Byte; aPic : Char ); virtual; abstract;
   procedure addFXAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite ); virtual;
   procedure addSoundAnimation( aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord ); virtual; abstract;
@@ -343,6 +343,10 @@ begin
     addScreenShakeAnimation( Clamp( 100 * aData.Range, 300, 500 ), aData.Delay, Clampf( 2.0 * aData.Range, 2.0, 5.0 ) );
     addRumbleAnimation( aDelay, Clamp( $2000 * aData.Range, $2000, $E000 ), $6000, Clamp( 100 * aData.Range, 100, 300 ) );
   end;
+
+  if GraphicsVersion and ( aData.EmitterID > 0 ) then
+    DRL.Particles.AddEmitterDirect( aData.EmitterID,
+      Vec3f( ( aWhere.X - 1 ) * 32 + 16, ( aWhere.Y - 1 ) * 32 + 16, 0 ) );
 
   for iCoord in NewArea( aWhere, aData.Range ).Clamped( iLevel.Area ) do
     begin

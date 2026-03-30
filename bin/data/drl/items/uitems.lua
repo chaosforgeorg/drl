@@ -825,8 +825,9 @@ function drl.register_unique_items()
 
 		OnCreate = function(self)
 			self:add_perk( "perk_armor_recharge" )
-			self.pp_recharge.delay  = 10
-			self.pp_recharge.amount = 5
+			self.pp_recharge.delay  = 50
+			self.pp_recharge.amount = 1
+			self.pp_recharge.tick   = 5
 		end,
 	}
 
@@ -878,11 +879,22 @@ function drl.register_unique_items()
 
 	register_perk "perk_umedparmor"
 	{
-		OnEquipTick = function(self, being)
-			if self.durability > 20 then
+		OnAdd = function(self)
+			self:add_property( "pp_med_timer", 0 )
+		end,
+
+		OnTick = function(self)
+			local being = self.parent
+			if being and self.durability > 20 then
 				if being.hp < being.hpmax / 2 then
-					being.hp = being.hp + 1
-					self.durability = self.durability - 1
+					self.pp_med_timer = self.pp_med_timer + 1
+					if self.pp_med_timer >= 30 then
+						self.pp_med_timer = 20
+						being.hp = being.hp + 1
+						self.durability = self.durability - 1
+					end
+				else
+					self.pp_med_timer = 0
 				end
 			end
 		end,
@@ -911,10 +923,19 @@ function drl.register_unique_items()
 
 	register_perk "perk_ulavaarmor"
 	{
-		OnEquipTick = function(self, being)
+		OnAdd = function(self)
+			self:add_property( "pp_lavarecharge", 0 )
+		end,
+		OnTick = function(self)
 			if self.durability < self.maxdurability then
-				if level.map[ being.position ] == cells[ "lava" ].nid then
-					self.durability = math.min( self.durability + 5, self.maxdurability )
+				self.pp_lavarecharge = self.pp_lavarecharge + 1
+				if self.pp_lavarecharge > 4 then
+					local being = self.parent
+					local cell = level.map[ being.position ]
+					if cell == cells[ "lava" ].nid then
+						self.durability = math.min( self.durability + 3, self.maxdurability )
+					end
+					self.pp_lavarecharge = 0
 				end
 			end
 		end,
@@ -984,8 +1005,9 @@ function drl.register_unique_items()
 
 		OnCreate = function(self)
 			self:add_perk( "perk_armor_recharge" )
-			self.pp_recharge.delay  = 10
-			self.pp_recharge.amount = 5
+			self.pp_recharge.delay  = 50
+			self.pp_recharge.amount = 1
+			self.pp_recharge.tick   = 5
 		end,
 	}
 
@@ -1070,9 +1092,9 @@ function drl.register_unique_items()
 			return true
 		end,
 
-		OnEquipTick = function(self, being)
+		OnTick = function(self)
 			self.armor = math.floor((1-(math.min(being.hp,being.hpmax) / being.hpmax)) * 16) + 4
-			if math.random(20) == 1 then
+			if math.random(200) == 1 then
 				-- Meh.  Nightmare demons are too easy anyway.  This should convince the player to wear BA only when it is time to summon the Apostle.
 				local demon = level:summon( "ncacodemon" )
 				if demon then
@@ -1133,8 +1155,8 @@ function drl.register_unique_items()
 			end
 		end,
 
-		OnEquipTick = function(self, being)
-			if math.random(40) == 1 then
+		OnTick = function(self)
+			if math.random(400) == 1 then
 				-- The DS shouldn't be an easy I-Win! button.  Make YAAM harder.
 				local demon = level:summon( "ndemon" )
 				if demon then

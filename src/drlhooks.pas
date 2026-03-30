@@ -6,7 +6,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlhooks;
 interface
-uses vutil, dfdata;
+uses vutil, vluasystem, dfdata;
 
 const
   Hook_OnCreate        = 0;   // Being and Item -> Level, Module, Challenge, Core (Chained)
@@ -32,13 +32,13 @@ const
   Hook_OnKillAll       = 20;  // Level, Module, Challenge, Core (Chained)
   Hook_OnHitBeing      = 21;  // Item
   Hook_OnReload        = 22;  // Item
-  Hook_OnEquipTick     = 23;  // Item
+  Hook_OnDescribe      = 23;  // Item
   Hook_OnEquipCheck    = 24;  // Item
   Hook_OnAct           = 25;  // Item
   Hook_OnDestroy       = 26;  // Item
   Hook_OnEnter         = 27;  // Item (separate)
   Hook_OnEnterLevel    = 28;  // Level, Module, Challenge, Core (chained)
-  Hook_OnFire          = 29;  // Item, Level, Module, Challenge, Core (Chained)
+  Hook_OnFire          = 29;  // Trait (separate), Item (not chained)
   Hook_OnFired         = 30;  // Trait (separate), Item, Level, Module, Challenge, Core (Chained)
   Hook_OnExit          = 31;  // Level, Module, Challenge, Core (Chained)
   Hook_OnTick          = 32;  // Perk, Being (Separate), Level, Module, Challenge, Core (Chained)
@@ -66,30 +66,32 @@ const
   Hook_OnCanDualWield  = 52;   // Trait
   Hook_OnCanMaxDamage  = 53;   // Trait
 
-  Hook_OnDescribe      = 54; // Item
-
-  Hook_getDamageBonus  = 55; // Trait, Being, Affects
-  Hook_getToHitBonus   = 56; // Trait, Being, Affects
-  Hook_getShotsBonus   = 57; // Trait, Being, Affects
-  Hook_getFireCostBonus= 58; // Trait, Being, Affects
-  Hook_getDefenceBonus = 59; // Trait, Being, Affects
-  Hook_getDodgeBonus   = 60; // Trait, Being, Affects
-  Hook_getMoveBonus    = 61; // Trait, Being, Affects
-  Hook_getBodyBonus    = 62; // Trait, Being, Affects
-  Hook_getResistBonus  = 63; // Trait, Being, Affects
-  Hook_getDamageMul    = 64; // Trait, Being, Affects
-  Hook_getFireCostMul  = 65; // Trait, Being, Affects
-  Hook_getAmmoCostMul  = 66; // Trait, Being, Affects
-  Hook_getReloadCostMul= 67; // Trait, Being, Affects
+  Hook_getDamageBonus  = 54; // Trait, Being, Affects
+  Hook_getToHitBonus   = 55; // Trait, Being, Affects
+  Hook_getShotsBonus   = 56; // Trait, Being, Affects
+  Hook_getFireCostBonus= 57; // Trait, Being, Affects
+  Hook_getDefenceBonus = 58; // Trait, Being, Affects
+  Hook_getDodgeBonus   = 59; // Trait, Being, Affects
+  Hook_getMoveBonus    = 60; // Trait, Being, Affects
+  Hook_getBodyBonus    = 61; // Trait, Being, Affects
+  Hook_getResistBonus  = 62; // Trait, Being, Affects
+  Hook_getDamageMul    = 63; // Trait, Being, Affects
+  Hook_getFireCostMul  = 64; // Trait, Being, Affects
+  Hook_getAmmoCostMul  = 65; // Trait, Being, Affects
+  Hook_getReloadCostMul= 66; // Trait, Being, Affects
+  Hook_getGibMul       = 67; // Trait, Being, Affects
   Hook_OnUnequipCheck  = 68; // Item
+  Hook_OnDrop          = 69; // Item
+  Hook_OnDropItem      = 70; // Item
 
-  HookAmount           = 69;
+  HookAmount           = 71;
 
 const AllHooks      : TFlags = [ 0..HookAmount-1 ];
 
 var   BeingHooks    : TFlags;
       ItemHooks     : TFlags;
       ChainedHooks  : TFlags;
+      FullInvHooks  : TFlags;
       LevelHooks    : TFlags;
       GlobalHooks   : TFlags;
       ModuleHooks   : TFlags;
@@ -99,26 +101,27 @@ const HookNames : array[ 0..HookAmount-1 ] of AnsiString = (
       'OnCreate', 'OnAction', 'OnAttacked', 'OnUseActive', 'OnDie', 'OnDieCheck',
       'OnPickupItem', 'OnPickup','OnPickupCheck','OnFirstPickup','OnUse','OnUseCheck',
       'OnAltFire', 'OnAltReload', 'OnEquip', 'OnUnequip', 'OnAdd', 'OnRemove', 'OnTick10', 'OnKill', 'OnKillAll',
-      'OnHitBeing', 'OnReload', 'OnEquipTick', 'OnEquipCheck', 'OnAct', 'OnDestroy', 'OnEnter', 'OnEnterLevel',
+      'OnHitBeing', 'OnReload', 'OnDescribe', 'OnEquipCheck', 'OnAct', 'OnDestroy', 'OnEnter', 'OnEnterLevel',
       'OnFire', 'OnFired', 'OnExit', 'OnTick', 'OnNuked',
       'OnLoad','OnLoaded','OnUnLoad', 'OnCreatePlayer', 'OnLevelUp','OnPreLevelUp',
       'OnWinGame', 'OnMortem', 'OnMortemPrint', 'OnCreateEpisode', 'OnIntro' , 'OnGenerate',
 
       'OnPostMove', 'OnPreReload', 'OnDamage', 'OnReceiveDamage', 'OnPreAction', 'OnPostAction',
       'OnCanDualWield', 'OnCanMaxDamage',
-      'OnDescribe',
+
       'getDamageBonus', 'getToHitBonus', 'getShotsBonus', 'getFireCostBonus',
       'getDefenceBonus', 'getDodgeBonus', 'getMoveBonus', 'getBodyBonus', 'getResistBonus',
       'getDamageMul', 'getFireCostMul', 'getAmmoCostMul', 'getReloadCostMul',
-      'OnUnequipCheck'
+      'getGibMul',
+      'OnUnequipCheck',
+      'OnDrop', 'OnDropItem'
       );
 
 function LoadHooks( const aTable : array of Const ) : TFlags;
 function LoadHooks( const aTable : array of Const; aHooks : TFlags ) : TFlags;
+function LoadCallbacks( aTable : TLuaTable ) : TFlags;
 
 implementation
-
-uses vluasystem;
 
 function LoadHooks ( const aTable : array of Const ) : TFlags;
 begin
@@ -126,37 +129,55 @@ begin
 end;
 
 function LoadHooks ( const aTable : array of Const; aHooks : TFlags ) : TFlags;
-var Hook  : Byte;
+var iHook    : Byte;
+    i, iSize : DWord;
 begin
   with LuaSystem.GetTable( aTable ) do
   try
     LoadHooks := [];
-    for Hook in aHooks do
-      if isFunction(HookNames[Hook]) then
-        Include(LoadHooks,Hook);
+    for iHook in aHooks do
+      if isFunction(HookNames[iHook]) then
+        Include(LoadHooks,iHook);
+    iSize := LuaSystem.GetTableSize( ['core','callbacks'] );
+    if iSize > 0 then
+      for i := 1 to iSize do
+        if isFunction( LuaSystem.Get( ['core','callbacks', i] ) ) then
+          Include( LoadHooks, i + 200 );
   finally
     Free;
   end;
+end;
+
+function LoadCallbacks( aTable : TLuaTable ) : TFlags;
+var i, iSize : DWord;
+begin
+  iSize := LuaSystem.GetTableSize( ['core','callbacks'] );
+  if iSize = 0 then Exit( [] );
+  LoadCallbacks := [];
+  for i := 1 to iSize do
+    if aTable.isFunction( LuaSystem.Get( ['core','callbacks', i] ) ) then
+      Include( LoadCallbacks, i + 200 );
 end;
 
 initialization
 
 AllHooks     := [ 0..HookAmount-1 ];
 BeingHooks   := [ Hook_OnCreate, Hook_OnAction, Hook_OnAttacked, Hook_OnUseActive,
-  Hook_OnDie, Hook_OnDieCheck, Hook_OnPickUpItem, Hook_OnPostMove, Hook_OnKill,
+  Hook_OnDie, Hook_OnDieCheck, Hook_OnPickUpItem, Hook_OnDropItem, Hook_OnPostMove, Hook_OnKill,
   Hook_OnDamage, Hook_OnReceiveDamage, Hook_OnPreAction, Hook_OnEnterLevel,
   Hook_getDamageBonus, Hook_getToHitBonus, Hook_getShotsBonus, Hook_getFireCostBonus,
   Hook_getDefenceBonus, Hook_getDodgeBonus, Hook_getMoveBonus, Hook_getBodyBonus,
   Hook_getResistBonus, Hook_getDamageMul, Hook_getFireCostMul, Hook_getAmmoCostMul];
+FullInvHooks := [ Hook_OnPreAction, Hook_OnPostAction, Hook_OnTick ];
 ItemHooks    := [ Hook_OnCreate, Hook_OnPickup, Hook_OnFirstPickup,
   Hook_OnUse, Hook_OnUseCheck, Hook_OnAltFire, Hook_OnEquip, Hook_OnUnequip,
   Hook_OnEnter, Hook_OnFire, Hook_OnAct, Hook_OnDestroy, Hook_OnDescribe, Hook_OnPickupCheck, 
-  Hook_OnUnequipCheck ];
+  Hook_OnUnequipCheck, Hook_OnDrop ];
 ChainedHooks := [ Hook_OnCreate, Hook_OnDie, Hook_OnDieCheck, Hook_OnPickup,
   Hook_OnPickUpItem, Hook_OnKillAll, Hook_OnPickupCheck, Hook_OnUse, Hook_OnUseCheck,
-  Hook_OnFire, Hook_OnFired ];
+  Hook_OnFired, Hook_OnDrop, Hook_OnDropItem ];
 LevelHooks   := ChainedHooks + [ Hook_OnEnterLevel, Hook_OnKill, Hook_OnExit, Hook_OnTick,
-  Hook_OnNuked ];
+  Hook_OnNuked, Hook_OnDrop, Hook_OnDropItem ];
 GlobalHooks  := LevelHooks + [ Hook_OnEnterLevel, Hook_OnKill, Hook_OnExit, Hook_OnTick,
   Hook_OnLoad, Hook_OnLoaded, Hook_OnUnLoad, Hook_OnCreatePlayer, Hook_OnLevelUp,
   Hook_OnPreLevelUp, Hook_OnWinGame, Hook_OnMortem, Hook_OnMortemPrint, Hook_OnCreateEpisode,

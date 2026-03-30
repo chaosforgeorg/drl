@@ -9,7 +9,7 @@ interface
 
 uses vnode, vutil, vuid, viotypes, vrltools, vluasystem, vioevent, vstoreinterface,
      dflevel, dfdata, dfhof, dfitem,
-     drlhooks, drlua, drlcommand, drlkeybindings, drlmodule;
+     drlhooks, drlua, drlcommand, drlkeybindings, drlmodule, drlparticles;
 
 type TTargeting = class
   constructor Create;
@@ -101,6 +101,7 @@ TDRL = class(TVObject)
        FDataLoaded      : Boolean;
        FGameWon         : Boolean;
        FCrashSave       : Boolean;
+       FParticles       : TParticleStore;
      public
        property GameWon : Boolean read FGameWon write FGameWon;
        property Difficulty : Byte read FDifficulty;
@@ -113,6 +114,7 @@ TDRL = class(TVObject)
        property State : TDRLState read FState;
        property Targeting : TTargeting read FTargeting;
        property DamagedLastTurn : Boolean read FDamagedLastTurn write FDamagedLastTurn;
+       property Particles : TParticleStore read FParticles;
      end;
 
 var DRL : TDRL;
@@ -190,10 +192,10 @@ end;
 
 procedure TDRL.CallHook( Hook : Byte; const Params : array of const ) ;
 begin
-  if (Hook in FModuleHooks) then LuaSystem.ProtectedCall([CoreModuleID,HookNames[Hook]],Params);
-  if (FChallenge <> '')  and (Hook in FChallengeHooks) then LuaSystem.ProtectedCall(['chal',FChallenge,HookNames[Hook]],Params);
-  if (FSChallenge <> '') and (Hook in FSChallengeHooks) then LuaSystem.ProtectedCall(['chal',FSChallenge,HookNames[Hook]],Params);
-  if (Hook in FCoreHooks) then LuaSystem.ProtectedCall(['core',HookNames[Hook]],Params);
+  if (Hook in FModuleHooks) then LuaSystem.ProtectedCall([CoreModuleID,Lua.HookName(Hook)],Params);
+  if (FChallenge <> '')  and (Hook in FChallengeHooks) then LuaSystem.ProtectedCall(['chal',FChallenge,Lua.HookName(Hook)],Params);
+  if (FSChallenge <> '') and (Hook in FSChallengeHooks) then LuaSystem.ProtectedCall(['chal',FSChallenge,Lua.HookName(Hook)],Params);
+  if (Hook in FCoreHooks) then LuaSystem.ProtectedCall(['core',Lua.HookName(Hook)],Params);
 end;
 
 function TDRL.CallHookCheck ( Hook : Byte; const Params : array of const ) : Boolean;
@@ -296,8 +298,8 @@ begin
   LuaSystem := iLua;
   LuaSystem.CallDefaultResult := True;
 //  Modules.RegisterAwards( LuaSystem.Raw );
-  FCoreHooks   := LoadHooks( [ 'core' ] ) * GlobalHooks;
-  FModuleHooks := LoadHooks( [CoreModuleID] ) * GlobalHooks;
+  FCoreHooks   := LoadHooks( [ 'core' ], GlobalHooks );
+  FModuleHooks := LoadHooks( [CoreModuleID], GlobalHooks );
 
   SafeCallModuleHook( Hook_OnLoad, [] );
   Reconfigure;
@@ -350,14 +352,19 @@ end;
 
 constructor TDRL.Create;
 begin
+  FParticles := TParticleStore.Create;
   FTargeting := TTargeting.Create;
   Reset;
   FStore     := TStoreInterface.Get;
   Log( VersionToString( ArrayToVersion(VERSION_ARRAY) ) );
   Reconfigure;
-  if GraphicsVersion
-    then IO := TDRLGFXIO.Create
-    else IO := TDRLTextIO.Create;
+  if GraphicsVersion then
+  begin
+    IO := TDRLGFXIO.Create;
+    FParticles.Initialize( TDRLGFXIO(IO).ParticleEngine );
+  end
+  else
+    IO := TDRLTextIO.Create;
 
   ModErrors := TStringGArray.Create;
 
@@ -397,6 +404,7 @@ begin
   FPlayerView      := nil;
   FPadMoveActive   := False;
 
+  FParticles.Clear;
   if IO <> nil then IO.Reset;
 end;
 
@@ -451,8 +459,8 @@ begin
 
   FChallengeHooks := [];
   FSChallengeHooks := [];
-  if FChallenge  <> '' then FChallengeHooks  := LoadHooks( ['chal',FChallenge] ) * GlobalHooks;
-  if FSChallenge <> '' then FSChallengeHooks := LoadHooks( ['chal',FSChallenge] ) * GlobalHooks;
+  if FChallenge  <> '' then FChallengeHooks  := LoadHooks( ['chal',FChallenge], GlobalHooks );
+  if FSChallenge <> '' then FSChallengeHooks := LoadHooks( ['chal',FSChallenge], GlobalHooks );
 end;
 
 procedure TDRL.PreAction;
@@ -676,6 +684,7 @@ var iTarget     : TCoord2D;
     iRange      : Byte;
     iCommand    : Byte;
     iEmpty      : Boolean;
+    iShotCost   : Integer;
 begin
   IO.MsgUpdate;
   iLimitRange := False;
@@ -716,7 +725,7 @@ begin
     if ( not iItem.Flags[ IF_ALTTARGET ] ) then aAuto := False;
     if iItem.Flags[ IF_ALTMANUAL ]         then aAuto := False;
   end;
-  if not iItem.CallHookCheck( Hook_OnFire, [Player,aAlt] ) then Exit( False );
+  if not iItem.CallHookCheck( Hook_OnUseCheck, [Player,aAlt] ) then Exit( False );
 
   if aAlt then
   begin
@@ -740,8 +749,9 @@ begin
     iEmpty := False;
     if not iItem.Flags[ IF_NOAMMO ] then
     begin
+      iShotCost := iItem.getShotCost( aAlt );
            if iItem.Ammo = 0              then begin IO.Msg( 'Your weapon is empty.' ); iEmpty := True; end
-      else if iItem.Ammo < iItem.ShotCost then begin IO.Msg( 'You don''t have enough ammo to fire the %s!', [iItem.Name] ); iEmpty := True; end;
+      else if iItem.Ammo < iShotCost      then begin IO.Msg( 'You don''t have enough ammo to fire the %s!', [iItem.Name] ); iEmpty := True; end;
     end;
 
     if iEmpty then
@@ -1424,6 +1434,7 @@ repeat
       Player.Score := Player.Score + 1000;
       if FGameWon and (State <> DSNextLevel) then Player.WriteMemorial;
       FLevel.Clear;
+      FParticles.ClearParticles;
     end;
     IO.SetHint('');
   until (State <> DSNextLevel);
@@ -1555,6 +1566,7 @@ begin
         FLevel := TLevel.CreateFromStream( iStream );
         FLevel.Place( Player, Player.Position );
         LuaSystem.SetValue('level', FLevel );
+        FParticles.ReadFromStream( iStream );
       end;
     finally
       iStream.Destroy;
@@ -1632,7 +1644,10 @@ begin
     else Stream.WriteByte( 0 );
 
   if not aCrash then
+  begin
     FLevel.WriteToStream( Stream );
+    FParticles.WriteToStream( Stream );
+  end;
 
   FreeAndNil( Stream );
   FLevel.Clear;
@@ -1648,11 +1663,13 @@ end;
 destructor TDRL.Destroy;
 begin
   UnLoad;
+  FParticles.Initialize( nil );
   FreeAndNil( ModErrors );
   FreeAndNil( FModules );
   FreeAndNil( Config );
   FreeAndNil( FTargeting );
   FreeAndNil( IO );
+  FreeAndNil( FParticles );
   FreeAndNil( UIDs );
   Log('DRL destroyed.');
   inherited Destroy;

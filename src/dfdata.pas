@@ -206,6 +206,7 @@ var
   ModuleOption_FullBeingDescription      : Boolean = False;
   ModuleOption_PercentHealth             : Boolean = False;
   ModuleOption_RelicSlot                 : Boolean = False;
+  ModuleOption_ResistCap                 : Integer = 95;
   ModuleOption_DefaultExplosionKnockback : Integer = 8;
 
 var
@@ -254,16 +255,17 @@ type TCellSet = set of Byte;
        Flags     : TFlags;
      end;
      TExplosionData = record
-       Range     : Integer;
-       Delay     : Integer;
-       Color     : Byte;
-       Flags     : TExplosionFlags;
-       Damage    : TDiceRoll;
-       DamageType: TDamageType;
-       ContentID : Word;
-       Knockback : Integer;
-       SoundID   : string[16];
-       Sprite    : TSprite;
+       Range      : Integer;
+       Delay      : Integer;
+       Color      : Byte;
+       Flags      : TExplosionFlags;
+       Damage     : TDiceRoll;
+       DamageType : TDamageType;
+       ContentID  : Word;
+       EmitterID  : Word;
+       Knockback  : Integer;
+       SoundID    : string[16];
+       Sprite     : TSprite;
      end;
 
 function NewSprite( ID : DWord ) : TSprite;
@@ -328,6 +330,7 @@ type TItemProperties = record
   DamageType    : TDamageType;
   MissBase      : Byte;
   MissDist      : Byte;
+  MissTrail     : Word;
 
   MisASCII      : Char;
   MisColor      : Byte;
@@ -890,6 +893,16 @@ begin
     aExplosion.ContentID := 0;
   FillChar( aExplosion.Sprite, SizeOf( TSprite ), 0 );
   ReadSprite( aTable, 'sprite', aExplosion.Sprite );
+  if aTable.IsNumber('emitter') then
+    aExplosion.EmitterID := aTable.getInteger('emitter',0)
+  else if aTable.IsString('emitter') then
+  begin
+    aExplosion.EmitterID := LuaSystem.Defines[ aTable.getString( 'emitter' ) ];
+    if aExplosion.EmitterID = 0 then
+      Log( LOGERROR, 'unknown emitter define ('+aTable.getString( 'emitter' ) +')!' );
+  end
+  else
+    aExplosion.EmitterID := 0;
   ReadExplosion := aExplosion.Color > 0;
 end;
 

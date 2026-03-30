@@ -231,7 +231,7 @@ begin
   finally
     Free;
   end;
-  FHooks := LoadHooks( [ 'levels', script ] ) * LevelHooks;
+  FHooks := LoadHooks( [ 'levels', script ], LevelHooks );
 
   AfterGeneration;
 end;
@@ -723,8 +723,7 @@ end;
 function TLevel.BeingIntuited( coord: TCoord2D; aBeing: TBeing ) : boolean;
 begin
   if aBeing = nil then Exit(False);
-  if not Player.Flags[ BF_BEINGSENSE ] then Exit(False);
-  Exit(Distance( Player.Position, coord ) <= Player.Vision + 2);
+  Exit(aBeing.Flags[ BF_INTUITED ]);
 end;
 
 function TLevel.AnimationVisible( aCoord : TCoord2D; aBeing : TBeing ) : boolean;
@@ -881,6 +880,11 @@ begin
   if aNoHazard
     then aCoord := DropCoord( aCoord, [ EF_NOITEMS,EF_NOBLOCK,EF_NOHARM,EF_NOSTAIRS ], True )
     else aCoord := DropCoord( aCoord, [ EF_NOITEMS,EF_NOBLOCK,EF_NOSTAIRS ], True );
+
+  aItem.CallHook( Hook_OnDrop, [aItem.Parent] );
+  if (aItem.Parent <> nil) and (aItem.Parent is TBeing) then
+    TBeing(aItem.Parent).CallHook( Hook_OnDropItem, [aItem] );
+
   if aDropAnim and isVisible( aCoord ) then aItem.Appear := 1;
   Add( aItem, aCoord );
 
@@ -1040,9 +1044,9 @@ var iDiff,iC : TCoord2D;
       until iCount = iRange;
     end;
 begin
-  iRange   := aItem.Range;
-  iSpread  := aItem.Spread;
-  iFalloff := aItem.Falloff;
+  iRange   := Max( aItem.Range, 1 );
+  iSpread  := Max( aItem.Spread, 1 );
+  iFalloff := Max( aItem.Falloff, 0 );
   iKnock   := aItem.Knockback;
   iHSprite := aItem.HitSprite;
   if ( iSpread <= 0 ) then Exit;
@@ -1174,6 +1178,7 @@ begin
     SetBeing( aBeing.Position, nil );
 
   FMarkers.Wipe( aBeing.UID );
+  DRL.Particles.Kill( aBeing.UID );
   FreeAndNil(aBeing);
   if DRL.State <> DSPlaying then Exit;
 

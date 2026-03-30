@@ -17,9 +17,10 @@ type TAnimation        = vanimation.TAnimation;
 { TGFXMissileAnimation }
 
 TGFXMissileAnimation = class(TAnimation)
-  constructor Create( aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False );
+  constructor Create( aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False; aTrailNID : Word = 0 );
   procedure OnUpdate( aTime : DWord ); override;
   procedure OnDraw; override;
+  destructor Destroy; override;
 private
   FSource   : TVec2i;
   FTarget   : TVec2i;
@@ -29,6 +30,7 @@ private
   FSprite   : TSprite;
   FStepDelay: DWord;
   FStep     : Word;
+  FEmitter  : Integer;
 end;
 
 { TMessageAnimation }
@@ -173,6 +175,7 @@ private
   FCoord      : TCoord2D;
   FSprites    : array[0..3] of Integer;
   FCount      : Integer;
+  FLeadDelay  : DWord;
   FReverse    : Boolean;
 end;
 
@@ -199,12 +202,12 @@ implementation
 
 uses viotypes, vuid, vlog, vdebug,
      dfbeing, dfthing,
-     drlbase, drlgfxio, drlio, drlspritemap;
+     drlbase, drlgfxio, drlio, drlspritemap, drlparticles;
 
 { TGFXMissileAnimation }
 
 constructor TGFXMissileAnimation.Create(aDuration : DWord; aDelay : DWord; aSource, aTarget: TCoord2D; aDrawDelay: Word; aSprite : TSprite;
-  aRay: Boolean);
+  aRay: Boolean; aTrailNID : Word);
 var iSize : Word;
 begin
   inherited Create( aDuration, aDelay, 0 );
@@ -213,6 +216,7 @@ begin
   FStepDelay := Max( FDuration div Max( ( aSource - aTarget ).LargerLength, 1 ), 1 );
   FRay    := aRay;
   FStep   := 0;
+  FEmitter := -1;
   FPath.Next;
   FPath.Prev := aSource;
   iSize := SpriteMap.GetGridSize;
@@ -221,6 +225,17 @@ begin
   FTarget.Init( aTarget.X*iSize-iSize div 2, aTarget.Y*iSize-iSize div 2 );
   FHeading := -arctan2( aTarget.X - aSource.X, aTarget.Y - aSource.Y );
   if FHeading < 0 then FHeading := FHeading + 2*PI;
+
+  if ( aTrailNID > 0 ) and ( not aRay ) then
+    FEmitter := DRL.Particles.AddEmitterDirect( aTrailNID,
+      Vec3f( FSource.X / SpriteMap.Engine.Scale, FSource.Y / SpriteMap.Engine.Scale, 0 ) );
+end;
+
+destructor TGFXMissileAnimation.Destroy;
+begin
+  if FEmitter >= 0 then
+    DRL.Particles.Engine.EmitStop( FEmitter );
+  inherited Destroy;
 end;
 
 procedure TGFXMissileAnimation.OnUpdate( aTime : DWord );
@@ -245,6 +260,16 @@ var iPos    : TVec2i;
     iLength : Single;
     iStep   : Single;
 begin
+  if not FRay then
+    iPos := Lerp( FSource, FTarget, Minf(FTime / FDuration, 1.0) );
+
+  if ( not FRay ) and ( FEmitter >= 0 ) then
+  begin
+    DRL.Particles.Engine.EmitSetPosition( FEmitter,
+      Vec3f( iPos.X / SpriteMap.Engine.Scale, iPos.Y / SpriteMap.Engine.Scale, 0 ) );
+    DRL.Particles.Engine.EmitSetSpriteRotation( FEmitter, ( FHeading + PI / 2 ) * 180 / PI );
+  end;
+
   if ( not DRL.Level.isProperCoord( FPath.GetC ) ) or (not DRL.Level.isVisible( FPath.GetC ) ) then
     Exit;
   if FRay then
@@ -260,10 +285,7 @@ begin
     Exit;
   end
   else
-  begin
-    iPos := Lerp( FSource, FTarget, Minf(FTime / FDuration, 1.0) );
-    SpriteMap.PushSpriteFXRotated( iPos, FSprite, FHeading + PI/2)
-  end;
+    SpriteMap.PushSpriteFXRotated( iPos, FSprite, FHeading + PI/2);
 end;
 
 { TMessageAnimation }
@@ -448,14 +470,17 @@ procedure TGFXMoveAnimation.OnDraw;
 var iValue : Single;
     iLight : Byte;
     iBeing : TBeing;
+    iThing : TThing;
 begin
   iValue    := Clampf( FTime / FDuration, 0, 1 );
   iLight    := Lerp( FLightStart, FLightEnd, iValue );
   FPosition := Lerp( FSource, FTarget, iValue );
+  iThing := UIDs.Get( FUID ) as TThing;
+  if iThing <> nil then iThing.DrawPosition := FPosition;
   if FBeing
     then
     begin
-      iBeing := UIDs.Get( FUID ) as TBeing;
+      iBeing := iThing as TBeing;
       if iBeing <> nil
         then SpriteMap.PushSpriteBeing( FPosition, SpriteMap.GetBeingSprite( iBeing ), iLight )
         else SpriteMap.PushSpriteBeing( FPosition, FSprite, iLight );
@@ -467,7 +492,11 @@ destructor TGFXMoveAnimation.Destroy;
 var iThing : TThing;
 begin
   iThing := UIDs.Get( FUID ) as TThing;
-  if Started and ( iThing <> nil ) then iThing.AnimCount := Max( 0, iThing.AnimCount - 1 );
+  if iThing <> nil then
+  begin
+    iThing.DrawPosition := Vec2i( 0, 0 );
+    if Started then iThing.AnimCount := Max( 0, iThing.AnimCount - 1 );
+  end;
   inherited Destroy;
 end;
 
@@ -612,6 +641,13 @@ var iBeing      : TBeing;
 begin
   inherited Create( aDuration, aDelay, aUID );
   FReverse := aReverse;
+  FLeadDelay := 0;
+  if not aReverse then
+  begin
+    FLeadDelay := aDelay;
+    FDelay := 0;
+    FDuration += FLeadDelay;
+  end;
   iBeing   := UIDs.Get( FUID ) as TBeing;
   if iBeing = nil then Exit;
   FCount      := 2;
@@ -661,6 +697,8 @@ end;
 
 procedure TGFXKillAnimation.OnDraw;
 var iBeing    : TBeing;
+    iElapsed  : DWord;
+    iDuration : DWord;
     iSprite   : TSprite;
     iSegment  : Integer;
     iPosition : TVec2i;
@@ -670,7 +708,19 @@ begin
   iBeing    := UIDs.Get( FUID ) as TBeing;
   if iBeing <> nil then
     iPosition.Init( (iBeing.Position.X - 1)*SpriteMap.GetGridSize,(iBeing.Position.Y - 1)*SpriteMap.GetGridSize);
-  iSegment := Min( ( FTime * FCount ) div FDuration, FCount - 1 );
+  if ( not FReverse ) and ( FLeadDelay > 0 ) then
+  begin
+    if FTime <= FLeadDelay then
+      iSegment := 0
+    else
+    begin
+      iElapsed  := FTime - FLeadDelay;
+      iDuration := Max( FDuration - FLeadDelay, DWord(1) );
+      iSegment  := Min( ( iElapsed * FCount ) div iDuration, FCount - 1 );
+    end;
+  end
+  else
+    iSegment := Min( ( FTime * FCount ) div FDuration, FCount - 1 );
   iSprite.SpriteID[0] := FSprites[iSegment];
   SpriteMap.PushSpriteBeing( iPosition, iSprite, FLight );
 end;

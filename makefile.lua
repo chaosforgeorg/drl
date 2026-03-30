@@ -39,7 +39,8 @@ makefile = {
 		},
 		MACOSX = {	
 			"-dOSX_APP_BUNDLE",
-			"-k-macosx_version_min -k10.4",
+			"-Fl/usr/local/lib",
+			"-k-macos_version_min -k11.0",
 		},
 	},
 	pre_build = function()
@@ -88,10 +89,10 @@ makefile = {
 			files = { "config.lua", "font.dat" },
 			os = {
 				WINDOWS = { "steam_api64.dll", "fmod64.dll", "lua5.1.dll", "SDL3.dll", "SDL3_image.dll", "drl_console.bat" },
-				LINUX   = { "unix_notes.txt", "drl_gnome-terminal", "drl_konsole", "drl_xterm",  dos2unix = true, },
+				LINUX   = { "libsteam_api.so", "libfmod.so", "libSDL3.so.0.4.0", "libSDL3_image.so.0.4.0", "run_jhc.sh" },
 				MACOSX  = { "unix_notes.txt" },
 			},
-			other = { "jhc.wad", "core.wad" },
+			other = { "jhc.wad", "core.wad", "version.txt" },
 		}
 	},
 	commands = {
@@ -112,6 +113,24 @@ makefile = {
 			local path = make.publish( "deploy", "jhc" )
 			make.steam( path, os.pwd().."\\bin\\data\\jhc\\setup\\app_build_3126530.vdf" )
 		end,
+		jhc_build = function()
+			os.execute_in_dir( "makewad jhc", "bin" )
+			make.publish( "deploy", "jhc" )
+		end,
+		jhc_demo_build = function()
+			set_demo("bin/data/jhc/main.lua", true)
+			os.execute_in_dir( "makewad jhc demo.txt", "bin" )
+			set_demo("bin/data/jhc/main.lua", false)
+			make.publish( "deploy-demo", "jhc" )
+		end,
+		jhc_push = function()
+			local s = os.path_sep
+			make.steam( ".", os.pwd()..s.."bin"..s.."data"..s.."jhc"..s.."setup"..s.."app_build_3126530.vdf" )
+		end,
+		jhc_demo_push = function()
+			local s = os.path_sep
+			make.steam( ".", os.pwd()..s.."bin"..s.."data"..s.."jhc"..s.."setup"..s.."demo"..s.."app_build_3256910.vdf" )
+		end,
 		lq = function()
 			if not BUILT then
 				os.execute_in_dir( "makewad", "bin" )
@@ -128,6 +147,7 @@ makefile = {
 		end,
 		drl_mod = function()
 			os.execute_in_dir( "makewad drl drlhq", "bin" )
+			os.mkdir( "bin/deploy/drl" )
 			os.copy( "bin/drl.wad", "bin/deploy/drl/drl.wad" )
 			os.execute_in_dir( "drl -publish drl -god", "bin" )
 		end,
@@ -199,4 +219,6 @@ makefile = {
 }
 
 make.compile()
-make.command( arg[1] )
+for i = 1, #arg do
+	make.command( arg[i] )
+end

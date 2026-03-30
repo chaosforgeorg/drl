@@ -1,8 +1,8 @@
 core.declare( "drl", {} )
 core.declare( "core_module", "drl" )
 core.declare( "DEMO", false )
-core.declare( "VERSION_MODULE",      "0.10.7" )
-core.declare( "VERSION_MODULE_SAVE", "0.10.7" )
+core.declare( "VERSION_MODULE",      "0.10.8" )
+core.declare( "VERSION_MODULE_SAVE", "0.10.8" )
 
 require( "drl:generator" )
 require( "drl:generators" )
@@ -60,6 +60,15 @@ function drl.OnLoaded()
 end
 
 function drl.OnLoad()
+	core.weapon_group_name = {
+		melee   = "melee",
+		pistol  = "pistol",
+		shotgun = "shotgun",
+		rocket  = "rocket",
+		chain   = "chaingun",
+		plasma  = "plasma",
+		bfg     = "BFG",
+	}
 	drl.register_sprites()
 	drl.register_difficulties()
 	drl.register_base_data()

@@ -163,7 +163,7 @@ function drl.register_exotic_items()
 		OnCreate = function(self)
 			self:add_perk( "perk_altfire_aimed" )
 			self:add_perk( "perk_weapon_recharge" )
-			self.pp_recharge.delay  = 3
+			self.pp_recharge.delay  = 30
 			self.pp_recharge.amount = 1
 		end,
 	}
@@ -226,7 +226,7 @@ function drl.register_exotic_items()
 		hitsprite     = SPRITE_BLAST,
 
 		OnCreate = function(self)
-			self:add_perk( "perk_pump_action" )
+			self:add_perk( "perk_altreload_full" )
 		end,
 	}
 
@@ -428,7 +428,8 @@ function drl.register_exotic_items()
 		},
 
 		OnCreate = function(self)
-			self:add_perk( "perk_pump_action" )
+			self:add_perk( "perk_altfire_rocketjump" )
+			self:add_perk( "perk_altreload_full" )
 		end,
 	}
 
@@ -465,8 +466,8 @@ function drl.register_exotic_items()
 			self:add_perk( "perk_altfire_chainfire" )
 			self:add_perk( "perk_altreload_nuke" )
 			self:add_perk( "perk_weapon_recharge" )
-			self.pp_recharge.delay  = 4
-			self.pp_recharge.amount = 4
+			self.pp_recharge.delay  = 40
+			self.pp_recharge.tick   = 2
 		end,
 	}
 
@@ -511,6 +512,7 @@ function drl.register_exotic_items()
 			self:add_perk( "perk_altreload_nuke" )
 			self:add_perk( "perk_weapon_recharge" )
 			self.pp_recharge.delay  = 0
+			self.pp_recharge.tick   = 5
 			self.pp_recharge.amount = 1
 		end,
 	}
@@ -718,11 +720,22 @@ function drl.register_exotic_items()
 
 	register_perk "perk_umedarmor"
 	{
-		OnEquipTick = function(self,being)
-			if self.durability > 20 then
+		OnAdd = function(self)
+			self:add_property( "pp_med_timer", 0 )
+		end,
+
+		OnTick = function(self)
+			local being = self.parent
+			if being and self.durability > 20 then
 				if being.hp < being.hpmax / 2 then
-					being.hp = being.hp + 1
-					self.durability = self.durability - 1
+					self.pp_med_timer = self.pp_med_timer + 1
+					if self.pp_med_timer >= 30 then
+						self.pp_med_timer = 20
+						being.hp = being.hp + 1
+						self.durability = self.durability - 1
+					end
+				else
+					self.pp_med_timer = 0
 				end
 			end
 		end,
@@ -782,7 +795,7 @@ function drl.register_exotic_items()
 		desc     = "Maybe too specialized for most tastes.",
 		flags    = { IF_EXOTIC },
 
-		resist = { bullet  = 95 },
+		resist = { bullet  = core.options.resist_cap },
 
 		type       = ITEMTYPE_ARMOR,
 		armor      = 1,
@@ -836,7 +849,7 @@ function drl.register_exotic_items()
 		desc     = "Under some circumstances, this is the best thing... too bad it can't be repaired.",
 		flags    = { IF_EXOTIC, IF_NOREPAIR, IF_NONMODABLE, IF_NODEGRADE },
 
-		resist = { plasma  = 95 },
+		resist = { plasma  = core.options.resist_cap },
 
 		type       = ITEMTYPE_ARMOR,
 		armor      = 0,
@@ -872,7 +885,7 @@ function drl.register_exotic_items()
 		desc     = "Under some circumstances, this is the best thing... too bad it can't be repaired.",
 		flags    = { IF_EXOTIC, IF_NOREPAIR, IF_NONMODABLE, IF_NODEGRADE },
 
-		resist = { bullet = 95, melee = 95, shrapnel = 95 },
+		resist = { bullet = core.options.resist_cap, melee = core.options.resist_cap, shrapnel = core.options.resist_cap },
 
 		type       = ITEMTYPE_ARMOR,
 		armor      = 0,
@@ -1061,9 +1074,19 @@ function drl.register_exotic_items()
 			if item:has_property("pp_recharge") then
 				local r = item.pp_recharge
 				if r.delay == 0 then
-					return "recharge amount {!"..r.amount.."} -> {!"..(r.amount+1).."}"
+					local new_tick = r.tick
+					if r.tick == 10 then
+						new_tick = 5
+					elseif r.tick == 5 then
+						new_tick = 3
+					elseif r.tick == 3 then
+						new_tick = 1
+					else
+						return "recharge amount {!"..r.amount.."} -> {!"..(r.amount+1).."}"
+					end	
+					return "recharge tick {!"..r.tick.."} -> {!"..new_tick.."}"
 				else
-					return "recharge delay {!"..r.delay.."} -> {!"..math.max(0, r.delay-5).."}"
+					return "recharge delay {!"..r.delay.."} -> {!"..math.max(0, r.delay-50).."}"
 				end
 			else
 				if item.itype == ITEMTYPE_RANGED then
@@ -1084,18 +1107,27 @@ function drl.register_exotic_items()
 			if item:has_property("pp_recharge") then
 				local r = item.pp_recharge
 				if r.delay == 0 then
-					r.amount = r.amount + 1
+					if r.tick == 10 then
+						r.tick = 5
+					elseif r.tick == 5 then
+						r.tick = 3
+					elseif r.tick == 3 then
+						r.tick = 1
+					else
+						r.amount = r.amount + 1
+					end
 				else
-					r.delay = math.max(0, r.delay - 5)
+					r.delay = math.max(0, r.delay - 50)
 				end
 			else
 				if item.itype == ITEMTYPE_ARMOR or item.itype == ITEMTYPE_BOOTS then
 					item:add_perk( "perk_armor_recharge" )
-					item.pp_recharge.delay  = 5
-					item.pp_recharge.amount = 2
+					item.pp_recharge.delay  = 50
+					item.pp_recharge.amount = 1
+					item.pp_recharge.tick   = 5
 				elseif item.itype == ITEMTYPE_RANGED then
 					item:add_perk( "perk_weapon_recharge" )
-					item.pp_recharge.delay  = 5
+					item.pp_recharge.delay  = 50
 					item.pp_recharge.amount = 1
 				end
 			end

@@ -196,8 +196,11 @@ function drl.register_traits()
 							if self:is_perk( "berserk" ) then
 								local berserk = self:get_perk_time( "berserk" )
 								if berserk > 0 then
-									local increase = 10 - math.min( math.floor( berserk / 10 ), 9 )
-									self:add_perk( "berserk", increase * 5 )
+									local increase = 10 - math.min( math.floor( berserk / 5 ), 9 )
+									local add_amount = math.min( increase * 5, math.max( 0, 300 - berserk ) )
+									if add_amount > 0 then
+										self:add_perk( "berserk", add_amount )
+									end
 								end
 							else
 								self:add_perk( "berserk", 100 )
@@ -217,9 +220,10 @@ function drl.register_traits()
 		end,
 
 		OnReceiveDamage = function ( self, damage, weapon, active )
+			if active == self then return end
 			if damage >= math.max( math.floor( self.hpmax / 3 ), 10 ) then
 				ui.msg("That hurt! You're going berserk!")
-				self:add_perk( "berserk", 100 )
+				self:apply_timed_perk( "berserk", 100 )
 			end
 		end,
 	}
@@ -268,7 +272,20 @@ function drl.register_traits()
 			if level == 1 then
 				being.flags[ BF_POWERSENSE  ] = true
 			elseif level == 2 then
-				being.flags[ BF_BEINGSENSE  ] = true
+				being:add_property( "INTUITION_RANGE", 2 )
+			end
+		end,
+
+		OnPreAction = function (self)
+			if not self:has_property( "INTUITION_RANGE" ) then return end
+			for b in level:beings() do
+				b.flags[ BF_INTUITED ] = false
+			end
+			local range = self.vision + self.INTUITION_RANGE
+			for b in level:beings_in_range( self, range ) do
+				if not b:is_player() then
+					b.flags[ BF_INTUITED ] = true
+				end
 			end
 		end,
 	}

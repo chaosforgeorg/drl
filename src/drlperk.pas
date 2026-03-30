@@ -29,6 +29,11 @@ end;
 
 type TPerkList = specialize TGArray< TPerk >;
 
+type TPerkExpiring = record
+  ID     : Integer;
+  Silent : Boolean;
+end;
+
 type TPerks = class( TVObject )
   constructor Create( aOwner : TNode );
   constructor CreateFromStream( aStream : TStream; aOwner : TNode ); reintroduce;
@@ -46,9 +51,16 @@ type TPerks = class( TVObject )
   procedure Clear;
   destructor Destroy; override;
 private
-  FOwner : TNode;
-  FHooks : TFlags;
-  FList  : TPerkList;
+  FOwner           : TNode;
+  FHooks           : TFlags;
+  FList            : TPerkList;
+  FIterDepth       : Integer;
+  FExpireQueue     : array of TPerkExpiring;
+  procedure BeginIteration;
+  procedure EndIteration;
+  procedure ExpireQueue( aPerk : Integer; aSilent : Boolean );
+  procedure FlushQueue;
+  procedure ExpireNow( aIndex : Integer; aSilent : Boolean );
   procedure UpdateHooks;
   procedure Expire( aIndex : Integer; aSilent : Boolean );
 public
@@ -67,6 +79,7 @@ begin
   FOwner := aOwner;
   FHooks := [];
   FList  := TPerkList.Create;
+  FIterDepth := 0;
 end;
 
 constructor TPerks.CreateFromStream( aStream : TStream; aOwner : TNode );
@@ -74,7 +87,21 @@ begin
   inherited CreateFromStream( aStream );
   FOwner := aOwner;
   FList  := TPerkList.CreateFromStream( aStream );
+  FIterDepth := 0;
   UpdateHooks;
+end;
+
+procedure TPerks.BeginIteration;
+begin
+  Inc( FIterDepth );
+end;
+
+procedure TPerks.EndIteration;
+begin
+  if FIterDepth = 0 then Exit;
+  Dec( FIterDepth );
+  if FIterDepth = 0 then
+    FlushQueue;
 end;
 
 procedure TPerks.WriteToStream( aStream : TStream );
@@ -88,34 +115,52 @@ var i : Integer;
 begin
   CallHook := False;
   if aHook in FHooks then
+  begin
+    BeginIteration;
     for i := 0 to FList.Size-1 do
       if aHook in PerkData[FList[i].ID].Hooks then
-      begin
-        CallHook := True;
-        LuaSystem.ProtectedCall( [ 'perks',FList[i].ID, HookNames[ aHook ] ], ConcatConstArray( [FOwner], aParams ) );
-      end;
+        begin
+          CallHook := True;
+          LuaSystem.ProtectedCall( [ 'perks',FList[i].ID, Lua.HookName(aHook) ], ConcatConstArray( [FOwner], aParams ) );
+        end;
+    EndIteration;
+  end;
 end;
 
 function  TPerks.CallHookCheck( aHook : Byte; const aParams : array of Const ) : Boolean;
 var i : Integer;
 begin
+  Result := True;
   if aHook in FHooks then
+  begin
+    BeginIteration;
     for i := 0 to FList.Size-1 do
       if aHook in PerkData[FList[i].ID].Hooks then
-        if not LuaSystem.ProtectedCall( [ 'perks',FList[i].ID, HookNames[ aHook ] ], ConcatConstArray( [FOwner], aParams ) ) then
-          Exit( False );
-  Exit( True );
+        if not LuaSystem.ProtectedCall( [ 'perks',FList[i].ID, HookNames[aHook] ], ConcatConstArray( [FOwner], aParams ) ) then
+        begin
+          Result := False;
+          Break;
+        end;
+    EndIteration;
+  end;
 end;
 
 function  TPerks.CallHookCan( aHook : Byte; const aParams : array of Const ) : Boolean;
 var i : Integer;
 begin
+  Result := False;
   if aHook in FHooks then
+  begin
+    BeginIteration;
     for i := 0 to FList.Size-1 do
       if aHook in PerkData[FList[i].ID].Hooks then
         if LuaSystem.ProtectedCall( [ 'perks',FList[i].ID, HookNames[ aHook ] ], ConcatConstArray( [FOwner], aParams ) ) then
-          Exit( True );
-  Exit( False );
+        begin
+          Result := True;
+          Break;
+        end;
+    EndIteration;
+  end;
 end;
 
 function  TPerks.GetBonus( aHook : Byte; const aParams : array of Const ) : Integer;
@@ -175,12 +220,13 @@ begin
 end;
 
 procedure TPerks.OnTick;
-var i     : Integer;
-    iUID  : TUID;
-    iTime : LongInt;
+var i      : Integer;
+    iUID   : TUID;
+    iTime  : LongInt;
 begin
   if FList.Size = 0 then Exit;
   iUID := FOwner.UID;
+  BeginIteration;
   for i := 0 to FList.Size - 1 do
     with FList[i] do
     begin
@@ -201,6 +247,7 @@ begin
             if not DRL.Level.isAlive( iUID ) then Exit;
           end;
     end;
+  EndIteration;
   i := 0;
   while i < FList.Size do
     if FList[i].Time = 0
@@ -237,7 +284,52 @@ begin
       FHooks += PerkData[FList[i].ID].Hooks;
 end;
 
-procedure TPerks.Expire( aIndex : Integer; aSilent : Boolean );
+procedure TPerks.ExpireQueue( aPerk : Integer; aSilent : Boolean );
+var i      : Integer;
+    iCount : Integer;
+begin
+  for i := 0 to Length( FExpireQueue ) - 1 do
+    if FExpireQueue[i].ID = aPerk then
+    begin
+      FExpireQueue[i].Silent := FExpireQueue[i].Silent and aSilent;
+      Exit;
+    end;
+
+  iCount := Length( FExpireQueue );
+  SetLength( FExpireQueue, iCount + 1 );
+  FExpireQueue[iCount].ID := aPerk;
+  FExpireQueue[iCount].Silent := aSilent;
+end;
+
+procedure TPerks.FlushQueue;
+var i       : Integer;
+    iIdx    : Integer;
+    iPerk   : Integer;
+    iSilent : Boolean;
+begin
+  while Length( FExpireQueue ) > 0 do
+  begin
+    iPerk   := FExpireQueue[0].ID;
+    iSilent := FExpireQueue[0].Silent;
+
+    for i := 1 to Length( FExpireQueue ) - 1 do
+      FExpireQueue[i - 1] := FExpireQueue[i];
+    SetLength( FExpireQueue, Length( FExpireQueue ) - 1 );
+
+    iIdx := -1;
+    for i := 0 to FList.Size - 1 do
+      if FList[i].ID = iPerk then
+      begin
+        iIdx := i;
+        Break;
+      end;
+
+    if iIdx >= 0 then
+      ExpireNow( iIdx, iSilent );
+  end;
+end;
+
+procedure TPerks.ExpireNow( aIndex : Integer; aSilent : Boolean );
 var iPerk : Integer;
 begin
   iPerk := FList[ aIndex ].ID;
@@ -247,14 +339,23 @@ begin
     LuaSystem.ProtectedCall( [ 'perks', iPerk, 'OnRemove' ], [FOwner, aSilent] );
 end;
 
+procedure TPerks.Expire( aIndex : Integer; aSilent : Boolean );
+begin
+  if FIterDepth > 0
+    then ExpireQueue( FList[ aIndex ].ID, aSilent )
+    else ExpireNow( aIndex, aSilent );
+end;
+
 procedure TPerks.Clear;
 var i : Integer;
 begin
   if FList.Size > 0 then
   begin
+    BeginIteration;
     for i := 0 to FList.Size - 1 do
       if Hook_OnRemove in PerkData[FList[i].ID].Hooks then
         LuaSystem.ProtectedCall( [ 'perks', FList[i].ID, 'OnRemove' ], [FOwner, True] );
+    EndIteration;
     FList.Clear;
   end;
   FHooks := [];

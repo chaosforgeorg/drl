@@ -1,3 +1,25 @@
+0.10.8
+[new] -- GJ#242: UI - SHIFT-G will now equip items from ground if at all possible (old one goes to inv, or ground if full)
+[mod] -- GJ#326: Game - fixed broken recharge rates, buffed some recharge items
+[mod] -- GJ#326: Game - Item [m]ore info has explicitly listed weapon group and ammo type
+[mod] -- GJ#284: Game - on Angel of Max Carnage everyone will now always hit instead of 98%
+[mod] -- GJ#284: Game - AUTOHIT effects still have 50% miss rate in the dark and don't apply to non-target enemies
+[mod] -- GJ#---: Game - vaults can now drop boots and melee weapons (no knives, steel boots rarer)
+[mod] -- GJ#316: Game - Berserker stacking limited to 30s, Berserk Pack +50% duration
+[mod] -- GJ#---: Game - armor/boots based 100% resistances will not fully prevent armor degradation
+[mod] -- GJ#---: Traits - Berserker - defensive berserk works as a refresh not cumulative
+[mod] -- GJ#---: Traits - Berserker - self damage (including fluids) won't trigger berserker
+[fix] -- GJ#298: Game - fixed dual weapon second shot targeting after knockback
+[fix] -- GJ#---: Game - fixed nuclear overload access violation
+[fix] -- GJ#299: Game - fixed rare interaction that bricked rocket launchers
+[fix] -- GJ#---: Game - fixed sprite visibility issues when dying from multi-shot weapons
+[fix] -- GJ#---: Game - missile launcher no longer needs pumping, has full reload and rocket jump
+[fix] -- GJ#---: Game - assault shotgun no longer needs pumping, has full reload
+[fix] -- GJ#---: Game - nightmare imps regained their explosion radius
+[fix] -- GJ#---: Game - fix a source of Mastermind crashes
+[fix] -- GJ#---: Game - fixed power armor, nanofibre skin and Mother-In-Law assemblies when N wasn't last mod
+[fix] -- GH#---: ASCII - fixed name input and look mode cursor [joseph-hlucny]
+
 0.10.7
 [new] -- GJ#229: Game - blood flood event added
 [new] -- GJ#276: UI - Character screen reformated and showing more data
@@ -30,7 +52,7 @@
 0.10.5
 [new] -- GJ#225: you can assign quickslots directly from equipment screen
 [mod] -- GJ#231: melee weapons will display damage type
-[mod[ -- GJ#243: UI - reloading will use ammo stack on ground if matching (unless in combat+pack)
+[mod] -- GJ#243: UI - reloading will use ammo stack on ground if matching (unless in combat+pack)
 
 0.10.4a
 [new] -- GJ#113: defence markers added (corneshooting indicator)
