@@ -40,7 +40,7 @@ TBeing = class(TThing,IPathQuery)
     function HandleCommand( aCommand : TCommand ) : Boolean;
     function  TryMove( aWhere : TCoord2D ) : TMoveResult;
     function  MoveTowards( aWhere : TCoord2D; aVisualMultiplier : Single = 1.0 ) : TMoveResult;
-    procedure Reload( aAmmoItem : TItem; aSingle : Boolean );
+    procedure Reload( aAmmoItem : TItem; aSingle : Boolean; aWeapon : TItem = nil ); 
     function Resurrect( aRange : Integer ) : TBeing;
     procedure Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer ); virtual;
     procedure Blood( aFrom : TDirection; aAmount : LongInt );
@@ -1349,14 +1349,15 @@ begin
   Exit( iMoveResult );
 end;
 
-procedure TBeing.Reload( aAmmoItem : TItem; aSingle : Boolean );
+procedure TBeing.Reload( aAmmoItem : TItem; aSingle : Boolean; aWeapon : TItem = nil );
 var iAmmo  : Byte;
     iPack  : Boolean;
     iCount : Integer;
     iCost  : Integer;
 begin
-  Inv.Slot[efWeapon].PlaySound( 'reload', FPosition );
-  iCost := getReloadCost( Inv.Slot[efWeapon] );
+  if aWeapon = nil then aWeapon := Inv.Slot[efWeapon];
+  aWeapon.PlaySound( 'reload', FPosition );
+  iCost := getReloadCost( aWeapon );
 
   repeat
     iPack  := aAmmoItem.isAmmoPack;
@@ -1364,22 +1365,22 @@ begin
     if iPack then iCount := aAmmoItem.Ammo;
 
     if aSingle then iAmmo := Min(iCount,1)
-               else iAmmo := Min(iCount,Inv.Slot[efWeapon].AmmoMax-Inv.Slot[efWeapon].Ammo);
+               else iAmmo := Min(iCount,aWeapon.AmmoMax-aWeapon.Ammo);
 
     iCount := iCount - iAmmo;
     if iPack
       then aAmmoItem.Ammo   := iCount
       else aAmmoItem.Amount := iCount;
 
-    Inv.Slot[efWeapon].Ammo := Inv.Slot[efWeapon].Ammo + iAmmo;
+    aWeapon.Ammo := aWeapon.Ammo + iAmmo;
     if iCount = 0 then
     begin
       FreeAndNil( aAmmoItem );
       if not iPack then
       begin
-        if ( not aSingle ) and ( Inv.Slot[efWeapon].AmmoMax <> Inv.Slot[efWeapon].Ammo ) then
+        if ( not aSingle ) and ( aWeapon.AmmoMax <> aWeapon.Ammo ) then
         begin
-          aAmmoItem := FInv.SeekStack(Inv.Slot[efWeapon].AmmoID);
+          aAmmoItem := FInv.SeekStack(aWeapon.AmmoID);
           if aAmmoItem <> nil then Continue;
         end;
       end;
@@ -2963,19 +2964,20 @@ begin
   iBeing  := iState.ToObject(1) as TBeing;
   if iBeing <> nil then
   begin
-    iWeapon := iBeing.Inv.Slot[ efWeapon ];
+    iWeapon := iState.ToObjectOrNil(2) as TItem;
+    if iWeapon = nil then iWeapon := iBeing.Inv.Slot[ efWeapon ];
     if ( iWeapon <> nil ) and ( not iWeapon.Flags[ IF_NORELOAD ] ) then
     begin
-      iItem := iState.ToObjectOrNil(2) as TItem;
+      iItem := iState.ToObjectOrNil(3) as TItem;
       if iItem = nil then iItem := iBeing.Inv.SeekStack( iWeapon.AmmoID );
       if (iItem = nil) and iBeing.canPackReload then
         iItem := iBeing.Inv.Slot[ efWeapon2 ];
       if iItem <> nil then
       begin
-        iSingle := iState.ToBoolean( 3, iWeapon.Flags[IF_SINGLERELOAD] );
+        iSingle := iState.ToBoolean( 4, iWeapon.Flags[IF_SINGLERELOAD] );
         iSCount := iBeing.SCount;
-        iBeing.Reload( iItem, iSingle );
-        if not iState.ToBoolean( 4 ) then
+        iBeing.Reload( iItem, iSingle, iWeapon );
+        if not iState.ToBoolean( 5 ) then
           iBeing.SCount := iSCount;
         iState.Push( True );
         Exit( 1 );
