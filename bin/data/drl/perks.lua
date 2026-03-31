@@ -338,7 +338,7 @@ function drl.register_perks()
 
 		OnReload = function(self, being, ammo, is_pack)
 			if not self.pump_action then return true end
-			being:reload( ammo, true, true ) -- reduces scount
+			being:reload( nil, ammo, true, true ) -- reduces scount
 			local pack = ""
 			if is_pack then pack = "quickly " end
 			being:msg("You "..pack.."load a shell into the "..self.name..".", being:get_name(true,true).." loads a shell into his "..self.name.."." )
