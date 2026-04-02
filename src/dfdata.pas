@@ -407,29 +407,48 @@ begin
 end;
 
 function ReadFileString( const aFileName : Ansistring ) : Ansistring;
-var iTextFile : Text;
+var iStream : TFileStream;
+    iLen    : Integer;
 begin
-  {$PUSH}
-  {$I-}
-  Assign(iTextFile,aFileName);
-  Reset(iTextFile);
-  Readln(iTextFile,Result);
-  Close(iTextFile);
-  {$POP} {restore $I}
-  if IOResult <> 0 then Exit('');
+  Result := '';
+  try
+    iStream := TFileStream.Create( aFileName, fmOpenRead or fmShareDenyWrite );
+    try
+      iLen := iStream.Size;
+      if iLen > 0 then
+      begin
+        SetLength( Result, iLen );
+        iStream.ReadBuffer( Result[1], iLen );
+      end;
+      // strip to first line only
+      iLen := Pos( #10, Result );
+      if iLen > 0 then SetLength( Result, iLen - 1 );
+      iLen := Pos( #13, Result );
+      if iLen > 0 then SetLength( Result, iLen - 1 );
+    finally
+      iStream.Free;
+    end;
+  except
+    Result := '';
+  end;
 end;
 
 function WriteFileString( const aFileName, aText : Ansistring ) : Boolean;
-var iTextFile : Text;
+var iStream : TFileStream;
+    iLine   : AnsiString;
 begin
-  {$PUSH}
-  {$I-}
-  Assign(iTextFile,aFileName);
-  Rewrite(iTextFile);
-  Writeln(iTextFile,aText);
-  Close(iTextFile);
-  {$POP} {restore $I}
-  Exit( IOResult <> 0 );
+  Result := False;
+  try
+    iStream := TFileStream.Create( aFileName, fmCreate );
+    try
+      iLine := aText + LineEnding;
+      iStream.WriteBuffer( iLine[1], Length( iLine ) );
+      Result := True;
+    finally
+      iStream.Free;
+    end;
+  except
+  end;
 end;
 
 function ReadLineFromStream( aStream : TStream; aSize : Integer = -1 ) : AnsiString;
