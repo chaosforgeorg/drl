@@ -100,7 +100,6 @@ try
         GraphicsVersion := False;
         ForceConsole := True;
       end;
-        ForceConsole := True;
 
       if FileExists( SettingsPath )
         then Configuration.Read( SettingsPath )
