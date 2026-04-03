@@ -100,6 +100,7 @@ try
         GraphicsVersion := False;
         ForceConsole := True;
       end;
+        ForceConsole := True;
 
       if FileExists( SettingsPath )
         then Configuration.Read( SettingsPath )
@@ -190,6 +191,7 @@ try
   end;
 except on e : Exception do
   begin
+    Logger.Flush;
     if not EXCEPTEMMITED then
       EmitCrashInfo( e.Message, False );
     raise

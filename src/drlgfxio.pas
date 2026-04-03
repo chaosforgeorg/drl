@@ -225,7 +225,6 @@ begin
   if not GodMode then
   begin
     FreeConsole;
-    vdebug.DebugWriteln := nil;
   end
   else
   begin
