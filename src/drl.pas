@@ -190,6 +190,7 @@ try
   end;
 except on e : Exception do
   begin
+    Logger.Flush;
     if not EXCEPTEMMITED then
       EmitCrashInfo( e.Message, False );
     raise

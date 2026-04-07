@@ -536,9 +536,9 @@ begin
 end;
 
 procedure TPlayer.WriteMemorial;
-var iCopyText   : Text;
-    iMortemText : Text;
+var iMortemPath : AnsiString;
     iString     : AnsiString;
+    iMortemList : TStringList;
 
 procedure ScoreCRC(var aScore : LongInt);
 begin
@@ -590,31 +590,33 @@ begin
   end;
   MortemData := TUIStringArray.Create;
   LuaSystem.ProtectedCall([CoreModuleID,'RunPrintMortem'],[]);
-  Assign(iMortemText, ModuleUserPath + 'mortem.txt' );
-  Rewrite(iMortemText);
-  for iString in MortemData do
-    Writeln( iMortemText, VTIG_StripTags( iString ) );
-  Close(iMortemText);
+
+  iMortemPath := ModuleUserPath + 'mortem.txt';
+  iMortemList := TStringList.Create;
+  try
+    for iString in MortemData do
+      iMortemList.Add( VTIG_StripTags( iString ) );
+    iMortemList.SaveToFile( iMortemPath );
+  finally
+    FreeAndNil( iMortemList );
+  end;
 
   FScore := -1000;
 
   if Option_MortemArchive then
   begin
-    iString :=  ModuleUserPath + 'mortem'+PathDelim+ToProperFilename('['+FormatDateTime(Option_TimeStamp,Now)+'] '+Name)+'.txt';
-    Assign(iCopyText,iString);
+    iString := ModuleUserPath + 'mortem'+PathDelim+ToProperFilename('['+FormatDateTime(Option_TimeStamp,Now)+'] '+Name)+'.txt';
     Log('Writing mortem...: '+iString);
-    Rewrite(iCopyText);
-    Assign(iMortemText, ModuleUserPath + 'mortem.txt');
-    Reset(iMortemText);
-    
-    while not EOF(iMortemText) do
-    begin
-      Readln(iMortemText,iString);
-      Writeln(iCopyText,iString);
+    try
+      iMortemList := TStringList.Create;
+      try
+        iMortemList.LoadFromFile( iMortemPath );
+        iMortemList.SaveToFile( iString );
+      finally
+        FreeAndNil( iMortemList );
+      end;
+    except
     end;
-
-    Close(iCopyText);
-    Close(iMortemText);
   end;
 end;
 
