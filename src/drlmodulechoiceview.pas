@@ -11,10 +11,8 @@ uses viotypes, vutil, drlio, dfdata;
 type TModuleChoiceView = class( TIOLayer )
   constructor Create;
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
-  function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
 protected
-  FFinished : Boolean;
 end;
 
 implementation
@@ -47,11 +45,6 @@ begin
     CoreModuleID := iResult;
     FFinished := True;
   end;
-end;
-
-function TModuleChoiceView.IsFinished : Boolean;
-begin
-  Exit( FFinished );
 end;
 
 function TModuleChoiceView.IsModal : Boolean;

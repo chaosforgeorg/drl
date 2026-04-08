@@ -11,13 +11,11 @@ uses vutil, viotypes, dfdata;
 type TAssemblyView = class( TIOLayer )
   constructor Create;
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
-  function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
   destructor Destroy; override;
 protected
   procedure ReadAssemblies;
 protected
-  FFinished : Boolean;
   FSize     : TPoint;
   FContent  : TStringGArray;
 end;
@@ -45,11 +43,6 @@ begin
     FFinished := True;
 end;
 
-
-function TAssemblyView.IsFinished : Boolean;
-begin
-  Exit( FFinished );
-end;
 
 function TAssemblyView.IsModal : Boolean;
 begin

@@ -13,8 +13,6 @@ type TInGameMenuView = class( TIOLayer )
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
-protected
-  FFinished       : Boolean;
 end;
 
 type TAbandonView = class( TConfirmView )

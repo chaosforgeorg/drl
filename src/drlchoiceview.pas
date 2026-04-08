@@ -26,7 +26,6 @@ type TChoiceView = class( TIOLayer )
   destructor Destroy; override;
 protected
   FSize     : TPoint;
-  FFinished : Boolean;
   FTitle    : AnsiString;
   FHeader   : AnsiString;
   FChoices  : TChoiceArray;

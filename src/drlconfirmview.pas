@@ -22,7 +22,6 @@ protected
   procedure OnCancel; virtual;
 protected
   FSize            : TPoint;
-  FFinished        : Boolean;
 
   FCancel          : AnsiString;
   FConfirm         : AnsiString;

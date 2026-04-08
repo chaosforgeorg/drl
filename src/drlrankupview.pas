@@ -11,10 +11,8 @@ uses vutil, viotypes, dfdata;
 type TRankUpView = class( TIOLayer )
   constructor Create( aRank : THOFRank );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
-  function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
 protected
-  FFinished : Boolean;
   FSize     : TPoint;
   FLines    : array of Ansistring;
 end;
@@ -74,11 +72,6 @@ begin
     FFinished := True;
 end;
 
-
-function TRankUpView.IsFinished : Boolean;
-begin
-  Exit( FFinished );
-end;
 
 function TRankUpView.IsModal : Boolean;
 begin

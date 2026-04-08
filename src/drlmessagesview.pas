@@ -11,12 +11,10 @@ uses vutil, viotypes, vmessages, drlio, dfdata;
 type TMessagesView = class( TIOLayer )
   constructor Create( aContent : TMessageBuffer );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
-  function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
 protected
   FContent  : TMessageBuffer;
   FSize     : TPoint;
-  FFinished : Boolean;
   FFirst    : Boolean;
 end;
 
@@ -60,11 +58,6 @@ begin
     FFinished := True;
 end;
 
-
-function TMessagesView.IsFinished : Boolean;
-begin
-  Exit( FFinished );
-end;
 
 function TMessagesView.IsModal : Boolean;
 begin

@@ -11,12 +11,10 @@ uses vutil, viotypes, dfdata;
 type TLoadingView = class( TIOLayer )
   constructor Create( aMax : DWord );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
-  function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
 protected
   FMax      : DWord;
   FCurrent  : DWord;
-  FFinished : Boolean;
 public
   property Finished : Boolean read FFinished write FFinished;
   property Max      : DWord   read FMax      write FMax;
@@ -79,11 +77,6 @@ begin
     VTIG_FreeLabel( '['+StringOfChar( ' ',iMaxChar )+']', Point(10,13), Yellow );
     VTIG_FreeLabel( StringOfChar( '=',iProgChar ), Point(11,13), LightRed );
   end;
-end;
-
-function TLoadingView.IsFinished : Boolean;
-begin
-  Exit( FFinished );
 end;
 
 function TLoadingView.IsModal : Boolean;

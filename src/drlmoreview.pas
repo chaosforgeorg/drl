@@ -17,7 +17,6 @@ type TMoreBeingView = class( TIOLayer )
 protected
   procedure ReadTexts;
 protected
-  FFinished : Boolean;
   FSize     : TPoint;
   FBeing    : TBeing;
   FDesc     : Ansistring;
@@ -34,7 +33,6 @@ type TMoreItemView = class( TIOLayer )
 protected
   procedure ReadTexts;
 protected
-  FFinished : Boolean;
   FSize     : TPoint;
   FItem     : TItem;
   FTitle    : Ansistring;
