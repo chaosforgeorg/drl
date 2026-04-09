@@ -355,6 +355,8 @@ begin
     AddStat( 'Cold res.', BonusStr(FItem.GetResistance('cold')) );
   if FItem.GetResistance('poison') <> 0 then
     AddStat( 'Poison res.', BonusStr(FItem.GetResistance('poison')) );
+  if FItem.GetResistance('pierce') <> 0 then
+    AddStat( 'Pierce res.', BonusStr(FItem.GetResistance('pierce')) );
   
   if iStatQueue.Size > 0 then
   begin

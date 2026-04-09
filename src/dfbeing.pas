@@ -2067,7 +2067,7 @@ begin
       Damage_SPlasma     : iResist := getTotalResistance( 'plasma', aTarget );
       Damage_Bullet      : iResist := getTotalResistance( 'bullet', aTarget );
       Damage_Melee       : iResist := getTotalResistance( 'melee', aTarget );
-      Damage_Pierce      : iResist := 0;
+      Damage_Pierce      : iResist := getTotalResistance( 'pierce', aTarget );
     else iResist := 0;
     end;
     if iResist >= 100 

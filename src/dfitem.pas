@@ -479,13 +479,14 @@ begin
       IIf(GetResistance('fire')     <> 0,'Fire res.   : {!' + BonusStr(GetResistance('fire'))+'}'#10)+
       IIf(GetResistance('plasma')   <> 0,'Plasma res. : {!' + BonusStr(GetResistance('plasma'))+'}'#10)+
       IIf(GetResistance('cold')     <> 0,'Cold res.   : {!' + BonusStr(GetResistance('cold'))+'}'#10)+
-      IIf(GetResistance('poison')   <> 0,'Poison res. : {!' + BonusStr(GetResistance('poison'))+'}'#10);
+      IIf(GetResistance('poison')   <> 0,'Poison res. : {!' + BonusStr(GetResistance('poison'))+'}'#10)+
+      IIf(GetResistance('pierce')   <> 0,'Pierce res. : {!' + BonusStr(GetResistance('pierce'))+'}'#10);
 end;
 
 function TItem.ResistDescriptionShort: AnsiString;
-const ResLetter : array[Low(TResistance)..High(TResistance)] of Char = ( 'b','m','s','a','f','p','c','o' );
+const ResLetter : array[Low(TResistance)..High(TResistance)] of Char = ( 'b','m','s','a','f','p','c','o','i' );
 const ResID   : array[Low(TResistance)..High(TResistance)] of AnsiString =
-   ( 'bullet', 'melee', 'shrapnel', 'acid', 'fire', 'plasma', 'cold', 'poison' );
+   ( 'bullet', 'melee', 'shrapnel', 'acid', 'fire', 'plasma', 'cold', 'poison', 'pierce' );
 var Resistance : TResistance;
     iValue : LongInt;
 begin
