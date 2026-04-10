@@ -220,6 +220,7 @@ jobs:
           name: drl-${{ matrix.short }}
           path: drl/dist/*
           if-no-files-found: error
+          retention-days: 7
 
   # ── GitHub Release (tag pushes only) ─────────────────────────────────
 
