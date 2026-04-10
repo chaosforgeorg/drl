@@ -787,6 +787,12 @@ begin
   if ( iWeapon.Flags[ IF_NOAMMO ])   then Exit( Fail( 'The weapon doesn''t need to be reloaded!', [] ) );
   if ( iWeapon.Ammo = iWeapon.AmmoMax ) then Exit( Fail( 'Your %s is already loaded.', [ iWeapon.Name ] ) );
 
+  if iWeapon.Flags[ IF_AUTOAMMO ] then
+  begin
+    Reload( nil, False );
+    Exit( True );
+  end;
+
   iItem := getAmmoItem( iWeapon );
 
   if iItem = nil then Exit( Fail( 'You have no more ammo for the %s!',[iWeapon.Name] ) );
@@ -1358,6 +1364,13 @@ begin
   if aWeapon = nil then aWeapon := Inv.Slot[efWeapon];
   aWeapon.PlaySound( 'reload', FPosition );
   iCost := getReloadCost( aWeapon );
+
+  if aWeapon.Flags[ IF_AUTOAMMO ] then
+  begin
+    aWeapon.Ammo := aWeapon.AmmoMax;
+    Dec( FSpeedCount, iCost );
+    Exit;
+  end;
 
   repeat
     iPack  := aAmmoItem.isAmmoPack;

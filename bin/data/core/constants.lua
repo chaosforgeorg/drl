@@ -164,6 +164,7 @@ IF_ALTTARGET      = 69;
 IF_ALTMANUAL      = 70;
 IF_ALTCHAIN       = 71;
 IF_DESTROY        = 72;
+IF_AUTOAMMO       = 73;
 
 LF_NOHOMING       = 1;
 LF_UNIQUEITEM     = 2;

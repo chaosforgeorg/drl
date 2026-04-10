@@ -231,6 +231,7 @@ function aitk.ammo_check( self )
         if w:has_property("pump_action") and w.chamber_empty then return true, true end
         return true, false 
     end
+    if w.flags[ IF_AUTOAMMO ] then return true, true end
     if self.inv[ items[w.ammoid].id ] then return true, true end
     return false, false
 end
@@ -241,12 +242,11 @@ end
 -- * has_ammo - entity has a weapon with ammo available
 function aitk.inventory_check( self, can_reload )
     local has_ammo, needs_reload = aitk.ammo_check( self )
-    if needs_reload and can_reload then
-        if self:action_reload() then
+    if needs_reload then
+        if can_reload and self:action_reload() then
             return true, true
-        else
-            has_ammo = false
         end
+        has_ammo = false
     end
 
     if self.hp < self.hpmax / 2 and aitk.try_heal_item( self ) then
@@ -264,6 +264,7 @@ function aitk.basic_init( self, use_packs, use_armor )
     self:add_property( "use_packs", use_packs or false )
     self:add_property( "use_armor", use_armor or false )
     self:add_property( "attackchance", math.min( self.__proto.attackchance * diff[DIFFICULTY].speed, 90 ) )
+    self:add_property( "meleerangedchance", self.attackchance )
     self:add_property( "retaliate", false )
     self:add_property( "patrol_area", false )
     self:add_property( "nomelee", false )
@@ -452,9 +453,10 @@ function aitk.try_hunt( self )
     end
     local dist    = self:distance_to( target )
     local visible = self:in_sight( target )
-    local action, has_ammo = aitk.inventory_check( self, dist > 1 )
+    local action, has_ammo = aitk.inventory_check( self, dist > 1 or self.nomelee )
     if action then return "hunt" end
     local attackchance = self.attackchance
+    if dist == 1 and self.nomelee then attackchance = self.meleerangedchance end
     if not visible then
         if self:has_property("sneakshot") and dist <= self.vision then 
             attackchance = math.floor( attackchance / 2 )
