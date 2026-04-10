@@ -121,9 +121,10 @@ begin
 end;
 
 function TThing.CallHook ( aHook : Byte; const aParams : array of const ) : Boolean;
+var iState : TDRLState;
 begin
   CallHook := False;
-  if aHook in FHooks         then begin CallHook := True; LuaSystem.ProtectedRunHook(Self, Lua.HookName(aHook), aParams ); if DRL.State <> DSPlaying then Exit; end;
+  if aHook in FHooks         then begin CallHook := True; iState := DRL.State; LuaSystem.ProtectedRunHook(Self, Lua.HookName(aHook), aParams ); if DRL.State <> iState then Exit; end;
   if FPerks <> nil then if FPerks.CallHook( aHook, aParams ) then CallHook := True;
   if aHook in ChainedHooks   then begin CallHook := True; DRL.Level.CallHook( aHook, ConcatConstArray( [ Self ], aParams ) ); end;
 end;
