@@ -112,6 +112,7 @@ BF_FLY          = 55;
 BF_ILLUSION     = 56;
 BF_FRIENDLY     = 57;
 BF_NOBLEED      = 58;
+BF_BLINDFIRE    = 59;
 
 IF_UNIQUE         = 21;
 IF_EXOTIC         = 22;

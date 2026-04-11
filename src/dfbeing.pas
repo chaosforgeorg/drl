@@ -2227,7 +2227,7 @@ begin
 
   Result := toHitToChance( 10 + iToHit );
 
-  if ( not aBeing.isVisible ) and ( not iWeapon.Flags[ IF_UNSEENHIT ] ) then
+  if ( ( not aBeing.isVisible ) or ( BF_BLINDFIRE in FFlags ) ) and ( not iWeapon.Flags[ IF_UNSEENHIT ] ) then
     Result := Result div 2;
 end;
 
@@ -2397,7 +2397,7 @@ begin
       if ( BF_AUTOHIT in FFlags ) or aItem.Flags[ IF_AUTOHIT ] then 
         iIsHit := True;
 
-      if iIsHit and ( not iLevel.isVisible( iCoord ) ) and ( not aItem.Flags[ IF_UNSEENHIT ] ) then
+      if iIsHit and ( ( not iLevel.isVisible( iCoord ) ) or ( BF_BLINDFIRE in FFlags ) ) and ( not aItem.Flags[ IF_UNSEENHIT ] ) then
         iIsHit := (Random(10) > 4);
 
       if iIsHit and ( iBeing <> iAimedBeing ) then
