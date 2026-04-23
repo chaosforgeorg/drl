@@ -1,3 +1,7 @@
+0.10.9
+[mod] -- GJ#357: Game - powerups refresh instead of stacking
+[mod] -- GJ#357: Game - buffed berserk powerup duration (300->500)
+
 0.10.8
 [new] -- GJ#242: UI - SHIFT-G will now equip items from ground if at all possible (old one goes to inv, or ground if full)
 [mod] -- GJ#326: Game - fixed broken recharge rates, buffed some recharge items

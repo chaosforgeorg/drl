@@ -177,7 +177,7 @@ function drl.register_regular_items()
 		type    = ITEMTYPE_POWER,
 
 		OnPickup = function(self,being)
-			being:add_perk("berserk",core.power_duration(300))
+			being:apply_powerup_perk( "berserk", 500 )
 			if (not being.flags[ BF_NOHEAL ]) and being.hp < being.hpmax then
 				being.hp = being.hpmax
 			end
@@ -197,7 +197,7 @@ function drl.register_regular_items()
 		type    = ITEMTYPE_POWER,
 
 		OnPickup = function(self,being)
-			being:add_perk("inv",core.power_duration(500))
+			being:apply_powerup_perk( "inv", 500 )
 			being:remove_perk( "tired" )
 		end,
 	}
@@ -332,7 +332,7 @@ function drl.register_regular_items()
 		type    = ITEMTYPE_POWER,
 
 		OnPickup = function(self,being)
-			being:add_perk("light",core.power_duration(600))
+			being:apply_powerup_perk( "light", 600 )
 		end,
 	}
 
@@ -901,7 +901,7 @@ function drl.register_regular_items()
 
 		OnUse = function(self,being)
 			if being:is_player() then
-				being:add_perk("enviro",core.power_duration(700))
+				being:apply_powerup_perk( "enviro", 700 )
 			end
 			return true
 		end,
@@ -1794,7 +1794,7 @@ function drl.register_regular_items()
 		OnUse = function(self,being)
 			if being:is_player() then
 				being:play_sound( "phasing" )
-				being:add_perk("inv",core.power_duration(90))
+				being:apply_powerup_perk( "inv", 90 )
 			end
 			return true
 		end,
