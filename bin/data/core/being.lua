@@ -390,9 +390,17 @@ end
 
 function being:refresh_perk( id, max_duration )
 	local current = self:get_perk_time( id )
+	if current < 0 then
+		return
+	end
 	if current < max_duration then
 		self:add_perk( id, max_duration - current )
 	end
+end
+
+function being:apply_powerup_perk( id, base_duration )
+	self:refresh_perk( id, core.power_duration( base_duration ) )
+	return true
 end
 
 function being:full_reload( weapon )
