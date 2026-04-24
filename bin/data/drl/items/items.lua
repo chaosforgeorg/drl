@@ -584,7 +584,7 @@ function drl.register_regular_items()
 		ammomax       = 1,
 		damage        = "8d3",
 		damagetype    = DAMAGE_SHARPNEL,
-		range         = 15,
+		range         = 13,
 		spread        = 3,
 		falloff       = 9,
 		knockback     = 8,
