@@ -586,7 +586,7 @@ function drl.register_regular_items()
 		damagetype    = DAMAGE_SHARPNEL,
 		range         = 15,
 		spread        = 3,
-		falloff       = 7,
+		falloff       = 9,
 		knockback     = 8,
 		hitsprite     = SPRITE_BLAST,
 	}
@@ -614,7 +614,7 @@ function drl.register_regular_items()
 		shots         = 2,
 		range         = 8,
 		spread        = 3,
-		falloff       = 10,
+		falloff       = 12,
 		knockback     = 8,
 		hitsprite     = SPRITE_BLAST,
 
@@ -644,7 +644,7 @@ function drl.register_regular_items()
 		damagetype    = DAMAGE_SHARPNEL,
 		range         = 15,
 		spread        = 2,
-		falloff       = 5,
+		falloff       = 7,
 		knockback     = 8,
 		hitsprite     = SPRITE_BLAST,
 
