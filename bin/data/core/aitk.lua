@@ -265,6 +265,7 @@ function aitk.basic_init( self, use_packs, use_armor )
     self:add_property( "use_armor", use_armor or false )
     self:add_property( "attackchance", math.min( self.__proto.attackchance * diff[DIFFICULTY].speed, 90 ) )
     self:add_property( "meleerangedchance", self.attackchance )
+    self:add_property( "meleerangedblind", false )
     self:add_property( "retaliate", false )
     self:add_property( "patrol_area", false )
     self:add_property( "nomelee", false )
@@ -499,7 +500,10 @@ function aitk.try_hunt( self )
         end
         if sequence == 0 and sequential then
             self.sequence = core.resolve_range( sequential )
-        end 
+        end
+        if self.meleerangedblind then
+            self.flags[ BF_BLINDFIRE ] = (dist == 1)
+        end
         self:action_fire( target, self.eq.weapon )
         return "hunt"
     end
