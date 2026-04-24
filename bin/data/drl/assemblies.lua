@@ -646,7 +646,7 @@ function drl.register_assemblies()
 
 		OnApply = function (item)
 			item.name         = "focused double shotgun"
-			item.range        = 13
+			item.range        = 12
 			item.spread       = 3
 			item.falloff      = 9
 			item.damage_dice  = 8
