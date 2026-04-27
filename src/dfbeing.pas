@@ -50,6 +50,7 @@ TBeing = class(TThing,IPathQuery)
     function getTotalResistance( const aResistance : AnsiString; aTarget : TBodyTarget ) : Integer;
     procedure ApplyDamage( aDamage : LongInt; aTarget : TBodyTarget; aDamageType : TDamageType; aSource : TItem; aDelay : Integer ); virtual;
     function calculateToHit( aBeing : TBeing ) : Integer;
+    function isEyeContact( aBeing : TBeing ) : Boolean;
     function SendMissile( aTarget : TCoord2D; aItem : TItem; aAltFire : Boolean; aSequence : DWord; aShotCount : Integer ) : Boolean;
     function  isActive : boolean;
     function  WoundStatus : string;
@@ -2201,6 +2202,14 @@ begin
     end;
 end;
 
+function TBeing.isEyeContact( aBeing : TBeing ) : Boolean;
+begin
+  if aBeing = nil then Exit( False );
+  if IsPlayer then Exit( aBeing.isVisible );
+  if Distance( FPosition, aBeing.Position ) > Vision then Exit( False );
+  Exit( TLevel(Parent).isEyeContact( FPosition, aBeing.Position ) );
+end;
+
 function TBeing.calculateToHit( aBeing : TBeing ) : Integer;
 var iWeapon : TItem;
     iToHit  : Integer;
@@ -2227,7 +2236,7 @@ begin
 
   Result := toHitToChance( 10 + iToHit );
 
-  if ( ( not aBeing.isVisible ) or ( BF_BLINDFIRE in FFlags ) ) and ( not iWeapon.Flags[ IF_UNSEENHIT ] ) then
+  if ( ( not isEyeContact( aBeing ) ) or ( BF_BLINDFIRE in FFlags ) ) and ( not iWeapon.Flags[ IF_UNSEENHIT ] ) then
     Result := Result div 2;
 end;
 
@@ -2397,7 +2406,7 @@ begin
       if ( BF_AUTOHIT in FFlags ) or aItem.Flags[ IF_AUTOHIT ] then 
         iIsHit := True;
 
-      if iIsHit and ( ( not iLevel.isVisible( iCoord ) ) or ( BF_BLINDFIRE in FFlags ) ) and ( not aItem.Flags[ IF_UNSEENHIT ] ) then
+      if iIsHit and ( ( not isEyeContact( iBeing ) ) or ( BF_BLINDFIRE in FFlags ) ) and ( not aItem.Flags[ IF_UNSEENHIT ] ) then
         iIsHit := (Random(10) > 4);
 
       if iIsHit and ( iBeing <> iAimedBeing ) then
