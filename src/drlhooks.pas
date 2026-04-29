@@ -34,7 +34,7 @@ const
   Hook_OnReload        = 22;  // Item
   Hook_OnDescribe      = 23;  // Item
   Hook_OnEquipCheck    = 24;  // Item
-  Hook_OnAct           = 25;  // Item
+  Hook_OnAct           = 25;  // Item, Being (hack)
   Hook_OnDestroy       = 26;  // Item
   Hook_OnEnter         = 27;  // Item (separate)
   Hook_OnEnterLevel    = 28;  // Level, Module, Challenge, Core (chained)
@@ -83,8 +83,9 @@ const
   Hook_OnUnequipCheck  = 68; // Item
   Hook_OnDrop          = 69; // Item
   Hook_OnDropItem      = 70; // Item
+  Hook_OnCanAct        = 71; // Being
 
-  HookAmount           = 71;
+  HookAmount           = 72;
 
 const AllHooks      : TFlags = [ 0..HookAmount-1 ];
 
@@ -114,7 +115,7 @@ const HookNames : array[ 0..HookAmount-1 ] of AnsiString = (
       'getDamageMul', 'getFireCostMul', 'getAmmoCostMul', 'getReloadCostMul',
       'getGibMul',
       'OnUnequipCheck',
-      'OnDrop', 'OnDropItem'
+      'OnDrop', 'OnDropItem', 'OnCanAct'
       );
 
 function LoadHooks( const aTable : array of Const ) : TFlags;
@@ -164,10 +165,10 @@ initialization
 AllHooks     := [ 0..HookAmount-1 ];
 BeingHooks   := [ Hook_OnCreate, Hook_OnAction, Hook_OnAttacked, Hook_OnUseActive,
   Hook_OnDie, Hook_OnDieCheck, Hook_OnPickUpItem, Hook_OnDropItem, Hook_OnPostMove, Hook_OnKill,
-  Hook_OnDamage, Hook_OnReceiveDamage, Hook_OnPreAction, Hook_OnEnterLevel,
+  Hook_OnDamage, Hook_OnReceiveDamage, Hook_OnPreAction, Hook_OnEnterLevel, Hook_OnAct, Hook_OnCanAct,
   Hook_getDamageBonus, Hook_getToHitBonus, Hook_getShotsBonus, Hook_getFireCostBonus,
   Hook_getDefenceBonus, Hook_getDodgeBonus, Hook_getMoveBonus, Hook_getBodyBonus,
-  Hook_getResistBonus, Hook_getDamageMul, Hook_getFireCostMul, Hook_getAmmoCostMul];
+  Hook_getResistBonus, Hook_getDamageMul, Hook_getFireCostMul, Hook_getAmmoCostMul ];
 FullInvHooks := [ Hook_OnPreAction, Hook_OnPostAction, Hook_OnTick ];
 ItemHooks    := [ Hook_OnCreate, Hook_OnPickup, Hook_OnFirstPickup,
   Hook_OnUse, Hook_OnUseCheck, Hook_OnAltFire, Hook_OnEquip, Hook_OnUnequip,

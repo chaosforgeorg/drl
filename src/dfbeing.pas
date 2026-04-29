@@ -1227,12 +1227,22 @@ end;
 function TBeing.ActionAction( aTarget : TCoord2D ) : Boolean;
 var iLevel : TLevel;
     iItem  : TItem;
+    iBeing : TBeing;
 begin
   iLevel := TLevel(Parent);
   iItem := iLevel.Item[ aTarget ];
-  if Assigned( iItem ) and iItem.HasHook( Hook_OnAct )
-    then iItem.CallHook( Hook_OnAct, [ LuaCoord( aTarget ), Self ] )
-    else iLevel.CallHook( aTarget, Self, CellHook_OnAct );
+  if Assigned( iItem ) and iItem.HasHook( Hook_OnAct ) then
+  begin
+    iItem.CallHook( Hook_OnAct, [ LuaCoord( aTarget ), Self ] );
+    Exit( True );
+  end;
+  iBeing := iLevel.Being[ aTarget ];
+  if Assigned( iBeing ) and iBeing.HasHook( Hook_OnAct ) and iBeing.CallHookCheck( Hook_OnCanAct, [Self] ) then
+  begin
+    iBeing.CallHook( Hook_OnAct, [ Self ] );
+    Exit( True );
+  end;
+  iLevel.CallHook( aTarget, Self, CellHook_OnAct );
   Exit( True );
 end;
 
