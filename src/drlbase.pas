@@ -716,6 +716,14 @@ begin
 
     if (not iItem.isRanged) then
     begin
+      if aPad then
+      begin
+        iTarget := FTargeting.List.Current;
+        if IO.GetPadLDir.NotZero then 
+          iTarget := Player.Position + IO.GetPadLDir;
+        if Distance( Player.Position, iTarget ) = 1 then
+          Exit( HandleCommand( TCommand.Create( COMMAND_MELEE, iTarget, ModuleOption_MeleeMoveOnKill ) ) );
+      end;
       IO.Msg( 'You have no ranged weapon.' );
       Exit( False );
     end;
