@@ -1719,7 +1719,7 @@ begin
   FDying := True;
 
   // TODO: Change to Player.RegisterKill(kill)
-  if ( not ( BF_FRIENDLY in FFlags ) ) and ( not ( BF_ILLUSION in FFlags ) ) then
+  if ( not ( BF_FRIENDLY in FFlags ) ) and ( not ( BF_ILLUSION in FFlags ) ) and ( not ( BF_NOKILL in FFlags ) ) then
     Player.RegisterKill( FID, aKiller, aWeapon, not Flags[ BF_RESPAWN ] );
 
   if (aKiller <> nil) and (aWeapon <> nil) then
