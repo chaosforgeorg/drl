@@ -27,7 +27,7 @@ function aitk.get_patrol_area( self, range, can_wander )
         if program == "follow" then
             self.patrol_area = area.around( player.position, 3 )
         elseif program == "stay" then
-            self.partol_area = area.around( self.position, 0 )
+            self.patrol_area = area.around( self.position, 0 )
         end
     end
 
@@ -70,6 +70,51 @@ function aitk.scan( self )
         end
         return false
     end
+end
+
+function aitk.is_hunt_program_target( self, being )
+    if being == self then return false end
+    if self.flags[ BF_FRIENDLY ] then
+        return being ~= player and ( not being.flags[ BF_FRIENDLY ] )
+    end
+    return not being.flags[ BF_NOBLEED ]
+end
+
+function aitk.hunt_program_scan( self )
+    local dist   = 100000
+    local target = nil
+    for b in level:beings() do
+        if aitk.is_hunt_program_target( self, b ) then
+            local d = self:distance_to( b )
+            if d < dist then
+                target = b
+                dist   = d
+            end
+        end
+    end
+    if target then
+        return target.uid
+    end
+    return false
+end
+
+function aitk.hunt_program_acquire( self )
+    if self.program ~= "hunt" then return false end
+    local target = aitk.hunt_program_scan( self )
+    if target then
+        self.target = target
+        if self:has_property("boredom") then self.boredom = 0 end
+        local being = uids.get( target )
+        if being and not self:in_sight( being ) then
+            self.move_to = being.position
+            self:path_find( self.move_to, 10, 40 )
+            return "pursue"
+        end
+        self.move_to = false
+        return "hunt"
+    end
+    self.target = false
+    return false
 end
 
 function aitk.move_path( self, reattempt )
@@ -335,7 +380,13 @@ function aitk.basic_idle( self )
         self.move_to = false
         return "hunt"
     end
-    if self.flags[ BF_HUNTING ] then
+    if self.program then
+        local hunt_program_state = aitk.hunt_program_acquire( self )
+        if hunt_program_state then
+            return hunt_program_state
+        end
+    end
+    if self.flags[ BF_HUNTING ] and not self.flags[ BF_FRIENDLY ] then
         self.target  = player.uid
         self.boredom = 0
         return "hunt"
@@ -377,6 +428,12 @@ function aitk.basic_smart_idle( self )
     if aitk.basic_scan( self ) then
         self.move_to = false
         return "hunt"
+    end
+	if self.program then
+        local hunt_program_state = aitk.hunt_program_acquire( self )
+        if hunt_program_state then
+            return hunt_program_state
+        end
     end
 	if self.flags[ BF_HUNTING ] and not self.flags[ BF_FRIENDLY ] then
         if self:has_property("boredom") then self.boredom = 0 end
