@@ -47,6 +47,7 @@ type TPlayer = class(TBeing)
   procedure LevelEnter;
   procedure doUpgradeTrait;
   procedure RegisterKill( const aKilledID : AnsiString; aKiller : TBeing; aWeapon : TItem; aUnique : Boolean );
+  procedure RemoveKill( aBeing : TBeing );
   procedure ApplyDamage( aDamage : LongInt; aTarget : TBodyTarget; aDamageType : TDamageType; aSource : TItem; aDelay : Integer ); override;
   procedure LevelUp;
   procedure AddExp( aAmount : LongInt );
@@ -288,6 +289,20 @@ begin
   end;
   FKills.Add( aKilledID, iKillClass );
   if aUnique then Inc( FKillCount );
+end;
+
+procedure TPlayer.RemoveKill( aBeing : TBeing );
+begin
+  if aBeing = nil then Exit;
+  if aBeing.IsPlayer then Exit;
+  if aBeing.Flags[ BF_FRIENDLY ] then Exit;
+  if aBeing.Flags[ BF_ILLUSION ] then Exit;
+  if aBeing.Flags[ BF_NOKILL ] then Exit;
+  if FKills.MaxCount > 0 then FKills.MaxCount := FKills.MaxCount - 1;
+  if ( not aBeing.Flags[ BF_RESPAWN ] ) and ( FKillMax > 0 ) then FKillMax := FKillMax - 1;
+  aBeing.Flags[ BF_NOKILL ] := True;
+  if aBeing.Parent is TLevel then
+    TLevel( aBeing.Parent ).UpdateKillState;
 end;
 
 function TPlayer.RunPath( const aCoord : TCoord2D ) : boolean;
@@ -701,6 +716,19 @@ begin
   Result := 0;
 end;
 
+function lua_player_remove_kill(L: Plua_State): Integer; cdecl;
+var State   : TDRLLuaState;
+    Being   : TBeing;
+    Target  : TBeing;
+begin
+  State.Init(L);
+  Being := State.ToObject(1) as TBeing;
+  if not (Being is TPlayer) then Exit(0);
+  Target := State.ToObject(2) as TBeing;
+  Player.RemoveKill( Target );
+  Result := 0;
+end;
+
 
 function lua_player_has_won(L: Plua_State): Integer; cdecl;
 var State   : TDRLLuaState;
@@ -929,11 +957,12 @@ begin
   Result := 0;
 end;
 
-const lua_player_lib : array[0..17] of luaL_Reg = (
+const lua_player_lib : array[0..18] of luaL_Reg = (
       ( name : 'set_achievement'; func : @lua_player_set_achievement),
       ( name : 'store_inc_stat';  func : @lua_player_store_inc_stat),
       ( name : 'store_mark_stat'; func : @lua_player_store_mark_stat),
       ( name : 'add_exp';         func : @lua_player_add_exp),
+      ( name : 'remove_kill';     func : @lua_player_remove_kill),
       ( name : 'has_won';         func : @lua_player_has_won),
       ( name : 'add_trait';       func : @lua_player_add_trait),
       ( name : 'get_trait';       func : @lua_player_get_trait),

@@ -285,6 +285,8 @@ core.register_blueprint "being"
 	OnPostMove      = { false, core.TFUNC },
 	OnDamage        = { false, core.TFUNC },
 	OnTick          = { false, core.TFUNC },
+	OnAct           = { false, core.TFUNC },
+	OnCanAct        = { false, core.TFUNC },
 	OnReceiveDamage = { false, core.TFUNC },
 	OnEnterLevel    = { false, core.TFUNC },
 

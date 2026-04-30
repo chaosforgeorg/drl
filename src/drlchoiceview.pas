@@ -25,20 +25,25 @@ type TChoiceView = class( TIOLayer )
   procedure Add( const aEntry : TChoiceViewChoice );
   destructor Destroy; override;
 protected
-  FSize     : TPoint;
   FTitle    : AnsiString;
   FHeader   : AnsiString;
+  FHint     : AnsiString;
   FChoices  : TChoiceArray;
   FCancel   : Variant;
   FFirst    : Boolean;
   FEscape   : Boolean;
   FDelay    : Integer;
+  FWidth    : Integer;
+  FHeight   : Integer;
 public
   property Title  : AnsiString read FTitle  write FTitle;
   property Header : AnsiString read FHeader write FHeader;
+  property Hint   : AnsiString read FHint   write FHint;
   property Cancel : Variant    read FCancel write FCancel;
   property Escape : Boolean    read FEscape write FEscape;
   property Delay  : Integer    read FDelay  write FDelay;
+  property Width  : Integer    read FWidth  write FWidth;
+  property Height : Integer    read FHeight write FHeight;
 protected
   class var FResult : Variant;
 public
@@ -54,24 +59,28 @@ begin
   VTIG_EventClear;
   VTIG_Reset( 'choice_menu' );
   VTIG_ResetSelect( 'choice_menu' );
-  FSize     := Point( 50, -1 );
   FFinished := False;
   FTitle    := '';
   FHeader   := '';
+  FHint     := '';
   FCancel   := 0;
   FDelay    := 0;
+  FWidth    := 50;
+  FHeight   := -1;
   FEscape   := True;
   FChoices  := TChoiceArray.Create;
 end;
 
 procedure TChoiceView.Update( aDTime : Integer; aActive : Boolean );
-var i : Byte;
+var i     : Byte;
+    iSize : TPoint;
 begin
   if IsFinished then Exit;
   if FDelay > 0 then FDelay -= aDTime;
+  iSize := Point( FWidth, FHeight );
   if FTitle <> ''
-    then VTIG_BeginWindow( FTitle, 'choice_menu', FSize )
-    else VTIG_Begin('choice_menu', FSize );
+    then VTIG_BeginWindow( FTitle, 'choice_menu', iSize )
+    else VTIG_Begin('choice_menu', iSize );
   if FHeader <> '' then
   begin
     VTIG_Text( FHeader );
@@ -88,7 +97,9 @@ begin
     VTIG_Ruler;
     VTIG_Text( FChoices[VTIG_Selected].Desc );
   end;
-  VTIG_End;
+  if FHint <> ''
+    then VTIG_End( FHint )
+    else VTIG_End;
 
   if FEscape and VTIG_EventCancel then
   begin

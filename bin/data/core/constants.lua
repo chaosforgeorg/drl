@@ -70,6 +70,7 @@ BF_SPLASHIMMUNE   = 12;
 BF_SWASHBUCKLER   = 13;
 BF_AUTOHIT        = 14;
 BF_DARKNESS       = 15;
+BF_NOKILL         = 16;
 
 BF_POWERSENSE     = 17;
 BF_INTUITED       = 18;

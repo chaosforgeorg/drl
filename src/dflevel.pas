@@ -100,6 +100,7 @@ TLevel = class(TLuaMapNode, ITextMap)
     procedure DestroyItem( coord : TCoord2D );
     procedure Blood( coord : TCoord2D );
     procedure Kill( aBeing : TBeing );
+    procedure UpdateKillState;
     function ActiveBeing : TBeing;
     procedure CalculateVision( coord : TCoord2D );
 
@@ -292,6 +293,7 @@ begin
       if TBeing(iNode).isVisible then
         if not TBeing(iNode).isPlayer then
           if not TBeing(iNode).Flags[ BF_FRIENDLY ] then
+            if not TBeing(iNode).Flags[ BF_NOKILL ] then
             Inc(GetEnemiesVisible);
 end;
 
@@ -496,7 +498,7 @@ begin
   iEnemies := 0;
   for iNode in Self do
     if iNode is TBeing then
-      if ( not TBeing(iNode).isPlayer ) and ( not iNode.Flags[ BF_FRIENDLY ] ) and ( not iNode.Flags[ BF_ILLUSION ] )then
+      if ( not TBeing(iNode).isPlayer ) and ( not iNode.Flags[ BF_FRIENDLY ] ) and ( not iNode.Flags[ BF_ILLUSION ] ) and ( not iNode.Flags[ BF_NOKILL ] ) then
         if ( not aUnique ) or ( not iNode.Flags[ BF_RESPAWN ] ) then
           Inc( iEnemies );
   Exit( iEnemies );
@@ -900,7 +902,7 @@ begin
   if aBeing = nil then Exit;
   aCoord := DropCoord( aCoord, [ EF_NOTELE,EF_NOBEINGS,EF_NOBLOCK,EF_NOSTAIRS ], False );
   Add( aBeing, aCoord );
-  if ( not aBeing.IsPlayer ) and ( not aBeing.Flags[ BF_FRIENDLY ] ) and ( not aBeing.Flags[ BF_ILLUSION ] ) then
+  if ( not aBeing.IsPlayer ) and ( not aBeing.Flags[ BF_FRIENDLY ] ) and ( not aBeing.Flags[ BF_ILLUSION ] ) and ( not aBeing.Flags[ BF_NOKILL ] ) then
   begin
     Player.FKills.MaxCount := Player.FKills.MaxCount + 1;
     if not aBeing.Flags[ BF_RESPAWN ] then Player.FKillMax := Player.FKillMax + 1;
@@ -1170,8 +1172,6 @@ begin
 end;
 
 procedure TLevel.Kill( aBeing : TBeing );
-var iEnemiesLeft       : Integer;
-    iUniqueEnemiesLeft : Integer;
 begin
   if aBeing = nil then Exit;
   if Being[ aBeing.Position ] = aBeing then
@@ -1180,6 +1180,14 @@ begin
   FMarkers.Wipe( aBeing.UID );
   DRL.Particles.Kill( aBeing.UID );
   FreeAndNil(aBeing);
+  if DRL.State <> DSPlaying then Exit;
+  UpdateKillState;
+end;
+
+procedure TLevel.UpdateKillState;
+var iEnemiesLeft       : Integer;
+    iUniqueEnemiesLeft : Integer;
+begin
   if DRL.State <> DSPlaying then Exit;
 
   iEnemiesLeft       := EnemiesLeft();

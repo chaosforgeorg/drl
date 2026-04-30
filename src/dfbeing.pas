@@ -1227,12 +1227,22 @@ end;
 function TBeing.ActionAction( aTarget : TCoord2D ) : Boolean;
 var iLevel : TLevel;
     iItem  : TItem;
+    iBeing : TBeing;
 begin
   iLevel := TLevel(Parent);
   iItem := iLevel.Item[ aTarget ];
-  if Assigned( iItem ) and iItem.HasHook( Hook_OnAct )
-    then iItem.CallHook( Hook_OnAct, [ LuaCoord( aTarget ), Self ] )
-    else iLevel.CallHook( aTarget, Self, CellHook_OnAct );
+  if Assigned( iItem ) and iItem.HasHook( Hook_OnAct ) then
+  begin
+    iItem.CallHook( Hook_OnAct, [ LuaCoord( aTarget ), Self ] );
+    Exit( True );
+  end;
+  iBeing := iLevel.Being[ aTarget ];
+  if Assigned( iBeing ) and iBeing.HasHook( Hook_OnAct ) and iBeing.CallHookCheck( Hook_OnCanAct, [Self] ) then
+  begin
+    iBeing.CallHook( Hook_OnAct, [ Self ] );
+    Exit( True );
+  end;
+  iLevel.CallHook( aTarget, Self, CellHook_OnAct );
   Exit( True );
 end;
 
@@ -1709,7 +1719,7 @@ begin
   FDying := True;
 
   // TODO: Change to Player.RegisterKill(kill)
-  if ( not ( BF_FRIENDLY in FFlags ) ) and ( not ( BF_ILLUSION in FFlags ) ) then
+  if ( not ( BF_FRIENDLY in FFlags ) ) and ( not ( BF_ILLUSION in FFlags ) ) and ( not ( BF_NOKILL in FFlags ) ) then
     Player.RegisterKill( FID, aKiller, aWeapon, not Flags[ BF_RESPAWN ] );
 
   if (aKiller <> nil) and (aWeapon <> nil) then
@@ -3214,6 +3224,32 @@ begin
   Exit( 1 );
 end;
 
+function lua_being_inv_count(L: Plua_State): Integer; cdecl;
+var State : TDRLLuaState;
+    Being : TBeing;
+    NID   : DWord;
+begin
+  State.Init(L);
+  Being := State.ToObject(1) as TBeing;
+  NID   := State.ToId(2);
+  State.Push( Being.Inv.CountAmount( NID ) );
+  Exit( 1 );
+end;
+
+function lua_being_inv_remove(L: Plua_State): Integer; cdecl;
+var State  : TDRLLuaState;
+    Being  : TBeing;
+    NID    : DWord;
+    Amount : Integer;
+begin
+  State.Init(L);
+  Being  := State.ToObject(1) as TBeing;
+  NID    := State.ToId(2);
+  Amount := State.ToInteger(3, 1);
+  State.Push( Being.Inv.RemoveAmount( NID, Amount ) );
+  Exit( 1 );
+end;
+
 function lua_being_inv_size(L: Plua_State): Integer; cdecl;
 var State   : TDRLLuaState;
     Being   : TBeing;
@@ -3452,13 +3488,15 @@ begin
   Result := 1;
 end;
 
-const lua_being_lib : array[0..38] of luaL_Reg = (
+const lua_being_lib : array[0..40] of luaL_Reg = (
       ( name : 'new';           func : @lua_being_new),
       ( name : 'kill';          func : @lua_being_kill),
       ( name : 'resurrect';     func : @lua_being_resurrect),
       ( name : 'apply_damage';  func : @lua_being_apply_damage),
       ( name : 'get_name';      func : @lua_being_get_name),
       ( name : 'inv_items';     func : @lua_being_inv_items),
+      ( name : 'inv_count';     func : @lua_being_inv_count),
+      ( name : 'inv_remove';    func : @lua_being_inv_remove),
       ( name : 'get_eq_item';   func : @lua_being_get_eq_item),
       ( name : 'set_eq_item';   func : @lua_being_set_eq_item),
       ( name : 'add_inv_item';  func : @lua_being_add_inv_item),
