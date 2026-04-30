@@ -209,7 +209,7 @@ begin
     if iItem = nil then Exit( False );
     iAmount := Min( aCount, iItem.Amount );
     aCount -= iAmount;
-    iItem.Amount -= iAmount;
+    iItem.Amount := iItem.Amount - iAmount;
     if iItem.Amount <= 0 then iItem.Free;
   until aCount = 0;
   Exit( True );
