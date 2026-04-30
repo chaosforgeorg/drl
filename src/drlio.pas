@@ -1297,6 +1297,7 @@ begin
       iView := TChoiceView.Create;
       if IsString('title')      then iView.Title  := GetString( 'title' );
       if IsString('header')     then iView.Header := GetString( 'header' );
+      if IsString('hint')       then iView.Hint   := GetString( 'hint' );
       if IsNumber('delay')      then iView.Delay  := GetInteger( 'delay' );
       if not IsNil('cancel')    then iView.Cancel := GetValue( 'cancel' );
       if not IsNil('escape')    then iView.Escape := GetBoolean( 'escape' );

@@ -28,6 +28,7 @@ protected
   FSize     : TPoint;
   FTitle    : AnsiString;
   FHeader   : AnsiString;
+  FHint     : AnsiString;
   FChoices  : TChoiceArray;
   FCancel   : Variant;
   FFirst    : Boolean;
@@ -36,6 +37,7 @@ protected
 public
   property Title  : AnsiString read FTitle  write FTitle;
   property Header : AnsiString read FHeader write FHeader;
+  property Hint   : AnsiString read FHint   write FHint;
   property Cancel : Variant    read FCancel write FCancel;
   property Escape : Boolean    read FEscape write FEscape;
   property Delay  : Integer    read FDelay  write FDelay;
@@ -58,6 +60,7 @@ begin
   FFinished := False;
   FTitle    := '';
   FHeader   := '';
+  FHint     := '';
   FCancel   := 0;
   FDelay    := 0;
   FEscape   := True;
@@ -88,7 +91,9 @@ begin
     VTIG_Ruler;
     VTIG_Text( FChoices[VTIG_Selected].Desc );
   end;
-  VTIG_End;
+  if FHint <> ''
+    then VTIG_End( FHint )
+    else VTIG_End;
 
   if FEscape and VTIG_EventCancel then
   begin
