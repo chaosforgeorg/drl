@@ -28,6 +28,7 @@ TInventory = class( TVObject )
        function  SeekStack( aID : DWord ) : TItem;
        function  CountAmount( aID : DWord ) : Integer;
        function  AddStack( aID : DWord; aCount : Integer ) : Integer;
+       function  RemoveAmount( aID : DWord; aCount : Integer ) : Boolean;
        function  isFull : boolean;
        procedure RawSetSlot( aIndex : TEqSlot; aItem : TItem ); inline;
        procedure EqSwap( aSlot1, aSlot2 : TEqSlot );
@@ -194,6 +195,24 @@ begin
     aCount -= iAmount;
   until aCount = 0;
   Exit(0);
+end;
+
+function TInventory.RemoveAmount( aID : DWord; aCount : Integer ) : Boolean;
+var iItem   : TItem;
+    iAmount : Integer;
+begin
+  if aCount <= 0 then Exit( True );
+  if CountAmount( aID ) < aCount then Exit( False );
+
+  repeat
+    iItem := SeekStack( aID );
+    if iItem = nil then Exit( False );
+    iAmount := Min( aCount, iItem.Amount );
+    aCount -= iAmount;
+    iItem.Amount -= iAmount;
+    if iItem.Amount <= 0 then iItem.Free;
+  until aCount = 0;
+  Exit( True );
 end;
 
 function TInventory.isFull: boolean;

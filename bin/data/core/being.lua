@@ -24,7 +24,9 @@ being.inv = {
 		end
 		return result
 	end,
-	items = being.inv_items,
+	count  = being.inv_count,
+	remove = being.inv_remove,
+	items  = being.inv_items,
 	empty = function(self)
 		for i in being.inv.items(self) do
 			return false
