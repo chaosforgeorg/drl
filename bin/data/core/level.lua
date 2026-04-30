@@ -436,6 +436,13 @@ function level:drop_items( what )
 	end
 end
 
+function level:drop_ammo( what )
+	for i in what:children("item") do
+		if i.itype == ITEMTYPE_AMMO then
+			self:drop_item( i, what.position, true, true, true )
+		end
+	end
+end
 
 -- TODO: this depends on player having a proper propety registered!
 level.data = setmetatable({}, {
