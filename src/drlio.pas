@@ -1303,6 +1303,7 @@ begin
       if IsNumber('height')     then iView.Height := GetInteger( 'height' );
       if not IsNil('cancel')    then iView.Cancel := GetValue( 'cancel' );
       if not IsNil('escape')    then iView.Escape := GetBoolean( 'escape' );
+      if not IsNil('reset')     then iView.Reset  := GetBoolean( 'reset' );
       if not IsTable('entries') then State.Error('Choice call without entries!');
       iCount := GetTableSize('entries');
       for i := 1 to iCount do
@@ -1324,7 +1325,7 @@ begin
   repeat
     IO.FullUpdate;
     IO.HandleEvents;
-  until not IO.IsTopLayer( iView );
+  until TChoiceView.Done;
   State.PushVariant(TChoiceView.Result);
   Result := 1;
 end;

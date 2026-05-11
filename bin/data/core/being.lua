@@ -58,6 +58,37 @@ being.inv = {
 	end,
 }
 
+function being:acquire( what, count )
+	local ok = true
+
+	local function add( it )
+		if not self.inv:add( it ) then
+			if not level:drop_item( it, self.position, true, true, true ) then
+				ok = false
+			end
+		end
+	end
+
+	if type( what ) == "string" or type( what ) == "number" then
+		count = count or 1
+		if count <= 0 then return true end
+
+		if items[ what ].max > 1 then
+			local it = item.new( what )
+			it.amount = count
+			add( it )
+		else
+			for i = 1, count do
+				add( item.new( what ) )
+			end
+		end
+	else
+		add( what )
+	end
+
+	return ok
+end
+
 setmetatable(being.inv, {
 	__newindex = function (self, key, value)
 	end,

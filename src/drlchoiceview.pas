@@ -32,6 +32,7 @@ protected
   FCancel   : Variant;
   FFirst    : Boolean;
   FEscape   : Boolean;
+  FReset    : Boolean;
   FDelay    : Integer;
   FWidth    : Integer;
   FHeight   : Integer;
@@ -41,13 +42,16 @@ public
   property Hint   : AnsiString read FHint   write FHint;
   property Cancel : Variant    read FCancel write FCancel;
   property Escape : Boolean    read FEscape write FEscape;
+  property Reset  : Boolean    read FReset  write FReset;
   property Delay  : Integer    read FDelay  write FDelay;
   property Width  : Integer    read FWidth  write FWidth;
   property Height : Integer    read FHeight write FHeight;
 protected
   class var FResult : Variant;
+  class var FDone   : Boolean;
 public
   class property Result : Variant read FResult;
+  class property Done   : Boolean read FDone;
 end;
 
 implementation
@@ -57,8 +61,7 @@ uses sysutils, vdebug, vtig, drlbase;
 constructor TChoiceView.Create;
 begin
   VTIG_EventClear;
-  VTIG_Reset( 'choice_menu' );
-  VTIG_ResetSelect( 'choice_menu' );
+  FDone     := False;
   FFinished := False;
   FTitle    := '';
   FHeader   := '';
@@ -68,6 +71,7 @@ begin
   FWidth    := 50;
   FHeight   := -1;
   FEscape   := True;
+  FReset    := True;
   FChoices  := TChoiceArray.Create;
 end;
 
@@ -76,6 +80,12 @@ var i     : Byte;
     iSize : TPoint;
 begin
   if IsFinished then Exit;
+  if FReset then
+  begin
+    VTIG_Reset( 'choice_menu' );
+    VTIG_ResetSelect( 'choice_menu' );
+    FReset := False;
+  end;
   if FDelay > 0 then FDelay -= aDTime;
   iSize := Point( FWidth, FHeight );
   if FTitle <> ''
@@ -90,6 +100,7 @@ begin
     if VTIG_Selectable( FChoices[i].Name, ( FDelay <= 0 ) and FChoices[i].Enabled ) then
         begin
           FFinished := True;
+          FDone     := True;
           FResult   := FChoices[i].Value;
         end;
   if FChoices[0].Desc <> '' then
@@ -104,7 +115,14 @@ begin
   if FEscape and VTIG_EventCancel then
   begin
     FFinished := True;
+    FDone     := True;
     FResult   := FCancel;
+  end;
+
+  if IsFinished and not FDone then
+  begin
+    FDone   := True;
+    FResult := FCancel;
   end;
 end;
 
