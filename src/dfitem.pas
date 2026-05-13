@@ -15,8 +15,8 @@ type
 
 TItem  = class( TThing )
 
-    constructor Create( const anid : AnsiString; onFloor : boolean = False ); overload;
-    constructor Create(anid : byte; onFloor : boolean = False); overload;
+    constructor Create( const aID : AnsiString; aOnFloor : Boolean = False ); overload;
+    constructor Create( aNID : Integer; aOnFloor : Boolean = False); overload;
     constructor CreateFromStream( aStream: TStream ); override;
     procedure WriteToStream( aStream: TStream ); override;
 
@@ -58,7 +58,7 @@ TItem  = class( TThing )
     class function Compare( a, b : TItem ) : Boolean; reintroduce;
     class procedure RegisterLuaAPI();
     private
-    FNID      : Byte;
+    FNID      : Integer;
     FProps    : TItemProperties;
     FMods     : array[Ord('A')..Ord('Z')] of Byte;
     FAppear   : Integer;
@@ -74,7 +74,7 @@ TItem  = class( TThing )
     published
     property Max            : Integer     read FMax;
     property Amount         : Integer     read FAmount                write FAmount;
-    property NID            : Byte        read FNID;
+    property NID            : Integer     read FNID;
     property MissBase       : Byte        read FProps.MissBase        write FProps.MissBase;
     property MissDist       : Byte        read FProps.MissDist        write FProps.MissDist;
     property IType          : TItemType   read FProps.IType          write FProps.IType;
@@ -84,7 +84,7 @@ TItem  = class( TThing )
     property DodgeMod       : Integer     read FProps.DodgeMod       write FProps.DodgeMod;
     property KnockMod       : Integer     read FProps.KnockMod       write FProps.KnockMod;
     property SpriteMod      : Integer     read FProps.SpriteMod      write FProps.SpriteMod;
-    property AmmoID         : Byte        read FProps.AmmoID         write FProps.AmmoID;
+    property AmmoID         : Integer     read FProps.AmmoID         write FProps.AmmoID;
     property Ammo           : Word        read FProps.Ammo           write FProps.Ammo;
     property AmmoMax        : Word        read FProps.AmmoMax        write FProps.AmmoMax;
     property Acc            : Integer     read FProps.Acc            write FProps.Acc;
@@ -148,28 +148,28 @@ begin
   raise EItemException.CreateFmt('eqSlot -- unsupported IType: %d',[ Byte( FProps.Itype ) ]);
 end;
 
-constructor TItem.Create(anid : byte; onFloor : boolean);
-var Table : TLuaTable;
+constructor TItem.Create( aNID : Integer; aOnFloor : Boolean );
+var iTable : TLuaTable;
 begin
-  inherited Create( LuaSystem.Get( ['items',anid,'id'] ) );
+  if aNID <= 0 then raise EItemException.Create('Bad item (ID<=0) passed to Create!');
+  inherited Create( LuaSystem.Get( ['items', aNID, 'id' ] ) );
   FEntityID := ENTITY_ITEM;
-  if aNID = 0 then raise EItemException.Create('Bad item (ID#0) passed to Create!');
 
-  Table := LuaSystem.GetTable( ['items',anid ] );
-  LuaLoad( Table, onFloor );
-  FreeAndNil( Table );
+  iTable := LuaSystem.GetTable( ['items', aNID ] );
+  LuaLoad( iTable, aOnFloor );
+  FreeAndNil( iTable );
 end;
 
-constructor TItem.Create( const anid : AnsiString; onFloor: boolean);
-var Table : TLuaTable;
+constructor TItem.Create( const aID : AnsiString; aOnFloor: Boolean );
+var iTable : TLuaTable;
 begin
-  inherited Create( anid );
+  if aID = '' then raise EItemException.Create('Bad item id!');
+  inherited Create( aID );
   FEntityID := ENTITY_ITEM;
-  if anid = '' then raise EItemException.Create('Bad item id!');
 
-  Table := LuaSystem.GetTable( ['items',anid] );
-  LuaLoad( Table, onFloor );
-  FreeAndNil( Table );
+  iTable := LuaSystem.GetTable( ['items', aID ] );
+  LuaLoad( iTable, aOnFloor );
+  FreeAndNil( iTable );
 end;
 
 constructor TItem.CreateFromStream ( aStream : TStream ) ;
@@ -182,8 +182,8 @@ begin
   aStream.Read( FAppear,   SizeOf( FAppear ) );
   aStream.Read( FMax,      SizeOf( FMax ) );
   aStream.Read( FAmount,   SizeOf( FAmount ) );
+  aStream.Read( FNID,      SizeOf( FNID ) );
 
-  FNID   := aStream.ReadByte();
   iCount := aStream.ReadWord();
   if iCount = 0 then Exit;
   for i := 1 to iCount do
@@ -200,8 +200,7 @@ begin
   aStream.Write( FAppear,   SizeOf( FAppear ) );
   aStream.Write( FMax,      SizeOf( FMax ) );
   aStream.Write( FAmount,   SizeOf( FAmount ) );
-
-  aStream.WriteByte( FNID );
+  aStream.Write( FNID,      SizeOf( FNID ) );
 
   aStream.WriteWord( ChildCount );
   if ChildCount = 0 then Exit;

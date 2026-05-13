@@ -658,11 +658,11 @@ end;
 function TBeing.ActionDrop ( aItem : TItem; aUnload : Boolean ) : boolean;
 var iUnique : Boolean;
     iAmmo   : Integer;
-    iAmmoID : DWord;
+    iAmmoID : Integer;
   procedure HandleAmmo;
   var iItem : TItem;
   begin
-    if ( iAmmo = 0 ) or ( iAmmoID = 0 ) then Exit;
+    if ( iAmmo = 0 ) or ( iAmmoID <= 0 ) then Exit;
     iAmmo := Inv.AddStack(iAmmoID,iAmmo);
     if ( iAmmo > 0 ) then
     try
@@ -3227,7 +3227,7 @@ end;
 function lua_being_inv_count(L: Plua_State): Integer; cdecl;
 var State : TDRLLuaState;
     Being : TBeing;
-    NID   : DWord;
+    NID   : Integer;
 begin
   State.Init(L);
   Being := State.ToObject(1) as TBeing;
@@ -3239,7 +3239,7 @@ end;
 function lua_being_inv_remove(L: Plua_State): Integer; cdecl;
 var State  : TDRLLuaState;
     Being  : TBeing;
-    NID    : DWord;
+    NID    : Integer;
     Amount : Integer;
 begin
   State.Init(L);

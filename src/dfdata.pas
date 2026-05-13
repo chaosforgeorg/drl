@@ -312,7 +312,7 @@ type TItemProperties = record
   Durability    : Word;
   MaxDurability : Word;
 
-  AmmoID        : Byte;
+  AmmoID        : Integer;
   Ammo          : Word;
   AmmoMax       : Word;
   Acc           : Integer;

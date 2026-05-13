@@ -35,7 +35,7 @@ type
 { TDRLLuaState }
 
 TDRLLuaState = object(TLuaState)
-  function ToId( aIndex : Integer) : DWord;
+  function ToId( aIndex : Integer) : Integer;
   function ToPosition( aIndex : Integer ) : TCoord2D;
   function ToPosition( aIndex : Integer; aDefault : TCoord2D ) : TCoord2D;
   function ToIOColor( aIndex : Integer ) : TIOColor;
@@ -658,7 +658,7 @@ end;
 
 { TDRLLuaState }
 
-function TDRLLuaState.ToId( aIndex: Integer ): DWord;
+function TDRLLuaState.ToId( aIndex: Integer ) : Integer;
 begin
   if IsNumber( aIndex ) then Exit( ToInteger( aIndex ) );
   ToId := LuaSystem.Defines[ToString( aIndex )];
