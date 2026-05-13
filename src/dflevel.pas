@@ -202,7 +202,6 @@ implementation
 
 uses math, typinfo, vluatools, vluasystem,
      vdebug, vuid, dfplayer, drlua, drlbase, drlio, drlgfxio,
-     vlualibrary,
      drlspritemap, drlhudviews;
 
 procedure TLevel.ScriptLevel(script : string);
@@ -1629,11 +1628,6 @@ var State : TDRLLuaState;
 begin
   State.Init(L);
   Level := State.ToObject(1) as TLevel;
-  if State.IsString(2) then
-    Log( LOGWARN, State.ToString(2) )
-  else
-    Log( LOGERROR, IntToStr( lua_type( L, 2 ) ) );
-
   if State.IsNil(3) then Exit(0);
   try
     if State.IsTable(2)
