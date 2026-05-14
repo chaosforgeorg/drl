@@ -150,12 +150,13 @@ function drl.register_assemblies()
 			item.name    = "nanofiber "..item.name
 			item.movemod = item.__proto.movemod
 			item.armor   = math.ceil(item.__proto.armor / 2)
-			item.resist.bullet = math.ceil((item.__proto.resist.bullet or 0) / 2)
-			item.resist.shrapnel = math.ceil((item.__proto.resist.shrapnel or 0) / 2)
-			item.resist.melee = math.ceil((item.__proto.resist.melee or 0) / 2)
-			item.resist.fire = math.ceil((item.__proto.resist.fire or 0) / 2)
-			item.resist.acid = math.ceil((item.__proto.resist.acid or 0) / 2)
-			item.resist.plasma = math.ceil((item.__proto.resist.plasma or 0) / 2)
+			local proto_resist = item.__proto.resist or {}
+			item.resist.bullet = math.ceil((proto_resist.bullet or 0) / 2)
+			item.resist.shrapnel = math.ceil((proto_resist.shrapnel or 0) / 2)
+			item.resist.melee = math.ceil((proto_resist.melee or 0) / 2)
+			item.resist.fire = math.ceil((proto_resist.fire or 0) / 2)
+			item.resist.acid = math.ceil((proto_resist.acid or 0) / 2)
+			item.resist.plasma = math.ceil((proto_resist.plasma or 0) / 2)
 			item.flags[ IF_NODURABILITY ] = true
 		end,
 	}
@@ -584,12 +585,13 @@ function drl.register_assemblies()
 		OnApply = function (item)
 			item.name         = "nanoskin "..item.name
 			item.armor        = item.__proto.armor
-			item.resist.bullet   = math.min( (item.__proto.resist.bullet or 0) + 25, core.options.resist_cap )
-			item.resist.shrapnel = math.min( (item.__proto.resist.shrapnel or 0) + 25, core.options.resist_cap )
-			item.resist.melee = math.min( (item.__proto.resist.melee or 0) + 25, core.options.resist_cap )
-			item.resist.fire = math.min( (item.__proto.resist.fire or 0) + 25, core.options.resist_cap )
-			item.resist.acid = math.min( (item.__proto.resist.acid or 0) + 25, core.options.resist_cap )
-			item.resist.plasma = math.min( (item.__proto.resist.plasma or 0) + 25, core.options.resist_cap )
+			local proto_resist = item.__proto.resist or {}
+			item.resist.bullet   = math.min( (proto_resist.bullet or 0) + 25, core.options.resist_cap )
+			item.resist.shrapnel = math.min( (proto_resist.shrapnel or 0) + 25, core.options.resist_cap )
+			item.resist.melee = math.min( (proto_resist.melee or 0) + 25, core.options.resist_cap )
+			item.resist.fire = math.min( (proto_resist.fire or 0) + 25, core.options.resist_cap )
+			item.resist.acid = math.min( (proto_resist.acid or 0) + 25, core.options.resist_cap )
+			item.resist.plasma = math.min( (proto_resist.plasma or 0) + 25, core.options.resist_cap )
 			if not item:has_property("pp_recharge") then
 				item:add_perk( "perk_armor_recharge" )
 			end
