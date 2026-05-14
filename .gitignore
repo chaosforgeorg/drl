@@ -33,3 +33,10 @@ src/makewad.lps
 tmp/
 !tmp/!readme.txt
 bin/console.history
+bin/mortem.txt
+bin/steam_appid.txt
+jh_small.ico
+bin/drl
+bin/drlwad
+drl-win-deploy/
+src/.github/copilot-instructions.md
