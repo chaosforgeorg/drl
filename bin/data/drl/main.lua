@@ -322,6 +322,11 @@ function drl.GetDisassembleId( it )
 	return table.random_pick( modlist )
 end
 
+function drl.GetDeathMessage( being, visible )
+	if visible then return being:get_name( true, true ).." dies." end
+	return "You hear the scream of a freed soul!"
+end
+
 function drl.GetResultId()
 	local result    = "unknown"
 	local dead      = player.hp <= 0

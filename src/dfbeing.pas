@@ -2045,6 +2045,7 @@ var iDirection     : TDirection;
     iGibMul        : Single;
     iForceOverkill : Boolean;
     iMeleeAttack   : Boolean;
+    iDeathMessage  : AnsiString;
 begin
   if ( aDamage < 0 ) or (BF_INV in FFlags) or FDying then Exit;
 
@@ -2201,8 +2202,11 @@ begin
 
   FHP := Max( FHP - aDamage, 0 );
   if Dead and (not IsPlayer) and (not (BF_NODEATHMESSAGE in FFlags)) then
-    if isVisible then IO.Msg(Capitalized(GetName(true))+' dies.')
-                 else IO.Msg('You hear the scream of a freed soul!');
+    if LuaSystem.Defined( [ CoreModuleID, 'GetDeathMessage' ] ) then
+    begin
+      iDeathMessage := LuaSystem.ProtectedCall( [ CoreModuleID, 'GetDeathMessage' ], [ Self, isVisible ] );
+      if iDeathMessage <> '' then IO.Msg( iDeathMessage );
+    end;
   if Dead
     then Kill( Min( aDamage div 2, 15), (aDamage >= iOverKillValue) or iForceOverkill, iActive, aSource, aDelay )
     else begin
