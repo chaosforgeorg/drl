@@ -1018,7 +1018,7 @@ begin
     if iButton = VMB_BUTTON_RIGHT then
     begin
       if (IO.MTarget = Player.Position) or
-        ((Player.Inv.Slot[ efWeapon ] <> nil) and (Player.Inv.Slot[ efWeapon ].isRanged) and (not (Player.Inv.Slot[efWeapon].GetFlag(IF_NOAMMO))) and (Player.Inv.Slot[ efWeapon ].Ammo = 0))  then
+        ((Player.Inv.Slot[ efWeapon ] <> nil) and (Player.Inv.Slot[ efWeapon ].isRanged) and (not (Player.Inv.Slot[efWeapon].GetFlag(IF_NOAMMO))) and (Player.Inv.Slot[ efWeapon ].Ammo < Player.Inv.Slot[ efWeapon ].getShotCost))  then
       begin
         if iAlt
           then Exit( HandleCommand( TCommand.Create( COMMAND_ALTRELOAD ) ) )
