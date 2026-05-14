@@ -1,0 +1,123 @@
+--------------------------------------------------------------
+ DRL (0.9.9.8a) roguelike post-mortem character dump
+--------------------------------------------------------------
+
+ Derrick Sund, level 1 Former Human Corporal Marine,
+ was shot by a former sergeant on level 2 of the Phobos base.
+ He survived 2540 turns and scored 0 points. 
+ He played for 1 minute and 3 seconds. 
+ He was too young to die!
+
+ He killed 7 out of 15 hellspawn. (46%)
+
+-- Special levels --------------------------------------------
+
+  Levels generated : 7
+  Levels visited   : 0
+  Levels completed : 0
+
+-- Awards ----------------------------------------------------
+
+  None
+
+-- Graveyard -------------------------------------------------
+
+  #################################====######################
+  .................................====.........#..........0#
+  .\............^..................====.......*.#..h........#
+  ..........0......................====.........#...........#
+  ##+#####/#############/####/#####===}##########...........#
+  ..................................====........#...........#
+  .........0................|.......====%.......#...........#
+  .........0............|...0..0...}|===........#...........#
+  ######/##########+###}##########/#====#########...........#
+  ....h...........+...........#+}||.====#...}|..#...........#
+  .##............>#...........#.#######=#.X.....#...........#
+  .##.##..0.##..../...........#.#.....#=/......./...........#
+  ....##....##....#.0..&......#.#.....#=#.......#..0........#
+  ................#.........../.#...../=#....0..#...........#
+  .....##.##......#.....|.....#.#.....#=#.......#...........#
+  0.##.##.##.##...#...........#.#.....#=#.......#...........#
+  ..##.......##...#...........#.#|....#=#..h....#...........#
+  ................#........>..#.#######=#.......#...........#
+  ................#...........#....====.#....*..#....h......#
+  #################################====######################
+
+-- Statistics ------------------------------------------------
+
+  Health 0/70   Experience 263/1
+  ToHit Ranged +0  ToHit Melee +0  ToDmg Ranged +0  ToDmg Melee +0
+
+-- Traits ----------------------------------------------------
+
+  Class : Marine
+
+    Ironman          (Level 1)
+
+-- Equipment -------------------------------------------------
+
+    [a] [ Armor      ]   nothing
+    [b] [ Weapon     ]   pistol (2d4) [6/6]
+    [c] [ Boots      ]   nothing
+    [d] [ Prepared   ]   nothing
+
+-- Inventory -------------------------------------------------
+
+    [a] pistol (2d4) [2/6]
+    [b] 10mm ammo (x42)
+    [c] shotgun shell (x45)
+    [d] small med-pack
+    [e] small med-pack
+
+-- Resistances -----------------------------------------------
+
+    bullet     - internal 10%   torso 10%   feet 10%  
+    melee      - internal 10%   torso 10%   feet 10%  
+    shrapnel   - internal 10%   torso 10%   feet 10%  
+    acid       - internal 20%   torso 20%   feet 20%  
+    fire       - internal 20%   torso 20%   feet 20%  
+    plasma     - internal 20%   torso 20%   feet 20%  
+
+-- Kills -----------------------------------------------------
+
+    4 former humans
+    3 former sergeants
+
+-- History ---------------------------------------------------
+
+  He started his journey on the surface of Phobos.
+  He left level 1 as soon as possible.
+  On level 2 he finally was shot by a former sergeant.
+
+-- Messages -------------------------------------------------- 
+
+ You found 16 of shotgun shell.
+ There is 10mm ammo (x24) lying here.
+ You found 24 of 10mm ammo.
+ There is a pistol (2d4) [2/6] lying here.
+ You picked up a pistol (2d4) [2/6].
+ There is shotgun shell (x29) lying here.
+ You found 29 of shotgun shell.
+ The former sergeant reloads his shotgun.
+ The missile hits the former sergeant.
+ The missile hits the former sergeant. The former sergeant dies.
+ The former sergeant reloads his shotgun.
+ You reload the pistol. The former sergeant reloads his shotgun.
+ The former sergeant reloads his shotgun.
+ Your pistol is already loaded.
+ The former sergeant reloads his shotgun.
+ {rYou die!...}
+
+-- General --------------------------------------------------- 
+
+ 105 brave souls have ventured into Phobos:
+ 84 of those were killed.
+ 1 of those was killed by something unknown.
+ 2 didn't read the thermonuclear bomb manual.
+ And 6 couldn't handle the stress and committed a stupid suicide.
+
+ 12 souls destroyed the Mastermind...
+ 6 killed the bitch and survived.
+ 6 showed that it can outsmart Hell itself.
+
+-------------------------------------------------------------- 

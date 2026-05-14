@@ -1,0 +1,28 @@
+To run doomrl you'll need lua5.1, timidity, sdl and sdl_mixer installed.
+
+Known issues with Unix (Linux, FreeBSD) DoomRL versions:
+
+1. DoomRL looks for its data files inside current directory,
+   and it saves it's files (player data, scores etc.)
+   also inside current directory. Practically, this means that
+
+   a. you should always run doomrl from the directory where the binary is
+      (e.g. using a script like `cd /<doomrl-directory>/; ./doomrl').
+
+   b. it's not possible to install doomrl system-wide and to allow each
+      user to have it's own save file.
+
+2. It's known that DoomRL upon exit leaves the console in kind of
+   messy state. This seems to be a problem in FPC Video unit
+   and so far we didn't manage to find a solution.
+
+Also, DoomRL requires that your console has size 80x25 or larger.
+So make sure to adjust size of your console if needed.
+
+You can run DoomRL using one of the scripts doomrl_gnome-terminal,
+doomrl_konsole, doomrl_xterm etc. provided in the release.
+They run the game in new X terminal window (so the 2nd issue is not
+noticed), and set window size to be exactly 80x25.
+You can add at their beginning a line like
+  cd /<doomrl-directory>/
+to somewhat get rid of the 1st issue too.
