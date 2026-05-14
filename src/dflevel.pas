@@ -696,7 +696,7 @@ function TLevel.ItemVisible( coord: TCoord2D; aItem: TItem ) : boolean;
 begin
   if aItem = nil then Exit(False);
   if isVisible( coord ) then Exit(True);
-  if aItem.isPower and Player.Flags[ BF_POWERSENSE ] then Exit(True);
+  if aItem.Flags[ IF_REVEALED ] then Exit(True);
   if Player.Flags[ BF_DARKNESS ] then Exit(False);
   if ( LF_ITEMSVISIBLE in FFlags ) and ( ( not aItem.isFeature ) or ( aItem.Flags[IF_HIGHLIGHT] ) ) then Exit(True);
   Exit(False);

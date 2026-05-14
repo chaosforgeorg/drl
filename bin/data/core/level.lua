@@ -416,6 +416,14 @@ function level:items()
 	return self:children("item")
 end
 
+function level:reveal_powerups()
+	for item in self:items() do
+		if item.itype == ITEMTYPE_POWER then
+			item.flags[ IF_REVEALED ] = true
+		end
+	end
+end
+
 function level:beings_in_range( position, range )
 	return self:children_in_range( position, range, ENTITY_BEING )
 end

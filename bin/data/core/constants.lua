@@ -72,7 +72,6 @@ BF_AUTOHIT        = 14;
 BF_DARKNESS       = 15;
 BF_NOKILL         = 16;
 
-BF_POWERSENSE     = 17;
 BF_INTUITED       = 18;
 
 
@@ -167,6 +166,7 @@ IF_ALTMANUAL      = 70;
 IF_ALTCHAIN       = 71;
 IF_DESTROY        = 72;
 IF_AUTOAMMO       = 73;
+IF_REVEALED       = 74;
 
 LF_NOHOMING       = 1;
 LF_UNIQUEITEM     = 2;

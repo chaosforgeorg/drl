@@ -267,13 +267,17 @@ function drl.register_traits()
 		author = "Derek",
 		abbr   = "Int",
 
-		OnPick = function (being,level)
-			being:add_property( "LEVER_SENSE", level )
-			if level == 1 then
-				being.flags[ BF_POWERSENSE  ] = true
-			elseif level == 2 then
+		OnPick = function (being,lvl)
+			being:add_property( "LEVER_SENSE", lvl )
+			if lvl == 1 then
+				level:reveal_powerups()
+			elseif lvl == 2 then
 				being:add_property( "INTUITION_RANGE", 2 )
 			end
+		end,
+
+		OnEnterLevel = function (self)
+			level:reveal_powerups()
 		end,
 
 		OnPreAction = function (self)
