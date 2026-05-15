@@ -1772,7 +1772,7 @@ begin
   end;
 
   if aOverkill then
-    iLevel.playSound( 'gib',FPosition, Random(400) )
+    playSound( 'gib', Random(400) )
   else
     playSound( 'die', Random(400) );
 
