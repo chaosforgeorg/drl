@@ -52,6 +52,7 @@ public
   property DrawPosition : TVec2i   read FDrawPosition     write FDrawPosition;
 published
   property SpriteID   : DWord    read FSprite.SpriteID[0] write FSprite.SpriteID[0];
+  property Frames     : Word     read FSprite.Frames      write FSprite.Frames;
   property HP         : Integer  read FHP                 write FHP;
   property Armor      : Integer  read FArmor              write FArmor;
 end;
