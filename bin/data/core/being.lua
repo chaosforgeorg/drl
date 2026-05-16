@@ -62,7 +62,13 @@ function being:acquire( what, count )
 	local ok = true
 
 	local function add( it )
-		if not self.inv:add( it ) then
+		local drop = false
+		if self.flags[ BF_IMPATIENT ] then
+			if it.itype == ITEMTYPE_PACK or it.itype == ITEMTYPE_URANGED then
+				drop = true
+			end
+		end
+		if drop or not self.inv:add( it ) then
 			if not level:drop_item( it, self.position, true, true, true ) then
 				ok = false
 			end
