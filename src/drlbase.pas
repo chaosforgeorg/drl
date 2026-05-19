@@ -665,7 +665,7 @@ begin
        begin
          if not Level.isProperCoord( iTarget ) then Exit( False );
          iBeing := Level.Being[ iTarget ];
-         if Assigned( iBeing ) and iBeing.HasHook( Hook_OnAct ) and iBeing.CallHookCheck( Hook_OnCanAct, [Player] ) then
+         if Assigned( iBeing ) and iBeing.HasHook( Hook_OnAct ) and iBeing.CallHookCheck( Hook_OnCanAct, [Player] ) and ( not ( aAlt and iBeing.Flags[ BF_FRIENDLY ] ) ) then
          begin
            Player.MultiMove.Stop;
            Exit( HandleCommand( TCommand.Create( COMMAND_ACTION, iTarget ) ) );
