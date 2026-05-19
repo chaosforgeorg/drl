@@ -666,7 +666,10 @@ begin
          if not Level.isProperCoord( iTarget ) then Exit( False );
          iBeing := Level.Being[ iTarget ];
          if Assigned( iBeing ) and iBeing.HasHook( Hook_OnAct ) and iBeing.CallHookCheck( Hook_OnCanAct, [Player] ) then
-            Exit( HandleCommand( TCommand.Create( COMMAND_ACTION, iTarget ) ) );
+         begin
+           Player.MultiMove.Stop;
+           Exit( HandleCommand( TCommand.Create( COMMAND_ACTION, iTarget ) ) );
+         end;
          if iBeing.Flags[ BF_FRIENDLY ]
            then Exit( HandleCommand( TCommand.Create( COMMAND_SWAPPOSITION, iTarget ) ) )
            else Exit( HandleCommand( TCommand.Create( COMMAND_MELEE, iTarget, ModuleOption_MeleeMoveOnKill and (not aAlt) ) ) );
