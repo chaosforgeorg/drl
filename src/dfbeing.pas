@@ -1125,7 +1125,7 @@ begin
     if isURanged then
     begin
       aItem.Flags[ IF_NODESTROY ] := True;
-      isUsedUp := ActionFire( aTarget, aItem, False );
+      isUsedUp := ActionFire( aTarget, aItem, False, 0, True );
       if UIDs.Get( iUID ) <> nil then aItem.Flags[ IF_NODESTROY ] := False;
       if isUsedUp
         then Emote( 'You use %s.', 'uses %s.', [ aItem.GetName(False, True) ] )
