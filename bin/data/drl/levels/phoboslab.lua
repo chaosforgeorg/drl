@@ -24,6 +24,7 @@ register_level "phobos_lab"
 			sound_id = "lever",
 
 			OnUse = function(self,being)
+				statistics.levers_pulled = statistics.levers_pulled + 1
 				level:transmute( "ldoor", "floor", level.data.door1 )
 				level:transmute( "floor", "door",  level.data.door1 )
 				ui.msg("Green access granted, west doors unlocked.")
@@ -49,6 +50,7 @@ register_level "phobos_lab"
 			sound_id = "lever",
 
 			OnUse = function(self,being)
+				statistics.levers_pulled = statistics.levers_pulled + 1
 				level:transmute( "ldoor", "floor", level.data.door1 )
 				level:transmute( "floor", "door",  level.data.door1 )
 				level:transmute( "ldoor", "floor", level.data.door2 )

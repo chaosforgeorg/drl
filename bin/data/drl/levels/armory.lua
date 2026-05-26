@@ -28,6 +28,7 @@ register_level "hells_armory"
 			color_id = false,
 
 			OnUse = function(self,being)
+				statistics.levers_pulled = statistics.levers_pulled + 1
 				if level.status > 0 then return true end
 				for x = 6,7 do
 					for y = 9,11 do

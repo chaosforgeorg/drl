@@ -79,6 +79,7 @@ register_level "the_chained_court"
 			color_id = false,
 
 			OnUse = function(self,being)
+				statistics.levers_pulled = statistics.levers_pulled + 1
 				level:transmute( "wall", "floor", level.data.cage1 )
 				ui.msg("The cage rises!")
 				level.status = level.status + 1
@@ -107,6 +108,7 @@ register_level "the_chained_court"
 			color_id = false,
 
 			OnUse = function(self,being)
+				statistics.levers_pulled = statistics.levers_pulled + 1
 				level:transmute( "wall", "floor", level.data.cage2 )
 				ui.msg("The cage rises!")
 				level.status = level.status + 1
@@ -136,6 +138,7 @@ register_level "the_chained_court"
 			color_id = false,
 
 			OnUse = function(self,being)
+				statistics.levers_pulled = statistics.levers_pulled + 1
 				level:transmute( "wall", "floor", level.data.cage3 )
 				ui.msg("The cage rises!")
 				level.status = level.status + 1

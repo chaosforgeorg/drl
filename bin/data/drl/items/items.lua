@@ -1342,6 +1342,7 @@ function drl.register_regular_items()
 		end,
 
 		OnUse = function(self,being)
+			statistics.levers_pulled = statistics.levers_pulled + 1
 			ui.msg("Suddenly water starts gushing from the ground!")
 			level:flood( "water", self.target_area )
 			return true
@@ -1372,6 +1373,7 @@ function drl.register_regular_items()
 		end,
 
 		OnUse = function(self,being)
+			statistics.levers_pulled = statistics.levers_pulled + 1
 			if self.target_area:size() >= area.FULL_SHRINKED:size() then
 				-- Really?  Censoring "f***" when the plot has it?
 				ui.msg("WTF?! Acid splashes everywhere!")
@@ -1407,6 +1409,7 @@ function drl.register_regular_items()
 		end,
 
 		OnUse = function(self,being)
+			statistics.levers_pulled = statistics.levers_pulled + 1
 			if self.target_area:size() >= area.FULL_SHRINKED:size() then
 				ui.msg("Oh shit... oh shit... OH SHIT!!!!")
 				being:add_history("He flooded the entire @1 with lava!")
@@ -1441,6 +1444,7 @@ function drl.register_regular_items()
 		end,
 
 		OnUse = function(self,being)
+			statistics.levers_pulled = statistics.levers_pulled + 1
 			for c in self.target_area() do
 				local target = level:get_being(c)
 				if target and not target:is_player() then
@@ -1474,6 +1478,7 @@ function drl.register_regular_items()
 		end,
 
 		OnUse = function(self,being)
+			statistics.levers_pulled = statistics.levers_pulled + 1
 			local position = self.position
 			for c in self.target_area() do
 				local item = level:get_item( c )
@@ -1508,6 +1513,7 @@ function drl.register_regular_items()
 		end,
 
 		OnUse = function(self,being)
+			statistics.levers_pulled = statistics.levers_pulled + 1
 			local room = self.target_area:clamped( area.FULL_SHRINKED )
 			level:play_sound( "barrel.explode", being.position )
 			for c in room() do
@@ -1554,6 +1560,7 @@ function drl.register_regular_items()
 		end,
 
 		OnUse = function(self,being)
+			statistics.levers_pulled = statistics.levers_pulled + 1
 			local amount = math.random(4)+1
 			local list   = level:get_being_table( level.danger_level, nil, { is_group = false } )
 			for c = 1,amount do
@@ -1602,6 +1609,7 @@ function drl.register_regular_items()
 		end,
 
 		OnUse = function(self,being)
+			statistics.levers_pulled = statistics.levers_pulled + 1
 			local armor = being.eq.armor
 			local boots = being.eq.boots
 			local damaged_armor = armor and armor:is_damaged()
@@ -1660,6 +1668,7 @@ function drl.register_regular_items()
 		end,
 
 		OnUse = function(self,being)
+			statistics.levers_pulled = statistics.levers_pulled + 1
 			ui.msg("MediTech depot. Proceeding with treatment...")
 			being:remove_perk( "tired" )
 			self.charges = self.charges - 1
@@ -1704,6 +1713,7 @@ function drl.register_regular_items()
 		end,
 
 		OnUse = function(self,being)
+			statistics.levers_pulled = statistics.levers_pulled + 1
 			ui.msg("Ammo dispenser. Dispensing requested ammo...")
 			self.charges = self.charges - 1
 			local ammo_id = items[being.eq.weapon.ammoid].id

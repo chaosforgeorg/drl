@@ -246,6 +246,7 @@ register_level "dis"
 			desc = "woah!",
 
 			OnUse = function(self,being)
+				statistics.levers_pulled = statistics.levers_pulled + 1
 				level:transmute( "wall", "floor" )
 				return true
 			end,

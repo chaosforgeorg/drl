@@ -1048,7 +1048,6 @@ begin
       if isLever then
         begin
           Emote( 'You pull the lever...', 'pulls the lever...',[] );
-          if isPlayer then Player.Statistics.Increase( 'levers_pulled' );
         end
 	  else if isUsable then
 	    begin

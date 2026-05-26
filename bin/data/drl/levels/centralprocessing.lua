@@ -24,6 +24,7 @@ register_level "central_processing"
 			sound_id = "lever",
 
 			OnUse = function(self,being)
+				statistics.levers_pulled = statistics.levers_pulled + 1
 				level:transmute( "ldoor", "floor", level.data.door1 )
 				level:transmute( "wall", "floor", level.data.trap11 )
 				level:transmute( "wall", "floor", level.data.trap12 )
@@ -52,6 +53,7 @@ register_level "central_processing"
 			sound_id = "lever",
 
 			OnUse = function(self,being)
+				statistics.levers_pulled = statistics.levers_pulled + 1
 				level:transmute( "ldoor", "floor", level.data.door2 )
 				level:play_sound( "door.open", level.data.door2_coord )
 				ui.msg("Central area unlocked.")
@@ -75,6 +77,7 @@ register_level "central_processing"
 			sound_id = "lever",
 
 			OnUse = function(self,being)
+				statistics.levers_pulled = statistics.levers_pulled + 1
 				level:transmute( "ldoor", "floor", level.data.door3 )
 				level:transmute( "wall", "floor", level.data.trap31 )
 				level:transmute( "wall", "floor", level.data.trap32 )
@@ -101,6 +104,7 @@ register_level "central_processing"
 			sound_id = "lever",
 
 			OnUse = function(self,being)
+				statistics.levers_pulled = statistics.levers_pulled + 1
 				level:transmute( "ldoor", "floor", level.data.door4 )
 				level:play_sound( "door.open", level.data.door4_coord )
 				ui.msg("East door unlocked.")
@@ -124,6 +128,7 @@ register_level "central_processing"
 			sound_id = "lever",
 
 			OnUse = function(self,being)
+				statistics.levers_pulled = statistics.levers_pulled + 1
 				level:transmute( "ldoor", "door", level.data.door5 )
 				ui.msg("Exit unlocked.")
 				return true

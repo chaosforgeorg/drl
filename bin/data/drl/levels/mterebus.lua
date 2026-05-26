@@ -23,6 +23,7 @@ register_level "mt_erebus"
 			color_id = false,
 
 			OnUse = function(self,being)
+				statistics.levers_pulled = statistics.levers_pulled + 1
 				--Levers will always trigger the next status.
 				--So if someone relocates to a mountain phase 2 square, the next lever will open phase 3.
 				--The player does not need to activate all levers, repaying them for the risk they took.
