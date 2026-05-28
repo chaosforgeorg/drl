@@ -249,6 +249,7 @@ core.register_blueprint "being"
 	attackchance= { false, core.TNUMBER , 75 },
 	accuracy    = { false, core.TNUMBER , 0 },
 	strength    = { false, core.TNUMBER , 0 },
+	targetsize  = { false, core.TNUMBER , 0 },
 	movetime    = { false, core.TNUMBER , 100 },
 	firetime    = { false, core.TNUMBER , 100 },
 	reloadtime  = { false, core.TNUMBER , 100 },

@@ -147,6 +147,7 @@ TBeing = class(TThing,IPathQuery)
     FAccuracy      : Integer;
     FStrength      : Integer;
     FSpriteMod     : Integer;
+    FTargetSize    : Integer;
     FSpeed         : Byte;
     FExpValue      : Word;
 
@@ -191,6 +192,7 @@ TBeing = class(TThing,IPathQuery)
     property Accuracy     : Integer    read FAccuracy      write FAccuracy;
     property Strength     : Integer    read FStrength      write FStrength;
     property SpriteMod    : Integer    read FSpriteMod     write FSpriteMod;
+    property TargetSize   : Integer    read FTargetSize    write FTargetSize;
 
     property Speed        : Byte       read FSpeed         write FSpeed;
     property ExpValue     : Word       read FExpValue      write FExpValue;
@@ -276,6 +278,7 @@ begin
   Stream.Read( FAccuracy,    SizeOf( FAccuracy ) );
   Stream.Read( FStrength,    SizeOf( FStrength ) );
   Stream.Read( FSpriteMod,   SizeOf( FSpriteMod ) );
+  Stream.Read( FTargetSize,  SizeOf( FTargetSize ) );
 
   FVisionRadius := Stream.ReadByte();
   FSpeedCount   := Stream.ReadWord();
@@ -305,6 +308,7 @@ begin
   Stream.Write( FAccuracy,    SizeOf( FAccuracy ) );
   Stream.Write( FStrength,    SizeOf( FStrength ) );
   Stream.Write( FSpriteMod,   SizeOf( FSpriteMod ) );
+  Stream.Write( FTargetSize,  SizeOf( FTargetSize ) );
 
   Stream.WriteByte( FVisionRadius );
   Stream.WriteWord( FSpeedCount );
@@ -338,6 +342,7 @@ begin
   FBloodBoots   := 0;
   FChainFire    := 0;
   FSpriteMod    := 0;
+  FTargetSize   := 0;
 
   FSilentAction := False;
   FKnockBacked  := False;
@@ -359,9 +364,10 @@ begin
   FTimes.Wear       := Table.getInteger('weartime',100);
   FExpValue         := Table.getInteger('xp');
 
-  FSpeed    := Table.getInteger('speed');
-  FAccuracy := Table.getInteger('accuracy');
-  FStrength := Table.getInteger('strength');
+  FSpeed      := Table.getInteger('speed');
+  FAccuracy   := Table.getInteger('accuracy');
+  FStrength   := Table.getInteger('strength');
+  FTargetSize := Table.getInteger('targetsize',0);
 
   FVisionRadius := VisionBaseValue + Table.getInteger('vision');
 

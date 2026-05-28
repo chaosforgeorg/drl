@@ -1,4 +1,5 @@
 0.10.9
+[new] -- GJ#356: UI - targeting reticule size larger for larger enemies
 [mod] -- GJ#355: Game - you can now melee scenery on the gamepad/deck using fire command with melee weapons
 [mod] -- GJ#357: Game - powerups refresh instead of stacking
 [mod] -- GJ#357: Game - buffed berserk powerup duration (300->500)
