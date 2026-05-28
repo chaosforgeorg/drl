@@ -4,6 +4,7 @@
 [mod] -- GJ#357: Game - buffed berserk powerup duration (300->500)
 [mod] -- GJ#354: Game - increased the falloff of shotguns to compensate for range 1 buff
 [mod] -- GJ#357: Game - powerups refresh instead of stacking
+[mod] -- GJ#357: Game - Nightmare doesn't really need it's 1.2x XP multiplier anymore
 [fix] -- GJ#237: Game - file I/O fixed, should fix rare corruption crashes
 [fix] -- GH#349: Game - fixed onyx nanofiber crash
 [fix] -- GJ#360: UI - mouse control now auto-reloads based on shotcost instead of only when ammo is zero
