@@ -50,6 +50,7 @@ TBeing = class(TThing,IPathQuery)
     function getTotalResistance( const aResistance : AnsiString; aTarget : TBodyTarget ) : Integer;
     procedure ApplyDamage( aDamage : LongInt; aTarget : TBodyTarget; aDamageType : TDamageType; aSource : TItem; aDelay : Integer ); virtual;
     function calculateToHit( aBeing : TBeing ) : Integer;
+    function isEyeContact( aBeing : TBeing ) : Boolean;
     function SendMissile( aTarget : TCoord2D; aItem : TItem; aAltFire : Boolean; aSequence : DWord; aShotCount : Integer ) : Boolean;
     function  isActive : boolean;
     function  WoundStatus : string;
@@ -146,6 +147,7 @@ TBeing = class(TThing,IPathQuery)
     FAccuracy      : Integer;
     FStrength      : Integer;
     FSpriteMod     : Integer;
+    FTargetSize    : Integer;
     FSpeed         : Byte;
     FExpValue      : Word;
 
@@ -190,6 +192,7 @@ TBeing = class(TThing,IPathQuery)
     property Accuracy     : Integer    read FAccuracy      write FAccuracy;
     property Strength     : Integer    read FStrength      write FStrength;
     property SpriteMod    : Integer    read FSpriteMod     write FSpriteMod;
+    property TargetSize   : Integer    read FTargetSize    write FTargetSize;
 
     property Speed        : Byte       read FSpeed         write FSpeed;
     property ExpValue     : Word       read FExpValue      write FExpValue;
@@ -275,6 +278,7 @@ begin
   Stream.Read( FAccuracy,    SizeOf( FAccuracy ) );
   Stream.Read( FStrength,    SizeOf( FStrength ) );
   Stream.Read( FSpriteMod,   SizeOf( FSpriteMod ) );
+  Stream.Read( FTargetSize,  SizeOf( FTargetSize ) );
 
   FVisionRadius := Stream.ReadByte();
   FSpeedCount   := Stream.ReadWord();
@@ -304,6 +308,7 @@ begin
   Stream.Write( FAccuracy,    SizeOf( FAccuracy ) );
   Stream.Write( FStrength,    SizeOf( FStrength ) );
   Stream.Write( FSpriteMod,   SizeOf( FSpriteMod ) );
+  Stream.Write( FTargetSize,  SizeOf( FTargetSize ) );
 
   Stream.WriteByte( FVisionRadius );
   Stream.WriteWord( FSpeedCount );
@@ -337,6 +342,7 @@ begin
   FBloodBoots   := 0;
   FChainFire    := 0;
   FSpriteMod    := 0;
+  FTargetSize   := 0;
 
   FSilentAction := False;
   FKnockBacked  := False;
@@ -358,9 +364,10 @@ begin
   FTimes.Wear       := Table.getInteger('weartime',100);
   FExpValue         := Table.getInteger('xp');
 
-  FSpeed    := Table.getInteger('speed');
-  FAccuracy := Table.getInteger('accuracy');
-  FStrength := Table.getInteger('strength');
+  FSpeed      := Table.getInteger('speed');
+  FAccuracy   := Table.getInteger('accuracy');
+  FStrength   := Table.getInteger('strength');
+  FTargetSize := Table.getInteger('targetsize',0);
 
   FVisionRadius := VisionBaseValue + Table.getInteger('vision');
 
@@ -657,11 +664,11 @@ end;
 function TBeing.ActionDrop ( aItem : TItem; aUnload : Boolean ) : boolean;
 var iUnique : Boolean;
     iAmmo   : Integer;
-    iAmmoID : DWord;
+    iAmmoID : Integer;
   procedure HandleAmmo;
   var iItem : TItem;
   begin
-    if ( iAmmo = 0 ) or ( iAmmoID = 0 ) then Exit;
+    if ( iAmmo = 0 ) or ( iAmmoID <= 0 ) then Exit;
     iAmmo := Inv.AddStack(iAmmoID,iAmmo);
     if ( iAmmo > 0 ) then
     try
@@ -786,6 +793,12 @@ begin
   if ( iWeapon.Flags[ IF_NORELOAD ]) then Exit( Fail( 'The weapon cannot be manually reloaded!', [] ) );
   if ( iWeapon.Flags[ IF_NOAMMO ])   then Exit( Fail( 'The weapon doesn''t need to be reloaded!', [] ) );
   if ( iWeapon.Ammo = iWeapon.AmmoMax ) then Exit( Fail( 'Your %s is already loaded.', [ iWeapon.Name ] ) );
+
+  if iWeapon.Flags[ IF_AUTOAMMO ] then
+  begin
+    Reload( nil, False );
+    Exit( True );
+  end;
 
   iItem := getAmmoItem( iWeapon );
 
@@ -1041,7 +1054,6 @@ begin
       if isLever then
         begin
           Emote( 'You pull the lever...', 'pulls the lever...',[] );
-          if isPlayer then Player.Statistics.Increase( 'levers_pulled' );
         end
 	  else if isUsable then
 	    begin
@@ -1118,7 +1130,7 @@ begin
     if isURanged then
     begin
       aItem.Flags[ IF_NODESTROY ] := True;
-      isUsedUp := ActionFire( aTarget, aItem, False );
+      isUsedUp := ActionFire( aTarget, aItem, False, 0, True );
       if UIDs.Get( iUID ) <> nil then aItem.Flags[ IF_NODESTROY ] := False;
       if isUsedUp
         then Emote( 'You use %s.', 'uses %s.', [ aItem.GetName(False, True) ] )
@@ -1220,12 +1232,22 @@ end;
 function TBeing.ActionAction( aTarget : TCoord2D ) : Boolean;
 var iLevel : TLevel;
     iItem  : TItem;
+    iBeing : TBeing;
 begin
   iLevel := TLevel(Parent);
   iItem := iLevel.Item[ aTarget ];
-  if Assigned( iItem ) and iItem.HasHook( Hook_OnAct )
-    then iItem.CallHook( Hook_OnAct, [ LuaCoord( aTarget ), Self ] )
-    else iLevel.CallHook( aTarget, Self, CellHook_OnAct );
+  if Assigned( iItem ) and iItem.HasHook( Hook_OnAct ) then
+  begin
+    iItem.CallHook( Hook_OnAct, [ LuaCoord( aTarget ), Self ] );
+    Exit( True );
+  end;
+  iBeing := iLevel.Being[ aTarget ];
+  if Assigned( iBeing ) and iBeing.HasHook( Hook_OnAct ) and iBeing.CallHookCheck( Hook_OnCanAct, [Self] ) then
+  begin
+    iBeing.CallHook( Hook_OnAct, [ Self ] );
+    Exit( True );
+  end;
+  iLevel.CallHook( aTarget, Self, CellHook_OnAct );
   Exit( True );
 end;
 
@@ -1358,6 +1380,13 @@ begin
   if aWeapon = nil then aWeapon := Inv.Slot[efWeapon];
   aWeapon.PlaySound( 'reload', FPosition );
   iCost := getReloadCost( aWeapon );
+
+  if aWeapon.Flags[ IF_AUTOAMMO ] then
+  begin
+    aWeapon.Ammo := aWeapon.AmmoMax;
+    Dec( FSpeedCount, iCost );
+    Exit;
+  end;
 
   repeat
     iPack  := aAmmoItem.isAmmoPack;
@@ -1695,7 +1724,7 @@ begin
   FDying := True;
 
   // TODO: Change to Player.RegisterKill(kill)
-  if ( not ( BF_FRIENDLY in FFlags ) ) and ( not ( BF_ILLUSION in FFlags ) ) then
+  if ( not ( BF_FRIENDLY in FFlags ) ) and ( not ( BF_ILLUSION in FFlags ) ) and ( not ( BF_NOKILL in FFlags ) ) then
     Player.RegisterKill( FID, aKiller, aWeapon, not Flags[ BF_RESPAWN ] );
 
   if (aKiller <> nil) and (aWeapon <> nil) then
@@ -1748,7 +1777,7 @@ begin
   end;
 
   if aOverkill then
-    iLevel.playSound( 'gib',FPosition, Random(400) )
+    playSound( 'gib', Random(400) )
   else
     playSound( 'die', Random(400) );
 
@@ -2021,6 +2050,7 @@ var iDirection     : TDirection;
     iGibMul        : Single;
     iForceOverkill : Boolean;
     iMeleeAttack   : Boolean;
+    iDeathMessage  : AnsiString;
 begin
   if ( aDamage < 0 ) or (BF_INV in FFlags) or FDying then Exit;
 
@@ -2067,7 +2097,7 @@ begin
       Damage_SPlasma     : iResist := getTotalResistance( 'plasma', aTarget );
       Damage_Bullet      : iResist := getTotalResistance( 'bullet', aTarget );
       Damage_Melee       : iResist := getTotalResistance( 'melee', aTarget );
-      Damage_Pierce      : iResist := 0;
+      Damage_Pierce      : iResist := getTotalResistance( 'pierce', aTarget );
     else iResist := 0;
     end;
     if iResist >= 100 
@@ -2177,8 +2207,11 @@ begin
 
   FHP := Max( FHP - aDamage, 0 );
   if Dead and (not IsPlayer) and (not (BF_NODEATHMESSAGE in FFlags)) then
-    if isVisible then IO.Msg(Capitalized(GetName(true))+' dies.')
-                 else IO.Msg('You hear the scream of a freed soul!');
+    if LuaSystem.Defined( [ CoreModuleID, 'GetDeathMessage' ] ) then
+    begin
+      iDeathMessage := LuaSystem.ProtectedCall( [ CoreModuleID, 'GetDeathMessage' ], [ Self, isVisible ] );
+      if iDeathMessage <> '' then IO.Msg( iDeathMessage );
+    end;
   if Dead
     then Kill( Min( aDamage div 2, 15), (aDamage >= iOverKillValue) or iForceOverkill, iActive, aSource, aDelay )
     else begin
@@ -2186,6 +2219,14 @@ begin
       // TODO: handle Delay?
       FOverlayUntil := Max( FOverlayUntil, IO.Time + aDelay + PAIN_DURATION );
     end;
+end;
+
+function TBeing.isEyeContact( aBeing : TBeing ) : Boolean;
+begin
+  if aBeing = nil then Exit( False );
+  if IsPlayer then Exit( aBeing.isVisible );
+  if Distance( FPosition, aBeing.Position ) > Vision then Exit( False );
+  Exit( TLevel(Parent).isEyeContact( FPosition, aBeing.Position ) );
 end;
 
 function TBeing.calculateToHit( aBeing : TBeing ) : Integer;
@@ -2214,7 +2255,7 @@ begin
 
   Result := toHitToChance( 10 + iToHit );
 
-  if ( not aBeing.isVisible ) and ( not iWeapon.Flags[ IF_UNSEENHIT ] ) then
+  if ( ( not isEyeContact( aBeing ) ) or ( BF_BLINDFIRE in FFlags ) ) and ( not iWeapon.Flags[ IF_UNSEENHIT ] ) then
     Result := Result div 2;
 end;
 
@@ -2384,7 +2425,7 @@ begin
       if ( BF_AUTOHIT in FFlags ) or aItem.Flags[ IF_AUTOHIT ] then 
         iIsHit := True;
 
-      if iIsHit and ( not iLevel.isVisible( iCoord ) ) and ( not aItem.Flags[ IF_UNSEENHIT ] ) then
+      if iIsHit and ( ( not isEyeContact( iBeing ) ) or ( BF_BLINDFIRE in FFlags ) ) and ( not aItem.Flags[ IF_UNSEENHIT ] ) then
         iIsHit := (Random(10) > 4);
 
       if iIsHit and ( iBeing <> iAimedBeing ) then
@@ -3192,6 +3233,32 @@ begin
   Exit( 1 );
 end;
 
+function lua_being_inv_count(L: Plua_State): Integer; cdecl;
+var State : TDRLLuaState;
+    Being : TBeing;
+    NID   : Integer;
+begin
+  State.Init(L);
+  Being := State.ToObject(1) as TBeing;
+  NID   := State.ToId(2);
+  State.Push( Being.Inv.CountAmount( NID ) );
+  Exit( 1 );
+end;
+
+function lua_being_inv_remove(L: Plua_State): Integer; cdecl;
+var State  : TDRLLuaState;
+    Being  : TBeing;
+    NID    : Integer;
+    Amount : Integer;
+begin
+  State.Init(L);
+  Being  := State.ToObject(1) as TBeing;
+  NID    := State.ToId(2);
+  Amount := State.ToInteger(3, 1);
+  State.Push( Being.Inv.RemoveAmount( NID, Amount ) );
+  Exit( 1 );
+end;
+
 function lua_being_inv_size(L: Plua_State): Integer; cdecl;
 var State   : TDRLLuaState;
     Being   : TBeing;
@@ -3430,13 +3497,15 @@ begin
   Result := 1;
 end;
 
-const lua_being_lib : array[0..38] of luaL_Reg = (
+const lua_being_lib : array[0..40] of luaL_Reg = (
       ( name : 'new';           func : @lua_being_new),
       ( name : 'kill';          func : @lua_being_kill),
       ( name : 'resurrect';     func : @lua_being_resurrect),
       ( name : 'apply_damage';  func : @lua_being_apply_damage),
       ( name : 'get_name';      func : @lua_being_get_name),
       ( name : 'inv_items';     func : @lua_being_inv_items),
+      ( name : 'inv_count';     func : @lua_being_inv_count),
+      ( name : 'inv_remove';    func : @lua_being_inv_remove),
       ( name : 'get_eq_item';   func : @lua_being_get_eq_item),
       ( name : 'set_eq_item';   func : @lua_being_set_eq_item),
       ( name : 'add_inv_item';  func : @lua_being_add_inv_item),

@@ -416,6 +416,14 @@ function level:items()
 	return self:children("item")
 end
 
+function level:reveal_powerups()
+	for item in self:items() do
+		if item.itype == ITEMTYPE_POWER then
+			item.flags[ IF_REVEALED ] = true
+		end
+	end
+end
+
 function level:beings_in_range( position, range )
 	return self:children_in_range( position, range, ENTITY_BEING )
 end
@@ -436,6 +444,13 @@ function level:drop_items( what )
 	end
 end
 
+function level:drop_ammo( what )
+	for i in what:children("item") do
+		if i.itype == ITEMTYPE_AMMO then
+			self:drop_item( i, what.position, true, true, true )
+		end
+	end
+end
 
 -- TODO: this depends on player having a proper propety registered!
 level.data = setmetatable({}, {

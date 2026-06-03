@@ -24,7 +24,9 @@ being.inv = {
 		end
 		return result
 	end,
-	items = being.inv_items,
+	count  = being.inv_count,
+	remove = being.inv_remove,
+	items  = being.inv_items,
 	empty = function(self)
 		for i in being.inv.items(self) do
 			return false
@@ -55,6 +57,43 @@ being.inv = {
 		return false
 	end,
 }
+
+function being:acquire( what, count )
+	local ok = true
+
+	local function add( it )
+		local drop = false
+		if self.flags[ BF_IMPATIENT ] then
+			if it.itype == ITEMTYPE_PACK or it.itype == ITEMTYPE_URANGED then
+				drop = true
+			end
+		end
+		if drop or not self.inv:add( it ) then
+			if not level:drop_item( it, self.position, true, true, true ) then
+				ok = false
+			end
+		end
+	end
+
+	if type( what ) == "string" or type( what ) == "number" then
+		count = count or 1
+		if count <= 0 then return true end
+
+		if items[ what ].max > 1 then
+			local it = item.new( what )
+			it.amount = count
+			add( it )
+		else
+			for i = 1, count do
+				add( item.new( what ) )
+			end
+		end
+	else
+		add( what )
+	end
+
+	return ok
+end
 
 setmetatable(being.inv, {
 	__newindex = function (self, key, value)
@@ -390,9 +429,17 @@ end
 
 function being:refresh_perk( id, max_duration )
 	local current = self:get_perk_time( id )
+	if current < 0 then
+		return
+	end
 	if current < max_duration then
 		self:add_perk( id, max_duration - current )
 	end
+end
+
+function being:apply_powerup_perk( id, base_duration )
+	self:refresh_perk( id, core.power_duration( base_duration ) )
+	return true
 end
 
 function being:full_reload( weapon )

@@ -11,11 +11,9 @@ uses vutil, viotypes, vtextures, drlio, dfdata;
 type TPlotView = class( TIOLayer )
   constructor Create( const aMessage : AnsiString; aColor : DWord; const aBackground : Ansistring = '' );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
-  function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
 protected
   FMessage   : AnsiString;
-  FFinished  : Boolean;
   FBoost     : Boolean;
   FPosition  : DWord;
   FTime      : DWord;
@@ -67,11 +65,6 @@ begin
      if ( not FBoost ) and ( FPosition < ( Length(FMessage) * 0.8 ) )
         then FBoost := True
         else FFinished := True;
-end;
-
-function TPlotView.IsFinished : Boolean;
-begin
-  Exit( FFinished );
 end;
 
 function TPlotView.IsModal : Boolean;

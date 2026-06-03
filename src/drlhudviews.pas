@@ -12,21 +12,18 @@ uses vutil, viotypes, vgenerics, vcolor, vioevent, vrltools,
 type TLookModeView = class( TIOLayer )
   constructor Create;
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
-  function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
   function HandleInput( aInput : Integer ) : Boolean; override;
 protected
   procedure UpdateTarget;
 protected
   FFirst    : Boolean;
-  FFinished : Boolean;
   FTarget   : TCoord2D;
 end;
 
 type TDirectionQueryLayer = class( TIOLayer )
   constructor Create( aAllowAlt : Boolean );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
-  function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
   function HandleInput( aInput : Integer ) : Boolean; override;
   function HandleEvent( const aEvent : TIOEvent ) : Boolean; override;
@@ -36,7 +33,6 @@ protected
   FAlt      : Boolean;
   FAllowAlt : Boolean;
   FPrompt   : AnsiString;
-  FFinished : Boolean;
 end;
 
 type TRunModeView = class( TDirectionQueryLayer )
@@ -62,20 +58,17 @@ end;
 type TMoreLayer = class( TIOLayer )
   constructor Create( aMore : Boolean = True );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
-  function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
   function HandleInput( aInput : Integer ) : Boolean; override;
   function HandleEvent( const aEvent : TIOEvent ) : Boolean; override;
 protected
   FPrompt   : AnsiString;
   FLength   : Byte;
-  FFinished : Boolean;
 end;
 
 type TTargetModeView = class( TIOLayer )
   constructor Create( aItem : TItem; aCommand : Byte; aActionName : AnsiString; aRange: byte; aLimitRange : Boolean; aTargets: TAutoTarget; aChainFire : Byte );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
-  function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
   function HandleInput( aInput : Integer ) : Boolean; override;
   function HandleEvent( const aEvent : TIOEvent ) : Boolean; override;
@@ -86,7 +79,6 @@ protected
   procedure UpdateTarget;
 protected
   FFirst      : Boolean;
-  FFinished   : Boolean;
   FLimitRange : Boolean;
   FTarget     : TCoord2D;
   FPosition   : TCoord2D;
@@ -105,12 +97,10 @@ type TScrollItemArray = specialize TGArray< TItem >;
 type TScrollSwapLayer = class( TIOLayer )
   constructor Create;
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
-  function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
   function HandleInput( aInput : Integer ) : Boolean; override;
   destructor Destroy; override;
 protected
-  FFinished : Boolean;
   FIndex    : Integer;
   FArray    : TScrollItemArray;
 end;
@@ -131,11 +121,6 @@ begin
   if FFirst then UpdateTarget;
   if IO.IsTopLayer( Self ) and ( not GraphicsVersion ) then IO.Console.ShowCursor;
   VTIG_FreeLabel( ' = LOOK MODE =', Point( -15, 1 ), Yellow )
-end;
-
-function TLookModeView.IsFinished : Boolean;
-begin
-  Exit( FFinished );
 end;
 
 function TLookModeView.IsModal : Boolean;
@@ -200,11 +185,6 @@ end;
 procedure TDirectionQueryLayer.Update( aDTime : Integer; aActive : Boolean );
 begin
   VTIG_FreeLabel( FPrompt + ', choose direction...', Point( 0, 2 ), Yellow )
-end;
-
-function TDirectionQueryLayer.IsFinished : Boolean;
-begin
-  Exit( FFinished );
 end;
 
 function TDirectionQueryLayer.IsModal : Boolean;
@@ -298,11 +278,6 @@ begin
   VTIG_FreeLabel( FPrompt, Point( 3, 2 ), Yellow )
 end;
 
-function TMoreLayer.IsFinished : Boolean;
-begin
-  Exit( FFinished );
-end;
-
 function TMoreLayer.IsModal : Boolean;
 begin
   Exit( True );
@@ -326,7 +301,6 @@ constructor TTargetModeView.Create( aItem : TItem; aCommand : Byte; aActionName 
   aRange: byte; aLimitRange : Boolean; aTargets: TAutoTarget; aChainFire : Byte );
 begin
   FFirst        := True;
-  FFinished     := False;
   FTargets      := aTargets;
   FTarget       := aTargets.Current;
   FActionName   := aActionName;
@@ -346,11 +320,6 @@ procedure TTargetModeView.Update( aDTime : Integer; aActive : Boolean );
 begin
   if FFirst then UpdateTarget;
   VTIG_FreeLabel( FActionName, Point( 0, 2 ), Yellow )
-end;
-
-function TTargetModeView.IsFinished : Boolean;
-begin
-  Exit( FFinished );
 end;
 
 function TTargetModeView.IsModal : Boolean;
@@ -568,11 +537,6 @@ procedure TScrollSwapLayer.Update( aDTime : Integer; aActive : Boolean );
 begin
   VTIG_FreeLabel( 'Scroll, <{!LMB}> wield, <{!RMB}> cancel:', Point( 0, 2 ), Yellow );
   IO.HintOverlay := FArray[ FIndex ].Description;
-end;
-
-function TScrollSwapLayer.IsFinished : Boolean;
-begin
-  Exit( FFinished );
 end;
 
 function TScrollSwapLayer.IsModal : Boolean;

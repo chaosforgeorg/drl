@@ -80,6 +80,7 @@ protected
   FInv         : TItemViewArray;
   FEq          : TItemViewArray;
   FCharacter   : array[0..5] of TStringGArray;
+  FCompactStyle: TTIGStyle;
   FTraitsStyle : TTIGStyle;
   FAction      : AnsiString;
   FITitle      : AnsiString;
@@ -157,6 +158,9 @@ end;
 
 procedure TPlayerView.Initialize;
 begin
+  FCompactStyle := TIGStylePadless;
+  FCompactStyle.Padding[ VTIG_WINDOW_PADDING ].X := 1;
+  FCompactStyle.Padding[ VTIG_WINDOW_PADDING_OFFSET ] := Point( 0, 1 );
   FTraitsStyle := TIGStylePadless;
   FTraitsStyle.Padding[ VTIG_WINDOW_PADDING ].X := 1;
   VTIG_EventClear;
@@ -326,7 +330,9 @@ var iEntry    : TItemViewEntry;
 
 begin
   if FInv = nil then ReadInv;
+  VTIG_PushStyle( @FCompactStyle );
   VTIG_BeginWindow( FITitle, 'inventory', FSize );
+  VTIG_PopStyle();
     VTIG_BeginGroup( 50 );
     for iEntry in FInv do
       if iEntry.QSlot <> 0

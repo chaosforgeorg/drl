@@ -177,7 +177,7 @@ function drl.register_regular_items()
 		type    = ITEMTYPE_POWER,
 
 		OnPickup = function(self,being)
-			being:add_perk("berserk",core.power_duration(300))
+			being:apply_powerup_perk( "berserk", 500 )
 			if (not being.flags[ BF_NOHEAL ]) and being.hp < being.hpmax then
 				being.hp = being.hpmax
 			end
@@ -197,7 +197,7 @@ function drl.register_regular_items()
 		type    = ITEMTYPE_POWER,
 
 		OnPickup = function(self,being)
-			being:add_perk("inv",core.power_duration(500))
+			being:apply_powerup_perk( "inv", 500 )
 			being:remove_perk( "tired" )
 		end,
 	}
@@ -332,7 +332,7 @@ function drl.register_regular_items()
 		type    = ITEMTYPE_POWER,
 
 		OnPickup = function(self,being)
-			being:add_perk("light",core.power_duration(600))
+			being:apply_powerup_perk( "light", 600 )
 		end,
 	}
 
@@ -584,9 +584,9 @@ function drl.register_regular_items()
 		ammomax       = 1,
 		damage        = "8d3",
 		damagetype    = DAMAGE_SHARPNEL,
-		range         = 15,
+		range         = 12,
 		spread        = 3,
-		falloff       = 7,
+		falloff       = 9,
 		knockback     = 8,
 		hitsprite     = SPRITE_BLAST,
 	}
@@ -614,7 +614,7 @@ function drl.register_regular_items()
 		shots         = 2,
 		range         = 8,
 		spread        = 3,
-		falloff       = 10,
+		falloff       = 12,
 		knockback     = 8,
 		hitsprite     = SPRITE_BLAST,
 
@@ -644,7 +644,7 @@ function drl.register_regular_items()
 		damagetype    = DAMAGE_SHARPNEL,
 		range         = 15,
 		spread        = 2,
-		falloff       = 5,
+		falloff       = 7,
 		knockback     = 8,
 		hitsprite     = SPRITE_BLAST,
 
@@ -901,7 +901,7 @@ function drl.register_regular_items()
 
 		OnUse = function(self,being)
 			if being:is_player() then
-				being:add_perk("enviro",core.power_duration(700))
+				being:apply_powerup_perk( "enviro", 700 )
 			end
 			return true
 		end,
@@ -1342,6 +1342,7 @@ function drl.register_regular_items()
 		end,
 
 		OnUse = function(self,being)
+			statistics.levers_pulled = statistics.levers_pulled + 1
 			ui.msg("Suddenly water starts gushing from the ground!")
 			level:flood( "water", self.target_area )
 			return true
@@ -1372,6 +1373,7 @@ function drl.register_regular_items()
 		end,
 
 		OnUse = function(self,being)
+			statistics.levers_pulled = statistics.levers_pulled + 1
 			if self.target_area:size() >= area.FULL_SHRINKED:size() then
 				-- Really?  Censoring "f***" when the plot has it?
 				ui.msg("WTF?! Acid splashes everywhere!")
@@ -1407,6 +1409,7 @@ function drl.register_regular_items()
 		end,
 
 		OnUse = function(self,being)
+			statistics.levers_pulled = statistics.levers_pulled + 1
 			if self.target_area:size() >= area.FULL_SHRINKED:size() then
 				ui.msg("Oh shit... oh shit... OH SHIT!!!!")
 				being:add_history("He flooded the entire @1 with lava!")
@@ -1441,6 +1444,7 @@ function drl.register_regular_items()
 		end,
 
 		OnUse = function(self,being)
+			statistics.levers_pulled = statistics.levers_pulled + 1
 			for c in self.target_area() do
 				local target = level:get_being(c)
 				if target and not target:is_player() then
@@ -1474,6 +1478,7 @@ function drl.register_regular_items()
 		end,
 
 		OnUse = function(self,being)
+			statistics.levers_pulled = statistics.levers_pulled + 1
 			local position = self.position
 			for c in self.target_area() do
 				local item = level:get_item( c )
@@ -1508,6 +1513,7 @@ function drl.register_regular_items()
 		end,
 
 		OnUse = function(self,being)
+			statistics.levers_pulled = statistics.levers_pulled + 1
 			local room = self.target_area:clamped( area.FULL_SHRINKED )
 			level:play_sound( "barrel.explode", being.position )
 			for c in room() do
@@ -1554,6 +1560,7 @@ function drl.register_regular_items()
 		end,
 
 		OnUse = function(self,being)
+			statistics.levers_pulled = statistics.levers_pulled + 1
 			local amount = math.random(4)+1
 			local list   = level:get_being_table( level.danger_level, nil, { is_group = false } )
 			for c = 1,amount do
@@ -1602,6 +1609,7 @@ function drl.register_regular_items()
 		end,
 
 		OnUse = function(self,being)
+			statistics.levers_pulled = statistics.levers_pulled + 1
 			local armor = being.eq.armor
 			local boots = being.eq.boots
 			local damaged_armor = armor and armor:is_damaged()
@@ -1660,6 +1668,7 @@ function drl.register_regular_items()
 		end,
 
 		OnUse = function(self,being)
+			statistics.levers_pulled = statistics.levers_pulled + 1
 			ui.msg("MediTech depot. Proceeding with treatment...")
 			being:remove_perk( "tired" )
 			self.charges = self.charges - 1
@@ -1704,6 +1713,7 @@ function drl.register_regular_items()
 		end,
 
 		OnUse = function(self,being)
+			statistics.levers_pulled = statistics.levers_pulled + 1
 			ui.msg("Ammo dispenser. Dispensing requested ammo...")
 			self.charges = self.charges - 1
 			local ammo_id = items[being.eq.weapon.ammoid].id
@@ -1794,7 +1804,7 @@ function drl.register_regular_items()
 		OnUse = function(self,being)
 			if being:is_player() then
 				being:play_sound( "phasing" )
-				being:add_perk("inv",core.power_duration(90))
+				being:apply_powerup_perk( "inv", 90 )
 			end
 			return true
 		end,

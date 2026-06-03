@@ -22,6 +22,15 @@ function aitk.OnAction( self )
 end
 
 function aitk.get_patrol_area( self, range, can_wander )
+    if self.flags[ BF_FRIENDLY ] then
+        local program = self.program
+        if program == "follow" then
+            self.patrol_area = area.around( player.position, 3 )
+        elseif program == "stay" then
+            self.patrol_area = area.around( self.position, 0 )
+        end
+    end
+
     if not self.patrol_area then
         if core.options.maintain_groups and self:has_property("LEADER") then
             local leader = uids.get( self.LEADER )
@@ -61,6 +70,51 @@ function aitk.scan( self )
         end
         return false
     end
+end
+
+function aitk.is_hunt_program_target( self, being )
+    if being == self then return false end
+    if self.flags[ BF_FRIENDLY ] then
+        return being ~= player and ( not being.flags[ BF_FRIENDLY ] )
+    end
+    return not being.flags[ BF_NOBLEED ]
+end
+
+function aitk.hunt_program_scan( self )
+    local dist   = 100000
+    local target = nil
+    for b in level:beings() do
+        if aitk.is_hunt_program_target( self, b ) then
+            local d = self:distance_to( b )
+            if d < dist then
+                target = b
+                dist   = d
+            end
+        end
+    end
+    if target then
+        return target.uid
+    end
+    return false
+end
+
+function aitk.hunt_program_acquire( self )
+    if self.program ~= "hunt" then return false end
+    local target = aitk.hunt_program_scan( self )
+    if target then
+        self.target = target
+        if self:has_property("boredom") then self.boredom = 0 end
+        local being = uids.get( target )
+        if being and not self:in_sight( being ) then
+            self.move_to = being.position
+            self:path_find( self.move_to, 10, 40 )
+            return "pursue"
+        end
+        self.move_to = false
+        return "hunt"
+    end
+    self.target = false
+    return false
 end
 
 function aitk.move_path( self, reattempt )
@@ -231,6 +285,7 @@ function aitk.ammo_check( self )
         if w:has_property("pump_action") and w.chamber_empty then return true, true end
         return true, false 
     end
+    if w.flags[ IF_AUTOAMMO ] then return true, true end
     if self.inv[ items[w.ammoid].id ] then return true, true end
     return false, false
 end
@@ -241,12 +296,11 @@ end
 -- * has_ammo - entity has a weapon with ammo available
 function aitk.inventory_check( self, can_reload )
     local has_ammo, needs_reload = aitk.ammo_check( self )
-    if needs_reload and can_reload then
-        if self:action_reload() then
+    if needs_reload then
+        if can_reload and self:action_reload() then
             return true, true
-        else
-            has_ammo = false
         end
+        has_ammo = false
     end
 
     if self.hp < self.hpmax / 2 and aitk.try_heal_item( self ) then
@@ -261,9 +315,12 @@ function aitk.basic_init( self, use_packs, use_armor )
     self:add_property( "boredom", 0 )
     self:add_property( "move_to", false )
     self:add_property( "target", false )
+    self:add_property( "program", false )
     self:add_property( "use_packs", use_packs or false )
     self:add_property( "use_armor", use_armor or false )
     self:add_property( "attackchance", math.min( self.__proto.attackchance * diff[DIFFICULTY].speed, 90 ) )
+    self:add_property( "meleerangedchance", self.attackchance )
+    self:add_property( "meleerangedblind", false )
     self:add_property( "retaliate", false )
     self:add_property( "patrol_area", false )
     self:add_property( "nomelee", false )
@@ -323,7 +380,13 @@ function aitk.basic_idle( self )
         self.move_to = false
         return "hunt"
     end
-    if self.flags[ BF_HUNTING ] then
+    if self.program then
+        local hunt_program_state = aitk.hunt_program_acquire( self )
+        if hunt_program_state then
+            return hunt_program_state
+        end
+    end
+    if self.flags[ BF_HUNTING ] and not self.flags[ BF_FRIENDLY ] then
         self.target  = player.uid
         self.boredom = 0
         return "hunt"
@@ -349,7 +412,7 @@ function aitk.basic_on_attacked( self, target )
     if target then 
         if target:has_property("master") then return end
         if target.id == self.id then return end
-        if self.flags[ BF_FRIENDLY ] and target == player then return end
+        if self.flags[ BF_FRIENDLY ] and ( target == player or target.flags[ BF_FRIENDLY ] ) then return end
         self.target = target.uid
         if self.ai_state == "idle" or ( self.ai_state == "pursue" and self.move_to ~= target.position ) then
             self.move_to = target.position
@@ -366,7 +429,13 @@ function aitk.basic_smart_idle( self )
         self.move_to = false
         return "hunt"
     end
-	if self.flags[ BF_HUNTING ] then
+	if self.program then
+        local hunt_program_state = aitk.hunt_program_acquire( self )
+        if hunt_program_state then
+            return hunt_program_state
+        end
+    end
+	if self.flags[ BF_HUNTING ] and not self.flags[ BF_FRIENDLY ] then
         if self:has_property("boredom") then self.boredom = 0 end
 		self.move_to = player.position
         self.target  = player.uid
@@ -452,9 +521,10 @@ function aitk.try_hunt( self )
     end
     local dist    = self:distance_to( target )
     local visible = self:in_sight( target )
-    local action, has_ammo = aitk.inventory_check( self, dist > 1 )
+    local action, has_ammo = aitk.inventory_check( self, dist > 1 or self.nomelee )
     if action then return "hunt" end
     local attackchance = self.attackchance
+    if dist == 1 and self.nomelee then attackchance = self.meleerangedchance end
     if not visible then
         if self:has_property("sneakshot") and dist <= self.vision then 
             attackchance = math.floor( attackchance / 2 )
@@ -497,7 +567,10 @@ function aitk.try_hunt( self )
         end
         if sequence == 0 and sequential then
             self.sequence = core.resolve_range( sequential )
-        end 
+        end
+        if self.meleerangedblind then
+            self.flags[ BF_BLINDFIRE ] = (dist == 1)
+        end
         self:action_fire( target, self.eq.weapon )
         return "hunt"
     end
@@ -702,37 +775,4 @@ function aitk.wait( self )
         return "hunt"
     end
 	return "wait"
-end
-
-function aitk.follow_player_idle( self )
-    if aitk.basic_scan( self ) then
-        self.move_to = false
-        return "hunt"
-    end
-	if math.random(30) == 1 then
-		self:play_sound( "act" )
-	end
-    if self.move_to then
-        if self:distance_to( self.move_to ) == 0 then
-            self.move_to = false
-        else
-            if not aitk.move_path( self, self.move_to ) then
-                self.move_to = false
-                self.scount  = self.scount - 500
-            end
-        end
-    end
-
-    if not self.move_to then
-        local patrol_area = area.around( player.position, 3 ):clamped( area.FULL )
-        local next_move   = patrol_area:random_coord()
-        if next_move then
-            self.move_to = next_move
-            if not self:path_find( self.move_to, 10, 40 ) then
-                self.scount  = self.scount - 1000
-                self.move_to = false
-            end
-        end
-    end
-	return "idle"
 end

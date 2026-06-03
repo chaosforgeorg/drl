@@ -85,6 +85,7 @@ TDRL = class(TVObject)
        FPlayerView      : TIOLayer;
        FPadMoveActive   : Boolean;
        FPadMoveNext     : QWord;
+       FLastFrameTime   : QWord;
        FStore           : TStoreInterface;
        FPadMoved        : Boolean;
        FModules         : TDRLModules;
@@ -395,6 +396,7 @@ begin
   FLastInputTime   := 0;
   FDamagedLastTurn := False;
   FPadMoveNext     := 0;
+  FLastFrameTime   := 0;
   FPadMoved        := False;
   FCoreHooks       := [];;
   FModuleHooks     := [];
@@ -665,6 +667,11 @@ begin
        begin
          if not Level.isProperCoord( iTarget ) then Exit( False );
          iBeing := Level.Being[ iTarget ];
+         if Assigned( iBeing ) and iBeing.HasHook( Hook_OnAct ) and iBeing.CallHookCheck( Hook_OnCanAct, [Player] ) and ( not ( aAlt and iBeing.Flags[ BF_FRIENDLY ] ) ) then
+         begin
+           Player.MultiMove.Stop;
+           Exit( HandleCommand( TCommand.Create( COMMAND_ACTION, iTarget ) ) );
+         end;
          if iBeing.Flags[ BF_FRIENDLY ]
            then Exit( HandleCommand( TCommand.Create( COMMAND_SWAPPOSITION, iTarget ) ) )
            else Exit( HandleCommand( TCommand.Create( COMMAND_MELEE, iTarget, ModuleOption_MeleeMoveOnKill and (not aAlt) ) ) );
@@ -716,6 +723,14 @@ begin
 
     if (not iItem.isRanged) then
     begin
+      if aPad then
+      begin
+        iTarget := FTargeting.List.Current;
+        if IO.GetPadLDir.NotZero then 
+          iTarget := Player.Position + IO.GetPadLDir;
+        if Distance( Player.Position, iTarget ) = 1 then
+          Exit( HandleCommand( TCommand.Create( COMMAND_MELEE, iTarget, ModuleOption_MeleeMoveOnKill ) ) );
+      end;
       IO.Msg( 'You have no ranged weapon.' );
       Exit( False );
     end;
@@ -1008,7 +1023,7 @@ begin
     if iButton = VMB_BUTTON_RIGHT then
     begin
       if (IO.MTarget = Player.Position) or
-        ((Player.Inv.Slot[ efWeapon ] <> nil) and (Player.Inv.Slot[ efWeapon ].isRanged) and (not (Player.Inv.Slot[efWeapon].GetFlag(IF_NOAMMO))) and (Player.Inv.Slot[ efWeapon ].Ammo = 0))  then
+        ((Player.Inv.Slot[ efWeapon ] <> nil) and (Player.Inv.Slot[ efWeapon ].isRanged) and (not (Player.Inv.Slot[efWeapon].GetFlag(IF_NOAMMO))) and (Player.Inv.Slot[ efWeapon ].Ammo < Player.Inv.Slot[ efWeapon ].getShotCost))  then
       begin
         if iAlt
           then Exit( HandleCommand( TCommand.Create( COMMAND_ALTRELOAD ) ) )
@@ -1401,9 +1416,18 @@ repeat
           Continue;
         end;
         IO.FullUpdate;
+        FLastFrameTime := IO.Time;
         IO.Driver.Sleep(10);
       end;
       if State <> DSPlaying then Break;
+
+      // Guarantee a render slice even when events arrive faster than we can drain them
+      // (e.g. a drifting gamepad stick spamming VEVENT_PADAXIS keeps EventPending true).
+      if IO.Time - FLastFrameTime >= 16 then
+      begin
+        IO.FullUpdate;
+        FLastFrameTime := IO.Time;
+      end;
 
       if not IO.Driver.PollEvent( iEvent ) then continue;
       if IO.OnEvent( iEvent ) or IO.Root.OnEvent( iEvent ) then Continue;

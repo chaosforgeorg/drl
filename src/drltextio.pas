@@ -221,6 +221,7 @@ var iColor      : TIOColor;
   begin
     iPos := Point( aCoord.x + 1, aCoord.y + 2 );
     if aChar = ' ' then aChar := IO.Console.GetChar( iPos.X, iPos.Y );
+    iPos := Point( iPos.X - 1, iPos.Y - 1 );
     if StatusEffect = StatusInvert
        then VTIG_FreeChar( aChar, iPos, Black, LightGray )
        else VTIG_FreeChar( aChar, iPos, aColor );

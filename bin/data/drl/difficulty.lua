@@ -49,7 +49,6 @@ function drl.register_difficulties()
 		description   = "He opposed the Nightmare!",
 		code          = "{rN}",
 		accuracybonus = 2,
-		expfactor     = 1.2,
 		scorefactor   = 4,
 		ammofactor    = 2,
 		powerfactor   = 2,

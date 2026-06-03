@@ -6,7 +6,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlspritemap;
 interface
-uses Classes, SysUtils,
+uses Classes, SysUtils, math,
      vutil, vgltypes, vrltools, vgenerics, vvector, vcolor, vglquadrenderer, vglprogram,
      vglfullscreentriangle, vnode, vspriteengine, vtextures, vglframebuffer, dfdata, dfbeing;
 
@@ -108,6 +108,7 @@ private
   procedure PushSprite( aPos : TVec2i; const aSprite : TSprite; aLight : Byte; aZ : Integer );
   procedure PushMultiSpriteTerrain( aCoord : TCoord2D; const aSprite : TSprite; aZ : Integer; aRotation : Byte );
   procedure PushSpriteTerrainPart( aCoord : TCoord2D; const aSprite : TSprite; aZ : Integer; aPart : TSpritePart = F );
+  procedure PushTarget( aSpriteID : DWord; aPosition : TVec2i; aColor : TColor; aSize : Float );
   function GetSprite( aSprite : TSprite; aCoord : TCoord2D; aTime : Integer = -1 ) : TSprite;
   function GetSprite( aCell, aStyle : Byte ) : TSprite;
   procedure DrawMarker;
@@ -127,7 +128,7 @@ var SpriteMap : TDRLSpriteMap = nil;
 
 implementation
 
-uses math, vmath, viotypes, vvision, vgl3library,
+uses vmath, viotypes, vvision, vgl3library,
      drlio, drlgfxio, drlbase,
      dfmap, dfitem, dfplayer, drlmarkers, drldecals;
 
@@ -798,6 +799,53 @@ begin
     else Push( iLayer, ColorBlack );
 end;
 
+procedure TDRLSpriteMap.PushTarget( aSpriteID : DWord; aPosition : TVec2i; aColor : TColor; aSize : Float );
+var iColors   : TGLRawQColor;
+    iLayer    : TSpriteDataSet;
+    iSpriteID : DWord;
+    iHalf     : TVec2i;
+    iGrid     : TVec2i;
+    iExtra    : TVec2i;
+  procedure PushPart( aPa, aPb : TVec2i; aStart, aEnd : TVec2f );
+  begin
+    iLayer.PushPart( iSpriteID, aPa, aPb, @iColors, aColor, ColorZero, aColor, DRL_Z_FX, aStart, aEnd );
+  end;
+begin
+  iLayer    := FSpriteEngine.Layers[ aSpriteID div 100000 ];
+  iSpriteID := aSpriteID mod 100000;
+
+  if Abs( aSize - 1.0 ) < 0.001 then
+  begin
+    iLayer.PushXY( iSpriteID, 1, aPosition, ColorWhite, aColor, ColorZero, aColor, DRL_Z_FX );
+    Exit;
+  end;
+
+  iColors.FillAll( 255 );
+  iGrid  := FSpriteEngine.Grid;
+  iHalf  := TVec2i.Create( iGrid.X div 2, iGrid.Y div 2 );
+  iExtra := TVec2i.Create( Round( iGrid.X * ( aSize - 1.0 ) ), Round( iGrid.Y * ( aSize - 1.0 ) ) );
+
+  PushPart(
+    aPosition + TVec2i.Create( -iExtra.X div 2, -iExtra.Y ),
+    aPosition + TVec2i.Create( iHalf.X - iExtra.X div 2, iHalf.Y - iExtra.Y ),
+    TVec2f.Create( 0.0, 0.0 ), TVec2f.Create( 0.5, 0.5 )
+  );
+  PushPart(
+    aPosition + TVec2i.Create( iHalf.X + iExtra.X div 2, -iExtra.Y ),
+    aPosition + TVec2i.Create( iGrid.X + iExtra.X div 2, iHalf.Y - iExtra.Y ),
+    TVec2f.Create( 0.5, 0.0 ), TVec2f.Create( 1.0, 0.5 )
+  );
+  PushPart(
+    aPosition + TVec2i.Create( -iExtra.X div 2, iHalf.Y ),
+    aPosition + TVec2i.Create( iHalf.X - iExtra.X div 2, iGrid.Y ),
+    TVec2f.Create( 0.0, 0.5 ), TVec2f.Create( 0.5, 1.0 )
+  );
+  PushPart(
+    aPosition + TVec2i.Create( iHalf.X + iExtra.X div 2, iHalf.Y ),
+    aPosition + TVec2i.Create( iGrid.X + iExtra.X div 2, iGrid.Y ),
+    TVec2f.Create( 0.5, 0.5 ), TVec2f.Create( 1.0, 1.0 )
+  );
+end;
 
 procedure TDRLSpriteMap.PushSpriteBeing( aPos : TVec2i; const aSprite : TSprite; aLight : Byte ) ;
 var z : Integer;
@@ -1249,8 +1297,9 @@ begin
       iV     := Vec2i( FAutoTarget.X-1, FAutoTarget.Y-1 ) * FSpriteEngine.Grid;
       if ( iBeing <> nil ) and ( iBeing.AnimCount > 0 ) then
          (IO as TDRLGFXIO).getUIDPosition( iBeing.UID, iV );
-      with FSpriteEngine.Layers[ HARDSPRITE_SELECT div 100000 ] do
-        PushXY( HARDSPRITE_SELECT mod 100000, 1, iV, ColorWhite, NewColor( Yellow ), ColorZero, NewColor( Yellow ), DRL_Z_FX );
+      if iBeing <> nil
+        then PushTarget( HARDSPRITE_SELECT, iV, NewColor( Yellow ), 1.0 + iBeing.TargetSize * 0.1 )
+        else PushTarget( HARDSPRITE_SELECT, iV, NewColor( Yellow ), 1.0 );
     end;
 
   if FGridActive then

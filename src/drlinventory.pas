@@ -25,9 +25,10 @@ TInventory = class( TVObject )
        function  Size : byte;
        procedure Add( aItem : TItem );
        function  Find( const aID : Ansistring ) : TItem;
-       function  SeekStack( aID : DWord ) : TItem;
-       function  CountAmount( aID : DWord ) : Integer;
-       function  AddStack( aID : DWord; aCount : Integer ) : Integer;
+       function  SeekStack( aID : Integer ) : TItem;
+       function  CountAmount( aID : Integer ) : Integer;
+       function  AddStack( aID : Integer; aCount : Integer ) : Integer;
+       function  RemoveAmount( aID : Integer; aCount : Integer ) : Boolean;
        function  isFull : boolean;
        procedure RawSetSlot( aIndex : TEqSlot; aItem : TItem ); inline;
        procedure EqSwap( aSlot1, aSlot2 : TEqSlot );
@@ -130,7 +131,7 @@ begin
         SwapItem(aList[iCount2],aList[iCount2+1]);
 end;
 
-function TInventory.SeekStack( aID : DWord ) : TItem;
+function TInventory.SeekStack( aID : Integer ) : TItem;
 var iItem  : TItem;
     iCount : Integer;
 begin
@@ -146,9 +147,10 @@ begin
       end;
 end;
 
-function TInventory.CountAmount( aID : DWord ) : Integer;
+function TInventory.CountAmount( aID : Integer ) : Integer;
 var iItem : TItem;
 begin
+  if aID <= 0 then Exit( 0 );
   CountAmount := 0;
   if aID = 0 then Exit( 0 );
   for iItem in Self do
@@ -166,11 +168,12 @@ begin
 end;
 
 
-function TInventory.AddStack( aID : DWord; aCount : Integer ) : Integer;
+function TInventory.AddStack( aID : Integer; aCount : Integer ) : Integer;
 var iAmount : Integer;
     iItem   : TItem;
     iMax    : Integer;
 begin
+  if aID <= 0 then Exit( 0 );
   if LuaSystem.Defined([ CoreModuleID, 'GetItemMax' ])
     then iMax := LuaSystem.ProtectedCall([ CoreModuleID, 'GetItemMax' ], [aID] )
     else iMax := LuaSystem.Get(['items',aID,'max']);
@@ -194,6 +197,25 @@ begin
     aCount -= iAmount;
   until aCount = 0;
   Exit(0);
+end;
+
+function TInventory.RemoveAmount( aID : Integer; aCount : Integer ) : Boolean;
+var iItem   : TItem;
+    iAmount : Integer;
+begin
+  if aID <= 0 then Exit( True );
+  if aCount <= 0 then Exit( True );
+  if CountAmount( aID ) < aCount then Exit( False );
+
+  repeat
+    iItem := SeekStack( aID );
+    if iItem = nil then Exit( False );
+    iAmount := Min( aCount, iItem.Amount );
+    aCount -= iAmount;
+    iItem.Amount := iItem.Amount - iAmount;
+    if iItem.Amount <= 0 then iItem.Free;
+  until aCount = 0;
+  Exit( True );
 end;
 
 function TInventory.isFull: boolean;

@@ -35,7 +35,7 @@ type
 { TDRLLuaState }
 
 TDRLLuaState = object(TLuaState)
-  function ToId( aIndex : Integer) : DWord;
+  function ToId( aIndex : Integer) : Integer;
   function ToPosition( aIndex : Integer ) : TCoord2D;
   function ToPosition( aIndex : Integer; aDefault : TCoord2D ) : TCoord2D;
   function ToIOColor( aIndex : Integer ) : TIOColor;
@@ -514,14 +514,14 @@ end;
 
 function lua_core_callback(L: Plua_State): Integer; cdecl;
 var iState  : TDRLLuaState;
-    iThing  : TThing;
+    iObject : TObject;
     iHook   : Integer;
     iTop    : Integer;
     i       : Integer;
     iParams : array of TVarRec;
 begin
   iState.Init(L);
-  iThing := iState.ToObject( 1 ) as TThing;
+  iObject := iState.ToObject( 1 );
   luaL_checktype( L, 2, LUA_TSTRING );
   iHook := lua_core_resolve_callback( L, 2 );
   iTop := lua_gettop( L );
@@ -533,12 +533,22 @@ begin
       iParams[i-3].vtype   := vtObject;
       iParams[i-3].vObject := LuaStackRef( L, i );
     end;
-    iThing.CallHook( iHook, iParams );
+    if iObject is TThing then
+      ( iObject as TThing ).CallHook( iHook, iParams )
+    else if iObject is TLevel then
+      ( iObject as TLevel ).CallHook( iHook, iParams )
+    else
+      luaL_error( L, 'core.callback - object does not support callbacks!' );
     for i := 0 to High( iParams ) do
       TObject( iParams[i].vObject ).Free;
   end
   else
-    iThing.CallHook( iHook, [] );
+    if iObject is TThing then
+      ( iObject as TThing ).CallHook( iHook, [] )
+    else if iObject is TLevel then
+      ( iObject as TLevel ).CallHook( iHook, [] )
+    else
+      luaL_error( L, 'core.callback - object does not support callbacks!' );
   Result := 0;
 end;
 
@@ -658,7 +668,7 @@ end;
 
 { TDRLLuaState }
 
-function TDRLLuaState.ToId( aIndex: Integer ): DWord;
+function TDRLLuaState.ToId( aIndex: Integer ) : Integer;
 begin
   if IsNumber( aIndex ) then Exit( ToInteger( aIndex ) );
   ToId := LuaSystem.Defines[ToString( aIndex )];

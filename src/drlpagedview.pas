@@ -11,11 +11,9 @@ uses vutil, viotypes, dfdata, vgenerics;
 type TPagedView = class( TIOLayer )
   constructor Create( aPages : TPagedReport; aInitialPage : AnsiString = '' );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
-  function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
   destructor Destroy; override;
 protected
-  FFinished : Boolean;
   FPage     : Integer;
   FSize     : TPoint;
   FContent  : TPagedReport;
@@ -78,11 +76,6 @@ begin
     VTIG_ResetScroll( 'paged_view' );
     VTIG_ResetScroll( 'paged_view_inner' );
   end;
-end;
-
-function TPagedView.IsFinished : Boolean;
-begin
-  Exit( FFinished );
 end;
 
 function TPagedView.IsModal : Boolean;

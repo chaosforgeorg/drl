@@ -24,6 +24,7 @@ register_level "toxin_refinery"
 			sound_id = "lever",
 
 			OnUse = function(self,being)
+				statistics.levers_pulled = statistics.levers_pulled + 1
 				level:transmute( "ldoor", "floor", level.data.door1 )
 				level:transmute( "wall", "floor", level.data.trap1 )
 				level.data.darkness_end_time = core.game_time() + 150
@@ -51,6 +52,7 @@ register_level "toxin_refinery"
 			sound_id = "lever",
 
 			OnUse = function(self,being)
+				statistics.levers_pulled = statistics.levers_pulled + 1
 				level:transmute( "ldoor", "floor", level.data.door2 )
 				ui.msg("Smoking area unlocked.")
 				return true
@@ -73,6 +75,7 @@ register_level "toxin_refinery"
 			sound_id = "lever",
 
 			OnUse = function(self,being)
+				statistics.levers_pulled = statistics.levers_pulled + 1
 				level:transmute( "wall", "floor", level.data.door3 )
 				level:transmute( "acid", "bridge", level.data.bridge )
 				ui.msg("Shortcut unlocked.")

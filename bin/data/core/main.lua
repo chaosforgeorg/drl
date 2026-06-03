@@ -314,7 +314,9 @@ register_being         = core.register_storage( "beings", "being", function( bp 
 			ip.sprite   = 0
 			register_item( wid ) ( ip )
 			ip.flags[ IF_NODROP ] = true
-			ip.flags[ IF_NOAMMO ] = true
+			if not ip.flags[ IF_AUTOAMMO ] then
+				ip.flags[ IF_NOAMMO ] = true
+			end
 
 			local OnCreate = function( self )
 				self.eq.weapon = item.new( wid )

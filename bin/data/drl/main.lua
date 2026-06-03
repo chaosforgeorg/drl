@@ -1,8 +1,8 @@
 core.declare( "drl", {} )
 core.declare( "core_module", "drl" )
 core.declare( "DEMO", false )
-core.declare( "VERSION_MODULE",      "0.10.8" )
-core.declare( "VERSION_MODULE_SAVE", "0.10.8" )
+core.declare( "VERSION_MODULE",      "0.10.9" )
+core.declare( "VERSION_MODULE_SAVE", "0.10.9" )
 
 require( "drl:generator" )
 require( "drl:generators" )
@@ -320,6 +320,11 @@ function drl.GetDisassembleId( it )
 		end
 	end
 	return table.random_pick( modlist )
+end
+
+function drl.GetDeathMessage( being, visible )
+	if visible then return being:get_name( true, true ).." dies." end
+	return "You hear the scream of a freed soul!"
 end
 
 function drl.GetResultId()

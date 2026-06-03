@@ -29,6 +29,7 @@ register_level "deimos_lab"
 			sound_id = "lever",
 
 			OnUse = function(self,being)
+				statistics.levers_pulled = statistics.levers_pulled + 1
 				if level.status > 5 then return true end
 				level.status = level.status + 1
 				if level.status == 2 then
