@@ -342,6 +342,7 @@ end;
 
 procedure TDRL.UnLoad;
 begin
+  if Assigned( IO ) then IO.AnimationWipe;
   FDataLoaded := False;
   HOF.Done;
   FreeAndNil(LuaSystem);
@@ -1066,6 +1067,7 @@ begin
 
   if IO.GetPadRTrigger then
   begin // Move target mode
+    FPadMoveActive := False;
     if IO.GetPadLDir.NotZero then
       Exit( MoveTargetEvent( FTargeting.List.Current + IO.GetPadLDir ) );
     if ( not IO.GetPadLTrigger ) and (FTargeting.List.Current <> Player.Position) and (Level.Being[FTargeting.List.Current] <> nil) then
@@ -1271,6 +1273,7 @@ var iRank       : THOFRank;
     iScript     : Ansistring;
     iReport     : TPagedReport;
     iEnterNuke  : Boolean;
+    iCrashIndex : Integer;
 begin
   iResult    := TMenuResult.Create;
   DRL.Load;
@@ -1468,7 +1471,14 @@ repeat
     EXCEPTEMMITED := True;
     if Option_SaveOnCrash and ((Player.Statistics['crash_count'] = 0) or{thelaptop: Vengeance is MINE} (FDifficulty < DIFF_NIGHTMARE)) then
     begin
-      if Player.Level_Index <> 1 then Player.NextLevelIndex;
+      try
+        iCrashIndex := LuaSystem.Get( [ 'player', '__props', 'crash_index' ], 0 );
+      except
+        iCrashIndex := 0;
+      end;
+      if iCrashIndex > 0
+        then Player.Level_Index := iCrashIndex - 1
+        else if Player.Level_Index <> 1 then Player.NextLevelIndex;
       Player.Statistics.Increase('crash_count');
       WriteSaveFile( True );
     end;

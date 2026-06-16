@@ -86,7 +86,6 @@ private
   FNewShift       : TVec2i;
   FShift          : TVec2i;
   FOffset         : TVec2i;
-  FLastCoord      : TCoord2D;
   FAutoTarget     : TCoord2D;
   FMarker         : TCoord2D;
   FSpriteEngine   : TSpriteEngine;
@@ -270,7 +269,6 @@ begin
   FTarget.Create(0,0);
   FSpriteEngine := TSpriteEngine.Create( Vec2i( 32, 32 ) );
   FGridActive     := False;
-  FLastCoord.Create(0,0);
   FAutoTarget.Create(0,0);
   FMarker.Create(-1,-1);
 
@@ -452,23 +450,6 @@ begin
     iCoord := DevicePointToCoord( iPoint );
     if DRL.Level.isProperCoord( iCoord ) then
     begin
-      if (FLastCoord <> iCoord) and (not IO.AnimationsRunning) then
-      begin
-        if not IO.IsModal then
-          if DRL.Level.isVisible(iCoord) and ( DRL.Level.Being[ iCoord ] <> nil )
-            then 
-            begin 
-              IO.HintOverlay := DRL.Level.GetTargetDescription(iCoord);
-              IO.HintStatus  := DRL.Level.Being[ iCoord ].GetTraitString;
-            end
-            else 
-            begin
-              IO.HintOverlay := DRL.Level.GetLookDescription(iCoord);
-              IO.HintStatus  := '';
-            end;
-        FLastCoord := iCoord;
-      end;
-
       TargetSprite.Color := ColorBlack;
       if DRL.Level.isVisible( iCoord ) then
         TargetSprite.Color.G := Floor(100*(Sin( FFluidTime*50 )+1)+50)
@@ -1297,7 +1278,7 @@ begin
       iV     := Vec2i( FAutoTarget.X-1, FAutoTarget.Y-1 ) * FSpriteEngine.Grid;
       if ( iBeing <> nil ) and ( iBeing.AnimCount > 0 ) then
          (IO as TDRLGFXIO).getUIDPosition( iBeing.UID, iV );
-      if iBeing <> nil
+      if ( iBeing <> nil ) and ( iBeing.isVisible or ( iBeing.AnimCount > 0 ) ) 
         then PushTarget( HARDSPRITE_SELECT, iV, NewColor( Yellow ), 1.0 + iBeing.TargetSize * 0.1 )
         else PushTarget( HARDSPRITE_SELECT, iV, NewColor( Yellow ), 1.0 );
     end;

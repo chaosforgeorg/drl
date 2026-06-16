@@ -1,7 +1,7 @@
 core.declare( "drl", {} )
 core.declare( "core_module", "drl" )
 core.declare( "DEMO", false )
-core.declare( "VERSION_MODULE",      "0.10.9" )
+core.declare( "VERSION_MODULE",      "0.10.9a" )
 core.declare( "VERSION_MODULE_SAVE", "0.10.9" )
 
 require( "drl:generator" )
@@ -244,6 +244,7 @@ function drl.register_base_data()
 			self:add_property( "history", {} )
 			self:add_property( "episode", {} )
 			self:add_property( "level_data", {} )
+			self:add_property( "crash_index", 0 )
 
 			if rawget(_G,"DIFFICULTY") then
 				self.hp    = 50
@@ -301,6 +302,8 @@ function drl.register_base_data()
 end
 
 function drl.OnEnterLevel()
+	local linfo = player.episode[ level.index ]
+	player:add_property( "crash_index", ( linfo and linfo.exit ) or ( level.index + 1 ) )
 	player:remove_perk( "running", true )
 	player:remove_perk( "tired", true )
 end
