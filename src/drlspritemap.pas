@@ -1278,7 +1278,7 @@ begin
       iV     := Vec2i( FAutoTarget.X-1, FAutoTarget.Y-1 ) * FSpriteEngine.Grid;
       if ( iBeing <> nil ) and ( iBeing.AnimCount > 0 ) then
          (IO as TDRLGFXIO).getUIDPosition( iBeing.UID, iV );
-      if iBeing <> nil
+      if ( iBeing <> nil ) and ( iBeing.isVisible or ( iBeing.AnimCount > 0 ) ) 
         then PushTarget( HARDSPRITE_SELECT, iV, NewColor( Yellow ), 1.0 + iBeing.TargetSize * 0.1 )
         else PushTarget( HARDSPRITE_SELECT, iV, NewColor( Yellow ), 1.0 );
     end;
