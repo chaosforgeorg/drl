@@ -342,6 +342,7 @@ end;
 
 procedure TDRL.UnLoad;
 begin
+  if Assigned( IO ) then IO.AnimationWipe;
   FDataLoaded := False;
   HOF.Done;
   FreeAndNil(LuaSystem);
