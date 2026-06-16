@@ -1271,6 +1271,7 @@ var iRank       : THOFRank;
     iScript     : Ansistring;
     iReport     : TPagedReport;
     iEnterNuke  : Boolean;
+    iCrashIndex : Integer;
 begin
   iResult    := TMenuResult.Create;
   DRL.Load;
@@ -1468,7 +1469,14 @@ repeat
     EXCEPTEMMITED := True;
     if Option_SaveOnCrash and ((Player.Statistics['crash_count'] = 0) or{thelaptop: Vengeance is MINE} (FDifficulty < DIFF_NIGHTMARE)) then
     begin
-      if Player.Level_Index <> 1 then Player.NextLevelIndex;
+      try
+        iCrashIndex := LuaSystem.Get( [ 'player', '__props', 'crash_index' ], 0 );
+      except
+        iCrashIndex := 0;
+      end;
+      if iCrashIndex > 0
+        then Player.Level_Index := iCrashIndex - 1
+        else if Player.Level_Index <> 1 then Player.NextLevelIndex;
       Player.Statistics.Increase('crash_count');
       WriteSaveFile( True );
     end;
