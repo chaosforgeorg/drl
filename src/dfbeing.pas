@@ -2044,7 +2044,7 @@ var iDirection     : TDirection;
     iSlot          : TEqSlot;
     iArmorDamage   : LongInt;
     iProtection    : LongInt;
-    iArmorValue    : Byte;
+    iArmorValue    : Integer;
     iOverKillValue : LongInt;
     iResist        : LongInt;
     iGibMul        : Single;

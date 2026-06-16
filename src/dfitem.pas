@@ -24,7 +24,7 @@ TItem  = class( TThing )
     function    maxDamage : Integer;
     function    GetName( aKnown : boolean; aSingle : Boolean = False ) : Ansistring;
     function    GetExtName( aLyingHere : Boolean ) : Ansistring;
-    function    GetProtection : Byte;
+    function    GetProtection : Integer;
     function    GetResistance( const aResistance : AnsiString ) : Integer;
     function    Description( aSingle : Boolean ) : Ansistring; overload;
     function    Description : Ansistring; overload;
@@ -298,7 +298,7 @@ begin
   raise EItemException.CreateFmt('TItem.MaxDamage called for Itype %d!',[ Byte( FProps.Itype ) ] );
 end;
 
-function    TItem.GetProtection : Byte;
+function    TItem.GetProtection : Integer;
 begin
   if FArmor = 0 then Exit(0);
   if Flags[ IF_NODEGRADE ] then Exit(FArmor);
