@@ -1066,6 +1066,7 @@ begin
 
   if IO.GetPadRTrigger then
   begin // Move target mode
+    FPadMoveActive := False;
     if IO.GetPadLDir.NotZero then
       Exit( MoveTargetEvent( FTargeting.List.Current + IO.GetPadLDir ) );
     if ( not IO.GetPadLTrigger ) and (FTargeting.List.Current <> Player.Position) and (Level.Being[FTargeting.List.Current] <> nil) then
