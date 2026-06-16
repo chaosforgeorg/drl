@@ -1025,11 +1025,32 @@ begin
 end;
 
 procedure TDRLGFXIO.DrawHUD;
-var i     : Byte;
-    iItem : TItem;
-    iPosX : Integer;
-    iPosY : Integer;
+var i       : Byte;
+    iItem   : TItem;
+    iPosX   : Integer;
+    iPosY   : Integer;
+    iPoint  : vutil.TPoint;
+    iCoord  : TCoord2D;
 begin
+  if (Player <> nil) and (DRL.Level <> nil) and (not isModal)
+    and (FMCursor <> nil) and FMCursor.Active and FIODriver.GetMousePos( iPoint )
+    and AnimationsBlockingFinished then
+  begin
+    iCoord := SpriteMap.DevicePointToCoord( iPoint );
+    if DRL.Level.isProperCoord( iCoord ) then
+      if DRL.Level.isVisible(iCoord) and ( DRL.Level.Being[ iCoord ] <> nil )
+        then
+        begin
+          FHintOverlay := DRL.Level.GetTargetDescription(iCoord);
+          FHintStatus  := DRL.Level.Being[ iCoord ].GetTraitString;
+        end
+        else
+        begin
+          FHintOverlay := DRL.Level.GetLookDescription(iCoord);
+          FHintStatus  := '';
+        end;
+  end;
+
   inherited DrawHUD;
   if Player = nil then Exit;
 
