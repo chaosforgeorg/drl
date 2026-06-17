@@ -2574,6 +2574,7 @@ procedure TBeing.Knockback( aDir : TDirection; aStrength : Single );
 var iKnock     : TCoord2D;
     iLevel     : TLevel;
     iStrength  : Integer;
+    iBlockFlag : Byte;
 begin
   iLevel := TLevel(Parent);
   if aStrength <= 0.0         then Exit;
@@ -2585,16 +2586,19 @@ begin
   iStrength  := Floor( aStrength ) - GetBonus( Hook_getBodyBonus, [] );
   if iStrength <= 0 then Exit;
 
-  if not iLevel.isEmpty( iKnock, [EF_NOBEINGS,EF_NOBLOCK] ) then Exit;
+  if BF_FLY in FFlags
+    then iBlockFlag := EF_NOBLOCKFLY
+    else iBlockFlag := EF_NOBLOCK;
+  if not iLevel.isEmpty( iKnock, [EF_NOBEINGS,iBlockFlag] ) then Exit;
   iKnock := FPosition;
   while iStrength > 0 do
   begin
-    if not iLevel.isEmpty(iKnock + aDir, [EF_NOBEINGS,EF_NOBLOCK] ) then Break;
+    if not iLevel.isEmpty(iKnock + aDir, [EF_NOBEINGS,iBlockFlag] ) then Break;
     iKnock += aDir;
     Dec(iStrength);
   end;
 
-  if iLevel.isEmpty(iKnock,[EF_NOBEINGS,EF_NOBLOCK]) then
+  if iLevel.isEmpty(iKnock,[EF_NOBEINGS,iBlockFlag]) then
   begin
     if GraphicsVersion then
     begin

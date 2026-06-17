@@ -77,6 +77,7 @@ TLevel = class(TLuaMapNode, ITextMap)
     function Respawn( aCoord : TCoord2D ) : TBeing; overload;
     procedure Respawn( aChance : byte ); overload;
     function isPassable( const aCoord : TCoord2D ) : Boolean; override;
+    function isPassableExt( const aCoord : TCoord2D; aFlag : Byte = CF_BLOCKMOVE ) : Boolean;
     function isEmpty( const aCoord : TCoord2D; aEmptyFlags : TFlags32 = []) : Boolean; override;
     function cellFlagSet( coord : TCoord2D; Flag : byte) : Boolean;
     procedure playSound( const aSoundID : DWord; aCoord : TCoord2D; aDelay : DWord = 0 ); overload;
@@ -905,9 +906,13 @@ begin
 end;
 
 procedure TLevel.DropBeing( aBeing : TBeing; aCoord : TCoord2D );
+var iBlockFlag : Byte;
 begin
   if aBeing = nil then Exit;
-  aCoord := DropCoord( aCoord, [ EF_NOTELE,EF_NOBEINGS,EF_NOBLOCK,EF_NOSTAIRS ], False );
+  if aBeing.Flags[ BF_FLY ]
+    then iBlockFlag := EF_NOBLOCKFLY
+    else iBlockFlag := EF_NOBLOCK;
+  aCoord := DropCoord( aCoord, [ EF_NOTELE,EF_NOBEINGS,iBlockFlag,EF_NOSTAIRS ], False );
   Add( aBeing, aCoord );
   if ( not aBeing.IsPlayer ) and ( not aBeing.Flags[ BF_FRIENDLY ] ) and ( not aBeing.Flags[ BF_ILLUSION ] ) and ( not aBeing.Flags[ BF_NOKILL ] ) then
   begin
@@ -1151,9 +1156,14 @@ end;
 
 
 function TLevel.isPassable ( const aCoord : TCoord2D ) : Boolean;
+begin
+  Exit( isPassableExt( aCoord ) );
+end;
+
+function TLevel.isPassableExt ( const aCoord : TCoord2D; aFlag : Byte ) : Boolean;
 var iItem : TItem;
 begin
-  if cellFlagSet( aCoord, CF_BLOCKMOVE ) then Exit( False );
+  if cellFlagSet( aCoord, aFlag ) then Exit( False );
   iItem := GetItem( aCoord );
   if Assigned( iItem ) and iItem.Flags[ IF_BLOCKMOVE ] then Exit( False );
   Exit( True );
@@ -1940,6 +1950,16 @@ begin
   Exit( 1 );
 end;
 
+function lua_level_is_passable_ext(L: Plua_State): Integer; cdecl;
+var iState : TDRLLuaState;
+    iLevel : TLevel;
+begin
+  iState.Init(L);
+  iLevel := iState.ToObject(1) as TLevel;
+  iState.Push( iLevel.isPassableExt( iState.ToCoord(2), iState.ToInteger(3, CF_BLOCKMOVE) ) );
+  Exit( 1 );
+end;
+
 function lua_level_add_perk(L: Plua_State): Integer; cdecl;
 var iState : TDRLLuaState;
     iLevel : TLevel;
@@ -1981,7 +2001,7 @@ begin
   Result := 1;
 end;
 
-const lua_level_lib : array[0..25] of luaL_Reg = (
+const lua_level_lib : array[0..26] of luaL_Reg = (
       ( name : 'drop_item';  func : @lua_level_drop_item),
       ( name : 'drop_being'; func : @lua_level_drop_being),
       ( name : 'player';     func : @lua_level_player),
@@ -2003,6 +2023,7 @@ const lua_level_lib : array[0..25] of luaL_Reg = (
       ( name : 'reset';         func : @lua_level_reset),
       ( name : 'post_generate'; func : @lua_level_post_generate),
       ( name : 'get_enemies_left'; func : @lua_level_get_enemies_left),
+      ( name : 'is_passable_ext'; func : @lua_level_is_passable_ext),
       ( name : 'add_perk';      func : @lua_level_add_perk),
       ( name : 'get_perk_time'; func : @lua_level_get_perk_time),
       ( name : 'remove_perk';   func : @lua_level_remove_perk),
