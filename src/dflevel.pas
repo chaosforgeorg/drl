@@ -148,8 +148,6 @@ TLevel = class(TLuaMapNode, ITextMap)
     FActiveBeing   : TBeing;
     FNextNode      : TNode;
 
-    FFloorCell     : Word;
-    FFloorStyle    : Byte;
     FFeeling       : AnsiString;
     FMusicID       : AnsiString;
     FSName         : AnsiString;
@@ -173,8 +171,6 @@ TLevel = class(TLuaMapNode, ITextMap)
     property Decals  : TDecalStore                  read FDecals;
     property AccuracyBonus : Integer                read FAccuracyBonus;
     property Hooks : TFlags                         read FHooks;
-    property FloorCell : Word                       read FFloorCell;
-    property FloorStyle : Byte                      read FFloorStyle;
     property Item     [ Index : TCoord2D ] : TItem  read getItem;
     property Being    [ Index : TCoord2D ] : TBeing read getBeing;
     property CellBottom [ Index : TCoord2D ] : Byte read getCellBottom;
@@ -455,8 +451,6 @@ begin
   aStream.Read( FEmpty, SizeOf( FEmpty ) );
   FDangerLevel := aStream.ReadWord();
   aStream.Read( FAccuracyBonus, SizeOf( FAccuracyBonus ) );
-  FFloorCell   := aStream.ReadWord();
-  FFloorStyle  := aStream.ReadByte();
   FID          := aStream.ReadAnsiString();
   FFeeling     := aStream.ReadAnsiString();
   FMusicID     := aStream.ReadAnsiString();
@@ -487,8 +481,6 @@ begin
   aStream.Write( FEmpty, SizeOf( FEmpty ) );
   aStream.WriteWord( FDangerLevel );
   aStream.Write( FAccuracyBonus, SizeOf( FAccuracyBonus ) );
-  aStream.WriteWord( FFloorCell );
-  aStream.WriteByte( FFloorStyle );
   aStream.WriteAnsiString( aID );
   aStream.WriteAnsiString( FFeeling );
   aStream.WriteAnsiString( FMusicID );
@@ -531,7 +523,9 @@ begin
 end;
 
 procedure TLevel.Init( aStyle : Byte; aName : Ansistring; aIndex : Integer; aDangerLevel : Word );
-var x,y : Integer;
+var x,y         : Integer;
+    iFloorCell  : Integer;
+    iFloorStyle : Byte;
 begin
   FActiveBeing := nil;
   FNextNode    := nil;
@@ -551,30 +545,20 @@ begin
   FHooks := [];
   FFeeling := '';
   FMusicID := '';
-
-  FFloorCell     := LuaSystem.Defines[LuaSystem.Get(['generator','styles',FStyle,'floor'])];
-  FFloorStyle    := LuaSystem.Get(['generator','styles',FStyle,'style'],0);
-
-  with FMap do
-  for x := 1 to MaxX do
-    for y := 1 to MaxY do
-    begin
-      Floor[x,y]  := FFloorCell;
-      FStyle[x,y] := FFloorStyle;
-    end;
-  
+ 
   if LuaSystem.Get(['diff',DRL.Difficulty,'respawn']) then Include( FFlags, LF_RESPAWN );
   FAccuracyBonus := LuaSystem.Get(['diff',DRL.Difficulty,'accuracybonus']);
 end;
 
 procedure TLevel.AfterGeneration;
 var iCoord : TCoord2D;
-    iCell  : Word;
+    iCell  : Integer;
     iFlags : TFlags;
-    iWall  : Word;
+    iWall  : Integer;
+    iFloor : Integer;
 begin
-  FFloorCell := LuaSystem.Defines[ LuaSystem.Get(['generator','styles',FStyle,'floor'] ) ];
-  iWall      := LuaSystem.Defines[ LuaSystem.Get(['generator','styles',FStyle,'wall'] ) ];
+  iFloor := LuaSystem.Defines[ LuaSystem.Get(['generator','styles',FStyle,'floor'] ) ];
+  iWall  := LuaSystem.Defines[ LuaSystem.Get(['generator','styles',FStyle,'wall'] ) ];
   for iCoord in FArea do
   begin
     iCell   := GetCell(iCoord);
@@ -584,7 +568,7 @@ begin
       if (CF_STICKWALL in iFlags) and (not (CF_OPENABLE in iFlags )) then
         PutCell(iCoord,iWall)
       else
-        PutCell(iCoord,FFloorCell);
+        PutCell(iCoord,iFloor);
       PutCell(iCoord,iCell);
     end;
   end;
@@ -688,22 +672,31 @@ begin
 end;
 
 procedure TLevel.FullClear;
-var x,y : Byte;
+var x,y         : Byte;
+    iFloorCell  : Integer;
+    iFloorStyle : Byte;
 begin
   ClearAll;
   ClearEntities;
   FMarkers.Clear;
   FDecals.Clear;
+  iFloorCell  := 0;
+  iFloorStyle := 0;
+  if FStyle > 0 then
+  begin
+    iFloorCell     := LuaSystem.Defines[LuaSystem.Get(['generator','styles',FStyle,'floor'])];
+    iFloorStyle    := LuaSystem.Get(['generator','styles',FStyle,'style'],0);
+  end;
   with FMap do
   for x := 1 to MaxX do
     for y := 1 to MaxY do
     begin
-      Style[x,y]    := FFloorStyle;
+      Style[x,y]    := 0;
       Deco[x,y]     := 0;
       Overlay[x,y]  := 0;
       Rotation[x,y] := 0;
-      Floor[x,y]    := 0;
-      FStyle[x,y]   := 0;
+      Floor[x,y]    := iFloorCell;
+      FStyle[x,y]   := iFloorStyle;
       if (x = 1) or (y = 1) or ( x = MaxX ) or ( y = MaxY ) then LightFlag[ NewCoord2D(x,y), lfPermanent ] := True;
     end;
 end;
@@ -1846,18 +1839,20 @@ function lua_level_set_generator_style(L: Plua_State): Integer; cdecl;
 var State   : TDRLLuaState;
     iCoord  : TCoord2D;
     iLevel  : TLevel;
+    iFloor  : Integer;
+    iFStyle : Integer;
 begin
   State.Init(L);
   iLevel := State.ToObject(1) as TLevel;
   if State.IsNil(2) then Exit(0);
   iLevel.FStyle := State.ToInteger(2);
-  iLevel.FFloorCell := LuaSystem.Defines[LuaSystem.Get(['generator','styles',iLevel.FStyle,'floor'])];
-  iLevel.FFloorStyle := LuaSystem.Get(['generator','styles',iLevel.FStyle,'style'], 0);
+  iFloor  := LuaSystem.Defines[LuaSystem.Get(['generator','styles',iLevel.FStyle,'floor'])];
+  iFStyle := LuaSystem.Get(['generator','styles',iLevel.FStyle,'style'], 0);
   for iCoord in iLevel.FArea do
   begin
-    iLevel.FMap.Style[iCoord.X,iCoord.Y] := iLevel.FFloorStyle;
-    iLevel.FMap.Floor[iCoord.X,iCoord.Y] := iLevel.FFloorCell;
-    iLevel.FMap.FStyle[iCoord.X,iCoord.Y] := iLevel.FFloorStyle;
+    iLevel.FMap.Style[iCoord.X,iCoord.Y]  := iFStyle;
+    iLevel.FMap.Floor[iCoord.X,iCoord.Y]  := iFloor;
+    iLevel.FMap.FStyle[iCoord.X,iCoord.Y] := iFStyle;
   end;
   Result := 0;
 end;
