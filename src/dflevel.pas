@@ -163,7 +163,9 @@ TLevel = class(TLuaMapNode, ITextMap)
     function getCellTop( Index : TCoord2D ): Byte;
     function getRotation( Index : TCoord2D ): Byte;
     function getStyle( Index : TCoord2D ): Byte;
+    function getFStyle( Index : TCoord2D ): Byte;
     function getDeco( Index : TCoord2D ): Byte;
+    function getFloorCell( Index : TCoord2D ): Byte;
     function getSpriteTop( Index : TCoord2D ): TSprite;
     function getSpriteBottom( Index : TCoord2D ): TSprite;
   public
@@ -178,7 +180,9 @@ TLevel = class(TLuaMapNode, ITextMap)
     property CellBottom [ Index : TCoord2D ] : Byte read getCellBottom;
     property CellTop    [ Index : TCoord2D ] : Byte read getCellTop;
     property CStyle   [ Index : TCoord2D ] : Byte   read getStyle;
+    property FlrStyle [ Index : TCoord2D ] : Byte    read getFStyle;
     property Deco     [ Index : TCoord2D ] : Byte   read getDeco;
+    property Floor    [ Index : TCoord2D ] : Byte   read getFloorCell;
     property Rotation [ Index : TCoord2D ] : Byte   read getRotation;
 
     property SpriteTop    [ Index : TCoord2D ] : TSprite read getSpriteTop;
@@ -208,7 +212,6 @@ uses math, typinfo, vluatools, vluasystem,
 
 procedure TLevel.ScriptLevel(script : string);
 begin
-  FullClear;
   LuaPlayerX := 2;
   LuaPlayerY := 2;
 
@@ -528,6 +531,7 @@ begin
 end;
 
 procedure TLevel.Init( aStyle : Byte; aName : Ansistring; aIndex : Integer; aDangerLevel : Word );
+var x,y : Integer;
 begin
   FActiveBeing := nil;
   FNextNode    := nil;
@@ -550,6 +554,15 @@ begin
 
   FFloorCell     := LuaSystem.Defines[LuaSystem.Get(['generator','styles',FStyle,'floor'])];
   FFloorStyle    := LuaSystem.Get(['generator','styles',FStyle,'style'],0);
+
+  with FMap do
+  for x := 1 to MaxX do
+    for y := 1 to MaxY do
+    begin
+      Floor[x,y]  := FFloorCell;
+      FStyle[x,y] := FFloorStyle;
+    end;
+  
   if LuaSystem.Get(['diff',DRL.Difficulty,'respawn']) then Include( FFlags, LF_RESPAWN );
   FAccuracyBonus := LuaSystem.Get(['diff',DRL.Difficulty,'accuracybonus']);
 end;
@@ -689,6 +702,8 @@ begin
       Deco[x,y]     := 0;
       Overlay[x,y]  := 0;
       Rotation[x,y] := 0;
+      Floor[x,y]    := 0;
+      FStyle[x,y]   := 0;
       if (x = 1) or (y = 1) or ( x = MaxX ) or ( y = MaxY ) then LightFlag[ NewCoord2D(x,y), lfPermanent ] := True;
     end;
 end;
@@ -849,9 +864,13 @@ begin
       if CF_CORPSE in Cells[ iCellID ].Flags then
         playSound( 'gib', aCoord );
 
-      if Cells[ iCellID ].destroyto = ''
-        then Cell[ aCoord ] := FFloorCell
-        else Cell[ aCoord ] := LuaSystem.Defines[ Cells[ iCellID ].destroyto ];
+      if Cells[ iCellID ].destroyto = '' then
+      begin
+        FMap.Style[aCoord.x,aCoord.y] := FlrStyle[aCoord];
+        Cell[ aCoord ] := Floor[aCoord];
+      end
+      else
+        Cell[ aCoord ] := LuaSystem.Defines[ Cells[ iCellID ].destroyto ];
 
       Result := True;
       CallHook( aCoord, iCellID, CellHook_OnDestroy );
@@ -1005,7 +1024,7 @@ begin
         iDistance := Distance( iC, aCoord );
         if not (efNoDistanceDrop in aData.Flags) then
           iDamage := iDamage div Max(1,(iDistance+1) div 2);
-        iDamage := Floor( iDamage * aDamageMult );
+        iDamage := Math.Floor( iDamage * aDamageMult );
         DamageTile( iC, iDamage, aData.DamageType );
         if Being[iC] <> nil then
         with Being[iC] do
@@ -1102,7 +1121,7 @@ begin
     if LightFlag[ iTC, lfDamage ] then
       begin
         iDmg := Round( aDamage.Roll * (1.0-0.01*iFalloff*Max(0,Distance( aSource, iTC )-1)) );
-        iDmg := Floor( iDmg * aDamageMul );
+        iDmg := Math.Floor( iDmg * aDamageMul );
 
         if iDmg < 1 then iDmg := 1;
         
@@ -1418,9 +1437,13 @@ begin
   if cellFlagSet( where, CF_BLOCKMOVE ) and ( ( not MapEdge ) or ( ( MapEdge ) and ( not GetLightFlag( where, LFPERMANENT ) ) ) ) or
     cellFlagSet( where, CF_CORPSE ) or
     cellFlagSet( where, CF_NUKABLE ) then
-       if Cells[ GetCell(where) ].destroyto = ''
-         then Cell[ where ] := FFloorCell
-         else Cell[ where ] := LuaSystem.Defines[ Cells[ GetCell(where) ].destroyto ];
+       if Cells[ GetCell(where) ].destroyto = '' then
+       begin
+         FMap.Style[where.x,where.y] := FlrStyle[where];
+         Cell[ where ] := Floor[where];
+       end
+       else
+         Cell[ where ] := LuaSystem.Defines[ Cells[ GetCell(where) ].destroyto ];
   CellBeing := Being[ where ];
   CellItem  := Item [ where ];
 
@@ -1449,14 +1472,21 @@ begin
 end;
 
 procedure TLevel.putCell( const aWhere : TCoord2D; const aWhat : byte );
+var iFlags : TFlags;
 begin
-  if CF_OVERLAY in Cells[ aWhat ].Flags
+  iFlags := Cells[ aWhat ].Flags;
+  if CF_OVERLAY in iFlags
   then
      FMap.Overlay[aWhere.x, aWhere.y] := aWhat
   else
   begin
     inherited PutCell( aWhere, aWhat );
     FMap.Overlay[aWhere.x, aWhere.y] := 0;
+  end;
+  if CF_FLOOR in iFlags then
+  begin
+    FMap.Floor[aWhere.x, aWhere.y]  := aWhat;
+    FMap.FStyle[aWhere.x, aWhere.y] := FMap.Style[aWhere.x, aWhere.y];
   end;
 end;
 
@@ -1490,9 +1520,19 @@ begin
   Exit( FMap.Style[Index.x, Index.y] );
 end;
 
+function TLevel.getFStyle( Index : TCoord2D ): Byte;
+begin
+  Exit( FMap.FStyle[Index.x, Index.y] );
+end;
+
 function TLevel.getDeco( Index : TCoord2D ): Byte;
 begin
   Exit( FMap.Deco[Index.x, Index.y] );
+end;
+
+function TLevel.getFloorCell( Index : TCoord2D ): Byte;
+begin
+  Exit( FMap.Floor[Index.x, Index.y] );
 end;
 
 function TLevel.getSpriteTop( Index : TCoord2D ): TSprite;
@@ -1816,6 +1856,8 @@ begin
   for iCoord in iLevel.FArea do
   begin
     iLevel.FMap.Style[iCoord.X,iCoord.Y] := iLevel.FFloorStyle;
+    iLevel.FMap.Floor[iCoord.X,iCoord.Y] := iLevel.FFloorCell;
+    iLevel.FMap.FStyle[iCoord.X,iCoord.Y] := iLevel.FFloorStyle;
   end;
   Result := 0;
 end;

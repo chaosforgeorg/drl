@@ -242,7 +242,8 @@ end;
 
 destructor TThing.Destroy;
 begin
-  DRL.Particles.Wipe( UID );
+  if Assigned( DRL ) and Assigned( DRL.Particles ) then
+    DRL.Particles.Wipe( UID );
   FreeAndNil( FPerks );
   inherited Destroy;
 end;

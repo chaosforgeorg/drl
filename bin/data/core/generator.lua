@@ -144,12 +144,26 @@ end
 
 function generator.place_dungen_tile( code, tile_object, tile_pos )
 	local tile_area   = tile_object:get_area()
+	for c in tile_area() do
+		local char       = string.char( tile_object:get_ascii(c) )
+		local tile_entry = code[ char ]
+		assert( tile_entry, "Character in map not defined -> "..char)
+		if type(tile_entry) ~= "number" then
+			local p = tile_pos + c - coord.UNIT
+			if tile_entry.raw_style then
+				level:set_raw_style( p, tile_entry.raw_style )
+			end
+			if tile_entry.style then
+				level:set_raw_style( p, generator.styles[ tile_entry.style ].style )
+			end
+		end
+	end
+
 	generator.tile_place( level, tile_pos, tile_object )
 
 	for c in tile_area() do
 		local char       = string.char( tile_object:get_ascii(c) )
 		local tile_entry = code[ char ]
-		assert( tile_entry, "Character in map not defined -> "..char)
 		if type(tile_entry) ~= "number" then
 			local p = tile_pos + c - coord.UNIT
 			if tile_entry.being then 
@@ -168,12 +182,6 @@ function generator.place_dungen_tile( code, tile_object, tile_pos )
 				for _, flag in ipairs(tile_entry.flags) do
 					level:set_light_flag( p, flag, true )
 				end
-			end
-			if tile_entry.raw_style then
-				level:set_raw_style( p, tile_entry.raw_style )
-			end
-			if tile_entry.style then
-				level:set_raw_style( p, generator.styles[ tile_entry.style ].style )
 			end
 			if tile_entry.deco then
 				level:set_raw_deco( p, tile_entry.deco )
