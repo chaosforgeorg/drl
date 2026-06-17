@@ -1437,13 +1437,13 @@ begin
   if cellFlagSet( where, CF_BLOCKMOVE ) and ( ( not MapEdge ) or ( ( MapEdge ) and ( not GetLightFlag( where, LFPERMANENT ) ) ) ) or
     cellFlagSet( where, CF_CORPSE ) or
     cellFlagSet( where, CF_NUKABLE ) then
-       if Cells[ GetCell(where) ].destroyto = '' then
-       begin
-         FMap.Style[where.x,where.y] := FlrStyle[where];
-         Cell[ where ] := Floor[where];
-       end
-       else
-         Cell[ where ] := LuaSystem.Defines[ Cells[ GetCell(where) ].destroyto ];
+  if Cells[ GetCell(where) ].destroyto = '' then
+  begin
+    FMap.Style[where.x,where.y] := FlrStyle[where];
+    Cell[ where ] := Floor[where];
+  end
+  else
+    Cell[ where ] := LuaSystem.Defines[ Cells[ GetCell(where) ].destroyto ];
   CellBeing := Being[ where ];
   CellItem  := Item [ where ];
 
