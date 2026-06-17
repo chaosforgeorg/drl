@@ -1310,12 +1310,16 @@ end;
 
 
 function TBeing.TryMove( aWhere : TCoord2D ) : TMoveResult;
-var iLevel : TLevel;
+var iLevel     : TLevel;
+    iBlockFlag : Byte;
 begin
   iLevel := TLevel(Parent);
   if not iLevel.isProperCoord( aWhere )          then Exit( MoveBlock );
   if iLevel.cellFlagSet( aWhere, CF_OPENABLE )   then Exit( MoveDoor  );
-  if not iLevel.isEmpty( aWhere, [EF_NOBLOCK] )  then Exit( MoveBlock );
+  if BF_FLY in FFlags
+    then iBlockFlag := EF_NOBLOCKFLY
+    else iBlockFlag := EF_NOBLOCK;
+  if not iLevel.isEmpty( aWhere, [iBlockFlag] ) then Exit( MoveBlock );
   if ( not Self.isPlayer ) and iLevel.cellFlagSet( aWhere, CF_HAZARD ) and (not (BF_CHARGE in FFlags)) then
   begin
     if not (BF_ENVIROSAFE in FFlags) then Exit( MoveBlock );
@@ -2796,14 +2800,18 @@ end;
 
 function TBeing.passableCoord( const aCoord : TCoord2D ): boolean;
 var iItem : TItem;
+    iBlockFlag : Byte;
 begin
   if not TLevel(Parent).isProperCoord( aCoord ) then Exit( False );
+  if BF_FLY in FFlags
+    then iBlockFlag := CF_BLOCKFLY
+    else iBlockFlag := CF_BLOCKMOVE;
   with Cells[ TLevel(Parent).getCell( aCoord ) ] do
   begin
     if (not isPlayer) and (CF_HAZARD in Flags) and (not ((BF_ENVIROSAFE in FFlags) or (BF_CHARGE in FFlags))) then Exit( False );
     iItem := TLevel(Parent).Item[ aCoord ];
     if Assigned( iItem ) and ( iItem.Flags[ IF_BLOCKMOVE ] ) then Exit( False );
-    if (not ( CF_BLOCKMOVE in Flags )) then Exit( True );
+    if (not ( iBlockFlag in Flags )) then Exit( True );
     if (BF_OPENDOORS in FFlags) and ( CF_OPENABLE in Flags ) then Exit( True );
   end;
   Exit( False );

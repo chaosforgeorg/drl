@@ -77,7 +77,7 @@ TLevel = class(TLuaMapNode, ITextMap)
     function Respawn( aCoord : TCoord2D ) : TBeing; overload;
     procedure Respawn( aChance : byte ); overload;
     function isPassable( const aCoord : TCoord2D ) : Boolean; override;
-    function isEmpty( const coord : TCoord2D; EmptyFlags : TFlags32 = []) : Boolean; override;
+    function isEmpty( const aCoord : TCoord2D; aEmptyFlags : TFlags32 = []) : Boolean; override;
     function cellFlagSet( coord : TCoord2D; Flag : byte) : Boolean;
     procedure playSound( const aSoundID : DWord; aCoord : TCoord2D; aDelay : DWord = 0 ); overload;
     procedure playSound( const SoundID : string; coord : TCoord2D; aDelay : DWord = 0 ); overload;
@@ -249,19 +249,26 @@ begin
   if ( iCount > LIMES ) then raise EPlacementException.Create('');
 end;
 
-function TLevel.isEmpty( const coord : TCoord2D; EmptyFlags : TFlags32 = []) : Boolean;
+function TLevel.isEmpty( const aCoord : TCoord2D; aEmptyFlags : TFlags32 = []) : Boolean;
+var iItem : TItem;
 begin
-  if EmptyFlags = [] then EmptyFlags := [EF_NOITEMS,EF_NOBEINGS,EF_NOBLOCK,EF_NOSTAIRS];
-  if not inherited isEmpty( coord, EmptyFlags ) then Exit( False );
+  if aEmptyFlags = [] then aEmptyFlags := [EF_NOITEMS,EF_NOBEINGS,EF_NOBLOCK,EF_NOSTAIRS];
+  if not inherited isEmpty( aCoord, aEmptyFlags ) then Exit( False );
   isEmpty := True;
-  if EF_NOVISION in EmptyFlags then if blocksVision(coord) then Exit(False);
-  if EF_NOSTAIRS in EmptyFlags then if CellHook_OnExit in Cells[Cell[coord]].Hooks then Exit(False);
-  if EF_NOTELE   in EmptyFlags then if (Item[coord] <> nil) and (Item[coord].IType = ITEMTYPE_TELE) then Exit(False);
-  if EF_NOHARM   in EmptyFlags then if cellFlagSet(coord,CF_HAZARD) then Exit(False);
-  if EF_NOLIQUID in EmptyFlags then if cellFlagSet(coord,CF_LIQUID) then Exit(False);
-  if EF_NOSAFE   in EmptyFlags then if Distance(coord,Player.Position) < PlayerSafeZone then Exit(False);
-  if EF_NOSPAWN  in EmptyFlags then if LightFlag[ coord, lfNoSpawn ] then Exit(False);
-  if EF_CANTELE  in EmptyFlags then if LightFlag[ coord, lfNoTele ] then Exit(False);
+  iItem := Item[ aCoord ];
+  if EF_NOBLOCKFLY in aEmptyFlags then
+  begin
+    if cellFlagSet(aCoord,CF_BLOCKFLY) then Exit(False);
+    if (iItem <> nil) and (iItem.Flags[IF_BLOCKMOVE]) then Exit(False);
+  end;
+  if EF_NOVISION in aEmptyFlags then if blocksVision(aCoord) then Exit(False);
+  if EF_NOSTAIRS in aEmptyFlags then if CellHook_OnExit in Cells[Cell[aCoord]].Hooks then Exit(False);
+  if EF_NOTELE   in aEmptyFlags then if (iItem <> nil) and (iItem.IType = ITEMTYPE_TELE) then Exit(False);
+  if EF_NOHARM   in aEmptyFlags then if cellFlagSet(aCoord,CF_HAZARD) then Exit(False);
+  if EF_NOLIQUID in aEmptyFlags then if cellFlagSet(aCoord,CF_LIQUID) then Exit(False);
+  if EF_NOSAFE   in aEmptyFlags then if Distance(aCoord,Player.Position) < PlayerSafeZone then Exit(False);
+  if EF_NOSPAWN  in aEmptyFlags then if LightFlag[ aCoord, lfNoSpawn ] then Exit(False);
+  if EF_CANTELE  in aEmptyFlags then if LightFlag[ aCoord, lfNoTele ] then Exit(False);
 end;
 
 function TLevel.cellFlagSet( coord : TCoord2D; Flag : byte) : Boolean;
