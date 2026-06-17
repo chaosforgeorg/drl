@@ -48,7 +48,7 @@ function drl.register_cells()
 		armor      = 10,
 		hp         = 10,
 		set        = CELLSET_WALLS,
-		flags      = { CF_BLOCKLOS, CF_BLOCKMOVE, CF_STICKWALL },
+		flags      = { CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_STICKWALL },
 		sprite     = { 
 			SPRITE_WALL, -- phobos
 			SPRITE_TECHWALL, -- deimos
@@ -77,7 +77,7 @@ function drl.register_cells()
 		armor      = 10,
 		hp         = 15,
 		set        = CELLSET_WALLS,
-		flags      = { CF_BLOCKLOS, CF_BLOCKMOVE, CF_STICKWALL },
+		flags      = { CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_STICKWALL },
 		coscolor   = { 1.0,0.1,0.1,1.0 },
 		sprite     = {
 			SPRITE_BRICKWALL,
@@ -107,7 +107,7 @@ function drl.register_cells()
 		armor      = 3,
 		hp         = 3,
 		set        = CELLSET_WALLS,
-		flags      = { CF_BLOCKLOS, CF_BLOCKMOVE, CF_STICKWALL, CF_FRAGILE },
+		flags      = { CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_STICKWALL, CF_FRAGILE },
 		coscolor   = { 0.6,0.6,1.0,1.0 },
 		sprite     = SPRITE_CAVEWALL,
 		blsprite   = SPRITE_WALLBLOOD,
@@ -135,7 +135,7 @@ function drl.register_cells()
 		armor      = 15,
 		hp         = 30,
 		set        = CELLSET_WALLS,
-		flags      = { CF_BLOCKLOS, CF_BLOCKMOVE, CF_STICKWALL },
+		flags      = { CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_STICKWALL },
 		blsprite   = SPRITE_WALLBLOOD,
 		sflags     = { SF_MULTI },
 	}
@@ -170,7 +170,7 @@ function drl.register_cells()
 		armor      = 15,
 		hp         = 10,
 		set        = CELLSET_WALLS,
-		flags      = { CF_BLOCKLOS, CF_BLOCKMOVE, CF_STICKWALL },
+		flags      = { CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_STICKWALL },
 		sprite     = SPRITE_BOSSWALL,
 		deco       = { SPRITE_DECO_SKULL_1, SPRITE_DECO_SKULL_2, SPRITE_DECO_SKULL_3, SPRITE_DECO_SKULL_4 },
 		blsprite   = SPRITE_WALLBLOOD,
@@ -192,7 +192,7 @@ function drl.register_cells()
 		armor      = 5,
 		hp         = 5,
 		set        = CELLSET_WALLS,
-		flags      = {CF_BLOCKLOS, CF_BLOCKMOVE, CF_STICKWALL},
+		flags      = {CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_STICKWALL},
 		sprite     = SPRITE_YBOX,
 		blsprite   = SPRITE_WALLBLOOD,
 	}
@@ -207,7 +207,7 @@ function drl.register_cells()
 		armor      = 5,
 		hp         = 5,
 		set        = CELLSET_WALLS,
-		flags      = {CF_BLOCKLOS, CF_BLOCKMOVE, CF_STICKWALL},
+		flags      = {CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_STICKWALL},
 		sprite     = SPRITE_WBOX,
 		blsprite   = SPRITE_WALLBLOOD,
 	}
@@ -224,7 +224,7 @@ function drl.register_cells()
 		color      = BROWN,
 		armor      = 4,
 		hp         = 6,
-		flags      = {CF_BLOCKLOS, CF_BLOCKMOVE, CF_FRAGILE, CF_OVERLAY, CF_STICKWALL, CF_OPENABLE, CF_RUNSTOP, CF_HIGHLIGHT},
+		flags      = {CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_FRAGILE, CF_OVERLAY, CF_STICKWALL, CF_OPENABLE, CF_RUNSTOP, CF_HIGHLIGHT},
 		set        = CELLSET_DOORS,
 		sprite     = { 
 			SPRITE_STRONGDOOR, 
@@ -289,7 +289,7 @@ function drl.register_cells()
 		set        = CELLSET_DOORS,
 		armor      = 6,
 		hp         = 6,
-		flags      = { CF_BLOCKLOS, CF_BLOCKMOVE, CF_FRAGILE, CF_OVERLAY, CF_STICKWALL, CF_OPENABLE, CF_RUNSTOP, CF_HIGHLIGHT },
+		flags      = { CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_FRAGILE, CF_OVERLAY, CF_STICKWALL, CF_OPENABLE, CF_RUNSTOP, CF_HIGHLIGHT },
 		sprite     = { SPRITE_DOOR, SPRITE_DOOR, SPRITE_HELLDOOR, },
 
 		OnAct = function(c,being)
@@ -552,7 +552,7 @@ function drl.register_cells()
 		armor      = 5,
 		hp         = 5,
 		set        = CELLSET_WALLS,
-		flags      = {CF_BLOCKLOS, CF_BLOCKMOVE, CF_STICKWALL, CF_FRAGILE},
+		flags      = {CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_STICKWALL, CF_FRAGILE},
 		sprite     = SPRITE_WBOXC,
 		blsprite   = SPRITE_WALLBLOOD,
 		coscolor   = {1.0,0.0,0.0,1.0},
@@ -578,7 +578,7 @@ function drl.register_cells()
 		armor      = 5,
 		hp         = 5,
 		set        = CELLSET_WALLS,
-		flags      = {CF_BLOCKLOS, CF_BLOCKMOVE, CF_STICKWALL, CF_FRAGILE},
+		flags      = {CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_STICKWALL, CF_FRAGILE},
 		sprite     = SPRITE_YBOXC,
 		blsprite   = SPRITE_WALLBLOOD,
 		coscolor   = {1.0,1.0,0.0,1.0},

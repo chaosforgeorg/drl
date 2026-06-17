@@ -236,13 +236,14 @@ end
 
 function being:phase( cell )
 	local target
+	local block_flag = self.flags[ BF_FLY ] and EF_NOBLOCKFLY or EF_NOBLOCK
 	if self:is_player() then 
-		target = level:random_empty_coord( { EF_NOBEINGS, EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM, EF_NOLIQUID, EF_NOSPAWN, EF_CANTELE }, level.data.phase_zone )
+		target = level:random_empty_coord( { EF_NOBEINGS, EF_NOITEMS, EF_NOSTAIRS, block_flag, EF_NOHARM, EF_NOLIQUID, EF_NOSPAWN, EF_CANTELE }, level.data.phase_zone )
 	else
-		target = level:random_empty_coord( { EF_NOBEINGS, EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN, EF_CANTELE }, level.data.phase_zone )
+		target = level:random_empty_coord( { EF_NOBEINGS, EF_NOITEMS, EF_NOSTAIRS, block_flag, EF_NOHARM, EF_NOSPAWN, EF_CANTELE }, level.data.phase_zone )
 	end
 	if not target then
-		target = level:random_empty_coord( { EF_NOBEINGS, EF_NOBLOCK, EF_NOSPAWN, EF_CANTELE }, level.data.phase_zone )
+		target = level:random_empty_coord( { EF_NOBEINGS, block_flag, EF_NOSPAWN, EF_CANTELE }, level.data.phase_zone )
 	end
 	if cell then
 		cell = cells[ cell ].nid
@@ -253,7 +254,7 @@ function being:phase( cell )
 			end
 		end
 		if #targets ~= 0 then
-			target = level:drop_coord( table.random_pick( targets ), {EF_NOITEMS,EF_NOBEINGS,EF_NOBLOCK,EF_CANTELE}  )
+			target = level:drop_coord( table.random_pick( targets ), {EF_NOITEMS,EF_NOBEINGS,block_flag,EF_CANTELE}  )
 		end
 	end
 	if target then

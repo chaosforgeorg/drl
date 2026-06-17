@@ -145,8 +145,9 @@ function aitk.flock_seek( self, target )
 
     local moves = {}
     local dist = self:distance_to( target )
+    local block_flag = self.flags[ BF_FLY ] and EF_NOBLOCKFLY or EF_NOBLOCK
     for c in self.position:around_coords() do
-        if coord.distance(c,target) < dist and level:is_empty( c, { EF_NOBEINGS, EF_NOBLOCK } ) then
+        if coord.distance(c,target) < dist and level:is_empty( c, { EF_NOBEINGS, block_flag } ) then
             table.insert( moves,c:clone() )
         end
     end
@@ -647,9 +648,10 @@ function aitk.ranged_hunt( self )
 
     local target = target.position
     if dist < 6 and math.random(3) > 1 then
+        local block_flag = self.flags[ BF_FLY ] and CF_BLOCKFLY or CF_BLOCKMOVE
         for _=1,3 do
             local c = area.around( self.position, 1 ):clamped( area.FULL ):random_coord() 
-            if level:is_passable( c ) then
+            if level:is_passable_ext( c, block_flag ) then
                 target = c
                 break
             end

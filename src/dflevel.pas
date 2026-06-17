@@ -77,7 +77,9 @@ TLevel = class(TLuaMapNode, ITextMap)
     function Respawn( aCoord : TCoord2D ) : TBeing; overload;
     procedure Respawn( aChance : byte ); overload;
     function isPassable( const aCoord : TCoord2D ) : Boolean; override;
-    function isEmpty( const coord : TCoord2D; EmptyFlags : TFlags32 = []) : Boolean; override;
+    function isPassableExt( const aCoord : TCoord2D; aFlag : Byte = CF_BLOCKMOVE ) : Boolean;
+    function isShotPassable( const aCoord : TCoord2D ) : Boolean;
+    function isEmpty( const aCoord : TCoord2D; aEmptyFlags : TFlags32 = []) : Boolean; override;
     function cellFlagSet( coord : TCoord2D; Flag : byte) : Boolean;
     procedure playSound( const aSoundID : DWord; aCoord : TCoord2D; aDelay : DWord = 0 ); overload;
     procedure playSound( const SoundID : string; coord : TCoord2D; aDelay : DWord = 0 ); overload;
@@ -249,19 +251,26 @@ begin
   if ( iCount > LIMES ) then raise EPlacementException.Create('');
 end;
 
-function TLevel.isEmpty( const coord : TCoord2D; EmptyFlags : TFlags32 = []) : Boolean;
+function TLevel.isEmpty( const aCoord : TCoord2D; aEmptyFlags : TFlags32 = []) : Boolean;
+var iItem : TItem;
 begin
-  if EmptyFlags = [] then EmptyFlags := [EF_NOITEMS,EF_NOBEINGS,EF_NOBLOCK,EF_NOSTAIRS];
-  if not inherited isEmpty( coord, EmptyFlags ) then Exit( False );
+  if aEmptyFlags = [] then aEmptyFlags := [EF_NOITEMS,EF_NOBEINGS,EF_NOBLOCK,EF_NOSTAIRS];
+  if not inherited isEmpty( aCoord, aEmptyFlags ) then Exit( False );
   isEmpty := True;
-  if EF_NOVISION in EmptyFlags then if blocksVision(coord) then Exit(False);
-  if EF_NOSTAIRS in EmptyFlags then if CellHook_OnExit in Cells[Cell[coord]].Hooks then Exit(False);
-  if EF_NOTELE   in EmptyFlags then if (Item[coord] <> nil) and (Item[coord].IType = ITEMTYPE_TELE) then Exit(False);
-  if EF_NOHARM   in EmptyFlags then if cellFlagSet(coord,CF_HAZARD) then Exit(False);
-  if EF_NOLIQUID in EmptyFlags then if cellFlagSet(coord,CF_LIQUID) then Exit(False);
-  if EF_NOSAFE   in EmptyFlags then if Distance(coord,Player.Position) < PlayerSafeZone then Exit(False);
-  if EF_NOSPAWN  in EmptyFlags then if LightFlag[ coord, lfNoSpawn ] then Exit(False);
-  if EF_CANTELE  in EmptyFlags then if LightFlag[ coord, lfNoTele ] then Exit(False);
+  iItem := Item[ aCoord ];
+  if EF_NOBLOCKFLY in aEmptyFlags then
+  begin
+    if cellFlagSet(aCoord,CF_BLOCKFLY) then Exit(False);
+    if (iItem <> nil) and (iItem.Flags[IF_BLOCKMOVE]) then Exit(False);
+  end;
+  if EF_NOVISION in aEmptyFlags then if blocksVision(aCoord) then Exit(False);
+  if EF_NOSTAIRS in aEmptyFlags then if CellHook_OnExit in Cells[Cell[aCoord]].Hooks then Exit(False);
+  if EF_NOTELE   in aEmptyFlags then if (iItem <> nil) and (iItem.IType = ITEMTYPE_TELE) then Exit(False);
+  if EF_NOHARM   in aEmptyFlags then if cellFlagSet(aCoord,CF_HAZARD) then Exit(False);
+  if EF_NOLIQUID in aEmptyFlags then if cellFlagSet(aCoord,CF_LIQUID) then Exit(False);
+  if EF_NOSAFE   in aEmptyFlags then if Distance(aCoord,Player.Position) < PlayerSafeZone then Exit(False);
+  if EF_NOSPAWN  in aEmptyFlags then if LightFlag[ aCoord, lfNoSpawn ] then Exit(False);
+  if EF_CANTELE  in aEmptyFlags then if LightFlag[ aCoord, lfNoTele ] then Exit(False);
 end;
 
 function TLevel.cellFlagSet( coord : TCoord2D; Flag : byte) : Boolean;
@@ -898,9 +907,13 @@ begin
 end;
 
 procedure TLevel.DropBeing( aBeing : TBeing; aCoord : TCoord2D );
+var iBlockFlag : Byte;
 begin
   if aBeing = nil then Exit;
-  aCoord := DropCoord( aCoord, [ EF_NOTELE,EF_NOBEINGS,EF_NOBLOCK,EF_NOSTAIRS ], False );
+  if aBeing.Flags[ BF_FLY ]
+    then iBlockFlag := EF_NOBLOCKFLY
+    else iBlockFlag := EF_NOBLOCK;
+  aCoord := DropCoord( aCoord, [ EF_NOTELE,EF_NOBEINGS,iBlockFlag,EF_NOSTAIRS ], False );
   Add( aBeing, aCoord );
   if ( not aBeing.IsPlayer ) and ( not aBeing.Flags[ BF_FRIENDLY ] ) and ( not aBeing.Flags[ BF_ILLUSION ] ) and ( not aBeing.Flags[ BF_NOKILL ] ) then
   begin
@@ -945,6 +958,22 @@ var iC          : TCoord2D;
     iChain      : TExplosionData;
     iPointDelay : Integer;
     iDistance   : Integer;
+
+  function ShotContact( aTarget : TCoord2D ) : Boolean;
+  var iRay : TVisionRay;
+      iRayCoord : TCoord2D;
+  begin
+    if aTarget = aCoord then Exit( True );
+    iRay.Init( Self, aCoord, aTarget );
+    repeat
+      iRay.Next;
+      iRayCoord := iRay.GetC;
+      if not isProperCoord( iRayCoord ) then Exit( False );
+      if iRayCoord = aTarget then Exit( True );
+      if not isShotPassable( iRayCoord ) then Exit( False );
+    until iRay.Done;
+    Exit( True );
+  end;
 begin
   if not isProperCoord( aCoord ) then Exit;
   if aItem <> nil then iItemUID := aItem.uid;
@@ -971,7 +1000,7 @@ begin
   for iC in NewArea( aCoord, aData.Range ).Clamped( FArea ) do
     if Distance( iC, aCoord ) <= aData.Range then
       begin
-        if not isEyeContact( iC, aCoord ) then Continue;
+        if not ShotContact( iC ) then Continue;
         iDamage   := aData.Damage.Roll;
         iDistance := Distance( iC, aCoord );
         if not (efNoDistanceDrop in aData.Flags) then
@@ -1041,7 +1070,7 @@ var iDiff,iC : TCoord2D;
         iSRay.Next;
         if not isProperCoord( iSRay.GetC ) then Exit;
         LightFlag[ iSRay.GetC, lfDamage ] := True;
-        if not isEmpty( iSRay.GetC, [ EF_NOBLOCK ] ) then Exit;
+        if not isShotPassable( iSRay.GetC ) then Exit;
         if iSRay.Done then Exit;
       until iCount = iRange;
     end;
@@ -1099,7 +1128,7 @@ begin
         end;
         
         DamageTile( iTC, iDmg, aDamageType, False );
-        if isVisible( iTC ) and ( not isPassable( iTC ) ) then
+        if isVisible( iTC ) and ( not isShotPassable( iTC ) ) then
           IO.addMarkAnimation( 199, 0, iTC, iHSprite, LightGray,'*' );
       end;
   ClearLightMapBits([lfDamage]);
@@ -1144,11 +1173,26 @@ end;
 
 
 function TLevel.isPassable ( const aCoord : TCoord2D ) : Boolean;
+begin
+  Exit( isPassableExt( aCoord ) );
+end;
+
+function TLevel.isPassableExt ( const aCoord : TCoord2D; aFlag : Byte ) : Boolean;
 var iItem : TItem;
 begin
-  if cellFlagSet( aCoord, CF_BLOCKMOVE ) then Exit( False );
+  if cellFlagSet( aCoord, aFlag ) then Exit( False );
   iItem := GetItem( aCoord );
   if Assigned( iItem ) and iItem.Flags[ IF_BLOCKMOVE ] then Exit( False );
+  Exit( True );
+end;
+
+function TLevel.isShotPassable ( const aCoord : TCoord2D ) : Boolean;
+var iItem : TItem;
+begin
+  if not isProperCoord( aCoord ) then Exit( False );
+  if cellFlagSet( aCoord, CF_BLOCKSHOT ) then Exit( False );
+  iItem := GetItem( aCoord );
+  if Assigned( iItem ) and ( iItem.Flags[ IF_BLOCKMOVE ] or iItem.Flags[ IF_BLOCKSHOT ] ) then Exit( False );
   Exit( True );
 end;
 
@@ -1933,6 +1977,16 @@ begin
   Exit( 1 );
 end;
 
+function lua_level_is_passable_ext(L: Plua_State): Integer; cdecl;
+var iState : TDRLLuaState;
+    iLevel : TLevel;
+begin
+  iState.Init(L);
+  iLevel := iState.ToObject(1) as TLevel;
+  iState.Push( iLevel.isPassableExt( iState.ToCoord(2), iState.ToInteger(3, CF_BLOCKMOVE) ) );
+  Exit( 1 );
+end;
+
 function lua_level_add_perk(L: Plua_State): Integer; cdecl;
 var iState : TDRLLuaState;
     iLevel : TLevel;
@@ -1974,7 +2028,7 @@ begin
   Result := 1;
 end;
 
-const lua_level_lib : array[0..25] of luaL_Reg = (
+const lua_level_lib : array[0..26] of luaL_Reg = (
       ( name : 'drop_item';  func : @lua_level_drop_item),
       ( name : 'drop_being'; func : @lua_level_drop_being),
       ( name : 'player';     func : @lua_level_player),
@@ -1996,6 +2050,7 @@ const lua_level_lib : array[0..25] of luaL_Reg = (
       ( name : 'reset';         func : @lua_level_reset),
       ( name : 'post_generate'; func : @lua_level_post_generate),
       ( name : 'get_enemies_left'; func : @lua_level_get_enemies_left),
+      ( name : 'is_passable_ext'; func : @lua_level_is_passable_ext),
       ( name : 'add_perk';      func : @lua_level_add_perk),
       ( name : 'get_perk_time'; func : @lua_level_get_perk_time),
       ( name : 'remove_perk';   func : @lua_level_remove_perk),
