@@ -78,6 +78,7 @@ TLevel = class(TLuaMapNode, ITextMap)
     procedure Respawn( aChance : byte ); overload;
     function isPassable( const aCoord : TCoord2D ) : Boolean; override;
     function isPassableExt( const aCoord : TCoord2D; aFlag : Byte = CF_BLOCKMOVE ) : Boolean;
+    function isShotPassable( const aCoord : TCoord2D ) : Boolean;
     function isEmpty( const aCoord : TCoord2D; aEmptyFlags : TFlags32 = []) : Boolean; override;
     function cellFlagSet( coord : TCoord2D; Flag : byte) : Boolean;
     procedure playSound( const aSoundID : DWord; aCoord : TCoord2D; aDelay : DWord = 0 ); overload;
@@ -957,6 +958,22 @@ var iC          : TCoord2D;
     iChain      : TExplosionData;
     iPointDelay : Integer;
     iDistance   : Integer;
+
+  function ShotContact( aTarget : TCoord2D ) : Boolean;
+  var iRay : TVisionRay;
+      iRayCoord : TCoord2D;
+  begin
+    if aTarget = aCoord then Exit( True );
+    iRay.Init( Self, aCoord, aTarget );
+    repeat
+      iRay.Next;
+      iRayCoord := iRay.GetC;
+      if not isProperCoord( iRayCoord ) then Exit( False );
+      if iRayCoord = aTarget then Exit( True );
+      if not isShotPassable( iRayCoord ) then Exit( False );
+    until iRay.Done;
+    Exit( True );
+  end;
 begin
   if not isProperCoord( aCoord ) then Exit;
   if aItem <> nil then iItemUID := aItem.uid;
@@ -983,7 +1000,7 @@ begin
   for iC in NewArea( aCoord, aData.Range ).Clamped( FArea ) do
     if Distance( iC, aCoord ) <= aData.Range then
       begin
-        if not isEyeContact( iC, aCoord ) then Continue;
+        if not ShotContact( iC ) then Continue;
         iDamage   := aData.Damage.Roll;
         iDistance := Distance( iC, aCoord );
         if not (efNoDistanceDrop in aData.Flags) then
@@ -1053,7 +1070,7 @@ var iDiff,iC : TCoord2D;
         iSRay.Next;
         if not isProperCoord( iSRay.GetC ) then Exit;
         LightFlag[ iSRay.GetC, lfDamage ] := True;
-        if not isEmpty( iSRay.GetC, [ EF_NOBLOCK ] ) then Exit;
+        if not isShotPassable( iSRay.GetC ) then Exit;
         if iSRay.Done then Exit;
       until iCount = iRange;
     end;
@@ -1111,7 +1128,7 @@ begin
         end;
         
         DamageTile( iTC, iDmg, aDamageType, False );
-        if isVisible( iTC ) and ( not isPassable( iTC ) ) then
+        if isVisible( iTC ) and ( not isShotPassable( iTC ) ) then
           IO.addMarkAnimation( 199, 0, iTC, iHSprite, LightGray,'*' );
       end;
   ClearLightMapBits([lfDamage]);
@@ -1166,6 +1183,16 @@ begin
   if cellFlagSet( aCoord, aFlag ) then Exit( False );
   iItem := GetItem( aCoord );
   if Assigned( iItem ) and iItem.Flags[ IF_BLOCKMOVE ] then Exit( False );
+  Exit( True );
+end;
+
+function TLevel.isShotPassable ( const aCoord : TCoord2D ) : Boolean;
+var iItem : TItem;
+begin
+  if not isProperCoord( aCoord ) then Exit( False );
+  if cellFlagSet( aCoord, CF_BLOCKSHOT ) then Exit( False );
+  iItem := GetItem( aCoord );
+  if Assigned( iItem ) and ( iItem.Flags[ IF_BLOCKMOVE ] or iItem.Flags[ IF_BLOCKSHOT ] ) then Exit( False );
   Exit( True );
 end;
 

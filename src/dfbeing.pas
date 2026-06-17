@@ -2378,10 +2378,10 @@ begin
 
     if not iLevel.isProperCoord( iCoord ) then Break;
 
-    if not iLevel.isEmpty( iCoord, [EF_NOBLOCK] ) then
+    if not iLevel.isShotPassable( iCoord ) then
     begin
       iCoverValue := 10;
-      if ( iCoord <> iTarget ) and ( not iLevel.cellFlagSet( iCoord, CF_BLOCKMOVE ) ) then
+      if ( iCoord <> iTarget ) and ( not iLevel.cellFlagSet( iCoord, CF_BLOCKSHOT ) ) then
       begin
         iCoverValue := 0;
         iCover      := iLevel.GetItem( iCoord );

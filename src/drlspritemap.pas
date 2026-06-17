@@ -1262,7 +1262,7 @@ begin
       for iL := 0 to FTargetList.Size-1 do
       begin
         if (not DRL.Level.isVisible( FTargetList[iL] )) or
-           (not DRL.Level.isEmpty( FTargetList[iL], [ EF_NOBLOCK, EF_NOVISION ] )) then
+           (not DRL.Level.isShotPassable( FTargetList[iL] )) then
           iColor := NewColor( 128, 0, 0 );
         with FSpriteEngine.Layers[ HARDSPRITE_SELECT div 100000 ] do
           Push( HARDSPRITE_SELECT mod 100000, FTargetList[iL], ColorWhite, iColor, ColorZero, iColor, DRL_Z_FX );

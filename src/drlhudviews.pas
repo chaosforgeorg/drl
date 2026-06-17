@@ -481,7 +481,7 @@ begin
     iBlock := false;
     repeat
       iTargetLine.Next;
-      if (not iLevel.isProperCoord( iTargetLine.GetC ) ) or (not iLevel.isPassable( iTargetLine.GetC ) ) then
+      if (not iLevel.isProperCoord( iTargetLine.GetC ) ) or (not iLevel.isShotPassable( iTargetLine.GetC ) ) then
       begin
         iBlock := true;
         Break;
