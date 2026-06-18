@@ -979,7 +979,7 @@ var iC          : TCoord2D;
     iRay.Init( Self, aCoord, aTarget );
     repeat
       iRay.Next;
-      iRayCoord := iRay.GetC;
+      iRayCoord := iRay.Current;
       if not isProperCoord( iRayCoord ) then Exit( False );
       if iRayCoord = aTarget then Exit( True );
       if not isShotPassable( iRayCoord ) then Exit( False );
@@ -1080,9 +1080,9 @@ var iDiff,iC : TCoord2D;
       repeat
         Inc(iCount);
         iSRay.Next;
-        if not isProperCoord( iSRay.GetC ) then Exit;
-        LightFlag[ iSRay.GetC, lfDamage ] := True;
-        if not isShotPassable( iSRay.GetC ) then Exit;
+        if not isProperCoord( iSRay.Current ) then Exit;
+        LightFlag[ iSRay.Current, lfDamage ] := True;
+        if not isShotPassable( iSRay.Current ) then Exit;
         if iSRay.Done then Exit;
       until iCount = iRange;
     end;

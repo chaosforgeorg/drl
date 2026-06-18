@@ -218,7 +218,6 @@ begin
   FStep   := 0;
   FEmitter := -1;
   FPath.Next;
-  FPath.Prev := aSource;
   iSize := SpriteMap.GetGridSize;
 
   FSource.Init( aSource.X*iSize-iSize div 2, aSource.Y*iSize-iSize div 2 );
@@ -270,7 +269,7 @@ begin
     DRL.Particles.Engine.EmitSetSpriteRotation( FEmitter, ( FHeading + PI / 2 ) * 180 / PI );
   end;
 
-  if ( not DRL.Level.isProperCoord( FPath.GetC ) ) or (not DRL.Level.isVisible( FPath.GetC ) ) then
+  if ( not DRL.Level.isProperCoord( FPath.Current ) ) or (not DRL.Level.isVisible( FPath.Current ) ) then
     Exit;
   if FRay then
   begin

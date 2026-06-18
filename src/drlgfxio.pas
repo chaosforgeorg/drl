@@ -591,10 +591,10 @@ var iLevel  : TLevel;
     iRay.Init( aT, Player.Position );
     repeat
       iRay.Next;
-      if iRay.Done or ( not iLevel.isProperCoord( iRay.GetC ) ) then Break;
-      if iLevel.blocksVision( iRay.GetC ) then
+      if iRay.Done or ( not iLevel.isProperCoord( iRay.Current ) ) then Break;
+      if iLevel.blocksVision( iRay.Current ) then
       begin
-        iBlock    := iRay.GetC;
+        iBlock    := iRay.Current;
         iFinalize := True;
       end
       else
