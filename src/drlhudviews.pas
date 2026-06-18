@@ -358,11 +358,11 @@ begin
       while iDist < (FRange - 1) do
       begin
         iTargetLine.Next;
-        iDist := Distance( iTargetLine.GetSource, iTargetLine.GetC );
+        iDist := Distance( iTargetLine.Source, iTargetLine.Current );
       end;
-      if Distance(iTargetLine.GetSource, iTargetLine.GetC ) > FRange-1
-        then FTarget := iTargetLine.prev
-        else FTarget := iTargetLine.GetC;
+      if Distance(iTargetLine.Source, iTargetLine.Current ) > FRange-1
+        then FTarget := iTargetLine.Previous
+        else FTarget := iTargetLine.Current;
     end;
     UpdateTarget;
   end;
@@ -481,7 +481,7 @@ begin
     iBlock := false;
     repeat
       iTargetLine.Next;
-      if (not iLevel.isProperCoord( iTargetLine.GetC ) ) or (not iLevel.isShotPassable( iTargetLine.GetC ) ) then
+      if (not iLevel.isProperCoord( iTargetLine.Current ) ) or (not iLevel.isShotPassable( iTargetLine.Current ) ) then
       begin
         iBlock := true;
         Break;

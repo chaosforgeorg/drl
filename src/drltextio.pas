@@ -243,14 +243,14 @@ begin
       iTargetLine.Init( iLevel, Player.Position, FTarget );
       repeat
         iTargetLine.Next;
-        iCurrent := iTargetLine.GetC;
+        iCurrent := iTargetLine.Current;
         if not iLevel.isProperCoord( iCurrent ) then Break;
         if not iLevel.isVisible( iCurrent ) then iColor := Red;
-        if iColor = Green then if iTargetLine.Cnt > FTargetRange then icolor := Yellow;
+        if iColor = Green then if iTargetLine.Steps > FTargetRange then icolor := Yellow;
         if iTargetLine.Done then Paint( iCurrent, iColor, 'X' )
                             else Paint( iCurrent, iColor, '*' );
         if not iLevel.isShotPassable( iCurrent ) then iColor := Red;
-      until (iTargetLine.Done) or (iTargetLine.cnt > 30);
+      until (iTargetLine.Done) or (iTargetLine.Steps > 30);
     end;
   end;
 end;

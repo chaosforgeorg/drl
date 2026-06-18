@@ -935,11 +935,11 @@ begin
     iTargetLine.Init( DRL.Level, Player.Position, FTarget );
     repeat
       iTargetLine.Next;
-      iCurrent := iTargetLine.GetC;
+      iCurrent := iTargetLine.Current;
 
       if not iTargetLine.Done then
         FTargetList.Push( iCurrent );
-    until (iTargetLine.Done) or (iTargetLine.cnt > 30);
+    until (iTargetLine.Done) or (iTargetLine.Steps > 30);
   end;
   FTargetList.Push( FTarget );
 end;

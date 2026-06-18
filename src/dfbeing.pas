@@ -473,12 +473,12 @@ begin
     iRay.Init(TLevel(Parent), FPosition, aTarget);
     repeat
       iRay.Next;
-      if not TLevel(Parent).isProperCoord(iRay.GetC) then begin aTarget:=iRay.prev; break;end; {**** Stop at edge of map.}
+      if not TLevel(Parent).isProperCoord(iRay.Current) then begin aTarget:=iRay.Previous; break;end; {**** Stop at edge of map.}
       Inc(iSteps);
-      if iSteps >= iMissileRange then begin aTarget := iRay.GetC; break; end; {**** Stop if further than maxrange.}
-      if aGun.Flags[ IF_EXACTHIT ] and (iRay.GetC = aTarget) then break; {**** Stop at target square for exact missiles.}
+      if iSteps >= iMissileRange then begin aTarget := iRay.Current; break; end; {**** Stop if further than maxrange.}
+      if aGun.Flags[ IF_EXACTHIT ] and (iRay.Current = aTarget) then break; {**** Stop at target square for exact missiles.}
       if iRay.Done then
-         iRay.Init(TLevel(Parent), iRay.GetC, iRay.GetC + (aTarget - FPosition)); {**** Extend target out in same direction for non-exact missiles.}
+         iRay.Init(TLevel(Parent), iRay.Current, iRay.Current + (aTarget - FPosition)); {**** Extend target out in same direction for non-exact missiles.}
     until false;
     iScatter := Max(1,(iSteps div 4)); {**** SCATTER TIME!}
   end;
@@ -2363,17 +2363,17 @@ begin
   iSteps := 0;
   iHit   := aItem.Flags[ IF_EXACTHIT ];
   iIsHit := aItem.Flags[ IF_EXACTHIT ];
-  iStart := iMisslePath.GetSource;
+  iStart := iMisslePath.Current;
 
   iRadius := aItem.Radius;
   if ( BF_FIREANGEL in FFlags ) and ( not ( aItem.Hooks[ Hook_OnHitBeing ] ) ) then
     iRadius += 1;
 
   repeat
-    iOldCoord := iMisslePath.GetC;
+    iOldCoord := iMisslePath.Current;
     if not aItem.Flags[ IF_INSTANTHIT ] then
       iMisslePath.Next;
-    iCoord := iMisslePath.GetC;
+    iCoord := iMisslePath.Current;
     iSteps := Distance (iStart.x, iStart.y, iCoord.x, iCoord.y);
 
     if not iLevel.isProperCoord( iCoord ) then Break;
@@ -2515,14 +2515,14 @@ begin
     end
     else
     begin
-      iDuration := (iSource - iMisslePath.GetC).LargerLength * iDelay;
+      iDuration := (iSource - iMisslePath.Current).LargerLength * iDelay;
       iMarkSeq  := iDuration + aSequence;
     end;
-    IO.addMissileAnimation( iDuration, aSequence,iSource,iMisslePath.GetC,iColor,aItem.MisASCII,iDelay,iSprite,aItem.Flags[ IF_RAYGUN ],aItem.MissTrail);
-    if iHit and iLevel.isVisible( iMisslePath.GetC ) then
+    IO.addMissileAnimation( iDuration, aSequence,iSource,iMisslePath.Current,iColor,aItem.MisASCII,iDelay,iSprite,aItem.Flags[ IF_RAYGUN ],aItem.MissTrail);
+    if iHit and iLevel.isVisible( iMisslePath.Current ) then
     begin
-      IO.addSoundAnimation( iMarkSeq, iMisslePath.GetC, IO.Audio.ResolveSoundID([Iif( iIsHit, 'flesh_bullet_hit', 'concrete_bullet_hit' )]) );
-      IO.addMarkAnimation(199, iMarkSeq, iMisslePath.GetC, aItem.HitSprite, Iif( iIsHit, LightRed, LightGray ), '*' );
+      IO.addSoundAnimation( iMarkSeq, iMisslePath.Current, IO.Audio.ResolveSoundID([Iif( iIsHit, 'flesh_bullet_hit', 'concrete_bullet_hit' )]) );
+      IO.addMarkAnimation(199, iMarkSeq, iMisslePath.Current, aItem.HitSprite, Iif( iIsHit, LightRed, LightGray ), '*' );
     end;
   end;
 
