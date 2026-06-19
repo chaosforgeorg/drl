@@ -1,3 +1,7 @@
+0.10.10
+[mod] -- GJ#188: Game - targeting/missle path algorithm matched against visibility
+[mod] -- GJ#220: Game - fly and shoothrough flags propely separated (fixes flying and shooting through gaps)
+
 0.10.9
 [new] -- GJ#356: UI - targeting reticule size larger for larger enemies
 [mod] -- GJ#355: Game - you can now melee scenery on the gamepad/deck using fire command with melee weapons
