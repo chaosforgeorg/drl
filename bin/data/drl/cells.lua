@@ -6,6 +6,7 @@ function drl.register_cells()
 		ascii      = "\250",
 		asciilow   = '.',
 		set        = CELLSET_FLOORS,
+		flags      = { CF_FLOOR },
 		blname     = "blood",
 		blcolor    = RED;
 		bloodto    = "bloodpool";

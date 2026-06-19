@@ -1070,6 +1070,7 @@ var iDMinX  : Word;
     iCoord  : TCoord2D;
     iStyle  : Byte;
     iDeco   : Byte;
+    iFloor  : Byte;
     iCell   : TCell;
     iColor  : TColor;
 
@@ -1119,12 +1120,16 @@ begin
           end;
         if (SF_FLUID in iSpr.Flags) and (DRL.Level.Rotation[ iCoord ] <> 0) then
         begin
-          iFSpr := GetSprite( DRL.Level.FloorCell, DRL.Level.FloorStyle );
-          if SF_HASALTEDGE in iFSpr.Flags then
-            if SF_USEALTEDGE in iSpr.Flags then
-              iFSpr.SpriteID[0] += DRL_COLS;
-          iFSpr.SpriteID[0] += DRL.Level.Rotation[iCoord];
-          PushSpriteTerrain( iCoord, iFSpr, iZ + DRL_Z_ENVIRO );
+          iFloor := DRL.Level.Floor[ iCoord ];
+          if iFloor <> 0 then
+          begin
+            iFSpr := GetSprite( iFloor, DRL.Level.FlrStyle[ iCoord ] );
+            if SF_HASALTEDGE in iFSpr.Flags then
+              if SF_USEALTEDGE in iSpr.Flags then
+                iFSpr.SpriteID[0] += DRL_COLS;
+            iFSpr.SpriteID[0] += DRL.Level.Rotation[iCoord];
+            PushSpriteTerrain( iCoord, iFSpr, iZ + DRL_Z_ENVIRO );
+          end;
         end;
         if DRL.Level.LightFlag[ iCoord, LFBLOOD ] and (Cells[iBottom].BloodSprite.SpriteID[0] <> 0) then
           PushSpriteDoodad( iCoord, Cells[iBottom].BloodSprite );
@@ -1147,8 +1152,12 @@ begin
         end;
         if (SF_FLOOR in iSpr.Flags) then
         begin
-          iSpr := GetSprite( DRL.Level.FloorCell, DRL.Level.FloorStyle );
-          PushSpriteTerrain( iCoord, iSpr, iZ - 1 );
+          iFloor := DRL.Level.Floor[ iCoord ];
+          if iFloor <> 0 then
+          begin
+            iSpr := GetSprite( iFloor, DRL.Level.FlrStyle[ iCoord ] );
+            PushSpriteTerrain( iCoord, iSpr, iZ - 1 );
+          end;
         end;
       end;
     end;
