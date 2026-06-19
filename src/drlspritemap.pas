@@ -82,6 +82,7 @@ private
   FTargeting      : Boolean;
   FTarget         : TCoord2D;
   FTargetList     : TCoord2DArray;
+  //FOldTargetList : TCoord2DArray;
   FTargetColor    : TColor;
   FNewShift       : TVec2i;
   FShift          : TVec2i;
@@ -264,6 +265,7 @@ constructor TDRLSpriteMap.Create( aFramebuffer : TVec2i );
 begin
   FTargeting := False;
   FTargetList := TCoord2DArray.Create();
+  //FOldTargetList := TCoord2DArray.Create();
   FFluidTime := 0;
   FLutTexture := 0;
   FTarget.Create(0,0);
@@ -921,25 +923,39 @@ begin
 end;
 
 procedure TDRLSpriteMap.SetTarget ( aTarget : TCoord2D; aColor : TColor; aDrawPath : Boolean ) ;
-var iTargetLine : TVisionRay;
+var iIsaacLine  : TIsaacRay;
     iCurrent    : TCoord2D;
+    iIsaacRange : Byte;
 begin
   FTargeting   := True;
   FTarget      := aTarget;
   FTargetColor := aColor;
 
   FTargetList.Clear;
+  //FOldTargetList.Clear;
 
   if (Player.Position <> FTarget) and (aDrawPath) then
   begin
+    iIsaacRange := Distance( Player.Position, FTarget );
+    iIsaacLine.Init( DRL.Level, Player.Position, FTarget, iIsaacRange, Player.Vision );
+    repeat
+      iIsaacLine.Next;
+      iCurrent := iIsaacLine.Current;
+
+      if not iIsaacLine.Done then
+        FTargetList.Push( iCurrent );
+    until (iIsaacLine.Done) or (iIsaacLine.Steps > 30);
+
+    { TVisionRay comparison path, left here for later targeting tests.
     iTargetLine.Init( DRL.Level, Player.Position, FTarget );
     repeat
       iTargetLine.Next;
       iCurrent := iTargetLine.Current;
 
       if not iTargetLine.Done then
-        FTargetList.Push( iCurrent );
+        FOldTargetList.Push( iCurrent );
     until (iTargetLine.Done) or (iTargetLine.Steps > 30);
+    }
   end;
   FTargetList.Push( FTarget );
 end;
@@ -965,6 +981,7 @@ destructor TDRLSpriteMap.Destroy;
 begin
   FreeAndNil( FSpriteEngine );
   FreeAndNil( FTargetList );
+  //FreeAndNil( FOldTargetList );
   FreeAndNil( FFramebuffer );
   FreeAndNil( FHBFramebuffer );
   FreeAndNil( FVBFramebuffer );
@@ -1276,6 +1293,18 @@ begin
         with FSpriteEngine.Layers[ HARDSPRITE_SELECT div 100000 ] do
           Push( HARDSPRITE_SELECT mod 100000, FTargetList[iL], ColorWhite, iColor, ColorZero, iColor, DRL_Z_FX );
       end;
+      {
+      iColor := NewColor( 0, 96, 192 );
+      if FOldTargetList.Size > 0 then
+      for iL := 0 to FOldTargetList.Size-1 do
+      begin
+        if (not DRL.Level.isVisible( FOldTargetList[iL] )) or
+           (not DRL.Level.isShotPassable( FOldTargetList[iL] )) then
+          iColor := NewColor( 128, 0, 128 );
+        with FSpriteEngine.Layers[ HARDSPRITE_MARK div 100000 ] do
+          Push( HARDSPRITE_MARK mod 100000, FOldTargetList[iL], ColorWhite, iColor, ColorZero, iColor, DRL_Z_FX+1 );
+      end;
+      }
       if FTargetList.Size > 0 then
         with FSpriteEngine.Layers[ HARDSPRITE_MARK div 100000 ] do
           Push( HARDSPRITE_MARK mod 100000, FTarget, ColorWhite, FTargetColor, ColorZero, FTargetColor, DRL_Z_FX );
@@ -1407,4 +1436,3 @@ begin
 end;
 
 end.
-

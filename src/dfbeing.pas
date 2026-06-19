@@ -456,7 +456,7 @@ var iScatter     : DWord;
     iSeqBase     : DWord;
     iChainTarget : TCoord2D;
     iMissileRange: SmallInt;
-    iRay         : TVisionRay;
+    iRay         : TIsaacRay;
     iSteps       : SmallInt;
     iChaining    : Boolean;
 begin
@@ -470,7 +470,7 @@ begin
   if aGun.Flags[ IF_SCATTER ] then
   begin
     iSteps := 0;
-    iRay.Init(TLevel(Parent), FPosition, aTarget);
+    iRay.Init(TLevel(Parent), FPosition, aTarget, iMissileRange);
     repeat
       iRay.Next;
       if not TLevel(Parent).isProperCoord(iRay.Current) then begin aTarget:=iRay.Previous; break;end; {**** Stop at edge of map.}
@@ -478,7 +478,9 @@ begin
       if iSteps >= iMissileRange then begin aTarget := iRay.Current; break; end; {**** Stop if further than maxrange.}
       if aGun.Flags[ IF_EXACTHIT ] and (iRay.Current = aTarget) then break; {**** Stop at target square for exact missiles.}
       if iRay.Done then
-         iRay.Init(TLevel(Parent), iRay.Current, iRay.Current + (aTarget - FPosition)); {**** Extend target out in same direction for non-exact missiles.}
+        if iRay.Current = aTarget
+          then iRay.Init(TLevel(Parent), iRay.Current, iRay.Current + (aTarget - FPosition), iMissileRange) {**** Extend target out in same direction for non-exact missiles.}
+          else begin aTarget := iRay.Current; break; end;
     until false;
     iScatter := Max(1,(iSteps div 4)); {**** SCATTER TIME!}
   end;
@@ -2265,7 +2267,7 @@ end;
 
 function TBeing.SendMissile( aTarget : TCoord2D; aItem : TItem; aAltFire : Boolean; aSequence : DWord; aShotCount : Integer ) : Boolean;
 var iDirection  : TDirection;
-    iMisslePath : TVisionRay;
+    iMisslePath : TIsaacRay;
     iOldCoord   : TCoord2D;
     iTarget     : TCoord2D;
     iSource     : TCoord2D;
@@ -2344,7 +2346,7 @@ begin
   if aItem.Flags[ IF_INSTANTHIT ] then
       iSource := iTarget;
 
-  iMisslePath.Init( iLevel, iSource, aTarget );
+  iMisslePath.Init( iLevel, iSource, aTarget, iMaxRange );
 
   iMaxDamage := (BF_MAXDAMAGE in FFlags) 
              or CallHookCan( Hook_OnCanMaxDamage, [ aItem, aAltFire ] )
@@ -2477,9 +2479,10 @@ begin
       end;
     end;
     
-    if iMisslePath.Done then
-      if aItem.Flags[ IF_EXACTHIT ] then
-        Break;
+    if aItem.Flags[ IF_EXACTHIT ] and ( iCoord = iTarget ) then
+      Break;
+
+    if iMisslePath.Done then Break;
 
     if ( iSteps >= iMaxRange ) or aItem.Flags[ IF_INSTANTHIT ] then
     begin

@@ -471,13 +471,13 @@ end;
 
 procedure TTargetModeView.UpdateTarget;
 var iBlock      : Boolean;
-    iTargetLine : TVisionRay;
+    iTargetLine : TIsaacRay;
     iLevel      : TLevel;
 begin
   iLevel := DRL.Level;
   if FTarget <> FPosition then
   begin
-    iTargetLine.Init(iLevel, FPosition, FTarget);
+    iTargetLine.Init(iLevel, FPosition, FTarget, 0, Player.Vision);
     iBlock := false;
     repeat
       iTargetLine.Next;
@@ -580,4 +580,3 @@ begin
 end;
 
 end.
-
