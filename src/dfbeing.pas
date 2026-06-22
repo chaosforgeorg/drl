@@ -470,7 +470,7 @@ begin
   if aGun.Flags[ IF_SCATTER ] then
   begin
     iSteps := 0;
-    iRay.Init(TLevel(Parent), FPosition, aTarget, iMissileRange);
+    iRay.Init(TLevel(Parent), FPosition, aTarget, iMissileRange, Vision);
     repeat
       iRay.Next;
       if not TLevel(Parent).isProperCoord(iRay.Current) then begin aTarget:=iRay.Previous; break;end; {**** Stop at edge of map.}
@@ -479,7 +479,7 @@ begin
       if aGun.Flags[ IF_EXACTHIT ] and (iRay.Current = aTarget) then break; {**** Stop at target square for exact missiles.}
       if iRay.Done then
         if iRay.Current = aTarget
-          then iRay.Init(TLevel(Parent), iRay.Current, iRay.Current + (aTarget - FPosition), iMissileRange) {**** Extend target out in same direction for non-exact missiles.}
+          then iRay.Init(TLevel(Parent), iRay.Current, iRay.Current + (aTarget - FPosition), iMissileRange, Vision) {**** Extend target out in same direction for non-exact missiles.}
           else begin aTarget := iRay.Current; break; end;
     until false;
     iScatter := Max(1,(iSteps div 4)); {**** SCATTER TIME!}
@@ -2346,7 +2346,7 @@ begin
   if aItem.Flags[ IF_INSTANTHIT ] then
       iSource := iTarget;
 
-  iMisslePath.Init( iLevel, iSource, aTarget, iMaxRange );
+  iMisslePath.Init( iLevel, iSource, aTarget, iMaxRange, Vision );
 
   iMaxDamage := (BF_MAXDAMAGE in FFlags) 
              or CallHookCan( Hook_OnCanMaxDamage, [ aItem, aAltFire ] )
