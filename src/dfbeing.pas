@@ -1619,7 +1619,7 @@ begin
     for iCoord in NewArea( FPosition, aRange ).Clamped( iLevel.Area.Shrinked ) do
       if iLevel.cellFlagSet( iCoord, CF_RAISABLE ) then
         if iLevel.isEmpty(iCoord,[EF_NOBEINGS,EF_NOBLOCK]) then
-          if iLevel.isEyeContact( FPosition, iCoord ) then
+          if iLevel.isEyeContact( Self, iCoord ) then
             Exit( iLevel.Respawn( iCoord ) );
   Exit( nil );
 end;
@@ -2238,7 +2238,7 @@ begin
   if aBeing = nil then Exit( False );
   if IsPlayer then Exit( aBeing.isVisible );
   if Distance( FPosition, aBeing.Position ) > Vision then Exit( False );
-  Exit( TLevel(Parent).isEyeContact( FPosition, aBeing.Position ) );
+  Exit( TLevel(Parent).isEyeContact( Self, aBeing ) );
 end;
 
 function TBeing.calculateToHit( aBeing : TBeing ) : Integer;

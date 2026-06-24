@@ -76,6 +76,8 @@ TLevel = class(TLuaMapNode, ITextMap)
     procedure Shotgun( aSource, aTarget : TCoord2D; aDamage : TDiceRoll; aDamageMul : Single; aDamageType : TDamageType; aItem : TItem );
     function Respawn( aCoord : TCoord2D ) : TBeing; overload;
     procedure Respawn( aChance : byte ); overload;
+    function isEyeContact( const a : TLuaEntityNode; b : TCoord2D ) : boolean; override; overload;
+    function isEyeContact( const a, b : TLuaEntityNode ) : boolean; override; overload;
     function isPassable( const aCoord : TCoord2D ) : Boolean; override;
     function isPassableExt( const aCoord : TCoord2D; aFlag : Byte = CF_BLOCKMOVE ) : Boolean;
     function isShotPassable( const aCoord : TCoord2D ) : Boolean;
@@ -1183,6 +1185,19 @@ begin
   Exit( iBeing );
 end;
 
+function TLevel.isEyeContact( const a : TLuaEntityNode; b : TCoord2D ) : boolean;
+begin
+  if a is TPlayer then Exit( Vision.isVisible( b ) );
+  Exit( inherited isEyeContact( a.Position, b ) );
+end;
+
+function TLevel.isEyeContact( const a, b : TLuaEntityNode ) : boolean;
+begin
+  if a is TPlayer then Exit( b.isVisible );
+  if ( b is TPlayer ) and ( Distance( a.Position, b.Position ) <= Player.Vision ) then 
+    if not b.isVisible then Exit( False );
+  Exit( inherited isEyeContact( a.Position, b.Position ) );
+end;
 
 function TLevel.isPassable ( const aCoord : TCoord2D ) : Boolean;
 begin
