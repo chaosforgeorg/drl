@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit dfplayer;
 interface
 uses classes, sysutils,
-     vuielement,vpath, vutil, vrltools, vuitypes,
+     vuielement,vpath, vutil, vrltools, vuitypes, vvision,
      dfbeing, dfhof, dfdata, dfitem,
      drltraits, drlkeybindings, drlstatistics, drlmultimove;
 
@@ -64,6 +64,7 @@ type TPlayer = class(TBeing)
   procedure NextLevelIndex;
   function GetSprite: TSprite; override;
   function GetPerkEffect : TStatusEffect;
+  function GetVisionMap : TVision; override;
 private
   FLevelIndex     : Integer;
   FExp            : LongInt;
@@ -466,6 +467,13 @@ end;
 function TPlayer.GetSprite : TSprite;
 begin
   Exit(FCSprite);
+end;
+
+function TPlayer.GetVisionMap : TVision;
+begin
+  if Parent is TLevel then
+    Exit( TLevel(Parent).Vision );
+  Exit( nil );
 end;
 
 function TPlayer.GetPerkEffect : TStatusEffect;

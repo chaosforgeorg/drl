@@ -214,7 +214,7 @@ procedure TDRLTextIO.DrawHud;
 var iColor      : TIOColor;
     iCurrent    : TCoord2D;
     iLevel      : TLevel;
-    iTargetLine : TIsaacRay;
+    iTargetLine : TAssistedRay;
     iTargetRange: Byte;
 
   procedure Paint ( aCoord : TCoord2D; aColor : TIOColor; aChar : Char = ' ') ;
@@ -242,7 +242,7 @@ begin
     begin
       iColor := Green;
       iTargetRange := Distance( Player.Position, FTarget );
-      iTargetLine.Init( iLevel, Player.Position, FTarget, iTargetRange, Player.Vision );
+      iTargetLine.Init( iLevel, Player.Position, FTarget, iTargetRange, Player.Vision, Player.GetVisionMap );
       repeat
         iTargetLine.Next;
         iCurrent := iTargetLine.Current;

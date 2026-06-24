@@ -923,9 +923,9 @@ begin
 end;
 
 procedure TDRLSpriteMap.SetTarget ( aTarget : TCoord2D; aColor : TColor; aDrawPath : Boolean ) ;
-var iIsaacLine  : TIsaacRay;
+var iTargetLine  : TAssistedRay;
     iCurrent    : TCoord2D;
-    iIsaacRange : Byte;
+    iTargetRange : Byte;
 begin
   FTargeting   := True;
   FTarget      := aTarget;
@@ -936,15 +936,15 @@ begin
 
   if (Player.Position <> FTarget) and (aDrawPath) then
   begin
-    iIsaacRange := Distance( Player.Position, FTarget );
-    iIsaacLine.Init( DRL.Level, Player.Position, FTarget, iIsaacRange, Player.Vision );
+    iTargetRange := Distance( Player.Position, FTarget );
+    iTargetLine.Init( DRL.Level, Player.Position, FTarget, iTargetRange, Player.Vision, Player.GetVisionMap );
     repeat
-      iIsaacLine.Next;
-      iCurrent := iIsaacLine.Current;
+      iTargetLine.Next;
+      iCurrent := iTargetLine.Current;
 
-      if not iIsaacLine.Done then
+      if not iTargetLine.Done then
         FTargetList.Push( iCurrent );
-    until (iIsaacLine.Done) or (iIsaacLine.Steps > 30);
+    until (iTargetLine.Done) or (iTargetLine.Steps > 30);
 
     { TVisionRay comparison path, left here for later targeting tests.
     iTargetLine.Init( DRL.Level, Player.Position, FTarget );

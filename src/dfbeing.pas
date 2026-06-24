@@ -8,7 +8,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit dfbeing;
 interface
 uses Classes, SysUtils,
-     vluatable, vnode, vpath, vmath, vutil, vrltools,
+     vluatable, vnode, vpath, vmath, vutil, vrltools, vvision,
      dfdata, dfthing, dfitem,
      drlinventory, drlcommand;
 
@@ -55,6 +55,7 @@ TBeing = class(TThing,IPathQuery)
     function  isActive : boolean;
     function  WoundStatus : string;
     function  IsPlayer : Boolean;
+    function GetVisionMap : TVision; virtual;
     function GetBonus( aHook : Byte; const aParams : array of Const ) : Integer; override;
     function GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single; override;
     procedure BloodFloor;
@@ -209,7 +210,7 @@ TBeing = class(TThing,IPathQuery)
 
 implementation
 
-uses math, vlualibrary, vluaentitynode, vuid, vdebug, vvision, vluasystem,
+uses math, vlualibrary, vluaentitynode, vuid, vdebug, vluasystem,
      vluatools, vcolor, vvector,
      dfplayer, dflevel, dfmap, drlhooks,
      drlua, drlbase, drlio;
@@ -456,7 +457,7 @@ var iScatter     : DWord;
     iSeqBase     : DWord;
     iChainTarget : TCoord2D;
     iMissileRange: SmallInt;
-    iRay         : TIsaacRay;
+    iRay         : TAssistedRay;
     iSteps       : SmallInt;
     iChaining    : Boolean;
 begin
@@ -470,7 +471,7 @@ begin
   if aGun.Flags[ IF_SCATTER ] then
   begin
     iSteps := 0;
-    iRay.Init(TLevel(Parent), FPosition, aTarget, iMissileRange, Vision);
+    iRay.Init(TLevel(Parent), FPosition, aTarget, iMissileRange, Vision, GetVisionMap);
     repeat
       iRay.Next;
       if not TLevel(Parent).isProperCoord(iRay.Current) then begin aTarget:=iRay.Previous; break;end; {**** Stop at edge of map.}
@@ -479,7 +480,7 @@ begin
       if aGun.Flags[ IF_EXACTHIT ] and (iRay.Current = aTarget) then break; {**** Stop at target square for exact missiles.}
       if iRay.Done then
         if iRay.Current = aTarget
-          then iRay.Init(TLevel(Parent), iRay.Current, iRay.Current + (aTarget - FPosition), iMissileRange, Vision) {**** Extend target out in same direction for non-exact missiles.}
+          then iRay.Init(TLevel(Parent), iRay.Current, iRay.Current + (aTarget - FPosition), iMissileRange, Vision, GetVisionMap) {**** Extend target out in same direction for non-exact missiles.}
           else begin aTarget := iRay.Current; break; end;
     until false;
     iScatter := Max(1,(iSteps div 4)); {**** SCATTER TIME!}
@@ -512,6 +513,11 @@ end;
 function TBeing.IsPlayer : Boolean;
 begin
   Exit( inheritsFrom( TPlayer ) );
+end;
+
+function TBeing.GetVisionMap : TVision;
+begin
+  Exit( nil );
 end;
 
 function TBeing.GetBonus( aHook : Byte; const aParams : array of Const ) : Integer;
@@ -2267,7 +2273,7 @@ end;
 
 function TBeing.SendMissile( aTarget : TCoord2D; aItem : TItem; aAltFire : Boolean; aSequence : DWord; aShotCount : Integer ) : Boolean;
 var iDirection  : TDirection;
-    iMisslePath : TIsaacRay;
+    iMisslePath : TAssistedRay;
     iOldCoord   : TCoord2D;
     iTarget     : TCoord2D;
     iSource     : TCoord2D;
@@ -2346,7 +2352,7 @@ begin
   if aItem.Flags[ IF_INSTANTHIT ] then
       iSource := iTarget;
 
-  iMisslePath.Init( iLevel, iSource, aTarget, iMaxRange, Vision );
+  iMisslePath.Init( iLevel, iSource, aTarget, iMaxRange, Vision, GetVisionMap );
 
   iMaxDamage := (BF_MAXDAMAGE in FFlags) 
              or CallHookCan( Hook_OnCanMaxDamage, [ aItem, aAltFire ] )
@@ -2482,7 +2488,8 @@ begin
     if aItem.Flags[ IF_EXACTHIT ] and ( iCoord = iTarget ) then
       Break;
 
-    if iMisslePath.Done then Break;
+    // the isVisible check is only needed due to possibility of out of vision TIsaacRay
+    if iMisslePath.Done and iLevel.isVisible( iCoord ) then Break;
 
     if ( iSteps >= iMaxRange ) or aItem.Flags[ IF_INSTANTHIT ] then
     begin
