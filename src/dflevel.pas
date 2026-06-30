@@ -1195,7 +1195,7 @@ function TLevel.isEyeContact( const a, b : TLuaEntityNode ) : boolean;
 begin
   if a is TPlayer then Exit( b.isVisible );
   if ( b is TPlayer ) and ( Distance( a.Position, b.Position ) <= Player.Vision ) then 
-    if not b.isVisible then Exit( False );
+    if not a.isVisible then Exit( False );
   Exit( inherited isEyeContact( a.Position, b.Position ) );
 end;
 
