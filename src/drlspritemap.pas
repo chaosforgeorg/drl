@@ -688,11 +688,11 @@ begin
     %00011011 : begin iSpriteID := aSprite.SpriteID[0] + 2*SpriteCellRow + 1; iParts := [WB,WTR]; iMaskOut := [WTL]; end; // wall left right up
     %00011110 : begin iSpriteID := aSprite.SpriteID[0] + 2*SpriteCellRow + 1; iParts := [WB,WTL]; iMaskOut := [WTR]; end; // wall left right up
 
-    %01101010 : begin iSpriteID := aSprite.SpriteID[0] + 2*SpriteCellRow + 2; iParts := [WTR,WTL]; iMaskOut := [WBL]; end; // wall down up left
-    %01001011 : begin iSpriteID := aSprite.SpriteID[0] + 2*SpriteCellRow + 2; iParts := [WTR,WBL]; iMaskOut := [WTL]; end; // wall down up left
+    %01101010 : begin iSpriteID := aSprite.SpriteID[0] + 2*SpriteCellRow + 2; iParts := [WT,WBR];      iMaskOut := [WBL]; end; // wall down up left
+    %01001011 : begin iSpriteID := aSprite.SpriteID[0] + 2*SpriteCellRow + 2; iParts := [WTR,WBL,WBR]; iMaskOut := [WTL]; end; // wall down up left
 
-    %11010010 : begin iSpriteID := aSprite.SpriteID[0] + 2*SpriteCellRow + 0; iParts := [WTL,WTR]; iMaskOut := [WBR]; end; // wall up down right
-    %01010110 : begin iSpriteID := aSprite.SpriteID[0] + 2*SpriteCellRow + 0; iParts := [WTL,WBR]; iMaskOut := [WTR]; end; // wall up down right
+    %11010010 : begin iSpriteID := aSprite.SpriteID[0] + 2*SpriteCellRow + 0; iParts := [WT,WBL];      iMaskOut := [WBR]; end; // wall up down right
+    %01010110 : begin iSpriteID := aSprite.SpriteID[0] + 2*SpriteCellRow + 0; iParts := [WTL,WBL,WBR]; iMaskOut := [WTR]; end; // wall up down right
 
     %11011000 : begin iSpriteID := aSprite.SpriteID[0] + 3*SpriteCellRow + 1; iParts := [WT,WBL]; iMaskOut := [WBR]; end; // wall down right left
     %01111000 : begin iSpriteID := aSprite.SpriteID[0] + 3*SpriteCellRow + 1; iParts := [WT,WBR]; iMaskOut := [WBL]; end; // wall down right left
@@ -1196,6 +1196,9 @@ begin
             if SF_HASALTEDGE in iFSpr.Flags then
               if SF_USEALTEDGE in iSpr.Flags then
                 iFSpr.SpriteID[0] += DRL_COLS;
+            if SF_HASALTEDGE2 in iFSpr.Flags then
+              if SF_USEALTEDGE2 in iSpr.Flags then
+                iFSpr.SpriteID[0] += 2*DRL_COLS;
             if ModuleOption_NewFloorLayout 
               then PushFloorTerrainNewLayout( iCoord, iFSpr, iZ + DRL_Z_ENVIRO, DRL.Level.Rotation[iCoord] )
               else
