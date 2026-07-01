@@ -40,7 +40,8 @@ end;
 
 type TCoord2DArray = specialize TGArray< TCoord2D >;
 
-type TSpritePart = ( F, T, B, L, R, TL, TR, BL, BR );
+type TSpritePart = ( F, L, R, T, B, TL, TR, BL, BR, 
+                     WT, WB, WTL, WTR, WBL, WBR );
      TSpritePartSet = set of TSpritePart;
 
 type
@@ -107,6 +108,7 @@ private
   procedure PushObjects( aDTime : Integer );
   procedure PushSprite( aPos : TVec2i; const aSprite : TSprite; aLight : Byte; aZ : Integer );
   procedure PushMultiSpriteTerrain( aCoord : TCoord2D; const aSprite : TSprite; aZ : Integer; aRotation : Byte );
+  procedure PushFloorTerrainNewLayout( aCoord : TCoord2D; const aSprite : TSprite; aZ : Integer; aRotation : Byte );
   procedure PushSpriteTerrainPart( aCoord : TCoord2D; const aSprite : TSprite; aZ : Integer; aPart : TSpritePart = F );
   procedure PushTarget( aSpriteID : DWord; aPosition : TVec2i; aColor : TColor; aSize : Float );
   function GetSprite( aSprite : TSprite; aCoord : TCoord2D; aTime : Integer = -1 ) : TSprite;
@@ -135,14 +137,20 @@ uses vmath, viotypes, vvision, vgl3library,
 function SpritePartSetFill( aPart : TSpritePart ) : TSpritePartSet;
 begin
   case aPart of
-    T : Exit( [B] );
-    B : Exit( [T] );
-    L : Exit( [R] );
-    R : Exit( [L] );
-    TL: Exit( [B,TR] );
-    TR: Exit( [B,TL] );
-    BL: Exit( [T,BR] );
-    BR: Exit( [T,BL] );
+    L  : Exit( [R] );
+    R  : Exit( [L] );
+    T  : Exit( [B] );
+    B  : Exit( [T] );
+    TL : Exit( [B,TR] );
+    TR : Exit( [B,TL] );
+    BL : Exit( [T,BR] );
+    BR : Exit( [T,BL] );
+    WT : Exit( [WB] );
+    WB : Exit( [WT] );
+    WTL: Exit( [WB,WTR] );
+    WTR: Exit( [WB,WTL] );
+    WBL: Exit( [WT,WBR] );
+    WBR: Exit( [WT,WBL] );
   end;
   Exit( [] );
 end;
@@ -659,40 +667,40 @@ begin
       begin
         // Special case for column
         iSprite.SpriteID[0] := aSprite.SpriteID[0] + 1*SpriteCellRow + 2;
-        PushSpriteTerrainPart( aCoord, iSprite, aZ, B );
+        PushSpriteTerrainPart( aCoord, iSprite, aZ, WB );
         iSprite.SpriteID[0] := aSprite.SpriteID[0] + 1*SpriteCellRow + 1;
-        PushSpriteTerrainPart( aCoord, iSprite, aZ, T );
+        PushSpriteTerrainPart( aCoord, iSprite, aZ, WT );
         Exit;
       end;
-    %01011111 : begin iSpriteID := aSprite.SpriteID[0] + 3 * SpriteCellRow + 1; iPart := B; end;
-    %11111010 : begin iSpriteID := aSprite.SpriteID[0] + 2 * SpriteCellRow + 1; iPart := T; end;
+    %01011111 : begin iSpriteID := aSprite.SpriteID[0] + 3 * SpriteCellRow + 1; iPart := WB; end;
+    %11111010 : begin iSpriteID := aSprite.SpriteID[0] + 2 * SpriteCellRow + 1; iPart := WT; end;
     %11011110 : begin iSpriteID := aSprite.SpriteID[0] + 2 * SpriteCellRow + 2; iPart := L; end;
     %01111011 : begin iSpriteID := aSprite.SpriteID[0] + 2 * SpriteCellRow + 0; iPart := R; end;
 
-    %11111110 : begin iSpriteID := aSprite.SpriteID[0] + 4 * SpriteCellRow + 1; iPart := TL; end;
-    %11111011 : begin iSpriteID := aSprite.SpriteID[0] + 4 * SpriteCellRow + 1; iPart := TR; end;
-    %11011111 : begin iSpriteID := aSprite.SpriteID[0] + 4 * SpriteCellRow + 1; iPart := BL; end;
-    %01111111 : begin iSpriteID := aSprite.SpriteID[0] + 4 * SpriteCellRow + 1; iPart := BR; end;
+    %11111110 : begin iSpriteID := aSprite.SpriteID[0] + 4 * SpriteCellRow + 1; iPart := WTL; end;
+    %11111011 : begin iSpriteID := aSprite.SpriteID[0] + 4 * SpriteCellRow + 1; iPart := WTR; end;
+    %11011111 : begin iSpriteID := aSprite.SpriteID[0] + 4 * SpriteCellRow + 1; iPart := WBL; end;
+    %01111111 : begin iSpriteID := aSprite.SpriteID[0] + 4 * SpriteCellRow + 1; iPart := WBR; end;
 
-    %01111110 : begin iSpriteID := aSprite.SpriteID[0] + 4 * SpriteCellRow + 1; iParts := [BR,TL]; iMaskOut := [BL,TR]; end;
-    %11011011 : begin iSpriteID := aSprite.SpriteID[0] + 4 * SpriteCellRow + 1; iParts := [BL,TR]; iMaskOut := [BR,TL]; end;
+    %01111110 : begin iSpriteID := aSprite.SpriteID[0] + 4 * SpriteCellRow + 1; iParts := [WBR,WTL]; iMaskOut := [WBL,WTR]; end;
+    %11011011 : begin iSpriteID := aSprite.SpriteID[0] + 4 * SpriteCellRow + 1; iParts := [WBL,WTR]; iMaskOut := [WBR,WTL]; end;
 
-    %00011011 : begin iSpriteID := aSprite.SpriteID[0] + 2*SpriteCellRow + 1; iParts := [B,TR]; iMaskOut := [TL]; end; // wall left right up
-    %00011110 : begin iSpriteID := aSprite.SpriteID[0] + 2*SpriteCellRow + 1; iParts := [B,TL]; iMaskOut := [TR]; end; // wall left right up
+    %00011011 : begin iSpriteID := aSprite.SpriteID[0] + 2*SpriteCellRow + 1; iParts := [WB,WTR]; iMaskOut := [WTL]; end; // wall left right up
+    %00011110 : begin iSpriteID := aSprite.SpriteID[0] + 2*SpriteCellRow + 1; iParts := [WB,WTL]; iMaskOut := [WTR]; end; // wall left right up
 
-    %01101010 : begin iSpriteID := aSprite.SpriteID[0] + 2*SpriteCellRow + 2; iParts := [R,TL]; iMaskOut := [BL]; end; // wall down up left
-    %01001011 : begin iSpriteID := aSprite.SpriteID[0] + 2*SpriteCellRow + 2; iParts := [R,BL]; iMaskOut := [TL]; end; // wall down up left
+    %01101010 : begin iSpriteID := aSprite.SpriteID[0] + 2*SpriteCellRow + 2; iParts := [WTR,WTL]; iMaskOut := [WBL]; end; // wall down up left
+    %01001011 : begin iSpriteID := aSprite.SpriteID[0] + 2*SpriteCellRow + 2; iParts := [WTR,WBL]; iMaskOut := [WTL]; end; // wall down up left
 
-    %11010010 : begin iSpriteID := aSprite.SpriteID[0] + 2*SpriteCellRow + 0; iParts := [L,TR]; iMaskOut := [BR]; end; // wall up down right
-    %01010110 : begin iSpriteID := aSprite.SpriteID[0] + 2*SpriteCellRow + 0; iParts := [L,BR]; iMaskOut := [TR]; end; // wall up down right
+    %11010010 : begin iSpriteID := aSprite.SpriteID[0] + 2*SpriteCellRow + 0; iParts := [WTL,WTR]; iMaskOut := [WBR]; end; // wall up down right
+    %01010110 : begin iSpriteID := aSprite.SpriteID[0] + 2*SpriteCellRow + 0; iParts := [WTL,WBR]; iMaskOut := [WTR]; end; // wall up down right
 
-    %11011000 : begin iSpriteID := aSprite.SpriteID[0] + 3*SpriteCellRow + 1; iParts := [T,BL]; iMaskOut := [BR]; end; // wall down right left
-    %01111000 : begin iSpriteID := aSprite.SpriteID[0] + 3*SpriteCellRow + 1; iParts := [T,BR]; iMaskOut := [BL]; end; // wall down right left
+    %11011000 : begin iSpriteID := aSprite.SpriteID[0] + 3*SpriteCellRow + 1; iParts := [WT,WBL]; iMaskOut := [WBR]; end; // wall down right left
+    %01111000 : begin iSpriteID := aSprite.SpriteID[0] + 3*SpriteCellRow + 1; iParts := [WT,WBR]; iMaskOut := [WBL]; end; // wall down right left
 
-    %01011110 : begin iSpriteID := aSprite.SpriteID[0] + 4 * SpriteCellRow + 1; iParts := [B,TL]; iMaskOut := [TR]; end;
-    %01111010 : begin iSpriteID := aSprite.SpriteID[0] + 4 * SpriteCellRow + 1; iParts := [T,BR]; iMaskOut := [BL]; end;
-    %01011011 : begin iSpriteID := aSprite.SpriteID[0] + 4 * SpriteCellRow + 1; iParts := [B,TR]; iMaskOut := [TL]; end;
-    %11011010 : begin iSpriteID := aSprite.SpriteID[0] + 4 * SpriteCellRow + 1; iParts := [T,BL]; iMaskOut := [BR]; end;
+    %01011110 : begin iSpriteID := aSprite.SpriteID[0] + 4 * SpriteCellRow + 1; iParts := [WB,WTL]; iMaskOut := [WTR]; end;
+    %01111010 : begin iSpriteID := aSprite.SpriteID[0] + 4 * SpriteCellRow + 1; iParts := [WT,WBR]; iMaskOut := [WBL]; end;
+    %01011011 : begin iSpriteID := aSprite.SpriteID[0] + 4 * SpriteCellRow + 1; iParts := [WB,WTR]; iMaskOut := [WTL]; end;
+    %11011010 : begin iSpriteID := aSprite.SpriteID[0] + 4 * SpriteCellRow + 1; iParts := [WT,WBL]; iMaskOut := [WBR]; end;
   end;
   if iSpriteID = 0 then Exit;
 
@@ -714,6 +722,41 @@ begin
   Exit;
 end;
 
+procedure TDRLSpriteMap.PushFloorTerrainNewLayout( aCoord : TCoord2D; const aSprite : TSprite; aZ : Integer; aRotation : Byte );
+var iSprite : TSprite;
+
+  procedure Push( aOffset : DWord; aPart : TSpritePart = F );
+  begin
+    iSprite.SpriteID[0] := aSprite.SpriteID[0] + aOffset;
+    PushSpriteTerrainPart( aCoord, iSprite, aZ, aPart );
+  end;
+
+begin
+  iSprite := aSprite;
+  case aRotation and %00001111 of
+    %00000001 : Push( 2, T ); // top
+    %00000010 : Push( 2, B ); // bottom
+    %00000011 : Push( 2 ); // top bottom
+    %00000100 : Push( 3, L ); // left
+    %00000101 : Push( 4    ); // top left
+    %00000110 : Push( 5    ); // bottom left
+    %00000111 : Push( 8    ); // top bottom left
+    %00001000 : Push( 3, R ); // right
+    %00001001 : Push( 6    ); // top right
+    %00001010 : Push( 7    ); // bottom right
+    %00001011 : Push( 9    ); // top bottom right
+    %00001100 : Push( 3 ); // left right
+    %00001101 : Push( 10   ); // top left right
+    %00001110 : Push( 11   ); // bottom left right
+    %00001111 : Push( 12   ); // top bottom left right
+  end;
+
+  if aRotation and %10000000 <> 0 then Push( 1, BR );
+  if aRotation and %01000000 <> 0 then Push( 1, TR );
+  if aRotation and %00100000 <> 0 then Push( 1, BL );
+  if aRotation and %00010000 <> 0 then Push( 1, TL );
+end;
+
 procedure TDRLSpriteMap.PushSpriteTerrainPart( aCoord : TCoord2D; const aSprite : TSprite; aZ : Integer; aPart : TSpritePart = F );
 var iColors   : TGLRawQColor;
     iGridF    : TVec2f;
@@ -731,6 +774,28 @@ var iColors   : TGLRawQColor;
   begin
     aLayer.PushPart( iSpriteID, iPa, iPb, @iColors, aCosColor, ColorZero, iEmissive, aZ, iStart, iEnd );
   end;
+  procedure PartBounds( aPart : TSpritePart; out aStart, aEnd : TVec2f );
+  const WALLTOP : Single = 8.0 / 32.0;
+  begin
+    aStart := TVec2f.Create(0,0);
+    aEnd   := TVec2f.Create(1,1);
+    case aPart of
+      L   : aEnd.X   := 0.5;
+      R   : aStart.X := 0.5;
+      T   : aEnd.Y   := 0.5;
+      B   : aStart.Y := 0.5; 
+      WT  : aEnd.Y := WALLTOP;
+      WB  : aStart.Y := WALLTOP;
+      WTL : aEnd.Init( 0.5, WALLTOP );
+      WTR : begin aEnd.Y := WALLTOP; aStart.X := 0.5; end;
+      WBL : begin aEnd.X := 0.5; aStart.Y := WALLTOP; end;
+      WBR : aStart.Init( 0.5, WALLTOP );
+      TL  : aEnd.Init( 0.5, 0.5 );
+      TR  : begin aEnd.Y := 0.5; aStart.X := 0.5; end;
+      BL  : begin aEnd.X := 0.5; aStart.Y := 0.5; end;
+      BR  : aStart.Init( 0.5, 0.5 );
+    end;
+  end;
 
   function BilinearLight( aPos : TVec2f ) : Byte;
   var iX1, iX2 : Single;
@@ -739,7 +804,6 @@ var iColors   : TGLRawQColor;
     iX2 := ( 1 - aPos.X ) * iLight[1] + aPos.X * iLight[2];
     Exit( Round( ( 1 - aPos.Y ) * iX1 + aPos.Y * iX2 ) );
   end;
-const TOP : Single = 8.0 / 32.0;
 begin
   iLayer    := FSpriteEngine.Layers[ aSprite.SpriteID[0] div 100000 ];
   iSpriteID := aSprite.SpriteID[0] mod 100000;
@@ -749,19 +813,7 @@ begin
   iLight[2] := FLightMap[aCoord.X  ,aCoord.Y  ];
   iLight[3] := FLightMap[aCoord.X  ,aCoord.Y-1];
 
-  iStart    := TVec2f.Create(0,0);
-  iEnd      := TVec2f.Create(1,1);
-
-  case aPart of
-    T : iEnd.Y := TOP;
-    B : iStart.Y := TOP;
-    L : iEnd.X := 0.5;
-    R : iStart.X := 0.5;
-    TL : iEnd.Init( 0.5, TOP );
-    TR : begin iEnd.Y := TOP; iStart.X := 0.5; end;
-    BL : begin iEnd.X := 0.5; iStart.Y := TOP; end;
-    BR : iStart.Init( 0.5, TOP );
-  end;
+  PartBounds( aPart, iStart, iEnd );
 
   iColors.Data[0] := TVec3b.CreateAll( BilinearLight( iStart ) );
   iColors.Data[1] := TVec3b.CreateAll(BilinearLight( TVec2f.Create( iStart.X, iEnd.Y ) ) );
@@ -1144,8 +1196,13 @@ begin
             if SF_HASALTEDGE in iFSpr.Flags then
               if SF_USEALTEDGE in iSpr.Flags then
                 iFSpr.SpriteID[0] += DRL_COLS;
-            iFSpr.SpriteID[0] += DRL.Level.Rotation[iCoord];
-            PushSpriteTerrain( iCoord, iFSpr, iZ + DRL_Z_ENVIRO );
+            if ModuleOption_NewFloorLayout 
+              then PushFloorTerrainNewLayout( iCoord, iFSpr, iZ + DRL_Z_ENVIRO, DRL.Level.Rotation[iCoord] )
+              else
+              begin
+                iFSpr.SpriteID[0] += DRL.Level.Rotation[iCoord];
+                PushSpriteTerrain( iCoord, iFSpr, iZ + DRL_Z_ENVIRO );
+              end;
           end;
         end;
         if DRL.Level.LightFlag[ iCoord, LFBLOOD ] and (Cells[iBottom].BloodSprite.SpriteID[0] <> 0) then

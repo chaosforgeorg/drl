@@ -629,7 +629,10 @@ begin
 end;
 
 procedure TLevel.RecalcFluids;
-var cc : TCoord2D;
+var iC                 : TCoord2D;
+    iNX, iPX, iNY, iPY : Byte;
+    iValue             : Byte;
+
   function FluidFlag( c : TCoord2D; Value : Byte ) : Byte;
   begin
     if not isProperCoord( c ) then Exit(0);
@@ -639,13 +642,25 @@ var cc : TCoord2D;
   end;
 begin
   if LF_SHARPFLUID in FFlags then Exit;
- for cc in FArea do
-   if SF_FLUID in Cells[CellBottom[ cc ]].Sprite[0].Flags then
-     FMap.Rotation[cc.x,cc.y] :=
-       FluidFlag( cc.ifInc( 0,-1), 1 ) +
-       FluidFlag( cc.ifInc( 0,+1), 2 ) +
-       FluidFlag( cc.ifInc(-1, 0), 4 ) +
-       FluidFlag( cc.ifInc(+1, 0), 8 );
+  for iC in FArea do
+    if SF_FLUID in Cells[CellBottom[ iC ]].Sprite[0].Flags then
+    begin
+      iNY := FluidFlag( iC.ifInc( 0,-1), 1 );
+      iPY := FluidFlag( iC.ifInc( 0,+1), 2 );
+      iNX := FluidFlag( iC.ifInc(-1, 0), 4 );
+      iPX := FluidFlag( iC.ifInc(+1, 0), 8 );
+      iValue := iNX + iPX + iNY + iPY;
+
+      if ModuleOption_NewFloorLayout then
+      begin
+        if ( iNX + iNY = 0 ) then iValue += FluidFlag( iC.ifInc(-1,-1), 16 );
+        if ( iNX + iPY = 0 ) then iValue += FluidFlag( iC.ifInc(-1,+1), 32 );
+        if ( iPX + iNY = 0 ) then iValue += FluidFlag( iC.ifInc(+1,-1), 64 );
+        if ( iPX + iPY = 0 ) then iValue += FluidFlag( iC.ifInc(+1,+1), 128 );
+      end;
+
+      FMap.Rotation[iC.x,iC.y] := iValue;
+  end;
 end;
 
 procedure TLevel.Leave;
