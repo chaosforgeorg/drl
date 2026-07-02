@@ -109,6 +109,7 @@ private
   procedure PushSprite( aPos : TVec2i; const aSprite : TSprite; aLight : Byte; aZ : Integer );
   procedure PushMultiSpriteTerrain( aCoord : TCoord2D; const aSprite : TSprite; aZ : Integer; aRotation : Byte );
   procedure PushFloorTerrainNewLayout( aCoord : TCoord2D; const aSprite : TSprite; aZ : Integer; aRotation : Byte );
+  procedure PushFloorTerrainPart( aCoord : TCoord2D; const aSprite : TSprite; aZ : Integer; aPart : TSpritePart = F );
   procedure PushSpriteTerrainPart( aCoord : TCoord2D; const aSprite : TSprite; aZ : Integer; aPart : TSpritePart = F );
   procedure PushTarget( aSpriteID : DWord; aPosition : TVec2i; aColor : TColor; aSize : Float );
   function GetSprite( aSprite : TSprite; aCoord : TCoord2D; aTime : Integer = -1 ) : TSprite;
@@ -728,7 +729,7 @@ var iSprite : TSprite;
   procedure Push( aOffset : DWord; aPart : TSpritePart = F );
   begin
     iSprite.SpriteID[0] := aSprite.SpriteID[0] + aOffset;
-    PushSpriteTerrainPart( aCoord, iSprite, aZ, aPart );
+    PushFloorTerrainPart( aCoord, iSprite, aZ, aPart );
   end;
 
 begin
@@ -757,6 +758,76 @@ begin
   if aRotation and %00010000 <> 0 then Push( 1, TL );
 end;
 
+procedure TDRLSpriteMap.PushFloorTerrainPart( aCoord : TCoord2D; const aSprite : TSprite; aZ : Integer; aPart : TSpritePart = F );
+var iColors   : TGLRawQColor;
+    iGridF    : TVec2f;
+    iPosition : TVec2i;
+    iPa, iPb  : TVec2i;
+    iLayer    : TSpriteDataSet;
+    iSpriteID : DWord;
+    iLight    : array[0..3] of Byte;
+    iStart    : TVec2f;
+    iEnd      : TVec2f;
+    iPStart   : TVec2f;
+    iPEnd     : TVec2f;
+    iEmissive : TColor;
+  procedure Push( aLayer : TSpriteDataSet; aCosColor : TColor );
+  begin
+    aLayer.PushPart( iSpriteID, iPa, iPb, @iColors, aCosColor, ColorZero, iEmissive, aZ, iStart, iEnd );
+  end;
+  procedure PartBounds( aPart : TSpritePart; out aStart, aEnd : TVec2f );
+  begin
+    aStart := TVec2f.Create(0,0);
+    aEnd   := TVec2f.Create(1,1);
+    case aPart of
+      L   : aEnd.X   := 0.5;
+      R   : aStart.X := 0.5;
+      T   : aEnd.Y   := 0.5;
+      B   : aStart.Y := 0.5;
+      TL  : aEnd.Init( 0.5, 0.5 );
+      TR  : begin aEnd.Y := 0.5; aStart.X := 0.5; end;
+      BL  : begin aEnd.X := 0.5; aStart.Y := 0.5; end;
+      BR  : aStart.Init( 0.5, 0.5 );
+    end;
+  end;
+
+  function BilinearLight( aPos : TVec2f ) : Byte;
+  var iX1, iX2 : Single;
+  begin
+    iX1 := ( 1 - aPos.X ) * iLight[0] + aPos.X * iLight[3];
+    iX2 := ( 1 - aPos.X ) * iLight[1] + aPos.X * iLight[2];
+    Exit( Round( ( 1 - aPos.Y ) * iX1 + aPos.Y * iX2 ) );
+  end;
+begin
+  iLayer    := FSpriteEngine.Layers[ aSprite.SpriteID[0] div 100000 ];
+  iSpriteID := aSprite.SpriteID[0] mod 100000;
+
+  iLight[0] := FLightMap[aCoord.X-1,aCoord.Y-1];
+  iLight[1] := FLightMap[aCoord.X-1,aCoord.Y  ];
+  iLight[2] := FLightMap[aCoord.X  ,aCoord.Y  ];
+  iLight[3] := FLightMap[aCoord.X  ,aCoord.Y-1];
+
+  PartBounds( aPart, iStart, iEnd );
+
+  iColors.Data[0] := TVec3b.CreateAll( BilinearLight( iStart ) );
+  iColors.Data[1] := TVec3b.CreateAll(BilinearLight( TVec2f.Create( iStart.X, iEnd.Y ) ) );
+  iColors.Data[2] := TVec3b.CreateAll(BilinearLight( iEnd ) );
+  iColors.Data[3] := TVec3b.CreateAll(BilinearLight( TVec2f.Create( iEnd.X, iStart.Y ) ) );
+
+  iGridF    := TVec2f.Create( FSpriteEngine.Grid.X, FSpriteEngine.Grid.Y );
+  iPosition := Vec2i( aCoord.X-1, aCoord.Y-1 ) * FSpriteEngine.Grid;
+  iPStart   := iGridF * iStart;
+  iPEnd     := iGridF * iEnd;
+  iPa       := iPosition + TVec2i.Create( Round( iPStart.X ), Round( iPStart.Y ) );
+  iPb       := iPosition + TVec2i.Create( Round( iPEnd.X ), Round( iPEnd.Y ) );
+
+  iEmissive := aSprite.Emissive;
+  if iEmissive.A = 0 then iEmissive := aSprite.Color;
+  if ( SF_COSPLAY in aSprite.Flags )
+    then Push( iLayer, aSprite.Color )
+    else Push( iLayer, ColorBlack );
+end;
+
 procedure TDRLSpriteMap.PushSpriteTerrainPart( aCoord : TCoord2D; const aSprite : TSprite; aZ : Integer; aPart : TSpritePart = F );
 var iColors   : TGLRawQColor;
     iGridF    : TVec2f;
@@ -782,18 +853,18 @@ var iColors   : TGLRawQColor;
     case aPart of
       L   : aEnd.X   := 0.5;
       R   : aStart.X := 0.5;
-      T   : aEnd.Y   := 0.5;
-      B   : aStart.Y := 0.5; 
+      T   : aEnd.Y   := WALLTOP;
+      B   : aStart.Y := WALLTOP;
       WT  : aEnd.Y := WALLTOP;
       WB  : aStart.Y := WALLTOP;
       WTL : aEnd.Init( 0.5, WALLTOP );
       WTR : begin aEnd.Y := WALLTOP; aStart.X := 0.5; end;
       WBL : begin aEnd.X := 0.5; aStart.Y := WALLTOP; end;
       WBR : aStart.Init( 0.5, WALLTOP );
-      TL  : aEnd.Init( 0.5, 0.5 );
-      TR  : begin aEnd.Y := 0.5; aStart.X := 0.5; end;
-      BL  : begin aEnd.X := 0.5; aStart.Y := 0.5; end;
-      BR  : aStart.Init( 0.5, 0.5 );
+      TL  : aEnd.Init( 0.5, WALLTOP );
+      TR  : begin aEnd.Y := WALLTOP; aStart.X := 0.5; end;
+      BL  : begin aEnd.X := 0.5; aStart.Y := WALLTOP; end;
+      BR  : aStart.Init( 0.5, WALLTOP );
     end;
   end;
 
