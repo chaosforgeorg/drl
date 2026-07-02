@@ -169,6 +169,7 @@ IF_ALTCHAIN       = 71;
 IF_DESTROY        = 72;
 IF_AUTOAMMO       = 73;
 IF_REVEALED       = 74;
+IF_SHIELD         = 75;
 
 LF_NOHOMING       = 1;
 LF_UNIQUEITEM     = 2;
