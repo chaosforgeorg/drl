@@ -481,7 +481,11 @@ begin
     begin
       iBeing := iThing as TBeing;
       if iBeing <> nil
-        then SpriteMap.PushSpriteBeing( FPosition, SpriteMap.GetBeingSprite( iBeing ), iLight )
+        then
+        begin
+          SpriteMap.PushSpriteBeing( FPosition, SpriteMap.GetBeingSprite( iBeing ), iLight );
+          SpriteMap.PushBeingOverlay( FPosition, iBeing, iLight );
+        end
         else SpriteMap.PushSpriteBeing( FPosition, FSprite, iLight );
     end
     else SpriteMap.PushSpriteItem( FPosition, FSprite, iLight );

@@ -79,6 +79,7 @@ TBeing = class(TThing,IPathQuery)
     function Dead : Boolean;
     procedure Remove( Node : TNode ); override;
     function ASCIIMoreCode : AnsiString; virtual;
+    function GetVisualOverlay : TThing;
 
     // Actions
     // All actions return True/False depending on success.
@@ -567,6 +568,14 @@ end;
 function TBeing.ASCIIMoreCode : AnsiString;
 begin
   Exit( ID );
+end;
+
+function TBeing.GetVisualOverlay : TThing;
+var iArmor : TItem;
+begin
+  iArmor := FInv.Slot[ efTorso ];
+  if ( iArmor <> nil ) and iArmor.Flags[ IF_OVERLAY ] then Exit( iArmor );
+  Exit( nil );
 end;
 
 function TBeing.ActionQuickKey( aIndex : Byte ) : Boolean;
