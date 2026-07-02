@@ -189,7 +189,10 @@ begin
   for i := 0 to iPerks.Size - 1 do
     with PerkData[ iPerks[i].ID ] do
     begin
-      if aInvMode then iText := Name else iText := Short;
+      if Hook_OnDescribe in Hooks then
+        iText := LuaSystem.ProtectedCall( [ 'perks', iPerks[i].ID, HookNames[Hook_OnDescribe] ], [ Self ] )
+      else if aInvMode then iText := Name
+      else iText := Short;
       if iText = '' then Continue;
       if ( iPerks[i].Time > 0 ) and ( iPerks[i].Time <= 50 )
         then iColor := ColorExp

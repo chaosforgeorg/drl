@@ -57,6 +57,7 @@ type
   function DevicePointToCoord( aPoint : TPoint ) : TCoord2D;
   procedure PushSpriteBeing( aPos : TVec2i; const aSprite : TSprite; aLight : Byte );
   procedure PushSpriteItem( aPos : TVec2i; const aSprite : TSprite; aLight : Byte );
+  procedure PushBeingOverlay( aPos : TVec2i; aBeing : TBeing; aLight : Byte );
   procedure PushSpriteDoodad( aCoord : TCoord2D; const aSprite : TSprite; aLight : Integer = -1; aZOffset : Integer = 0 );
   procedure PushSpriteFX( aCoord : TCoord2D; const aSprite : TSprite; aTime : Integer = -1; aZOffset : Integer = 0 );
   procedure PushSpriteFXRotated( aPos : TVec2i; const aSprite : TSprite; aRotation : Single );
@@ -133,7 +134,7 @@ implementation
 
 uses vmath, viotypes, vvision, vgl3library,
      drlio, drlgfxio, drlbase,
-     dfmap, dfitem, dfplayer, drlmarkers, drldecals;
+     dfmap, dfthing, dfitem, dfplayer, drlmarkers, drldecals;
 
 function SpritePartSetFill( aPart : TSpritePart ) : TSpritePartSet;
 begin
@@ -969,6 +970,35 @@ begin
   PushSprite( aPos, aSprite, aLight, ( aPos.Y div FSpriteEngine.Grid.Y ) * DRL_Z_LINE + DRL_Z_ITEMS + 500);
 end;
 
+procedure TDRLSpriteMap.PushBeingOverlay( aPos : TVec2i; aBeing : TBeing; aLight : Byte );
+var iOverlay : TThing;
+    iSprite  : TSprite;
+    z        : Integer;
+begin
+  if aBeing = nil then Exit;
+  iOverlay := aBeing.GetVisualOverlay;
+  if iOverlay = nil then Exit;
+
+  iSprite := aBeing.Sprite;
+  iSprite.SpriteID[0] := iOverlay.Sprite.SpriteID[0];
+
+  if ( aBeing.OverlayUntil > IO.Time ) and ( SF_PAINANIM in iSprite.Flags ) then
+  begin
+    if SF_LARGE in iSprite.Flags then
+      iSprite.SpriteID[0] += DRL_COLS * 2 * iSprite.Frames
+    else
+      iSprite.SpriteID[0] += DRL_COLS * iSprite.Frames;
+  end
+  else iSprite := GetSprite( iSprite, aBeing.Position );
+
+  z := ( aPos.Y div FSpriteEngine.Grid.Y ) * DRL_Z_LINE;
+  if SF_LARGE in iSprite.Flags then
+    z += DRL_Z_LARGE
+  else
+    z += DRL_Z_BEINGS;
+  PushSprite( aPos, iSprite, aLight, z + 1 );
+end;
+
 procedure TDRLSpriteMap.PushSpriteDoodad( aCoord : TCoord2D; const aSprite: TSprite; aLight: Integer; aZOffset : Integer );
 var iLight  : Byte;
     iSprite : TSprite;
@@ -1402,9 +1432,15 @@ begin
       iBeing := DRL.Level.Being[iCoord];
       if (iBeing <> nil) and (iBeing.AnimCount = 0) then
         if DRL.Level.BeingVisible(iCoord, iBeing) then
-          PushSprite( Vec2i( iX-1, iY-1 ) * FSpriteEngine.Grid, GetBeingSprite( iBeing ), VariableLight( iCoord, 30 ), iZ + DRL_Z_BEINGS )
+        begin
+          PushSprite( Vec2i( iX-1, iY-1 ) * FSpriteEngine.Grid, GetBeingSprite( iBeing ), VariableLight( iCoord, 30 ), iZ + DRL_Z_BEINGS );
+          PushBeingOverlay( Vec2i( iX-1, iY-1 ) * FSpriteEngine.Grid, iBeing, VariableLight( iCoord, 30 ) );
+        end
         else if DRL.Level.BeingExplored(iCoord, iBeing) then
-          PushSprite( Vec2i( iX-1, iY-1 ) * FSpriteEngine.Grid, GetBeingSprite( iBeing ), 40, iZ + DRL_Z_BEINGS )
+        begin
+          PushSprite( Vec2i( iX-1, iY-1 ) * FSpriteEngine.Grid, GetBeingSprite( iBeing ), 40, iZ + DRL_Z_BEINGS );
+          PushBeingOverlay( Vec2i( iX-1, iY-1 ) * FSpriteEngine.Grid, iBeing, 40 );
+        end
         else if DRL.Level.BeingIntuited(iCoord, iBeing) then
         begin
           with FSpriteEngine.Layers[ HARDSPRITE_MARK div 100000 ] do

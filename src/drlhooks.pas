@@ -32,7 +32,7 @@ const
   Hook_OnKillAll       = 20;  // Level, Module, Challenge, Core (Chained)
   Hook_OnHitBeing      = 21;  // Item
   Hook_OnReload        = 22;  // Item
-  Hook_OnDescribe      = 23;  // Item
+  Hook_OnDescribe      = 23;  // Item, Perk
   Hook_OnEquipCheck    = 24;  // Item
   Hook_OnAct           = 25;  // Item, Being (hack)
   Hook_OnDestroy       = 26;  // Item

@@ -79,6 +79,7 @@ TBeing = class(TThing,IPathQuery)
     function Dead : Boolean;
     procedure Remove( Node : TNode ); override;
     function ASCIIMoreCode : AnsiString; virtual;
+    function GetVisualOverlay : TThing;
 
     // Actions
     // All actions return True/False depending on success.
@@ -567,6 +568,14 @@ end;
 function TBeing.ASCIIMoreCode : AnsiString;
 begin
   Exit( ID );
+end;
+
+function TBeing.GetVisualOverlay : TThing;
+var iArmor : TItem;
+begin
+  iArmor := FInv.Slot[ efTorso ];
+  if ( iArmor <> nil ) and iArmor.Flags[ IF_OVERLAY ] then Exit( iArmor );
+  Exit( nil );
 end;
 
 function TBeing.ActionQuickKey( aIndex : Byte ) : Boolean;
@@ -2063,6 +2072,7 @@ var iDirection     : TDirection;
     iForceOverkill : Boolean;
     iMeleeAttack   : Boolean;
     iDeathMessage  : AnsiString;
+    iOldDurability : LongInt;
 begin
   if ( aDamage < 0 ) or (BF_INV in FFlags) or FDying then Exit;
 
@@ -2148,9 +2158,12 @@ begin
     iArmorDamage := Max( aDamage - iProtection , 1 );
     if (aDamageType = Damage_Acid) and (iResist < 100) then iArmorDamage *= 2;
     if iArmor.Flags[ IF_NODURABILITY ] then iArmorDamage := 0;
+    iOldDurability := iArmor.Durability;
     iArmor.Durability := Max( 0, iArmor.Durability - iArmorDamage );
 
     if iArmorDamage > 0 then iArmor.CallHook( Hook_OnReceiveDamage, [ aDamage, aSource, iActive ] );
+
+    if (iOldDurability > 0) and iArmor.Flags[ IF_SHIELD ] then Exit;
 
     if (iArmor.Durability = 0) and (not iArmor.Flags[ IF_NODESTROY ]) then
     begin
