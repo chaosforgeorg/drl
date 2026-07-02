@@ -582,6 +582,7 @@ var iLevel  : TLevel;
     iSprite : TSprite;
     iCoord  : TCoord2D;
     iFirst  : TCoord2D;
+
   procedure Trace( aT : TCoord2D; aMain : Boolean );
   var iRay      : TBresenhamRay;
       iBlock    : TCoord2D;
@@ -611,6 +612,28 @@ var iLevel  : TLevel;
     end;
   end;
 
+  procedure MarkCollision;
+  var iTargetLine : TAssistedRay;
+      iCurrent    : TCoord2D;
+  begin
+    iTargetLine.Init( iLevel, Player.Position, aTarget, Distance( Player.Position, aTarget ), Player.Vision, Player.GetVisionMap );
+    repeat
+      iTargetLine.Next;
+      iCurrent := iTargetLine.Current;
+      if iTargetLine.Steps > 10 then Exit;
+      if not iLevel.isProperCoord( iCurrent ) then Exit;
+      if iTargetLine.Done then Exit;
+      if not iLevel.isVisible( iCurrent ) then Exit;
+      if not iLevel.isShotPassable( iCurrent ) then
+      begin
+        iSprite.Color  := NewColor(160,0,0);
+        iSprite.Frames := HARDSPRITE_SHIELD_COUNT;
+        iLevel.Markers.Add( iCurrent, iSprite, 0 );
+        Exit;
+      end;
+    until False;
+  end;
+
 begin
   inherited SetAutoTarget( aTarget );
   SpriteMap.SetAutoTarget( aTarget );
@@ -637,6 +660,7 @@ begin
       until iCoord = iFirst;
       Trace( aTarget, True );
     end;
+  MarkCollision;
 end;
 
 procedure TDRLGFXIO.Focus( aCoord : TCoord2D );
