@@ -204,9 +204,11 @@ TLevel = class(TLuaMapNode, ITextMap)
 
 implementation
 
-uses math, typinfo, vluatools, vluasystem,
+uses math, typinfo, vgenerics, vluatools, vluasystem,
      vdebug, vuid, dfplayer, drlua, drlbase, drlio, drlgfxio,
      drlspritemap, drlhudviews;
+
+type TProcessedUIDList = specialize TGArray<TUID>;
 
 procedure TLevel.ScriptLevel(script : string);
 begin
@@ -983,10 +985,11 @@ var iC          : TCoord2D;
     iDir        : TDirection;
     iKnockback  : Byte;
     iItemUID    : TUID;
-    iNode       : TNode;
+    iBeing      : TBeing;
     iChain      : TExplosionData;
     iPointDelay : Integer;
     iDistance   : Integer;
+    iProcessed  : TProcessedUIDList;
 
   function ShotContact( aTarget : TCoord2D ) : Boolean;
   var iRay : TVisionRay;
@@ -1009,69 +1012,70 @@ begin
 
   IO.Explosion( aDelay, aCoord, aData );
 
-  for iNode in Self do
-    if iNode is TBeing then
-      TBeing(iNode).KnockBacked := False;
+  iProcessed := TProcessedUIDList.Create;
+  try
+    ClearLightMapBits( [lfFresh] );
 
-  ClearLightMapBits( [lfFresh] );
+    if efChain in aData.Flags then
+    begin
+      iChain         := aData;
+      iChain.Range   := Max( aData.Range div 2 - 1, 1 );
+      iChain.SoundID := '';
+      iChain.Flags   := [];
+      iChain.Damage.Reset;
+      iChain.ContentID := 0;
+    end;
 
-  if efChain in aData.Flags then
-  begin
-    iChain         := aData;
-    iChain.Range   := Max( aData.Range div 2 - 1, 1 );
-    iChain.SoundID := '';
-    iChain.Flags   := [];
-    iChain.Damage.Reset;
-    iChain.ContentID := 0;
-  end;
-
-  if not aData.Damage.IsZero then
-  for iC in NewArea( aCoord, aData.Range ).Clamped( FArea ) do
-    if Distance( iC, aCoord ) <= aData.Range then
-      begin
-        if not ShotContact( iC ) then Continue;
-        iDamage   := aData.Damage.Roll;
-        iDistance := Distance( iC, aCoord );
-        if not (efNoDistanceDrop in aData.Flags) then
-          iDamage := iDamage div Max(1,(iDistance+1) div 2);
-        iDamage := Math.Floor( iDamage * aDamageMult );
-        DamageTile( iC, iDamage, aData.DamageType );
-        if Being[iC] <> nil then
-        with Being[iC] do
+    if not aData.Damage.IsZero then
+    for iC in NewArea( aCoord, aData.Range ).Clamped( FArea ) do
+      if Distance( iC, aCoord ) <= aData.Range then
         begin
-          if KnockBacked then Continue;
-          if (efSelfSafe in aData.Flags) and isActive then Continue;
+          if not ShotContact( iC ) then Continue;
+          iDamage   := aData.Damage.Roll;
+          iDistance := Distance( iC, aCoord );
           iPointDelay := aDelay + iDistance * aData.Delay;
-          if efChain in aData.Flags then
-            Explosion( iPointDelay, iC, iChain, nil, NewDirection(0) );
-          iKnockback := aData.Knockback;
-          if (efSelfKnockback in aData.Flags) and isActive then iKnockback := 2;
-          if iKnockback > 0 then
+          if not (efNoDistanceDrop in aData.Flags) then
+            iDamage := iDamage div Max(1,(iDistance+1) div 2);
+          iDamage := Math.Floor( iDamage * aDamageMult );
+          DamageTile( iC, iDamage, aData.DamageType );
+          iBeing := Being[iC];
+          if iBeing <> nil then
           begin
-            if aCoord = iC
-              then iDir := aKnockback
-              else iDir.CreateSmooth( aCoord, iC );
-            Knockback( iDir, iDamage / iKnockback );
+            if iProcessed.IndexOf( iBeing.UID ) >= 0 then Continue;
+            if (efSelfSafe in aData.Flags) and iBeing.isActive then Continue;
+            iProcessed.Push( iBeing.UID );
+            if efChain in aData.Flags then
+              Explosion( iPointDelay, iC, iChain, nil, NewDirection(0) );
+            iKnockback := aData.Knockback;
+            if (efSelfKnockback in aData.Flags) and iBeing.isActive then iKnockback := 2;
+            if iKnockback > 0 then
+            begin
+              if aCoord = iC
+                then iDir := aKnockback
+                else iDir.CreateSmooth( aCoord, iC );
+              iBeing.Knockback( iDir, iDamage / iKnockback );
+            end;
+            if (iBeing.Flags[BF_SPLASHIMMUNE]) and (aCoord <> iC) then Continue;
+            if (efSelfHalf in aData.Flags) and iBeing.isActive then iDamage := iDamage div 2;
+            if ( aItem <> nil ) and ( UIDs[ iItemUID ] = nil ) then aItem := nil;
+            iBeing.ApplyDamage( iDamage, Target_Torso, aData.DamageType, aItem, iPointDelay );
+            if ( aItem <> nil ) and ( UIDs[ iItemUID ] = nil ) then aItem := nil;
           end;
-          KnockBacked := True;
-          if (Flags[BF_SPLASHIMMUNE]) and (aCoord <> iC) then Continue;
-          if (efSelfHalf in aData.Flags) and isActive then iDamage := iDamage div 2;
-          if ( aItem <> nil ) and ( UIDs[ iItemUID ] = nil ) then aItem := nil;
-          ApplyDamage( iDamage, Target_Torso, aData.DamageType, aItem, iPointDelay );
-          if ( aItem <> nil ) and ( UIDs[ iItemUID ] = nil ) then aItem := nil;
+          if ( iDamage > 10 ) and ( Item[iC] <> nil ) and (not Item[iC].isFeature) then
+          begin
+            if efChain in aData.Flags then Explosion( iPointDelay, iC, iChain, nil, NewDirection(0) );
+            DestroyItem( iC );
+          end;
+          if (aData.ContentID <> 0) and isEmpty( iC, [ EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM ] ) then
+          begin
+            if (iDamage > 20) or ((efRandomContent in aData.Flags) and (Random(2) = 1)) then
+              Cell[iC] := aData.ContentID;
+          end;
         end;
-        if ( iDamage > 10 ) and ( Item[iC] <> nil ) and (not Item[iC].isFeature) then
-        begin
-          if efChain in aData.Flags then Explosion( iPointDelay, iC, iChain, nil, NewDirection(0) );
-          DestroyItem( iC );
-        end;
-        if (aData.ContentID <> 0) and isEmpty( iC, [ EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM ] ) then
-        begin
-          if (iDamage > 20) or ((efRandomContent in aData.Flags) and (Random(2) = 1)) then
-            Cell[iC] := aData.ContentID;
-        end;
-      end;
-  if aData.ContentID <> 0 then RecalcFluids;
+    if aData.ContentID <> 0 then RecalcFluids;
+  finally
+    FreeAndNil( iProcessed );
+  end;
 end;
 
 procedure TLevel.Shotgun( aSource, aTarget : TCoord2D; aDamage : TDiceRoll; aDamageMul : Single; aDamageType : TDamageType; aItem : TItem );
@@ -1085,8 +1089,9 @@ var iDiff,iC : TCoord2D;
     iKnock   : Integer;
     iFalloff : Integer;
     iDir     : TDirection;
-    iNode    : TNode;
     iItemUID : TUID;
+    iBeing   : TBeing;
+    iProcessed : TProcessedUIDList;
 
     procedure SendShotgunBeam( aSrc : TCoord2D; aTgt : TCoord2D );
     var iSRay  : TVisionRay;
@@ -1120,26 +1125,25 @@ begin
   iC.y := Round((iDiff.y*iRange)/iDist);
   iC   += aSource;
 
-  for iNode in Self do
-    if iNode is TBeing then
-      TBeing(iNode).KnockBacked := False;
+  iProcessed := TProcessedUIDList.Create;
+  try
+    for iTC in NewArea( iC, iSpread ) do
+      SendShotGunBeam( aSource, iTC );
 
-  for iTC in NewArea( iC, iSpread ) do
-    SendShotGunBeam( aSource, iTC );
-
-  for iTC in FArea do
-    if LightFlag[ iTC, lfDamage ] then
+    for iTC in FArea do
+      if LightFlag[ iTC, lfDamage ] then
       begin
         iDmg := Round( aDamage.Roll * (1.0-0.01*iFalloff*Max(0,Distance( aSource, iTC )-1)) );
         iDmg := Math.Floor( iDmg * aDamageMul );
 
         if iDmg < 1 then iDmg := 1;
         
-        if Being[ iTC ] <> nil then
-        with Being[ iTC ] do
+        iBeing := Being[ iTC ];
+        if iBeing <> nil then
         begin
-          if KnockBacked then Continue;
-          if isVisible then
+          if iProcessed.IndexOf( iBeing.UID ) >= 0 then Continue;
+          iProcessed.Push( iBeing.UID );
+          if iBeing.isVisible then
           begin
             if iDmg > 10 then IO.addMarkAnimation( 199, 0, iTC, iHSprite, Red, '*' )
               else if iDmg > 4 then IO.addMarkAnimation( 199, 0, iTC, iHSprite, LightRed, '*' )
@@ -1148,11 +1152,10 @@ begin
           if iKnock > 0 then
           begin
             iDir.CreateSmooth( aSource, iTC );
-            Knockback( iDir, iDmg / iKnock );
+            iBeing.Knockback( iDir, iDmg / iKnock );
           end;
-          KnockBacked := True;
           if ( aItem <> nil ) and ( UIDs[ iItemUID ] = nil ) then aItem := nil;
-          ApplyDamage( iDmg, Target_Torso, aDamageType, aItem, 0 );
+          iBeing.ApplyDamage( iDmg, Target_Torso, aDamageType, aItem, 0 );
           if ( aItem <> nil ) and ( UIDs[ iItemUID ] = nil ) then aItem := nil;
         end;
         
@@ -1160,7 +1163,10 @@ begin
         if isVisible( iTC ) and ( not isShotPassable( iTC ) ) then
           IO.addMarkAnimation( 199, 0, iTC, iHSprite, LightGray,'*' );
       end;
-  ClearLightMapBits([lfDamage]);
+  finally
+    FreeAndNil( iProcessed );
+    ClearLightMapBits([lfDamage]);
+  end;
 end;
 
 
@@ -2139,4 +2145,3 @@ end;
 
 
 end.
-
