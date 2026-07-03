@@ -99,10 +99,11 @@ function level:flood_monsters( params )
 	if not params.danger and not params.amount then 
 		error("level:flood_monsters expects at least danger or count!")
 	end
-	local flags  = params.flags  or { EF_NOBEINGS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN }
-	local dtotal = params.danger or 100000000
-	local count  = params.amount or 100000000 
-	local reqs   = params.reqs
+	local flags   = params.flags  or { EF_NOBEINGS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN }
+	local dtotal  = params.danger or 100000000
+	local count   = params.amount or 100000000 
+	local reqs    = params.reqs
+	local exclude = params.exclude
 	if params.no_groups then 
 		reqs = reqs or {}
 		reqs.is_group = false
@@ -124,6 +125,17 @@ function level:flood_monsters( params )
 	while (dtotal > 0) and (count > 0) do
 		local bp    = list:roll()
 		local where = level:random_empty_coord( flags, params.area )
+		if exclude and where and exclude:contains( where ) then
+			local limit = 10000
+			repeat
+				where = level:random_empty_coord( flags, params.area )
+				limit = limit - 1
+				if limit <= 0 then
+					core.warning("level:flood_monsters - could not find a spot outside exclude area, aborting!")
+					return
+				end
+			until ( not where ) or ( not exclude:contains( where ) )
+		end
 		if not where then 
 			core.warning("level:flood_monsters - no empty space found!")
 			break
@@ -157,6 +169,7 @@ function level:flood_monsters( params )
 		end
 	end
 end
+
 
 function level:flood_monster( params )
 	if not params.id or (not params.danger and not params.amount) then 
