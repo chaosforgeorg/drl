@@ -2506,7 +2506,7 @@ begin
       Break;
 
     // the isVisible check is only needed due to possibility of out of vision TIsaacRay
-    if iMisslePath.Done and iLevel.isVisible( iCoord ) then Break;
+    if isPlayer and iMisslePath.Done and iLevel.isVisible( iCoord ) then Break;
 
     if ( iSteps >= iMaxRange ) or aItem.Flags[ IF_INSTANTHIT ] then
     begin
