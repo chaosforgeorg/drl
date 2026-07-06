@@ -63,6 +63,7 @@ function aitk.scan( self )
     if target then
         return target.uid
     end
+    return false
 end
 
 function aitk.is_hunt_program_target( self, being )
@@ -333,7 +334,7 @@ function aitk.basic_scan( self )
     end
     local target = aitk.scan( self )
     if target then self.target = target end
-    return target 
+    return target
 end
 
 -- aitk.basic_pursue( self )
