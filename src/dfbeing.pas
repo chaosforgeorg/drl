@@ -2163,7 +2163,11 @@ begin
 
     if iArmorDamage > 0 then iArmor.CallHook( Hook_OnReceiveDamage, [ aDamage, aSource, iActive ] );
 
-    if (iOldDurability > 0) and iArmor.Flags[ IF_SHIELD ] then Exit;
+    if (iOldDurability > 0) and iArmor.Flags[ IF_SHIELD ] then 
+    begin
+      CallHook( Hook_OnAttacked, [ iActive, aSource ] );
+      Exit;
+    end;
 
     if (iArmor.Durability = 0) and (not iArmor.Flags[ IF_NODESTROY ]) then
     begin
