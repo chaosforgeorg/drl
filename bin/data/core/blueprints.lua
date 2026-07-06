@@ -265,6 +265,7 @@ core.register_blueprint "being"
 	tags        = { false, core.TTABLE, {} },
 	flags       = { false, core.TFLAGS, {} },
 	ai_type     = { true,  core.TSTRING }, -- TIDIN("ais")
+	ai_group    = { false, core.TSTRING, "demon" },
 	is_group    = false,
 	resist      = { false, core.TTABLE },
 
