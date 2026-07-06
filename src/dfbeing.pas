@@ -2163,7 +2163,11 @@ begin
 
     if iArmorDamage > 0 then iArmor.CallHook( Hook_OnReceiveDamage, [ aDamage, aSource, iActive ] );
 
-    if (iOldDurability > 0) and iArmor.Flags[ IF_SHIELD ] then Exit;
+    if (iOldDurability > 0) and iArmor.Flags[ IF_SHIELD ] then 
+    begin
+      CallHook( Hook_OnAttacked, [ iActive, aSource ] );
+      Exit;
+    end;
 
     if (iArmor.Durability = 0) and (not iArmor.Flags[ IF_NODESTROY ]) then
     begin
@@ -2502,7 +2506,7 @@ begin
       Break;
 
     // the isVisible check is only needed due to possibility of out of vision TIsaacRay
-    if iMisslePath.Done and iLevel.isVisible( iCoord ) then Break;
+    if isPlayer and iMisslePath.Done and iLevel.isVisible( iCoord ) then Break;
 
     if ( iSteps >= iMaxRange ) or aItem.Flags[ IF_INSTANTHIT ] then
     begin
