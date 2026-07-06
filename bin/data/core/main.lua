@@ -286,6 +286,7 @@ register_being         = core.register_storage( "beings", "being", function( bp 
 			assert(ai_proto ~= nil, "LUA: being["..bp.id.."] has unknown ai_type '"..bp.ai_type.."'!" )
 
 			local OnCreate = function( self )
+				self:add_property( "ai_group", bp.ai_group )
 				self:add_property( "ai_type", bp.ai_type )
 				if ai_proto.OnCreate then
 					ai_proto.OnCreate( self )
@@ -296,6 +297,11 @@ register_being         = core.register_storage( "beings", "being", function( bp 
 			bp.OnAction   = core.create_seq_function( ai_proto.OnAction, bp.OnAction )
 			bp.OnAction   = core.create_seq_function( aitk.OnAction, bp.OnAction )
 			bp.OnAttacked = core.create_seq_function( bp.OnAttacked, ai_proto.OnAttacked )
+		else
+			local OnCreate = function( self )
+				self:add_property( "ai_group", bp.ai_group )
+			end
+			bp.OnCreate = core.create_seq_function( OnCreate, bp.OnCreate )
 		end
 
 		if bp.weapon then
