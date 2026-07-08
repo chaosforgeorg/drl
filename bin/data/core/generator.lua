@@ -824,19 +824,26 @@ function generator.generate_archi_level( settings )
 		["+"] = generator.styles[ level.style ].door,
 	}
 
-	local blocks = data.blocks
-	local bsize  = data.size
-	local shift  = data.shift 
+	local blocks  = data.blocks
+	local bsize   = data.size
+	local shift   = data.shift
+	local no_overlap = data.no_overlap or false
+	local step    = no_overlap and bsize or (bsize - coord.UNIT)
 	if not blocks then
-		blocks = coord( math.floor( (MAXX-1) / (bsize.x-1) ), math.floor( (MAXY-1) / (bsize.y-1) ) )
+		if no_overlap then
+			blocks = coord( math.floor( MAXX / bsize.x ), math.floor( MAXY / bsize.y ) )
+		else
+			blocks = coord( math.floor( (MAXX-1) / (bsize.x-1) ), math.floor( (MAXY-1) / (bsize.y-1) ) )
+		end
 	end
+	local final_offset = (blocks - coord.UNIT) * step + bsize - coord.UNIT
 	if not shift then
-		shift = coord( MAXX, MAXY ) - blocks * (bsize - coord.UNIT)
+		shift = coord( MAXX, MAXY ) - final_offset
 		shift.x = math.max( 1, math.floor( shift.x / 2 ) )
 		shift.y = math.max( 1, math.floor( shift.y / 2 ) )
 	end
 	core.log( "blocks: "..blocks.x.."x"..blocks.y.." size: "..bsize.x.."x"..bsize.y.." shift: "..shift.x..","..shift.y )
-	local result = area( shift, shift + blocks * (bsize - coord.UNIT) )
+	local result = area( shift, shift + final_offset )
 
 	if not data.no_fill and not data.prefill then
 		level:fill( wall_cell )
@@ -867,7 +874,7 @@ function generator.generate_archi_level( settings )
 				else
 					block = table.random_pick( data )
 				end
-				local pos   = coord( (bx-1) * (bsize.x-1) + shift.x, (by-1) * (bsize.y-1) + shift.y )
+				local pos   = coord( (bx-1) * step.x + shift.x, (by-1) * step.y + shift.y )
 				local tile  = generator.tile_new( level, block, pure_translation, true )
 				if not stop_flip then
 					tile:flip_random()
@@ -961,6 +968,14 @@ function generator.remove_needless_doors()
 	local wall  = generator.styles[ level.style ].wall
 	local door  = generator.styles[ level.style ].door
 	local walls = generator.cell_lists[ CELLSET_WALLS ]
+	local did   = cells[ door ].nid
+
+	for c in area.FULL:edges() do
+		if level:get_cell( c ) == did then
+			level:set_cell( c, wall )
+		end
+	end
+
 	for c in level:each( door, area.FULL_SHRINKED ) do
 		local wcaround = level:cross_around( c, walls )
 		if wcaround > 2 then
