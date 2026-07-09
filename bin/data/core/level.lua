@@ -104,6 +104,7 @@ function level:flood_monsters( params )
 	local count   = params.amount or 100000000 
 	local reqs    = params.reqs
 	local exclude = params.exclude
+	local safe    = params.safe or 0
 	if params.no_groups then 
 		reqs = reqs or {}
 		reqs.is_group = false
@@ -122,19 +123,25 @@ function level:flood_monsters( params )
 		list = self:get_being_table( params.level, params.weights, reqs, params.diffmod )
 	end
 
+	local function invalid_coord( where )
+		if not where then return false end
+		if exclude and exclude:contains( where ) then return true end
+		return safe > 0 and player:distance_to( where ) <= safe
+	end
+
 	while (dtotal > 0) and (count > 0) do
 		local bp    = list:roll()
 		local where = level:random_empty_coord( flags, params.area )
-		if exclude and where and exclude:contains( where ) then
+		if invalid_coord( where ) then
 			local limit = 10000
 			repeat
 				where = level:random_empty_coord( flags, params.area )
 				limit = limit - 1
 				if limit <= 0 then
-					core.warning("level:flood_monsters - could not find a spot outside exclude area, aborting!")
+					core.warning("level:flood_monsters - could not find a valid spot, aborting!")
 					return
 				end
-			until ( not where ) or ( not exclude:contains( where ) )
+			until not invalid_coord( where )
 		end
 		if not where then 
 			core.warning("level:flood_monsters - no empty space found!")

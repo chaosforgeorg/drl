@@ -812,6 +812,9 @@ function generator.generate_archi_level( settings )
 	local stop_flip = data.stop_flip or false
 
 	layout = layout or data.layout
+	if type( layout ) == "table" then
+		layout = table.random_pick( layout )
+	end
 	if layout then
 		layout = string.gsub( layout, "%s+", "" )
 	end
