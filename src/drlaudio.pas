@@ -243,6 +243,7 @@ end;
 
 procedure TDRLAudio.Load;
 var i         : DWord;
+    iSize     : Int64;
     iStream   : TStream;
     iEntry    : TAudioEntry;
     iFileName : AnsiString;
@@ -267,10 +268,13 @@ begin
     try
       if (iEntry.DataFile <> nil) and iEntry.DataFile.FileExists(iFileName, iFolder) then
       begin
+        iSize := iEntry.DataFile.GetFileSize(iFileName, iFolder);
+        if (iSize < 0) or (QWord(iSize) > High(DWord)) then
+          raise EAudioException.Create('Invalid audio entry size for "'+iEntry.FileName+'"');
         iStream := iEntry.DataFile.GetFile(iFileName, iFolder);
         try
-          if iEntry.IsMusic then iEntry.Asset := FAudio.Load(iStream, iStream.Size, iEntry.FileName, auMusic)
-                            else iEntry.Asset := FAudio.Load(iStream, iStream.Size, iEntry.FileName, auSound);
+          if iEntry.IsMusic then iEntry.Asset := FAudio.Load(iStream, DWord(iSize), iEntry.FileName, auMusic)
+                            else iEntry.Asset := FAudio.Load(iStream, DWord(iSize), iEntry.FileName, auSound);
         finally
           iStream.Free;
         end;
