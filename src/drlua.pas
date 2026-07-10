@@ -310,6 +310,8 @@ var iProgBase    : DWord;
     DemoVersion       := False;
     if LuaSystem.RawDefined( 'DEMO' ) then
       DemoVersion := LuaSystem.Get( 'DEMO' );
+
+    Log( LOGINFO, 'BASE MODULE VERSION: '+VersionModule );
   end;
 
 begin
