@@ -81,7 +81,7 @@ end;
 implementation
 
 uses math, sysutils,
-     vutil, vtig, vtigio, vgltypes, vluasystem, vluavalue, vsound,
+     vutil, vtig, vtigio, vgltypes, vluasystem, vluavalue,
      dfhof,
      drlbase, drlgfxio, drlplayerview, drlhelpview, drlsettingsview, drlpagedview;
 
@@ -702,16 +702,16 @@ end;
 
 procedure TMainMenuView.OnCancel;
 begin
-  if (not Option_Sound) or (Sound = nil) or ( not Setting_MenuSound ) then Exit;
-  if Sound.SampleExists('menu.cancel') then Sound.PlaySample('menu.cancel');
+  if (not Option_Sound) or (not Setting_MenuSound) then Exit;
+  if IO.Audio.SampleExists('menu.cancel') then IO.Audio.PlaySound('menu.cancel');
 end;
 
 procedure SoundCallback( aEvent : TTIGSoundEvent; aParam : Pointer );
 begin
-  if (not Option_Sound) or (Sound = nil) or ( not Setting_MenuSound ) then Exit;
+  if (not Option_Sound) or (not Setting_MenuSound) then Exit;
   case aEvent of
-    VTIG_SOUND_CHANGE : if Sound.SampleExists('menu.change') then Sound.PlaySample('menu.change');
-    VTIG_SOUND_ACCEPT : if Sound.SampleExists('menu.pick')   then Sound.PlaySample('menu.pick');
+    VTIG_SOUND_CHANGE : if IO.Audio.SampleExists('menu.change') then IO.Audio.PlaySound('menu.change');
+    VTIG_SOUND_ACCEPT : if IO.Audio.SampleExists('menu.pick')   then IO.Audio.PlaySound('menu.pick');
   end;
 end;
 
