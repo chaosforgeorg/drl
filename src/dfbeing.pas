@@ -99,6 +99,7 @@ TBeing = class(TThing,IPathQuery)
     function ActionUse( aItem : TItem; aTarget : TCoord2D ) : Boolean;
     function ActionUnLoad( aItem : TItem; aDisassembleID : AnsiString = '' ) : Boolean;
     function ActionMove( aTarget : TCoord2D; aVisualMultiplier : Single = 1.0; aMoveCost : Integer = -1 ) : Boolean;
+    function ActionWait : Boolean;
     function ActionSwapPosition( aTarget : TCoord2D ) : Boolean;
     function ActionActive : boolean;
     function ActionAction( aTarget : TCoord2D ) : Boolean;
@@ -1231,6 +1232,14 @@ begin
   Exit( True );
 end;
 
+function TBeing.ActionWait : Boolean;
+begin
+  Dec( FSpeedCount, 1000 );
+  if IsPlayer and Setting_WaitSound then
+    IO.Audio.PlaySound( 'wait', 50 );
+  Result := True;
+end;
+
 function TBeing.ActionSwapPosition( aTarget : TCoord2D ) : Boolean;
 var iLevel  : TLevel;
 begin
@@ -1585,7 +1594,7 @@ begin
     COMMAND_WEAR         : Result := ActionWear( aCommand.Item );
     COMMAND_TAKEOFF      : Result := ActionTakeOff( aCommand.Slot );
     COMMAND_SWAP         : Result := ActionSwap( aCommand.Item, aCommand.Slot );
-    COMMAND_WAIT         : Dec( FSpeedCount, 1000 );
+    COMMAND_WAIT         : Result := ActionWait;
     COMMAND_ACTION       : Result := ActionAction( aCommand.Target );
     COMMAND_ENTER        : TLevel( Parent ).CallHook( Position, CellHook_OnExit );
     COMMAND_MELEE        : Attack( aCommand.Target, aCommand.Alt );

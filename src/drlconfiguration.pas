@@ -123,6 +123,14 @@ begin
     .SetName('Menu sounds')
     .SetDescription('Set to {!Disabled} to disable the chunky menu sounds.')
     ;
+  iGroup.AddToggle( 'heartbeat_sound', True )
+    .SetName('Heartbeat')
+    .SetDescription('Set to {!Disabled} to disable the low health heartbeat sound.')
+    ;
+  iGroup.AddToggle( 'wait_sound', True )
+    .SetName('Wait sound')
+    .SetDescription('Set to {!Disabled} to disable the wait action sound.')
+    ;
 
   iGroup := AddGroup( 'gameplay' );
   iGroup.AddToggle( 'always_random_name', False )

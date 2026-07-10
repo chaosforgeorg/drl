@@ -33,16 +33,19 @@ type
 
   TDRLAudio = class
   private
-    FLastMusic     : AnsiString;
-    FTime          : QWord;
-    FSoundEvents   : TSoundEventHeap;
-    FSoundCounts   : TSoundCountArray;
-    FCurrentData   : TVDataFile;
-    FAudioRegistry : TAudioRegistry;
-    FAudioLookup   : TAudioLookup;
-    FSourceLookup  : TAudioLookup;
-    FRoot          : AnsiString;
-    FAudio         : TAudio;
+    FLastMusic         : AnsiString;
+    FTime              : QWord;
+    FSoundEvents       : TSoundEventHeap;
+    FSoundCounts       : TSoundCountArray;
+    FCurrentData       : TVDataFile;
+    FAudioRegistry     : TAudioRegistry;
+    FAudioLookup       : TAudioLookup;
+    FSourceLookup      : TAudioLookup;
+    FRoot              : AnsiString;
+    FAudio             : TAudio;
+    FHeartbeatAsset    : TAudioAssetHandle;
+    FHeartbeatInstance : TAudioInstanceHandle;
+    FHeartbeatEnabled  : Boolean;
 
     procedure Register( const aID, aFileName : AnsiString; aMusic : Boolean; const aRoot : AnsiString );
     procedure SoundQuery( aKey, aValue : Variant );
@@ -50,6 +53,7 @@ type
     function FindAsset( const aID : AnsiString ) : TAudioAssetHandle;
     function SourceKey( const aEntry : TAudioEntry; const aFolder : AnsiString ) : AnsiString;
     function CountSound( aSoundID : Word ) : Byte;
+    procedure UpdateHeartbeat;
   public
     constructor Create;
     procedure Reset;
@@ -59,7 +63,7 @@ type
     function LoadBindingDataFile( aData : TVDataFile; const aFile, aRoot : AnsiString ) : Boolean;
     procedure Load;
     procedure Update( aMSec : DWord );
-    procedure PlaySound( const aSoundID : AnsiString ); overload;
+    procedure PlaySound( const aSoundID : AnsiString; aVolumePercent : Integer = 100 ); overload;
     procedure PlaySound( aSoundID : Word; aCoord : TCoord2D; aDelay : DWord = 0 );
     procedure PlayMusic( const aMusicID : AnsiString; aNotFound : Boolean = False );
     procedure PlayMusicOnce( const aMusicID : AnsiString );
@@ -72,7 +76,7 @@ type
 implementation
 
 uses sysutils, math, vdebug, vutil, vmath, vvector, vsdlaudio, vfmodaudio,
-     drlio, drlconfiguration, dfplayer, dfdata;
+     drlio, drlbase, drlconfiguration, dfplayer, dfdata;
 
 const MAX_SOUND_COUNT = 8;
       SOUND_DELAY_MIN = 10;
@@ -119,6 +123,10 @@ begin
   FTime        := 0;
   FRoot        := '';
   FLastMusic   := '';
+
+  FHeartbeatAsset    := 0;
+  FHeartbeatInstance := 0;
+  FHeartbeatEnabled  := True;
 end;
 
 procedure TDRLAudio.Reconfigure;
@@ -126,6 +134,7 @@ var iOldMusic : Integer;
 begin
   if FAudio = nil then Exit;
   iOldMusic := Setting_MusicVolume;
+  FHeartbeatEnabled := Configuration.GetBoolean('heartbeat_sound');
   Setting_MenuSound := Configuration.GetBoolean('menu_sound');
   Setting_MusicVolume := Configuration.GetInteger('volume_music');
   Setting_SoundVolume := Configuration.GetInteger('volume_sound');
@@ -279,6 +288,7 @@ begin
       FSourceLookup[iSource] := iEntry.Asset;
     FAudioRegistry[i] := iEntry;
   end;
+  FHeartbeatAsset := FindAsset( 'heartbeat' );
   IO.LoadProgress(100);
 end;
 
@@ -323,6 +333,28 @@ begin
   Result := 1;
 end;
 
+procedure TDRLAudio.UpdateHeartbeat;
+var iVolume : Integer;
+begin
+  if (DRL.State <> DSPlaying) or (FAudio = nil) or (FHeartbeatAsset = 0) or
+     not FHeartbeatEnabled or (not Option_Sound) or SoundOff or
+     (Setting_SoundVolume = 0) or (Player = nil) or Player.Dead or
+     (Player.HP * 2 >= Player.HPMax) then
+  begin
+    if (FAudio <> nil) and (FHeartbeatInstance <> 0) then
+      FAudio.Stop( FHeartbeatInstance );
+    FHeartbeatInstance := 0;
+    Exit;
+  end;
+
+  iVolume := Round( 200.0 * (Player.HPMax - 2 * Player.HP) / Max(Player.HPMax - 2, 1) );
+  iVolume := Clamp( iVolume, 0, 100 );
+  if not FAudio.IsPlaying( FHeartbeatInstance ) then
+    FHeartbeatInstance := FAudio.Play( FHeartbeatAsset, iVolume, True )
+  else
+    FAudio.SetInstanceVolume( FHeartbeatInstance, iVolume );
+end;
+
 procedure TDRLAudio.Update( aMSec : DWord );
 var iEvent : TSoundEvent;
 begin
@@ -334,14 +366,15 @@ begin
     PlaySound( iEvent.SoundID, iEvent.Coord );
   end;
   if FAudio <> nil then FAudio.Update(aMSec);
+  UpdateHeartbeat;
 end;
 
-procedure TDRLAudio.PlaySound( const aSoundID : AnsiString );
+procedure TDRLAudio.PlaySound( const aSoundID : AnsiString; aVolumePercent : Integer );
 var iAsset : TAudioAssetHandle;
 begin
   if (FAudio = nil) or not Option_Sound or SoundOff or (Setting_SoundVolume = 0) then Exit;
   iAsset := FindAsset(aSoundID);
-  if iAsset <> 0 then FAudio.Play(iAsset);
+  if iAsset <> 0 then FAudio.Play(iAsset, aVolumePercent);
 end;
 
 procedure TDRLAudio.PlaySound( aSoundID : Word; aCoord : TCoord2D; aDelay : DWord );

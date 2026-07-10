@@ -154,6 +154,7 @@ const
   Setting_EmptyConfirm     : Boolean = False;
   Setting_UnlockAll        : Boolean = False;
   Setting_MenuSound        : Boolean = False;
+  Setting_WaitSound        : Boolean = True;
   Setting_MouseEdgePan     : Boolean = False;
   Setting_Mouse            : Boolean = True;
   Setting_GamepadRumble    : Boolean = True;
