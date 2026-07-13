@@ -1889,7 +1889,7 @@ begin
   end;
   if iLevel.isAlive( iUID ) then
   begin
-    if Result and aMoveOnKill and ( iPosition = Position ) then
+    if Result and aMoveOnKill and ( iPosition = Position ) and ( TryMove( aWhere ) = MoveOk ) then
       ActionMove( aWhere, 1.0, 0 )
     else
       if IsPlayer
@@ -2502,6 +2502,12 @@ begin
             iBeing.ApplyDamage( iDamage, Target_Torso, aItem.DamageType, aItem, aSequence );
         end;
 
+        if ( UIDs[ iItemUID ] = nil ) or ( UIDs[ iThisUID ] = nil ) then
+        begin
+          vdebug.Log( LOGWARN, 'Item/Self destroyed during SendMissile!');
+          Exit( False );
+        end;
+
         if not aItem.Flags[ IF_PIERCEHIT ] then
         begin
           aTarget := iCoord;
@@ -2526,12 +2532,16 @@ begin
     if UIDs[ iItemUID ] = nil then
     begin
       aItem := nil;
-      vdebug.Log( LOGWARN, 'Item destroyed duirng SendMissile!');
+      vdebug.Log( LOGWARN, 'Item destroyed during SendMissile!');
       Exit( False );
     end;
   until false;
 
-  if UIDs[ iThisUID ] = nil then Exit( False );
+  if ( UIDs[ iItemUID ] = nil ) or ( UIDs[ iThisUID ] = nil ) then
+  begin
+    vdebug.Log( LOGWARN, 'Item/Self destroyed during SendMissile!');
+    Exit( False );
+  end;
 
   if ( not aItem.Flags[ IF_SERIESSOUND ] ) or ( aShotCount = 0 ) then
   begin

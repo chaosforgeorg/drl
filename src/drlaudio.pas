@@ -79,8 +79,7 @@ uses sysutils, math, vdebug, vutil, vmath, vvector, vsdlaudio, vfmodaudio,
      drlio, drlbase, drlconfiguration, dfplayer, dfdata;
 
 const MAX_SOUND_COUNT = 8;
-      SOUND_DELAY_MIN = 10;
-      SOUND_DELAY_MAX = 50;
+      SOUND_DELAY_MIN = 75;
 
 function EventCompare( const aLeft, aRight : TSoundEvent ) : Integer;
 begin
@@ -386,6 +385,7 @@ var iEvent    : TSoundEvent;
     iCount    : Byte;
     iDistance : Integer;
     iVolume   : Integer;
+    iDelay    : Integer;
 begin
   if (aSoundID = 0) or (FAudio = nil) or not Option_Sound or SoundOff or (Setting_SoundVolume = 0) then Exit;
   if aDelay > 0 then
@@ -401,7 +401,8 @@ begin
   if iCount >= MAX_SOUND_COUNT then Exit;
   if iCount > 1 then
   begin
-    PlaySound( aSoundID, aCoord, SOUND_DELAY_MIN + Random(SOUND_DELAY_MAX - SOUND_DELAY_MIN + 1) );
+    iDelay := SOUND_DELAY_MIN * ( iCount - 1 ) + Random( 25 );
+    PlaySound( aSoundID, aCoord, iDelay );
     Exit;
   end;
   iDistance := Distance(aCoord, Player.Position);
