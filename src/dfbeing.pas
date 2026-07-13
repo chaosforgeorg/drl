@@ -1889,7 +1889,7 @@ begin
   end;
   if iLevel.isAlive( iUID ) then
   begin
-    if Result and aMoveOnKill and ( iPosition = Position ) then
+    if Result and aMoveOnKill and ( iPosition = Position ) and ( TryMove( aWhere ) = MoveOk ) then
       ActionMove( aWhere, 1.0, 0 )
     else
       if IsPlayer
