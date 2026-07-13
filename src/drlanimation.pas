@@ -232,7 +232,7 @@ end;
 
 destructor TGFXMissileAnimation.Destroy;
 begin
-  if FEmitter >= 0 then
+  if ( FEmitter >= 0 ) and ( DRL.Particles.Engine <> nil ) then
     DRL.Particles.Engine.EmitStop( FEmitter );
   inherited Destroy;
 end;
@@ -537,7 +537,8 @@ end;
 
 destructor TGFXScreenMoveAnimation.Destroy;
 begin
-  SpriteMap.NewShift := FDest;
+  if SpriteMap <> nil then
+    SpriteMap.NewShift := FDest;
   CCurrent := nil;
   inherited Destroy;
 end;
@@ -584,7 +585,8 @@ end;
 
 destructor TGFXCellAnimation.Destroy;
 begin
-  DRL.Level.LightFlag[ FCoord, LFANIMATING ] := False;
+  if DRL.Level <> nil then
+    DRL.Level.LightFlag[ FCoord, LFANIMATING ] := False;
   inherited Destroy;
 end;
 
@@ -737,7 +739,8 @@ begin
     iBeing := UIDs.Get( FUID ) as TBeing;
     if iBeing <> nil then iBeing.AnimCount := Max( 0, iBeing.AnimCount - 1 );
   end;
-  DRL.Level.LightFlag[ FCoord, LFCORPSING ] := False;
+  if DRL.Level <> nil then
+    DRL.Level.LightFlag[ FCoord, LFCORPSING ] := False;
   inherited Destroy;
 end;
 constructor TGFXScreenShakeAnimation.Create( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection );
