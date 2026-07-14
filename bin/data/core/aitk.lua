@@ -417,6 +417,22 @@ function aitk.basic_on_attacked( self, target )
     end
 end
 
+function aitk.disciplined_on_attacked( self, target )
+    if self == target then return end
+    if self:has_property("boredom") then self.boredom = 0 end
+    if target then 
+        if target:has_property("master") then return end
+        if target.id == self.id then return end
+        if self.ai_group == target.ai_group then return end
+        self.target = target.uid
+        if self.ai_state == "idle" or ( self.ai_state == "pursue" and self.move_to ~= target.position ) then
+            self.move_to = target.position
+            self:path_find( self.move_to, 10, 40 )
+            self.ai_state = "pursue"
+        end
+    end
+end
+
 -- aitk.basic_smart_idle( self )
 -- returns next_state
 function aitk.basic_smart_idle( self )
