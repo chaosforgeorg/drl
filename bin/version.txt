@@ -6,6 +6,7 @@
 [fix] -- GH#289: Sound - music wont crash if too many sounds are played simultaneously
 [fix] -- GJ#317: Sound - multiple sounds played at the same time will be handled gracefully
 [fix] -- GJ#342: Game - fixed a class of bugs related to explosion/shotgun or explosion/explosion order
+[fix] -- GD#332: Visual - fixed rendering of glyphs on some Radeon/Intel cards
 
 0.10.9
 [new] -- GJ#356: UI - targeting reticule size larger for larger enemies
