@@ -3471,23 +3471,28 @@ begin
 end;
 
 function lua_being_set_marker( L: Plua_State ): Integer; cdecl;
-var iState  : TDRLLuaState;
-    iBeing  : TBeing;
-    iCoord  : TCoord2D;
-    iSprite : TSprite;
-    iTable  : TLuaTable;
+var iState     : TDRLLuaState;
+    iBeing     : TBeing;
+    iTarget    : TBeing;
+    iCoord     : TCoord2D;
+    iSprite    : TSprite;
+    iTable     : TLuaTable;
+    iTargetUID : TUID;
 begin
   iState.Init(L);
   iBeing := iState.ToObject(1) as TBeing;
   if iBeing = nil then Exit( 0 );
   iCoord := iState.ToPosition( 2 );
+  iTarget := iState.ToObjectOrNil( 4 ) as TBeing;
+  iTargetUID := 0;
+  if iTarget <> nil then iTargetUID := iTarget.UID;
   if not iState.IsTable( 3 ) then Exit( 0 );
   FillChar( iSprite, SizeOf( iSprite), 0 );
   Initialize( iSprite );
   iTable := iState.ToTable( 3 );
   try
     if ReadSprite( iTable, iSprite )
-      then DRL.Level.Markers.Add( iCoord, iSprite, iBeing.UID )
+      then DRL.Level.Markers.Add( iCoord, iSprite, iBeing.UID, iTargetUID )
       else iState.Error('bad sprite data passed to being:set_marker');
   finally
     FreeAndNil ( iTable );

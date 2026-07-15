@@ -59,7 +59,8 @@ type
   procedure PushSpriteItem( aPos : TVec2i; const aSprite : TSprite; aLight : Byte );
   procedure PushBeingOverlay( aPos : TVec2i; aBeing : TBeing; aLight : Byte );
   procedure PushSpriteDoodad( aCoord : TCoord2D; const aSprite : TSprite; aLight : Integer = -1; aZOffset : Integer = 0 );
-  procedure PushSpriteFX( aCoord : TCoord2D; const aSprite : TSprite; aTime : Integer = -1; aZOffset : Integer = 0 );
+  procedure PushSpriteFX( aCoord : TCoord2D; const aSprite : TSprite; aTime : Integer = -1; aZOffset : Integer = 0 ); overload;
+  procedure PushSpriteFX( aPos : TVec2i; const aSprite : TSprite; aTime : Integer = -1; aZOffset : Integer = 0 ); overload;
   procedure PushSpriteFXRotated( aPos : TVec2i; const aSprite : TSprite; aRotation : Single );
   procedure PushSpriteTerrain( aCoord : TCoord2D; const aSprite : TSprite; aZ : Integer; aTSX : Single = 0; aTSY : Single = 0 );
   function ShiftValue( aFocus : TCoord2D ) : TVec2i;
@@ -132,7 +133,7 @@ var SpriteMap : TDRLSpriteMap = nil;
 
 implementation
 
-uses vmath, viotypes, vvision, vgl3library,
+uses vmath, viotypes, vvision, vgl3library, vuid,
      drlio, drlgfxio, drlbase,
      dfmap, dfthing, dfitem, dfplayer, drlmarkers, drldecals;
 
@@ -357,10 +358,12 @@ begin
 end;
 
 procedure TDRLSpriteMap.Update ( aTime : DWord; aProjection : TMatrix44 ) ;
-var iShift : Single;
-    iPixel : Integer;
-    iIO    : TDRLGFXIO;
-    iMark  : TMarker;
+var iShift    : Single;
+    iPixel    : Integer;
+    iIO       : TDRLGFXIO;
+    iMark     : TMarker;
+    iTarget   : TBeing;
+    iPosition : TVec2i;
 begin
   iIO := IO as TDRLGFXIO;
   FShift := FNewShift;
@@ -384,8 +387,22 @@ begin
   PushObjects( aTime );
 
   for iMark in DRL.Level.Markers.Data do
-    if DRL.Level.isVisible( iMark.Coord ) then
-      PushSpriteFX( iMark.Coord, iMark.Sprite, FTimer, -1 );
+    if iMark.Target = 0 then
+    begin
+      if DRL.Level.isVisible( iMark.Coord ) then
+        PushSpriteFX( iMark.Coord, iMark.Sprite, FTimer, -1 );
+    end
+    else
+    begin
+      iTarget := UIDs[ iMark.Target ] as TBeing;
+      if ( iTarget <> nil ) and ( not iTarget.Dead ) and DRL.Level.isVisible( iTarget.Position ) then
+      begin
+        iPosition := Vec2i( iTarget.Position.X-1, iTarget.Position.Y-1 ) * FSpriteEngine.Grid;
+        if iTarget.AnimCount > 0 then
+          iIO.getUIDPosition( iTarget.UID, iPosition );
+        PushSpriteFX( iPosition, iMark.Sprite, FTimer, -1 );
+      end;
+    end;
 
   DrawMarker;
 end;
@@ -1024,7 +1041,12 @@ end;
 
 procedure TDRLSpriteMap.PushSpriteFX( aCoord : TCoord2D; const aSprite : TSprite; aTime : Integer = -1; aZOffset : Integer = 0 ) ;
 begin
-  PushSprite( Vec2i( (aCoord.X-1) * FSpriteEngine.Grid.X, (aCoord.Y-1) * FSpriteEngine.Grid.Y ), GetSprite( aSprite, ZeroCoord2D, aTime ), 255, DRL_Z_FX + aZOffset );
+  PushSpriteFX( Vec2i( (aCoord.X-1) * FSpriteEngine.Grid.X, (aCoord.Y-1) * FSpriteEngine.Grid.Y ), aSprite, aTime, aZOffset );
+end;
+
+procedure TDRLSpriteMap.PushSpriteFX( aPos : TVec2i; const aSprite : TSprite; aTime : Integer = -1; aZOffset : Integer = 0 ) ;
+begin
+  PushSprite( aPos, GetSprite( aSprite, ZeroCoord2D, aTime ), 255, DRL_Z_FX + aZOffset );
 end;
 
 procedure TDRLSpriteMap.PushSpriteTerrain( aCoord : TCoord2D; const aSprite : TSprite; aZ : Integer; aTSX : Single; aTSY : Single ) ;
