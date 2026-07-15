@@ -1772,7 +1772,7 @@ begin
     iLevel.CallHook( Hook_OnKill,[ Self, aKiller, aWeapon, iMeleeKill ] );
   end;
 
-  if not aOverkill then
+  if not aOverkill and not ( CF_BLOCKMOVE in Cells[ iLevel.Floor[ FPosition ] ].Flags ) then
   try
     if Flags[ BF_UNLOADONKILL ] and Assigned( FInv.Slot[ efWeapon ] ) then
     begin
