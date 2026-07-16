@@ -221,6 +221,7 @@ var
   HARDSPRITE_SHIELD_COUNT     : DWord = 0;
   HARDSPRITE_DECAL_BLOOD      : array[0..3] of DWord = ( 0,0,0,0 );
   HARDSPRITE_DECAL_WALL_BLOOD : array[0..3] of DWord = ( 0,0,0,0 );
+  HARDEMITTER_BLOOD           : DWord = 0;
 
 var
   SoundOff  : boolean = False;

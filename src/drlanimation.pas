@@ -84,6 +84,19 @@ private
   FSoundID  : DWord;
 end;
 
+{ TGFXParticleBurstAnimation }
+
+TGFXParticleBurstAnimation = class(TAnimation)
+  constructor Create( aDelay : DWord; aEmitterID : Word; aPosition : TCoord2D;
+    aDirection : TDirection; aCount : Word );
+  procedure OnStart; override;
+private
+  FEmitterID : Word;
+  FPosition  : TCoord2D;
+  FDirection : TDirection;
+  FCount     : Word;
+end;
+
 { TGFXBlinkAnimation }
 
 TGFXBlinkAnimation = class(TAnimation)
@@ -389,6 +402,30 @@ end;
 procedure TSoundEventAnimation.OnStart;
 begin
   IO.Audio.PlaySound( FSoundID, FPosition );
+end;
+
+{ TGFXParticleBurstAnimation }
+
+constructor TGFXParticleBurstAnimation.Create( aDelay : DWord; aEmitterID : Word;
+  aPosition : TCoord2D; aDirection : TDirection; aCount : Word );
+begin
+  inherited Create( 1, aDelay, 0 );
+  FEmitterID := aEmitterID;
+  FPosition  := aPosition;
+  FDirection := aDirection;
+  FCount     := aCount;
+  FBlocking  := False;
+end;
+
+procedure TGFXParticleBurstAnimation.OnStart;
+var iDirection : TVec2f;
+begin
+  if ( DRL = nil ) or ( DRL.Particles = nil ) then Exit;
+  iDirection.Init( FDirection.X, FDirection.Y );
+  DRL.Particles.SpawnBurst( FEmitterID,
+    Vec3f( ( FPosition.X - 1 ) * 32 + 16, ( FPosition.Y - 1 ) * 32 + 16, 0 ),
+    iDirection, FCount, HARDSPRITE_DECAL_BLOOD,
+    NewFloatRange( 0.25, 1.0 ), NewFloatRange( 0.5, 1.0 ) );
 end;
 
 { TGFXBlinkAnimation }

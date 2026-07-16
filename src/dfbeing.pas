@@ -43,7 +43,7 @@ TBeing = class(TThing,IPathQuery)
     procedure Reload( aAmmoItem : TItem; aSingle : Boolean; aWeapon : TItem = nil ); 
     function Resurrect( aRange : Integer ) : TBeing;
     procedure Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer ); virtual;
-    procedure Blood( aFrom : TDirection; aAmount : LongInt );
+    procedure Blood( aFrom : TDirection; aAmount : LongInt; aDelay : Integer = 0 );
     function Attack( aWhere : TCoord2D; aMoveOnKill : Boolean; aWeapon : TItem = nil ) : Boolean; overload;
     function Attack( aTarget : TBeing; aSecond : Boolean = False; aWeapon : TItem = nil ) : Boolean; overload;
     function meleeWeaponSlot : TEqSlot;
@@ -130,6 +130,7 @@ TBeing = class(TThing,IPathQuery)
 
   protected
     procedure BloodDecal( aFrom : TDirection; aAmount : LongInt );
+    procedure BloodSpray( aFrom : TDirection; aAmount : LongInt; aDelay : Integer );
     procedure LuaLoad( Table : TLuaTable ); override;
     // private
     function FireRanged( aTarget : TCoord2D; aGun : TItem; aAlt : Boolean = False; aDelay : Integer = 0 ) : Boolean;
@@ -1643,10 +1644,11 @@ begin
 end;
 
 
-procedure TBeing.Blood( aFrom : TDirection; aAmount : LongInt );
-var iCount : Integer;
-    iCoord : TCoord2D;
-    iLevel : TLevel;
+procedure TBeing.Blood( aFrom : TDirection; aAmount : LongInt; aDelay : Integer );
+var iCount  : Integer;
+    iCoord  : TCoord2D;
+    iAmount : LongInt;
+    iLevel  : TLevel;
 begin
   if BF_NOBLEED in FFlags then Exit;
   iLevel := TLevel(Parent);
@@ -1662,7 +1664,15 @@ begin
       until iLevel.isProperCoord( iCoord );
       iLevel.Blood( iCoord );
     end;
-  BloodDecal( aFrom, Clamp( aAmount + Random( aAmount ), 1, 12 ) );
+  iAmount := Clamp( aAmount + Random( aAmount ), 1, 12 );
+  if GraphicsVersion and ( not IsPlayer ) and isVisible and ( HARDEMITTER_BLOOD <> 0 )
+    then BloodSpray( aFrom, iAmount * 2, aDelay )
+    else BloodDecal( aFrom, iAmount );
+end;
+
+procedure TBeing.BloodSpray( aFrom : TDirection; aAmount : LongInt; aDelay : Integer );
+begin
+  IO.addParticleBurstAnimation( aDelay, HARDEMITTER_BLOOD, FPosition, aFrom, aAmount );
 end;
 
 procedure TBeing.BloodDecal( aFrom : TDirection; aAmount : LongInt );
@@ -1796,7 +1806,7 @@ begin
 
   iBlood := aBloodAmount;
   if aOverkill then iBlood *= 3;
-  Blood(iDir,iBlood);
+  Blood( iDir, iBlood, aDelay );
 
   CallHook( Hook_OnDie, [ aOverkill, iMeleeKill ] );
 
@@ -2209,7 +2219,7 @@ begin
     if iActive <> nil then
       iDirection.Create( iActive.FPosition, FPosition )
     else iDirection.code := 5;
-    Blood( iDirection, aDamage div 7 );
+    Blood( iDirection, aDamage div 7, aDelay );
   end;
 
   case aDamageType of

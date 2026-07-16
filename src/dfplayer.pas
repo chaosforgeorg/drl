@@ -531,7 +531,7 @@ begin
     FKilledMelee       := aKiller.MeleeAttack;
   end;
 
-  Blood( NewDirection(0,0),15 );
+  Blood( NewDirection(0,0), 15, aDelay );
   iLevel.DropCorpse( FPosition, GetLuaProtoValue('corpse') );
 
   if aOverkill

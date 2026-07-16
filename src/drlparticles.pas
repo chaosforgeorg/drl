@@ -28,6 +28,8 @@ type
 
     // Direct emitter API (no binding, caller manages lifetime)
     function  AddEmitterDirect( aNID : Word; aWorldPos : TVec3f ) : Integer;
+    procedure SpawnBurst( aNID : Word; aWorldPos : TVec3f; aDirection : TVec2f;
+      aCount : Word; const aDecalSprites : array of DWord; aDistanceScale, aArcScale : TFloatRange );
 
     // Save/Load
     procedure WriteToStream( aStream : TStream );
@@ -65,12 +67,18 @@ begin
 end;
 
 procedure DecalCallback( const aPosition : TVec3f; aDecalSprite : DWord );
-var iPos : TVec2i;
+var iPos   : TVec2i;
+    iCoord : TCoord2D;
 begin
-  iPos.X := Round( aPosition.X );
-  iPos.Y := Round( aPosition.Y );
-  if ( SpriteMap <> nil ) and ( DRL <> nil ) then
-    DRL.Level.Decals.Add( iPos, aDecalSprite );
+  if ( SpriteMap = nil ) or ( DRL = nil ) or ( DRL.Level = nil ) then Exit;
+  iCoord := NewCoord2D( ( Round( aPosition.X ) + 16 ) div 32,
+    ( Round( aPosition.Y ) + 16 ) div 32 );
+  if not DRL.Level.isProperCoord( iCoord ) then Exit;
+  if DRL.Level.cellFlagSet( iCoord, CF_LIQUID ) then Exit;
+  if DRL.Level.cellFlagSet( iCoord, CF_BLOCKMOVE ) then Exit;
+  iPos.X := Round( aPosition.X ) + 16;
+  iPos.Y := Round( aPosition.Y ) + 16;
+  DRL.Level.Decals.Add( iPos, aDecalSprite );
 end;
 
 { TParticleStore }
@@ -252,6 +260,54 @@ begin
   iData := GetEmitterData( aNID );
   if iData = nil then Exit;
   Result := FEngine.EmitStart( iData, aWorldPos );
+end;
+
+procedure TParticleStore.SpawnBurst( aNID : Word; aWorldPos : TVec3f; aDirection : TVec2f;
+  aCount : Word; const aDecalSprites : array of DWord; aDistanceScale, aArcScale : TFloatRange );
+var iData              : PParticleEmitterData;
+    iBurstData         : TParticleEmitterData;
+    iDirection         : TVec3f;
+    iParticleDirection : TVec3f;
+    iArc               : Single;
+    iLength            : Single;
+    iParticle          : Word;
+    iScale             : Single;
+    iSpeed             : Single;
+begin
+  if ( aNID = 0 ) or ( aCount = 0 ) or ( FEngine = nil ) then Exit;
+  iData := GetEmitterData( aNID );
+  if iData = nil then Exit;
+
+  iDirection := iData^.Direction;
+  iLength := Sqrt( Sqr( aDirection.X ) + Sqr( aDirection.Y ) );
+  if iLength > 0 then
+  begin
+    iDirection.X := aDirection.X / iLength;
+    iDirection.Y := aDirection.Y / iLength;
+  end
+  else
+  begin
+    iDirection.X := 0;
+    iDirection.Y := 0;
+  end;
+
+  for iParticle := 1 to aCount do
+  begin
+    iBurstData := iData^;
+    iArc := aArcScale.Random;
+    iScale := aDistanceScale.Random;
+    iSpeed := iData^.SpeedRange.Random;
+    iBurstData.PositionOffset.Z := iData^.PositionOffset.Z * iArc;
+    iBurstData.AccelRange.Min.Z := iData^.AccelRange.Min.Z * iArc;
+    iBurstData.AccelRange.Max.Z := iData^.AccelRange.Max.Z * iArc;
+    iBurstData.SpeedRange := NewFloatRange( iSpeed * iScale, iSpeed * iScale );
+    iParticleDirection := iDirection;
+    if iScale > 0 then
+      iParticleDirection.Z := iDirection.Z * iArc / iScale;
+    if Length( aDecalSprites ) > 0 then
+      iBurstData.DecalSprite := aDecalSprites[ Random( Length( aDecalSprites ) ) ];
+    FEngine.SpawnBurst( @iBurstData, aWorldPos, iParticleDirection, 1 );
+  end;
 end;
 
 function TParticleStore.RemoveEmitter( aNID : Word; aUID : TUID ) : Boolean;
