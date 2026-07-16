@@ -29,7 +29,8 @@ type
     // Direct emitter API (no binding, caller manages lifetime)
     function  AddEmitterDirect( aNID : Word; aWorldPos : TVec3f ) : Integer;
     procedure SpawnBurst( aNID : Word; aWorldPos : TVec3f; aDirection : TVec2f;
-      aCount : Word; const aDecalSprites : array of DWord; aDistanceScale, aArcScale : TFloatRange );
+      aCount : Word; const aDecalSprites : array of DWord; aDistanceScale, aArcScale : TFloatRange;
+      aSpreadScale : Single );
 
     // Save/Load
     procedure WriteToStream( aStream : TStream );
@@ -263,7 +264,8 @@ begin
 end;
 
 procedure TParticleStore.SpawnBurst( aNID : Word; aWorldPos : TVec3f; aDirection : TVec2f;
-  aCount : Word; const aDecalSprites : array of DWord; aDistanceScale, aArcScale : TFloatRange );
+  aCount : Word; const aDecalSprites : array of DWord; aDistanceScale, aArcScale : TFloatRange;
+  aSpreadScale : Single );
 var iData              : PParticleEmitterData;
     iBurstData         : TParticleEmitterData;
     iDirection         : TVec3f;
@@ -300,6 +302,7 @@ begin
     iBurstData.PositionOffset.Z := iData^.PositionOffset.Z * iArc;
     iBurstData.AccelRange.Min.Z := iData^.AccelRange.Min.Z * iArc;
     iBurstData.AccelRange.Max.Z := iData^.AccelRange.Max.Z * iArc;
+    iBurstData.SpreadAngle := iData^.SpreadAngle * aSpreadScale;
     iBurstData.SpeedRange := NewFloatRange( iSpeed * iScale, iSpeed * iScale );
     iParticleDirection := iDirection;
     if iScale > 0 then

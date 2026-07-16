@@ -88,13 +88,15 @@ end;
 
 TGFXParticleBurstAnimation = class(TAnimation)
   constructor Create( aDelay : DWord; aEmitterID : Word; aPosition : TCoord2D;
-    aDirection : TDirection; aCount : Word );
+    aDirection : TDirection; aCount : Word; aDistanceScale, aSpreadScale : Single );
   procedure OnStart; override;
 private
-  FEmitterID : Word;
-  FPosition  : TCoord2D;
-  FDirection : TDirection;
-  FCount     : Word;
+  FEmitterID     : Word;
+  FPosition      : TCoord2D;
+  FDirection     : TDirection;
+  FCount         : Word;
+  FDistanceScale : Single;
+  FSpreadScale   : Single;
 end;
 
 { TGFXBlinkAnimation }
@@ -407,14 +409,17 @@ end;
 { TGFXParticleBurstAnimation }
 
 constructor TGFXParticleBurstAnimation.Create( aDelay : DWord; aEmitterID : Word;
-  aPosition : TCoord2D; aDirection : TDirection; aCount : Word );
+  aPosition : TCoord2D; aDirection : TDirection; aCount : Word;
+  aDistanceScale, aSpreadScale : Single );
 begin
   inherited Create( 1, aDelay, 0 );
-  FEmitterID := aEmitterID;
-  FPosition  := aPosition;
-  FDirection := aDirection;
-  FCount     := aCount;
-  FBlocking  := False;
+  FEmitterID     := aEmitterID;
+  FPosition      := aPosition;
+  FDirection     := aDirection;
+  FCount         := aCount;
+  FDistanceScale := aDistanceScale;
+  FSpreadScale   := aSpreadScale;
+  FBlocking      := False;
 end;
 
 procedure TGFXParticleBurstAnimation.OnStart;
@@ -425,7 +430,8 @@ begin
   DRL.Particles.SpawnBurst( FEmitterID,
     Vec3f( ( FPosition.X - 1 ) * 32 + 16, ( FPosition.Y - 1 ) * 32 + 16, 0 ),
     iDirection, FCount, HARDSPRITE_DECAL_BLOOD,
-    NewFloatRange( 0.25, 1.0 ), NewFloatRange( 0.5, 1.0 ) );
+    NewFloatRange( 0.25 * FDistanceScale, FDistanceScale ),
+    NewFloatRange( 0.5, 1.0 ), FSpreadScale );
 end;
 
 { TGFXBlinkAnimation }

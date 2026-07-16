@@ -42,7 +42,7 @@ type
     procedure addMarkAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aColor : Byte; aPic : Char ); override;
     procedure addFXAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite ); override;
     procedure addParticleBurstAnimation( aDelay : DWord; aEmitterID : Word; aPosition : TCoord2D;
-      aDirection : TDirection; aCount : Word ); override;
+      aDirection : TDirection; aCount : Word; aDistanceScale, aSpreadScale : Single ); override;
     procedure addSoundAnimation( aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord ); override;
     procedure addRumbleAnimation( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord ); override;
     function getUIDPosition( aUID : TUID; var aPosition : TVec2i ) : Boolean;
@@ -548,12 +548,13 @@ begin
 end;
 
 procedure TDRLGFXIO.addParticleBurstAnimation( aDelay : DWord; aEmitterID : Word;
-  aPosition : TCoord2D; aDirection : TDirection; aCount : Word );
+  aPosition : TCoord2D; aDirection : TDirection; aCount : Word;
+  aDistanceScale, aSpreadScale : Single );
 begin
   if DRL.State <> DSPlaying then Exit;
   if ( aEmitterID = 0 ) or ( aCount = 0 ) then Exit;
   FAnimations.AddAnimation( TGFXParticleBurstAnimation.Create(
-    aDelay, aEmitterID, aPosition, aDirection, aCount ) );
+    aDelay, aEmitterID, aPosition, aDirection, aCount, aDistanceScale, aSpreadScale ) );
 end;
 
 procedure TDRLGFXIO.addSoundAnimation(aDelay: DWord; aPosition: TCoord2D; aSoundID: DWord);

@@ -98,7 +98,7 @@ type TDRLIO = class( TIO )
   procedure addMarkAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aColor : Byte; aPic : Char ); virtual; abstract;
   procedure addFXAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite ); virtual;
   procedure addParticleBurstAnimation( aDelay : DWord; aEmitterID : Word; aPosition : TCoord2D;
-    aDirection : TDirection; aCount : Word ); virtual;
+    aDirection : TDirection; aCount : Word; aDistanceScale, aSpreadScale : Single ); virtual;
   procedure addSoundAnimation( aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord ); virtual; abstract;
   procedure addRumbleAnimation( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord ); virtual;
   procedure Explosion( aDelay : Integer; aWhere : TCoord2D; aData : TExplosionData ); virtual;
@@ -318,7 +318,8 @@ begin
 end;
 
 procedure TDRLIO.addParticleBurstAnimation( aDelay : DWord; aEmitterID : Word;
-  aPosition : TCoord2D; aDirection : TDirection; aCount : Word );
+  aPosition : TCoord2D; aDirection : TDirection; aCount : Word;
+  aDistanceScale, aSpreadScale : Single );
 begin
 
 end;
