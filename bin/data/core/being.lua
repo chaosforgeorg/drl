@@ -64,7 +64,7 @@ function being:acquire( what, count )
 	local function add( it )
 		local drop = false
 		if self.flags[ BF_IMPATIENT ] then
-			if it.itype == ITEMTYPE_PACK or it.itype == ITEMTYPE_URANGED then
+			if ( it.itype == ITEMTYPE_PACK and it.__proto.OnUse ) or it.itype == ITEMTYPE_URANGED then
 				drop = true
 			end
 		end

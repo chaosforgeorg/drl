@@ -600,7 +600,8 @@ end;
 
 function TItem.isUsable : boolean;
 begin
-  Exit(FProps.IType in [ITEMTYPE_PACK, ITEMTYPE_URANGED]);
+  Exit((FProps.IType = ITEMTYPE_URANGED) or
+    ((FProps.IType = ITEMTYPE_PACK) and (Hook_OnUse in FHooks)));
 end;
 
 function TItem.isAmmoPack : boolean;

@@ -478,7 +478,7 @@ core.register_blueprint "item"
 			dis_exotic = { false, core.TBOOLEAN, false },
 			dis_unique = { false, core.TBOOLEAN, false },
 			dis_other  = { false, core.TBOOLEAN, false },
-			OnUse      = { true,  core.TFUNC },
+			OnUse      = { false, core.TFUNC },
 
 			OnModDescribe = { false, core.TFUNC },
 		},
