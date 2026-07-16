@@ -467,7 +467,7 @@ begin
   iSeqBase := 0;
   if not isPlayer then iSeqBase := 100;
   iSeqBase += aDelay;
-  iMissileRange := 30; // aGun.Missile.MaxRange;
+  iMissileRange := Max( 30, aGun.Range );
   iChaining := aAltFire and ( aGun.Flags[ IF_ALTCHAIN ] ) and ( aShots > 1 );
 
   if aGun.Flags[ IF_SCATTER ] then
@@ -2367,7 +2367,7 @@ begin
   end;
   iDelay := aItem.MisDelay;
 
-  iMaxRange := 30; //aGun.MaxRange
+  iMaxRange := Max( 30, aItem.Range );
 
   iBaseToHit := getToHit( aItem, aAltFire, False );
   if aItem.Flags[ IF_SPREAD ] then iBaseToHit += 10;
