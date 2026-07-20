@@ -1,3 +1,18 @@
+local function avoids_fluid_contact( being )
+	if being.flags[ BF_ENVIROSAFE ] then return true end
+	if being.flags[ BF_FLY ] then return true end
+	if being:is_player() then
+		if being:is_perk( "inv" ) then return true end
+		if being:is_perk( "enviro" ) then return true end
+	end
+	return false
+end
+
+local function is_fluid_hazard( being, resistance )
+	if avoids_fluid_contact( being ) then return false end
+	return being:get_total_resistance( resistance, TARGET_FEET ) ~= 100
+end
+
 function drl.register_cells()
 
 	register_cell "floor"
@@ -405,28 +420,25 @@ function drl.register_cells()
 		set        = CELLSET_FLUIDS,
 
 		OnEnter = function(c,being)
-			if not cells.acid.OnHazardQuery( being ) then return end
+			if avoids_fluid_contact( being ) then return end
+			local fully_resisted = being:get_total_resistance( "acid", TARGET_FEET ) == 100
 			local damage   = 6
 			if DIFFICULTY == DIFF_EASY then damage = damage / 2 end
 			if being:is_player() then
 				if being:is_perk("running") then damage = damage / 2 end
-				ui.msg("Argh!!! Acid!")
-				if core.game_time() % 3 == 0 then
-					being:play_sound("hit")
+				if not fully_resisted then
+					ui.msg("Argh!!! Acid!")
+					if core.game_time() % 3 == 0 then
+						being:play_sound("hit")
+					end
 				end
 			end
+			if fully_resisted then damage = 0 end
 			being:apply_damage(damage,TARGET_FEET,DAMAGE_ACID)
 		end,
 
 		OnHazardQuery = function( being )
-			if being.flags[ BF_ENVIROSAFE ] then return false end
-			if being.flags[ BF_FLY ] then return false end
-			if being:get_total_resistance( "acid", TARGET_FEET ) == 100 then return false end
-			if being:is_player() then
-				if being:is_perk("inv") then return false end
-				if being:is_perk("enviro") then return false end
-			end
-			return true
+			return is_fluid_hazard( being, "acid" )
 		end,
 	}
 
@@ -442,28 +454,25 @@ function drl.register_cells()
 		set        = CELLSET_FLUIDS,
 
 		OnEnter = function(c,being)
-			if not cells.lava.OnHazardQuery( being ) then return end
+			if avoids_fluid_contact( being ) then return end
+			local fully_resisted = being:get_total_resistance( "fire", TARGET_FEET ) == 100
 			local damage = 12
 			if DIFFICULTY == DIFF_EASY then damage = damage / 2 end
 			if being:is_player() then
 				if being:is_perk("running") then damage = damage / 2 end
-				ui.msg("Argh!!! Lava!")
-				if core.game_time() % 3 == 0 then
-					being:play_sound("hit")
+				if not fully_resisted then
+					ui.msg("Argh!!! Lava!")
+					if core.game_time() % 3 == 0 then
+						being:play_sound("hit")
+					end
 				end
 			end
+			if fully_resisted then damage = 0 end
 			being:apply_damage(damage,TARGET_FEET,DAMAGE_FIRE)
 		end,
 
 		OnHazardQuery = function( being )
-			if being.flags[ BF_ENVIROSAFE ] then return false end
-			if being.flags[ BF_FLY ] then return false end
-			if being:get_total_resistance( "fire", TARGET_FEET ) == 100 then return false end
-			if being:is_player() then
-				if being:is_perk("inv") then return false end
-				if being:is_perk("enviro") then return false end
-			end
-			return true
+			return is_fluid_hazard( being, "fire" )
 		end,
 
 	}
@@ -480,25 +489,25 @@ function drl.register_cells()
 		set        = CELLSET_FLUIDS,
 
 		OnEnter = function(c,being)
-			if not cells.blood.OnHazardQuery( being ) then return end
+			if not being:is_player() then return end
+			if avoids_fluid_contact( being ) then return end
+			local fully_resisted = being:get_total_resistance( "plasma", TARGET_FEET ) == 100
 			local damage = 12
 			if DIFFICULTY == DIFF_EASY then damage = damage / 2 end
 			if being:is_perk("running") then damage = damage / 2 end
-			ui.msg("Argh!!! Blood!")
-			if core.game_time() % 3 == 0 then
-				being:play_sound("hit")
+			if not fully_resisted then
+				ui.msg("Argh!!! Blood!")
+				if core.game_time() % 3 == 0 then
+					being:play_sound("hit")
+				end
 			end
+			if fully_resisted then damage = 0 end
 			being:apply_damage( damage, TARGET_FEET, DAMAGE_PLASMA )
 		end,
 
 		OnHazardQuery = function( being )
 			if not being:is_player() then return false end
-			if being.flags[ BF_ENVIROSAFE ] then return false end
-			if being.flags[ BF_FLY ] then return false end
-			if being:get_total_resistance( "plasma", TARGET_FEET ) == 100 then return false end
-			if being:is_perk("inv") then return false end
-			if being:is_perk("enviro") then return false end
-			return true
+			return is_fluid_hazard( being, "plasma" )
 		end,
 	}
 

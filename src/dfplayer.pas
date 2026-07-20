@@ -264,17 +264,20 @@ procedure TPlayer.ApplyDamage(aDamage: LongInt; aTarget: TBodyTarget; aDamageTyp
 begin
   if aDamage < 0 then Exit;
   if BF_INV in FFlags then Exit;
-  FMultiMove.Stop;
-  DRL.DamagedLastTurn := True;
-  if ( aDamage >= Max( FHPMax div 3, 10 ) ) then
+  if aDamage > 0 then
   begin
-    IO.Blink( Red, 100 );
-    IO.addRumbleAnimation( aDelay, $6000, $4000, 250 );
-  end
-  else
-    IO.addRumbleAnimation( aDelay, $4000, $2000, 100 );
+    FMultiMove.Stop;
+    DRL.DamagedLastTurn := True;
+    if ( aDamage >= Max( FHPMax div 3, 10 ) ) then
+    begin
+      IO.Blink( Red, 100 );
+      IO.addRumbleAnimation( aDelay, $6000, $4000, 250 );
+    end
+    else
+      IO.addRumbleAnimation( aDelay, $4000, $2000, 100 );
 
-  if aDamage > 0 then FKills.DamageTaken;
+    FKills.DamageTaken;
+  end;
 
   inherited ApplyDamage(aDamage, aTarget, aDamageType, aSource, aDelay );
 end;
