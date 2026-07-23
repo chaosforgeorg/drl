@@ -558,6 +558,7 @@ procedure TLevel.AfterGeneration;
 var iCoord : TCoord2D;
     iCell  : Integer;
     iFlags : TFlags;
+    iBase  : Integer;
     iWall  : Integer;
     iFloor : Integer;
 begin
@@ -568,19 +569,17 @@ begin
     iCell   := GetCell(iCoord);
     iFlags  := Cells[iCell].Flags;
     if CF_OVERLAY in iFlags then
-    if Floor[iCoord] <> 0 then
+    begin
+      if (CF_STICKWALL in iFlags) and (not (CF_OPENABLE in iFlags)) then
+        iBase := iWall
+      else
       begin
-        if (CF_STICKWALL in iFlags) and (not (CF_OPENABLE in iFlags )) then
-        begin
-          PutCell(iCoord,iWall);
-        end
-        else
-          if ( Floor[iCoord] = 0 ) or ( Floor[iCoord] = iFloor ) then
-          begin
-            PutCell(iCoord,iFloor);
-            PutCell(iCoord,iCell);
-          end;
+        iBase := Floor[iCoord];
+        if iBase = 0 then iBase := iFloor;
       end;
+      PutCell(iCoord,iBase);
+      PutCell(iCoord,iCell);
+    end;
   end;
 end;
 
