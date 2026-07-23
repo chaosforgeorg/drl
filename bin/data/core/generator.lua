@@ -150,6 +150,9 @@ function generator.place_dungen_tile( code, tile_object, tile_pos )
 		assert( tile_entry, "Character in map not defined -> "..char)
 		if type(tile_entry) ~= "number" then
 			local p = tile_pos + c - coord.UNIT
+			if tile_entry.prefill then
+				level:set_cell( p, tile_entry.prefill )
+			end
 			if tile_entry.raw_style then
 				level:set_raw_style( p, tile_entry.raw_style )
 			end

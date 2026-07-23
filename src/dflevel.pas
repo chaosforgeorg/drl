@@ -568,13 +568,19 @@ begin
     iCell   := GetCell(iCoord);
     iFlags  := Cells[iCell].Flags;
     if CF_OVERLAY in iFlags then
-    begin
-      if (CF_STICKWALL in iFlags) and (not (CF_OPENABLE in iFlags )) then
-        PutCell(iCoord,iWall)
-      else
-        PutCell(iCoord,iFloor);
-      PutCell(iCoord,iCell);
-    end;
+    if Floor[iCoord] <> 0 then
+      begin
+        if (CF_STICKWALL in iFlags) and (not (CF_OPENABLE in iFlags )) then
+        begin
+          PutCell(iCoord,iWall);
+        end
+        else
+          if ( Floor[iCoord] = 0 ) or ( Floor[iCoord] = iFloor ) then
+          begin
+            PutCell(iCoord,iFloor);
+            PutCell(iCoord,iCell);
+          end;
+      end;
   end;
 end;
 
