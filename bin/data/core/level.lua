@@ -378,7 +378,7 @@ end
 
 function level:drop_item_ext( item, c )
 	local id = item
-	if type(id) == "table"  then 
+	if type(id) == "table" then
 		if #id == 0 then
 			return nil
 		end
@@ -386,6 +386,9 @@ function level:drop_item_ext( item, c )
 			id = id[math.random(#id)]
 		else
 			id = id[1]
+		end
+		if id == "" then
+			return nil
 		end
 	end
 	if type(id) == "string" then
@@ -405,7 +408,19 @@ end
 
 function level:drop_being_ext( being, c )
 	local id = being
-	if type(id) == "table"  then id = id[1] end
+	if type(id) == "table" then
+		if #id == 0 then
+			return nil
+		end
+		if #id > 1 then
+			id = id[math.random(#id)]
+		else
+			id = id[1]
+		end
+		if id == "" then
+			return nil
+		end
+	end
 	if type(id) == "string" then id = beings[id].nid end
 	local new_being = self:drop_being(id,c)
 	if type(being) == "table" then
