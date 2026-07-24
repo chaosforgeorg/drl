@@ -378,7 +378,16 @@ end
 
 function level:drop_item_ext( item, c )
 	local id = item
-	if type(id) == "table"  then id = id[1] end
+	if type(id) == "table"  then 
+		if #id == 0 then
+			return nil
+		end
+		if #id > 1 then
+			id = id[math.random(#id)]
+		else
+			id = id[1]
+		end
+	end
 	if type(id) == "string" then
 		assert( items[id], "item "..id.." not defined!" ) 
 		id = items[id].nid

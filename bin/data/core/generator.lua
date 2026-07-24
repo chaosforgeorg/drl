@@ -169,6 +169,9 @@ function generator.place_dungen_tile( code, tile_object, tile_pos )
 		local tile_entry = code[ char ]
 		if type(tile_entry) ~= "number" then
 			local p = tile_pos + c - coord.UNIT
+			if type(tile_entry) == "table" and #tile_entry > 1 then
+				level:set_cell( p, table.random_pick( tile_entry ) )
+			end
 			if tile_entry.being then 
 				local b = level:drop_being_ext( tile_entry.being, p )
 				if b and tile_entry.armor then
@@ -812,7 +815,6 @@ function generator.generate_archi_level( settings )
 			assert( data.size, "malformed data for archi level!" )
 		end
 	end
-	local stop_flip = data.stop_flip or false
 
 	layout = layout or data.layout
 	if type( layout ) == "table" then
@@ -875,8 +877,12 @@ function generator.generate_archi_level( settings )
 			end
 			if index ~= "." then
 				local block
+				local stop_flip = data.stop_flip or false
 				if index then
 					block = table.random_pick( data[ index ] )
+					if data[index].allow_flip then 
+						stop_flip = not data[index].allow_flip
+					end
 				else
 					block = table.random_pick( data )
 				end
