@@ -961,7 +961,11 @@ end;
 procedure TLevel.Remove ( Node : TNode ) ;
 begin
   if FActiveBeing = Node then FActiveBeing := nil;
-  if FNextNode = Node    then FNextNode := Node.Next;
+  if FNextNode = Node then
+  begin
+    FNextNode := Node.Next;
+    if FNextNode = Node then FNextNode := nil;
+  end;
   inherited Remove( Node );
 end;
 
@@ -991,6 +995,7 @@ var iC          : TCoord2D;
     iKnockback  : Byte;
     iItemUID    : TUID;
     iBeing      : TBeing;
+    iBeingUID   : TUID;
     iChain      : TExplosionData;
     iPointDelay : Integer;
     iDistance   : Integer;
@@ -1046,25 +1051,32 @@ begin
           iBeing := Being[iC];
           if iBeing <> nil then
           begin
-            if iProcessed.IndexOf( iBeing.UID ) >= 0 then Continue;
+            iBeingUID := iBeing.UID;
+            if iProcessed.IndexOf( iBeingUID ) >= 0 then Continue;
             if (efSelfSafe in aData.Flags) and iBeing.isActive then Continue;
-            iProcessed.Push( iBeing.UID );
+            iProcessed.Push( iBeingUID );
             if efChain in aData.Flags then
               Explosion( iPointDelay, iC, iChain, nil, NewDirection(0) );
-            iKnockback := aData.Knockback;
-            if (efSelfKnockback in aData.Flags) and iBeing.isActive then iKnockback := 2;
-            if iKnockback > 0 then
+            if UIDs[ iBeingUID ] <> nil then
             begin
-              if aCoord = iC
-                then iDir := aKnockback
-                else iDir.CreateSmooth( aCoord, iC );
-              iBeing.Knockback( iDir, iDamage / iKnockback );
+              iKnockback := aData.Knockback;
+              if (efSelfKnockback in aData.Flags) and iBeing.isActive then iKnockback := 2;
+              if iKnockback > 0 then
+              begin
+                if aCoord = iC
+                  then iDir := aKnockback
+                  else iDir.CreateSmooth( aCoord, iC );
+                iBeing.Knockback( iDir, iDamage / iKnockback );
+              end;
             end;
-            if (iBeing.Flags[BF_SPLASHIMMUNE]) and (aCoord <> iC) then Continue;
-            if (efSelfHalf in aData.Flags) and iBeing.isActive then iDamage := iDamage div 2;
-            if ( aItem <> nil ) and ( UIDs[ iItemUID ] = nil ) then aItem := nil;
-            iBeing.ApplyDamage( iDamage, Target_Torso, aData.DamageType, aItem, iPointDelay );
-            if ( aItem <> nil ) and ( UIDs[ iItemUID ] = nil ) then aItem := nil;
+            if UIDs[ iBeingUID ] <> nil then
+            begin
+              if (iBeing.Flags[BF_SPLASHIMMUNE]) and (aCoord <> iC) then Continue;
+              if (efSelfHalf in aData.Flags) and iBeing.isActive then iDamage := iDamage div 2;
+              if ( aItem <> nil ) and ( UIDs[ iItemUID ] = nil ) then aItem := nil;
+              iBeing.ApplyDamage( iDamage, Target_Torso, aData.DamageType, aItem, iPointDelay );
+              if ( aItem <> nil ) and ( UIDs[ iItemUID ] = nil ) then aItem := nil;
+            end;
           end;
           if ( iDamage > 10 ) and ( Item[iC] <> nil ) and (not Item[iC].isFeature) then
           begin
@@ -1096,6 +1108,7 @@ var iDiff,iC : TCoord2D;
     iDir     : TDirection;
     iItemUID : TUID;
     iBeing   : TBeing;
+    iBeingUID  : TUID;
     iProcessed : TProcessedUIDList;
 
     procedure SendShotgunBeam( aSrc : TCoord2D; aTgt : TCoord2D );
@@ -1146,8 +1159,9 @@ begin
         iBeing := Being[ iTC ];
         if iBeing <> nil then
         begin
-          if iProcessed.IndexOf( iBeing.UID ) >= 0 then Continue;
-          iProcessed.Push( iBeing.UID );
+          iBeingUID := iBeing.UID;
+          if iProcessed.IndexOf( iBeingUID ) >= 0 then Continue;
+          iProcessed.Push( iBeingUID );
           if iBeing.isVisible then
           begin
             if iDmg > 10 then IO.addMarkAnimation( 199, 0, iTC, iHSprite, Red, '*' )
@@ -1159,9 +1173,13 @@ begin
             iDir.CreateSmooth( aSource, iTC );
             iBeing.Knockback( iDir, iDmg / iKnock );
           end;
-          if ( aItem <> nil ) and ( UIDs[ iItemUID ] = nil ) then aItem := nil;
-          iBeing.ApplyDamage( iDmg, Target_Torso, aDamageType, aItem, 0 );
-          if ( aItem <> nil ) and ( UIDs[ iItemUID ] = nil ) then aItem := nil;
+          // knockback can run Lua hooks that destroy iBeing
+          if UIDs[ iBeingUID ] <> nil then
+          begin
+            if ( aItem <> nil ) and ( UIDs[ iItemUID ] = nil ) then aItem := nil;
+            iBeing.ApplyDamage( iDmg, Target_Torso, aDamageType, aItem, 0 );
+            if ( aItem <> nil ) and ( UIDs[ iItemUID ] = nil ) then aItem := nil;
+          end;
         end;
         
         DamageTile( iTC, iDmg, aDamageType, False );

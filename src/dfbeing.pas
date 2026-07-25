@@ -1772,6 +1772,7 @@ var iItem      : TItem;
     iBlood     : Byte;
     iDir       : TDirection;
     iLevel     : TLevel;
+    iKillerUID : TUID;
     iMeleeKill : Boolean;
 begin
   iLevel := TLevel(Parent);
@@ -1783,6 +1784,9 @@ begin
   end;
   FDying := True;
 
+  iKillerUID := 0;
+  if aKiller <> nil then iKillerUID := aKiller.UID;
+
   // TODO: Change to Player.RegisterKill(kill)
   if ( not ( BF_FRIENDLY in FFlags ) ) and ( not ( BF_ILLUSION in FFlags ) ) and ( not ( BF_NOKILL in FFlags ) ) then
     Player.RegisterKill( FID, aKiller, aWeapon, not Flags[ BF_RESPAWN ] );
@@ -1790,11 +1794,14 @@ begin
   if (aKiller <> nil) and (aWeapon <> nil) then
     aWeapon.CallHook(Hook_OnKill, [ aKiller, Self ]);
 
+  if UIDs[ iKillerUID ] = nil then aKiller := nil;
+
   iMeleeKill := False;
   if (aKiller <> nil) then
   begin
     iMeleeKill := aKiller.MeleeAttack;
     aKiller.CallHook( Hook_OnKill, [ Self, aWeapon, iMeleeKill ] );
+    if UIDs[ iKillerUID ] = nil then aKiller := nil;
   end;
 
   if DRL.State = DSPlaying then
@@ -1821,6 +1828,7 @@ begin
 
   iDir.code := 5;
 
+  if UIDs[ iKillerUID ] = nil then aKiller := nil;
   if aKiller <> nil then
     iDir.CreateSmooth( aKiller.FPosition, FPosition );
 
@@ -2101,6 +2109,7 @@ procedure TBeing.ApplyDamage( aDamage : LongInt; aTarget : TBodyTarget; aDamageT
 var iDirection     : TDirection;
     iArmor         : TItem;
     iActive        : TBeing;
+    iActiveUID     : TUID;
     iSlot          : TEqSlot;
     iArmorDamage   : LongInt;
     iProtection    : LongInt;
@@ -2121,9 +2130,11 @@ begin
     if aSource.Flags[ IF_ILLUSION ] then Exit;
   end;
 
-  iActive := TLevel(Parent).ActiveBeing;
+  iActive    := TLevel(Parent).ActiveBeing;
+  iActiveUID := 0;
   if iActive <> nil then
   begin
+    iActiveUID   := iActive.UID;
     iMeleeAttack := iActive.MeleeAttack;
     if ( aSource <> nil ) and ( iActive.Inv.Equipped( aSource ) or ( aSource.IType = ITEMTYPE_URANGED ) ) then
     begin
@@ -2141,9 +2152,12 @@ begin
 
   if FDying then Exit;
 
+  if UIDs[ iActiveUID ] = nil then iActive := nil;
+
   CallHook( Hook_OnReceiveDamage, [ aDamage, aSource, iActive ] );
 
   if FDying or ( BF_INV in FFlags ) then Exit;
+  if UIDs[ iActiveUID ] = nil then iActive := nil;
 
   iResist := 0;
   if aDamageType <> Damage_IgnoreArmor then
@@ -2202,6 +2216,7 @@ begin
 
     if iArmorDamage > 0 then iArmor.CallHook( Hook_OnReceiveDamage, [ aDamage, aSource, iActive ] );
 
+    if UIDs[ iActiveUID ] = nil then iActive := nil;
     if (iOldDurability > 0) and iArmor.Flags[ IF_SHIELD ] then 
     begin
       CallHook( Hook_OnAttacked, [ iActive, aSource ] );
@@ -2255,6 +2270,7 @@ begin
   iGibMul := 1.0;
   if iActive <> nil then
     iGibMul := iActive.GetBonusMul( Hook_getGibMul, [ aSource, Byte(aDamageType), iMeleeAttack ] );
+  if UIDs[ iActiveUID ] = nil then iActive := nil;
   if aSource <> nil then
     iGibMul := iGibMul * aSource.GetBonusMul( Hook_getGibMul, [ iActive, Byte(aDamageType), iMeleeAttack ] );
   iForceOverkill := iGibMul >= 10.0;
@@ -2280,6 +2296,7 @@ begin
       iDeathMessage := LuaSystem.ProtectedCall( [ CoreModuleID, 'GetDeathMessage' ], [ Self, isVisible ] );
       if iDeathMessage <> '' then IO.Msg( iDeathMessage );
     end;
+  if UIDs[ iActiveUID ] = nil then iActive := nil;
   if Dead
     then Kill( Min( aDamage div 2, 15), (aDamage >= iOverKillValue) or iForceOverkill, iActive, aSource, aDelay )
     else begin
