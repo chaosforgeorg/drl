@@ -253,6 +253,7 @@ begin
         begin
           Log(LOGWARN, 'Emergency animation break!' );
           AnimationWipe;
+          Break;
         end;
     end;
   end
@@ -265,6 +266,7 @@ begin
         begin
           Log(LOGWARN, 'Emergency animation break!' );
           AnimationWipe;
+          Break;
         end;
     end;
   end;
