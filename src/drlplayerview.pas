@@ -73,7 +73,7 @@ protected
   procedure InitSwapMode( aSlot : TEqSlot );
   procedure Sort( aList : TItemViewArray );
 protected
-  procedure Filter( aSet : TItemTypeSet );
+  procedure Filter( aSet : TItemTypeSet; aUsableOnly : Boolean = False );
 protected
   FState       : TPlayerViewState;
   FSize        : TIOPoint;
@@ -148,7 +148,7 @@ begin
   FState       := PLAYERVIEW_INVENTORY;
   ReadInv;
   case aCommand of
-    COMMAND_USE    : begin FAction := 'use';  FITitle := 'Choose item to use';  Filter( [ITEMTYPE_PACK,ITEMTYPE_URANGED] ); end;
+    COMMAND_USE    : begin FAction := 'use';  FITitle := 'Choose item to use';  Filter( [ITEMTYPE_PACK,ITEMTYPE_URANGED], True ); end;
     COMMAND_DROP   : begin FAction := 'drop'; FITitle := 'Choose item to drop'; end;
     COMMAND_UNLOAD : if aScavenger
                        then begin FAction := 'unload/scavenge';  FITitle := 'Choose item to unload/scavenge';  Filter( [ITEMTYPE_RANGED, ITEMTYPE_AMMOPACK, ITEMTYPE_MELEE, ITEMTYPE_ARMOR, ITEMTYPE_BOOTS] ); end
@@ -1053,7 +1053,7 @@ begin
       end;
 end;
 
-procedure TPlayerView.Filter( aSet : TItemTypeSet );
+procedure TPlayerView.Filter( aSet : TItemTypeSet; aUsableOnly : Boolean = False );
 var iCount  : Integer;
     iSize   : Integer;
 begin
@@ -1061,7 +1061,8 @@ begin
   if FInv = nil then ReadInv;
   if FInv.Size > 0 then
   for iCount := 0 to FInv.Size - 1 do
-    if FInv[ iCount ].Item.IType in aSet then
+    if (FInv[ iCount ].Item.IType in aSet) and
+       ((not aUsableOnly) or FInv[ iCount ].Item.isUsable) then
     begin
       if iCount <> iSize then
         FInv[ iSize ] := FInv[ iCount ];

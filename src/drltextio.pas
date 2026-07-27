@@ -214,7 +214,8 @@ procedure TDRLTextIO.DrawHud;
 var iColor      : TIOColor;
     iCurrent    : TCoord2D;
     iLevel      : TLevel;
-    iTargetLine : TVisionRay;
+    iTargetLine : TAssistedRay;
+    iTargetRange: Byte;
 
   procedure Paint ( aCoord : TCoord2D; aColor : TIOColor; aChar : Char = ' ') ;
   var iPos        : TIOPoint;
@@ -240,17 +241,18 @@ begin
     if ( Player.Position <> FTarget ) then
     begin
       iColor := Green;
-      iTargetLine.Init( iLevel, Player.Position, FTarget );
+      iTargetRange := Distance( Player.Position, FTarget );
+      iTargetLine.Init( iLevel, Player.Position, FTarget, iTargetRange, Player.Vision, Player.GetVisionMap );
       repeat
         iTargetLine.Next;
-        iCurrent := iTargetLine.GetC;
+        iCurrent := iTargetLine.Current;
         if not iLevel.isProperCoord( iCurrent ) then Break;
         if not iLevel.isVisible( iCurrent ) then iColor := Red;
-        if iColor = Green then if iTargetLine.Cnt > FTargetRange then icolor := Yellow;
+        if iColor = Green then if iTargetLine.Steps > FTargetRange then icolor := Yellow;
         if iTargetLine.Done then Paint( iCurrent, iColor, 'X' )
                             else Paint( iCurrent, iColor, '*' );
-        if not iLevel.isPassable( iCurrent ) then iColor := Red;
-      until (iTargetLine.Done) or (iTargetLine.cnt > 30);
+        if not iLevel.isShotPassable( iCurrent ) then iColor := Red;
+      until (iTargetLine.Done) or (iTargetLine.Steps > 30);
     end;
   end;
 end;
@@ -282,4 +284,3 @@ begin
 end;
 
 end.
-

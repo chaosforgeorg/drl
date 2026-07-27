@@ -144,14 +144,34 @@ end
 
 function generator.place_dungen_tile( code, tile_object, tile_pos )
 	local tile_area   = tile_object:get_area()
-	generator.tile_place( level, tile_pos, tile_object )
-
 	for c in tile_area() do
 		local char       = string.char( tile_object:get_ascii(c) )
 		local tile_entry = code[ char ]
 		assert( tile_entry, "Character in map not defined -> "..char)
 		if type(tile_entry) ~= "number" then
 			local p = tile_pos + c - coord.UNIT
+			if tile_entry.prefill then
+				level:set_cell( p, tile_entry.prefill )
+			end
+			if tile_entry.raw_style then
+				level:set_raw_style( p, tile_entry.raw_style )
+			end
+			if tile_entry.style then
+				level:set_raw_style( p, generator.styles[ tile_entry.style ].style )
+			end
+		end
+	end
+
+	generator.tile_place( level, tile_pos, tile_object )
+
+	for c in tile_area() do
+		local char       = string.char( tile_object:get_ascii(c) )
+		local tile_entry = code[ char ]
+		if type(tile_entry) ~= "number" then
+			local p = tile_pos + c - coord.UNIT
+			if type(tile_entry) == "table" and #tile_entry > 1 then
+				level:set_cell( p, table.random_pick( tile_entry ) )
+			end
 			if tile_entry.being then 
 				local b = level:drop_being_ext( tile_entry.being, p )
 				if b and tile_entry.armor then
@@ -168,12 +188,6 @@ function generator.place_dungen_tile( code, tile_object, tile_pos )
 				for _, flag in ipairs(tile_entry.flags) do
 					level:set_light_flag( p, flag, true )
 				end
-			end
-			if tile_entry.raw_style then
-				level:set_raw_style( p, tile_entry.raw_style )
-			end
-			if tile_entry.style then
-				level:set_raw_style( p, generator.styles[ tile_entry.style ].style )
 			end
 			if tile_entry.deco then
 				level:set_raw_deco( p, tile_entry.deco )
@@ -801,9 +815,11 @@ function generator.generate_archi_level( settings )
 			assert( data.size, "malformed data for archi level!" )
 		end
 	end
-	local stop_flip = data.stop_flip or false
 
 	layout = layout or data.layout
+	if type( layout ) == "table" then
+		layout = table.random_pick( layout )
+	end
 	if layout then
 		layout = string.gsub( layout, "%s+", "" )
 	end
@@ -816,19 +832,26 @@ function generator.generate_archi_level( settings )
 		["+"] = generator.styles[ level.style ].door,
 	}
 
-	local blocks = data.blocks
-	local bsize  = data.size
-	local shift  = data.shift 
+	local blocks  = data.blocks
+	local bsize   = data.size
+	local shift   = data.shift
+	local no_overlap = data.no_overlap or false
+	local step    = no_overlap and bsize or (bsize - coord.UNIT)
 	if not blocks then
-		blocks = coord( math.floor( (MAXX-1) / (bsize.x-1) ), math.floor( (MAXY-1) / (bsize.y-1) ) )
+		if no_overlap then
+			blocks = coord( math.floor( MAXX / bsize.x ), math.floor( MAXY / bsize.y ) )
+		else
+			blocks = coord( math.floor( (MAXX-1) / (bsize.x-1) ), math.floor( (MAXY-1) / (bsize.y-1) ) )
+		end
 	end
+	local final_offset = (blocks - coord.UNIT) * step + bsize - coord.UNIT
 	if not shift then
-		shift = coord( MAXX, MAXY ) - blocks * (bsize - coord.UNIT)
+		shift = coord( MAXX, MAXY ) - final_offset
 		shift.x = math.max( 1, math.floor( shift.x / 2 ) )
 		shift.y = math.max( 1, math.floor( shift.y / 2 ) )
 	end
 	core.log( "blocks: "..blocks.x.."x"..blocks.y.." size: "..bsize.x.."x"..bsize.y.." shift: "..shift.x..","..shift.y )
-	local result = area( shift, shift + blocks * (bsize - coord.UNIT) )
+	local result = area( shift, shift + final_offset )
 
 	if not data.no_fill and not data.prefill then
 		level:fill( wall_cell )
@@ -854,12 +877,16 @@ function generator.generate_archi_level( settings )
 			end
 			if index ~= "." then
 				local block
+				local stop_flip = data.stop_flip or false
 				if index then
 					block = table.random_pick( data[ index ] )
+					if data[index].allow_flip then 
+						stop_flip = not data[index].allow_flip
+					end
 				else
 					block = table.random_pick( data )
 				end
-				local pos   = coord( (bx-1) * (bsize.x-1) + shift.x, (by-1) * (bsize.y-1) + shift.y )
+				local pos   = coord( (bx-1) * step.x + shift.x, (by-1) * step.y + shift.y )
 				local tile  = generator.tile_new( level, block, pure_translation, true )
 				if not stop_flip then
 					tile:flip_random()
@@ -916,33 +943,35 @@ function generator.wallin_cell( c, cell_id )
 	return true
 end
 
-function generator.clear_dead_ends( iterations, ar )
+function generator.clear_dead_ends( iterations, ar, wall )
 	iterations = iterations or 1
 	local ar      = ar or area.FULL_SHRINKED
 	local applied = false
 	local floor   = generator.styles[ level.style ].floor
 	local door    = generator.styles[ level.style ].door
-	local wall    = generator.styles[ level.style ].wall
+	local wall    = wall or generator.styles[ level.style ].wall
 	repeat
 		applied = false
 		for c in level:each( floor, ar ) do
 			if level:cross_around( c, wall ) >= 3 then
 				applied = true
-				level:set_cell( c, generator.styles[ level.style ].wall )
+				level:set_cell( c, wall )
 			end
 		end
 		for c in level:each( door, ar ) do
 			if level:cross_around( c, wall ) >= 3 then
 				applied = true
-				level:set_cell( c, generator.styles[ level.style ].wall )
+				level:set_cell( c, wall )
 			end
 		end
 		iterations = iterations - 1
 	until iterations == 0 or (not applied)
 
-	for c in level:each( door, ar ) do
-		if level:cross_around( c, wall ) < 2 then
-			level:set_cell( c, floor )
+	if not wall then
+		for c in level:each( door, ar ) do
+			if level:cross_around( c, wall ) < 2 then
+				level:set_cell( c, floor )
+			end
 		end
 	end
 end
@@ -953,6 +982,14 @@ function generator.remove_needless_doors()
 	local wall  = generator.styles[ level.style ].wall
 	local door  = generator.styles[ level.style ].door
 	local walls = generator.cell_lists[ CELLSET_WALLS ]
+	local did   = cells[ door ].nid
+
+	for c in area.FULL:edges() do
+		if level:get_cell( c ) == did then
+			level:set_cell( c, wall )
+		end
+	end
+
 	for c in level:each( door, area.FULL_SHRINKED ) do
 		local wcaround = level:cross_around( c, walls )
 		if wcaround > 2 then

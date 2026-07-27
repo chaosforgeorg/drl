@@ -317,6 +317,7 @@ var iResist : LongInt;
 begin
   iResist := GetLuaProperty( ['resist',aResistance], 0 );
   if iResist <= 0 then Exit(iResist);
+  if (IF_SHIELD in FFlags) and (FProps.Durability = 0) then Exit(0);
   if Flags[ IF_NODEGRADE ] then Exit(iResist);
   if (FProps.IType in [ITEMTYPE_ARMOR,ITEMTYPE_BOOTS]) then
     case FProps.Durability of
@@ -599,7 +600,8 @@ end;
 
 function TItem.isUsable : boolean;
 begin
-  Exit(FProps.IType in [ITEMTYPE_PACK, ITEMTYPE_URANGED]);
+  Exit((FProps.IType = ITEMTYPE_URANGED) or
+    ((FProps.IType = ITEMTYPE_PACK) and (Hook_OnUse in FHooks)));
 end;
 
 function TItem.isAmmoPack : boolean;

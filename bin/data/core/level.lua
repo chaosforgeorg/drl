@@ -56,6 +56,40 @@ function level:get_being_table( dlevel, weights, reqs, dmod )
 	return list
 end
 
+function level:pick_empty_coord( params )
+	local flags   = params.flags or { EF_NOBEINGS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN }
+	local area    = params.area
+	local cell    = params.cell
+	local exclude = params.exclude
+	local safe    = params.safe or 0
+	local limit   = params.limit or 10000
+
+	local function roll_coord()
+		if cell then
+			return self:random_empty_coord( flags, cell, area )
+		end
+		return self:random_empty_coord( flags, area )
+	end
+
+	local function invalid_coord( where )
+		if not where then return false end
+		if exclude and exclude:contains( where ) then return true end
+		return safe > 0 and player:distance_to( where ) <= safe
+	end
+
+	local where = roll_coord()
+	if not invalid_coord( where ) then return where end
+	repeat
+		where = roll_coord()
+		limit = limit - 1
+		if limit <= 0 then
+			core.warning("level:pick_empty_coord - could not find a valid spot, aborting!")
+			return nil
+		end
+	until not invalid_coord( where )
+	return where
+end
+
 function level:get_item_table( dlevel, weights, reqs, global )
 	local danger       = dlevel or self.danger_level
 	local allow_exotic = self.danger_level > DIFFICULTY
@@ -99,10 +133,12 @@ function level:flood_monsters( params )
 	if not params.danger and not params.amount then 
 		error("level:flood_monsters expects at least danger or count!")
 	end
-	local flags  = params.flags  or { EF_NOBEINGS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN }
-	local dtotal = params.danger or 100000000
-	local count  = params.amount or 100000000 
-	local reqs   = params.reqs
+	local flags   = params.flags  or { EF_NOBEINGS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN }
+	local dtotal  = params.danger or 100000000
+	local count   = params.amount or 100000000 
+	local reqs    = params.reqs
+	local exclude = params.exclude
+	local safe    = params.safe or 0
 	if params.no_groups then 
 		reqs = reqs or {}
 		reqs.is_group = false
@@ -123,7 +159,12 @@ function level:flood_monsters( params )
 
 	while (dtotal > 0) and (count > 0) do
 		local bp    = list:roll()
-		local where = level:random_empty_coord( flags, params.area )
+		local where = self:pick_empty_coord{
+			flags   = flags,
+			area    = params.area,
+			exclude = exclude,
+			safe    = safe,
+		}
 		if not where then 
 			core.warning("level:flood_monsters - no empty space found!")
 			break
@@ -158,6 +199,7 @@ function level:flood_monsters( params )
 	end
 end
 
+
 function level:flood_monster( params )
 	if not params.id or (not params.danger and not params.amount) then 
 		error("level:flood_monster expects at least id and danger or count!")
@@ -166,8 +208,14 @@ function level:flood_monster( params )
 	local flags  = params.flags  or { EF_NOBEINGS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN }
 	local dtotal = params.danger or 100000000
 	local count  = params.amount or 100000000 
+	local safe   = params.safe or 0
 	while (dtotal > 0) and (count > 0) do
-		local being = self:drop_being( id, level:random_empty_coord( flags, params.area ) )
+		local where = self:pick_empty_coord{
+			flags   = flags,
+			area    = params.area,
+			safe    = safe,
+		}
+		local being = self:drop_being( id, where )
 		if not being then return end
 		dtotal = dtotal - beings[id].danger
 		count  = count - 1
@@ -289,15 +337,13 @@ function level:summon(t,opt)
 	end
 	if count <= 0 then return nil end
 	local last_being = nil
-	local c
 	for i=1,count or 1 do
-		repeat
-			if cid then
-				c = level:random_empty_coord(empty, cid, where)
-			else
-				c = level:random_empty_coord(empty, where)
-			end
-		until ( safe == 0 ) or ( player:distance_to( c ) > safe )
+		local c = self:pick_empty_coord{
+			flags   = empty,
+			area    = where,
+			cell    = cid,
+			safe    = safe,
+		}
 		if c then
 			last_being = self:drop_being( bid, c )
 			if effect and last_being then
@@ -332,7 +378,19 @@ end
 
 function level:drop_item_ext( item, c )
 	local id = item
-	if type(id) == "table"  then id = id[1] end
+	if type(id) == "table" then
+		if #id == 0 then
+			return nil
+		end
+		if #id > 1 then
+			id = id[math.random(#id)]
+		else
+			id = id[1]
+		end
+		if id == "" then
+			return nil
+		end
+	end
 	if type(id) == "string" then
 		assert( items[id], "item "..id.." not defined!" ) 
 		id = items[id].nid
@@ -350,7 +408,19 @@ end
 
 function level:drop_being_ext( being, c )
 	local id = being
-	if type(id) == "table"  then id = id[1] end
+	if type(id) == "table" then
+		if #id == 0 then
+			return nil
+		end
+		if #id > 1 then
+			id = id[math.random(#id)]
+		else
+			id = id[1]
+		end
+		if id == "" then
+			return nil
+		end
+	end
 	if type(id) == "string" then id = beings[id].nid end
 	local new_being = self:drop_being(id,c)
 	if type(being) == "table" then

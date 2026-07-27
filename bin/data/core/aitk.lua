@@ -22,7 +22,7 @@ function aitk.OnAction( self )
 end
 
 function aitk.get_patrol_area( self, range, can_wander )
-    if self.flags[ BF_FRIENDLY ] then
+    if self.ai_group == "player" then
         local program = self.program
         if program == "follow" then
             self.patrol_area = area.around( player.position, 3 )
@@ -48,34 +48,28 @@ function aitk.get_patrol_area( self, range, can_wander )
 end
 
 function aitk.scan( self )
-    if self.flags[ BF_FRIENDLY ] then
-        local dist   = self.vision+1
-        local target = nil
-        for b in level:beings_in_range( self, self.vision ) do
-            if b ~= player and ( not b.flags[ BF_FRIENDLY ] ) then
-                local d = self:distance_to( b )
-                if self:in_sight( b ) and d < dist then
-                    target = b
-                    dist   = d
-                end
+    local dist   = self.vision+1
+    local target = nil
+    local sai    = self.ai_group
+    for b in level:beings_in_range( self, self.vision ) do
+        if b.ai_group ~= sai then
+            local d = self:distance_to( b )
+            if d < dist and self:in_sight( b ) then
+                target = b
+                dist   = d
             end
         end
-        if target then
-            return target.uid
-        end            
-    else
-        local visible = self:in_sight( player )
-        if visible then
-            return player.uid
-        end
-        return false
     end
+    if target then
+        return target.uid
+    end
+    return false
 end
 
 function aitk.is_hunt_program_target( self, being )
     if being == self then return false end
-    if self.flags[ BF_FRIENDLY ] then
-        return being ~= player and ( not being.flags[ BF_FRIENDLY ] )
+    if self.ai_group == "player" then
+        return being.ai_group ~= "player"
     end
     return not being.flags[ BF_NOBLEED ]
 end
@@ -145,8 +139,9 @@ function aitk.flock_seek( self, target )
 
     local moves = {}
     local dist = self:distance_to( target )
+    local block_flag = self.flags[ BF_FLY ] and EF_NOBLOCKFLY or EF_NOBLOCK
     for c in self.position:around_coords() do
-        if coord.distance(c,target) < dist and level:is_empty( c, { EF_NOBEINGS, EF_NOBLOCK } ) then
+        if coord.distance(c,target) < dist and level:is_empty( c, { EF_NOBEINGS, block_flag } ) then
             table.insert( moves,c:clone() )
         end
     end
@@ -339,7 +334,7 @@ function aitk.basic_scan( self )
     end
     local target = aitk.scan( self )
     if target then self.target = target end
-    return target 
+    return target
 end
 
 -- aitk.basic_pursue( self )
@@ -386,7 +381,7 @@ function aitk.basic_idle( self )
             return hunt_program_state
         end
     end
-    if self.flags[ BF_HUNTING ] and not self.flags[ BF_FRIENDLY ] then
+    if self.flags[ BF_HUNTING ] and self.ai_group ~= "player" then
         self.target  = player.uid
         self.boredom = 0
         return "hunt"
@@ -412,7 +407,23 @@ function aitk.basic_on_attacked( self, target )
     if target then 
         if target:has_property("master") then return end
         if target.id == self.id then return end
-        if self.flags[ BF_FRIENDLY ] and ( target == player or target.flags[ BF_FRIENDLY ] ) then return end
+        if self.ai_group == "player" and target.ai_group == "player" then return end
+        self.target = target.uid
+        if self.ai_state == "idle" or ( self.ai_state == "pursue" and self.move_to ~= target.position ) then
+            self.move_to = target.position
+            self:path_find( self.move_to, 10, 40 )
+            self.ai_state = "pursue"
+        end
+    end
+end
+
+function aitk.disciplined_on_attacked( self, target )
+    if self == target then return end
+    if self:has_property("boredom") then self.boredom = 0 end
+    if target then 
+        if target:has_property("master") then return end
+        if target.id == self.id then return end
+        if self.ai_group == target.ai_group then return end
         self.target = target.uid
         if self.ai_state == "idle" or ( self.ai_state == "pursue" and self.move_to ~= target.position ) then
             self.move_to = target.position
@@ -435,7 +446,7 @@ function aitk.basic_smart_idle( self )
             return hunt_program_state
         end
     end
-	if self.flags[ BF_HUNTING ] and not self.flags[ BF_FRIENDLY ] then
+	if self.flags[ BF_HUNTING ] and self.ai_group ~= "player" then
         if self:has_property("boredom") then self.boredom = 0 end
 		self.move_to = player.position
         self.target  = player.uid
@@ -647,9 +658,10 @@ function aitk.ranged_hunt( self )
 
     local target = target.position
     if dist < 6 and math.random(3) > 1 then
+        local block_flag = self.flags[ BF_FLY ] and CF_BLOCKFLY or CF_BLOCKMOVE
         for _=1,3 do
             local c = area.around( self.position, 1 ):clamped( area.FULL ):random_coord() 
-            if level:is_passable( c ) then
+            if level:is_passable_ext( c, block_flag ) then
                 target = c
                 break
             end

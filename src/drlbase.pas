@@ -322,6 +322,7 @@ begin
   HARDSPRITE_GRID         := Lua.Get( 'HARDSPRITE_GRID' );
   HARDSPRITE_SHIELD       := Lua.Get( 'HARDSPRITE_SHIELD' );
   HARDSPRITE_SHIELD_COUNT := Lua.Get( 'HARDSPRITE_SHIELD_COUNT' );
+  HARDEMITTER_BLOOD       := Lua.Get( 'HARDEMITTER_BLOOD', 0 );
   for i := 0 to 3 do
   begin
     HARDSPRITE_DECAL_BLOOD[i]      := 0;
@@ -429,6 +430,7 @@ begin
   Setting_MouseEdgePan     := Configuration.GetBoolean( 'mouse_edge_pan' );
   Setting_UnlockAll        := Configuration.GetBoolean( 'unlock_all' );
   Setting_MenuSound        := Configuration.GetBoolean( 'menu_sound' );
+  Setting_WaitSound        := Configuration.GetBoolean( 'wait_sound' );
   Setting_GroupMessages    := Configuration.GetBoolean( 'group_messages' );
   Setting_ItemDropAnimation:= Configuration.GetBoolean( 'item_drop_animation' );
   Setting_Fade             := Configuration.GetBoolean( 'fade_fx' );

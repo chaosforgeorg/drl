@@ -84,6 +84,21 @@ private
   FSoundID  : DWord;
 end;
 
+{ TGFXParticleBurstAnimation }
+
+TGFXParticleBurstAnimation = class(TAnimation)
+  constructor Create( aDelay : DWord; aEmitterID : Word; aPosition : TCoord2D;
+    aDirection : TDirection; aCount : Word; aDistanceScale, aSpreadScale : Single );
+  procedure OnStart; override;
+private
+  FEmitterID     : Word;
+  FPosition      : TCoord2D;
+  FDirection     : TDirection;
+  FCount         : Word;
+  FDistanceScale : Single;
+  FSpreadScale   : Single;
+end;
+
 { TGFXBlinkAnimation }
 
 TGFXBlinkAnimation = class(TAnimation)
@@ -218,7 +233,6 @@ begin
   FStep   := 0;
   FEmitter := -1;
   FPath.Next;
-  FPath.Prev := aSource;
   iSize := SpriteMap.GetGridSize;
 
   FSource.Init( aSource.X*iSize-iSize div 2, aSource.Y*iSize-iSize div 2 );
@@ -233,7 +247,7 @@ end;
 
 destructor TGFXMissileAnimation.Destroy;
 begin
-  if FEmitter >= 0 then
+  if ( FEmitter >= 0 ) and ( DRL.Particles.Engine <> nil ) then
     DRL.Particles.Engine.EmitStop( FEmitter );
   inherited Destroy;
 end;
@@ -270,7 +284,7 @@ begin
     DRL.Particles.Engine.EmitSetSpriteRotation( FEmitter, ( FHeading + PI / 2 ) * 180 / PI );
   end;
 
-  if ( not DRL.Level.isProperCoord( FPath.GetC ) ) or (not DRL.Level.isVisible( FPath.GetC ) ) then
+  if ( not DRL.Level.isProperCoord( FPath.Current ) ) or (not DRL.Level.isVisible( FPath.Current ) ) then
     Exit;
   if FRay then
   begin
@@ -392,6 +406,34 @@ begin
   IO.Audio.PlaySound( FSoundID, FPosition );
 end;
 
+{ TGFXParticleBurstAnimation }
+
+constructor TGFXParticleBurstAnimation.Create( aDelay : DWord; aEmitterID : Word;
+  aPosition : TCoord2D; aDirection : TDirection; aCount : Word;
+  aDistanceScale, aSpreadScale : Single );
+begin
+  inherited Create( 1, aDelay, 0 );
+  FEmitterID     := aEmitterID;
+  FPosition      := aPosition;
+  FDirection     := aDirection;
+  FCount         := aCount;
+  FDistanceScale := aDistanceScale;
+  FSpreadScale   := aSpreadScale;
+  FBlocking      := False;
+end;
+
+procedure TGFXParticleBurstAnimation.OnStart;
+var iDirection : TVec2f;
+begin
+  if ( DRL = nil ) or ( DRL.Particles = nil ) then Exit;
+  iDirection.Init( FDirection.X, FDirection.Y );
+  DRL.Particles.SpawnBurst( FEmitterID,
+    Vec3f( ( FPosition.X - 1 ) * 32 + 16, ( FPosition.Y - 1 ) * 32 + 16, 0 ),
+    iDirection, FCount, HARDSPRITE_DECAL_BLOOD,
+    NewFloatRange( 0.25 * FDistanceScale, FDistanceScale ),
+    NewFloatRange( 0.5, 1.0 ), FSpreadScale );
+end;
+
 { TGFXBlinkAnimation }
 
 constructor TGFXBlinkAnimation.Create( aDuration : DWord; aDelay : DWord; aColor: Word );
@@ -482,7 +524,11 @@ begin
     begin
       iBeing := iThing as TBeing;
       if iBeing <> nil
-        then SpriteMap.PushSpriteBeing( FPosition, SpriteMap.GetBeingSprite( iBeing ), iLight )
+        then
+        begin
+          SpriteMap.PushSpriteBeing( FPosition, SpriteMap.GetBeingSprite( iBeing ), iLight );
+          SpriteMap.PushBeingOverlay( FPosition, iBeing, iLight );
+        end
         else SpriteMap.PushSpriteBeing( FPosition, FSprite, iLight );
     end
     else SpriteMap.PushSpriteItem( FPosition, FSprite, iLight );
@@ -534,7 +580,8 @@ end;
 
 destructor TGFXScreenMoveAnimation.Destroy;
 begin
-  SpriteMap.NewShift := FDest;
+  if SpriteMap <> nil then
+    SpriteMap.NewShift := FDest;
   CCurrent := nil;
   inherited Destroy;
 end;
@@ -581,7 +628,8 @@ end;
 
 destructor TGFXCellAnimation.Destroy;
 begin
-  DRL.Level.LightFlag[ FCoord, LFANIMATING ] := False;
+  if DRL.Level <> nil then
+    DRL.Level.LightFlag[ FCoord, LFANIMATING ] := False;
   inherited Destroy;
 end;
 
@@ -734,7 +782,8 @@ begin
     iBeing := UIDs.Get( FUID ) as TBeing;
     if iBeing <> nil then iBeing.AnimCount := Max( 0, iBeing.AnimCount - 1 );
   end;
-  DRL.Level.LightFlag[ FCoord, LFCORPSING ] := False;
+  if DRL.Level <> nil then
+    DRL.Level.LightFlag[ FCoord, LFCORPSING ] := False;
   inherited Destroy;
 end;
 constructor TGFXScreenShakeAnimation.Create( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection );

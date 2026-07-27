@@ -310,6 +310,8 @@ var iProgBase    : DWord;
     DemoVersion       := False;
     if LuaSystem.RawDefined( 'DEMO' ) then
       DemoVersion := LuaSystem.Get( 'DEMO' );
+
+    Log( LOGINFO, 'BASE MODULE VERSION: '+VersionModule );
   end;
 
 begin
@@ -407,6 +409,7 @@ begin
   ModuleOption_FullBeingDescription := LuaSystem.Get( ['core','options','full_being_description'], False );
   ModuleOption_PercentHealth        := LuaSystem.Get( ['core','options','percent_health'], False );
   ModuleOption_RelicSlot            := LuaSystem.Get( ['core','options','relic_slot'], False );
+  ModuleOption_NewFloorLayout       := LuaSystem.Get( ['core','options','new_floor_layout'], False );
   ModuleOption_ResistCap            := LuaSystem.Get( ['core','options','resist_cap'], 95 );
 
   if ModdedGame then Log( LOGINFO, 'Game is modded.');

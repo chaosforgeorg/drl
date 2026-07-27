@@ -61,7 +61,7 @@ end;
 
 implementation
 
-uses math, sysutils, vutil, vdebug, vtig, vtigio, vsound,
+uses math, sysutils, vutil, vdebug, vtig, vtigio,
      drlconfiguration, drlbase;
 
 const CStates : array[ TSettingsViewState ] of record Title, ID : Ansistring; end = (
@@ -297,8 +297,8 @@ begin
                     if FState = SETTINGSVIEW_AUDIO then
                     begin
                       IO.Audio.Reconfigure;
-                      if iEntry.ID = 'sound_volume' then
-                         Sound.PlaySample('menu.change');
+                      if iEntry.ID = 'volume_sound' then
+                         IO.Audio.PlaySound('menu.change');
                     end;
                     if FState = SETTINGSVIEW_DISPLAY then
                     begin

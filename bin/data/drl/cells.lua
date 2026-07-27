@@ -1,3 +1,18 @@
+local function avoids_fluid_contact( being )
+	if being.flags[ BF_ENVIROSAFE ] then return true end
+	if being.flags[ BF_FLY ] then return true end
+	if being:is_player() then
+		if being:is_perk( "inv" ) then return true end
+		if being:is_perk( "enviro" ) then return true end
+	end
+	return false
+end
+
+local function is_fluid_hazard( being, resistance )
+	if avoids_fluid_contact( being ) then return false end
+	return being:get_total_resistance( resistance, TARGET_FEET ) ~= 100
+end
+
 function drl.register_cells()
 
 	register_cell "floor"
@@ -6,6 +21,7 @@ function drl.register_cells()
 		ascii      = "\250",
 		asciilow   = '.',
 		set        = CELLSET_FLOORS,
+		flags      = { CF_FLOOR },
 		blname     = "blood",
 		blcolor    = RED;
 		bloodto    = "bloodpool";
@@ -48,7 +64,7 @@ function drl.register_cells()
 		armor      = 10,
 		hp         = 10,
 		set        = CELLSET_WALLS,
-		flags      = { CF_BLOCKLOS, CF_BLOCKMOVE, CF_STICKWALL },
+		flags      = { CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_STICKWALL },
 		sprite     = { 
 			SPRITE_WALL, -- phobos
 			SPRITE_TECHWALL, -- deimos
@@ -77,7 +93,7 @@ function drl.register_cells()
 		armor      = 10,
 		hp         = 15,
 		set        = CELLSET_WALLS,
-		flags      = { CF_BLOCKLOS, CF_BLOCKMOVE, CF_STICKWALL },
+		flags      = { CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_STICKWALL },
 		coscolor   = { 1.0,0.1,0.1,1.0 },
 		sprite     = {
 			SPRITE_BRICKWALL,
@@ -107,7 +123,7 @@ function drl.register_cells()
 		armor      = 3,
 		hp         = 3,
 		set        = CELLSET_WALLS,
-		flags      = { CF_BLOCKLOS, CF_BLOCKMOVE, CF_STICKWALL, CF_FRAGILE },
+		flags      = { CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_STICKWALL, CF_FRAGILE },
 		coscolor   = { 0.6,0.6,1.0,1.0 },
 		sprite     = SPRITE_CAVEWALL,
 		blsprite   = SPRITE_WALLBLOOD,
@@ -135,7 +151,7 @@ function drl.register_cells()
 		armor      = 15,
 		hp         = 30,
 		set        = CELLSET_WALLS,
-		flags      = { CF_BLOCKLOS, CF_BLOCKMOVE, CF_STICKWALL },
+		flags      = { CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_STICKWALL },
 		blsprite   = SPRITE_WALLBLOOD,
 		sflags     = { SF_MULTI },
 	}
@@ -170,7 +186,7 @@ function drl.register_cells()
 		armor      = 15,
 		hp         = 10,
 		set        = CELLSET_WALLS,
-		flags      = { CF_BLOCKLOS, CF_BLOCKMOVE, CF_STICKWALL },
+		flags      = { CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_STICKWALL },
 		sprite     = SPRITE_BOSSWALL,
 		deco       = { SPRITE_DECO_SKULL_1, SPRITE_DECO_SKULL_2, SPRITE_DECO_SKULL_3, SPRITE_DECO_SKULL_4 },
 		blsprite   = SPRITE_WALLBLOOD,
@@ -192,7 +208,7 @@ function drl.register_cells()
 		armor      = 5,
 		hp         = 5,
 		set        = CELLSET_WALLS,
-		flags      = {CF_BLOCKLOS, CF_BLOCKMOVE, CF_STICKWALL},
+		flags      = {CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_STICKWALL},
 		sprite     = SPRITE_YBOX,
 		blsprite   = SPRITE_WALLBLOOD,
 	}
@@ -207,7 +223,7 @@ function drl.register_cells()
 		armor      = 5,
 		hp         = 5,
 		set        = CELLSET_WALLS,
-		flags      = {CF_BLOCKLOS, CF_BLOCKMOVE, CF_STICKWALL},
+		flags      = {CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_STICKWALL},
 		sprite     = SPRITE_WBOX,
 		blsprite   = SPRITE_WALLBLOOD,
 	}
@@ -224,7 +240,7 @@ function drl.register_cells()
 		color      = BROWN,
 		armor      = 4,
 		hp         = 6,
-		flags      = {CF_BLOCKLOS, CF_BLOCKMOVE, CF_FRAGILE, CF_OVERLAY, CF_STICKWALL, CF_OPENABLE, CF_RUNSTOP, CF_HIGHLIGHT},
+		flags      = {CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_FRAGILE, CF_OVERLAY, CF_STICKWALL, CF_OPENABLE, CF_RUNSTOP, CF_HIGHLIGHT},
 		set        = CELLSET_DOORS,
 		sprite     = { 
 			SPRITE_STRONGDOOR, 
@@ -289,7 +305,7 @@ function drl.register_cells()
 		set        = CELLSET_DOORS,
 		armor      = 6,
 		hp         = 6,
-		flags      = { CF_BLOCKLOS, CF_BLOCKMOVE, CF_FRAGILE, CF_OVERLAY, CF_STICKWALL, CF_OPENABLE, CF_RUNSTOP, CF_HIGHLIGHT },
+		flags      = { CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_FRAGILE, CF_OVERLAY, CF_STICKWALL, CF_OPENABLE, CF_RUNSTOP, CF_HIGHLIGHT },
 		sprite     = { SPRITE_DOOR, SPRITE_DOOR, SPRITE_HELLDOOR, },
 
 		OnAct = function(c,being)
@@ -404,28 +420,25 @@ function drl.register_cells()
 		set        = CELLSET_FLUIDS,
 
 		OnEnter = function(c,being)
-			if not cells.acid.OnHazardQuery( being ) then return end
+			if avoids_fluid_contact( being ) then return end
+			local fully_resisted = being:get_total_resistance( "acid", TARGET_FEET ) == 100
 			local damage   = 6
 			if DIFFICULTY == DIFF_EASY then damage = damage / 2 end
 			if being:is_player() then
 				if being:is_perk("running") then damage = damage / 2 end
-				ui.msg("Argh!!! Acid!")
-				if core.game_time() % 3 == 0 then
-					being:play_sound("hit")
+				if not fully_resisted then
+					ui.msg("Argh!!! Acid!")
+					if core.game_time() % 3 == 0 then
+						being:play_sound("hit")
+					end
 				end
 			end
+			if fully_resisted then damage = 0 end
 			being:apply_damage(damage,TARGET_FEET,DAMAGE_ACID)
 		end,
 
 		OnHazardQuery = function( being )
-			if being.flags[ BF_ENVIROSAFE ] then return false end
-			if being.flags[ BF_FLY ] then return false end
-			if being:get_total_resistance( "acid", TARGET_FEET ) == 100 then return false end
-			if being:is_player() then
-				if being:is_perk("inv") then return false end
-				if being:is_perk("enviro") then return false end
-			end
-			return true
+			return is_fluid_hazard( being, "acid" )
 		end,
 	}
 
@@ -441,28 +454,25 @@ function drl.register_cells()
 		set        = CELLSET_FLUIDS,
 
 		OnEnter = function(c,being)
-			if not cells.lava.OnHazardQuery( being ) then return end
+			if avoids_fluid_contact( being ) then return end
+			local fully_resisted = being:get_total_resistance( "fire", TARGET_FEET ) == 100
 			local damage = 12
 			if DIFFICULTY == DIFF_EASY then damage = damage / 2 end
 			if being:is_player() then
 				if being:is_perk("running") then damage = damage / 2 end
-				ui.msg("Argh!!! Lava!")
-				if core.game_time() % 3 == 0 then
-					being:play_sound("hit")
+				if not fully_resisted then
+					ui.msg("Argh!!! Lava!")
+					if core.game_time() % 3 == 0 then
+						being:play_sound("hit")
+					end
 				end
 			end
+			if fully_resisted then damage = 0 end
 			being:apply_damage(damage,TARGET_FEET,DAMAGE_FIRE)
 		end,
 
 		OnHazardQuery = function( being )
-			if being.flags[ BF_ENVIROSAFE ] then return false end
-			if being.flags[ BF_FLY ] then return false end
-			if being:get_total_resistance( "fire", TARGET_FEET ) == 100 then return false end
-			if being:is_player() then
-				if being:is_perk("inv") then return false end
-				if being:is_perk("enviro") then return false end
-			end
-			return true
+			return is_fluid_hazard( being, "fire" )
 		end,
 
 	}
@@ -479,25 +489,25 @@ function drl.register_cells()
 		set        = CELLSET_FLUIDS,
 
 		OnEnter = function(c,being)
-			if not cells.blood.OnHazardQuery( being ) then return end
+			if not being:is_player() then return end
+			if avoids_fluid_contact( being ) then return end
+			local fully_resisted = being:get_total_resistance( "plasma", TARGET_FEET ) == 100
 			local damage = 12
 			if DIFFICULTY == DIFF_EASY then damage = damage / 2 end
 			if being:is_perk("running") then damage = damage / 2 end
-			ui.msg("Argh!!! Blood!")
-			if core.game_time() % 3 == 0 then
-				being:play_sound("hit")
+			if not fully_resisted then
+				ui.msg("Argh!!! Blood!")
+				if core.game_time() % 3 == 0 then
+					being:play_sound("hit")
+				end
 			end
+			if fully_resisted then damage = 0 end
 			being:apply_damage( damage, TARGET_FEET, DAMAGE_PLASMA )
 		end,
 
 		OnHazardQuery = function( being )
 			if not being:is_player() then return false end
-			if being.flags[ BF_ENVIROSAFE ] then return false end
-			if being.flags[ BF_FLY ] then return false end
-			if being:get_total_resistance( "plasma", TARGET_FEET ) == 100 then return false end
-			if being:is_perk("inv") then return false end
-			if being:is_perk("enviro") then return false end
-			return true
+			return is_fluid_hazard( being, "plasma" )
 		end,
 	}
 
@@ -552,7 +562,7 @@ function drl.register_cells()
 		armor      = 5,
 		hp         = 5,
 		set        = CELLSET_WALLS,
-		flags      = {CF_BLOCKLOS, CF_BLOCKMOVE, CF_STICKWALL, CF_FRAGILE},
+		flags      = {CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_STICKWALL, CF_FRAGILE},
 		sprite     = SPRITE_WBOXC,
 		blsprite   = SPRITE_WALLBLOOD,
 		coscolor   = {1.0,0.0,0.0,1.0},
@@ -578,7 +588,7 @@ function drl.register_cells()
 		armor      = 5,
 		hp         = 5,
 		set        = CELLSET_WALLS,
-		flags      = {CF_BLOCKLOS, CF_BLOCKMOVE, CF_STICKWALL, CF_FRAGILE},
+		flags      = {CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_STICKWALL, CF_FRAGILE},
 		sprite     = SPRITE_YBOXC,
 		blsprite   = SPRITE_WALLBLOOD,
 		coscolor   = {1.0,1.0,0.0,1.0},

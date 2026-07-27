@@ -109,19 +109,27 @@ begin
     ;
 
   iGroup := AddGroup( 'audio' );
-  iGroup.AddInteger( 'sound_volume', 25 )
-    .SetRange(0,30)
+  iGroup.AddInteger( 'volume_sound', 70 )
+    .SetRange(0,100,5)
     .SetName('Sound volume')
     .SetDescription('Control sound volume. Set to {!0} to turn off sounds.')
     ;
-  iGroup.AddInteger( 'music_volume', 13 )
-    .SetRange(0,30)
+  iGroup.AddInteger( 'volume_music', 30 )
+    .SetRange(0,100,5)
     .SetName('Music volume')
     .SetDescription('Control music volume. Set to {!0} to turn off music.')
     ;
   iGroup.AddToggle( 'menu_sound', True )
     .SetName('Menu sounds')
     .SetDescription('Set to {!Disabled} to disable the chunky menu sounds.')
+    ;
+  iGroup.AddToggle( 'heartbeat_sound', True )
+    .SetName('Heartbeat')
+    .SetDescription('Set to {!Disabled} to disable the low health heartbeat sound.')
+    ;
+  iGroup.AddToggle( 'wait_sound', True )
+    .SetName('Wait sound')
+    .SetDescription('Set to {!Disabled} to disable the wait action sound.')
     ;
 
   iGroup := AddGroup( 'gameplay' );

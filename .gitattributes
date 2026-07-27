@@ -1,0 +1,13 @@
+* text=auto
+
+*.pas text eol=lf
+*.pp  text eol=lf
+*.inc text eol=lf
+*.lua text eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.wav binary
+*.ogg binary

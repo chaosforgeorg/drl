@@ -41,6 +41,8 @@ type
     procedure addMissileAnimation( aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aColor : Byte; aPic : Char; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False; aTrailNID : Word = 0 ); override;
     procedure addMarkAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aColor : Byte; aPic : Char ); override;
     procedure addFXAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite ); override;
+    procedure addParticleBurstAnimation( aDelay : DWord; aEmitterID : Word; aPosition : TCoord2D;
+      aDirection : TDirection; aCount : Word; aDistanceScale, aSpreadScale : Single ); override;
     procedure addSoundAnimation( aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord ); override;
     procedure addRumbleAnimation( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord ); override;
     function getUIDPosition( aUID : TUID; var aPosition : TVec2i ) : Boolean;
@@ -545,6 +547,16 @@ begin
   FAnimations.addAnimation( TGFXFXAnimation.Create(aDuration, aDelay, aCoord, aSprite) )
 end;
 
+procedure TDRLGFXIO.addParticleBurstAnimation( aDelay : DWord; aEmitterID : Word;
+  aPosition : TCoord2D; aDirection : TDirection; aCount : Word;
+  aDistanceScale, aSpreadScale : Single );
+begin
+  if DRL.State <> DSPlaying then Exit;
+  if ( aEmitterID = 0 ) or ( aCount = 0 ) then Exit;
+  FAnimations.AddAnimation( TGFXParticleBurstAnimation.Create(
+    aDelay, aEmitterID, aPosition, aDirection, aCount, aDistanceScale, aSpreadScale ) );
+end;
+
 procedure TDRLGFXIO.addSoundAnimation(aDelay: DWord; aPosition: TCoord2D; aSoundID: DWord);
 begin
   if DRL.State <> DSPlaying then Exit;
@@ -582,6 +594,7 @@ var iLevel  : TLevel;
     iSprite : TSprite;
     iCoord  : TCoord2D;
     iFirst  : TCoord2D;
+
   procedure Trace( aT : TCoord2D; aMain : Boolean );
   var iRay      : TBresenhamRay;
       iBlock    : TCoord2D;
@@ -591,10 +604,10 @@ var iLevel  : TLevel;
     iRay.Init( aT, Player.Position );
     repeat
       iRay.Next;
-      if iRay.Done or ( not iLevel.isProperCoord( iRay.GetC ) ) then Break;
-      if iLevel.blocksVision( iRay.GetC ) then
+      if iRay.Done or ( not iLevel.isProperCoord( iRay.Current ) ) then Break;
+      if iLevel.blocksVision( iRay.Current ) then
       begin
-        iBlock    := iRay.GetC;
+        iBlock    := iRay.Current;
         iFinalize := True;
       end
       else
@@ -609,6 +622,28 @@ var iLevel  : TLevel;
 
       iLevel.Markers.Add( iBlock, iSprite, 0 );
     end;
+  end;
+
+  procedure MarkCollision;
+  var iTargetLine : TAssistedRay;
+      iCurrent    : TCoord2D;
+  begin
+    iTargetLine.Init( iLevel, Player.Position, aTarget, Distance( Player.Position, aTarget ), Player.Vision, Player.GetVisionMap );
+    repeat
+      iTargetLine.Next;
+      iCurrent := iTargetLine.Current;
+      if iTargetLine.Steps > 10 then Exit;
+      if not iLevel.isProperCoord( iCurrent ) then Exit;
+      if iTargetLine.Done then Exit;
+      if not iLevel.isVisible( iCurrent ) then Exit;
+      if not iLevel.isShotPassable( iCurrent ) then
+      begin
+        iSprite.Color  := NewColor(160,0,0);
+        iSprite.Frames := HARDSPRITE_SHIELD_COUNT;
+        iLevel.Markers.Add( iCurrent, iSprite, 0 );
+        Exit;
+      end;
+    until False;
   end;
 
 begin
@@ -637,6 +672,7 @@ begin
       until iCoord = iFirst;
       Trace( aTarget, True );
     end;
+  MarkCollision;
 end;
 
 procedure TDRLGFXIO.Focus( aCoord : TCoord2D );

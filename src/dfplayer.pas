@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit dfplayer;
 interface
 uses classes, sysutils,
-     vuielement,vpath, vutil, vrltools, vuitypes,
+     vuielement,vpath, vutil, vrltools, vuitypes, vvision,
      dfbeing, dfhof, dfdata, dfitem,
      drltraits, drlkeybindings, drlstatistics, drlmultimove;
 
@@ -64,6 +64,7 @@ type TPlayer = class(TBeing)
   procedure NextLevelIndex;
   function GetSprite: TSprite; override;
   function GetPerkEffect : TStatusEffect;
+  function GetVisionMap : TVision; override;
 private
   FLevelIndex     : Integer;
   FExp            : LongInt;
@@ -263,17 +264,20 @@ procedure TPlayer.ApplyDamage(aDamage: LongInt; aTarget: TBodyTarget; aDamageTyp
 begin
   if aDamage < 0 then Exit;
   if BF_INV in FFlags then Exit;
-  FMultiMove.Stop;
-  DRL.DamagedLastTurn := True;
-  if ( aDamage >= Max( FHPMax div 3, 10 ) ) then
+  if aDamage > 0 then
   begin
-    IO.Blink( Red, 100 );
-    IO.addRumbleAnimation( aDelay, $6000, $4000, 250 );
-  end
-  else
-    IO.addRumbleAnimation( aDelay, $4000, $2000, 100 );
+    FMultiMove.Stop;
+    DRL.DamagedLastTurn := True;
+    if ( aDamage >= Max( FHPMax div 3, 10 ) ) then
+    begin
+      IO.Blink( Red, 100 );
+      IO.addRumbleAnimation( aDelay, $6000, $4000, 250 );
+    end
+    else
+      IO.addRumbleAnimation( aDelay, $4000, $2000, 100 );
 
-  if aDamage > 0 then FKills.DamageTaken;
+    FKills.DamageTaken;
+  end;
 
   inherited ApplyDamage(aDamage, aTarget, aDamageType, aSource, aDelay );
 end;
@@ -468,6 +472,13 @@ begin
   Exit(FCSprite);
 end;
 
+function TPlayer.GetVisionMap : TVision;
+begin
+  if Parent is TLevel then
+    Exit( TLevel(Parent).Vision );
+  Exit( nil );
+end;
+
 function TPlayer.GetPerkEffect : TStatusEffect;
 var iCount    : DWord;
     iStrength : DWord;
@@ -523,7 +534,7 @@ begin
     FKilledMelee       := aKiller.MeleeAttack;
   end;
 
-  Blood( NewDirection(0,0),15 );
+  Blood( NewDirection(0,0), 15, aDelay, aOverkill );
   iLevel.DropCorpse( FPosition, GetLuaProtoValue('corpse') );
 
   if aOverkill

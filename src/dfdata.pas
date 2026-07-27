@@ -154,6 +154,7 @@ const
   Setting_EmptyConfirm     : Boolean = False;
   Setting_UnlockAll        : Boolean = False;
   Setting_MenuSound        : Boolean = False;
+  Setting_WaitSound        : Boolean = True;
   Setting_MouseEdgePan     : Boolean = False;
   Setting_Mouse            : Boolean = True;
   Setting_GamepadRumble    : Boolean = True;
@@ -206,6 +207,7 @@ var
   ModuleOption_FullBeingDescription      : Boolean = False;
   ModuleOption_PercentHealth             : Boolean = False;
   ModuleOption_RelicSlot                 : Boolean = False;
+  ModuleOption_NewFloorLayout            : Boolean = False;
   ModuleOption_ResistCap                 : Integer = 95;
   ModuleOption_DefaultExplosionKnockback : Integer = 8;
 
@@ -219,6 +221,7 @@ var
   HARDSPRITE_SHIELD_COUNT     : DWord = 0;
   HARDSPRITE_DECAL_BLOOD      : array[0..3] of DWord = ( 0,0,0,0 );
   HARDSPRITE_DECAL_WALL_BLOOD : array[0..3] of DWord = ( 0,0,0,0 );
+  HARDEMITTER_BLOOD           : DWord = 0;
 
 var
   SoundOff  : boolean = False;

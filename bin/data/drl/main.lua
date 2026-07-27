@@ -234,6 +234,7 @@ function drl.register_base_data()
 		flags        = { BF_OPENDOORS, BF_UNIQUENAME },
 		desc         = "You're a soldier. One of the best that the world could set against the demonic invasion.",
 		ai_type      = "",
+		ai_group     = "player",
 
 		OnCreate = function(self)
 			self:add_property( "medals", {} )

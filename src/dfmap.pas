@@ -18,6 +18,8 @@ type TMap = object
        Rotation : array[ 1..MaxX, 1..MaxY ] of Byte;
        Style    : array[ 1..MaxX, 1..MaxY ] of Byte;
        Deco     : array[ 1..MaxX, 1..MaxY ] of Byte;
+       Floor    : array[ 1..MaxX, 1..MaxY ] of Byte;
+       FStyle   : array[ 1..MaxX, 1..MaxY ] of Byte;
      end;
 
 type TCell = class

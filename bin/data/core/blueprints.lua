@@ -172,6 +172,7 @@ core.register_blueprint "perk"
 	OnTick         = { false, core.TFUNC },
 	OnTick10       = { false, core.TFUNC },
 	OnRemove       = { false, core.TFUNC },
+	OnDescribe     = { false, core.TFUNC },
 
 	getDamageBonus   = { false, core.TFUNC },
 	getToHitBonus    = { false, core.TFUNC },
@@ -264,6 +265,7 @@ core.register_blueprint "being"
 	tags        = { false, core.TTABLE, {} },
 	flags       = { false, core.TFLAGS, {} },
 	ai_type     = { true,  core.TSTRING }, -- TIDIN("ais")
+	ai_group    = { false, core.TSTRING, "demon" },
 	is_group    = false,
 	resist      = { false, core.TTABLE },
 
@@ -476,7 +478,7 @@ core.register_blueprint "item"
 			dis_exotic = { false, core.TBOOLEAN, false },
 			dis_unique = { false, core.TBOOLEAN, false },
 			dis_other  = { false, core.TBOOLEAN, false },
-			OnUse      = { true,  core.TFUNC },
+			OnUse      = { false, core.TFUNC },
 
 			OnModDescribe = { false, core.TFUNC },
 		},

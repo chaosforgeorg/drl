@@ -8,7 +8,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit dfbeing;
 interface
 uses Classes, SysUtils,
-     vluatable, vnode, vpath, vmath, vutil, vrltools,
+     vluatable, vnode, vpath, vmath, vutil, vrltools, vvision,
      dfdata, dfthing, dfitem,
      drlinventory, drlcommand;
 
@@ -43,7 +43,8 @@ TBeing = class(TThing,IPathQuery)
     procedure Reload( aAmmoItem : TItem; aSingle : Boolean; aWeapon : TItem = nil ); 
     function Resurrect( aRange : Integer ) : TBeing;
     procedure Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer ); virtual;
-    procedure Blood( aFrom : TDirection; aAmount : LongInt );
+    procedure Blood( aFrom : TDirection; aAmount : LongInt; aDelay : Integer = 0;
+      aOverkill : Boolean = False );
     function Attack( aWhere : TCoord2D; aMoveOnKill : Boolean; aWeapon : TItem = nil ) : Boolean; overload;
     function Attack( aTarget : TBeing; aSecond : Boolean = False; aWeapon : TItem = nil ) : Boolean; overload;
     function meleeWeaponSlot : TEqSlot;
@@ -55,6 +56,7 @@ TBeing = class(TThing,IPathQuery)
     function  isActive : boolean;
     function  WoundStatus : string;
     function  IsPlayer : Boolean;
+    function GetVisionMap : TVision; virtual;
     function GetBonus( aHook : Byte; const aParams : array of Const ) : Integer; override;
     function GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single; override;
     procedure BloodFloor;
@@ -78,6 +80,7 @@ TBeing = class(TThing,IPathQuery)
     function Dead : Boolean;
     procedure Remove( Node : TNode ); override;
     function ASCIIMoreCode : AnsiString; virtual;
+    function GetVisualOverlay : TThing;
 
     // Actions
     // All actions return True/False depending on success.
@@ -97,6 +100,7 @@ TBeing = class(TThing,IPathQuery)
     function ActionUse( aItem : TItem; aTarget : TCoord2D ) : Boolean;
     function ActionUnLoad( aItem : TItem; aDisassembleID : AnsiString = '' ) : Boolean;
     function ActionMove( aTarget : TCoord2D; aVisualMultiplier : Single = 1.0; aMoveCost : Integer = -1 ) : Boolean;
+    function ActionWait : Boolean;
     function ActionSwapPosition( aTarget : TCoord2D ) : Boolean;
     function ActionActive : boolean;
     function ActionAction( aTarget : TCoord2D ) : Boolean;
@@ -127,6 +131,8 @@ TBeing = class(TThing,IPathQuery)
 
   protected
     procedure BloodDecal( aFrom : TDirection; aAmount : LongInt );
+    procedure BloodSpray( aFrom : TDirection; aAmount : LongInt; aDelay : Integer;
+      aDistanceScale, aSpreadScale : Single );
     procedure LuaLoad( Table : TLuaTable ); override;
     // private
     function FireRanged( aTarget : TCoord2D; aGun : TItem; aAlt : Boolean = False; aDelay : Integer = 0 ) : Boolean;
@@ -209,7 +215,7 @@ TBeing = class(TThing,IPathQuery)
 
 implementation
 
-uses math, vlualibrary, vluaentitynode, vuid, vdebug, vvision, vluasystem,
+uses math, vlualibrary, vluaentitynode, vuid, vdebug, vluasystem,
      vluatools, vcolor, vvector,
      dfplayer, dflevel, dfmap, drlhooks,
      drlua, drlbase, drlio;
@@ -456,7 +462,7 @@ var iScatter     : DWord;
     iSeqBase     : DWord;
     iChainTarget : TCoord2D;
     iMissileRange: SmallInt;
-    iRay         : TVisionRay;
+    iRay         : TAssistedRay;
     iSteps       : SmallInt;
     iChaining    : Boolean;
 begin
@@ -464,21 +470,23 @@ begin
   iSeqBase := 0;
   if not isPlayer then iSeqBase := 100;
   iSeqBase += aDelay;
-  iMissileRange := 30; // aGun.Missile.MaxRange;
+  iMissileRange := Max( 30, aGun.Range );
   iChaining := aAltFire and ( aGun.Flags[ IF_ALTCHAIN ] ) and ( aShots > 1 );
 
   if aGun.Flags[ IF_SCATTER ] then
   begin
     iSteps := 0;
-    iRay.Init(TLevel(Parent), FPosition, aTarget);
+    iRay.Init(TLevel(Parent), FPosition, aTarget, iMissileRange, Vision, GetVisionMap);
     repeat
       iRay.Next;
-      if not TLevel(Parent).isProperCoord(iRay.GetC) then begin aTarget:=iRay.prev; break;end; {**** Stop at edge of map.}
+      if not TLevel(Parent).isProperCoord(iRay.Current) then begin aTarget:=iRay.Previous; break;end; {**** Stop at edge of map.}
       Inc(iSteps);
-      if iSteps >= iMissileRange then begin aTarget := iRay.GetC; break; end; {**** Stop if further than maxrange.}
-      if aGun.Flags[ IF_EXACTHIT ] and (iRay.GetC = aTarget) then break; {**** Stop at target square for exact missiles.}
+      if iSteps >= iMissileRange then begin aTarget := iRay.Current; break; end; {**** Stop if further than maxrange.}
+      if aGun.Flags[ IF_EXACTHIT ] and (iRay.Current = aTarget) then break; {**** Stop at target square for exact missiles.}
       if iRay.Done then
-         iRay.Init(TLevel(Parent), iRay.GetC, iRay.GetC + (aTarget - FPosition)); {**** Extend target out in same direction for non-exact missiles.}
+        if iRay.Current = aTarget
+          then iRay.Init(TLevel(Parent), iRay.Current, iRay.Current + (aTarget - FPosition), iMissileRange, Vision, GetVisionMap) {**** Extend target out in same direction for non-exact missiles.}
+          else begin aTarget := iRay.Current; break; end;
     until false;
     iScatter := Max(1,(iSteps div 4)); {**** SCATTER TIME!}
   end;
@@ -510,6 +518,11 @@ end;
 function TBeing.IsPlayer : Boolean;
 begin
   Exit( inheritsFrom( TPlayer ) );
+end;
+
+function TBeing.GetVisionMap : TVision;
+begin
+  Exit( nil );
 end;
 
 function TBeing.GetBonus( aHook : Byte; const aParams : array of Const ) : Integer;
@@ -559,6 +572,14 @@ end;
 function TBeing.ASCIIMoreCode : AnsiString;
 begin
   Exit( ID );
+end;
+
+function TBeing.GetVisualOverlay : TThing;
+var iArmor : TItem;
+begin
+  iArmor := FInv.Slot[ efTorso ];
+  if ( iArmor <> nil ) and iArmor.Flags[ IF_OVERLAY ] then Exit( iArmor );
+  Exit( nil );
 end;
 
 function TBeing.ActionQuickKey( aIndex : Byte ) : Boolean;
@@ -1214,6 +1235,14 @@ begin
   Exit( True );
 end;
 
+function TBeing.ActionWait : Boolean;
+begin
+  Dec( FSpeedCount, 1000 );
+  if IsPlayer and Setting_WaitSound then
+    IO.Audio.PlaySound( 'wait', 50 );
+  Result := True;
+end;
+
 function TBeing.ActionSwapPosition( aTarget : TCoord2D ) : Boolean;
 var iLevel  : TLevel;
 begin
@@ -1310,12 +1339,16 @@ end;
 
 
 function TBeing.TryMove( aWhere : TCoord2D ) : TMoveResult;
-var iLevel : TLevel;
+var iLevel     : TLevel;
+    iBlockFlag : Byte;
 begin
   iLevel := TLevel(Parent);
   if not iLevel.isProperCoord( aWhere )          then Exit( MoveBlock );
   if iLevel.cellFlagSet( aWhere, CF_OPENABLE )   then Exit( MoveDoor  );
-  if not iLevel.isEmpty( aWhere, [EF_NOBLOCK] )  then Exit( MoveBlock );
+  if BF_FLY in FFlags
+    then iBlockFlag := EF_NOBLOCKFLY
+    else iBlockFlag := EF_NOBLOCK;
+  if not iLevel.isEmpty( aWhere, [iBlockFlag] ) then Exit( MoveBlock );
   if ( not Self.isPlayer ) and iLevel.cellFlagSet( aWhere, CF_HAZARD ) and (not (BF_CHARGE in FFlags)) then
   begin
     if not (BF_ENVIROSAFE in FFlags) then Exit( MoveBlock );
@@ -1564,7 +1597,7 @@ begin
     COMMAND_WEAR         : Result := ActionWear( aCommand.Item );
     COMMAND_TAKEOFF      : Result := ActionTakeOff( aCommand.Slot );
     COMMAND_SWAP         : Result := ActionSwap( aCommand.Item, aCommand.Slot );
-    COMMAND_WAIT         : Dec( FSpeedCount, 1000 );
+    COMMAND_WAIT         : Result := ActionWait;
     COMMAND_ACTION       : Result := ActionAction( aCommand.Target );
     COMMAND_ENTER        : TLevel( Parent ).CallHook( Position, CellHook_OnExit );
     COMMAND_MELEE        : Attack( aCommand.Target, aCommand.Alt );
@@ -1607,16 +1640,21 @@ begin
     for iCoord in NewArea( FPosition, aRange ).Clamped( iLevel.Area.Shrinked ) do
       if iLevel.cellFlagSet( iCoord, CF_RAISABLE ) then
         if iLevel.isEmpty(iCoord,[EF_NOBEINGS,EF_NOBLOCK]) then
-          if iLevel.isEyeContact( FPosition, iCoord ) then
+          if iLevel.isEyeContact( Self, iCoord ) then
             Exit( iLevel.Respawn( iCoord ) );
   Exit( nil );
 end;
 
 
-procedure TBeing.Blood( aFrom : TDirection; aAmount : LongInt );
-var iCount : Integer;
-    iCoord : TCoord2D;
-    iLevel : TLevel;
+procedure TBeing.Blood( aFrom : TDirection; aAmount : LongInt; aDelay : Integer;
+  aOverkill : Boolean );
+var iCount          : Integer;
+    iCoord          : TCoord2D;
+    iAmount         : LongInt;
+    iDistanceScale  : Single;
+    iParticleAmount : LongInt;
+    iSpreadScale    : Single;
+    iLevel          : TLevel;
 begin
   if BF_NOBLEED in FFlags then Exit;
   iLevel := TLevel(Parent);
@@ -1632,7 +1670,29 @@ begin
       until iLevel.isProperCoord( iCoord );
       iLevel.Blood( iCoord );
     end;
-  BloodDecal( aFrom, Clamp( aAmount + Random( aAmount ), 1, 12 ) );
+  iAmount := Clamp( aAmount + Random( aAmount ), 1, 12 );
+  if GraphicsVersion and ( not IsPlayer ) and isVisible and ( HARDEMITTER_BLOOD <> 0 ) then
+  begin
+    iParticleAmount := iAmount * 2;
+    iDistanceScale  := 0.66;
+    iSpreadScale    := 1.0;
+    if aOverkill then
+    begin
+      iParticleAmount *= 2;
+      iDistanceScale := 1.0;
+      iSpreadScale   := 2.0;
+    end;
+    BloodSpray( aFrom, iParticleAmount, aDelay, iDistanceScale, iSpreadScale );
+  end
+  else
+    BloodDecal( aFrom, iAmount );
+end;
+
+procedure TBeing.BloodSpray( aFrom : TDirection; aAmount : LongInt; aDelay : Integer;
+  aDistanceScale, aSpreadScale : Single );
+begin
+  IO.addParticleBurstAnimation( aDelay, HARDEMITTER_BLOOD, FPosition, aFrom,
+    aAmount, aDistanceScale, aSpreadScale );
 end;
 
 procedure TBeing.BloodDecal( aFrom : TDirection; aAmount : LongInt );
@@ -1712,6 +1772,7 @@ var iItem      : TItem;
     iBlood     : Byte;
     iDir       : TDirection;
     iLevel     : TLevel;
+    iKillerUID : TUID;
     iMeleeKill : Boolean;
 begin
   iLevel := TLevel(Parent);
@@ -1723,6 +1784,9 @@ begin
   end;
   FDying := True;
 
+  iKillerUID := 0;
+  if aKiller <> nil then iKillerUID := aKiller.UID;
+
   // TODO: Change to Player.RegisterKill(kill)
   if ( not ( BF_FRIENDLY in FFlags ) ) and ( not ( BF_ILLUSION in FFlags ) ) and ( not ( BF_NOKILL in FFlags ) ) then
     Player.RegisterKill( FID, aKiller, aWeapon, not Flags[ BF_RESPAWN ] );
@@ -1730,11 +1794,14 @@ begin
   if (aKiller <> nil) and (aWeapon <> nil) then
     aWeapon.CallHook(Hook_OnKill, [ aKiller, Self ]);
 
+  if UIDs[ iKillerUID ] = nil then aKiller := nil;
+
   iMeleeKill := False;
   if (aKiller <> nil) then
   begin
     iMeleeKill := aKiller.MeleeAttack;
     aKiller.CallHook( Hook_OnKill, [ Self, aWeapon, iMeleeKill ] );
+    if UIDs[ iKillerUID ] = nil then aKiller := nil;
   end;
 
   if DRL.State = DSPlaying then
@@ -1742,7 +1809,7 @@ begin
     iLevel.CallHook( Hook_OnKill,[ Self, aKiller, aWeapon, iMeleeKill ] );
   end;
 
-  if not aOverkill then
+  if not aOverkill and not ( CF_BLOCKMOVE in Cells[ iLevel.Floor[ FPosition ] ].Flags ) then
   try
     if Flags[ BF_UNLOADONKILL ] and Assigned( FInv.Slot[ efWeapon ] ) then
     begin
@@ -1761,12 +1828,13 @@ begin
 
   iDir.code := 5;
 
+  if UIDs[ iKillerUID ] = nil then aKiller := nil;
   if aKiller <> nil then
     iDir.CreateSmooth( aKiller.FPosition, FPosition );
 
   iBlood := aBloodAmount;
   if aOverkill then iBlood *= 3;
-  Blood(iDir,iBlood);
+  Blood( iDir, iBlood, aDelay, aOverkill );
 
   CallHook( Hook_OnDie, [ aOverkill, iMeleeKill ] );
 
@@ -1859,7 +1927,7 @@ begin
   end;
   if iLevel.isAlive( iUID ) then
   begin
-    if Result and aMoveOnKill and ( iPosition = Position ) then
+    if Result and aMoveOnKill and ( iPosition = Position ) and ( TryMove( aWhere ) = MoveOk ) then
       ActionMove( aWhere, 1.0, 0 )
     else
       if IsPlayer
@@ -2041,6 +2109,7 @@ procedure TBeing.ApplyDamage( aDamage : LongInt; aTarget : TBodyTarget; aDamageT
 var iDirection     : TDirection;
     iArmor         : TItem;
     iActive        : TBeing;
+    iActiveUID     : TUID;
     iSlot          : TEqSlot;
     iArmorDamage   : LongInt;
     iProtection    : LongInt;
@@ -2051,6 +2120,7 @@ var iDirection     : TDirection;
     iForceOverkill : Boolean;
     iMeleeAttack   : Boolean;
     iDeathMessage  : AnsiString;
+    iOldDurability : LongInt;
 begin
   if ( aDamage < 0 ) or (BF_INV in FFlags) or FDying then Exit;
 
@@ -2060,9 +2130,11 @@ begin
     if aSource.Flags[ IF_ILLUSION ] then Exit;
   end;
 
-  iActive := TLevel(Parent).ActiveBeing;
+  iActive    := TLevel(Parent).ActiveBeing;
+  iActiveUID := 0;
   if iActive <> nil then
   begin
+    iActiveUID   := iActive.UID;
     iMeleeAttack := iActive.MeleeAttack;
     if ( aSource <> nil ) and ( iActive.Inv.Equipped( aSource ) or ( aSource.IType = ITEMTYPE_URANGED ) ) then
     begin
@@ -2080,9 +2152,12 @@ begin
 
   if FDying then Exit;
 
+  if UIDs[ iActiveUID ] = nil then iActive := nil;
+
   CallHook( Hook_OnReceiveDamage, [ aDamage, aSource, iActive ] );
 
   if FDying or ( BF_INV in FFlags ) then Exit;
+  if UIDs[ iActiveUID ] = nil then iActive := nil;
 
   iResist := 0;
   if aDamageType <> Damage_IgnoreArmor then
@@ -2136,9 +2211,17 @@ begin
     iArmorDamage := Max( aDamage - iProtection , 1 );
     if (aDamageType = Damage_Acid) and (iResist < 100) then iArmorDamage *= 2;
     if iArmor.Flags[ IF_NODURABILITY ] then iArmorDamage := 0;
+    iOldDurability := iArmor.Durability;
     iArmor.Durability := Max( 0, iArmor.Durability - iArmorDamage );
 
     if iArmorDamage > 0 then iArmor.CallHook( Hook_OnReceiveDamage, [ aDamage, aSource, iActive ] );
+
+    if UIDs[ iActiveUID ] = nil then iActive := nil;
+    if (iOldDurability > 0) and iArmor.Flags[ IF_SHIELD ] then 
+    begin
+      CallHook( Hook_OnAttacked, [ iActive, aSource ] );
+      Exit;
+    end;
 
     if (iArmor.Durability = 0) and (not iArmor.Flags[ IF_NODESTROY ]) then
     begin
@@ -2171,7 +2254,7 @@ begin
     if iActive <> nil then
       iDirection.Create( iActive.FPosition, FPosition )
     else iDirection.code := 5;
-    Blood( iDirection, aDamage div 7 );
+    Blood( iDirection, aDamage div 7, aDelay );
   end;
 
   case aDamageType of
@@ -2187,6 +2270,7 @@ begin
   iGibMul := 1.0;
   if iActive <> nil then
     iGibMul := iActive.GetBonusMul( Hook_getGibMul, [ aSource, Byte(aDamageType), iMeleeAttack ] );
+  if UIDs[ iActiveUID ] = nil then iActive := nil;
   if aSource <> nil then
     iGibMul := iGibMul * aSource.GetBonusMul( Hook_getGibMul, [ iActive, Byte(aDamageType), iMeleeAttack ] );
   iForceOverkill := iGibMul >= 10.0;
@@ -2212,6 +2296,7 @@ begin
       iDeathMessage := LuaSystem.ProtectedCall( [ CoreModuleID, 'GetDeathMessage' ], [ Self, isVisible ] );
       if iDeathMessage <> '' then IO.Msg( iDeathMessage );
     end;
+  if UIDs[ iActiveUID ] = nil then iActive := nil;
   if Dead
     then Kill( Min( aDamage div 2, 15), (aDamage >= iOverKillValue) or iForceOverkill, iActive, aSource, aDelay )
     else begin
@@ -2226,7 +2311,7 @@ begin
   if aBeing = nil then Exit( False );
   if IsPlayer then Exit( aBeing.isVisible );
   if Distance( FPosition, aBeing.Position ) > Vision then Exit( False );
-  Exit( TLevel(Parent).isEyeContact( FPosition, aBeing.Position ) );
+  Exit( TLevel(Parent).isEyeContact( Self, aBeing ) );
 end;
 
 function TBeing.calculateToHit( aBeing : TBeing ) : Integer;
@@ -2261,7 +2346,7 @@ end;
 
 function TBeing.SendMissile( aTarget : TCoord2D; aItem : TItem; aAltFire : Boolean; aSequence : DWord; aShotCount : Integer ) : Boolean;
 var iDirection  : TDirection;
-    iMisslePath : TVisionRay;
+    iMisslePath : TAssistedRay;
     iOldCoord   : TCoord2D;
     iTarget     : TCoord2D;
     iSource     : TCoord2D;
@@ -2329,7 +2414,7 @@ begin
   end;
   iDelay := aItem.MisDelay;
 
-  iMaxRange := 30; //aGun.MaxRange
+  iMaxRange := Max( 30, aItem.Range );
 
   iBaseToHit := getToHit( aItem, aAltFire, False );
   if aItem.Flags[ IF_SPREAD ] then iBaseToHit += 10;
@@ -2340,7 +2425,7 @@ begin
   if aItem.Flags[ IF_INSTANTHIT ] then
       iSource := iTarget;
 
-  iMisslePath.Init( iLevel, iSource, aTarget );
+  iMisslePath.Init( iLevel, iSource, aTarget, iMaxRange, Vision, GetVisionMap );
 
   iMaxDamage := (BF_MAXDAMAGE in FFlags) 
              or CallHookCan( Hook_OnCanMaxDamage, [ aItem, aAltFire ] )
@@ -2359,25 +2444,25 @@ begin
   iSteps := 0;
   iHit   := aItem.Flags[ IF_EXACTHIT ];
   iIsHit := aItem.Flags[ IF_EXACTHIT ];
-  iStart := iMisslePath.GetSource;
+  iStart := iMisslePath.Current;
 
   iRadius := aItem.Radius;
   if ( BF_FIREANGEL in FFlags ) and ( not ( aItem.Hooks[ Hook_OnHitBeing ] ) ) then
     iRadius += 1;
 
   repeat
-    iOldCoord := iMisslePath.GetC;
+    iOldCoord := iMisslePath.Current;
     if not aItem.Flags[ IF_INSTANTHIT ] then
       iMisslePath.Next;
-    iCoord := iMisslePath.GetC;
+    iCoord := iMisslePath.Current;
     iSteps := Distance (iStart.x, iStart.y, iCoord.x, iCoord.y);
 
     if not iLevel.isProperCoord( iCoord ) then Break;
 
-    if not iLevel.isEmpty( iCoord, [EF_NOBLOCK] ) then
+    if not iLevel.isShotPassable( iCoord ) then
     begin
       iCoverValue := 10;
-      if ( iCoord <> iTarget ) and ( not iLevel.cellFlagSet( iCoord, CF_BLOCKMOVE ) ) then
+      if ( iCoord <> iTarget ) and ( not iLevel.cellFlagSet( iCoord, CF_BLOCKSHOT ) ) then
       begin
         iCoverValue := 0;
         iCover      := iLevel.GetItem( iCoord );
@@ -2464,6 +2549,12 @@ begin
             iBeing.ApplyDamage( iDamage, Target_Torso, aItem.DamageType, aItem, aSequence );
         end;
 
+        if ( UIDs[ iItemUID ] = nil ) or ( UIDs[ iThisUID ] = nil ) then
+        begin
+          vdebug.Log( LOGWARN, 'Item/Self destroyed during SendMissile!');
+          Exit( False );
+        end;
+
         if not aItem.Flags[ IF_PIERCEHIT ] then
         begin
           aTarget := iCoord;
@@ -2473,9 +2564,11 @@ begin
       end;
     end;
     
-    if iMisslePath.Done then
-      if aItem.Flags[ IF_EXACTHIT ] then
-        Break;
+    if aItem.Flags[ IF_EXACTHIT ] and ( iCoord = iTarget ) then
+      Break;
+
+    // the isVisible check is only needed due to possibility of out of vision TIsaacRay
+    if isPlayer and iMisslePath.Done and iLevel.isVisible( iCoord ) then Break;
 
     if ( iSteps >= iMaxRange ) or aItem.Flags[ IF_INSTANTHIT ] then
     begin
@@ -2486,12 +2579,16 @@ begin
     if UIDs[ iItemUID ] = nil then
     begin
       aItem := nil;
-      vdebug.Log( LOGWARN, 'Item destroyed duirng SendMissile!');
+      vdebug.Log( LOGWARN, 'Item destroyed during SendMissile!');
       Exit( False );
     end;
   until false;
 
-  if UIDs[ iThisUID ] = nil then Exit( False );
+  if ( UIDs[ iItemUID ] = nil ) or ( UIDs[ iThisUID ] = nil ) then
+  begin
+    vdebug.Log( LOGWARN, 'Item/Self destroyed during SendMissile!');
+    Exit( False );
+  end;
 
   if ( not aItem.Flags[ IF_SERIESSOUND ] ) or ( aShotCount = 0 ) then
   begin
@@ -2511,14 +2608,14 @@ begin
     end
     else
     begin
-      iDuration := (iSource - iMisslePath.GetC).LargerLength * iDelay;
+      iDuration := (iSource - iMisslePath.Current).LargerLength * iDelay;
       iMarkSeq  := iDuration + aSequence;
     end;
-    IO.addMissileAnimation( iDuration, aSequence,iSource,iMisslePath.GetC,iColor,aItem.MisASCII,iDelay,iSprite,aItem.Flags[ IF_RAYGUN ],aItem.MissTrail);
-    if iHit and iLevel.isVisible( iMisslePath.GetC ) then
+    IO.addMissileAnimation( iDuration, aSequence,iSource,iMisslePath.Current,iColor,aItem.MisASCII,iDelay,iSprite,aItem.Flags[ IF_RAYGUN ],aItem.MissTrail);
+    if iHit and iLevel.isVisible( iMisslePath.Current ) then
     begin
-      IO.addSoundAnimation( iMarkSeq, iMisslePath.GetC, IO.Audio.ResolveSoundID([Iif( iIsHit, 'flesh_bullet_hit', 'concrete_bullet_hit' )]) );
-      IO.addMarkAnimation(199, iMarkSeq, iMisslePath.GetC, aItem.HitSprite, Iif( iIsHit, LightRed, LightGray ), '*' );
+      IO.addSoundAnimation( iMarkSeq, iMisslePath.Current, IO.Audio.ResolveSoundID([Iif( iIsHit, 'flesh_bullet_hit', 'concrete_bullet_hit' )]) );
+      IO.addMarkAnimation(199, iMarkSeq, iMisslePath.Current, aItem.HitSprite, Iif( iIsHit, LightRed, LightGray ), '*' );
     end;
   end;
 
@@ -2570,6 +2667,7 @@ procedure TBeing.Knockback( aDir : TDirection; aStrength : Single );
 var iKnock     : TCoord2D;
     iLevel     : TLevel;
     iStrength  : Integer;
+    iBlockFlag : Byte;
 begin
   iLevel := TLevel(Parent);
   if aStrength <= 0.0         then Exit;
@@ -2581,16 +2679,19 @@ begin
   iStrength  := Floor( aStrength ) - GetBonus( Hook_getBodyBonus, [] );
   if iStrength <= 0 then Exit;
 
-  if not iLevel.isEmpty( iKnock, [EF_NOBEINGS,EF_NOBLOCK] ) then Exit;
+  if BF_FLY in FFlags
+    then iBlockFlag := EF_NOBLOCKFLY
+    else iBlockFlag := EF_NOBLOCK;
+  if not iLevel.isEmpty( iKnock, [EF_NOBEINGS,iBlockFlag] ) then Exit;
   iKnock := FPosition;
   while iStrength > 0 do
   begin
-    if not iLevel.isEmpty(iKnock + aDir, [EF_NOBEINGS,EF_NOBLOCK] ) then Break;
+    if not iLevel.isEmpty(iKnock + aDir, [EF_NOBEINGS,iBlockFlag] ) then Break;
     iKnock += aDir;
     Dec(iStrength);
   end;
 
-  if iLevel.isEmpty(iKnock,[EF_NOBEINGS,EF_NOBLOCK]) then
+  if iLevel.isEmpty(iKnock,[EF_NOBEINGS,iBlockFlag]) then
   begin
     if GraphicsVersion then
     begin
@@ -2796,14 +2897,18 @@ end;
 
 function TBeing.passableCoord( const aCoord : TCoord2D ): boolean;
 var iItem : TItem;
+    iBlockFlag : Byte;
 begin
   if not TLevel(Parent).isProperCoord( aCoord ) then Exit( False );
+  if BF_FLY in FFlags
+    then iBlockFlag := CF_BLOCKFLY
+    else iBlockFlag := CF_BLOCKMOVE;
   with Cells[ TLevel(Parent).getCell( aCoord ) ] do
   begin
     if (not isPlayer) and (CF_HAZARD in Flags) and (not ((BF_ENVIROSAFE in FFlags) or (BF_CHARGE in FFlags))) then Exit( False );
     iItem := TLevel(Parent).Item[ aCoord ];
     if Assigned( iItem ) and ( iItem.Flags[ IF_BLOCKMOVE ] ) then Exit( False );
-    if (not ( CF_BLOCKMOVE in Flags )) then Exit( True );
+    if (not ( iBlockFlag in Flags )) then Exit( True );
     if (BF_OPENDOORS in FFlags) and ( CF_OPENABLE in Flags ) then Exit( True );
   end;
   Exit( False );
@@ -3413,23 +3518,28 @@ begin
 end;
 
 function lua_being_set_marker( L: Plua_State ): Integer; cdecl;
-var iState  : TDRLLuaState;
-    iBeing  : TBeing;
-    iCoord  : TCoord2D;
-    iSprite : TSprite;
-    iTable  : TLuaTable;
+var iState     : TDRLLuaState;
+    iBeing     : TBeing;
+    iTarget    : TBeing;
+    iCoord     : TCoord2D;
+    iSprite    : TSprite;
+    iTable     : TLuaTable;
+    iTargetUID : TUID;
 begin
   iState.Init(L);
   iBeing := iState.ToObject(1) as TBeing;
   if iBeing = nil then Exit( 0 );
   iCoord := iState.ToPosition( 2 );
+  iTarget := iState.ToObjectOrNil( 4 ) as TBeing;
+  iTargetUID := 0;
+  if iTarget <> nil then iTargetUID := iTarget.UID;
   if not iState.IsTable( 3 ) then Exit( 0 );
   FillChar( iSprite, SizeOf( iSprite), 0 );
   Initialize( iSprite );
   iTable := iState.ToTable( 3 );
   try
     if ReadSprite( iTable, iSprite )
-      then DRL.Level.Markers.Add( iCoord, iSprite, iBeing.UID )
+      then DRL.Level.Markers.Add( iCoord, iSprite, iBeing.UID, iTargetUID )
       else iState.Error('bad sprite data passed to being:set_marker');
   finally
     FreeAndNil ( iTable );
