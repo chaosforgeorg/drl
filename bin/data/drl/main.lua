@@ -1,8 +1,8 @@
 core.declare( "drl", {} )
 core.declare( "core_module", "drl" )
 core.declare( "DEMO", false )
-core.declare( "VERSION_MODULE",      "0.10.9a" )
-core.declare( "VERSION_MODULE_SAVE", "0.10.9" )
+core.declare( "VERSION_MODULE",      "0.10.10b" )
+core.declare( "VERSION_MODULE_SAVE", "0.10.10" )
 
 require( "drl:generator" )
 require( "drl:generators" )
@@ -420,7 +420,7 @@ function drl.RunPrintMortem()
 	local game_module    = nil
 
 	player:mortem_print( "{r--------------------------------------------------------------}" )
-	player:mortem_print( " {RDRL} ({!"..VERSION_STRING.."}) roguelike post-mortem character dump")
+	player:mortem_print( " {RDRL} {!"..VERSION_MODULE.."} (Engine {!"..VERSION_STRING.."}) roguelike post-mortem dump")
 --	if game_type ~= GAMESTANDARD then
 --		player:mortem_print( " Module : "..module.name.." ("..mortem.version_string(module.version)..")")
 --		game_module = _G[module.id]
