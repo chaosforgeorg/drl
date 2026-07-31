@@ -647,6 +647,9 @@ begin
   iDir := InputDirection( aInput );
   iTarget := Player.Position + iDir;
   iMoveResult := Player.TryMove( iTarget );
+  if ( iMoveResult = MoveBlock ) and Level.isProperCoord( iTarget ) and
+     ( Level.Being[ iTarget ] <> nil ) then
+    iMoveResult := MoveBeing;
 
   if Player.MultiMove.IsRepeat and (
        ( iMoveResult <> MoveOk ) or

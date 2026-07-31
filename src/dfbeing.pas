@@ -1247,6 +1247,7 @@ function TBeing.ActionSwapPosition( aTarget : TCoord2D ) : Boolean;
 var iLevel  : TLevel;
 begin
   iLevel  := TLevel(Parent);
+  if TryMove( aTarget ) <> MoveBeing then Exit( False );
   if not iLevel.SwapBeings( Position, aTarget ) then Exit( False );
   Dec( FSpeedCount, getMoveCost );
   Exit( True );
