@@ -127,6 +127,7 @@ TLevel = class(TLuaMapNode, ITextMap)
 
     function HasHook( aHook : Word ) : Boolean; override;
     function GetPerkList : TPerkList;
+    function GetPerkShort( aID : Integer ) : AnsiString;
 
   private
     function CellToID( const aCell : Byte ) : AnsiString; override;
@@ -820,6 +821,11 @@ end;
 function TLevel.GetPerkList : TPerkList;
 begin
   Exit( FPerks.List );
+end;
+
+function TLevel.GetPerkShort( aID : Integer ) : AnsiString;
+begin
+  Exit( FPerks.GetShort( aID ) );
 end;
 
 procedure TLevel.CallHook( aHook : Byte; const aParams : array of const ) ;

@@ -131,7 +131,7 @@ begin
           FTexts[iCount].Push( '{!Status effects}' );
         end;
         iName := Name;
-        if iName = '' then iName := Short;
+        if iName = '' then iName := FBeing.GetPerkShort( iPerks[i].ID );
         if iPerks[i].Time > 0
           then FTexts[iCount].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} ({!' + FloatToStr( iPerks[i].Time / 10 ) + '}s) - ' + Desc )
           else FTexts[iCount].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} - ' + Desc );

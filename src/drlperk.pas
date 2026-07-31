@@ -43,6 +43,7 @@ type TPerks = class( TVObject )
   function  CallHookCan( aHook : Byte; const aParams : array of Const ) : Boolean;
   function  GetBonus( aHook : Byte; const aParams : array of Const ) : Integer;
   function  GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single;
+  function  GetShort( aID : Integer ) : AnsiString;
   procedure Add( aPerk : Integer; aDuration : LongInt = -1 );
   function  Remove( aPerk : Integer; aSilent : Boolean = False ) : Boolean;
   procedure OnTick;
@@ -181,6 +182,13 @@ begin
     for i := 0 to FList.Size-1 do
       if aHook in PerkData[FList[i].ID].Hooks then
         GetBonusMul *= LuaSystem.ProtectedCall( [ 'perks',FList[i].ID, HookNames[ aHook ] ], ConcatConstArray( [FOwner], aParams ) );
+end;
+
+function TPerks.GetShort( aID : Integer ) : AnsiString;
+begin
+  if Hook_OnShort in PerkData[aID].Hooks then
+    Exit( LuaSystem.ProtectedCall( [ 'perks', aID, HookNames[Hook_OnShort] ], [ FOwner ] ) );
+  Exit( PerkData[aID].Short );
 end;
 
 procedure TPerks.Add( aPerk : Integer; aDuration : LongInt );
