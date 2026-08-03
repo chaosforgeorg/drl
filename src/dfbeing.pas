@@ -1928,6 +1928,7 @@ begin
   end;
   if iLevel.isAlive( iUID ) then
   begin
+    FMeleeAttack := False;
     if Result and aMoveOnKill and ( iPosition = Position ) and ( TryMove( aWhere ) = MoveOk ) then
       ActionMove( aWhere, 1.0, 0 )
     else
@@ -2055,7 +2056,8 @@ begin
 
   // Dualblade attack
   if iDualAttack and (not aSecond) and (not Result) then
-    Exit( Attack( aTarget, True ) );
+    Result := Attack( aTarget, True );
+  if UIDs[ iUID ] <> nil then FMeleeAttack := False;
 end;
 
 function TBeing.meleeWeaponSlot: TEqSlot;
