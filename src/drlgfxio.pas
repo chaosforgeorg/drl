@@ -6,7 +6,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlgfxio;
 interface
-uses vglquadrenderer, vgltypes, vluaconfig, vioevent, viotypes, vuielement, vimage,
+uses vglquadrenderer, vgltypes, vluaconfig, vioevent, viotypes, vimage,
      vrltools, vutil, vtextures, vvector, vbitmapfont, vio, vparticleengine,
      drlio, drlspritemap, drlanimation, drlminimap, dfdata, dfthing;
 
@@ -1142,7 +1142,6 @@ end;
 procedure TDRLGFXIO.DeviceChanged;
 begin
   FadeReset;
-  FUIRoot.DeviceChanged;
   FCellX := (FConsole.GetDeviceArea.Dim.X) div (FConsole.SizeX);
   FCellY := (FConsole.GetDeviceArea.Dim.Y) div (FConsole.SizeY);
 end;

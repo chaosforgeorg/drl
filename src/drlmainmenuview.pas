@@ -241,7 +241,7 @@ begin
         if (Option_AlwaysName <> '') or Setting_AlwaysRandomName
           then FMode := MAINMENU_DONE
           else begin
-            IO.Root.Console.ShowCursor;
+            IO.Console.ShowCursor;
             FName[0] := #0;
             IO.Driver.StartTextInput;
             if IO.IsGamepad then
@@ -284,7 +284,7 @@ procedure TMainMenuView.UpdateMenu;
 var iSize  : TIOPoint;
     iCount : Byte;
 begin
-  IO.Root.Console.HideCursor;
+  IO.Console.HideCursor;
   VTIG_PushStyle( @FMenuStyle );
   iSize := Point(34,9);
   iCount := 6;
@@ -451,13 +451,13 @@ begin
   begin
     FResult.Name := AnsiString(FName);
     IO.Driver.StopTextInput;
-    IO.Root.Console.HideCursor;
+    IO.Console.HideCursor;
     FMode := MAINMENU_DONE;
   end;
   if DRL.Store.GetText( iStoreText, @iStoreCancel ) then
   begin
     IO.Driver.StopTextInput;
-    IO.Root.Console.HideCursor;
+    IO.Console.HideCursor;
     if iStoreCancel then
     begin
       OnCancel;
@@ -475,7 +475,7 @@ begin
   if VTIG_EventCancel then
   begin
     IO.Driver.StopTextInput;
-    IO.Root.Console.HideCursor;
+    IO.Console.HideCursor;
     OnCancel;
     FMode := MAINMENU_MENU;
   end;

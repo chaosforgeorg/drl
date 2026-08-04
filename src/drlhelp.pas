@@ -6,7 +6,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlhelp;
 interface
-uses classes, vnode, dfdata, vuitypes, vgenerics;
+uses classes, vnode, dfdata, viotypes, vgenerics;
 
 type THelpEntry = class(TVObject)
   constructor Create;
@@ -14,11 +14,11 @@ type THelpEntry = class(TVObject)
 private
   FID    : Ansistring;
   FDesc  : Ansistring;
-  FText  : TUIStringArray;
+  FText  : TIOStringArray;
 public
   property ID   : Ansistring     read FID;
   property Desc : Ansistring     read FDesc;
-  property Text : TUIStringArray read FText;
+  property Text : TIOStringArray read FText;
 end;
 
 type THelpArray = specialize TGObjectArray< THelpEntry >;
@@ -64,7 +64,7 @@ var iEntry : THelpEntry;
 begin
   Log( 'Registering help file '+aName+'...' );
   iEntry := THelpEntry.Create;
-  iEntry.FText  := TUIStringArray.Create;
+  iEntry.FText  := TIOStringArray.Create;
   while aStream.Position < aSize do
     iEntry.FText.Push( ReadLineFromStream( aStream, aSize ) );
   iEntry.FDesc  := VTIG_StripTags( iEntry.FText[0] );

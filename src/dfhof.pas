@@ -6,7 +6,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit dfhof;
 interface
-uses Classes, DOM, vnode, vxml, vxmldata, dfdata, vuitypes;
+uses Classes, DOM, vnode, vxml, vxmldata, dfdata;
 
 const MaxHofEntries = 500;
       MaxID         = 1023;
@@ -280,7 +280,7 @@ var
         iTotal   := GetRankReqTotal  ( aRankID,aCurrent+1,iReq );
         if iCurrent < iTotal
           then iPage.Push('   * '+GetRankReqDescription( aRankID,aCurrent+1,iReq )+' ({!'+IntToStr(iCurrent)+'}/{!'+IntToStr(iTotal)+'})' )
-          else iPage.Push('   {d* '+StripEncoding( GetRankReqDescription( aRankID,aCurrent+1,iReq ) ) + '}' );
+          else iPage.Push('   {d* '+VTIG_StripTags( GetRankReqDescription( aRankID,aCurrent+1,iReq ) ) + '}' );
       end;
       iTotal := LuaSystem.GetTableSize(['ranks', aRankID, aCurrent+2, 'unlocks' ]);
       if iTotal > 0 then

@@ -1440,7 +1440,7 @@ repeat
       end;
 
       if not IO.Driver.PollEvent( iEvent ) then continue;
-      if IO.OnEvent( iEvent ) or IO.Root.OnEvent( iEvent ) then Continue;
+      if IO.OnEvent( iEvent ) then Continue;
 
       if (iEvent.EType = VEVENT_SYSTEM) and (iEvent.System.Code = VIO_SYSEVENT_QUIT) then
       begin

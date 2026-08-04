@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit dfplayer;
 interface
 uses classes, sysutils,
-     vuielement,vpath, vutil, vrltools, vuitypes, vvision,
+     vpath, vutil, vrltools, vvision, viotypes,
      dfbeing, dfhof, dfdata, dfitem,
      drltraits, drlkeybindings, drlstatistics, drlmultimove;
 
@@ -100,7 +100,7 @@ published
 end;
 
 var Player     : TPlayer;
-    MortemData : TUIStringArray = nil;
+    MortemData : TIOStringArray = nil;
 
 implementation
 
@@ -614,7 +614,7 @@ begin
     Log( LOGERROR, 'Mortem data not cleared!');
     FreeAndNil( MortemData );
   end;
-  MortemData := TUIStringArray.Create;
+  MortemData := TIOStringArray.Create;
   LuaSystem.ProtectedCall([CoreModuleID,'RunPrintMortem'],[]);
 
   iMortemPath := ModuleUserPath + 'mortem.txt';

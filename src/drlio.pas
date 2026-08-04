@@ -8,7 +8,7 @@ unit drlio;
 interface
 uses {$IFDEF WINDOWS}Windows,{$ENDIF} Classes, SysUtils,
      vio, vrltools, vluaconfig, vglquadrenderer, vmessages, vtextures, vtigstyle,
-     vuitypes, vluastate,  viotypes, vioevent, vioconsole, vuielement, vgenerics, vutil,
+     vluastate, viotypes, vioevent, vioconsole, vgenerics, vutil,
      dfdata, dfthing, dfbeing, drlspritemap, drlaudio, drlkeybindings, drlloadingview;
 
 const TIG_EV_NONE      = 0;
@@ -35,7 +35,7 @@ const TIG_EV_NONE      = 0;
 type TCommandSet = set of Byte;
      TKeySet     = set of Byte;
 
-type TASCIIImageMap       = specialize TGObjectHashMap<TUIStringArray>;
+type TASCIIImageMap       = specialize TGObjectHashMap<TIOStringArray>;
 type TStringHashMap       = specialize TGHashMap< AnsiString >;
 
 type TDRLIO = class( TIO )
@@ -139,7 +139,6 @@ protected
   procedure ColorQuery(nkey,nvalue : Variant);
   function ScreenShotCallback( aEvent : TIOEvent ) : Boolean;
   function BBScreenShotCallback( aEvent : TIOEvent ) : Boolean;
-  function Chunkify( const aString : AnsiString; aStart : Integer; aColor : TIOColor ) : TUIChunkBuffer;
 protected
   FAudio       : TDRLAudio;
   FMessages    : TMessages;
@@ -192,7 +191,7 @@ procedure EmitCrashInfo( const aInfo : AnsiString; aInGame : Boolean  );
 implementation
 
 uses math, video, dateutils, variants,
-     vsound, vluasystem, vuid, vlog, vdebug, vuiconsole, vmath,
+     vsound, vluasystem, vuid, vlog, vdebug, vmath,
      vsdlio, vglconsole, vtig, vtigio, vvector,
      dflevel, dfplayer, dfitem, dfhof,
      drlconfiguration, drlbase, drlmoreview, drlchoiceview, drlua, drlmodulechoiceview,
@@ -445,7 +444,7 @@ begin
   FKeySubMap := TStringHashMap.Create;
   FPadSubMap := TStringHashMap.Create;
   FTIGDefault := VTIGDefaultStyle;
-  inherited Create( FIODriver, nil, nil );
+  inherited Create( FIODriver, nil );
   Reset;
 end;
 
@@ -475,13 +474,12 @@ end;
 
 procedure TDRLIO.Initialize( iRenderer : TIOConsoleRenderer );
 begin
-  inherited Initialize( iRenderer, nil, True );
+  inherited Initialize( iRenderer );
   if iRenderer = nil then Exit;
   VTIG_SetSubCallback( @TIGSubCallback );
   UpdateStyles;
   iRenderer.Clear;
   iRenderer.HideCursor;
-  FUIRoot.UpdateOnRender := False;
   FullUpdate;
 end;
 
@@ -725,6 +723,7 @@ end;
 
 procedure TDRLIO.PreUpdate;
 begin
+  VTIG_Clear;
   if FHudEnabled then DrawHud;
   inherited PreUpdate;
 end;
@@ -745,7 +744,6 @@ var iFName : AnsiString;
     iName  : AnsiString;
     iExt   : AnsiString;
     iCount : DWord;
-    iCon   : TUIConsole;
 begin
   if GraphicsVersion
      then iExt := '.png'
@@ -765,9 +763,9 @@ begin
   Log('Writing screenshot...: '+iFName);
   if not GraphicsVersion then
   begin
-    iCon.Init( FConsole );
+{    iCon.Init( FConsole );
     if aBB then iCon.ScreenShot(iFName,1)
-           else iCon.ScreenShot(iFName);
+           else iCon.ScreenShot(iFName);}
   end
   else
   begin
@@ -778,10 +776,9 @@ begin
 end;
 
 procedure TDRLIO.DrawHud;
-var iCon        : TUIConsole;
-    iWeapon     : TItem;
+var iWeapon     : TItem;
     i           : Integer;
-    iColor      : TUIColor;
+    iColor      : TIOColor;
     iHPP        : Integer;
     iPos        : TIOPoint;
     iBottom     : Integer;
@@ -793,7 +790,7 @@ var iCon        : TUIConsole;
     iBoss       : TBeing;
     iTraitStr   : Ansistring;
 
-  function ArmorColor( aValue : Integer ) : TUIColor;
+  function ArmorColor( aValue : Integer ) : TIOColor;
   begin
     case aValue of
      -100.. 25  : Exit(LightRed);
@@ -802,7 +799,7 @@ var iCon        : TUIConsole;
       else Exit(LightGray);
     end;
   end;
-  function NameColor( aValue : Integer ) : TUIColor;
+  function NameColor( aValue : Integer ) : TIOColor;
   begin
     case aValue of
      -100.. 25  : Exit(LightRed);
@@ -811,7 +808,7 @@ var iCon        : TUIConsole;
       else Exit(LightGray);
     end;
   end;
-  function WeaponColor( aWeapon : TItem ) : TUIColor;
+  function WeaponColor( aWeapon : TItem ) : TIOColor;
   begin
     if aWeapon.IType = ITEMTYPE_MELEE then Exit(lightgray);
     if ( aWeapon.Ammo = 0 ) and not ( aWeapon.Flags[ IF_NOAMMO ] ) then Exit(LightRed);
@@ -837,10 +834,6 @@ begin
     iCNormal := VTIGDefaultStyle.Color[ VTIG_TEXT_COLOR ];
     iCBold   := VTIGDefaultStyle.Color[ VTIG_BOLD_COLOR ];
   end;
-
-  iCon.Init( FConsole );
-  if GraphicsVersion then
-    iCon.Clear;
 
   if Player <> nil then
   begin
@@ -976,27 +969,13 @@ begin
   Exit(True);
 end;
 
-function TDRLIO.Chunkify( const aString : AnsiString; aStart : Integer; aColor : TIOColor ) : TUIChunkBuffer;
-var iCon       : TUIConsole;
-    iChunkList : TUIChunkList;
-    iPosition  : TUIPoint;
-    iColor     : TUIColor;
-begin
-  iCon.Init( IO.Console );
-  iPosition  := Point(aStart,0);
-  iColor     := aColor;
-  iChunkList := nil;
-  iCon.ChunkifyEx( iChunkList, iPosition, iColor, aString, iColor, Point(78,2) );
-  Exit( iCon.LinifyChunkList( iChunkList ) );
-end;
-
 procedure TDRLIO.ASCIILoader ( aStream : TStream; aName : Ansistring; aSize : DWord ) ;
-var iNewImage   : TUIStringArray;
+var iNewImage   : TIOStringArray;
     iIdent      : Ansistring;
 begin
   iIdent  := LowerCase(LeftStr(aName,Length(aName)-4));
   Log('Registering ascii file '+aName+' as '+iIdent+'...');
-  iNewImage  := TUIStringArray.Create;
+  iNewImage  := TIOStringArray.Create;
   while (aStream.Position < aSize) and (iNewImage.Size < 25) do
     iNewImage.Push( ReadLineFromStream( aStream, aSize ) );
   FASCII.Items[iIdent] := iNewImage;
@@ -1120,7 +1099,6 @@ begin
     begin
       FIODriver.PollEvent( iEvent );
       OnEvent( iEvent );
-      Root.OnEvent( iEvent );
       Continue;
     end;
     Break;

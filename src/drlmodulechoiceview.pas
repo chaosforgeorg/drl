@@ -30,7 +30,7 @@ var iResult : Ansistring;
 begin
   iResult := '';
   VTIG_Clear;
-  IO.Root.Console.HideCursor;
+  IO.Console.HideCursor;
   VTIG_BeginWindow( 'DRL module choice', 'core_module_choice', Point( 40, -1 ) );
   VTIG_Text( 'Select core module to run' );
   VTIG_Ruler;
