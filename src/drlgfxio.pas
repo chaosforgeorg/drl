@@ -19,7 +19,7 @@ type
     procedure Reset; override;
     procedure Initialize; override;
     procedure Reconfigure( aConfig : TLuaConfig ); override;
-    procedure Configure( aConfig : TLuaConfig; aReload : Boolean = False ); override;
+    procedure Configure( aConfig : TLuaConfig; aReload : Boolean ); override; overload;
     procedure Update( aMSec : DWord ); override;
     function PushLayer( aLayer : TIOLayer ) : TIOLayer; override;
     function OnEvent( const iEvent : TIOEvent ) : Boolean; override;
@@ -768,7 +768,7 @@ begin
   end;
 end;
 
-procedure TDRLGFXIO.Configure( aConfig : TLuaConfig; aReload : Boolean = False );
+procedure TDRLGFXIO.Configure( aConfig : TLuaConfig; aReload : Boolean );
 begin
   inherited Configure( aConfig, aReload );
 

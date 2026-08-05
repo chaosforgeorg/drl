@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlio;
 interface
 uses {$IFDEF WINDOWS}Windows,{$ENDIF} Classes, SysUtils,
-     vio, vrltools, vluaconfig, vglquadrenderer, vmessages, vtextures, vtigstyle,
+     vio, viorl, vrltools, vluaconfig, vglquadrenderer, vmessages, vtextures, vtigstyle,
      vluastate, viotypes, vioevent, vioconsole, vgenerics, vutil,
      dfdata, dfthing, dfbeing, drlspritemap, drlaudio, drlkeybindings, drlloadingview;
 
@@ -32,19 +32,17 @@ const TIG_EV_NONE      = 0;
 
       TIG_EV_RESTART   = 100;
 
-type TCommandSet = set of Byte;
-     TKeySet     = set of Byte;
-
 type TASCIIImageMap       = specialize TGObjectHashMap<TIOStringArray>;
 type TStringHashMap       = specialize TGHashMap< AnsiString >;
 
-type TDRLIO = class( TIO )
+type TDRLIO = class( TIORL )
   constructor Create; reintroduce;
   procedure Reset; virtual;
   procedure Initialize; virtual; abstract;
   procedure Initialize( iRenderer : TIOConsoleRenderer );
   procedure Reconfigure( aConfig : TLuaConfig ); virtual;
-  procedure Configure( aConfig : TLuaConfig; aReload : Boolean = False ); virtual;
+  procedure Configure( aConfig : TLuaConfig ); override; overload;
+  procedure Configure( aConfig : TLuaConfig; aReload : Boolean ); overload; virtual;
   procedure WaitForLayer( aHideHUD : Boolean ); reintroduce;
   procedure PreUpdate; override;
   destructor Destroy; override;
@@ -68,12 +66,11 @@ type TDRLIO = class( TIO )
 
   procedure LookDescription( aWhere : TCoord2D );
 
-  procedure Msg( const aText : AnsiString );
-  procedure Msg( const aText : AnsiString; const aParams : array of const );
+  procedure Msg( const aText : AnsiString ); override; overload;
   function  MsgGetRecent : TMessageBuffer;
   procedure MsgReset;
   // TODO: Could this be removed as well?
-  procedure MsgUpDate;
+  procedure MsgUpDate; override;
   procedure ErrorReport( const aText : AnsiString );
 
   procedure ClearAllMessages;
@@ -95,16 +92,16 @@ type TDRLIO = class( TIO )
   procedure addItemAnimation( aDuration : DWord; aDelay : DWord; aItem : TThing; aValue : Integer ); virtual;
   procedure addKillAnimation( aDuration : DWord; aDelay : DWord; aBeing : TThing; aReverse : Boolean = False ); virtual;
   procedure addMissileAnimation( aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aColor : Byte; aPic : Char; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False; aTrailNID : Word = 0 ); virtual; abstract;
-  procedure addMarkAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aColor : Byte; aPic : Char ); virtual; abstract;
+  procedure addMarkAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aColor : Byte; aPic : Char ); reintroduce; virtual; abstract;
   procedure addFXAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite ); virtual;
   procedure addParticleBurstAnimation( aDelay : DWord; aEmitterID : Word; aPosition : TCoord2D;
     aDirection : TDirection; aCount : Word; aDistanceScale, aSpreadScale : Single ); virtual;
   procedure addSoundAnimation( aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord ); virtual; abstract;
   procedure addRumbleAnimation( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord ); virtual;
-  procedure Explosion( aDelay : Integer; aWhere : TCoord2D; aData : TExplosionData ); virtual;
+  procedure Explosion( aDelay : Integer; aWhere : TCoord2D; aData : TExplosionData ); reintroduce; virtual;
   procedure PulseBlood( aValue : Single ); virtual;
 
-  class procedure RegisterLuaAPI( State : TLuaState );
+  class procedure RegisterLuaAPI( State : TLuaState ); reintroduce;
 
   function PushLayer( aLayer : TIOLayer ) : TIOLayer; override;
   procedure PreAction;
@@ -141,12 +138,10 @@ protected
   function BBScreenShotCallback( aEvent : TIOEvent ) : Boolean;
 protected
   FAudio       : TDRLAudio;
-  FMessages    : TMessages;
   FTime        : QWord;
   FLoading     : TLoadingView;
   FMTarget     : TCoord2D;
   FLastTarget  : TCoord2D;
-  FKeyCode     : TIOKeyCode;
   FASCII       : TASCIIImageMap;
 
   FHudEnabled  : Boolean;
@@ -433,10 +428,12 @@ end;
 
 constructor TDRLIO.Create;
 begin
+  inherited Create( FIODriver, nil );
   FLoading := nil;
   FAudio    := TDRLAudio.Create;
-  FMessages := TMessages.Create( 2, 77, @IO.EventMore, Option_MessageBuffer );
+  FMessages := TMessages.Create( 2, 77, @EventMore, Option_MessageBuffer );
   FMessages.GroupMultiple := Setting_GroupMessages;
+  inherited Configure( dfdata.Config );
   FASCII    := TASCIIImageMap.Create( True );
 
   FIODriver.SetTitle('DRL','DRL');
@@ -444,7 +441,6 @@ begin
   FKeySubMap := TStringHashMap.Create;
   FPadSubMap := TStringHashMap.Create;
   FTIGDefault := VTIGDefaultStyle;
-  inherited Create( FIODriver, nil );
   Reset;
 end;
 
@@ -696,8 +692,14 @@ begin
   FPadSubMap['input_inventory'] := 'Start';
 end;
 
+procedure TDRLIO.Configure( aConfig : TLuaConfig );
+begin
+  Configure( aConfig, False );
+end;
+
 procedure TDRLIO.Configure ( aConfig : TLuaConfig; aReload : Boolean ) ;
 begin
+  inherited Configure( aConfig );
   // TODO : configurable
 
   if GodMode then
@@ -1139,12 +1141,7 @@ end;
 
 procedure TDRLIO.Msg( const aText : AnsiString );
 begin
-  if FMessages <> nil then FMessages.Add(aText);
-end;
-
-procedure TDRLIO.Msg( const aText : AnsiString; const aParams : array of const );
-begin
-  Msg( Format( aText, aParams ) );
+  inherited Msg( aText );
 end;
 
 function TDRLIO.MsgGetRecent : TMessageBuffer;
@@ -1160,7 +1157,7 @@ end;
 
 procedure TDRLIO.MsgUpDate;
 begin
-  FMessages.Update;
+  inherited MsgUpdate;
   FHintOverlay := '';
 end;
 
