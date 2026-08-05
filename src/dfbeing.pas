@@ -2460,6 +2460,10 @@ begin
     iCoord := iMisslePath.Current;
     iSteps := Distance (iStart.x, iStart.y, iCoord.x, iCoord.y);
 
+    if ( not aItem.Flags[ IF_INSTANTHIT ] )
+      and iMisslePath.Done
+      and ( iCoord = iOldCoord ) then Break;
+
     if not iLevel.isProperCoord( iCoord ) then Break;
 
     if not iLevel.isShotPassable( iCoord ) then
