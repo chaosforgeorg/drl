@@ -71,7 +71,7 @@ TDRL = class(TVObject)
        procedure Apply( aResult : TMenuResult );
        function HandleMouseEvent( aEvent : TIOEvent ) : Boolean;
        function HandleKeyEvent( aEvent : TIOEvent ) : Boolean;
-       function HandlePadMovement( aEvent : TIOEvent ) : Boolean;
+       function HandlePadMovement( aPressed : Boolean ) : Boolean;
        function HandlePadEvent( aEvent : TIOEvent ) : Boolean;
        function MoveTargetEvent( aCoord : TCoord2D ) : Boolean;
        procedure PreAction;
@@ -132,7 +132,7 @@ uses  {$IFDEF WINDOWS}Windows,{$ELSE}Unix,{$ENDIF}
      drlspritemap, // remove
      drlplayerview, drlingamemenuview, drlhelpview, drlassemblyview,
      drlpagedview, drlrankupview, drlmainmenuview, drlhudviews, drlmessagesview,
-     drlconfiguration, drlhelp, drlconfig, dfplayer;
+     drlconfiguration, drlcontrollerbindings, drlhelp, drlconfig, dfplayer;
 
 const PAD_REPEAT_START = 400;
       PAD_REPEAT       = 100;
@@ -1054,30 +1054,20 @@ begin
   Exit( False );
 end;
 
-function TDRL.HandlePadMovement( aEvent : TIOEvent ) : Boolean;
+function TDRL.HandlePadMovement( aPressed : Boolean ) : Boolean;
 var iTarget : TCoord2D;
     iCell   : Integer;
 begin
-  if ( aEvent.EType <> VEVENT_PADDOWN ) then
-  begin
-    FPadMoveActive := False;
-    Exit( False );
-  end;
+  Result := False;
 
-  Assert( aEvent.Pad.Button = VPAD_BUTTON_A );
-
-  if ( aEvent.EType = VEVENT_PADUP ) then
-  begin
-    FPadMoveActive := False;
-    Exit( False );
-  end;
-
-  if IO.GetPadRTrigger then
+  if IO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT ) then
   begin // Move target mode
     FPadMoveActive := False;
     if IO.GetPadLDir.NotZero then
       Exit( MoveTargetEvent( FTargeting.List.Current + IO.GetPadLDir ) );
-    if ( not IO.GetPadLTrigger ) and (FTargeting.List.Current <> Player.Position) and (Level.Being[FTargeting.List.Current] <> nil) then
+    if ( not IO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN ) )
+      and (FTargeting.List.Current <> Player.Position)
+      and (Level.Being[FTargeting.List.Current] <> nil) then
     begin
       IO.FullLook( Level.Being[FTargeting.List.Current] );
       Exit( False );
@@ -1086,10 +1076,16 @@ begin
     Exit( False );
   end;
 
-  if aEvent.Pad.Pressed then // normal mode
+  if aPressed then // normal mode
   begin
     if IO.GetPadLDir.NotZero
-      then begin FPadMoved := True; Result := HandleMoveCommand( DirectionToInput( NewDirection( IO.GetPadLDir ) ), IO.GetPadLTrigger ); end
+      then begin
+        FPadMoved := True;
+        Result := HandleMoveCommand(
+          DirectionToInput( NewDirection( IO.GetPadLDir ) ),
+          IO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
+        );
+      end
       else Result := HandleCommand( TCommand.Create( COMMAND_WAIT ) );
     FPadMoveNext := IO.Time + PAD_REPEAT_START;
   end
@@ -1102,17 +1098,23 @@ begin
       begin
         iCell := Level.getCell( iTarget );
         if not ( ( CellHook_OnHazardQuery in Cells[ iCell ].Hooks ) and  Level.CallHook( CellHook_OnHazardQuery, iCell, Player ) ) then
-          Result := HandleMoveCommand( DirectionToInput( NewDirection( IO.GetPadLDir ) ), IO.GetPadLTrigger );
+          Result := HandleMoveCommand(
+            DirectionToInput( NewDirection( IO.GetPadLDir ) ),
+            IO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
+          );
       end;
     end;
     FPadMoveNext := IO.Time + PAD_REPEAT;
   end;
-  FPadMoveActive := ( State = DSPlaying ) and ( Player.EnemiesInVision = 0 ) and ( aEvent.Pad.Pressed or (not FDamagedLastTurn) );
+  FPadMoveActive := ( State = DSPlaying )
+    and ( Player.EnemiesInVision = 0 )
+    and ( aPressed or (not FDamagedLastTurn) );
   Exit( Result );
 end;
 
 function TDRL.HandlePadEvent( aEvent : TIOEvent ) : Boolean;
-var iItem : TItem;
+var iItem   : TItem;
+    iAction : TControllerAction;
 begin
   if ( aEvent.EType = VEVENT_PADDEVICE ) then
   begin
@@ -1120,51 +1122,77 @@ begin
     Exit( False );
   end;
 
-  if ( aEvent.Pad.Button = VPAD_BUTTON_A ) then
-    Exit( HandlePadMovement( aEvent ) );
+  if not ( aEvent.EType in [ VEVENT_PADDOWN, VEVENT_PADUP ] ) then Exit( False );
+  if not IO.ResolveControllerAction( aEvent.Pad.Button, iAction ) then Exit( False );
 
-  if aEvent.EType <> VEVENT_PADDOWN then
-    Exit( False );
+  if iAction = CONTROLLER_MOVE then
+  begin
+    if aEvent.EType = VEVENT_PADUP then
+    begin
+      FPadMoveActive := False;
+      Exit( False );
+    end;
+    Exit( HandlePadMovement( True ) );
+  end;
 
-  case aEvent.Pad.Button of
-    VPAD_BUTTON_B : if IO.GetPadLDir.NotZero
-                      then Exit( HandleActionCommand( Player.Position + IO.GetPadLDir, 0 ) )
-                      else begin
-                        if Level.cellFlagSet( Player.Position, CF_STAIRS ) then
-                          Exit( HandleCommand( TCommand.Create( COMMAND_ENTER ) ) );
-                        iItem := Level.Item[ Player.Position ];
-                        if ( iItem <> nil ) and ( iItem.isLever ) then
-                          Exit( HandleCommand( TCommand.Create( COMMAND_USE, iItem ) ) );
-                        Exit( HandlePickupCommand( IO.GetPadRTrigger ) )
-                      end;
-    VPAD_BUTTON_X : Exit( HandleFireCommand( IO.GetPadRTrigger, False, True, True ) );
-    VPAD_BUTTON_Y : Exit( HandleCommand( TCommand.Create( Iif( IO.GetPadRTrigger, COMMAND_ALTRELOAD, COMMAND_RELOAD ) ) ) );
-    VPAD_BUTTON_BACK          : begin ResetAutoTarget; IO.PushLayer( TInGameMenuView.Create ); Exit; end;
-    VPAD_BUTTON_GUIDE:;
-    VPAD_BUTTON_START         : begin
-      if IO.GetPadRTrigger
+  if aEvent.EType <> VEVENT_PADDOWN then Exit( False );
+
+  case iAction of
+    CONTROLLER_ACTION : if IO.GetPadLDir.NotZero
+                          then Exit( HandleActionCommand( Player.Position + IO.GetPadLDir, 0 ) )
+                          else begin
+                            if Level.cellFlagSet( Player.Position, CF_STAIRS ) then
+                              Exit( HandleCommand( TCommand.Create( COMMAND_ENTER ) ) );
+                            iItem := Level.Item[ Player.Position ];
+                            if ( iItem <> nil ) and ( iItem.isLever ) then
+                              Exit( HandleCommand( TCommand.Create( COMMAND_USE, iItem ) ) );
+                            Exit( HandlePickupCommand( IO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT ) ) )
+                          end;
+    CONTROLLER_FIRE : Exit( HandleFireCommand( IO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT ), False, True, True ) );
+    CONTROLLER_RELOAD : Exit( HandleCommand( TCommand.Create(
+      Iif(
+        IO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT ),
+        COMMAND_ALTRELOAD,
+        COMMAND_RELOAD
+      )
+    ) ) );
+    CONTROLLER_MENU : begin
+      ResetAutoTarget;
+      IO.PushLayer( TInGameMenuView.Create );
+      Exit( False );
+    end;
+    CONTROLLER_PLAYER : begin
+      if IO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT )
         then FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_EQUIPMENT ) )
         else FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_INVENTORY ) );
       Exit( False );
     end;
-    VPAD_BUTTON_LEFTSTICK  : Exit( HandleCommand( TCommand.Create( COMMAND_ACTIVE ) ) );
-    VPAD_BUTTON_RIGHTSTICK : if IO.GetPadRTrigger
-                                then Exit( HandleUnloadCommand( nil ) )
-                                else Exit( HandleSwapWeaponCommand );
-    VPAD_BUTTON_LEFTSHOULDER  : begin IO.SetAutoTarget( FTargeting.List.Prev ); Exit( False ); end;
-    VPAD_BUTTON_RIGHTSHOULDER : begin IO.SetAutoTarget( FTargeting.List.Next ); Exit( False ); end;
-    VPAD_BUTTON_DPAD_UP    : if IO.GetPadLTrigger
+    CONTROLLER_ACTIVE : Exit( HandleCommand( TCommand.Create( COMMAND_ACTIVE ) ) );
+    CONTROLLER_SWAP : if IO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT )
+                        then Exit( HandleUnloadCommand( nil ) )
+                        else Exit( HandleSwapWeaponCommand );
+    CONTROLLER_TARGET_PREV : begin
+      IO.SetAutoTarget( FTargeting.List.Prev );
+      Exit( False );
+    end;
+    CONTROLLER_TARGET_NEXT : begin
+      IO.SetAutoTarget( FTargeting.List.Next );
+      Exit( False );
+    end;
+    CONTROLLER_UP : if IO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
       then Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '1' ) ) )
       else if FPadMoved then Exit( MoveTargetEvent( FTargeting.List.Current + NewCoord2D( 0,-1 ) ) );
-    VPAD_BUTTON_DPAD_DOWN  : if IO.GetPadLTrigger
+    CONTROLLER_DOWN : if IO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
       then Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '4' ) ) )
       else if FPadMoved then Exit( MoveTargetEvent( FTargeting.List.Current + NewCoord2D( 0, 1 ) ) );
-    VPAD_BUTTON_DPAD_LEFT  : if IO.GetPadLTrigger
+    CONTROLLER_LEFT : if IO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
       then Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '2' ) ) )
       else if FPadMoved then Exit( MoveTargetEvent( FTargeting.List.Current + NewCoord2D(-1, 0 ) ) );
-    VPAD_BUTTON_DPAD_RIGHT : if IO.GetPadLTrigger
+    CONTROLLER_RIGHT : if IO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
       then Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '3' ) ) )
       else if FPadMoved then Exit( MoveTargetEvent( FTargeting.List.Current + NewCoord2D( 1, 0 ) ) );
+    CONTROLLER_MODIFIER_RUN,
+    CONTROLLER_MODIFIER_ALT : ;
   end;
   Exit( False );
 end;
@@ -1419,10 +1447,7 @@ repeat
       begin
         if FPadMoveActive and ( IO.Time >= FPadMoveNext ) then
         begin
-          iEvent.EType       := VEVENT_PADDOWN;
-          iEvent.Pad.Button  := VPAD_BUTTON_A;
-          iEvent.Pad.Pressed := False; // To mark repeat!
-          HandlePadEvent( iEvent );
+          HandlePadMovement( False );
           Continue;
         end;
         IO.FullUpdate;

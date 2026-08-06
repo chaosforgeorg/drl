@@ -9,7 +9,8 @@ interface
 uses {$IFDEF WINDOWS}Windows,{$ENDIF} Classes, SysUtils,
      vio, viorl, vrltools, vluaconfig, vglquadrenderer, vmessages, vtextures, vtigstyle,
      vluastate, viotypes, vioevent, vioconsole, vgenerics, vutil,
-     dfdata, dfthing, dfbeing, drlspritemap, drlaudio, drlkeybindings, drlloadingview;
+     dfdata, dfthing, dfbeing, drlspritemap, drlaudio, drlkeybindings,
+     drlcontrollerbindings, drlloadingview;
 
 const TIG_EV_NONE      = 0;
       //TIG_EV_DROP      = 1;
@@ -111,8 +112,8 @@ type TDRLIO = class( TIORL )
   function ShiftHeld      : Boolean;  virtual;
 
   // Gamepad
-  function GetPadLTrigger : Boolean;  virtual;
-  function GetPadRTrigger : Boolean;  virtual;
+  function ResolveControllerAction( aButton : TIOPadButton; out aAction : TControllerAction ) : Boolean;
+  function ControllerActionHeld( aAction : TControllerAction ) : Boolean;
   function GetPadLDir     : TCoord2D; virtual;
   function IsGamepad      : Boolean;  virtual;
 
@@ -189,7 +190,7 @@ uses math, video, dateutils, variants,
      vsound, vluasystem, vuid, vlog, vdebug, vmath,
      vsdlio, vglconsole, vtig, vtigio, vvector,
      dflevel, dfplayer, dfitem, dfhof,
-     drlconfiguration, drlcontrollerbindings, drlbase, drlmoreview, drlchoiceview, drlua, drlmodulechoiceview,
+     drlconfiguration, drlbase, drlmoreview, drlchoiceview, drlua, drlmodulechoiceview,
      drlhudviews, drlplotview;
 
 function TIGSubCallback( const aID : Ansistring ) : Ansistring;
@@ -534,14 +535,20 @@ begin
   Exit( VKMOD_SHIFT in FIODriver.GetModKeyState );
 end;
 
-function TDRLIO.GetPadLTrigger : Boolean;
+function TDRLIO.ResolveControllerAction( aButton : TIOPadButton; out aAction : TControllerAction ) : Boolean;
+var iCommand : Byte;
 begin
-  Exit( False );
+  iCommand := Config.PadCommands[ aButton ];
+  if iCommand > Byte( High( TControllerAction ) ) then Exit( False );
+  aAction := TControllerAction( iCommand );
+  Exit( True );
 end;
 
-function TDRLIO.GetPadRTrigger : Boolean;
+function TDRLIO.ControllerActionHeld( aAction : TControllerAction ) : Boolean;
+var iButton : TIOPadButton;
 begin
-  Exit( False );
+  iButton := Config.GetPadButton( Byte( aAction ) );
+  Exit( ( iButton <> VPAD_BUTTON_INVALID ) and PadState.Active( iButton ) );
 end;
 
 function TDRLIO.GetPadLDir     : TCoord2D;
@@ -1032,7 +1039,8 @@ begin
   if Assigned( DRL ) then
     DRL.Store.Update;
 
-  if GetPadRTrigger and (DRL <> nil) and (DRL.State = DSPlaying)
+  if ControllerActionHeld( CONTROLLER_MODIFIER_ALT )
+    and (DRL <> nil) and (DRL.State = DSPlaying)
     and (FTargeting or ( not isModal)) and ( FLastTarget <> DRL.Targeting.List.Current ) then
     begin
       FLastTarget := DRL.Targeting.List.Current;
@@ -1040,7 +1048,8 @@ begin
         LookDescription(FLastTarget);
     end;
 
-  if not GetPadRTrigger and (FLastTarget.X * FLastTarget.Y <> 0) then
+  if not ControllerActionHeld( CONTROLLER_MODIFIER_ALT )
+    and (FLastTarget.X * FLastTarget.Y <> 0) then
   begin
     FHintOverlay := '';
     FLastTarget.Create(0,0);
@@ -1487,4 +1496,3 @@ begin
 end;
 
 end.
-
