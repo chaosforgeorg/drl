@@ -189,7 +189,7 @@ uses math, video, dateutils, variants,
      vsound, vluasystem, vuid, vlog, vdebug, vmath,
      vsdlio, vglconsole, vtig, vtigio, vvector,
      dflevel, dfplayer, dfitem, dfhof,
-     drlconfiguration, drlbase, drlmoreview, drlchoiceview, drlua, drlmodulechoiceview,
+     drlconfiguration, drlcontrollerbindings, drlbase, drlmoreview, drlchoiceview, drlua, drlmodulechoiceview,
      drlhudviews, drlplotview;
 
 function TIGSubCallback( const aID : Ansistring ) : Ansistring;
@@ -632,6 +632,10 @@ var iInput : TInputKey;
       iKey := Configuration.GetInteger(KeyInfo[aWhat].ID);
       Exit( IOKeyCodeToStringShort( iKey ) );
     end;
+    function GetPadString( aWhat : TControllerAction ) : Ansistring;
+    begin
+      Exit( VPadButtonToStringShort( GetControllerButton( Configuration, aWhat ) ) );
+    end;
 begin
   FAudio.Reconfigure;
   aConfig.ResetCommands;
@@ -650,6 +654,8 @@ begin
   CtrlAssign( INPUT_TARGETUPRIGHT,   INPUT_WALKUPRIGHT );
   CtrlAssign( INPUT_TARGETDOWNLEFT,  INPUT_WALKDOWNLEFT );
   CtrlAssign( INPUT_TARGETDOWNRIGHT, INPUT_WALKDOWNRIGHT );
+
+  ApplyControllerBindings( Configuration, aConfig );
 
   FKeySubMap.Clear;
   FKeySubMap['input_ok']        := 'Enter';
@@ -681,15 +687,15 @@ begin
   FPadSubMap['input_right']     := 'Right';
   FPadSubMap['input_up']        := 'Up';
   FPadSubMap['input_down']      := 'Down';
-  FPadSubMap['input_help']      := 'Back';
-  FPadSubMap['input_menu']      := 'Back';
-  FPadSubMap['input_fire']      := 'X';
-  FPadSubMap['input_reload']    := 'Y';
-  FPadSubMap['input_pickup']    := 'B';
-  FPadSubMap['input_action']    := 'B';
+  FPadSubMap['input_help']      := GetPadString( CONTROLLER_MENU );
+  FPadSubMap['input_menu']      := GetPadString( CONTROLLER_MENU );
+  FPadSubMap['input_fire']      := GetPadString( CONTROLLER_FIRE );
+  FPadSubMap['input_reload']    := GetPadString( CONTROLLER_RELOAD );
+  FPadSubMap['input_pickup']    := GetPadString( CONTROLLER_ACTION );
+  FPadSubMap['input_action']    := GetPadString( CONTROLLER_ACTION );
   FPadSubMap['input_pgup']      := 'PgUp';
   FPadSubMap['input_pgdn']      := 'PgDn';
-  FPadSubMap['input_inventory'] := 'Start';
+  FPadSubMap['input_inventory'] := GetPadString( CONTROLLER_PLAYER );
 end;
 
 procedure TDRLIO.Configure( aConfig : TLuaConfig );
