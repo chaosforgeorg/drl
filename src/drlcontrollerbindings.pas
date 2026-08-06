@@ -25,6 +25,21 @@ type TControllerAction = (
   CONTROLLER_MODIFIER_ALT
 );
 
+const CONTROLLER_BINDING_MENU_ACTIONS : set of TControllerAction = [
+  CONTROLLER_MOVE,
+  CONTROLLER_ACTION,
+  CONTROLLER_FIRE,
+  CONTROLLER_RELOAD,
+  CONTROLLER_MENU,
+  CONTROLLER_PLAYER,
+  CONTROLLER_ACTIVE,
+  CONTROLLER_SWAP,
+  CONTROLLER_TARGET_PREV,
+  CONTROLLER_TARGET_NEXT,
+  CONTROLLER_MODIFIER_RUN,
+  CONTROLLER_MODIFIER_ALT
+];
+
 type TControllerBindingInfo = record
     ID          : AnsiString;
     Group       : AnsiString;
@@ -54,6 +69,7 @@ const ControllerBindingInfo : array[TControllerAction] of TControllerBindingInfo
 
 procedure RegisterControllerBindings( aGroup : TConfigurationGroup );
 function IsControllerButton( aButton : TIOPadButton ) : Boolean;
+function GetBindableControllerButton( const aEvent : TIOEvent; out aButton  : TIOPadButton ) : Boolean;
 function ControllerBindingsValid( aConfiguration : TConfigurationManager ) : Boolean;
 procedure ResetControllerBindings( aConfiguration : TConfigurationManager );
 function ValidateControllerBindings( aConfiguration : TConfigurationManager ) : Boolean;
@@ -100,6 +116,19 @@ begin
     and ( aButton <= High( TIOPadButton ) )
     and ( aButton <> VPAD_BUTTON_GUIDE )
   );
+end;
+
+function GetBindableControllerButton(
+  const aEvent : TIOEvent;
+  out aButton  : TIOPadButton
+) : Boolean;
+begin
+  aButton := VPAD_BUTTON_INVALID;
+  if ( aEvent.EType <> VEVENT_PADDOWN )
+    or not IsControllerButton( aEvent.Pad.Button ) then
+    Exit( False );
+  aButton := aEvent.Pad.Button;
+  Exit( True );
 end;
 
 function GetControllerButton(

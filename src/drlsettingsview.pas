@@ -6,7 +6,8 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlsettingsview;
 interface
-uses vio, viotypes, vioevent, vconfiguration, drlio, dfdata;
+uses vio, viotypes, vioevent, vconfiguration, drlio, dfdata,
+     drlcontrollerbindings;
 
 type TSettingsViewState = (
   SETTINGSVIEW_GENERAL,
@@ -14,6 +15,7 @@ type TSettingsViewState = (
   SETTINGSVIEW_AUDIO,
   SETTINGSVIEW_GAMEPLAY,
   SETTINGSVIEW_INPUT,
+  SETTINGSVIEW_CONTROLLER,
   SETTINGSVIEW_KEYMOVEMENT,
   SETTINGSVIEW_KEYACTION,
   SETTINGSVIEW_KEYUI,
@@ -43,20 +45,25 @@ protected
   procedure Reconfigure;
   procedure Reset( aGroup : TConfigurationGroup );
   function KeyCapture( aValue : PInteger; aSelected : Boolean ) : Boolean;
+  procedure ControllerCapture( aAction   : TControllerAction; aSelected : Boolean );
 protected
-  FState       : TSettingsViewState;
-  FSize        : TIOPoint;
-  FWSize       : TIOPoint;
-  FCapture     : Boolean;
-  FKey         : Word;
-  FResInput    : Boolean;
-  FResolutions : array of Ansistring;
-  FModInput    : Boolean;
-  FModValue    : Integer;
-  FModules     : array of Ansistring;
-  FModCurrent  : Ansistring;
-  FWarning     : Ansistring;
-  FRestart     : Ansistring;
+  FState             : TSettingsViewState;
+  FSize              : TIOPoint;
+  FWSize             : TIOPoint;
+  FCapture           : Boolean;
+  FKey               : Word;
+  FControllerCapture : Boolean;
+  FControllerAction  : TControllerAction;
+  FControllerButton  : TIOPadButton;
+  FControllerCancel  : Boolean;
+  FResInput          : Boolean;
+  FResolutions       : array of Ansistring;
+  FModInput          : Boolean;
+  FModValue          : Integer;
+  FModules           : array of Ansistring;
+  FModCurrent        : Ansistring;
+  FWarning           : Ansistring;
+  FRestart           : Ansistring;
 end;
 
 implementation
@@ -70,6 +77,7 @@ const CStates : array[ TSettingsViewState ] of record Title, ID : Ansistring; en
    ( Title : 'Settings (Audio)'; ID : 'audio' ),
    ( Title : 'Settings (Gameplay)'; ID : 'gameplay' ),
    ( Title : 'Settings (Input)'; ID : 'input' ),
+   ( Title : 'Settings (Controller)'; ID : CONTROLLER_BINDINGS_GAMEPLAY_GROUP ),
    ( Title : 'Settings (Keybindings - Movement)'; ID : 'keybindings_movement' ),
    ( Title : 'Settings (Keybindings - Actions)'; ID : 'keybindings_actions' ),
    ( Title : 'Settings (Keybindings - UI)'; ID : 'keybindings_ui' ),
@@ -79,11 +87,12 @@ const CStates : array[ TSettingsViewState ] of record Title, ID : Ansistring; en
    ( Title : ''; ID : '' )
 );
 
-const CSub : array[ 1..10 ] of record State : TSettingsViewState; Select, Desc : Ansistring; end = (
+const CSub : array[ 1..11 ] of record State : TSettingsViewState; Select, Desc : Ansistring; end = (
   ( State : SETTINGSVIEW_DISPLAY;     Select : 'Display';                  Desc : 'Configure video and display options.' ),
   ( State : SETTINGSVIEW_AUDIO;       Select : 'Audio';                    Desc : 'Configure audio, music and sound options.' ),
   ( State : SETTINGSVIEW_GAMEPLAY;    Select : 'Gameplay';                 Desc : 'Configure gameplay options.' ),
   ( State : SETTINGSVIEW_INPUT;       Select : 'Input';                    Desc : 'Configure input options (apart from keybindings).' ),
+  ( State : SETTINGSVIEW_CONTROLLER;  Select : 'Controller';               Desc : 'Configure controller bindings for gameplay actions.' ),
   ( State : SETTINGSVIEW_KEYMOVEMENT; Select : 'Keybindings - Movement';   Desc : 'Configure keybindings for movement.' ),
   ( State : SETTINGSVIEW_KEYACTION;   Select : 'Keybindings - Actions';    Desc : 'Configure keybindings for in-game actions.' ),
   ( State : SETTINGSVIEW_KEYUI;       Select : 'Keybindings - UI';         Desc : 'Configure keybindings accessing UI elements (inventory, etc.).' ),
@@ -101,11 +110,15 @@ begin
   FSize  := Point( 80, 25 );
   FWSize := Point( 50, 10 );
 
-  FCapture  := False;
-  FResInput := False;
-  FModInput := False;
-  FWarning  := '';
-  FRestart  := '';
+  FCapture           := False;
+  FControllerCapture := False;
+  FControllerAction  := CONTROLLER_MOVE;
+  FControllerButton  := VPAD_BUTTON_INVALID;
+  FControllerCancel  := False;
+  FResInput          := False;
+  FModInput          := False;
+  FWarning           := '';
+  FRestart           := '';
 
 
   if GraphicsVersion then
@@ -148,6 +161,7 @@ var iSelected : Integer;
     iEntry    : TConfigurationEntry;
     iHover    : TConfigurationEntry;
     iMode     : TIntegerConfigurationEntry;
+    iAction   : TControllerAction;
     i         : Integer;
     iRResult  : ( None, Cancel, Confirm );
 begin
@@ -187,6 +201,7 @@ begin
 
   iNext  := SETTINGSVIEW_DONE;
   iHover := nil;
+  iGroup := nil;
 
   if CStates[ FState ].ID <> '' then
     iGroup := Configuration.Group[ CStates[ FState ].ID ];
@@ -205,10 +220,19 @@ begin
           if VTIG_Selectable( CSub[i].Select ) then
             iNext := CSub[i].State;
 
-      if iGroup <> nil then
-        for iEntry in iGroup.Entries do
-          if iEntry.Name <> '' then
-            VTIG_Selectable( iEntry.Name );
+      if FState = SETTINGSVIEW_CONTROLLER then
+      begin
+        for iAction in TControllerAction do
+          if iAction in CONTROLLER_BINDING_MENU_ACTIONS then
+            VTIG_Selectable( ControllerBindingInfo[ iAction ].Name );
+      end
+      else
+      begin
+        if iGroup <> nil then
+          for iEntry in iGroup.Entries do
+            if iEntry.Name <> '' then
+              VTIG_Selectable( iEntry.Name );
+      end;
 
       // options
 
@@ -227,7 +251,20 @@ begin
       end;
       if iGroup <> nil then
       begin
-        if FState in SETTINGSVIEW_KEYS then
+        if FState = SETTINGSVIEW_CONTROLLER then
+        begin
+          for iAction in TControllerAction do
+            if iAction in CONTROLLER_BINDING_MENU_ACTIONS then
+            begin
+              ControllerCapture( iAction, iSelected = i );
+              if iSelected = i then
+                iHover := Configuration.CastInteger(
+                  ControllerBindingInfo[ iAction ].ID
+                );
+              Inc( i );
+            end;
+        end
+        else if FState in SETTINGSVIEW_KEYS then
         begin
           for iEntry in iGroup.Entries do
             if iEntry.Name <> '' then
@@ -345,7 +382,9 @@ begin
     then VTIG_Text( iHover.Description );
 
 
-  if FState in SETTINGSVIEW_KEYS
+  if FState = SETTINGSVIEW_CONTROLLER then
+    VTIG_End('{l<{!{$input_up},{$input_down}}> select, <{!{$input_ok}}> rebind, <{!{$input_escape}}> back}')
+  else if FState in SETTINGSVIEW_KEYS
     then VTIG_End('{l<{!{$input_up},{$input_down}}> select, <{!{$input_ok}}> change/enter, <{!{$input_escape}}> back, <{!{$input_uidrop}}> clear}')
     else VTIG_End('{l<{!{$input_up},{$input_down}}> select, <{!{$input_ok}}> change or enter submenu, <{!{$input_escape}}> back}');
 
@@ -368,6 +407,8 @@ begin
   begin
     if FState = SETTINGSVIEW_GENERAL
       then Reset( nil )
+      else if FState = SETTINGSVIEW_CONTROLLER
+        then ResetControllerBindings( Configuration )
       else Reset( iGroup );
     Reconfigure;
   end;
@@ -385,6 +426,16 @@ end;
 
 function TSettingsView.HandleEvent( const aEvent : TIOEvent ) : Boolean;
 begin
+  if FControllerCapture then
+  begin
+    if ( aEvent.EType = VEVENT_KEYDOWN )
+      and ( aEvent.Key.Code = VKEY_ESCAPE ) then
+      FControllerCancel := True
+    else if FControllerButton = VPAD_BUTTON_INVALID then
+      GetBindableControllerButton( aEvent, FControllerButton );
+    Exit( True );
+  end;
+
   if FCapture and (aEvent.EType = VEVENT_KEYDOWN) and (aEvent.Key.Code <> 0) then
   begin
     if aEvent.Key.Code = VKEY_ESCAPE
@@ -398,6 +449,54 @@ destructor TSettingsView.Destroy;
 begin
   Configuration.Write( SettingsPath );
   inherited Destroy;
+end;
+
+procedure TSettingsView.ControllerCapture(
+  aAction   : TControllerAction;
+  aSelected : Boolean
+);
+var iCurrent : TIOPadButton;
+begin
+  iCurrent := GetControllerButton( Configuration, aAction );
+  VTIG_InputField( VPadButtonToDisplayString( iCurrent ) );
+
+  if FControllerCapture and ( FControllerAction = aAction ) then
+  begin
+    VTIG_Begin( 'controller_capture', Point( 56, 7 ) );
+    VTIG_Text( 'Press one controller button to bind, or <{!Escape}> on the keyboard to cancel...' );
+    VTIG_End;
+
+    if FControllerCancel then
+      FControllerCapture := False
+    else if FControllerButton <> VPAD_BUTTON_INVALID then
+    begin
+      FControllerCapture := False;
+      if ( FControllerButton <> iCurrent )
+        and SwapControllerBinding(
+          Configuration,
+          FControllerAction,
+          FControllerButton
+        ) then
+        Reconfigure;
+    end;
+
+    if not FControllerCapture then
+    begin
+      FControllerButton := VPAD_BUTTON_INVALID;
+      FControllerCancel := False;
+    end;
+    VTIG_EventClear;
+    Exit;
+  end;
+
+  if aSelected and VTIG_EventConfirm then
+  begin
+    FControllerCapture := True;
+    FControllerAction  := aAction;
+    FControllerButton  := VPAD_BUTTON_INVALID;
+    FControllerCancel  := False;
+    VTIG_EventClear;
+  end;
 end;
 
 function TSettingsView.KeyCapture( aValue : PInteger; aSelected : Boolean ) : Boolean;
@@ -453,4 +552,3 @@ begin
 end;
 
 end.
-
