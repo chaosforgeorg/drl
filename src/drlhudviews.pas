@@ -395,9 +395,7 @@ begin
 end;
 
 function TTargetModeView.HandleEvent( const aEvent : TIOEvent ) : Boolean;
-var
-  iAction       : TControllerAction;
-  iTargetAction : Boolean;
+var iAction : TControllerAction;
 begin
   if aEvent.EType <> VEVENT_PADDOWN then Exit( True );
 
@@ -411,19 +409,6 @@ begin
 
   if IO.ResolveControllerAction( aEvent.Pad.Button, iAction ) then
   begin
-    iTargetAction := iAction in [
-      CONTROLLER_MOVE,
-      CONTROLLER_FIRE,
-      CONTROLLER_TARGET_PREV,
-      CONTROLLER_TARGET_NEXT,
-      CONTROLLER_UP,
-      CONTROLLER_DOWN,
-      CONTROLLER_LEFT,
-      CONTROLLER_RIGHT,
-      CONTROLLER_MODIFIER_RUN,
-      CONTROLLER_MODIFIER_ALT
-    ];
-
     case iAction of
     CONTROLLER_MOVE :
       if IO.GetPadLDir.NotZero
@@ -452,18 +437,23 @@ begin
     CONTROLLER_DOWN  : MoveTarget( FTarget + NewCoord2D(0,1) );
     CONTROLLER_LEFT  : MoveTarget( FTarget + NewCoord2D(-1,0) );
     CONTROLLER_RIGHT : MoveTarget( FTarget + NewCoord2D(1,0) );
+    CONTROLLER_MODIFIER_RUN,
+    CONTROLLER_MODIFIER_ALT : ;
+    else
+      // Back and Start retain their legacy exits when assigned an action
+      // target mode does not use.
+      if aEvent.Pad.Button in [ VPAD_BUTTON_BACK, VPAD_BUTTON_START ] then
+        Finalize;
     end;
-
-    // Back and Start retain their legacy exits for actions target mode does not
-    // use, while remapped target-mode gameplay and modifier roles take priority.
-    if ( not iTargetAction )
-      and ( aEvent.Pad.Button in [ VPAD_BUTTON_BACK, VPAD_BUTTON_START ] ) then
-      Finalize;
     Exit( True );
   end;
 
-  // Guide/System cannot be bound, but retains its legacy target-mode exit.
-  if aEvent.Pad.Button = VPAD_BUTTON_GUIDE then
+  // Unassigned Back/Start and unbindable Guide retain their legacy exits.
+  if aEvent.Pad.Button in [
+    VPAD_BUTTON_BACK,
+    VPAD_BUTTON_START,
+    VPAD_BUTTON_GUIDE
+  ] then
     Finalize;
   Exit( True );
 end;
