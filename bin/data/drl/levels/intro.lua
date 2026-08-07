@@ -223,7 +223,7 @@ register_level "intro"
 			
 			if p.x < 14 then
 				if ui.is_pad() then
-					ui.set_hint("Hint : hold left joy for direction, press <{!A}> to confirm move!")
+					ui.set_hint("Hint : hold left joy for direction, press <{!{$controller_gameplay_move}}> to confirm move!")
 				else
 					ui.set_hint("Hint : use {!numpad} or {!arrows} to move around!")
 				end

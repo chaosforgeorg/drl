@@ -6,7 +6,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlplayerview;
 interface
-uses viotypes, vgenerics, vtigstyle,
+uses vioevent, viotypes, vgenerics, vtigstyle,
      dfitem, dfdata, drlhooks,
      drlio, drltraits, drlconfirmview;
 
@@ -389,7 +389,10 @@ begin
 
   if (iSelected >= 0) then
   begin
-    if VTIG_Event( TIG_EV_MORE ) or ( IO.IsGamepad and IO.GetPadRTrigger and VTIG_EventConfirm ) then
+    if VTIG_Event( TIG_EV_MORE )
+      or ( IO.IsGamepad
+        and IO.PadState.Active( VPAD_BUTTON_RIGHTTRIGGER )
+        and VTIG_EventConfirm ) then
     begin
       if Assigned( FInv[iSelected].Item ) then
         IO.FullLook( FInv[iSelected].Item );
@@ -411,7 +414,12 @@ begin
         if VTIG_Event( VTIG_IE_BACKSPACE ) then
         begin
           FState := PLAYERVIEW_PENDING;
-          DRL.HandleCommand( TCommand.Create( COMMAND_DROP, FInv[iSelected].Item, VTIG_Event( VTIG_IE_SHIFT ) or IO.GetPadRTrigger ) );
+          DRL.HandleCommand( TCommand.Create(
+            COMMAND_DROP,
+            FInv[iSelected].Item,
+            VTIG_Event( VTIG_IE_SHIFT )
+              or IO.PadState.Active( VPAD_BUTTON_RIGHTTRIGGER )
+          ) );
           if FState = PLAYERVIEW_PENDING
             then FState := PLAYERVIEW_DONE
             else begin ReadInv; FState := PLAYERVIEW_INVENTORY; end
@@ -579,7 +587,10 @@ begin
 
   if (iSelected >= 0) then
   begin
-    if VTIG_Event( TIG_EV_MORE ) or ( IO.IsGamepad and IO.GetPadRTrigger and VTIG_EventConfirm ) then
+    if VTIG_Event( TIG_EV_MORE )
+      or ( IO.IsGamepad
+        and IO.PadState.Active( VPAD_BUTTON_RIGHTTRIGGER )
+        and VTIG_EventConfirm ) then
     begin
       if Assigned( FEq[iSelected].Item ) then
         IO.FullLook( FEq[iSelected].Item );
@@ -631,7 +642,12 @@ begin
       begin
         if CannotUnequip then Exit;
         FState := PLAYERVIEW_CLOSING;
-        DRL.HandleCommand( TCommand.Create( COMMAND_DROP, FEq[iSelected].Item, VTIG_Event( VTIG_IE_SHIFT ) or IO.GetPadRTrigger ) );
+        DRL.HandleCommand( TCommand.Create(
+          COMMAND_DROP,
+          FEq[iSelected].Item,
+          VTIG_Event( VTIG_IE_SHIFT )
+            or IO.PadState.Active( VPAD_BUTTON_RIGHTTRIGGER )
+        ) );
         FState := PLAYERVIEW_DONE;
       end;
       if VTIG_Event( VTIG_IE_1 ) then MarkQSlot( FEq[iSelected].Item, 1 );
@@ -1163,4 +1179,3 @@ end;
 
 
 end.
-

@@ -9,7 +9,8 @@ interface
 uses {$IFDEF WINDOWS}Windows,{$ENDIF} Classes, SysUtils,
      vio, viorl, vrltools, vluaconfig, vglquadrenderer, vmessages, vtextures, vtigstyle,
      vluastate, viotypes, vioevent, vioconsole, vgenerics, vutil,
-     dfdata, dfthing, dfbeing, drlspritemap, drlaudio, drlkeybindings, drlloadingview;
+     dfdata, dfthing, dfbeing, drlspritemap, drlaudio, drlkeybindings,
+     drlcontrollerbindings, drlloadingview;
 
 const TIG_EV_NONE      = 0;
       //TIG_EV_DROP      = 1;
@@ -111,8 +112,8 @@ type TDRLIO = class( TIORL )
   function ShiftHeld      : Boolean;  virtual;
 
   // Gamepad
-  function GetPadLTrigger : Boolean;  virtual;
-  function GetPadRTrigger : Boolean;  virtual;
+  function ResolveControllerAction( aButton : TIOPadButton; out aAction : TControllerAction ) : Boolean;
+  function ControllerActionHeld( aAction : TControllerAction ) : Boolean;
   function GetPadLDir     : TCoord2D; virtual;
   function IsGamepad      : Boolean;  virtual;
 
@@ -534,14 +535,20 @@ begin
   Exit( VKMOD_SHIFT in FIODriver.GetModKeyState );
 end;
 
-function TDRLIO.GetPadLTrigger : Boolean;
+function TDRLIO.ResolveControllerAction( aButton : TIOPadButton; out aAction : TControllerAction ) : Boolean;
+var iCommand : Byte;
 begin
-  Exit( False );
+  iCommand := Config.PadCommands[ aButton ];
+  if iCommand > Byte( High( TControllerAction ) ) then Exit( False );
+  aAction := TControllerAction( iCommand );
+  Exit( True );
 end;
 
-function TDRLIO.GetPadRTrigger : Boolean;
+function TDRLIO.ControllerActionHeld( aAction : TControllerAction ) : Boolean;
+var iButton : TIOPadButton;
 begin
-  Exit( False );
+  iButton := Config.GetPadButton( Byte( aAction ) );
+  Exit( ( iButton <> VPAD_BUTTON_INVALID ) and PadState.Active( iButton ) );
 end;
 
 function TDRLIO.GetPadLDir     : TCoord2D;
@@ -617,7 +624,9 @@ begin
 end;
 
 procedure TDRLIO.Reconfigure( aConfig : TLuaConfig );
-var iInput : TInputKey;
+var iInput     : TInputKey;
+    iAction    : TControllerAction;
+    iPadString : AnsiString;
     procedure CtrlAssign( aWhat : TInputKey; aFrom : TInputKey );
     var iKey : TIOKeyCode;
     begin
@@ -631,6 +640,10 @@ var iInput : TInputKey;
     begin
       iKey := Configuration.GetInteger(KeyInfo[aWhat].ID);
       Exit( IOKeyCodeToStringShort( iKey ) );
+    end;
+    function GetPadString( aWhat : TControllerAction ) : Ansistring;
+    begin
+      Exit( VPadButtonToStringShort( GetControllerButton( Configuration, aWhat ) ) );
     end;
 begin
   FAudio.Reconfigure;
@@ -650,6 +663,8 @@ begin
   CtrlAssign( INPUT_TARGETUPRIGHT,   INPUT_WALKUPRIGHT );
   CtrlAssign( INPUT_TARGETDOWNLEFT,  INPUT_WALKDOWNLEFT );
   CtrlAssign( INPUT_TARGETDOWNRIGHT, INPUT_WALKDOWNRIGHT );
+
+  ApplyControllerBindings( Configuration, aConfig );
 
   FKeySubMap.Clear;
   FKeySubMap['input_ok']        := 'Enter';
@@ -681,15 +696,24 @@ begin
   FPadSubMap['input_right']     := 'Right';
   FPadSubMap['input_up']        := 'Up';
   FPadSubMap['input_down']      := 'Down';
-  FPadSubMap['input_help']      := 'Back';
-  FPadSubMap['input_menu']      := 'Back';
-  FPadSubMap['input_fire']      := 'X';
-  FPadSubMap['input_reload']    := 'Y';
-  FPadSubMap['input_pickup']    := 'B';
-  FPadSubMap['input_action']    := 'B';
+  FPadSubMap['input_help']      := GetPadString( CONTROLLER_MENU );
+  FPadSubMap['input_menu']      := GetPadString( CONTROLLER_MENU );
+  FPadSubMap['input_fire']      := GetPadString( CONTROLLER_FIRE );
+  FPadSubMap['input_reload']    := GetPadString( CONTROLLER_RELOAD );
+  FPadSubMap['input_pickup']    := GetPadString( CONTROLLER_ACTION );
+  FPadSubMap['input_action']    := GetPadString( CONTROLLER_ACTION );
   FPadSubMap['input_pgup']      := 'PgUp';
   FPadSubMap['input_pgdn']      := 'PgDn';
-  FPadSubMap['input_inventory'] := 'Start';
+  FPadSubMap['input_inventory'] := GetPadString( CONTROLLER_PLAYER );
+
+  // Controller help remains controller-specific even when opened after a
+  // keyboard or mouse event, while fixed UI labels keep their physical map.
+  for iAction in TControllerAction do
+  begin
+    iPadString := GetPadString( iAction );
+    FKeySubMap[ ControllerBindingInfo[ iAction ].ID ] := iPadString;
+    FPadSubMap[ ControllerBindingInfo[ iAction ].ID ] := iPadString;
+  end;
 end;
 
 procedure TDRLIO.Configure( aConfig : TLuaConfig );
@@ -1026,7 +1050,8 @@ begin
   if Assigned( DRL ) then
     DRL.Store.Update;
 
-  if GetPadRTrigger and (DRL <> nil) and (DRL.State = DSPlaying)
+  if ControllerActionHeld( CONTROLLER_MODIFIER_ALT )
+    and (DRL <> nil) and (DRL.State = DSPlaying)
     and (FTargeting or ( not isModal)) and ( FLastTarget <> DRL.Targeting.List.Current ) then
     begin
       FLastTarget := DRL.Targeting.List.Current;
@@ -1034,7 +1059,8 @@ begin
         LookDescription(FLastTarget);
     end;
 
-  if not GetPadRTrigger and (FLastTarget.X * FLastTarget.Y <> 0) then
+  if not ControllerActionHeld( CONTROLLER_MODIFIER_ALT )
+    and (FLastTarget.X * FLastTarget.Y <> 0) then
   begin
     FHintOverlay := '';
     FLastTarget.Create(0,0);
@@ -1481,4 +1507,3 @@ begin
 end;
 
 end.
-

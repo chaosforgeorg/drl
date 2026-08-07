@@ -115,15 +115,15 @@ begin
   begin
     VTIG_Text('Select help topic above. Quick controls primer:');
     VTIG_Text('');
-    VTIG_Text('Movement is done by moving the {!Left Stick} to the desired direction and confirming it with the {!A} button.');
-    VTIG_Text('  {!A}     -- move   ( with {!RTrigger} - move targeting reticule )' );
-    VTIG_Text('  {!B}     -- pickup item or activate stairs/lever');
-    VTIG_Text('           + {!RTrigger} - use item from ground');
-    VTIG_Text('           + {!LStick}   - direction action (open/close door)');
-    VTIG_Text('  {!X}     -- fire   ( with {!RTrigger} - alt-fire )' );
-    VTIG_Text('  {!Y}     -- reload ( with {!RTrigger} - alt-reload )' );
-    VTIG_Text('  {!Start} -- character screens (inventory, etc)' );
-    VTIG_Text('  ...      -- see "Controller" entry for the rest');
+    VTIG_Text('Movement is done by moving the {!Left Stick} to the desired direction and confirming it with the {!{$controller_gameplay_move}} button.');
+    VTIG_Text('  {!{$controller_gameplay_move|5}} -- move ( with {!{$controller_gameplay_modifier_alt}} held - move targeting reticule )' );
+    VTIG_Text('  {!{$controller_gameplay_action|5}} -- pickup item or activate stairs/lever');
+    VTIG_Text('           + with {!{$controller_gameplay_modifier_alt}} held - use item from ground');
+    VTIG_Text('           + {!LStick} direction - direction of action (open/close door)');
+    VTIG_Text('  {!{$controller_gameplay_fire|5}} -- fire ( with {!{$controller_gameplay_modifier_alt}} held - alt-fire )' );
+    VTIG_Text('  {!{$controller_gameplay_reload|5}} -- reload ( with {!{$controller_gameplay_modifier_alt}} held - alt-reload )' );
+    VTIG_Text('  {!{$controller_gameplay_player|5}} -- character screens (inventory, etc)' );
+    VTIG_Text('  ...      -- see "Gamepad controls" entry for the rest');
   end
   else
   begin

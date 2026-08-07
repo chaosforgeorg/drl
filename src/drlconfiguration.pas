@@ -16,7 +16,7 @@ var Configuration : TDRLConfiguration;
 
 implementation
 
-uses vioevent, drlkeybindings;
+uses vioevent, drlkeybindings, drlcontrollerbindings;
 
 constructor TDRLConfiguration.Create;
 var iGroup : TConfigurationGroup;
@@ -176,6 +176,9 @@ begin
     .SetDescription('Setting to {!Disabled} will turn off gamepad rumble effects.')
     ;
 
+  iGroup := AddGroup( CONTROLLER_BINDINGS_GAMEPLAY_GROUP );
+  RegisterControllerBindings( iGroup );
+
   iGroup := AddGroup( 'keybindings_hidden' );
   iGroup.AddInteger( 'input_escape', VKEY_ESCAPE );
   iGroup.AddInteger( 'input_ok', VKEY_ENTER );
@@ -193,4 +196,3 @@ begin
 end;
 
 end.
-
