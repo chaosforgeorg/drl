@@ -133,6 +133,12 @@ function mortem.print_statistics()
 						"  ToDmg Melee "..bonus( player:get_todam(true) ) )
 end
 
+function mortem.print_damage_and_spree()
+	player:mortem_print()
+	player:mortem_print( "  Damage taken       : {!"..statistics.damage_taken.."}" )
+	player:mortem_print( "  Longest kill spree : {!"..statistics.kills_non_damage.."}" )
+end
+
 function mortem.print_traits()
     if klasses.__counter > 1 then
         player:mortem_print( "  Class : {!"..klasses[player.klass].name.."}" )
@@ -223,6 +229,29 @@ function mortem.print_kills()
 				player:mortem_print( "    {!"..kills.."} "..b.name_plural )
 			end
 		end
+	end
+end
+
+function mortem.print_weapon_kills( groups, names )
+	for index,group in ipairs( groups ) do
+		local count = core.kills_count_group( group )
+		if count > 0 then
+			player:mortem_print( "    "..names[index].."{!"..count.."}" )
+		end
+	end
+
+	local unarmed = kills.get_type( "melee" )
+	local other = kills.get_type( "other" )
+	if unarmed > 0 or other > 0 then
+		player:mortem_print()
+	end
+
+	if unarmed > 0 then
+		player:mortem_print( "    Unarmed kills  : {!"..unarmed.."}" )
+	end
+
+	if other > 0 then
+		player:mortem_print( "    Other kills    : {!"..other.."}" )
 	end
 end
 

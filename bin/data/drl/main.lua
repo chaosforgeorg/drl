@@ -497,6 +497,7 @@ function drl.RunPrintMortem()
 	player:mortem_print( "{r-- {yStatistics} ------------------------------------------------}" )
 	player:mortem_print()
 	mortem.print_statistics()
+	mortem.print_damage_and_spree()
 	player:mortem_print()
 	player:mortem_print( "{r-- {yTraits} ----------------------------------------------------}" )
 	player:mortem_print()
@@ -518,16 +519,10 @@ function drl.RunPrintMortem()
 	player:mortem_print()
 	mortem.print_kills()
 	player:mortem_print()
-	local groups = { "melee", "pistol", "shotgun", "chain", "rocket", "plasma", "bfg" }
-	local names  = { "Melee kills   : ", "Pistol kills  : ", "Shotgun kills : ", "Chaingun kills: ", "Rocket kills  : ", "Plasma kills  : ", "BFG kills     : " }
-	for idx,group in ipairs(groups) do
-		local count = core.kills_count_group( group )
-		if count > 0 then
-			player:mortem_print( "    "..names[ idx ].."{!"..count.."}" )
-		end
-	end
-	player:mortem_print( "    Unarmed kills : {!"..kills.get_type( "melee" ).."}" )
-	player:mortem_print( "    Other kills   : {!"..kills.get_type( "other" ).."}" )
+	mortem.print_weapon_kills(
+		{ "melee", "pistol", "shotgun", "chain", "rocket", "plasma", "bfg" },
+		{ "Melee kills    : ", "Pistol kills   : ", "Shotgun kills  : ", "Chaingun kills : ", "Rocket kills   : ", "Plasma kills   : ", "BFG kills      : " }
+	)
 	player:mortem_print()
 	player:mortem_print( "{r-- {yHistory} ---------------------------------------------------}" )
 	player:mortem_print()
@@ -909,4 +904,3 @@ drl.help = {
 	{ "disclaim", "Disclaimer" },
 	{ "credits", "Credits" },
 }
-

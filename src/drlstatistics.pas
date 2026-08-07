@@ -82,6 +82,7 @@ begin
   FMap['max_kills']       := Player.FKills.MaxCount;
   FMap['unique_kills']    := Player.FKillCount;
   FMap['max_unique_kills']:= Player.FKillMax;
+  FMap['kills_non_damage']:= Max( FMap['kills_non_damage'], Player.FKills.NoDamageSequence );
 end;
 
 procedure TStatistics.OnDamage( aAmount : Integer );

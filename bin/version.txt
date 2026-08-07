@@ -1,5 +1,6 @@
 0.10.11
 [new] -- GJ#250: UI - non-UI controller bindings can be configured in the settings
+[new] -- GJ#421: Game - damage taken and kill streak are now in the mortem
 
 0.10.10b
 [mod] -- GJ#188: Game - targeting/missle path algorithm matched against visibility
