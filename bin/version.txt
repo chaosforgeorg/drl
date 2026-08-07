@@ -1,4 +1,5 @@
 0.10.11
+[new] -- GJ#250: UI - non-UI controller bindings can be configured in the settings
 
 0.10.10b
 [mod] -- GJ#188: Game - targeting/missle path algorithm matched against visibility
