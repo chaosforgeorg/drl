@@ -624,7 +624,9 @@ begin
 end;
 
 procedure TDRLIO.Reconfigure( aConfig : TLuaConfig );
-var iInput : TInputKey;
+var iInput     : TInputKey;
+    iAction    : TControllerAction;
+    iPadString : AnsiString;
     procedure CtrlAssign( aWhat : TInputKey; aFrom : TInputKey );
     var iKey : TIOKeyCode;
     begin
@@ -703,6 +705,15 @@ begin
   FPadSubMap['input_pgup']      := 'PgUp';
   FPadSubMap['input_pgdn']      := 'PgDn';
   FPadSubMap['input_inventory'] := GetPadString( CONTROLLER_PLAYER );
+
+  // Controller help remains controller-specific even when opened after a
+  // keyboard or mouse event, while fixed UI labels keep their physical map.
+  for iAction in TControllerAction do
+  begin
+    iPadString := GetPadString( iAction );
+    FKeySubMap[ ControllerBindingInfo[ iAction ].ID ] := iPadString;
+    FPadSubMap[ ControllerBindingInfo[ iAction ].ID ] := iPadString;
+  end;
 end;
 
 procedure TDRLIO.Configure( aConfig : TLuaConfig );
