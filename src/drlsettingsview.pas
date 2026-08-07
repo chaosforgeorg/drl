@@ -47,23 +47,27 @@ protected
   function KeyCapture( aValue : PInteger; aSelected : Boolean ) : Boolean;
   procedure ControllerCapture( aAction   : TControllerAction; aSelected : Boolean );
 protected
-  FState             : TSettingsViewState;
-  FSize              : TIOPoint;
-  FWSize             : TIOPoint;
-  FCapture           : Boolean;
-  FKey               : Word;
-  FControllerCapture : Boolean;
-  FControllerAction  : TControllerAction;
-  FControllerButton  : TIOPadButton;
-  FControllerCancel  : Boolean;
-  FResInput          : Boolean;
-  FResolutions       : array of Ansistring;
-  FModInput          : Boolean;
-  FModValue          : Integer;
-  FModules           : array of Ansistring;
-  FModCurrent        : Ansistring;
-  FWarning           : Ansistring;
-  FRestart           : Ansistring;
+  FState               : TSettingsViewState;
+  FSize                : TIOPoint;
+  FWSize               : TIOPoint;
+  FCapture             : Boolean;
+  FKey                 : Word;
+  FControllerCapture   : Boolean;
+  FControllerAction    : TControllerAction;
+  FControllerButton    : TIOPadButton;
+  FControllerCandidate : TIOPadButton;
+  FControllerCancel    : Boolean;
+  FControllerBHold     : Boolean;
+  FControllerBStart    : DWord;
+  FControllerMessage   : Ansistring;
+  FResInput            : Boolean;
+  FResolutions         : array of Ansistring;
+  FModInput            : Boolean;
+  FModValue            : Integer;
+  FModules             : array of Ansistring;
+  FModCurrent          : Ansistring;
+  FWarning             : Ansistring;
+  FRestart             : Ansistring;
 end;
 
 implementation
@@ -110,15 +114,19 @@ begin
   FSize  := Point( 80, 25 );
   FWSize := Point( 50, 10 );
 
-  FCapture           := False;
-  FControllerCapture := False;
-  FControllerAction  := CONTROLLER_MOVE;
-  FControllerButton  := VPAD_BUTTON_INVALID;
-  FControllerCancel  := False;
-  FResInput          := False;
-  FModInput          := False;
-  FWarning           := '';
-  FRestart           := '';
+  FCapture             := False;
+  FControllerCapture   := False;
+  FControllerAction    := CONTROLLER_MOVE;
+  FControllerButton    := VPAD_BUTTON_INVALID;
+  FControllerCandidate := VPAD_BUTTON_INVALID;
+  FControllerCancel    := False;
+  FControllerBHold     := False;
+  FControllerBStart    := 0;
+  FControllerMessage   := '';
+  FResInput            := False;
+  FModInput            := False;
+  FWarning             := '';
+  FRestart             := '';
 
 
   if GraphicsVersion then
@@ -165,6 +173,14 @@ var iSelected : Integer;
     i         : Integer;
     iRResult  : ( None, Cancel, Confirm );
 begin
+  if FControllerCapture and FControllerBHold
+    and IO.PadState.Active( CONTROLLER_CAPTURE_CANCEL_BUTTON )
+    and ControllerCaptureCancelHeld( FControllerBStart, IO.Driver.GetMs ) then
+  begin
+    FControllerBHold := False;
+    FControllerCancel := True;
+  end;
+
   if ( FState = SETTINGSVIEW_DONE ) then Exit;
   if ( FWarning <> '' ) then
   begin
@@ -425,14 +441,55 @@ begin
 end;
 
 function TSettingsView.HandleEvent( const aEvent : TIOEvent ) : Boolean;
+var iButton        : TIOPadButton;
+    iNow           : DWord;
+    iBHoldComplete : Boolean;
 begin
   if FControllerCapture then
   begin
     if ( aEvent.EType = VEVENT_KEYDOWN )
       and ( aEvent.Key.Code = VKEY_ESCAPE ) then
       FControllerCancel := True
-    else if FControllerButton = VPAD_BUTTON_INVALID then
-      GetBindableControllerButton( aEvent, FControllerButton );
+    else if ( aEvent.EType = VEVENT_PADDEVICE )
+      and ( aEvent.PadDevice.Event = VPAD_REMOVED ) then
+      FControllerCancel := True
+    else if GetBindableControllerButton( aEvent, iButton ) then
+    begin
+      iNow := IO.Driver.GetMs;
+      if aEvent.EType = VEVENT_PADDOWN then
+      begin
+        if ( iButton = CONTROLLER_CAPTURE_CANCEL_BUTTON )
+          and not FControllerBHold then
+        begin
+          FControllerBHold  := True;
+          FControllerBStart := iNow;
+        end;
+        if FControllerCandidate = VPAD_BUTTON_INVALID then
+        begin
+          FControllerCandidate := iButton;
+          FControllerMessage := '';
+        end;
+      end
+      else
+      begin
+        iBHoldComplete := ( iButton = CONTROLLER_CAPTURE_CANCEL_BUTTON )
+          and FControllerBHold
+          and ControllerCaptureCancelHeld( FControllerBStart, iNow );
+        if iButton = CONTROLLER_CAPTURE_CANCEL_BUTTON then
+          FControllerBHold := False;
+
+        if iBHoldComplete then
+          FControllerCancel := True
+        else if iButton = FControllerCandidate then
+        begin
+          FControllerCandidate := VPAD_BUTTON_INVALID;
+          if IsControllerMenuAssignableButton( iButton ) then
+            FControllerButton := iButton
+          else
+            FControllerMessage := 'D-pad directions are fixed.';
+        end;
+      end;
+    end;
     Exit( True );
   end;
 
@@ -462,8 +519,11 @@ begin
 
   if FControllerCapture and ( FControllerAction = aAction ) then
   begin
-    VTIG_Begin( 'controller_capture', Point( 56, 7 ) );
-    VTIG_Text( 'Press one controller button to bind, or <{!Escape}> on the keyboard to cancel...' );
+    VTIG_Begin( 'controller_capture', Point( 56, 8 ) );
+    VTIG_Text( 'Release one controller button to bind.' );
+    VTIG_Text( 'Hold {!B} for one second or press {!Escape} to cancel.' );
+    if FControllerMessage <> '' then
+      VTIG_Text( FControllerMessage );
     VTIG_End;
 
     if FControllerCancel then
@@ -482,8 +542,12 @@ begin
 
     if not FControllerCapture then
     begin
-      FControllerButton := VPAD_BUTTON_INVALID;
-      FControllerCancel := False;
+      FControllerButton    := VPAD_BUTTON_INVALID;
+      FControllerCandidate := VPAD_BUTTON_INVALID;
+      FControllerCancel    := False;
+      FControllerBHold     := False;
+      FControllerBStart    := 0;
+      FControllerMessage   := '';
     end;
     VTIG_EventClear;
     Exit;
@@ -491,10 +555,14 @@ begin
 
   if aSelected and VTIG_EventConfirm then
   begin
-    FControllerCapture := True;
-    FControllerAction  := aAction;
-    FControllerButton  := VPAD_BUTTON_INVALID;
-    FControllerCancel  := False;
+    FControllerCapture   := True;
+    FControllerAction    := aAction;
+    FControllerButton    := VPAD_BUTTON_INVALID;
+    FControllerCandidate := VPAD_BUTTON_INVALID;
+    FControllerCancel    := False;
+    FControllerBHold     := False;
+    FControllerBStart    := 0;
+    FControllerMessage   := '';
     VTIG_EventClear;
   end;
 end;

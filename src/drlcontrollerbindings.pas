@@ -4,7 +4,9 @@ interface
 
 uses vconfiguration, vioevent, vluaconfig;
 
-const CONTROLLER_BINDINGS_GAMEPLAY_GROUP = 'controller_bindings_gameplay';
+const CONTROLLER_BINDINGS_GAMEPLAY_GROUP  = 'controller_bindings_gameplay';
+      CONTROLLER_CAPTURE_CANCEL_BUTTON    = VPAD_BUTTON_B;
+      CONTROLLER_CAPTURE_CANCEL_HOLD_MS   = 1000;
 
 type TControllerAction = (
   CONTROLLER_MOVE,
@@ -69,6 +71,8 @@ const ControllerBindingInfo : array[TControllerAction] of TControllerBindingInfo
 
 procedure RegisterControllerBindings( aGroup : TConfigurationGroup );
 function IsControllerButton( aButton : TIOPadButton ) : Boolean;
+function IsControllerMenuAssignableButton( aButton : TIOPadButton ) : Boolean;
+function ControllerCaptureCancelHeld( aStartedAt : DWord; aNow : DWord ) : Boolean;
 function GetBindableControllerButton( const aEvent : TIOEvent; out aButton  : TIOPadButton ) : Boolean;
 function ControllerBindingsValid( aConfiguration : TConfigurationManager ) : Boolean;
 procedure ResetControllerBindings( aConfiguration : TConfigurationManager );
@@ -118,13 +122,31 @@ begin
   );
 end;
 
+function IsControllerMenuAssignableButton( aButton : TIOPadButton ) : Boolean;
+begin
+  if not IsControllerButton( aButton ) then Exit( False );
+  case aButton of
+    VPAD_BUTTON_DPAD_UP,
+    VPAD_BUTTON_DPAD_DOWN,
+    VPAD_BUTTON_DPAD_LEFT,
+    VPAD_BUTTON_DPAD_RIGHT :
+      Exit( False );
+  end;
+  Exit( True );
+end;
+
+function ControllerCaptureCancelHeld( aStartedAt : DWord; aNow : DWord ) : Boolean;
+begin
+  Exit( aNow - aStartedAt >= CONTROLLER_CAPTURE_CANCEL_HOLD_MS );
+end;
+
 function GetBindableControllerButton(
   const aEvent : TIOEvent;
   out aButton  : TIOPadButton
 ) : Boolean;
 begin
   aButton := VPAD_BUTTON_INVALID;
-  if ( aEvent.EType <> VEVENT_PADDOWN )
+  if not ( aEvent.EType in [ VEVENT_PADDOWN, VEVENT_PADUP ] )
     or not IsControllerButton( aEvent.Pad.Button ) then
     Exit( False );
   aButton := aEvent.Pad.Button;
@@ -229,9 +251,7 @@ begin
   ValidateControllerBindings( aConfiguration );
   aConfig.ResetPadCommands;
   for iAction in TControllerAction do
-    aConfig.PadCommands[
-      GetControllerButton( aConfiguration, iAction )
-    ] := Byte( iAction );
+    aConfig.PadCommands[ GetControllerButton( aConfiguration, iAction ) ] := Byte( iAction );
 end;
 
 end.
