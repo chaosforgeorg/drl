@@ -44,7 +44,7 @@ function level:get_being_table( dlevel, weights, reqs, dmod )
 	end
 
 	for _,bg in ipairs(being_groups) do
-		if bg.weight > 0 and danger+dmod >= bg.min_lev and danger <= bg.max_lev then
+		if bg.weight > 0 and danger+dmod >= bg.min_lev and danger+dmod <= bg.max_lev then
 			if core.proto_reqs_met( bg, reqs ) then
 				local weight = core.proto_weight( bg, weights )
 				if weight > 0 then

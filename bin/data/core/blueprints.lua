@@ -164,6 +164,7 @@ core.register_blueprint "perk"
 	status_effect  = { false, core.TNUMBER },
 	status_strength= { false, core.TNUMBER },
 	tags           = { false, core.TTABLE, {} },
+	group          = { false, core.TSTRING },
 	weight         = { false, core.TNUMBER, 0 },
 	min_dlevel     = { false, core.TNUMBER, 0 },
 	min_diff       = { false, core.TNUMBER, 0 },
