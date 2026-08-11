@@ -171,6 +171,12 @@ setmetatable(being.eq, {
 	end,
 })
 
+function being:wipe_items()
+	for i in self:items() do
+		i:destroy()
+	end
+end
+
 function being:get_ammo_item( weapon )
 	if ( not weapon ) then return nil end
 	if weapon == self.eq.weapon and weapon.itype == ITEMTYPE_RANGED and
