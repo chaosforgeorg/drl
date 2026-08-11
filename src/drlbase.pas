@@ -180,7 +180,10 @@ begin
     then FPrevPos := FLastPos
     else FPrevPos := aTarget;
   FLastUID := 0;
-  if (not aMove) and (DRL.Level.Being[ aTarget ] <> nil) and ( DRL.Level.Flags[ LF_BEINGSVISIBLE ] or DRL.Level.isVisible(aTarget) ) then
+  if (not aMove) and (DRL.Level.Being[ aTarget ] <> nil) then
+     if DRL.Level.Flags[ LF_BEINGSVISIBLE ] 
+       or DRL.Level.isVisible(aTarget) 
+       or DRL.Level.Being[ aTarget ].Flags[ BF_VISIBLE ] then
     FLastUID := DRL.Level.Being[ aTarget ].UID;
   FLastPos := aTarget;
 end;

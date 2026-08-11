@@ -73,7 +73,7 @@ BF_SWASHBUCKLER   = 13;
 BF_AUTOHIT        = 14;
 BF_DARKNESS       = 15;
 BF_NOKILL         = 16;
-
+BF_VISIBLE        = 17;
 BF_INTUITED       = 18;
 
 
