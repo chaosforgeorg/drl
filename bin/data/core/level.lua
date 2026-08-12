@@ -33,7 +33,7 @@ function level:get_being_table( dlevel, weights, reqs, dmod )
 	local list   = weight_table.new()
 
 	for _,b in ipairs(beings) do
-		if b.weight > 0	and danger+dmod >= b.min_lev and danger <= b.max_lev then
+		if b.weight > 0	and danger+dmod >= b.min_lev and danger+dmod <= b.max_lev then
 			if core.proto_reqs_met( b, reqs ) then
 				local weight = core.proto_weight( b, weights )
 				if weight > 0 then
@@ -48,7 +48,7 @@ function level:get_being_table( dlevel, weights, reqs, dmod )
 			if core.proto_reqs_met( bg, reqs ) then
 				local weight = core.proto_weight( bg, weights )
 				if weight > 0 then
-					list:add( bg )
+					list:add( bg, weight )
 				end
 			end
 		end
