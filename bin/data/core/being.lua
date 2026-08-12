@@ -177,6 +177,21 @@ function being:wipe_items()
 	end
 end
 
+function being:wipe_weapons()
+	local itypes = { 
+		ITEMTYPE_RANGED = true,
+		ITEMTYPE_NRANGED = true,
+		ITEMTYPE_MELEE = true,
+		ITEMTYPE_URANGED = true,
+		ITEMTYPE_AMMO = true
+	}
+	for i in self:items() do
+		if itypes[i.itype] then
+			i:destroy()
+		end
+	end
+end
+
 function being:get_ammo_item( weapon )
 	if ( not weapon ) then return nil end
 	if weapon == self.eq.weapon and weapon.itype == ITEMTYPE_RANGED and

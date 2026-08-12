@@ -3436,6 +3436,19 @@ begin
   Result := 0;
 end;
 
+function lua_being_set_glow(L: Plua_State): Integer; cdecl;
+var iState : TDRLLuaState;
+    iBeing : TBeing;
+begin
+  iState.Init(L);
+  iBeing := iState.ToObject(1) as TBeing;
+  if iState.IsNil(2) then
+    iBeing.FSprite.GlowColor := ColorBlack
+  else
+    iBeing.FSprite.GlowColor := NewColor( iState.ToVec4f(2) );
+  Result := 0;
+end;
+
 function lua_being_set_sprite(L: Plua_State): Integer; cdecl;
 var iState : TDRLLuaState;
     iBeing : TBeing;
@@ -3614,7 +3627,7 @@ begin
   Result := 1;
 end;
 
-const lua_being_lib : array[0..40] of luaL_Reg = (
+const lua_being_lib : array[0..41] of luaL_Reg = (
       ( name : 'new';           func : @lua_being_new),
       ( name : 'kill';          func : @lua_being_kill),
       ( name : 'resurrect';     func : @lua_being_resurrect),
@@ -3648,6 +3661,7 @@ const lua_being_lib : array[0..40] of luaL_Reg = (
 
       ( name : 'set_overlay';     func : @lua_being_set_overlay),
       ( name : 'set_coscolor';    func : @lua_being_set_coscolor),
+      ( name : 'set_glow';        func : @lua_being_set_glow),
       ( name : 'set_sprite';      func : @lua_being_set_sprite),
       ( name : 'get_auto_target'; func : @lua_being_get_auto_target),
       ( name : 'get_tohit';       func : @lua_being_get_tohit),
