@@ -218,6 +218,7 @@ core.register_blueprint "perk"
 	OnUnequipCheck = { false, core.TFUNC },
 	OnEquip        = { false, core.TFUNC },
 	OnUnequip      = { false, core.TFUNC },
+	OnDie          = { false, core.TFUNC }, -- double check if working
 }
 
 core.register_blueprint "ai"
