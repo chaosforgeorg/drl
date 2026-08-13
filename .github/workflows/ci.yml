@@ -153,23 +153,53 @@ jobs:
         shell: bash
         working-directory: drl
         run: |
-          set -e
-          base_url="https://drl.chaosforge.org"
+          set -euo pipefail
+          # Pinned build input; update the tag, filenames, and digests together when audio changes.
+          release_url="https://github.com/chaosforgeorg/drl/releases/download/0_10_9a"
+          asset_dir="$(mktemp -d)"
+          trap 'rm -rf "$asset_dir"' EXIT
+
+          hq_archive="$asset_dir/drl-win-0109.zip"
+          lq_archive="$asset_dir/drl-win-0109-lq.zip"
+
+          curl -fL --retry 3 --retry-all-errors --connect-timeout 15 --max-time 300 \
+            "$release_url/drl-win-0109.zip" -o "$hq_archive"
+          curl -fL --retry 3 --retry-all-errors --connect-timeout 15 --max-time 300 \
+            "$release_url/drl-win-0109-lq.zip" -o "$lq_archive"
+
+          verify_sha256() {
+            expected="$1"
+            archive="$2"
+            if command -v sha256sum >/dev/null 2>&1; then
+              actual="$(sha256sum "$archive" | awk '{print $1}')"
+            else
+              actual="$(shasum -a 256 "$archive" | awk '{print $1}')"
+            fi
+            if [ "$actual" != "$expected" ]; then
+              echo "::error::SHA-256 mismatch for $(basename "$archive")"
+              exit 1
+            fi
+          }
+
+          verify_sha256 75a641ff823497235e0a8021c2b714d790bdd7ca5b3ef6aea465d9b4a8bd84f0 "$hq_archive"
+          verify_sha256 cdac1140ac73e383d7beebf30d47b80556aaf78036f0a7682787eb83d1b14f23 "$lq_archive"
 
           mkdir -p bin/data/drlhq/music bin/data/drlhq/sound
           mkdir -p bin/data/drllq/music bin/data/drllq/sound
 
-          curl -fL "$base_url/music_hq.zip"  -o music_hq.zip
-          curl -fL "$base_url/sound_hq.zip"  -o sound_hq.zip
-          curl -fL "$base_url/music_lq.zip"  -o music_lq.zip
-          curl -fL "$base_url/sound_lq.zip"  -o sound_lq.zip
+          unzip -q "$hq_archive" \
+            'drl-win-0109/data/drlhq/music/*' \
+            'drl-win-0109/data/drlhq/sound/*' \
+            -d "$asset_dir/hq"
+          unzip -q "$lq_archive" \
+            'drl-win-0109-lq/data/drllq/music/*' \
+            'drl-win-0109-lq/data/drllq/sound/*' \
+            -d "$asset_dir/lq"
 
-          unzip -o music_hq.zip  -d bin/data/drlhq/music/
-          unzip -o sound_hq.zip  -d bin/data/drlhq/sound/
-          unzip -o music_lq.zip  -d bin/data/drllq/music/
-          unzip -o sound_lq.zip  -d bin/data/drllq/sound/
-
-          rm -f music_hq.zip sound_hq.zip music_lq.zip sound_lq.zip
+          cp -R "$asset_dir/hq/drl-win-0109/data/drlhq/music/." bin/data/drlhq/music/
+          cp -R "$asset_dir/hq/drl-win-0109/data/drlhq/sound/." bin/data/drlhq/sound/
+          cp -R "$asset_dir/lq/drl-win-0109-lq/data/drllq/music/." bin/data/drllq/music/
+          cp -R "$asset_dir/lq/drl-win-0109-lq/data/drllq/sound/." bin/data/drllq/sound/
 
       # ── Build packages ─────────────────────────────────────────────────
 
