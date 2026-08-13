@@ -1,3 +1,12 @@
+# Local push instructions:
+# https://github.com/settings/personal-access-tokens/new 
+# Resource owner - chaosforgeorg
+# Expiration - short
+# Only select drl repo scope
+# Permissions Read AND WRITE Contents and Workflows
+# git -c credential.helper= push origin development
+# username normal, password = personal access token
+
 name: DRL CI
 
 on:
