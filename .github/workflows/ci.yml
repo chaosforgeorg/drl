@@ -254,7 +254,7 @@ jobs:
           ls -la dist/
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: drl-${{ matrix.short }}
           path: drl/dist/*
@@ -271,7 +271,7 @@ jobs:
 
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
           merge-multiple: true
@@ -280,7 +280,7 @@ jobs:
         run: ls -laR artifacts/
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: artifacts/*
           generate_release_notes: true
@@ -295,13 +295,13 @@ jobs:
 
     steps:
       - name: Download Windows artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: drl-win
           path: nightly
 
       - name: Download Linux artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: drl-linux
           path: nightly
@@ -327,7 +327,7 @@ jobs:
           ls -la
 
       - name: Update nightly release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: nightly
           name: Nightly Build
@@ -340,4 +340,5 @@ jobs:
             - [Linux LQ](https://github.com/${{ github.repository }}/releases/download/nightly/drl-linux-nightly-lq.tar.gz)
           prerelease: true
           make_latest: false
+          preserve_order: true
           files: nightly/*
