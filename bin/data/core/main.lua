@@ -293,8 +293,17 @@ register_being         = core.register_storage( "beings", "being", function( bp 
 				end
 			end
 
+			local SafeOnAction = function( func )
+				if func == nil then return nil end
+				return function( self )
+				  if not core.is_playing() then return nil end
+				  if not self.__ptr then return nil end
+				  func( self )
+				end
+			end
+
 			bp.OnCreate   = core.create_seq_function( OnCreate, bp.OnCreate )
-			bp.OnAction   = core.create_seq_function( ai_proto.OnAction, bp.OnAction )
+			bp.OnAction   = core.create_seq_function( SafeOnAction( ai_proto.OnAction ), SafeOnAction( bp.OnAction ) )
 			bp.OnAction   = core.create_seq_function( aitk.OnAction, bp.OnAction )
 			bp.OnAttacked = core.create_seq_function( bp.OnAttacked, ai_proto.OnAttacked )
 		else
