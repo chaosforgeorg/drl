@@ -532,6 +532,7 @@ var x,y         : Integer;
     iFloorCell  : Integer;
     iFloorStyle : Byte;
 begin
+  Player.Detach; // guarantee invariant
   FActiveBeing := nil;
   FNextNode    := nil;
 
