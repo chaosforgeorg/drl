@@ -61,7 +61,6 @@ register_level "halls_of_carnage"
 		local left   = area( 2,  2, 48, 19 ) 
 		local middle = area( 50, 2, 56, 19 ) 
 
-		level:player(0,0)
 		level:drop_being( player, coord( 8,18 ) )
 
 		level:summon{ "former",   8 + DIFFICULTY,   area = left }

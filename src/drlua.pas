@@ -10,9 +10,6 @@ interface
 uses SysUtils, Classes, vluastate, vluasystem, vlualibrary, vrltools, vutil,
      vdf, viotypes, dfitem, dfbeing, dfthing, dfdata, drlmodule;
 
-var LuaPlayerX : Byte = 2;
-    LuaPlayerY : Byte = 2;
-
 type
 
 { TDRLLua }

@@ -320,7 +320,6 @@ register_level "central_processing"
 			end
 		end
 
-		level:player(0,0)
 		level:drop_being( player, coord( 5,11 ) )
 	end,
 

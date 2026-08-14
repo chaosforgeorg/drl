@@ -120,7 +120,6 @@ register_level "mt_erebus"
 
 		level:set_light_flag( level.data.mountain, LFNOTELE, true )
 
-		level:player(0,0)
 		level:drop_being( player, coord( 4,11 ) )
 		level.status = 0
 	end,

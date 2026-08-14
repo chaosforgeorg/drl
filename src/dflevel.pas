@@ -213,9 +213,6 @@ type TProcessedUIDList = specialize TGArray<TUID>;
 
 procedure TLevel.ScriptLevel(script : string);
 begin
-  LuaPlayerX := 2;
-  LuaPlayerY := 2;
-
   with LuaSystem.GetTable( ['levels', script] ) do
   try
     FID := Script;
@@ -232,8 +229,6 @@ begin
     FAbbr   := GetString( 'abbr','' );
     if FSName = '' then FSName := FName;
     Call('Create',[]);
-    if ( LuaPlayerX > 0 ) and ( LuaPlayerY > 0 ) then
-      Place( Player, DropCoord( NewCoord2D(LuaPlayerX,LuaPlayerY), [ EF_NOBEINGS ], False ) );
     Include( FFlags, LF_SCRIPT );
   finally
     Free;
@@ -1788,16 +1783,6 @@ begin
   Result := 1;
 end;
 
-function lua_level_player(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
-begin
-  State.Init(L);
-  if State.StackSize < 3 then Exit(0);
-  LuaPlayerX := State.ToInteger(2);
-  LuaPlayerY := State.ToInteger(3);
-  Result := 0;
-end;
-
 function lua_level_play_sound(L: Plua_State): Integer; cdecl;
 var iState : TDRLLuaState;
     iLevel : TLevel;
@@ -2131,10 +2116,9 @@ begin
   Result := 1;
 end;
 
-const lua_level_lib : array[0..26] of luaL_Reg = (
+const lua_level_lib : array[0..25] of luaL_Reg = (
       ( name : 'drop_item';  func : @lua_level_drop_item),
       ( name : 'drop_being'; func : @lua_level_drop_being),
-      ( name : 'player';     func : @lua_level_player),
       ( name : 'play_sound'; func : @lua_level_play_sound),
       ( name : 'nuke';       func : @lua_level_nuke),
       ( name : 'explosion';  func : @lua_level_explosion),

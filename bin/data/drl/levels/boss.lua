@@ -126,7 +126,6 @@ register_level "hellgate"
 		generator.set_permanence( area( 1, 14, 50, MAXY ) )
 		generator.set_permanence( area( 51, 1, MAXX, MAXY ) )
 
-		level:player(0,0)
 		level:drop_being( player, coord( 2,10 ) )
 		level.flags[ LF_NOHOMING ]      = true
 		level.flags[ LF_NOBEINGREVEAL ] = true
@@ -204,6 +203,7 @@ register_level "tower_of_babel"
 		level.flags[ LF_NOHOMING      ] = true
 		level.flags[ LF_NOBEINGREVEAL ] = true
 		generator.scatter_blood(area.FULL_SHRINKED,"floor",100)
+		level:drop_being( player, coord( 2,2 ) )
 	end,
 
 	OnEnterLevel = function ()
@@ -298,7 +298,6 @@ WWWWWWWWWWWWWWWWWWWWW...............####...............WWWWWWWWWWWWWWWWWWWWW
 		level.flags[ LF_NOBEINGREVEAL ] = true
 
 		local player_pos = math.random( 2 ) == 1 and coord( 19,11 ) or coord( 60,10 )
-		level:player(0,0)
 		level:drop_being( player, player_pos )
 		player.flags[ BF_STAIRSENSE ] = false
 	end,
@@ -364,7 +363,6 @@ register_level "hell_fortress"
 
 		level.flags[ LF_NOHOMING ]      = true
 		level.flags[ LF_NOBEINGREVEAL ] = true
-		level:player(0,0)
 		level:drop_being( player, coord( 2,10 ) )
 
 		local boss

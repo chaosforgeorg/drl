@@ -207,7 +207,6 @@ register_level "intro"
 			level:try_destroy_item( c )
 		end
 
-		level:player(0,0)
 		level:drop_being( player, coord( 4,10 ) )
 		player:set_achievement("drl_legacy_1")
 	end,

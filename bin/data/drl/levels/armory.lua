@@ -123,7 +123,6 @@ register_level "hells_armory"
 			level:summon{ "lostsoul", 8 + DIFFICULTY, cell = "lava" }
 		end
 
-		level:player(0,0)
 		level:drop_being( player, coord( 11,10 ) )
 	end,
 

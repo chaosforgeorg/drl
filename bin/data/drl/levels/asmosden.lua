@@ -186,7 +186,6 @@ register_level "the_asmos_den"
 
 		generator.set_permanence( area.FULL )
 
-		level:player(0,0)
 		level:drop_being( player, coord( 77,19 ) )
 	end,
 

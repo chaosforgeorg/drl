@@ -66,7 +66,6 @@ PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
 		local total   = 5 + 2*DIFFICULTY
 		level:summon{ "imp", total, area = level.data.left }
 
-		level:player(0,0)
 		level:drop_being( player, coord( 2,2 ) )
 		level.status = 0
 	end,

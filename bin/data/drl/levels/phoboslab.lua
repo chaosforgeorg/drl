@@ -139,7 +139,6 @@ register_level "phobos_lab"
 		generator.place_tile( translation, map, 1, 1 )
 
 		level.flags[ LF_SHARPFLUID ] = true
-		level:player(0,0)
 		level:drop_being( player, coord( 57,19 ) )
 	end,
 

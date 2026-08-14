@@ -307,7 +307,6 @@ register_level "the_chained_court"
 			player_pos = coord( 38,10 )
 			generator.set_permanence( area(34,4,43,17), false )
 		end
-		level:player(0,0)
 		level:drop_being( player, player_pos )
 	end,
 	OnKillAll = function ()
