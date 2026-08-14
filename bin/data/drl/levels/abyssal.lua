@@ -77,7 +77,8 @@ register_level "abyssal_plains"
 		level.data.drop_time = 0
 		level.data.inner_room = area(29, 7, 49, 14)
 		level.data.kill_all  = false
-		level:player(2,11)
+		level:player(0,0)
+		level:drop_being( player, coord( 2,11 ) )
 	end,
 
 	OnKillAll = function ()

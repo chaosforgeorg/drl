@@ -133,7 +133,8 @@ register_level "the_vaults"
 			item.name  = ma.name.." schematics"
 		end
 
-		level:player(4,11)
+		level:player(0,0)
+		level:drop_being( player, coord( 4,11 ) )
 		level.status = 0
 	end,
 
