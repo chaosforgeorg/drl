@@ -528,6 +528,7 @@ var x,y         : Integer;
     iFloorStyle : Byte;
 begin
   Player.Detach; // guarantee invariant
+  LuaSystem.State.ClearLuaProperties( Self );
   FActiveBeing := nil;
   FNextNode    := nil;
 
