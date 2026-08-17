@@ -284,7 +284,7 @@ function being:phase( cell )
 end
 
 function being:spawn( monster )
-	local b = level:drop_being( monster, self.position, being.flags[ BF_RESPAWN ] )
+	local b = level:drop_being( monster, self.position, self.flags[ BF_RESPAWN ] )
 	if b then
 		b.flags[ BF_NOEXP ] = true
 		b.scount = 2900 + math.random( 200 )
