@@ -364,7 +364,6 @@ begin
   FTargeting := TTargeting.Create;
   Reset;
   FStore     := TStoreInterface.Get;
-  Log( VersionToString( ArrayToVersion(VERSION_ARRAY) ) );
   Reconfigure;
   if GraphicsVersion then
   begin
@@ -1599,6 +1598,7 @@ var iStream    : TStream;
     iRecreate  : Boolean;
     iModule    : Ansistring;
 begin
+  SaveVersionEngine := '';
   SaveVersionModule := '';
   SaveModString     := '';
   iRecreate := False;
@@ -1606,14 +1606,19 @@ begin
     try
       iStream := TGZFileStream.Create( ModuleUserPath + 'save',gzOpenRead );
       //      Stream := TDebugStream.Create( Stream );
-      iModule           := iStream.ReadAnsiString;
-      if (iModule <> CoreModuleID) then Exit( False );
+      iModule := iStream.ReadAnsiString;
+      if iModule <> CoreModuleID then Exit( False );
+
+      SaveVersionEngine := iStream.ReadAnsiString;
+      if SaveVersionEngine <> VersionEngineSave then Exit( False );
+
       SaveVersionModule := iStream.ReadAnsiString;
+      if SaveVersionModule <> VersionModuleSave then Exit( False );
+
       SaveModString     := iStream.ReadAnsiString;
-      if ( SaveVersionModule <> VersionModuleSave ) or ( SaveModString <> DRL.Modules.ModString ) then
-      begin
-        Exit( False );
-      end;
+      if SaveModString <> DRL.Modules.ModString then Exit( False );
+
+      SaveVersionEngine := '';
       SaveVersionModule := '';
       SaveModString     := '';
 
@@ -1697,6 +1702,7 @@ begin
   //      Stream := TDebugStream.Create( Stream );
 
   Stream.WriteAnsiString( CoreModuleID );
+  Stream.WriteAnsiString( VersionEngineSave );
   Stream.WriteAnsiString( VersionModuleSave );
   Stream.WriteAnsiString( FModules.ModString );
   UIDs.WriteToStream( Stream );

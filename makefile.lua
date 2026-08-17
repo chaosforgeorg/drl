@@ -44,11 +44,7 @@ makefile = {
 		},
 	},
 	pre_build = function()
-		local v = make.readversion( "bin/version.txt" )
-		local s = make.gitrevision()
-		v.core = "drl"
-		make.writeversion( "src/version.inc", v, s )
-		--make.svncheck(s)
+		make.readluaversion( "bin/data/core/main.lua", "VERSION_ENGINE" )
 	end,
 	post_build = function()
 	end,

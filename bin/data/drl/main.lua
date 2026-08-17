@@ -420,7 +420,7 @@ function drl.RunPrintMortem()
 	local game_module    = nil
 
 	player:mortem_print( "{r--------------------------------------------------------------}" )
-	player:mortem_print( " {RDRL} {!"..VERSION_MODULE.."} (Engine {!"..VERSION_STRING.."}) roguelike post-mortem dump")
+	player:mortem_print( " {RDRL} {!"..VERSION_MODULE.."} (Engine {!"..VERSION_ENGINE.."}) roguelike post-mortem dump")
 --	if game_type ~= GAMESTANDARD then
 --		player:mortem_print( " Module : "..module.name.." ("..mortem.version_string(module.version)..")")
 --		game_module = _G[module.id]
@@ -650,7 +650,7 @@ end
 
 function drl.GetLogoBox()
 	return
-[[{rDRL version {R]]..VERSION_STRING..[[}
+[[{rDRL version {R]]..VERSION_MODULE..[[}
 by {RKornel Kisielewicz}
 graphics by {RDerek Yu}
 and {RLukasz Sliwinski}}]]
@@ -658,10 +658,10 @@ end
 
 function drl.GetLogoText()
 	return
-[[{rAdd. coding : {ytehtmi}, {yGame Hunter}, {yshark20061}, {yadd} and {ybrisbang}
+[[{rDRL Engine  : {y]]..VERSION_ENGINE..[[}
+Add. coding : {ytehtmi}, {yGame Hunter}, {yshark20061}, {yadd} and {ybrisbang}
 Music tracks: {ySonic Clang} (remixes), {ySimon Volpert} (special levels)
 HQ SFX      : {yPer Kristian Risvik}
-
 Major changes since last version (see {yversion.txt} for full list)
 {R  * tons of UI and UX changes, a lot new visual effects!
   * new L4 special levels by brisbang, two new environment fluids!
@@ -689,7 +689,7 @@ function drl.OnWinGame()
 
 
 
-             D**m, the Roguelike ]]..VERSION_STRING..[[
+             D**m, the Roguelike ]]..VERSION_MODULE..[[
 
                    Congratulations!
            Look further for the next release

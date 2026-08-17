@@ -19,13 +19,13 @@ const CoreModuleID      : AnsiString = '';
       ScorePath         : AnsiString = '';
       SettingsPath      : AnsiString = 'settings.lua';
 
+      VersionEngine     : Ansistring = '';
+      VersionEngineSave : Ansistring = '';
       VersionModule     : Ansistring = '';
       VersionModuleSave : Ansistring = '';
+      SaveVersionEngine : Ansistring = '';
       SaveVersionModule : Ansistring = '';
       SaveModString     : Ansistring = '';
-
-
-{$INCLUDE version.inc}
 
 var   MemorialWritten : Boolean;
 

@@ -306,7 +306,7 @@ begin
         end
         else
         begin
-          if SaveVersionModule = ''
+          if ( SaveVersionEngine = '' ) and ( SaveVersionModule = '' )
             then FMode := MAINMENU_BADSAVE
             else FMode := MAINMENU_SAVECOMPAT;
         end;
@@ -372,7 +372,7 @@ end;
 procedure TMainMenuView.UpdateBadSave;
 begin
   VTIG_BeginWindow('Corrupted save file', Point( 42, 13 ), Point(19,8) );
-  VTIG_Text('Save file is {!corrupted}, or from a'+#10+'{!previous version}!'+#10+#10+'Version compatibility will be maintained between big versions.'+#10+#10+'{!Removed} corrupted save file, we''re sorry :(. Player and score data are {!intact}.');
+  VTIG_Text('Save file is {!corrupted}!'+#10+#10+'{!Removed} corrupted save file, we''re sorry :(. Player and score data are {!intact}.');
   VTIG_End('Press <{!{$input_ok},{$input_escape}}> to continue...');
   if VTIG_EventCancel or VTIG_EventConfirm then
   begin
@@ -384,9 +384,17 @@ end;
 procedure TMainMenuView.UpdateSaveCompat;
 begin
   VTIG_BeginWindow('Incompatible save file!', Point( 42, 20 ), Point(19,4) );
-  if SaveVersionModule <> VersionModuleSave then
+  if SaveVersionEngine <> VersionEngineSave then
   begin
-    VTIG_Text('Save file is from a {!previous version} of the game!');
+    VTIG_Text('Save file uses an incompatible {!engine version}!');
+    VTIG_Text('Save engine version : {!'+SaveVersionEngine+'}' );
+    VTIG_Text('Current engine version : {!'+VersionEngineSave+'}' );
+    VTIG_Text('');
+    VTIG_Text('This in-progress save cannot be loaded by this engine version.');
+  end
+  else if SaveVersionModule <> VersionModuleSave then
+  begin
+    VTIG_Text('Save file is from an incompatible version of the game!');
     VTIG_Text('Save game version : {!'+SaveVersionModule+'}' );
     VTIG_Text('This game version : {!'+VersionModuleSave+'}' );
     VTIG_Text('');
@@ -973,4 +981,3 @@ begin
 end;
 
 end.
-

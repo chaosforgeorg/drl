@@ -302,16 +302,21 @@ var iProgBase    : DWord;
   end;
   procedure SetupBase;
   begin
+    VersionEngine     := LuaSystem.Get( 'VERSION_ENGINE' );
+    VersionEngineSave := LuaSystem.Get( 'VERSION_ENGINE_SAVE' );
     VersionModule     := LuaSystem.Get( 'VERSION_MODULE' );
     VersionModuleSave := LuaSystem.Get( 'VERSION_MODULE_SAVE' );
     DemoVersion       := False;
     if LuaSystem.RawDefined( 'DEMO' ) then
       DemoVersion := LuaSystem.Get( 'DEMO' );
 
+    Log( LOGINFO, 'ENGINE VERSION: '+VersionEngine );
     Log( LOGINFO, 'BASE MODULE VERSION: '+VersionModule );
   end;
 
 begin
+  VersionEngine     := '';
+  VersionEngineSave := '';
   VersionModule     := '';
   VersionModuleSave := '';
   DemoVersion       := False;
@@ -594,9 +599,6 @@ begin
   ErrorFunc := @OnError;
   
   SetValue('WINDOWSVERSION', {$IFDEF WINDOWS}1{$ELSE}0{$ENDIF});
-  SetValue('VERSION', VERSION_STRING);
-  SetValue('VERSION_STRING', VERSION_STRING);
-  SetValue('VERSION_BETA',   VERSION_BETA);
   SetValue('GRAPHICSVERSION',GraphicsVersion);
   SetValue('GODMODE',        GodMode);
 
@@ -706,4 +708,3 @@ begin
 end;
 
 end.
-
