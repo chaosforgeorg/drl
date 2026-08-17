@@ -322,6 +322,7 @@ core.register_blueprint "being_group"
 	min_lev  = { false, core.TNUMBER, 0 },
 	max_lev  = { false, core.TNUMBER, 10000 },
 	weight   = { true,  core.TNUMBER },
+	adjust   = { false, core.TNUMBER, 0 },
 	beings   = { true,  core.TARRAY("being_group_entry") },
 	tags     = { false, core.TTABLE, {} },
 	is_group = true,
