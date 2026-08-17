@@ -1736,24 +1736,27 @@ begin
 end;
 
 function lua_level_drop_being(L: Plua_State): Integer; cdecl;
-var State  : TDRLLuaState;
-    iBeing : TBeing;
-    Level  : TLevel;
+var iState   : TDRLLuaState;
+    iBeing   : TBeing;
+    iLevel   : TLevel;
+    iRespawn : Boolean;
 begin
-  State.Init(L);
-  Level := State.ToObject(1) as TLevel;
-  if State.IsNil(3) then Exit(0);
+  iState.Init(L);
+  iLevel := iState.ToObject(1) as TLevel;
+  if iState.IsNil(3) then Exit(0);
   try
-    if State.IsTable(2)
-      then iBeing := State.ToObject(2) as TBeing
-      else iBeing := TBeing.Create( State.ToId(2) );
-    Level.DropBeing( iBeing, State.ToCoord(3) );
-    State.Push( iBeing );
+    iRespawn := iState.ToBoolean( 4, False );
+    if iState.IsTable(2)
+      then iBeing := iState.ToObject(2) as TBeing
+      else iBeing := TBeing.Create( iState.ToId(2) );
+    if iRespawn then iBeing.Flags[ BF_RESPAWN ] := True;
+    iLevel.DropBeing( iBeing, iState.ToCoord(3) );
+    iState.Push( iBeing );
   except
     on EPlacementException do
     begin
       FreeAndNil( iBeing );
-      State.PushNil();
+      iState.PushNil();
     end;
   end;
   Result := 1;
