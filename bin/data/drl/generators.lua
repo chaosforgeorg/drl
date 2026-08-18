@@ -7,7 +7,7 @@ core.register_blueprint "generator"
 {
 	id           = { true,   core.TSTRING },
 	weight       = { true,   core.TTABLE },
-	min_dlevel   = { false,  core.TNUMBER, 3 },
+	min_lev      = { false,  core.TNUMBER, 3 },
 	min_diff     = { false,  core.TNUMBER, 0 },
 	events       = { false,  core.TBOOL, true },
 	place_stairs = { false,  core.TBOOL, true },
@@ -26,12 +26,12 @@ function drl.register_generators()
 
 	register_generator "gen_tiled"
 	{
-		weight     = { [{1,8}] = 100, 50 },
-		min_dlevel = 1,
-		rooms      = { 4, 10 },
-		barrels    = true,
-		fluids     = 60,
-		rivers     = 60,
+		weight  = { [{1,8}] = 100, 50 },
+		min_lev = 1,
+		rooms   = { 4, 10 },
+		barrels = true,
+		fluids  = 60,
+		rivers  = 60,
 
 		run        = function() 
 			generator.generate_tiled_level()
@@ -87,11 +87,11 @@ function drl.register_generators()
 
 	register_generator "gen_caves_2"
 	{
-		weight     = { 20 },
-		min_dlevel = 8,
-		min_diff   = 2,
-		rooms      = { 4, 12 },
-		barrels    = true,
+		weight   = { 20 },
+		min_lev  = 8,
+		min_diff = 2,
+		rooms    = { 4, 12 },
+		barrels  = true,
 
 		run      = function() 
 			generator.generate_caves_2_dungeon()
@@ -101,7 +101,7 @@ function drl.register_generators()
 	register_generator "gen_arena"
 	{
 		weight       = { 6 },
-		min_dlevel   = 8,
+		min_lev      = 8,
 		min_diff     = 2,
 		events       = false,
 		place_stairs = false,
@@ -190,10 +190,10 @@ function drl.register_generators()
 
 	register_generator "gen_archi"
 	{
-		weight       = { 40 },
-		min_dlevel   = 8,
-		barrels      = true,
-		rivers       = 25,
+		weight  = { 40 },
+		min_lev = 8,
+		barrels = true,
+		rivers  = 25,
 
 		run          = function()
 			local result = generator.generate_archi_level{ data = { generator.archi_data, generator.archi_data2 } }
@@ -203,11 +203,11 @@ function drl.register_generators()
 
 	register_generator "gen_city"
 	{
-		weight       = { [{1,8}] = 10, 40 },
-		min_dlevel   = 4,
-		rooms        = { 4, 12 },
-		barrels      = true,
-		fluids       = true,
+		weight  = { [{1,8}] = 10, 40 },
+		min_lev = 4,
+		rooms   = { 4, 12 },
+		barrels = true,
+		fluids  = true,
 
 		run          = function() 
 			local wall_cell    = generator.styles[ level.style ].wall
@@ -240,13 +240,13 @@ function drl.register_generators()
 
 	register_generator "gen_single"
 	{
-		weight       = { 6 },
-		min_dlevel   = 16,
-		min_diff     = 2,
-		items        = 1.5,
-		rooms        = { 4, 10 },
-		barrels      = true,
-		fluids       = true,
+		weight   = { 6 },
+		min_lev  = 16,
+		min_diff = 2,
+		items    = 1.5,
+		rooms    = { 4, 10 },
+		barrels  = true,
+		fluids   = true,
 
 		monsters   = function( bweight )
 			local intro = {
@@ -299,13 +299,13 @@ function drl.register_generators()
 
 	register_generator "gen_single_plus"
 	{
-		weight       = { 1 },
-		min_dlevel   = 50,
-		min_diff     = 3,
-		items        = 2.0,
-		rooms        = { 4, 10 },
-		barrels      = true,
-		fluids       = true,
+		weight   = { 1 },
+		min_lev  = 50,
+		min_diff = 3,
+		items    = 2.0,
+		rooms    = { 4, 10 },
+		barrels  = true,
+		fluids   = true,
 
 		monsters   = function( bweight )
 			local intro = {
@@ -327,10 +327,10 @@ function drl.register_generators()
 
 	register_generator "gen_lava"
 	{
-		weight     = { [{12,20}] = 10, 20 },
-		min_dlevel = 12,
-		min_diff   = 2,
-		rooms      = { 4, 10 },
+		weight   = { [{12,20}] = 10, 20 },
+		min_lev  = 12,
+		min_diff = 2,
+		rooms    = { 4, 10 },
 
 		run        = function() 
 			return generator.generate_lava_dungeon()

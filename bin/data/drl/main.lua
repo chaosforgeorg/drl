@@ -829,7 +829,7 @@ function drl.OnGenerate()
 	local dlevel = level.danger_level
 	local choice = weight_table.new()
 	for _,g in ipairs(generators) do
-		if dlevel >= g.min_dlevel and DIFFICULTY >= g.min_diff then
+		if dlevel >= g.min_lev and DIFFICULTY >= g.min_diff then
 			local weight = core.ranged_table( g.weight, dlevel ) 
 			choice:add( g, weight )
 		end
