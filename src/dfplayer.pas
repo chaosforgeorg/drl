@@ -32,6 +32,7 @@ type TPlayer = class(TBeing)
 
   constructor Create; reintroduce;
   procedure Initialize; reintroduce;
+  procedure SetKilledBy( const aKilledBy : AnsiString; aKilledMelee : Boolean );
   constructor CreateFromStream( Stream: TStream ); override;
   procedure WriteToStream( Stream: TStream ); override;
   function CallHook( aHook : Byte; const aParams : array of Const ) : Boolean; override;
@@ -153,6 +154,12 @@ begin
   FLastTurnDodge  := False;
 
   drlbase.Lua.RegisterPlayer(Self);
+end;
+
+procedure TPlayer.SetKilledBy( const aKilledBy : AnsiString; aKilledMelee : Boolean );
+begin
+  FKilledBy    := aKilledBy;
+  FKilledMelee := aKilledMelee;
 end;
 
 procedure TPlayer.WriteToStream ( Stream : TStream ) ;
@@ -528,10 +535,11 @@ begin
     Exit;
   end;
 
-  if (aKiller <> nil) and (not DRL.GameWon) then
+  if DRL.GameWon then
+    SetKilledBy( '', False )
+  else if (FKilledBy = '') and (aKiller <> nil) then
   begin
-    FKilledBy          := aKiller.ID;
-    FKilledMelee       := aKiller.MeleeAttack;
+    SetKilledBy( aKiller.ID, aKiller.MeleeAttack );
   end;
 
   Blood( NewDirection(0,0), 15, aDelay, aOverkill );

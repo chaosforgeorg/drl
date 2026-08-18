@@ -55,7 +55,7 @@ register_level "the_chained_court"
 					for b in level:beings() do
 						if not b:is_player() and b:is_visible() then
 							level:explosion( b.position, { range = 1, delay = 50, color = YELLOW, sound_id = "arch.fire", damage_type = DAMAGE_FIRE }, self )
-							b:apply_damage( 15, TARGET_INTERNAL, DAMAGE_FIRE, self )
+							b:apply_damage( 15, TARGET_INTERNAL, DAMAGE_FIRE, nil )
 						end
 					end
 					being.scount = being.scount - 1000

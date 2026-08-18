@@ -1811,35 +1811,61 @@ end;
 
 
 function lua_level_explosion(L: Plua_State): Integer; cdecl;
-var iState   : TDRLLuaState;
-    iLevel   : TLevel;
-    iData    : TExplosionData;
-    iTable   : TLuaTable;
+var iState            : TDRLLuaState;
+    iLevel            : TLevel;
+    iData             : TExplosionData;
+    iTable            : TLuaTable;
+    iSource           : TItem;
+    iKilledBy         : AnsiString;
+    iPreviousKilledBy : AnsiString;
+    iPreviousMelee    : Boolean;
+    iDelay            : Integer;
+    iTableIndex       : Integer;
+    iSourceIndex      : Integer;
 begin
   iState.Init(L);
   iLevel := iState.ToObject(1) as TLevel;
   Log( iState.ToPosition(2).ToString );
   if iState.IsNil(2) then Exit(0);
-  if iState.IsTable(3) or iState.IsTable(4) then
+
+  if iState.IsTable(3) then
   begin
-    if iState.IsTable(3) then
-    begin
-      iTable := iState.ToTable( 3 );
-      Initialize( iData );
-      ReadExplosion( iTable, iData );
-      iTable.Free;
-      iLevel.Explosion( 0, iState.ToPosition(2), iData, iState.ToObjectOrNil(4) as TItem, NewDirection(0) );
-    end
-    else
-    begin
-      iTable := iState.ToTable( 4 );
-      ReadExplosion( iTable, iData );
-      iTable.Free;
-      iLevel.Explosion( iState.ToInteger(3), iState.ToPosition(2), iData, iState.ToObjectOrNil(5) as TItem, NewDirection(0) );
-    end;
+    iDelay       := 0;
+    iTableIndex  := 3;
+    iSourceIndex := 4;
+  end
+  else if iState.IsTable(4) then
+  begin
+    iDelay       := iState.ToInteger(3);
+    iTableIndex  := 4;
+    iSourceIndex := 5;
   end
   else
+  begin
     iState.Error('Malformed level:explosion!');
+    Exit(0);
+  end;
+
+  iTable := iState.ToTable( iTableIndex );
+  Initialize( iData );
+  ReadExplosion( iTable, iData );
+  iTable.Free;
+
+  iSource := iState.ToObjectOrNil(iSourceIndex) as TItem;
+  iKilledBy := '';
+  if iState.IsString(iSourceIndex) then
+  begin
+    iKilledBy := iState.ToString(iSourceIndex);
+    if iKilledBy <> '' then
+    begin
+      iPreviousKilledBy := Player.KilledBy;
+      iPreviousMelee    := Player.KilledMelee;
+      Player.SetKilledBy( iKilledBy, False );
+    end;
+  end;
+  iLevel.Explosion( iDelay, iState.ToPosition(2), iData, iSource, NewDirection(0) );
+  if (iKilledBy <> '') and (DRL.State = DSPlaying) then
+    Player.SetKilledBy( iPreviousKilledBy, iPreviousMelee );
   Result := 0;
 end;
 

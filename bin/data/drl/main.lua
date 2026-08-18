@@ -200,14 +200,14 @@ function drl.register_base_data()
 			local empty = { EF_NOBEINGS, EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN }
 			if cells[ level.map[ target ] ].flags[ CF_BLOCKMOVE ] then
 				being:msg("You feel out of place!")
-				being:apply_damage(15, TARGET_INTERNAL, DAMAGE_FIRE )
+				being:apply_damage(15, TARGET_INTERNAL, DAMAGE_FIRE, "phase" )
 				target = level:random_empty_coord( empty )
 			end
 			if level:get_being( target ) then
 				local tgt = level:get_being( target )
 				being:msg("Suddenly you feel weird!")
 				tgt:msg("Argh! You feel like someone is trying to implode you!")
-				tgt:apply_damage(15, TARGET_INTERNAL, DAMAGE_FIRE )
+				tgt:apply_damage(15, TARGET_INTERNAL, DAMAGE_FIRE, "phase" )
 				target = level:random_empty_coord( empty )
 			end
 			if being.__ptr then
@@ -331,6 +331,14 @@ function drl.GetDeathMessage( being, visible )
 	return "You hear the scream of a freed soul!"
 end
 
+local death_reasons = {
+	acid   = "melted in acid",
+	barrel = "was blown up by a barrel",
+	blood  = "drowned in blood",
+	lava   = "was consumed by lava",
+	phase  = "was torn apart by phasing",
+}
+
 function drl.GetResultId()
 	local result    = "unknown"
 	local dead      = player.hp <= 0
@@ -352,7 +360,7 @@ function drl.GetResultId()
 		result = "nuke"
 	elseif player.killedby == player.id then
 		result = "suicide"
-	elseif beings[ player.killedby ] then
+	elseif beings[ player.killedby ] or death_reasons[player.killedby] then
 		result = "killed"
 	end
 	return result
@@ -374,19 +382,9 @@ function drl.GetResultDescription( result, highscore )
 	elseif result == "suicide" then
 		if highscore then killed_by = "committed suicide" else killed_by = "committed a stupid suicide" end
 	elseif result == "killed" then
-		local killer = beings[ player.killedby ]
-		if killer then
-			if not highscore then
-				if player.killedmelee then
-					killed_by = killer.kill_desc_melee 
-				else
-					killed_by = killer.kill_desc
-				end
-			end
-			if highscore or not killed_by then
-				killed_by = 'killed by '..killer.name
-			end
-		end
+		killed_by = mortem.get_death_description(
+			player.killedby, player.killedmelee, highscore, death_reasons
+		) or killed_by
 	end
 
 	if player:has_won() then

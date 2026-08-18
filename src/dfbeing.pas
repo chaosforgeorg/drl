@@ -2965,12 +2965,30 @@ begin
 end;
 
 function lua_being_apply_damage(L: Plua_State): Integer; cdecl;
-var State       : TDRLLuaState;
-    Being       : TBeing;
+var State             : TDRLLuaState;
+    Being             : TBeing;
+    iSource           : TItem;
+    iKilledBy         : AnsiString;
+    iPreviousKilledBy : AnsiString;
+    iPreviousMelee    : Boolean;
 begin
   State.Init(L);
   Being := State.ToObject(1) as TBeing;
-  Being.ApplyDamage(State.ToInteger(2),TBodyTarget( State.ToInteger(3) ), TDamageType( State.ToInteger(4,Byte(Damage_Bullet)) ), State.ToObjectOrNil(2) as TItem, 0 );
+  iSource := State.ToObjectOrNil(5) as TItem;
+  iKilledBy := '';
+  if State.IsString(5) then
+  begin
+    iKilledBy := State.ToString(5);
+    if iKilledBy <> '' then
+    begin
+      iPreviousKilledBy := Player.KilledBy;
+      iPreviousMelee    := Player.KilledMelee;
+      Player.SetKilledBy( iKilledBy, False );
+    end;
+  end;
+  Being.ApplyDamage(State.ToInteger(2),TBodyTarget( State.ToInteger(3) ), TDamageType( State.ToInteger(4,Byte(Damage_Bullet)) ), iSource, 0 );
+  if (iKilledBy <> '') and (DRL.State = DSPlaying) then
+    Player.SetKilledBy( iPreviousKilledBy, iPreviousMelee );
   Result := 0;
 end;
 

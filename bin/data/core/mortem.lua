@@ -12,6 +12,25 @@ function mortem.padded( str, size )
     return str..string.rep(" ",math.max(0,size - string.len(str)) )
 end
 
+function mortem.get_death_description( killedby, killedmelee, highscore, reasons )
+	if reasons and reasons[killedby] then
+		return reasons[killedby]
+	end
+
+	local killer = beings[killedby]
+	if not killer then return nil end
+	if not highscore then
+		local description
+		if killedmelee then
+			description = killer.kill_desc_melee
+		else
+			description = killer.kill_desc
+		end
+		if description then return description end
+	end
+	return "killed by "..killer.name
+end
+
 
 function mortem.print_time_and_kills()
     player:mortem_print( " "..mortem.Pronoun.." survived {!"..statistics.game_time.."} turns and scored {!"..player.score.."} points. ")

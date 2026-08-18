@@ -857,7 +857,7 @@ begin
     IncreaseXMLCount( XMLEntry, 'death', iChalAbbr, 1 );
     IncreaseXMLCount( XMLEntry, 'death', iGameResultID, 1 );
     if (aKillerID <> '') and (aKillerID <> Player.ID) then
-      IncreaseXMLCount( XMLEntry, 'death', LuaSystem.Get(['beings',aKillerID,'id']), 1 );
+      IncreaseXMLCount( XMLEntry, 'death', aKillerID, 1 );
 
     // KILLS
 
