@@ -1671,7 +1671,7 @@ begin
       until iLevel.isProperCoord( iCoord );
       iLevel.Blood( iCoord );
     end;
-  iAmount := Clamp( aAmount + Random( aAmount ), 1, 12 );
+  iAmount := Clamp( aAmount + IO.VisualRNG.RLongInt( aAmount ), 1, 12 );
   if GraphicsVersion and ( not IsPlayer ) and isVisible and ( HARDEMITTER_BLOOD <> 0 ) then
   begin
     iParticleAmount := iAmount * 2;
@@ -1710,8 +1710,8 @@ var iCount    : Integer;
   function RandomNorm : Single;
   var iU1, iU2 : Single;
   begin
-    repeat iU1 := Random until iU1 <> 0.0;
-    iU2 := Random;
+    repeat iU1 := IO.VisualRNG.RFloat until iU1 <> 0.0;
+    iU2 := IO.VisualRNG.RFloat;
     RandomNorm := Sqrt( -2.0 * Ln( iU1 ) ) * Cos( 2.0 * Pi * iU2 );
   end;
 
@@ -1737,9 +1737,9 @@ var iCount    : Integer;
       if not iLevel.isProperCoord( aCoord ) then Exit( 0 );
       iCell := Cells[ iLevel.CellBottom[ aCoord ] ];
       if ( CF_BLOCKMOVE in iCell.Flags ) then Exit( 0 );
-      Exit( HARDSPRITE_DECAL_WALL_BLOOD[1+Random(3)] );
+      Exit( HARDSPRITE_DECAL_WALL_BLOOD[1 + IO.VisualRNG.RLongInt( 3 )] );
     end;
-    Exit( HARDSPRITE_DECAL_BLOOD[1+Random(3)] );
+    Exit( HARDSPRITE_DECAL_BLOOD[1 + IO.VisualRNG.RLongInt( 3 )] );
   end;
 
 begin
@@ -1846,9 +1846,9 @@ begin
   end;
 
   if aOverkill then
-    playSound( 'gib', Random(400) )
+    playSound( 'gib', IO.VisualRNG.RLongInt( 400 ) )
   else
-    playSound( 'die', Random(400) );
+    playSound( 'die', IO.VisualRNG.RLongInt( 400 ) );
 
   IO.addKillAnimation( 400, aDelay, Self );
 
@@ -2410,8 +2410,8 @@ begin
     end;
       
   case aItem.MisColor of
-    MULTIYELLOW : case Random(3) of 0 : iColor := LightGreen; 1 : iColor := White;  2 : iColor := Yellow; end;
-    MULTIBLUE   : case Random(3) of 0 : iColor := LightBlue;  1 : iColor := White;  2 : iColor := Blue;   end;
+    MULTIYELLOW : case IO.VisualRNG.RLongInt( 3 ) of 0 : iColor := LightGreen; 1 : iColor := White;  2 : iColor := Yellow; end;
+    MULTIBLUE   : case IO.VisualRNG.RLongInt( 3 ) of 0 : iColor := LightBlue;  1 : iColor := White;  2 : iColor := Blue;   end;
   else
     iColor := aItem.MisColor;
   end;

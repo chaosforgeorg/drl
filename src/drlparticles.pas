@@ -56,7 +56,7 @@ type
 implementation
 
 uses Math, vluasystem, vluatable, vluaentitynode, vuid,
-     dfdata, dfthing, dflevel, drldecals, drlbase, drlspritemap;
+     dfdata, dfthing, dflevel, drldecals, drlbase, drlio, drlspritemap;
 
 function FlagsToParticleFlags( const aFlags : TFlags ) : TParticleFlags;
 var i : Byte;
@@ -296,9 +296,9 @@ begin
   for iParticle := 1 to aCount do
   begin
     iBurstData := iData^;
-    iArc := aArcScale.Random;
-    iScale := aDistanceScale.Random;
-    iSpeed := iData^.SpeedRange.Random;
+    iArc := aArcScale.Random( IO.VisualRNG );
+    iScale := aDistanceScale.Random( IO.VisualRNG );
+    iSpeed := iData^.SpeedRange.Random( IO.VisualRNG );
     iBurstData.PositionOffset.Z := iData^.PositionOffset.Z * iArc;
     iBurstData.AccelRange.Min.Z := iData^.AccelRange.Min.Z * iArc;
     iBurstData.AccelRange.Max.Z := iData^.AccelRange.Max.Z * iArc;
@@ -308,7 +308,7 @@ begin
     if iScale > 0 then
       iParticleDirection.Z := iDirection.Z * iArc / iScale;
     if Length( aDecalSprites ) > 0 then
-      iBurstData.DecalSprite := aDecalSprites[ Random( Length( aDecalSprites ) ) ];
+      iBurstData.DecalSprite := aDecalSprites[ IO.VisualRNG.RLongInt( Length( aDecalSprites ) ) ];
     FEngine.SpawnBurst( @iBurstData, aWorldPos, iParticleDirection, 1 );
   end;
 end;

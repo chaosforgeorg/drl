@@ -793,8 +793,8 @@ constructor TGFXScreenShakeAnimation.Create( aDuration : DWord; aDelay : DWord; 
 begin
   inherited Create( aDuration, aDelay, 0 );
   FStrength   := aStrength;
-  FFrequencyX := 0.05 + 0.8*Random;
-  FFrequencyY := 0.05 + 0.8*Random;
+  FFrequencyX := 0.05 + 0.8 * IO.VisualRNG.RFloat;
+  FFrequencyY := 0.05 + 0.8 * IO.VisualRNG.RFloat;
   FDirection  := aDirection;
   FBlocking   := False;
 end;
@@ -852,4 +852,3 @@ end;
 
 
 end.
-

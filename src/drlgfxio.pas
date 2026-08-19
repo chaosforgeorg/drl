@@ -141,7 +141,7 @@ implementation
 
 uses {$IFDEF WINDOWS}windows,{$ENDIF}
      classes, sysutils, math,
-     vdebug, vlog, vmath, vdf, vgl3library, vuid, vvision,
+     vdebug, vlog, vmath, vdf, vgl3library, vuid, vvision, vrandom,
      vglimage, vsdlio, vcolor, vglconsole, vioconsole,
      vtig, vtigstyle, vtigio,
      dfplayer, dfitem, dflevel,
@@ -248,7 +248,6 @@ begin
 
   FTextures  := TTextureManager.Create( Option_Blending );
   SpriteMap  := TDRLSpriteMap.Create( Vec2i( iWidth, iHeight ) );
-  FParticleEngine := TParticleEngine.Create;
   TSDLIODriver( FIODriver ).ShowMouse( False );
 
   FMCursor   := TDRLMouseCursor.Create;
@@ -260,6 +259,7 @@ begin
   FAnimations := TAnimationManager.Create;
   FMinimap    := TMinimap.Create;
   inherited Create;
+  FParticleEngine := TParticleEngine.Create( VisualRNG );
 end;
 
 procedure TDRLGFXIO.Reset;

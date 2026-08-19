@@ -187,7 +187,7 @@ procedure EmitCrashInfo( const aInfo : AnsiString; aInGame : Boolean  );
 implementation
 
 uses math, video, dateutils, variants,
-     vsound, vluasystem, vuid, vlog, vdebug, vmath,
+     vsound, vluasystem, vuid, vlog, vdebug, vmath, vrandom,
      vsdlio, vglconsole, vtig, vtigio, vvector,
      dflevel, dfplayer, dfitem, dfhof,
      drlconfiguration, drlbase, drlmoreview, drlchoiceview, drlua, drlmodulechoiceview,
@@ -429,7 +429,7 @@ end;
 
 constructor TDRLIO.Create;
 begin
-  inherited Create( FIODriver, nil );
+  inherited Create( FIODriver, nil, TRNG.Create );
   FLoading := nil;
   FAudio    := TDRLAudio.Create;
   FMessages := TMessages.Create( 2, 77, @EventMore, Option_MessageBuffer );
@@ -761,6 +761,7 @@ begin
   FreeAndNil( FASCII );
   FreeAndNil( FKeySubMap );
   FreeAndNil( FPadSubMap );
+  FreeAndNil( FVisualRNG );
   IO := nil;
   inherited Destroy;
 end;

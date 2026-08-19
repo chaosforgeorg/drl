@@ -807,7 +807,7 @@ function drl.GetQuitMessage()
 		"Go ahead and leave. See if I care.",
 		"Ya know. Next time ya gonna come here, I'm gonna toast ya."
 	}
-	return messages[math.random(#(messages))]
+	return messages[core.visual_random(#(messages))]
 end
 
 function drl.GetItemMax( id )
