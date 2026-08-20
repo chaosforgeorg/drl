@@ -39,6 +39,7 @@ type TStringHashMap       = specialize TGHashMap< AnsiString >;
 type TDRLIO = class( TIORL )
   constructor Create; reintroduce;
   procedure Reset; virtual;
+  procedure SetSeed( aCardinal : LongInt );
   procedure Initialize; virtual; abstract;
   procedure Initialize( iRenderer : TIOConsoleRenderer );
   procedure Reconfigure( aConfig : TLuaConfig ); virtual;
@@ -154,6 +155,9 @@ protected
   FHintTarget  : AnsiString;
   FHintStatus  : AnsiString;
   FCachedAmmo  : Integer;
+
+  FSeedHUDText   : AnsiString;
+  FSeedHUDOffset : Integer;
 
   // Textmode only
   FTargetLast     : Boolean;
@@ -462,6 +466,8 @@ begin
   FHint        := '';
   FHintOverlay := '';
   FHintStatus  := '';
+  FSeedHUDText   := '';
+  FSeedHUDOffset := -2;
 
   FTargetEnabled := False;
   FTargetLast    := False;
@@ -801,6 +807,20 @@ begin
              else UI.Msg('Screenshot created.');}
 end;
 
+procedure TDRLIO.SetSeed( aCardinal : LongInt );
+var iChallengeText : AnsiString;
+begin
+  FSeedHUDText := LuaSystem.Get([ 'diff', DRL.Difficulty, 'code' ]);
+  iChallengeText := '';
+  if DRL.Challenge <> '' then
+    iChallengeText += Copy( LuaSystem.Get([ 'chal', DRL.Challenge, 'abbr' ]), 3, MaxInt );
+  if DRL.SChallenge <> '' then
+    iChallengeText += Copy( LuaSystem.Get([ 'chal', DRL.SChallenge, 'abbr' ]), 3, MaxInt );
+  if iChallengeText <> '' then FSeedHUDText += '{r' + iChallengeText + '}';
+  FSeedHUDText += IntToStr( aCardinal );
+  FSeedHUDOffset := -2-VTIG_Length( FSeedHUDText );
+end;
+
 procedure TDRLIO.DrawHud;
 var iWeapon     : TItem;
     i           : Integer;
@@ -926,6 +946,7 @@ begin
         then iColor := LightMagenta;
 
     VTIG_FreeLabel( DRL.Level.Name, Point( -2-Length( DRL.Level.Name), iBottom ), iColor );
+    VTIG_FreeLabel( FSeedHUDText, Point( FSeedHUDOffset, iBottom+1 ) );
 
     iTraitStr := Player.GetTraitString;
     if iTraitStr <> '' then

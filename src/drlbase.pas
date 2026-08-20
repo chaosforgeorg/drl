@@ -1381,6 +1381,7 @@ repeat
   end;
 
   LuaSystem.SetValue('GAME_SEED', FGameSeed);
+  IO.SetSeed( FGameSeed );
   LuaSystem.SetValue('level', Level );
 
   if (not (State in [DSLoading, DSCrashLoading])) then
