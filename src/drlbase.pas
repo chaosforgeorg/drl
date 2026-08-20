@@ -365,6 +365,7 @@ end;
 constructor TDRL.Create;
 begin
   FGameRNG  := TRNG.Create;
+  LuaRNG    := FGameRNG;
   FParticles := TParticleStore.Create;
   FTargeting := TTargeting.Create;
   Reset;
