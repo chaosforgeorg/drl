@@ -401,7 +401,7 @@ var Pos  : array[1..80] of Byte;
 begin
   if GraphicsVersion then Exit;
   for cn := 1 to 80  do Pos[cn] := 0;
-  for cn := 1 to 160 do MoveColumn(Random(80)+1);
+  for cn := 1 to 160 do MoveColumn(VisualRNG.RLongInt(80)+1);
   t := 1;
   repeat
     Inc(t);
