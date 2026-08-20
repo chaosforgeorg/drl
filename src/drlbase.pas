@@ -77,6 +77,7 @@ TDRL = class(TVObject)
        function MoveTargetEvent( aCoord : TCoord2D ) : Boolean;
        procedure PreAction;
        procedure CreatePlayer( aResult : TMenuResult );
+       function PrepareGameSeed( aRequestedSeed : Cardinal ) : Cardinal;
      private
        FState           : TDRLState;
        FLevel           : TLevel;
@@ -104,6 +105,7 @@ TDRL = class(TVObject)
        FGameWon         : Boolean;
        FCrashSave       : Boolean;
        FParticles       : TParticleStore;
+       FGameSeed        : Cardinal;
        FGameRNG         : TRNG;
      public
        property GameWon : Boolean read FGameWon write FGameWon;
@@ -118,6 +120,7 @@ TDRL = class(TVObject)
        property Targeting : TTargeting read FTargeting;
        property DamagedLastTurn : Boolean read FDamagedLastTurn write FDamagedLastTurn;
        property Particles : TParticleStore read FParticles;
+       property GameSeed : Cardinal read FGameSeed;
        property GameRNG : TRNG read FGameRNG;
      end;
 
@@ -364,7 +367,8 @@ end;
 
 constructor TDRL.Create;
 begin
-  FGameRNG  := TRNG.Create;
+  FGameSeed := 0;
+  FGameRNG  := TRNG.Create( 0 );
   LuaRNG    := FGameRNG;
   FParticles := TParticleStore.Create;
   FTargeting := TTargeting.Create;
@@ -1305,6 +1309,18 @@ begin
   Exit( False );
 end;
 
+function TDRL.PrepareGameSeed( aRequestedSeed : Cardinal ) : Cardinal;
+begin
+  FGameSeed := aRequestedSeed;
+  if FGameSeed = 0 then
+  begin
+    FGameRNG.Randomize;
+    FGameSeed := FGameRNG.RDWord( 1, 99999 );
+  end;
+  FGameRNG.SetSeed( FGameSeed );
+  Result := FGameRNG.RDWord;
+end;
+
 
 procedure TDRL.Run;
 var iRank       : THOFRank;
@@ -1317,8 +1333,11 @@ var iRank       : THOFRank;
     iReport     : TPagedReport;
     iEnterNuke  : Boolean;
     iCrashIndex : Integer;
+    iEpisodeSeed : Cardinal;
+    iLevelSeed   : Cardinal;
 begin
   iResult    := TMenuResult.Create;
+  iEpisodeSeed := 0;
   DRL.Load;
 
   IO.PushLayer( TMainMenuView.Create );
@@ -1357,10 +1376,11 @@ repeat
   end
   else
   begin
-    FGameRNG.Randomize;
+    iEpisodeSeed := PrepareGameSeed( iResult.Seed );
     CreatePlayer( iResult );
   end;
 
+  LuaSystem.SetValue('GAME_SEED', FGameSeed);
   LuaSystem.SetValue('level', Level );
 
   if (not (State in [DSLoading, DSCrashLoading])) then
@@ -1368,7 +1388,8 @@ repeat
 
   if (not(State in [DSLoading, DSCrashLoading])) then
   begin
-    CallHook( Hook_OnCreateEpisode, [] );
+    FGameRNG.SetSeed( iEpisodeSeed );
+    CallHook( Hook_OnCreateEpisode, [iEpisodeSeed] );
   end;
   CallHook( Hook_OnLoaded, [(State in [DSLoading, DSCrashLoading])] );
 
@@ -1399,10 +1420,12 @@ repeat
         if IsString('sname') then FLevel.SName := getString('sname');
         if IsString('abbr')  then FLevel.Abbr  := getString('abbr');
         iScript := getString('script','');
+        iLevelSeed := getInteger('seed',0);
       finally
         Free;
       end;
 
+      if iLevelSeed <> 0 then FGameRNG.SetSeed( iLevelSeed );
       if iScript <> ''
         then
           FLevel.ScriptLevel(iScript)
@@ -1640,6 +1663,7 @@ begin
       FArchAngel       := iStream.ReadByte <> 0;
       FSChallenge      := iStream.ReadAnsiString;
 
+      FGameSeed := iStream.ReadDWord;
       iGameRNG := TRNG.CreateFromStream( iStream );
       LuaRNG := iGameRNG;
       FreeAndNil( FGameRNG );
@@ -1728,6 +1752,7 @@ begin
   Stream.WriteAnsiString( FChallenge );
   if FArchAngel then Stream.WriteByte( 1 ) else Stream.WriteByte( 0 );
   Stream.WriteAnsiString( FSChallenge );
+  Stream.WriteDWord( FGameSeed );
   FGameRNG.WriteToStream( Stream );
 
   Player.WriteToStream(Stream);

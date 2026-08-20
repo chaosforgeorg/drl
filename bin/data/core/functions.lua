@@ -34,6 +34,14 @@ function core.resolve_range(range)
 	return range[1] + math.random(range[2]-range[1]+1) - 1
 end
 
+function core.level_seed( script )
+	if not script then
+		return math.random( 1000000000 )
+	end
+	assert( levels[ script ], "unknown level: " .. script )
+	return math.mix_seed( GAME_SEED, levels[ script ].nid )
+end
+
 function table.random_remove( t )
 	assert( type( t ) == "table" )
 	return table.remove( t, math.random( #t ) )

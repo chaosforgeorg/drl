@@ -73,6 +73,7 @@ type TMenuResult = class
   Klass      : Byte;
   Trait      : Byte;
   Name       : AnsiString;
+  Seed       : Cardinal;
 
   constructor Create;
   procedure Reset;
@@ -103,8 +104,6 @@ const
   ForceRestart    : Ansistring = '';
   ModErrors       : TStringGArray = nil;
   VisionBaseValue : Byte = 8;
-
-  ThisSeed       : Cardinal = 0;
 
   NoPlayerRecord : Boolean = False;
   NoScoreRecord  : Boolean = False;
@@ -521,6 +520,7 @@ begin
   Klass      := 0;
   Trait      := 0;
   Name       := '';
+  Seed       := 0;
 end;
 
 // change also in mortem lua!

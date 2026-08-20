@@ -597,21 +597,21 @@ function drl.OnCreateEpisode()
 		{"the_lava_pits","mt_erebus"},-- 22/6                    37
 	}
 
-	player.episode[1] = { script = "intro", style = 1, deathname = "level 1 of the Phobos base" }
-	player.episode[2] = { style = 1, name = "Phobos L2", danger = 2, deathname = "level 2 of the Phobos base" }
+	player.episode[1] = { script = "intro", style = 1, deathname = "level 1 of the Phobos base", seed = core.level_seed( "intro" ) }
+	player.episode[2] = { style = 1, name = "Phobos L2", danger = 2, deathname = "level 2 of the Phobos base", seed = core.level_seed() }
 	for i=3,8 do
-		player.episode[i] = { style = table.random_pick{1,5,8}, name = "Phobos L"..tostring(i), danger = i, deathname = "level "..tostring(i).." of the Phobos base" }
+		player.episode[i] = { style = table.random_pick{1,5,8}, name = "Phobos L"..tostring(i), danger = i, deathname = "level "..tostring(i).." of the Phobos base", seed = core.level_seed() }
 	end
 	for i=9,16 do
-		player.episode[i] = { style = table.random_pick{2,6}, name = "Deimos L"..tostring(i-8), danger = i, deathname = "level "..tostring(i-8).." of the Deimos base" }
+		player.episode[i] = { style = table.random_pick{2,6}, name = "Deimos L"..tostring(i-8), danger = i, deathname = "level "..tostring(i-8).." of the Deimos base", seed = core.level_seed() }
 	end
 	for i=17,23 do
-		player.episode[i] = { style = table.random_pick{3,7}, name = "Hell L"..tostring(i-16), danger = i, deathname = "level "..tostring(i-16).." of Hell" }
+		player.episode[i] = { style = table.random_pick{3,7}, name = "Hell L"..tostring(i-16), danger = i, deathname = "level "..tostring(i-16).." of Hell", seed = core.level_seed() }
 	end
-	player.episode[8]            = { script = "hellgate", style = 4, deathname = "the Hellgate" }
-	player.episode[16]           = { script = "tower_of_babel", style = 9, deathname = "the Tower of Babel" }
-	player.episode[24]           = { script = "dis", style = 4, deathname = "the City of Dis" }
-	player.episode[25]           = { script = "hell_fortress", style = 4, deathname = "the Hell Fortress" }
+	player.episode[8]            = { script = "hellgate", style = 4, deathname = "the Hellgate", seed = core.level_seed( "hellgate" ) }
+	player.episode[16]           = { script = "tower_of_babel", style = 9, deathname = "the Tower of Babel", seed = core.level_seed( "tower_of_babel" ) }
+	player.episode[24]           = { script = "dis", style = 4, deathname = "the City of Dis", seed = core.level_seed( "dis" ) }
+	player.episode[25]           = { script = "hell_fortress", style = 4, deathname = "the Hell Fortress", seed = core.level_seed( "hell_fortress" ) }
 
 	for _,pairing in ipairs(paired) do
 		local level_proto = levels[table.random_pick(pairing)]
@@ -625,6 +625,7 @@ function drl.OnCreateEpisode()
 				depth  = from.depth,
 				name   = level_proto.name,
 				exit   = index + 1,
+				seed   = core.level_seed( level_proto.id ),
 			} )
 			from.special = #player.episode
 		end
