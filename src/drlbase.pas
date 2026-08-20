@@ -1389,7 +1389,7 @@ repeat
   if (not(State in [DSLoading, DSCrashLoading])) then
   begin
     FGameRNG.SetSeed( iEpisodeSeed );
-    CallHook( Hook_OnCreateEpisode, [iEpisodeSeed] );
+    CallHook( Hook_OnCreateEpisode, [QWord( iEpisodeSeed )] );
   end;
   CallHook( Hook_OnLoaded, [(State in [DSLoading, DSCrashLoading])] );
 
