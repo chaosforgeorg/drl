@@ -286,9 +286,9 @@ begin
   if Color = white then Exit(LightGray) else Exit(Color);
 end;
 
-function    TItem.rollDamage : Integer;
+function TItem.rollDamage : Integer;
 begin
-  if isWeapon then Exit(FProps.Damage.Roll);
+  if isWeapon then Exit( FProps.Damage.Roll( DRL.GameRNG ) );
   raise EItemException.CreateFmt('TItem.Damage called for Itype %d!',[ Byte( FProps.Itype ) ] );
 end;
 

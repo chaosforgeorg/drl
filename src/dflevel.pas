@@ -244,7 +244,7 @@ var iCount : Word;
 begin
   iCount := 0;
   repeat
-    RandomCoord := FArea.RandomInnerCoord();
+    RandomCoord := FArea.RandomInnerCoord( DRL.GameRNG );
     Inc( iCount );
   until isEmpty( RandomCoord, EmptyFlags ) or ( iCount > LIMES );
   if ( iCount > LIMES ) then raise EPlacementException.Create('');
@@ -923,13 +923,13 @@ begin
   inherited Destroy;
 end;
 
-function TLevel.DropItem( aItem : TItem; aCoord : TCoord2D; aNoHazard : Boolean; aDropAnim : Boolean ) : boolean;
+function TLevel.DropItem( aItem : TItem; aCoord : TCoord2D; aNoHazard : Boolean; aDropAnim : Boolean ) : Boolean;
 begin
   DropItem := true;
   if aItem = nil then Exit;
   if aNoHazard
-    then aCoord := DropCoord( aCoord, [ EF_NOITEMS,EF_NOBLOCK,EF_NOHARM,EF_NOSTAIRS ], True )
-    else aCoord := DropCoord( aCoord, [ EF_NOITEMS,EF_NOBLOCK,EF_NOSTAIRS ], True );
+    then aCoord := DropCoord( DRL.GameRNG, aCoord, [ EF_NOITEMS,EF_NOBLOCK,EF_NOHARM,EF_NOSTAIRS ], True )
+    else aCoord := DropCoord( DRL.GameRNG, aCoord, [ EF_NOITEMS,EF_NOBLOCK,EF_NOSTAIRS ], True );
 
   aItem.CallHook( Hook_OnDrop, [aItem.Parent] );
   if (aItem.Parent <> nil) and (aItem.Parent is TBeing) then
@@ -952,7 +952,7 @@ begin
   if aBeing.Flags[ BF_FLY ]
     then iBlockFlag := EF_NOBLOCKFLY
     else iBlockFlag := EF_NOBLOCK;
-  aCoord := DropCoord( aCoord, [ EF_NOTELE,EF_NOBEINGS,iBlockFlag,EF_NOSTAIRS ], False );
+  aCoord := DropCoord( DRL.GameRNG, aCoord, [ EF_NOTELE,EF_NOBEINGS,iBlockFlag,EF_NOSTAIRS ], False );
   Add( aBeing, aCoord );
   if ( not aBeing.IsPlayer ) and ( not aBeing.Flags[ BF_FRIENDLY ] ) and ( not aBeing.Flags[ BF_ILLUSION ] ) and ( not aBeing.Flags[ BF_NOKILL ] ) then
   begin
@@ -1044,7 +1044,7 @@ begin
       if Distance( iC, aCoord ) <= aData.Range then
         begin
           if not ShotContact( iC ) then Continue;
-          iDamage   := aData.Damage.Roll;
+          iDamage   := aData.Damage.Roll( DRL.GameRNG );
           iDistance := Distance( iC, aCoord );
           iPointDelay := aDelay + iDistance * aData.Delay;
           if not (efNoDistanceDrop in aData.Flags) then
@@ -1088,7 +1088,7 @@ begin
           end;
           if (aData.ContentID <> 0) and isEmpty( iC, [ EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM ] ) then
           begin
-            if (iDamage > 20) or ((efRandomContent in aData.Flags) and (Random(2) = 1)) then
+            if (iDamage > 20) or ((efRandomContent in aData.Flags) and (DRL.GameRNG.RLongInt( 2 ) = 1)) then
               Cell[iC] := aData.ContentID;
           end;
         end;
@@ -1154,7 +1154,7 @@ begin
     for iTC in FArea do
       if LightFlag[ iTC, lfDamage ] then
       begin
-        iDmg := Round( aDamage.Roll * (1.0-0.01*iFalloff*Max(0,Distance( aSource, iTC )-1)) );
+        iDmg := Round( aDamage.Roll( DRL.GameRNG ) * (1.0-0.01*iFalloff*Max(0,Distance( aSource, iTC )-1)) );
         iDmg := Math.Floor( iDmg * aDamageMul );
 
         if iDmg < 1 then iDmg := 1;
@@ -1205,7 +1205,7 @@ begin
       if cellFlagSet( iCoord, CF_RAISABLE ) then
         if not isVisible( iCoord ) then
           if isPassable( iCoord ) then
-            if Random(100) < aChance then
+            if DRL.GameRNG.RLongInt( 100 ) < aChance then
               Respawn( iCoord );
 end;
 
@@ -1370,7 +1370,7 @@ begin
     if LF_RESPAWN in FFlags  then
     begin
       if FLTime mod 100 = 0 then
-        if ((FLTime div 100)+20) > DWord(Random(100)) then
+        if ((FLTime div 100)+20) > DWord( DRL.GameRNG.RLongInt( 100 ) ) then
           Respawn( Min( (FLTime div 1000) + 10, 100 ) );
     end;
 

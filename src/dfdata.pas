@@ -400,7 +400,7 @@ var TIGStyleColored   : TTIGStyle;
     TIGStylePadless   : TTIGStyle;
 
 implementation
-uses typinfo, strutils, math, vmath, vdebug, vluasystem;
+uses typinfo, strutils, math, vmath, vdebug, vluasystem, drlbase;
 
 function ReadFileString( aStream : TStream; aSize : Integer ) : Ansistring;
 begin
@@ -740,7 +740,7 @@ end;
 function Roll(stat : Integer) : Integer;
 var DieRoll : byte;
 begin
-  DieRoll := Dice(3,6);
+  DieRoll := DRL.GameRNG.Dice( 3, 6 );
   case DieRoll of
       3 : Exit(30);
       4 : Exit(20);

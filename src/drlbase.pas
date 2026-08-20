@@ -8,6 +8,7 @@ unit drlbase;
 interface
 
 uses vnode, vutil, vuid, viotypes, vrltools, vluasystem, vioevent, vstoreinterface,
+     vrandom,
      dflevel, dfdata, dfhof, dfitem,
      drlhooks, drlua, drlcommand, drlkeybindings, drlmodule, drlparticles;
 
@@ -103,6 +104,7 @@ TDRL = class(TVObject)
        FGameWon         : Boolean;
        FCrashSave       : Boolean;
        FParticles       : TParticleStore;
+       FGameRNG         : TRNG;
      public
        property GameWon : Boolean read FGameWon write FGameWon;
        property Difficulty : Byte read FDifficulty;
@@ -116,6 +118,7 @@ TDRL = class(TVObject)
        property Targeting : TTargeting read FTargeting;
        property DamagedLastTurn : Boolean read FDamagedLastTurn write FDamagedLastTurn;
        property Particles : TParticleStore read FParticles;
+       property GameRNG : TRNG read FGameRNG;
      end;
 
 var DRL : TDRL;
@@ -126,7 +129,7 @@ implementation
 
 uses  {$IFDEF WINDOWS}Windows,{$ELSE}Unix,{$ENDIF}
      Classes, SysUtils,
-     vdebug,
+     vdebug, vlua,
      dfmap, dfbeing,
      drlio, drlgfxio, drltextio, zstream,
      drlspritemap, // remove
@@ -298,6 +301,7 @@ begin
   Help := THelp.Create;
 
   SetState( DSLoading );
+  LuaRNG := FGameRNG;
   iLua := TDRLLua.Create();
   LuaSystem := iLua;
   LuaSystem.CallDefaultResult := True;
@@ -360,6 +364,7 @@ end;
 
 constructor TDRL.Create;
 begin
+  FGameRNG  := TRNG.Create;
   FParticles := TParticleStore.Create;
   FTargeting := TTargeting.Create;
   Reset;
@@ -1351,6 +1356,7 @@ repeat
   end
   else
   begin
+    FGameRNG.Randomize;
     CreatePlayer( iResult );
   end;
 
@@ -1597,11 +1603,14 @@ function TDRL.LoadSaveFile: Boolean;
 var iStream    : TStream;
     iRecreate  : Boolean;
     iModule    : Ansistring;
+    iGameRNG   : TRNG;
 begin
   SaveVersionEngine := '';
   SaveVersionModule := '';
   SaveModString     := '';
   iRecreate := False;
+  iStream   := nil;
+  iGameRNG  := nil;
   try
     try
       iStream := TGZFileStream.Create( ModuleUserPath + 'save',gzOpenRead );
@@ -1630,6 +1639,12 @@ begin
       FArchAngel       := iStream.ReadByte <> 0;
       FSChallenge      := iStream.ReadAnsiString;
 
+      iGameRNG := TRNG.CreateFromStream( iStream );
+      LuaRNG := iGameRNG;
+      FreeAndNil( FGameRNG );
+      FGameRNG := iGameRNG;
+      iGameRNG := nil;
+
       Player := TPlayer.CreateFromStream( iStream );
       FCrashSave := iStream.ReadByte <> 0;
 
@@ -1643,7 +1658,8 @@ begin
         FParticles.ReadFromStream( iStream );
       end;
     finally
-      iStream.Destroy;
+      FreeAndNil( iGameRNG );
+      FreeAndNil( iStream );
     end;
     DeleteFile( ModuleUserPath + 'save' );
 
@@ -1711,6 +1727,7 @@ begin
   Stream.WriteAnsiString( FChallenge );
   if FArchAngel then Stream.WriteByte( 1 ) else Stream.WriteByte( 0 );
   Stream.WriteAnsiString( FSChallenge );
+  FGameRNG.WriteToStream( Stream );
 
   Player.WriteToStream(Stream);
   Player.Detach;
@@ -1738,6 +1755,8 @@ end;
 destructor TDRL.Destroy;
 begin
   UnLoad;
+  LuaRNG := nil;
+  FreeAndNil( FGameRNG );
   FParticles.Initialize( nil );
   FreeAndNil( ModErrors );
   FreeAndNil( FModules );

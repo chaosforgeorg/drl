@@ -381,7 +381,7 @@ begin
 
   FHPMax := FHP;
   FHPNom := FHP;
-  FSpeedCount := 900+Random(90);
+  FSpeedCount := 900 + DRL.GameRNG.RLongInt( 90 );
 
   FHPDecayMax   := 100;
 
@@ -500,7 +500,7 @@ begin
     if iChaining then aTarget := RotateTowards( FPosition, aTarget, iChainTarget, PI/6 );
     if aGun.Flags[ IF_SCATTER ] then
        begin
-            if not SendMissile( TLevel(Parent).Area.Clamped(aTarget.RandomShifted( iScatter )), aGun, aAltFire, iSeqBase+(iCount-1)*aGun.MisDelay*3, iCount-1 ) then Exit;
+            if not SendMissile( TLevel(Parent).Area.Clamped(aTarget.RandomShifted( DRL.GameRNG, iScatter )), aGun, aAltFire, iSeqBase+(iCount-1)*aGun.MisDelay*3, iCount-1 ) then Exit;
        end
     else
        begin
@@ -1663,10 +1663,10 @@ begin
     for iCount := 1 to Min( aAmount, 20 ) do
     begin
       repeat
-        case Random(5) of
+        case IO.VisualRNG.RLongInt( 5 ) of
           0..1 : iCoord := FPosition;
           2..3 : iCoord := FPosition + aFrom;
-          4    : iCoord := FPosition + NewCoord2D( Random(3)-1, Random(3)-1);
+          4    : iCoord := FPosition + NewCoord2D( IO.VisualRNG.RLongInt( 3 ) - 1, IO.VisualRNG.RLongInt( 3 ) - 1 );
         end;
       until iLevel.isProperCoord( iCoord );
       iLevel.Blood( iCoord );
@@ -1873,7 +1873,7 @@ begin
     if BF_MAXDAMAGE in FFlags then
       iDamage += Max( (FStrength + 1) * 3, 1 )
     else
-      iDamage += Max( Dice( FStrength + 1, 3 ), 1 );
+      iDamage += Max( DRL.GameRNG.Dice( FStrength + 1, 3 ), 1 );
   end;
 
   if aWeapon <> nil 
@@ -2248,7 +2248,7 @@ begin
 
   if aDamageType <> Damage_IgnoreArmor then
   begin
-    if (BF_HARDY in FFlags) and (aDamage <= iArmorValue) and (Random(2) = 1) then Exit;
+    if (BF_HARDY in FFlags) and (aDamage <= iArmorValue) and (DRL.GameRNG.RLongInt( 2 ) = 1) then Exit;
     aDamage := Max( 1, aDamage - iArmorValue );
   end;
 
@@ -2402,7 +2402,7 @@ begin
     iAimedBeing := iLevel.Being[ aTarget ];
   end;
   if iBeing <> nil then
-    if Random(100) <= getStrayChance( iBeing, aItem ) then
+    if DRL.GameRNG.RLongInt( 100 ) <= getStrayChance( iBeing, aItem ) then
     begin
       if iBeing.FLastPos.X = 1 then iBeing.FLastPos := iBeing.FPosition;
       aTarget := iBeing.FLastPos;
@@ -2484,7 +2484,7 @@ begin
         end;
       end;
 
-      if ( iCoverValue >= 10 ) or ( Random(10) < iCoverValue ) then
+      if ( iCoverValue >= 10 ) or ( DRL.GameRNG.RLongInt( 10 ) < iCoverValue ) then
       begin
         if (iAimedBeing = Player) and (iDodged) then IO.Msg('You dodge!');
 
@@ -2518,12 +2518,12 @@ begin
         iIsHit := True;
 
       if iIsHit and ( ( not isEyeContact( iBeing ) ) or ( BF_BLINDFIRE in FFlags ) ) and ( not aItem.Flags[ IF_UNSEENHIT ] ) then
-        iIsHit := (Random(10) > 4);
+        iIsHit := (DRL.GameRNG.RLongInt( 10 ) > 4);
 
       if iIsHit and ( iBeing <> iAimedBeing ) then
         if ( isPlayer and iBeing.Flags[ BF_FRIENDLY ] ) or
           ( Flags[ BF_FRIENDLY ] and iBeing.IsPlayer ) then
-           if Random( 3 ) > 0 then
+           if DRL.GameRNG.RLongInt( 3 ) > 0 then
              iIsHit := False;
 
       if iIsHit then
