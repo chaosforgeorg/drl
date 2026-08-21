@@ -106,6 +106,7 @@ TDRL = class(TVObject)
        FCrashSave       : Boolean;
        FParticles       : TParticleStore;
        FGameSeed        : Cardinal;
+       FSeededGame      : Boolean;
        FGameRNG         : TRNG;
      public
        property GameWon : Boolean read FGameWon write FGameWon;
@@ -121,6 +122,7 @@ TDRL = class(TVObject)
        property DamagedLastTurn : Boolean read FDamagedLastTurn write FDamagedLastTurn;
        property Particles : TParticleStore read FParticles;
        property GameSeed : Cardinal read FGameSeed;
+       property SeededGame : Boolean read FSeededGame;
        property GameRNG : TRNG read FGameRNG;
      end;
 
@@ -132,7 +134,7 @@ implementation
 
 uses  {$IFDEF WINDOWS}Windows,{$ELSE}Unix,{$ENDIF}
      Classes, SysUtils,
-     vdebug, vlua,
+     vdebug, vlua, vstream,
      dfmap, dfbeing,
      drlio, drlgfxio, drltextio, zstream,
      drlspritemap, // remove
@@ -408,6 +410,7 @@ begin
   FDataLoaded := False;
   FGameWon    := False;
   FCrashSave  := False;
+  FSeededGame := False;
 
   FLastInputTime   := 0;
   FDamagedLastTurn := False;
@@ -469,12 +472,14 @@ begin
     FChallenge      := aResult.Challenge;
     FArchAngel      := aResult.ArchAngel;
     FSChallenge     := aResult.SChallenge;
+    FSeededGame     := aResult.Seed <> 0;
   end;
 
   LuaSystem.SetValue('DIFFICULTY', FDifficulty);
   LuaSystem.SetValue('CHALLENGE',  FChallenge);
   LuaSystem.SetValue('SCHALLENGE', FSChallenge);
   LuaSystem.SetValue('ARCHANGEL', FArchAngel);
+  LuaSystem.SetValue('SEEDED_GAME', FSeededGame);
 
   FChallengeHooks := [];
   FSChallengeHooks := [];
@@ -1664,7 +1669,8 @@ begin
       FArchAngel       := iStream.ReadByte <> 0;
       FSChallenge      := iStream.ReadAnsiString;
 
-      FGameSeed := iStream.ReadDWord;
+      FGameSeed   := iStream.ReadDWord;
+      FSeededGame := iStream.ReadBool;
       iGameRNG := TRNG.CreateFromStream( iStream );
       LuaRNG := iGameRNG;
       FreeAndNil( FGameRNG );
@@ -1754,6 +1760,7 @@ begin
   if FArchAngel then Stream.WriteByte( 1 ) else Stream.WriteByte( 0 );
   Stream.WriteAnsiString( FSChallenge );
   Stream.WriteDWord( FGameSeed );
+  Stream.WriteBool( FSeededGame );
   FGameRNG.WriteToStream( Stream );
 
   Player.WriteToStream(Stream);

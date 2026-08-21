@@ -121,7 +121,7 @@ const NewGameType : array[0..2] of TMainMenuEntry =
    Allow : True; Extra : ''; ID : ''; NID : 0; Req : 0;
 ),(
    Name : 'Seeded game';
-   Desc : 'Enter a seed to reproduce a particular game setup.';
+   Desc : 'Enter a seed to reproduce a particular game setup. Platinum and higher badges are disabled.';
    Allow : True; Extra : ''; ID : ''; NID : 0; Req : 0;
 ));
 
