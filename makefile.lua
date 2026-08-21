@@ -3,6 +3,58 @@ xpcall( function() dofile( "config.lua") end, function() end )
 VALKYRIE_ROOT = VALKYRIE_ROOT or os.getenv("FPCVALKYRIE_ROOT") or "../fpcvalkyrie/"
 dofile (VALKYRIE_ROOT.."scripts/lua_make.lua")
 
+local function load_module_paths()
+	local manifest_path = "bin/modules.local.lua"
+	local file = io.open(manifest_path, "r")
+	if not file then return {} end
+	file:close()
+
+	local environment = {}
+	local chunk = assert(loadfile(manifest_path))
+	setfenv(chunk, environment)
+	chunk()
+	assert(type(environment.module_paths) == "table", "Malformed module_paths")
+	local module_paths = {}
+	for module_id,module_path in pairs(environment.module_paths) do
+		if type(module_id) == "string"
+		and not module_id:match("^%s*$") then
+			if type(module_path) ~= "string"
+			or module_path:match("^%s*$") then
+				error("Malformed module_paths entry "..module_id)
+			end
+			module_paths[module_id] = os.path_normalize(
+				module_path:match("^%s*(.-)%s*$")
+			)
+		end
+	end
+	return module_paths
+end
+
+local module_paths = load_module_paths()
+
+local function module_source_path(module_id)
+	return module_paths[module_id]
+		or ("data"..os.path_sep..module_id)
+end
+
+local function module_root_path(module_id)
+	local path = module_source_path(module_id)
+	if os.path_is_absolute(path) then return path end
+	return os.path_join(os.pwd(), "bin", path)
+end
+
+local function makewad_arguments(module_id, legacy_argument)
+	local arguments = { module_id }
+	if legacy_argument then
+		arguments[#arguments + 1] = legacy_argument
+	end
+	if module_paths[module_id] then
+		arguments[#arguments + 1] = "--module-path"
+		arguments[#arguments + 1] = module_paths[module_id]
+	end
+	return arguments
+end
+
 local BUILT = false
 
 function set_demo(path, value)
@@ -93,39 +145,66 @@ makefile = {
 	},
 	commands = {
 		jhc_demo_test = function()
-			os.execute_in_dir( "makewad jhc", "bin" )
+			os.execute_in_dir(
+				"makewad", "bin", makewad_arguments("jhc")
+			)
 			local path = make.publish( "deploy", "jhc" )
-			make.steam( path, os.pwd().."\\bin\\data\\jhc\\setup\\demo\\app_build_3256910.vdf" )
+			make.steam( path, os.path_join(
+				module_root_path("jhc"), "setup", "demo",
+				"app_build_3256910.vdf"
+			) )
 		end,
 		jhc_demo = function()
-			set_demo("bin/data/jhc/main.lua", true)
-			os.execute_in_dir( "makewad jhc demo.txt", "bin" )
-			set_demo("bin/data/jhc/main.lua", false)
+			local main_path = os.path_join(
+				module_root_path("jhc"), "main.lua"
+			)
+			set_demo(main_path, true)
+			os.execute_in_dir(
+				"makewad", "bin", makewad_arguments("jhc", "demo.txt")
+			)
+			set_demo(main_path, false)
 			local path = make.publish( "deploy", "jhc" )
-			make.steam( path, os.pwd().."\\bin\\data\\jhc\\setup\\demo\\app_build_3256910.vdf" )
+			make.steam( path, os.path_join(
+				module_root_path("jhc"), "setup", "demo",
+				"app_build_3256910.vdf"
+			) )
 		end,
 		jhc = function()
-			os.execute_in_dir( "makewad jhc", "bin" )
+			os.execute_in_dir(
+				"makewad", "bin", makewad_arguments("jhc")
+			)
 			local path = make.publish( "deploy", "jhc" )
-			make.steam( path, os.pwd().."\\bin\\data\\jhc\\setup\\app_build_3126530.vdf" )
+			make.steam( path, os.path_join(
+				module_root_path("jhc"), "setup", "app_build_3126530.vdf"
+			) )
 		end,
 		jhc_build = function()
-			os.execute_in_dir( "makewad jhc", "bin" )
+			os.execute_in_dir(
+				"makewad", "bin", makewad_arguments("jhc")
+			)
 			make.publish( "deploy", "jhc" )
 		end,
 		jhc_demo_build = function()
-			set_demo("bin/data/jhc/main.lua", true)
-			os.execute_in_dir( "makewad jhc demo.txt", "bin" )
-			set_demo("bin/data/jhc/main.lua", false)
+			local main_path = os.path_join(
+				module_root_path("jhc"), "main.lua"
+			)
+			set_demo(main_path, true)
+			os.execute_in_dir(
+				"makewad", "bin", makewad_arguments("jhc", "demo.txt")
+			)
+			set_demo(main_path, false)
 			make.publish( "deploy-demo", "jhc" )
 		end,
 		jhc_push = function()
-			local s = os.path_sep
-			make.steam( ".", os.pwd()..s.."bin"..s.."data"..s.."jhc"..s.."setup"..s.."app_build_3126530.vdf" )
+			make.steam( ".", os.path_join(
+				module_root_path("jhc"), "setup", "app_build_3126530.vdf"
+			) )
 		end,
 		jhc_demo_push = function()
-			local s = os.path_sep
-			make.steam( ".", os.pwd()..s.."bin"..s.."data"..s.."jhc"..s.."setup"..s.."demo"..s.."app_build_3256910.vdf" )
+			make.steam( ".", os.path_join(
+				module_root_path("jhc"), "setup", "demo",
+				"app_build_3256910.vdf"
+			) )
 		end,
 		lq = function()
 			if not BUILT then
