@@ -55,6 +55,48 @@ local function makewad_arguments(module_id, legacy_argument)
 	return arguments
 end
 
+local function prepare_steam_content(app_build)
+	local app_vdfs = {
+		main = "app_build_3126530.vdf",
+		demo = os.path_join("demo", "app_build_3256910.vdf"),
+	}
+	local app_vdf = assert(app_vdfs[app_build],
+		"Unknown JHC Steam application build: "..tostring(app_build))
+	local content_path = make.publish("steam", "jhc")
+	local setup_path = os.path_join(content_path, "data", "jhc", "setup")
+	local demo_setup_path = os.path_join(
+		content_path, "data", "jhc", "setup", "demo"
+	)
+	os.mkdir({ setup_path, demo_setup_path })
+
+	for _,vdf in ipairs({
+		"app_build_3126530.vdf",
+		"depot_build_3126531.vdf",
+		"depot_build_3126532.vdf",
+		"depot_build_3126533.vdf",
+	}) do
+		os.copy_file(
+			os.path_join(module_root_path("jhc"), "setup", vdf),
+			setup_path
+		)
+	end
+	for _,vdf in ipairs({
+		"app_build_3256910.vdf",
+		"depot_build_3256911.vdf",
+		"depot_build_3256912.vdf",
+		"depot_build_3256913.vdf",
+	}) do
+		os.copy_file(
+			os.path_join(module_root_path("jhc"), "setup", "demo", vdf),
+			demo_setup_path
+		)
+	end
+
+	return content_path, os.path_join(
+		os.pwd(), content_path, "data", "jhc", "setup", app_vdf
+	)
+end
+
 local BUILT = false
 
 function set_demo(path, value)
@@ -148,11 +190,10 @@ makefile = {
 			os.execute_in_dir(
 				"makewad", "bin", makewad_arguments("jhc")
 			)
-			local path = make.publish( "deploy", "jhc" )
-			make.steam( path, os.path_join(
-				module_root_path("jhc"), "setup", "demo",
-				"app_build_3256910.vdf"
-			) )
+			make.publish( "deploy", "jhc" )
+			local content_path, app_vdf_path =
+				prepare_steam_content("demo")
+			make.steam(content_path, app_vdf_path)
 		end,
 		jhc_demo = function()
 			local main_path = os.path_join(
@@ -163,20 +204,19 @@ makefile = {
 				"makewad", "bin", makewad_arguments("jhc", "demo.txt")
 			)
 			set_demo(main_path, false)
-			local path = make.publish( "deploy", "jhc" )
-			make.steam( path, os.path_join(
-				module_root_path("jhc"), "setup", "demo",
-				"app_build_3256910.vdf"
-			) )
+			make.publish( "deploy", "jhc" )
+			local content_path, app_vdf_path =
+				prepare_steam_content("demo")
+			make.steam(content_path, app_vdf_path)
 		end,
 		jhc = function()
 			os.execute_in_dir(
 				"makewad", "bin", makewad_arguments("jhc")
 			)
-			local path = make.publish( "deploy", "jhc" )
-			make.steam( path, os.path_join(
-				module_root_path("jhc"), "setup", "app_build_3126530.vdf"
-			) )
+			make.publish( "deploy", "jhc" )
+			local content_path, app_vdf_path =
+				prepare_steam_content("main")
+			make.steam(content_path, app_vdf_path)
 		end,
 		jhc_build = function()
 			os.execute_in_dir(
@@ -196,15 +236,14 @@ makefile = {
 			make.publish( "deploy-demo", "jhc" )
 		end,
 		jhc_push = function()
-			make.steam( ".", os.path_join(
-				module_root_path("jhc"), "setup", "app_build_3126530.vdf"
-			) )
+			local content_path, app_vdf_path =
+				prepare_steam_content("main")
+			make.steam(content_path, app_vdf_path)
 		end,
 		jhc_demo_push = function()
-			make.steam( ".", os.path_join(
-				module_root_path("jhc"), "setup", "demo",
-				"app_build_3256910.vdf"
-			) )
+			local content_path, app_vdf_path =
+				prepare_steam_content("demo")
+			make.steam(content_path, app_vdf_path)
 		end,
 		lq = function()
 			if not BUILT then
