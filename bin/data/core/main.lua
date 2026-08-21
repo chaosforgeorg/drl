@@ -143,14 +143,6 @@ function register_klass_badge( id )
 			end
 			return ""
 		end
-		register_badge( "any_"..id )  {
-			name = b.name,
-			desc = b.desc.." as any class",
-			level = b.level,
-			set   = id,
-			klass = "any",
-			achievement = acv_id( "any" ),
-		}
 		for _,k in ipairs(klasses) do
 			if k.OnPick then
 				register_badge( k.id.."_"..id ) {
@@ -163,14 +155,6 @@ function register_klass_badge( id )
 				}
 			end
 		end
-		register_badge( "all_"..id )  {
-			name = "Master "..b.name,
-			desc = b.desc.." w/each class",
-			level = b.level,
-			set   = id,
-			klass = "all",
-			achievement = acv_id( "all" ),
-		}
 	end
 end
 
