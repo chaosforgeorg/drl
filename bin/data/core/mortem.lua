@@ -178,25 +178,31 @@ function mortem.print_traits()
 	end
 end
 
-function mortem.print_equipment()
+function mortem.item_desc( item )
+	return item.desc
+end
+
+function mortem.print_equipment( item_desc )
+	item_desc = item_desc or mortem.item_desc
 	local slot_name = { "[ Armor      ]", "[ Weapon     ]", "[ Boots      ]", "[ Prepared   ]", "[ Relic      ]" }
 	local eq_size = core.options.relic_slot and MAX_EQ_SIZE or (MAX_EQ_SIZE - 1)
 
 	for i = 0,eq_size-1 do
 		local it = player.eq[i]
 		if it then
-			player:mortem_print( "    "..slot_name[i+1].."   {!"..it.desc.."}" )
+			player:mortem_print( "    "..slot_name[i+1].."   {!"..item_desc( it ).."}" )
 		else
 			player:mortem_print( "    "..slot_name[i+1].."   nothing" )
 		end
 	end
 end
 
-function mortem.print_inventory()
+function mortem.print_inventory( item_desc )
+	item_desc = item_desc or mortem.item_desc
     local items = {}
 
 	for it in player.inv:items() do
-		table.insert( items, { itype = it.itype, nid = it.__proto.nid, desc = it.desc } )
+		table.insert( items, { itype = it.itype, nid = it.__proto.nid, desc = item_desc( it ) } )
 	end
 
 	table.sort( items, function(a,b) if (a.itype ~= b.itype) then return a.itype < b.itype else return a.nid < b.nid end end )
