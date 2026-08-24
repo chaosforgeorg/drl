@@ -810,7 +810,7 @@ end;
 procedure TDRLIO.SetSeed( aCardinal : LongInt );
 var iChallengeText : AnsiString;
 begin
-  FSeedHUDText := LuaSystem.Get([ 'diff', DRL.Difficulty, 'code' ]);
+  FSeedHUDText := ' ' + LuaSystem.Get([ 'diff', DRL.Difficulty, 'code' ]);
   iChallengeText := '';
   if DRL.Challenge <> '' then
     iChallengeText += Copy( LuaSystem.Get([ 'chal', DRL.Challenge, 'abbr' ]), 3, MaxInt );

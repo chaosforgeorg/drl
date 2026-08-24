@@ -80,7 +80,7 @@ protected
   FBGTexture   : TTextureID;
   FLogoTexture : TTextureID;
   FName        : array[0..48] of Char;
-  FSeed        : array[0..6] of Char;
+  FSeed        : array[0..7] of Char;
   FSeedInvalid : Boolean;
 end;
 
@@ -440,7 +440,7 @@ begin
         FSeedInvalid := False;
         IO.Console.ShowCursor;
         IO.Driver.StartTextInput;
-        if IO.IsGamepad then DRL.Store.StartText( 'Enter seed', 5 );
+        if IO.IsGamepad then DRL.Store.StartText( 'Enter seed', 6 );
         FMode := MAINMENU_SEED;
       end;
     end
@@ -466,11 +466,11 @@ var iStoreText   : AnsiString;
       iSeed : LongInt;
   begin
     Result := False;
-    if ( aText = '' ) or ( Length( aText ) > 5 ) then Exit;
+    if ( aText = '' ) or ( Length( aText ) > 6 ) then Exit;
     for i := 1 to Length( aText ) do
       if not ( aText[i] in ['0'..'9'] ) then Exit;
     iSeed := StrToIntDef( aText, 0 );
-    if ( iSeed < 1 ) or ( iSeed > 99999 ) then Exit;
+    if ( iSeed < 1 ) or ( iSeed > 999999 ) then Exit;
     FResult.Seed := Cardinal( iSeed );
     Exit( True );
   end;
@@ -482,7 +482,7 @@ begin
   VTIG_Begin( 'mainmenu_seed', Point( 30, 5 ), Point( 23, 16 ) );
   VTIG_PopStyle;
     VTIG_PushStyle( @TIGStyleColored );
-    VTIG_Text( 'Enter a seed (1..99999)' );
+    VTIG_Text( 'Enter a seed (1..999999)' );
     if VTIG_Input( @FSeed[0], High( FSeed ), [Ord('0')..Ord('9')] ) then
     begin
       iAccepted := AcceptSeed( AnsiString( FSeed ) );
@@ -501,7 +501,7 @@ begin
           begin
             StrPLCopy( @FSeed[0], iStoreText, High( FSeed ) );
             VTIG_ResetInput( 'mainmenu_seed' );
-            if IO.IsGamepad then DRL.Store.StartText( 'Enter seed', 5, iStoreText );
+            if IO.IsGamepad then DRL.Store.StartText( 'Enter seed', 6, iStoreText );
           end;
         end;
     end;
