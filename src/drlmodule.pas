@@ -104,6 +104,7 @@ begin
   FCoreModules.Clear;
   FActiveModules.Clear;
   FCoreModule := nil;
+  iLua := nil;
   try
     iLua := TLua.Create;
 
