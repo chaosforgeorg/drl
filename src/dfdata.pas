@@ -11,21 +11,22 @@ uses Classes, SysUtils, idea,
      vgenerics, vcolor, vutil, vrltools, vtigstyle, vluatable, vioevent, vvector,
      drlconfig, drlkeybindings;
 
-const CoreModuleID      : AnsiString = '';
-      ConfigurationPath : AnsiString = 'config.lua';
-      ModuleUserPath    : AnsiString = '';
-      DataPath          : AnsiString = '';
-      WritePath         : AnsiString = '';
-      ScorePath         : AnsiString = '';
-      SettingsPath      : AnsiString = 'settings.lua';
-
-      VersionModule     : Ansistring = '';
-      VersionModuleSave : Ansistring = '';
-      SaveVersionModule : Ansistring = '';
-      SaveModString     : Ansistring = '';
-
-
-{$INCLUDE version.inc}
+const CoreModuleID          : AnsiString = '';
+      ConfigurationPath     : AnsiString = 'config.lua';
+      ModuleUserPath        : AnsiString = '';
+      DataPath              : AnsiString = '';
+      WritePath             : AnsiString = '';
+      ScorePath             : AnsiString = '';
+      SettingsPath          : AnsiString = 'settings.lua';
+    
+      VersionEngine         : Ansistring = '';
+      VersionEngineSave     : Ansistring = '';
+      VersionEngineExpected : Ansistring = '';
+      VersionModule         : Ansistring = '';
+      VersionModuleSave     : Ansistring = '';
+      SaveVersionEngine     : Ansistring = '';
+      SaveVersionModule     : Ansistring = '';
+      SaveModString         : Ansistring = '';
 
 var   MemorialWritten : Boolean;
 
@@ -73,6 +74,7 @@ type TMenuResult = class
   Klass      : Byte;
   Trait      : Byte;
   Name       : AnsiString;
+  Seed       : Cardinal;
 
   constructor Create;
   procedure Reset;
@@ -103,8 +105,6 @@ const
   ForceRestart    : Ansistring = '';
   ModErrors       : TStringGArray = nil;
   VisionBaseValue : Byte = 8;
-
-  ThisSeed       : Cardinal = 0;
 
   NoPlayerRecord : Boolean = False;
   NoScoreRecord  : Boolean = False;
@@ -400,7 +400,7 @@ var TIGStyleColored   : TTIGStyle;
     TIGStylePadless   : TTIGStyle;
 
 implementation
-uses typinfo, strutils, math, vmath, vdebug, vluasystem;
+uses typinfo, strutils, math, vmath, vdebug, vluasystem, drlbase;
 
 function ReadFileString( aStream : TStream; aSize : Integer ) : Ansistring;
 begin
@@ -521,6 +521,7 @@ begin
   Klass      := 0;
   Trait      := 0;
   Name       := '';
+  Seed       := 0;
 end;
 
 // change also in mortem lua!
@@ -740,7 +741,7 @@ end;
 function Roll(stat : Integer) : Integer;
 var DieRoll : byte;
 begin
-  DieRoll := Dice(3,6);
+  DieRoll := DRL.GameRNG.Dice( 3, 6 );
   case DieRoll of
       3 : Exit(30);
       4 : Exit(20);

@@ -29,9 +29,6 @@ constructor TDRLConfig.Create( const FileName : Ansistring; Reload : Boolean );
 begin
   inherited Create;
 
-  SetConstant('VERSION_STRING', VERSION_STRING);
-  SetConstant('VERSION_BETA',   VERSION_BETA);
-
   LoadMain( FileName );
 
   Option_Graphics         := Configure('Graphics',Option_Graphics);

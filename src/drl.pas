@@ -130,8 +130,6 @@ try
     Logger.Log( LOGINFO, 'Log set to - ' + WritePath );
 
     ErrorLogFileName := WritePath + 'error.log';
-    Randomize;
-
     if WorkshopID <> '' then
     begin
       WorkshopPublish( WorkShopID );

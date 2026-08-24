@@ -33,7 +33,7 @@ function level:get_being_table( dlevel, weights, reqs, dmod )
 	local list   = weight_table.new()
 
 	for _,b in ipairs(beings) do
-		if b.weight > 0	and danger+dmod >= b.min_lev and danger <= b.max_lev then
+		if b.weight > 0	and danger+dmod >= b.min_lev and danger+dmod <= b.max_lev then
 			if core.proto_reqs_met( b, reqs ) then
 				local weight = core.proto_weight( b, weights )
 				if weight > 0 then
@@ -44,11 +44,11 @@ function level:get_being_table( dlevel, weights, reqs, dmod )
 	end
 
 	for _,bg in ipairs(being_groups) do
-		if bg.weight > 0 and danger+dmod >= bg.min_lev and danger <= bg.max_lev then
+		if bg.weight > 0 and danger+dmod >= bg.min_lev and danger+dmod <= bg.max_lev then
 			if core.proto_reqs_met( bg, reqs ) then
 				local weight = core.proto_weight( bg, weights )
 				if weight > 0 then
-					list:add( bg )
+					list:add( bg, weight )
 				end
 			end
 		end
@@ -71,10 +71,12 @@ function level:pick_empty_coord( params )
 		return self:random_empty_coord( flags, area )
 	end
 
+	local player_placed = player.parent == self
+
 	local function invalid_coord( where )
 		if not where then return false end
 		if exclude and exclude:contains( where ) then return true end
-		return safe > 0 and player:distance_to( where ) <= safe
+		return safe > 0 and player_placed and player:distance_to( where ) <= safe
 	end
 
 	local where = roll_coord()
@@ -133,7 +135,7 @@ function level:flood_monsters( params )
 	if not params.danger and not params.amount then 
 		error("level:flood_monsters expects at least danger or count!")
 	end
-	local flags   = params.flags  or { EF_NOBEINGS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN }
+	local flags   = params.flags  or { EF_NOBEINGS, EF_NOBLOCK, EF_NOHARM, EF_NOITEMS, EF_NOSPAWN }
 	local dtotal  = params.danger or 100000000
 	local count   = params.amount or 100000000 
 	local reqs    = params.reqs
@@ -205,7 +207,7 @@ function level:flood_monster( params )
 		error("level:flood_monster expects at least id and danger or count!")
 	end
 	local id     = params.id
-	local flags  = params.flags  or { EF_NOBEINGS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN }
+	local flags  = params.flags  or { EF_NOBEINGS, EF_NOBLOCK, EF_NOHARM, EF_NOITEMS, EF_NOSPAWN }
 	local dtotal = params.danger or 100000000
 	local count  = params.amount or 100000000 
 	local safe   = params.safe or 0

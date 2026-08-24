@@ -80,7 +80,7 @@ register_level "spiders_lair"
 #######################...######..............#####.########################
 ]]
 		generator.place_tile( translation, map, 2, 2 )
-		level:player(41,10)
+		level:drop_being( player, coord( 41,10 ) )
 		level.status = 0
 	end,
 

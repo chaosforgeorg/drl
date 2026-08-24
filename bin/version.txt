@@ -1,3 +1,13 @@
+0.10.11
+[new] -- GJ#433: Game - support for game seeds and seeded games!
+[new] -- GJ#250: UI - non-UI controller bindings can be configured in the settings
+[new] -- GJ#421: Game - damage taken and kill streak are now in the mortem
+[new] -- GJ#423: Game - fixed group weight adjustment and generation max-level
+[mod] -- GJ#424: Game - better death reasons for damage in player turn
+[mod] -- GJ#424: Game - invoking melee items will properly count as melee kills not other
+[mod] -- GJ#439: Game - the game will warn if engine and module versions are mismatched
+[fix] -- GJ#440: Game - respawned enemies will transfer respawn status to enemies spawned by them (i.e. lost souls)
+
 0.10.10b
 [mod] -- GJ#188: Game - targeting/missle path algorithm matched against visibility
 [mod] -- GJ#220: Game - fly and shoothrough flags propely separated (fixes flying and shooting through gaps)

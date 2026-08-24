@@ -471,6 +471,7 @@ end;
 constructor TGFXMoveAnimation.Create ( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D;
   aSprite : TSprite; aBeing : Boolean; aPartial : Single ) ;
 var iSize  : Word;
+    iBeing : TThing;
 begin
   inherited Create( aDuration, aDelay, 0 );
   FUID        := aUID;
@@ -484,7 +485,9 @@ begin
     FLightStart := Iif( DRL.Level.isVisible(aFrom), SpriteMap.VariableLight( aFrom, 30 ), 0 );
     FLightEnd   := Iif( DRL.Level.isVisible(aTo),   SpriteMap.VariableLight( aTo, 30 ), 0 );
 
-    if DRL.Level.Flags[ LF_BEINGSVISIBLE ] then
+    iBeing := UIDs.Get( FUID ) as TThing;
+
+    if DRL.Level.Flags[ LF_BEINGSVISIBLE ] or iBeing.Flags[ BF_VISIBLE ] then
     begin
       FLightStart := Max( FLightStart, 40 );
       FLightEnd   := Max( FLightEnd, 40 );
@@ -790,8 +793,8 @@ constructor TGFXScreenShakeAnimation.Create( aDuration : DWord; aDelay : DWord; 
 begin
   inherited Create( aDuration, aDelay, 0 );
   FStrength   := aStrength;
-  FFrequencyX := 0.05 + 0.8*Random;
-  FFrequencyY := 0.05 + 0.8*Random;
+  FFrequencyX := 0.05 + 0.8 * IO.VisualRNG.RFloat;
+  FFrequencyY := 0.05 + 0.8 * IO.VisualRNG.RFloat;
   FDirection  := aDirection;
   FBlocking   := False;
 end;
@@ -849,4 +852,3 @@ end;
 
 
 end.
-

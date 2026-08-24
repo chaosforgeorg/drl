@@ -65,7 +65,7 @@ XX.XX
 			generator.scatter(area.FULL_SHRINKED,"floor",corpse,math.random(10)+4)
 		end
 
-		level:player(38,10)
+		level:drop_being( player, coord( 38,10 ) )
 	end,
 
 	OnEnterLevel = function ()

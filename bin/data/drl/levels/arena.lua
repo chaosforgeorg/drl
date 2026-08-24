@@ -186,7 +186,7 @@ register_level "hells_arena"
 			barmor = 1,
 			lmed = 1,
 		}
-		level:player(38,10)
+		level:drop_being( player, coord( 38,10 ) )
 	end,
 
 	OnEnterLevel = function ()

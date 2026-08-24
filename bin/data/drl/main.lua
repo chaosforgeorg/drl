@@ -1,8 +1,9 @@
 core.declare( "drl", {} )
 core.declare( "core_module", "drl" )
 core.declare( "DEMO", false )
-core.declare( "VERSION_MODULE",      "0.10.10b" )
-core.declare( "VERSION_MODULE_SAVE", "0.10.10" )
+core.declare( "VERSION_MODULE",          "0.10.11" )
+core.declare( "VERSION_MODULE_SAVE",     "0.10.11" )
+core.declare( "VERSION_ENGINE_EXPECTED", "0.10.11" )
 
 require( "drl:generator" )
 require( "drl:generators" )
@@ -200,14 +201,14 @@ function drl.register_base_data()
 			local empty = { EF_NOBEINGS, EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN }
 			if cells[ level.map[ target ] ].flags[ CF_BLOCKMOVE ] then
 				being:msg("You feel out of place!")
-				being:apply_damage(15, TARGET_INTERNAL, DAMAGE_FIRE )
+				being:apply_damage(15, TARGET_INTERNAL, DAMAGE_FIRE, "phase" )
 				target = level:random_empty_coord( empty )
 			end
 			if level:get_being( target ) then
 				local tgt = level:get_being( target )
 				being:msg("Suddenly you feel weird!")
 				tgt:msg("Argh! You feel like someone is trying to implode you!")
-				tgt:apply_damage(15, TARGET_INTERNAL, DAMAGE_FIRE )
+				tgt:apply_damage(15, TARGET_INTERNAL, DAMAGE_FIRE, "phase" )
 				target = level:random_empty_coord( empty )
 			end
 			if being.__ptr then
@@ -331,6 +332,14 @@ function drl.GetDeathMessage( being, visible )
 	return "You hear the scream of a freed soul!"
 end
 
+local death_reasons = {
+	acid   = "melted in acid",
+	barrel = "was blown up by a barrel",
+	blood  = "drowned in blood",
+	lava   = "was consumed by lava",
+	phase  = "was torn apart by phasing",
+}
+
 function drl.GetResultId()
 	local result    = "unknown"
 	local dead      = player.hp <= 0
@@ -352,7 +361,7 @@ function drl.GetResultId()
 		result = "nuke"
 	elseif player.killedby == player.id then
 		result = "suicide"
-	elseif beings[ player.killedby ] then
+	elseif beings[ player.killedby ] or death_reasons[player.killedby] then
 		result = "killed"
 	end
 	return result
@@ -374,19 +383,9 @@ function drl.GetResultDescription( result, highscore )
 	elseif result == "suicide" then
 		if highscore then killed_by = "committed suicide" else killed_by = "committed a stupid suicide" end
 	elseif result == "killed" then
-		local killer = beings[ player.killedby ]
-		if killer then
-			if not highscore then
-				if player.killedmelee then
-					killed_by = killer.kill_desc_melee 
-				else
-					killed_by = killer.kill_desc
-				end
-			end
-			if highscore or not killed_by then
-				killed_by = 'killed by '..killer.name
-			end
-		end
+		killed_by = mortem.get_death_description(
+			player.killedby, player.killedmelee, highscore, death_reasons
+		) or killed_by
 	end
 
 	if player:has_won() then
@@ -420,7 +419,7 @@ function drl.RunPrintMortem()
 	local game_module    = nil
 
 	player:mortem_print( "{r--------------------------------------------------------------}" )
-	player:mortem_print( " {RDRL} {!"..VERSION_MODULE.."} (Engine {!"..VERSION_STRING.."}) roguelike post-mortem dump")
+	player:mortem_print( " {RDRL} {!"..VERSION_MODULE.."} (Engine {!"..VERSION_ENGINE.."}) roguelike post-mortem dump")
 --	if game_type ~= GAMESTANDARD then
 --		player:mortem_print( " Module : "..module.name.." ("..mortem.version_string(module.version)..")")
 --		game_module = _G[module.id]
@@ -497,6 +496,7 @@ function drl.RunPrintMortem()
 	player:mortem_print( "{r-- {yStatistics} ------------------------------------------------}" )
 	player:mortem_print()
 	mortem.print_statistics()
+	mortem.print_damage_and_spree()
 	player:mortem_print()
 	player:mortem_print( "{r-- {yTraits} ----------------------------------------------------}" )
 	player:mortem_print()
@@ -518,16 +518,10 @@ function drl.RunPrintMortem()
 	player:mortem_print()
 	mortem.print_kills()
 	player:mortem_print()
-	local groups = { "melee", "pistol", "shotgun", "chain", "rocket", "plasma", "bfg" }
-	local names  = { "Melee kills   : ", "Pistol kills  : ", "Shotgun kills : ", "Chaingun kills: ", "Rocket kills  : ", "Plasma kills  : ", "BFG kills     : " }
-	for idx,group in ipairs(groups) do
-		local count = core.kills_count_group( group )
-		if count > 0 then
-			player:mortem_print( "    "..names[ idx ].."{!"..count.."}" )
-		end
-	end
-	player:mortem_print( "    Unarmed kills : {!"..kills.get_type( "melee" ).."}" )
-	player:mortem_print( "    Other kills   : {!"..kills.get_type( "other" ).."}" )
+	mortem.print_weapon_kills(
+		{ "melee", "pistol", "shotgun", "chain", "rocket", "plasma", "bfg" },
+		{ "Melee kills    : ", "Pistol kills   : ", "Shotgun kills  : ", "Chaingun kills : ", "Rocket kills   : ", "Plasma kills   : ", "BFG kills      : " }
+	)
 	player:mortem_print()
 	player:mortem_print( "{r-- {yHistory} ---------------------------------------------------}" )
 	player:mortem_print()
@@ -604,21 +598,21 @@ function drl.OnCreateEpisode()
 		{"the_lava_pits","mt_erebus"},-- 22/6                    37
 	}
 
-	player.episode[1] = { script = "intro", style = 1, deathname = "level 1 of the Phobos base" }
-	player.episode[2] = { style = 1, name = "Phobos L2", danger = 2, deathname = "level 2 of the Phobos base" }
+	player.episode[1] = { script = "intro", style = 1, deathname = "level 1 of the Phobos base", seed = core.level_seed( "intro" ) }
+	player.episode[2] = { style = 1, name = "Phobos L2", danger = 2, deathname = "level 2 of the Phobos base", seed = core.level_seed() }
 	for i=3,8 do
-		player.episode[i] = { style = table.random_pick{1,5,8}, name = "Phobos L"..tostring(i), danger = i, deathname = "level "..tostring(i).." of the Phobos base" }
+		player.episode[i] = { style = table.random_pick{1,5,8}, name = "Phobos L"..tostring(i), danger = i, deathname = "level "..tostring(i).." of the Phobos base", seed = core.level_seed() }
 	end
 	for i=9,16 do
-		player.episode[i] = { style = table.random_pick{2,6}, name = "Deimos L"..tostring(i-8), danger = i, deathname = "level "..tostring(i-8).." of the Deimos base" }
+		player.episode[i] = { style = table.random_pick{2,6}, name = "Deimos L"..tostring(i-8), danger = i, deathname = "level "..tostring(i-8).." of the Deimos base", seed = core.level_seed() }
 	end
 	for i=17,23 do
-		player.episode[i] = { style = table.random_pick{3,7}, name = "Hell L"..tostring(i-16), danger = i, deathname = "level "..tostring(i-16).." of Hell" }
+		player.episode[i] = { style = table.random_pick{3,7}, name = "Hell L"..tostring(i-16), danger = i, deathname = "level "..tostring(i-16).." of Hell", seed = core.level_seed() }
 	end
-	player.episode[8]            = { script = "hellgate", style = 4, deathname = "the Hellgate" }
-	player.episode[16]           = { script = "tower_of_babel", style = 9, deathname = "the Tower of Babel" }
-	player.episode[24]           = { script = "dis", style = 4, deathname = "the City of Dis" }
-	player.episode[25]           = { script = "hell_fortress", style = 4, deathname = "the Hell Fortress" }
+	player.episode[8]            = { script = "hellgate", style = 4, deathname = "the Hellgate", seed = core.level_seed( "hellgate" ) }
+	player.episode[16]           = { script = "tower_of_babel", style = 9, deathname = "the Tower of Babel", seed = core.level_seed( "tower_of_babel" ) }
+	player.episode[24]           = { script = "dis", style = 4, deathname = "the City of Dis", seed = core.level_seed( "dis" ) }
+	player.episode[25]           = { script = "hell_fortress", style = 4, deathname = "the Hell Fortress", seed = core.level_seed( "hell_fortress" ) }
 
 	for _,pairing in ipairs(paired) do
 		local level_proto = levels[table.random_pick(pairing)]
@@ -632,6 +626,7 @@ function drl.OnCreateEpisode()
 				depth  = from.depth,
 				name   = level_proto.name,
 				exit   = index + 1,
+				seed   = core.level_seed( level_proto.id ),
 			} )
 			from.special = #player.episode
 		end
@@ -655,7 +650,7 @@ end
 
 function drl.GetLogoBox()
 	return
-[[{rDRL version {R]]..VERSION_STRING..[[}
+[[{rDRL version {R]]..VERSION_MODULE..[[}
 by {RKornel Kisielewicz}
 graphics by {RDerek Yu}
 and {RLukasz Sliwinski}}]]
@@ -663,10 +658,10 @@ end
 
 function drl.GetLogoText()
 	return
-[[{rAdd. coding : {ytehtmi}, {yGame Hunter}, {yshark20061}, {yadd} and {ybrisbang}
+[[{rDRL Engine  : {y]]..VERSION_ENGINE..[[}
+Add. coding : {ytehtmi}, {yGame Hunter}, {yshark20061}, {yadd} and {ybrisbang}
 Music tracks: {ySonic Clang} (remixes), {ySimon Volpert} (special levels)
 HQ SFX      : {yPer Kristian Risvik}
-
 Major changes since last version (see {yversion.txt} for full list)
 {R  * tons of UI and UX changes, a lot new visual effects!
   * new L4 special levels by brisbang, two new environment fluids!
@@ -694,7 +689,7 @@ function drl.OnWinGame()
 
 
 
-             D**m, the Roguelike ]]..VERSION_STRING..[[
+             D**m, the Roguelike ]]..VERSION_MODULE..[[
 
                    Congratulations!
            Look further for the next release
@@ -814,7 +809,7 @@ function drl.GetQuitMessage()
 		"Go ahead and leave. See if I care.",
 		"Ya know. Next time ya gonna come here, I'm gonna toast ya."
 	}
-	return messages[math.random(#(messages))]
+	return messages[core.visual_random(#(messages))]
 end
 
 function drl.GetItemMax( id )
@@ -834,7 +829,7 @@ function drl.OnGenerate()
 	local dlevel = level.danger_level
 	local choice = weight_table.new()
 	for _,g in ipairs(generators) do
-		if dlevel >= g.min_dlevel and DIFFICULTY >= g.min_diff then
+		if dlevel >= g.min_lev and DIFFICULTY >= g.min_diff then
 			local weight = core.ranged_table( g.weight, dlevel ) 
 			choice:add( g, weight )
 		end
@@ -909,4 +904,3 @@ drl.help = {
 	{ "disclaim", "Disclaimer" },
 	{ "credits", "Credits" },
 }
-

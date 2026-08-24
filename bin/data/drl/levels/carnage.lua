@@ -61,12 +61,13 @@ register_level "halls_of_carnage"
 		local left   = area( 2,  2, 48, 19 ) 
 		local middle = area( 50, 2, 56, 19 ) 
 
+		level:drop_being( player, coord( 8,18 ) )
+
 		level:summon{ "former",   8 + DIFFICULTY,   area = left }
 		level:summon{ "sergeant", 8 + 2*DIFFICULTY, area = left }
 		level:summon{ "lostsoul", 6 + 2*DIFFICULTY, area = middle }
 
 		generator.set_permanence( area( 66,9,70,12 ) )
-		level:player(8,18)
 		local tick = core.bydiff{ 80, 60, 50, 30, 20 }
 
 		level.data.event = {

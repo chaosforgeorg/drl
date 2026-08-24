@@ -1,15 +1,23 @@
 {$INCLUDE drl.inc}
 program makewad;
-uses Classes,SysUtils, strutils, vlog, vpkg,vdf, vutil, dfdata, idea;
+uses Classes,SysUtils, strutils, getopts, vlog, vpkg,vdf, vutil, dfdata, idea;
 
 var WAD         : TVDataCreator;
     EKey,DKKey  : TIDEAKey;
     KeyFile     : Text;
     Count       : Byte;
     ModuleID    : AnsiString;
+    ModulePath  : AnsiString;
+    LegacyArgument : AnsiString;
+    ModulePathSet  : Boolean;
     Path        : AnsiString;
 
 const UserKey : TIdeaCryptKey = (123,111,10,12,222,90,1,8);
+      LongOptions : array[1..2] of TOption = (
+        ( Name : 'module-path'; Has_arg : Required_Argument;
+          Flag : nil; Value : 'm' ),
+        ( Name : ''; Has_arg : No_Argument; Flag : nil; Value : #0 )
+      );
 
 procedure ExecuteFile(const aFileName: string);
 var iFile                        : TextFile;
@@ -49,11 +57,60 @@ end;
 
 var iFileMode : Boolean = False;
 
+procedure ParseCommandLine;
+var iOption      : Char;
+    iOptionIndex : LongInt;
+begin
+  ModuleID       := 'drl';
+  ModulePath     := '';
+  LegacyArgument := '';
+  ModulePathSet  := False;
+  iOptionIndex   := 0;
+
+  OptErr := False;
+  repeat
+    iOption := GetLongOpts( ':', @LongOptions[1], iOptionIndex );
+    case iOption of
+      'm' :
+        begin
+          if ModulePathSet then
+            raise Exception.Create( 'Duplicate --module-path option' );
+          ModulePath := Trim( OptArg );
+          if ModulePath = '' then
+            raise Exception.Create(
+              '--module-path requires a directory'
+            );
+          ModulePathSet := True;
+        end;
+      '?' : raise Exception.Create( 'Unknown command-line option' );
+      ':' : raise Exception.Create(
+        '--module-path requires a directory'
+      );
+    end;
+  until iOption = EndOfOptions;
+
+  if OptInd <= ParamCount then
+  begin
+    ModuleID := ParamStr( OptInd );
+    Inc( OptInd );
+  end;
+  if OptInd <= ParamCount then
+  begin
+    LegacyArgument := ParamStr( OptInd );
+    Inc( OptInd );
+  end;
+  if OptInd <= ParamCount then
+    raise Exception.Create(
+      'Only one file list or audio module may be specified'
+    );
+end;
+
 begin
   Logger.AddSink( TTextFileLogSink.Create( LOGDEBUG, WritePath + 'runtime.log', False ) );
   Logger.AddSink( TConsoleLogSink.Create( LOGDEBUG ) );
 
   try
+    ParseCommandLine;
     EnKeyIdea(UserKey,EKey);
     DeKeyIdea(EKey,DKKey);
 
@@ -69,11 +126,21 @@ begin
     Writeln(KeyFile,DKKey[High(DKKey)],' );');
     Close(KeyFile);
 
-    if ParamCount < 1
-      then ModuleID := 'drl'
-      else ModuleID := ParamStr(1);
     begin
-      Path := 'data/' + ModuleID + '/';
+      if ModulePathSet then
+      begin
+        Path := IncludeTrailingPathDelimiter( ExpandFileName( ModulePath ) );
+        if not DirectoryExists( Path ) then
+          raise Exception.CreateFmt(
+            'External module directory not found: %s', [ Path ]
+          );
+        if not FileExists( Path + 'meta.lua' ) then
+          raise Exception.CreateFmt(
+            'External module directory has no meta.lua: %s', [ Path ]
+          );
+      end
+      else
+        Path := 'data/' + ModuleID + '/';
 
       WAD := TVDataCreator.Create(ModuleID+'.wad');
       WAD.SetKey( EKey );
@@ -82,9 +149,9 @@ begin
       WAD.Add(Path+'ascii/*.asc',FILETYPE_RAW,[vdfCompressed,vdfEncrypted], 'ascii' );
       WAD.Add(Path+'fonts/font*.png',FILETYPE_IMAGE,[], 'fonts' );
       WAD.Add(Path+'fonts/default',FILETYPE_RAW,[], 'fonts' );
-      if ( ParamStr(2) <> '') and ParamStr(2).EndsWith('.txt') then
+      if ( LegacyArgument <> '' ) and LegacyArgument.EndsWith( '.txt' ) then
       begin
-         ExecuteFile( ParamStr(2) );
+         ExecuteFile( LegacyArgument );
          iFileMode := True;
       end;
 
@@ -103,9 +170,9 @@ begin
         WAD.Add(Path+'music/*.mid',FILETYPE_RAW,[vdfCompressed], 'music' );
       end;
 
-      if (ParamStr(2) <> '') and (not iFileMode) then
+      if ( LegacyArgument <> '' ) and ( not iFileMode ) then
       begin
-        Path := 'data/' + ParamStr(2) + '/';
+        Path := 'data/' + LegacyArgument + '/';
         WAD.Add(Path+'audio.lua',FILETYPE_LUA,[vdfCompressed,vdfEncrypted], '' );
         WAD.Add(Path+'sound/*.wav',FILETYPE_RAW,[vdfCompressed], 'sound' );
         WAD.Add(Path+'music/*.ogg',FILETYPE_RAW,[], 'music' );

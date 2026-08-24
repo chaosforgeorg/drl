@@ -12,11 +12,31 @@ function mortem.padded( str, size )
     return str..string.rep(" ",math.max(0,size - string.len(str)) )
 end
 
+function mortem.get_death_description( killedby, killedmelee, highscore, reasons )
+	if reasons and reasons[killedby] then
+		return reasons[killedby]
+	end
+
+	local killer = beings[killedby]
+	if not killer then return nil end
+	if not highscore then
+		local description
+		if killedmelee then
+			description = killer.kill_desc_melee
+		else
+			description = killer.kill_desc
+		end
+		if description then return description end
+	end
+	return "killed by "..killer.name
+end
+
 
 function mortem.print_time_and_kills()
     player:mortem_print( " "..mortem.Pronoun.." survived {!"..statistics.game_time.."} turns and scored {!"..player.score.."} points. ")
 	player:mortem_print( " "..mortem.Pronoun.." played for {!"..core.seconds_to_string(math.floor(statistics.real_time)).."}. ")
 	player:mortem_print( " "..diff[DIFFICULTY].description)
+	player:mortem_print( " Game seed was {!"..GAME_SEED.."}." )
 	player:mortem_print()
 
 
@@ -133,6 +153,12 @@ function mortem.print_statistics()
 						"  ToDmg Melee "..bonus( player:get_todam(true) ) )
 end
 
+function mortem.print_damage_and_spree()
+	player:mortem_print()
+	player:mortem_print( "  Damage taken       : {!"..statistics.damage_taken.."}" )
+	player:mortem_print( "  Longest kill spree : {!"..statistics.kills_non_damage.."}" )
+end
+
 function mortem.print_traits()
     if klasses.__counter > 1 then
         player:mortem_print( "  Class : {!"..klasses[player.klass].name.."}" )
@@ -152,25 +178,31 @@ function mortem.print_traits()
 	end
 end
 
-function mortem.print_equipment()
+function mortem.item_desc( item )
+	return item.desc
+end
+
+function mortem.print_equipment( item_desc )
+	item_desc = item_desc or mortem.item_desc
 	local slot_name = { "[ Armor      ]", "[ Weapon     ]", "[ Boots      ]", "[ Prepared   ]", "[ Relic      ]" }
 	local eq_size = core.options.relic_slot and MAX_EQ_SIZE or (MAX_EQ_SIZE - 1)
 
 	for i = 0,eq_size-1 do
 		local it = player.eq[i]
 		if it then
-			player:mortem_print( "    "..slot_name[i+1].."   {!"..it.desc.."}" )
+			player:mortem_print( "    "..slot_name[i+1].."   {!"..item_desc( it ).."}" )
 		else
 			player:mortem_print( "    "..slot_name[i+1].."   nothing" )
 		end
 	end
 end
 
-function mortem.print_inventory()
+function mortem.print_inventory( item_desc )
+	item_desc = item_desc or mortem.item_desc
     local items = {}
 
 	for it in player.inv:items() do
-		table.insert( items, { itype = it.itype, nid = it.__proto.nid, desc = it.desc } )
+		table.insert( items, { itype = it.itype, nid = it.__proto.nid, desc = item_desc( it ) } )
 	end
 
 	table.sort( items, function(a,b) if (a.itype ~= b.itype) then return a.itype < b.itype else return a.nid < b.nid end end )
@@ -223,6 +255,29 @@ function mortem.print_kills()
 				player:mortem_print( "    {!"..kills.."} "..b.name_plural )
 			end
 		end
+	end
+end
+
+function mortem.print_weapon_kills( groups, names )
+	for index,group in ipairs( groups ) do
+		local count = core.kills_count_group( group )
+		if count > 0 then
+			player:mortem_print( "    "..names[index].."{!"..count.."}" )
+		end
+	end
+
+	local unarmed = kills.get_type( "melee" )
+	local other = kills.get_type( "other" )
+	if unarmed > 0 or other > 0 then
+		player:mortem_print()
+	end
+
+	if unarmed > 0 then
+		player:mortem_print( "    Unarmed kills  : {!"..unarmed.."}" )
+	end
+
+	if other > 0 then
+		player:mortem_print( "    Other kills    : {!"..other.."}" )
 	end
 end
 

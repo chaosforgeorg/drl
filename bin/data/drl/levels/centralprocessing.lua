@@ -320,7 +320,7 @@ register_level "central_processing"
 			end
 		end
 
-		level:player(5,11)
+		level:drop_being( player, coord( 5,11 ) )
 	end,
 
 	OnKillAll = function ()

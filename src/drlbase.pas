@@ -8,6 +8,7 @@ unit drlbase;
 interface
 
 uses vnode, vutil, vuid, viotypes, vrltools, vluasystem, vioevent, vstoreinterface,
+     vrandom,
      dflevel, dfdata, dfhof, dfitem,
      drlhooks, drlua, drlcommand, drlkeybindings, drlmodule, drlparticles;
 
@@ -71,11 +72,12 @@ TDRL = class(TVObject)
        procedure Apply( aResult : TMenuResult );
        function HandleMouseEvent( aEvent : TIOEvent ) : Boolean;
        function HandleKeyEvent( aEvent : TIOEvent ) : Boolean;
-       function HandlePadMovement( aEvent : TIOEvent ) : Boolean;
+       function HandlePadMovement( aPressed : Boolean ) : Boolean;
        function HandlePadEvent( aEvent : TIOEvent ) : Boolean;
        function MoveTargetEvent( aCoord : TCoord2D ) : Boolean;
        procedure PreAction;
        procedure CreatePlayer( aResult : TMenuResult );
+       function PrepareGameSeed( aRequestedSeed : Cardinal ) : Cardinal;
      private
        FState           : TDRLState;
        FLevel           : TLevel;
@@ -103,6 +105,9 @@ TDRL = class(TVObject)
        FGameWon         : Boolean;
        FCrashSave       : Boolean;
        FParticles       : TParticleStore;
+       FGameSeed        : Cardinal;
+       FSeededGame      : Boolean;
+       FGameRNG         : TRNG;
      public
        property GameWon : Boolean read FGameWon write FGameWon;
        property Difficulty : Byte read FDifficulty;
@@ -116,6 +121,9 @@ TDRL = class(TVObject)
        property Targeting : TTargeting read FTargeting;
        property DamagedLastTurn : Boolean read FDamagedLastTurn write FDamagedLastTurn;
        property Particles : TParticleStore read FParticles;
+       property GameSeed : Cardinal read FGameSeed;
+       property SeededGame : Boolean read FSeededGame;
+       property GameRNG : TRNG read FGameRNG;
      end;
 
 var DRL : TDRL;
@@ -126,13 +134,13 @@ implementation
 
 uses  {$IFDEF WINDOWS}Windows,{$ELSE}Unix,{$ENDIF}
      Classes, SysUtils,
-     vdebug,
+     vdebug, vlua, vstream,
      dfmap, dfbeing,
      drlio, drlgfxio, drltextio, zstream,
      drlspritemap, // remove
      drlplayerview, drlingamemenuview, drlhelpview, drlassemblyview,
      drlpagedview, drlrankupview, drlmainmenuview, drlhudviews, drlmessagesview,
-     drlconfiguration, drlhelp, drlconfig, dfplayer;
+     drlconfiguration, drlcontrollerbindings, drlhelp, drlconfig, dfplayer;
 
 const PAD_REPEAT_START = 400;
       PAD_REPEAT       = 100;
@@ -180,7 +188,10 @@ begin
     then FPrevPos := FLastPos
     else FPrevPos := aTarget;
   FLastUID := 0;
-  if (not aMove) and (DRL.Level.Being[ aTarget ] <> nil) and ( DRL.Level.Flags[ LF_BEINGSVISIBLE ] or DRL.Level.isVisible(aTarget) ) then
+  if (not aMove) and (DRL.Level.Being[ aTarget ] <> nil) then
+     if DRL.Level.Flags[ LF_BEINGSVISIBLE ] 
+       or DRL.Level.isVisible(aTarget) 
+       or DRL.Level.Being[ aTarget ].Flags[ BF_VISIBLE ] then
     FLastUID := DRL.Level.Being[ aTarget ].UID;
   FLastPos := aTarget;
 end;
@@ -295,6 +306,7 @@ begin
   Help := THelp.Create;
 
   SetState( DSLoading );
+  LuaRNG := FGameRNG;
   iLua := TDRLLua.Create();
   LuaSystem := iLua;
   LuaSystem.CallDefaultResult := True;
@@ -357,11 +369,13 @@ end;
 
 constructor TDRL.Create;
 begin
+  FGameSeed := 0;
+  FGameRNG  := TRNG.Create( 0 );
+  LuaRNG    := FGameRNG;
   FParticles := TParticleStore.Create;
   FTargeting := TTargeting.Create;
   Reset;
   FStore     := TStoreInterface.Get;
-  Log( VersionToString( ArrayToVersion(VERSION_ARRAY) ) );
   Reconfigure;
   if GraphicsVersion then
   begin
@@ -396,6 +410,7 @@ begin
   FDataLoaded := False;
   FGameWon    := False;
   FCrashSave  := False;
+  FSeededGame := False;
 
   FLastInputTime   := 0;
   FDamagedLastTurn := False;
@@ -457,12 +472,14 @@ begin
     FChallenge      := aResult.Challenge;
     FArchAngel      := aResult.ArchAngel;
     FSChallenge     := aResult.SChallenge;
+    FSeededGame     := aResult.Seed <> 0;
   end;
 
   LuaSystem.SetValue('DIFFICULTY', FDifficulty);
   LuaSystem.SetValue('CHALLENGE',  FChallenge);
   LuaSystem.SetValue('SCHALLENGE', FSChallenge);
   LuaSystem.SetValue('ARCHANGEL', FArchAngel);
+  LuaSystem.SetValue('SEEDED_GAME', FSeededGame);
 
   FChallengeHooks := [];
   FSChallengeHooks := [];
@@ -647,6 +664,9 @@ begin
   iDir := InputDirection( aInput );
   iTarget := Player.Position + iDir;
   iMoveResult := Player.TryMove( iTarget );
+  if ( iMoveResult = MoveBlock ) and Level.isProperCoord( iTarget ) and
+     ( Level.Being[ iTarget ] <> nil ) then
+    iMoveResult := MoveBeing;
 
   if Player.MultiMove.IsRepeat and (
        ( iMoveResult <> MoveOk ) or
@@ -1051,30 +1071,20 @@ begin
   Exit( False );
 end;
 
-function TDRL.HandlePadMovement( aEvent : TIOEvent ) : Boolean;
+function TDRL.HandlePadMovement( aPressed : Boolean ) : Boolean;
 var iTarget : TCoord2D;
     iCell   : Integer;
 begin
-  if ( aEvent.EType <> VEVENT_PADDOWN ) then
-  begin
-    FPadMoveActive := False;
-    Exit( False );
-  end;
+  Result := False;
 
-  Assert( aEvent.Pad.Button = VPAD_BUTTON_A );
-
-  if ( aEvent.EType = VEVENT_PADUP ) then
-  begin
-    FPadMoveActive := False;
-    Exit( False );
-  end;
-
-  if IO.GetPadRTrigger then
+  if IO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT ) then
   begin // Move target mode
     FPadMoveActive := False;
     if IO.GetPadLDir.NotZero then
       Exit( MoveTargetEvent( FTargeting.List.Current + IO.GetPadLDir ) );
-    if ( not IO.GetPadLTrigger ) and (FTargeting.List.Current <> Player.Position) and (Level.Being[FTargeting.List.Current] <> nil) then
+    if ( not IO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN ) )
+      and (FTargeting.List.Current <> Player.Position)
+      and (Level.Being[FTargeting.List.Current] <> nil) then
     begin
       IO.FullLook( Level.Being[FTargeting.List.Current] );
       Exit( False );
@@ -1083,10 +1093,16 @@ begin
     Exit( False );
   end;
 
-  if aEvent.Pad.Pressed then // normal mode
+  if aPressed then // normal mode
   begin
     if IO.GetPadLDir.NotZero
-      then begin FPadMoved := True; Result := HandleMoveCommand( DirectionToInput( NewDirection( IO.GetPadLDir ) ), IO.GetPadLTrigger ); end
+      then begin
+        FPadMoved := True;
+        Result := HandleMoveCommand(
+          DirectionToInput( NewDirection( IO.GetPadLDir ) ),
+          IO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
+        );
+      end
       else Result := HandleCommand( TCommand.Create( COMMAND_WAIT ) );
     FPadMoveNext := IO.Time + PAD_REPEAT_START;
   end
@@ -1099,17 +1115,23 @@ begin
       begin
         iCell := Level.getCell( iTarget );
         if not ( ( CellHook_OnHazardQuery in Cells[ iCell ].Hooks ) and  Level.CallHook( CellHook_OnHazardQuery, iCell, Player ) ) then
-          Result := HandleMoveCommand( DirectionToInput( NewDirection( IO.GetPadLDir ) ), IO.GetPadLTrigger );
+          Result := HandleMoveCommand(
+            DirectionToInput( NewDirection( IO.GetPadLDir ) ),
+            IO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
+          );
       end;
     end;
     FPadMoveNext := IO.Time + PAD_REPEAT;
   end;
-  FPadMoveActive := ( State = DSPlaying ) and ( Player.EnemiesInVision = 0 ) and ( aEvent.Pad.Pressed or (not FDamagedLastTurn) );
+  FPadMoveActive := ( State = DSPlaying )
+    and ( Player.EnemiesInVision = 0 )
+    and ( aPressed or (not FDamagedLastTurn) );
   Exit( Result );
 end;
 
 function TDRL.HandlePadEvent( aEvent : TIOEvent ) : Boolean;
-var iItem : TItem;
+var iItem   : TItem;
+    iAction : TControllerAction;
 begin
   if ( aEvent.EType = VEVENT_PADDEVICE ) then
   begin
@@ -1117,51 +1139,77 @@ begin
     Exit( False );
   end;
 
-  if ( aEvent.Pad.Button = VPAD_BUTTON_A ) then
-    Exit( HandlePadMovement( aEvent ) );
+  if not ( aEvent.EType in [ VEVENT_PADDOWN, VEVENT_PADUP ] ) then Exit( False );
+  if not IO.ResolveControllerAction( aEvent.Pad.Button, iAction ) then Exit( False );
 
-  if aEvent.EType <> VEVENT_PADDOWN then
-    Exit( False );
+  if iAction = CONTROLLER_MOVE then
+  begin
+    if aEvent.EType = VEVENT_PADUP then
+    begin
+      FPadMoveActive := False;
+      Exit( False );
+    end;
+    Exit( HandlePadMovement( True ) );
+  end;
 
-  case aEvent.Pad.Button of
-    VPAD_BUTTON_B : if IO.GetPadLDir.NotZero
-                      then Exit( HandleActionCommand( Player.Position + IO.GetPadLDir, 0 ) )
-                      else begin
-                        if Level.cellFlagSet( Player.Position, CF_STAIRS ) then
-                          Exit( HandleCommand( TCommand.Create( COMMAND_ENTER ) ) );
-                        iItem := Level.Item[ Player.Position ];
-                        if ( iItem <> nil ) and ( iItem.isLever ) then
-                          Exit( HandleCommand( TCommand.Create( COMMAND_USE, iItem ) ) );
-                        Exit( HandlePickupCommand( IO.GetPadRTrigger ) )
-                      end;
-    VPAD_BUTTON_X : Exit( HandleFireCommand( IO.GetPadRTrigger, False, True, True ) );
-    VPAD_BUTTON_Y : Exit( HandleCommand( TCommand.Create( Iif( IO.GetPadRTrigger, COMMAND_ALTRELOAD, COMMAND_RELOAD ) ) ) );
-    VPAD_BUTTON_BACK          : begin ResetAutoTarget; IO.PushLayer( TInGameMenuView.Create ); Exit; end;
-    VPAD_BUTTON_GUIDE:;
-    VPAD_BUTTON_START         : begin
-      if IO.GetPadRTrigger
+  if aEvent.EType <> VEVENT_PADDOWN then Exit( False );
+
+  case iAction of
+    CONTROLLER_ACTION : if IO.GetPadLDir.NotZero
+                          then Exit( HandleActionCommand( Player.Position + IO.GetPadLDir, 0 ) )
+                          else begin
+                            if Level.cellFlagSet( Player.Position, CF_STAIRS ) then
+                              Exit( HandleCommand( TCommand.Create( COMMAND_ENTER ) ) );
+                            iItem := Level.Item[ Player.Position ];
+                            if ( iItem <> nil ) and ( iItem.isLever ) then
+                              Exit( HandleCommand( TCommand.Create( COMMAND_USE, iItem ) ) );
+                            Exit( HandlePickupCommand( IO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT ) ) )
+                          end;
+    CONTROLLER_FIRE : Exit( HandleFireCommand( IO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT ), False, True, True ) );
+    CONTROLLER_RELOAD : Exit( HandleCommand( TCommand.Create(
+      Iif(
+        IO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT ),
+        COMMAND_ALTRELOAD,
+        COMMAND_RELOAD
+      )
+    ) ) );
+    CONTROLLER_MENU : begin
+      ResetAutoTarget;
+      IO.PushLayer( TInGameMenuView.Create );
+      Exit( False );
+    end;
+    CONTROLLER_PLAYER : begin
+      if IO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT )
         then FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_EQUIPMENT ) )
         else FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_INVENTORY ) );
       Exit( False );
     end;
-    VPAD_BUTTON_LEFTSTICK  : Exit( HandleCommand( TCommand.Create( COMMAND_ACTIVE ) ) );
-    VPAD_BUTTON_RIGHTSTICK : if IO.GetPadRTrigger
-                                then Exit( HandleUnloadCommand( nil ) )
-                                else Exit( HandleSwapWeaponCommand );
-    VPAD_BUTTON_LEFTSHOULDER  : begin IO.SetAutoTarget( FTargeting.List.Prev ); Exit( False ); end;
-    VPAD_BUTTON_RIGHTSHOULDER : begin IO.SetAutoTarget( FTargeting.List.Next ); Exit( False ); end;
-    VPAD_BUTTON_DPAD_UP    : if IO.GetPadLTrigger
+    CONTROLLER_ACTIVE : Exit( HandleCommand( TCommand.Create( COMMAND_ACTIVE ) ) );
+    CONTROLLER_SWAP : if IO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT )
+                        then Exit( HandleUnloadCommand( nil ) )
+                        else Exit( HandleSwapWeaponCommand );
+    CONTROLLER_TARGET_PREV : begin
+      IO.SetAutoTarget( FTargeting.List.Prev );
+      Exit( False );
+    end;
+    CONTROLLER_TARGET_NEXT : begin
+      IO.SetAutoTarget( FTargeting.List.Next );
+      Exit( False );
+    end;
+    CONTROLLER_UP : if IO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
       then Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '1' ) ) )
       else if FPadMoved then Exit( MoveTargetEvent( FTargeting.List.Current + NewCoord2D( 0,-1 ) ) );
-    VPAD_BUTTON_DPAD_DOWN  : if IO.GetPadLTrigger
+    CONTROLLER_DOWN : if IO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
       then Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '4' ) ) )
       else if FPadMoved then Exit( MoveTargetEvent( FTargeting.List.Current + NewCoord2D( 0, 1 ) ) );
-    VPAD_BUTTON_DPAD_LEFT  : if IO.GetPadLTrigger
+    CONTROLLER_LEFT : if IO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
       then Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '2' ) ) )
       else if FPadMoved then Exit( MoveTargetEvent( FTargeting.List.Current + NewCoord2D(-1, 0 ) ) );
-    VPAD_BUTTON_DPAD_RIGHT : if IO.GetPadLTrigger
+    CONTROLLER_RIGHT : if IO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
       then Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '3' ) ) )
       else if FPadMoved then Exit( MoveTargetEvent( FTargeting.List.Current + NewCoord2D( 1, 0 ) ) );
+    CONTROLLER_MODIFIER_RUN,
+    CONTROLLER_MODIFIER_ALT : ;
   end;
   Exit( False );
 end;
@@ -1266,6 +1314,18 @@ begin
   Exit( False );
 end;
 
+function TDRL.PrepareGameSeed( aRequestedSeed : Cardinal ) : Cardinal;
+begin
+  FGameSeed := aRequestedSeed;
+  if FGameSeed = 0 then
+  begin
+    FGameRNG.Randomize;
+    FGameSeed := FGameRNG.RDWord( 1, 999999 );
+  end;
+  FGameRNG.SetSeed( FGameSeed );
+  Result := FGameRNG.RDWord;
+end;
+
 
 procedure TDRL.Run;
 var iRank       : THOFRank;
@@ -1278,8 +1338,11 @@ var iRank       : THOFRank;
     iReport     : TPagedReport;
     iEnterNuke  : Boolean;
     iCrashIndex : Integer;
+    iEpisodeSeed : Cardinal;
+    iLevelSeed   : Cardinal;
 begin
   iResult    := TMenuResult.Create;
+  iEpisodeSeed := 0;
   DRL.Load;
 
   IO.PushLayer( TMainMenuView.Create );
@@ -1318,9 +1381,12 @@ repeat
   end
   else
   begin
+    iEpisodeSeed := PrepareGameSeed( iResult.Seed );
     CreatePlayer( iResult );
   end;
 
+  LuaSystem.SetValue('GAME_SEED', FGameSeed);
+  IO.SetSeed( FGameSeed );
   LuaSystem.SetValue('level', Level );
 
   if (not (State in [DSLoading, DSCrashLoading])) then
@@ -1328,7 +1394,8 @@ repeat
 
   if (not(State in [DSLoading, DSCrashLoading])) then
   begin
-    CallHook( Hook_OnCreateEpisode, [] );
+    FGameRNG.SetSeed( iEpisodeSeed );
+    CallHook( Hook_OnCreateEpisode, [QWord( iEpisodeSeed )] );
   end;
   CallHook( Hook_OnLoaded, [(State in [DSLoading, DSCrashLoading])] );
 
@@ -1359,10 +1426,12 @@ repeat
         if IsString('sname') then FLevel.SName := getString('sname');
         if IsString('abbr')  then FLevel.Abbr  := getString('abbr');
         iScript := getString('script','');
+        iLevelSeed := getInteger('seed',0);
       finally
         Free;
       end;
 
+      if iLevelSeed <> 0 then FGameRNG.SetSeed( iLevelSeed );
       if iScript <> ''
         then
           FLevel.ScriptLevel(iScript)
@@ -1416,10 +1485,7 @@ repeat
       begin
         if FPadMoveActive and ( IO.Time >= FPadMoveNext ) then
         begin
-          iEvent.EType       := VEVENT_PADDOWN;
-          iEvent.Pad.Button  := VPAD_BUTTON_A;
-          iEvent.Pad.Pressed := False; // To mark repeat!
-          HandlePadEvent( iEvent );
+          HandlePadMovement( False );
           Continue;
         end;
         IO.FullUpdate;
@@ -1437,7 +1503,7 @@ repeat
       end;
 
       if not IO.Driver.PollEvent( iEvent ) then continue;
-      if IO.OnEvent( iEvent ) or IO.Root.OnEvent( iEvent ) then Continue;
+      if IO.OnEvent( iEvent ) then Continue;
 
       if (iEvent.EType = VEVENT_SYSTEM) and (iEvent.System.Code = VIO_SYSEVENT_QUIT) then
       begin
@@ -1567,22 +1633,31 @@ function TDRL.LoadSaveFile: Boolean;
 var iStream    : TStream;
     iRecreate  : Boolean;
     iModule    : Ansistring;
+    iGameRNG   : TRNG;
 begin
+  SaveVersionEngine := '';
   SaveVersionModule := '';
   SaveModString     := '';
   iRecreate := False;
+  iStream   := nil;
+  iGameRNG  := nil;
   try
     try
       iStream := TGZFileStream.Create( ModuleUserPath + 'save',gzOpenRead );
       //      Stream := TDebugStream.Create( Stream );
-      iModule           := iStream.ReadAnsiString;
-      if (iModule <> CoreModuleID) then Exit( False );
+      iModule := iStream.ReadAnsiString;
+      if iModule <> CoreModuleID then Exit( False );
+
+      SaveVersionEngine := iStream.ReadAnsiString;
+      if SaveVersionEngine <> VersionEngineSave then Exit( False );
+
       SaveVersionModule := iStream.ReadAnsiString;
+      if SaveVersionModule <> VersionModuleSave then Exit( False );
+
       SaveModString     := iStream.ReadAnsiString;
-      if ( SaveVersionModule <> VersionModuleSave ) or ( SaveModString <> DRL.Modules.ModString ) then
-      begin
-        Exit( False );
-      end;
+      if SaveModString <> DRL.Modules.ModString then Exit( False );
+
+      SaveVersionEngine := '';
       SaveVersionModule := '';
       SaveModString     := '';
 
@@ -1593,6 +1668,14 @@ begin
       FChallenge       := iStream.ReadAnsiString;
       FArchAngel       := iStream.ReadByte <> 0;
       FSChallenge      := iStream.ReadAnsiString;
+
+      FGameSeed   := iStream.ReadDWord;
+      FSeededGame := iStream.ReadBool;
+      iGameRNG := TRNG.CreateFromStream( iStream );
+      LuaRNG := iGameRNG;
+      FreeAndNil( FGameRNG );
+      FGameRNG := iGameRNG;
+      iGameRNG := nil;
 
       Player := TPlayer.CreateFromStream( iStream );
       FCrashSave := iStream.ReadByte <> 0;
@@ -1607,7 +1690,8 @@ begin
         FParticles.ReadFromStream( iStream );
       end;
     finally
-      iStream.Destroy;
+      FreeAndNil( iGameRNG );
+      FreeAndNil( iStream );
     end;
     DeleteFile( ModuleUserPath + 'save' );
 
@@ -1666,6 +1750,7 @@ begin
   //      Stream := TDebugStream.Create( Stream );
 
   Stream.WriteAnsiString( CoreModuleID );
+  Stream.WriteAnsiString( VersionEngineSave );
   Stream.WriteAnsiString( VersionModuleSave );
   Stream.WriteAnsiString( FModules.ModString );
   UIDs.WriteToStream( Stream );
@@ -1674,6 +1759,9 @@ begin
   Stream.WriteAnsiString( FChallenge );
   if FArchAngel then Stream.WriteByte( 1 ) else Stream.WriteByte( 0 );
   Stream.WriteAnsiString( FSChallenge );
+  Stream.WriteDWord( FGameSeed );
+  Stream.WriteBool( FSeededGame );
+  FGameRNG.WriteToStream( Stream );
 
   Player.WriteToStream(Stream);
   Player.Detach;
@@ -1701,6 +1789,8 @@ end;
 destructor TDRL.Destroy;
 begin
   UnLoad;
+  LuaRNG := nil;
+  FreeAndNil( FGameRNG );
   FParticles.Initialize( nil );
   FreeAndNil( ModErrors );
   FreeAndNil( FModules );

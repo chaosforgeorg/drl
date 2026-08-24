@@ -401,7 +401,7 @@ begin
   if iCount >= MAX_SOUND_COUNT then Exit;
   if iCount > 1 then
   begin
-    iDelay := SOUND_DELAY_MIN * ( iCount - 1 ) + Random( 25 );
+    iDelay := SOUND_DELAY_MIN * ( iCount - 1 ) + IO.VisualRNG.RLongInt( 25 );
     PlaySound( aSoundID, aCoord, iDelay );
     Exit;
   end;
@@ -448,7 +448,7 @@ begin
   if MusicOff then Exit;
   iAsset := FindAsset(aMusicID);
   if iAsset <> 0 then FAudio.PlayMusic(iAsset)
-  else if not aNotFound then PlayMusic('level'+IntToStr(Random(23)+2), True);
+  else if not aNotFound then PlayMusic('level'+IntToStr(IO.VisualRNG.RLongInt(23)+2), True);
 end;
 
 procedure TDRLAudio.PlayMusicOnce( const aMusicID : AnsiString );

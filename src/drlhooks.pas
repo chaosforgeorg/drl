@@ -84,8 +84,9 @@ const
   Hook_OnDrop          = 69; // Item
   Hook_OnDropItem      = 70; // Item
   Hook_OnCanAct        = 71; // Being
+  Hook_OnShort         = 72; // Perk
 
-  HookAmount           = 72;
+  HookAmount           = 73;
 
 const AllHooks      : TFlags = [ 0..HookAmount-1 ];
 
@@ -115,7 +116,8 @@ const HookNames : array[ 0..HookAmount-1 ] of AnsiString = (
       'getDamageMul', 'getFireCostMul', 'getAmmoCostMul', 'getReloadCostMul',
       'getGibMul',
       'OnUnequipCheck',
-      'OnDrop', 'OnDropItem', 'OnCanAct'
+      'OnDrop', 'OnDropItem', 'OnCanAct',
+      'OnShort'
       );
 
 function LoadHooks( const aTable : array of Const ) : TFlags;

@@ -78,7 +78,7 @@ register_level "house_of_pain"
 		generator.set_permanence( area.FULL )
 		generator.set_permanence( area.FULL, true, "ldoor" )
 
-		level:player(14,10)
+		level:drop_being( player, coord( 14,10 ) )
 	end,
 
 	OnKillAll = function ()

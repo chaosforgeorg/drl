@@ -137,7 +137,7 @@ register_level "deimos_lab"
 			level:summon{ "lostsoul", 10 + 2*DIFFICULTY, cell = "acid" }
 		end
 
-		level:player(3,3)
+		level:drop_being( player, coord( 3,3 ) )
 	end,
 
 	OnKillAll = function ()

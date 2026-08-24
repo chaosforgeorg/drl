@@ -43,6 +43,9 @@ function player:add_badge( badge )
 	if badges[ badge ].achievement ~= "" then
 		player:set_achievement( badges[ badge ].achievement )
 	end
+	if SEEDED_GAME and badges[ badge ].level >= 4 then
+		return
+	end
 	self.__props.badges[badge] = true
 end
 

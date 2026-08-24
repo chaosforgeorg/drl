@@ -164,8 +164,9 @@ core.register_blueprint "perk"
 	status_effect  = { false, core.TNUMBER },
 	status_strength= { false, core.TNUMBER },
 	tags           = { false, core.TTABLE, {} },
+	group          = { false, core.TSTRING },
 	weight         = { false, core.TNUMBER, 0 },
-	min_dlevel     = { false, core.TNUMBER, 0 },
+	min_lev        = { false, core.TNUMBER, 0 },
 	min_diff       = { false, core.TNUMBER, 0 },
 
 	OnAdd          = { false, core.TFUNC },
@@ -173,6 +174,7 @@ core.register_blueprint "perk"
 	OnTick10       = { false, core.TFUNC },
 	OnRemove       = { false, core.TFUNC },
 	OnDescribe     = { false, core.TFUNC },
+	OnShort        = { false, core.TFUNC },
 
 	getDamageBonus   = { false, core.TFUNC },
 	getToHitBonus    = { false, core.TFUNC },
@@ -216,6 +218,7 @@ core.register_blueprint "perk"
 	OnUnequipCheck = { false, core.TFUNC },
 	OnEquip        = { false, core.TFUNC },
 	OnUnequip      = { false, core.TFUNC },
+	OnDie          = { false, core.TFUNC }, -- double check if working
 }
 
 core.register_blueprint "ai"
@@ -319,6 +322,7 @@ core.register_blueprint "being_group"
 	min_lev  = { false, core.TNUMBER, 0 },
 	max_lev  = { false, core.TNUMBER, 10000 },
 	weight   = { true,  core.TNUMBER },
+	adjust   = { false, core.TNUMBER, 0 },
 	beings   = { true,  core.TARRAY("being_group_entry") },
 	tags     = { false, core.TTABLE, {} },
 	is_group = true,

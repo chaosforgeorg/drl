@@ -381,7 +381,7 @@ begin
 
   FHPMax := FHP;
   FHPNom := FHP;
-  FSpeedCount := 900+Random(90);
+  FSpeedCount := 900 + DRL.GameRNG.RLongInt( 90 );
 
   FHPDecayMax   := 100;
 
@@ -500,7 +500,7 @@ begin
     if iChaining then aTarget := RotateTowards( FPosition, aTarget, iChainTarget, PI/6 );
     if aGun.Flags[ IF_SCATTER ] then
        begin
-            if not SendMissile( TLevel(Parent).Area.Clamped(aTarget.RandomShifted( iScatter )), aGun, aAltFire, iSeqBase+(iCount-1)*aGun.MisDelay*3, iCount-1 ) then Exit;
+            if not SendMissile( TLevel(Parent).Area.Clamped(aTarget.RandomShifted( DRL.GameRNG, iScatter )), aGun, aAltFire, iSeqBase+(iCount-1)*aGun.MisDelay*3, iCount-1 ) then Exit;
        end
     else
        begin
@@ -1247,6 +1247,7 @@ function TBeing.ActionSwapPosition( aTarget : TCoord2D ) : Boolean;
 var iLevel  : TLevel;
 begin
   iLevel  := TLevel(Parent);
+  if TryMove( aTarget ) <> MoveBeing then Exit( False );
   if not iLevel.SwapBeings( Position, aTarget ) then Exit( False );
   Dec( FSpeedCount, getMoveCost );
   Exit( True );
@@ -1662,15 +1663,15 @@ begin
     for iCount := 1 to Min( aAmount, 20 ) do
     begin
       repeat
-        case Random(5) of
+        case IO.VisualRNG.RLongInt( 5 ) of
           0..1 : iCoord := FPosition;
           2..3 : iCoord := FPosition + aFrom;
-          4    : iCoord := FPosition + NewCoord2D( Random(3)-1, Random(3)-1);
+          4    : iCoord := FPosition + NewCoord2D( IO.VisualRNG.RLongInt( 3 ) - 1, IO.VisualRNG.RLongInt( 3 ) - 1 );
         end;
       until iLevel.isProperCoord( iCoord );
       iLevel.Blood( iCoord );
     end;
-  iAmount := Clamp( aAmount + Random( aAmount ), 1, 12 );
+  iAmount := Clamp( aAmount + IO.VisualRNG.RLongInt( aAmount ), 1, 12 );
   if GraphicsVersion and ( not IsPlayer ) and isVisible and ( HARDEMITTER_BLOOD <> 0 ) then
   begin
     iParticleAmount := iAmount * 2;
@@ -1709,8 +1710,8 @@ var iCount    : Integer;
   function RandomNorm : Single;
   var iU1, iU2 : Single;
   begin
-    repeat iU1 := Random until iU1 <> 0.0;
-    iU2 := Random;
+    repeat iU1 := IO.VisualRNG.RFloat until iU1 <> 0.0;
+    iU2 := IO.VisualRNG.RFloat;
     RandomNorm := Sqrt( -2.0 * Ln( iU1 ) ) * Cos( 2.0 * Pi * iU2 );
   end;
 
@@ -1736,9 +1737,9 @@ var iCount    : Integer;
       if not iLevel.isProperCoord( aCoord ) then Exit( 0 );
       iCell := Cells[ iLevel.CellBottom[ aCoord ] ];
       if ( CF_BLOCKMOVE in iCell.Flags ) then Exit( 0 );
-      Exit( HARDSPRITE_DECAL_WALL_BLOOD[1+Random(3)] );
+      Exit( HARDSPRITE_DECAL_WALL_BLOOD[1 + IO.VisualRNG.RLongInt( 3 )] );
     end;
-    Exit( HARDSPRITE_DECAL_BLOOD[1+Random(3)] );
+    Exit( HARDSPRITE_DECAL_BLOOD[1 + IO.VisualRNG.RLongInt( 3 )] );
   end;
 
 begin
@@ -1845,9 +1846,9 @@ begin
   end;
 
   if aOverkill then
-    playSound( 'gib', Random(400) )
+    playSound( 'gib', IO.VisualRNG.RLongInt( 400 ) )
   else
-    playSound( 'die', Random(400) );
+    playSound( 'die', IO.VisualRNG.RLongInt( 400 ) );
 
   IO.addKillAnimation( 400, aDelay, Self );
 
@@ -1872,7 +1873,7 @@ begin
     if BF_MAXDAMAGE in FFlags then
       iDamage += Max( (FStrength + 1) * 3, 1 )
     else
-      iDamage += Max( Dice( FStrength + 1, 3 ), 1 );
+      iDamage += Max( DRL.GameRNG.Dice( FStrength + 1, 3 ), 1 );
   end;
 
   if aWeapon <> nil 
@@ -1927,6 +1928,7 @@ begin
   end;
   if iLevel.isAlive( iUID ) then
   begin
+    FMeleeAttack := False;
     if Result and aMoveOnKill and ( iPosition = Position ) and ( TryMove( aWhere ) = MoveOk ) then
       ActionMove( aWhere, 1.0, 0 )
     else
@@ -2054,7 +2056,8 @@ begin
 
   // Dualblade attack
   if iDualAttack and (not aSecond) and (not Result) then
-    Exit( Attack( aTarget, True ) );
+    Result := Attack( aTarget, True );
+  if UIDs[ iUID ] <> nil then FMeleeAttack := False;
 end;
 
 function TBeing.meleeWeaponSlot: TEqSlot;
@@ -2245,7 +2248,7 @@ begin
 
   if aDamageType <> Damage_IgnoreArmor then
   begin
-    if (BF_HARDY in FFlags) and (aDamage <= iArmorValue) and (Random(2) = 1) then Exit;
+    if (BF_HARDY in FFlags) and (aDamage <= iArmorValue) and (DRL.GameRNG.RLongInt( 2 ) = 1) then Exit;
     aDamage := Max( 1, aDamage - iArmorValue );
   end;
 
@@ -2399,7 +2402,7 @@ begin
     iAimedBeing := iLevel.Being[ aTarget ];
   end;
   if iBeing <> nil then
-    if Random(100) <= getStrayChance( iBeing, aItem ) then
+    if DRL.GameRNG.RLongInt( 100 ) <= getStrayChance( iBeing, aItem ) then
     begin
       if iBeing.FLastPos.X = 1 then iBeing.FLastPos := iBeing.FPosition;
       aTarget := iBeing.FLastPos;
@@ -2407,8 +2410,8 @@ begin
     end;
       
   case aItem.MisColor of
-    MULTIYELLOW : case Random(3) of 0 : iColor := LightGreen; 1 : iColor := White;  2 : iColor := Yellow; end;
-    MULTIBLUE   : case Random(3) of 0 : iColor := LightBlue;  1 : iColor := White;  2 : iColor := Blue;   end;
+    MULTIYELLOW : case IO.VisualRNG.RLongInt( 3 ) of 0 : iColor := LightGreen; 1 : iColor := White;  2 : iColor := Yellow; end;
+    MULTIBLUE   : case IO.VisualRNG.RLongInt( 3 ) of 0 : iColor := LightBlue;  1 : iColor := White;  2 : iColor := Blue;   end;
   else
     iColor := aItem.MisColor;
   end;
@@ -2457,6 +2460,10 @@ begin
     iCoord := iMisslePath.Current;
     iSteps := Distance (iStart.x, iStart.y, iCoord.x, iCoord.y);
 
+    if ( not aItem.Flags[ IF_INSTANTHIT ] )
+      and iMisslePath.Done
+      and ( iCoord = iOldCoord ) then Break;
+
     if not iLevel.isProperCoord( iCoord ) then Break;
 
     if not iLevel.isShotPassable( iCoord ) then
@@ -2477,7 +2484,7 @@ begin
         end;
       end;
 
-      if ( iCoverValue >= 10 ) or ( Random(10) < iCoverValue ) then
+      if ( iCoverValue >= 10 ) or ( DRL.GameRNG.RLongInt( 10 ) < iCoverValue ) then
       begin
         if (iAimedBeing = Player) and (iDodged) then IO.Msg('You dodge!');
 
@@ -2511,12 +2518,12 @@ begin
         iIsHit := True;
 
       if iIsHit and ( ( not isEyeContact( iBeing ) ) or ( BF_BLINDFIRE in FFlags ) ) and ( not aItem.Flags[ IF_UNSEENHIT ] ) then
-        iIsHit := (Random(10) > 4);
+        iIsHit := (DRL.GameRNG.RLongInt( 10 ) > 4);
 
       if iIsHit and ( iBeing <> iAimedBeing ) then
         if ( isPlayer and iBeing.Flags[ BF_FRIENDLY ] ) or
           ( Flags[ BF_FRIENDLY ] and iBeing.IsPlayer ) then
-           if Random( 3 ) > 0 then
+           if DRL.GameRNG.RLongInt( 3 ) > 0 then
              iIsHit := False;
 
       if iIsHit then
@@ -2958,12 +2965,30 @@ begin
 end;
 
 function lua_being_apply_damage(L: Plua_State): Integer; cdecl;
-var State       : TDRLLuaState;
-    Being       : TBeing;
+var State             : TDRLLuaState;
+    Being             : TBeing;
+    iSource           : TItem;
+    iKilledBy         : AnsiString;
+    iPreviousKilledBy : AnsiString;
+    iPreviousMelee    : Boolean;
 begin
   State.Init(L);
   Being := State.ToObject(1) as TBeing;
-  Being.ApplyDamage(State.ToInteger(2),TBodyTarget( State.ToInteger(3) ), TDamageType( State.ToInteger(4,Byte(Damage_Bullet)) ), State.ToObjectOrNil(2) as TItem, 0 );
+  iSource := State.ToObjectOrNil(5) as TItem;
+  iKilledBy := '';
+  if State.IsString(5) then
+  begin
+    iKilledBy := State.ToString(5);
+    if iKilledBy <> '' then
+    begin
+      iPreviousKilledBy := Player.KilledBy;
+      iPreviousMelee    := Player.KilledMelee;
+      Player.SetKilledBy( iKilledBy, False );
+    end;
+  end;
+  Being.ApplyDamage(State.ToInteger(2),TBodyTarget( State.ToInteger(3) ), TDamageType( State.ToInteger(4,Byte(Damage_Bullet)) ), iSource, 0 );
+  if (iKilledBy <> '') and (DRL.State = DSPlaying) then
+    Player.SetKilledBy( iPreviousKilledBy, iPreviousMelee );
   Result := 0;
 end;
 
@@ -3429,6 +3454,19 @@ begin
   Result := 0;
 end;
 
+function lua_being_set_glow(L: Plua_State): Integer; cdecl;
+var iState : TDRLLuaState;
+    iBeing : TBeing;
+begin
+  iState.Init(L);
+  iBeing := iState.ToObject(1) as TBeing;
+  if iState.IsNil(2) then
+    iBeing.FSprite.GlowColor := ColorBlack
+  else
+    iBeing.FSprite.GlowColor := NewColor( iState.ToVec4f(2) );
+  Result := 0;
+end;
+
 function lua_being_set_sprite(L: Plua_State): Integer; cdecl;
 var iState : TDRLLuaState;
     iBeing : TBeing;
@@ -3607,7 +3645,7 @@ begin
   Result := 1;
 end;
 
-const lua_being_lib : array[0..40] of luaL_Reg = (
+const lua_being_lib : array[0..41] of luaL_Reg = (
       ( name : 'new';           func : @lua_being_new),
       ( name : 'kill';          func : @lua_being_kill),
       ( name : 'resurrect';     func : @lua_being_resurrect),
@@ -3641,6 +3679,7 @@ const lua_being_lib : array[0..40] of luaL_Reg = (
 
       ( name : 'set_overlay';     func : @lua_being_set_overlay),
       ( name : 'set_coscolor';    func : @lua_being_set_coscolor),
+      ( name : 'set_glow';        func : @lua_being_set_glow),
       ( name : 'set_sprite';      func : @lua_being_set_sprite),
       ( name : 'get_auto_target'; func : @lua_being_get_auto_target),
       ( name : 'get_tohit';       func : @lua_being_get_tohit),

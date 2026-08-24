@@ -135,7 +135,8 @@ implementation
 
 uses vmath, viotypes, vvision, vgl3library, vuid,
      drlio, drlgfxio, drlbase,
-     dfmap, dfthing, dfitem, dfplayer, drlmarkers, drldecals;
+     dfmap, dfthing, dfitem, dfplayer, drlcontrollerbindings,
+     drlmarkers, drldecals;
 
 function SpritePartSetFill( aPart : TSpritePart ) : TSpritePartSet;
 begin
@@ -425,7 +426,7 @@ begin
   MarkerSprite.SpriteID[0] := HARDSPRITE_HIGHLIGHT;
   MarkerSprite.Color := ColorBlack;
   MarkerSprite.Color.A := 127;
-  if IO.GetPadRTrigger or IO.Targeting then
+  if IO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT ) or IO.Targeting then
   begin
     MarkerSprite.Color.R := Floor(50*(Sin( FFluidTime*50 )+1)+100);
     MarkerSprite.Color.G := MarkerSprite.Color.R;

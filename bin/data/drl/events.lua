@@ -6,8 +6,8 @@ function drl.register_events()
 		name   = "Frozen Hell",
 		desc   = "The walls of this level have turned to ice.",
 		color  = LIGHTCYAN,
-		min_dlevel = 16,
-		weight     = 2,
+		min_lev = 16,
+		weight  = 2,
 		tags   = { "event" },
 
 		OnAdd = function( self )
@@ -31,8 +31,8 @@ function drl.register_events()
 		name   = "Bulwark",
 		desc   = "The walls on this level are reinforced and cannot be destroyed.",
 		color  = BROWN,
-		min_dlevel = 8,
-		weight     = 4,
+		min_lev = 8,
+		weight  = 4,
 		tags   = { "event", "perma" },
 
 		OnAdd = function( self )
@@ -48,8 +48,8 @@ function drl.register_events()
 		name   = "Alarm",
 		desc   = "An alarm has been triggered, all enemies are hunting you.",
 		color  = YELLOW,
-		min_dlevel = 8,
-		weight     = 2,
+		min_lev = 8,
+		weight  = 2,
 		tags   = { "event", "enemy" },
 
 		OnAdd = function( self )
@@ -65,9 +65,9 @@ function drl.register_events()
 		name   = "Deadly Air",
 		desc   = "The atmosphere is toxic, dealing damage over time to beings with more than 25% health.",
 		color  = LIGHTRED,
-		min_dlevel = 16,
+		min_lev = 16,
 		min_diff   = 2,
-		weight     = 2,
+		weight  = 2,
 		tags   = { "event", "damage" },
 
 		OnAdd = function( self )
@@ -100,9 +100,9 @@ function drl.register_events()
 		name   = "Armed Nuke",
 		desc   = "A thermonuclear bomb has been deployed on this level.",
 		color  = RED,
-		min_dlevel = 16,
+		min_lev = 16,
 		min_diff   = 2,
-		weight     = 2,
+		weight  = 2,
 		tags   = { "event", "nuke" },
 
 		OnAdd = function( self )
@@ -120,8 +120,8 @@ function drl.register_events()
 		name   = "Acid Flood",
 		desc   = "Acid is flooding the level from one side.",
 		color  = GREEN,
-		min_dlevel = 8,
-		weight     = 1,
+		min_lev = 8,
+		weight  = 1,
 		tags   = { "event", "flood", "damage" },
 
 		OnAdd = function( self )
@@ -146,9 +146,9 @@ function drl.register_events()
 		name   = "Lava Flood",
 		desc   = "Lava is flooding the level from one side.",
 		color  = RED,
-		min_dlevel = 17,
+		min_lev = 17,
 		min_diff   = 3,
-		weight     = 4,
+		weight  = 4,
 		tags   = { "event", "flood", "damage" },
 
 		OnAdd = function( self )
@@ -174,9 +174,9 @@ function drl.register_events()
 		name   = "Blood Flood",
 		desc   = "Blood is flooding the level from one side.",
 		color  = RED,
-		min_dlevel = 20,
+		min_lev = 20,
 		min_diff   = 4,
-		weight     = 3,
+		weight  = 3,
 		tags   = { "event", "flood", "damage" },
 
 		OnAdd = function( self )
@@ -202,9 +202,9 @@ function drl.register_events()
 		name   = "Targeted",
 		desc   = "Enemies periodically teleport towards your position.",
 		color  = MAGENTA,
-		min_dlevel = 17,
+		min_lev = 17,
 		min_diff   = 3,
-		weight     = 2,
+		weight  = 2,
 		tags   = { "event", "enemy" },
 
 		OnAdd = function( self )
@@ -253,9 +253,9 @@ function drl.register_events()
 		name   = "Bombardment",
 		desc   = "The level is being bombarded with hellish mortars.",
 		color  = LIGHTRED,
-		min_dlevel = 18,
+		min_lev = 18,
 		min_diff   = 2,
-		weight     = 1,
+		weight  = 1,
 		tags   = { "event", "explosion", "damage" },
 
 		OnAdd = function( self )
@@ -281,9 +281,9 @@ function drl.register_events()
 		name   = "Lava Bombardment",
 		desc   = "The level is being bombarded with napalm.",
 		color  = RED,
-		min_dlevel = 25,
+		min_lev = 25,
 		min_diff   = 3,
-		weight     = 1,
+		weight  = 1,
 		tags   = { "event", "explosion", "damage" },
 
 		OnAdd = function( self )
@@ -309,9 +309,9 @@ function drl.register_events()
 		name   = "Pitch Black",
 		desc   = "This floor is shrouded in darkness, reducing vision.",
 		color  = DARKGRAY,
-		min_dlevel = 9,
+		min_lev = 9,
 		min_diff   = 2,
-		weight     = 2,
+		weight  = 2,
 		tags   = { "event", "vision" },
 
 		OnAdd = function( self )

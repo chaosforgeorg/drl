@@ -50,10 +50,15 @@ private
   FCoreModuleID  : Ansistring;
   FModString     : Ansistring;
 private
-  function ReadMetaFromModule( aLua : TLua; aOverride : Boolean ) : TDRLModule;
+  function ReadMetaFromModule( aLua : TLua; aOverride : Boolean;
+    const aExpectedID : AnsiString = '';
+    aRequired : Boolean = False ) : TDRLModule;
   procedure ReadMetaFromWAD( aLua : TLua; const aPath : Ansistring; aOverride : Boolean = True );
-  procedure ReadMetaFromFolder( aLua : TLua; const aPath : Ansistring; aOverride : Boolean = True );
+  procedure ReadMetaFromFolder( aLua : TLua; const aPath : Ansistring;
+    aOverride : Boolean = True; const aExpectedID : AnsiString = '';
+    aRequired : Boolean = False );
   procedure ReadMetaFromSteamFolder( aLua : TLua; const aPath : Ansistring );
+  procedure ScanExternalModules( aLua : TLua );
 public
   property ActiveModules : TModuleList read FActiveModules;
   property CoreModules   : TModuleList read FCoreModules;
@@ -66,7 +71,7 @@ var Modules : TDRLModules;
 
 implementation
 
-uses sysutils, vluatable, vdf, vstoreinterface, dfdata;
+uses sysutils, variants, vluatable, vdf, vstoreinterface, dfdata;
 
 function DRLModuleCompare( const A, B : TDRLModule ) : Integer;
 begin
@@ -117,6 +122,8 @@ begin
       until FindNext(iInfo) <> 0;
     end;
     FindClose(iInfo);
+
+    ScanExternalModules( iLua );
 
     iStore := TStoreInterface.Get;
     if iStore.IsSteam and iStore.IsInitialized then
@@ -191,7 +198,9 @@ begin
   Log( 'mod_string generated "%s"', [ FModString ] );
 end;
 
-function TDRLModules.ReadMetaFromModule( aLua : TLua; aOverride : Boolean ) : TDRLModule;
+function TDRLModules.ReadMetaFromModule( aLua : TLua; aOverride : Boolean;
+  const aExpectedID : AnsiString = '';
+  aRequired : Boolean = False ) : TDRLModule;
 var iModule : TDRLModule;
     i       : Integer;
 begin
@@ -211,6 +220,11 @@ begin
       iModule.SaveAgnostic := GetBoolean( 'save_agnostic', False );
       iModule.IsBase       := GetBoolean( 'is_base', False );
       iModule.Hooks        := [];
+      if ( aExpectedID <> '' ) and ( iModule.ID <> aExpectedID ) then
+        raise Exception.CreateFmt(
+          'External module mapping "%s" declares module "%s"',
+          [ aExpectedID, iModule.ID ]
+        );
     finally
       Free;
     end;
@@ -218,6 +232,7 @@ begin
     begin
       Log( LOGERROR, 'error while loading module "%s"...', [iModule.ID] );
       FreeAndNil( iModule );
+      if aRequired then raise;
       Exit( nil );
     end;
   end;
@@ -269,19 +284,70 @@ begin
   end;
 end;
 
-procedure TDRLModules.ReadMetaFromFolder( aLua : TLua; const aPath : Ansistring; aOverride : Boolean = True );
+procedure TDRLModules.ReadMetaFromFolder( aLua : TLua;
+  const aPath : Ansistring; aOverride : Boolean = True;
+  const aExpectedID : AnsiString = ''; aRequired : Boolean = False );
 var iModule : TDRLModule;
 begin
   Log( LOGINFO, 'found module "%s"...', [aPath] );
   if FileExists( aPath + 'meta.lua' ) then
   begin
+    if aRequired then aLua.Register( 'meta', Null );
     aLua.LoadFile( aPath + 'meta.lua' );
-    iModule := ReadMetaFromModule( aLua, aOverride );
+    iModule := ReadMetaFromModule(
+      aLua, aOverride, aExpectedID, aRequired
+    );
     if iModule <> nil then
     begin
       iModule.Path   := aPath;
       iModule.Source := DRLMSOURCE;
     end;
+  end;
+end;
+
+procedure TDRLModules.ScanExternalModules( aLua : TLua );
+var iManifestPath : AnsiString;
+    iModuleID     : AnsiString;
+    iPath         : AnsiString;
+    iPaths        : TLuaTable;
+    iPair         : TLuaValuePair;
+
+  procedure MalformedEntry;
+  begin
+    raise Exception.CreateFmt(
+      'Malformed module_paths entry %s', [ iModuleID ]
+    );
+  end;
+begin
+  iManifestPath := DataPath + 'modules.local.lua';
+  if not FileExists( iManifestPath ) then Exit;
+
+  aLua.Register( 'module_paths', Null );
+  aLua.LoadFile( iManifestPath );
+  iPaths := TLuaTable.Create( aLua.NativeState, 'module_paths' );
+  try
+    for iPair in iPaths.Pairs do
+    begin
+      if not iPair.Key.IsString then Continue;
+      iModuleID := iPair.Key.ToString;
+      if Trim( iModuleID ) = '' then Continue;
+
+      if not iPair.Value.IsString then MalformedEntry;
+      iPath := Trim( iPair.Value.ToString );
+      if iPath = '' then MalformedEntry;
+      iPath := IncludeTrailingPathDelimiter( ExpandFileName( iPath ) );
+
+      if ( not DirectoryExists( iPath ) )
+      or ( not FileExists( iPath + 'meta.lua' ) ) then
+        MalformedEntry;
+      try
+        ReadMetaFromFolder( aLua, iPath, True, iModuleID, True );
+      except
+        MalformedEntry;
+      end;
+    end;
+  finally
+    iPaths.Free;
   end;
 end;
 

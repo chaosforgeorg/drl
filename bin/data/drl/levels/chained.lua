@@ -55,7 +55,7 @@ register_level "the_chained_court"
 					for b in level:beings() do
 						if not b:is_player() and b:is_visible() then
 							level:explosion( b.position, { range = 1, delay = 50, color = YELLOW, sound_id = "arch.fire", damage_type = DAMAGE_FIRE }, self )
-							b:apply_damage( 15, TARGET_INTERNAL, DAMAGE_FIRE, self )
+							b:apply_damage( 15, TARGET_INTERNAL, DAMAGE_FIRE, nil )
 						end
 					end
 					being.scount = being.scount - 1000
@@ -299,13 +299,15 @@ register_level "the_chained_court"
 
 		generator.place_tile( translation, map, 2, 2 )
 		generator.set_permanence( area.FULL )
+		local player_pos
 		if level.status == 0 then
-			level:player(52,10)
+			player_pos = coord( 52,10 )
 			generator.set_permanence( area(50,7,59,14), false )
 		else
-			level:player(38,10)
+			player_pos = coord( 38,10 )
 			generator.set_permanence( area(34,4,43,17), false )
 		end
+		level:drop_being( player, player_pos )
 	end,
 	OnKillAll = function ()
 		if level.status == 0 then

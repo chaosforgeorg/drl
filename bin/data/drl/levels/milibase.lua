@@ -67,7 +67,7 @@ register_level "military_base"
 
 		--generator.set_permanence( area.FULL )
 
-		level:player(38,19)
+		level:drop_being( player, coord( 38,19 ) )
 	end,
 
 	OnKillAll = function ()

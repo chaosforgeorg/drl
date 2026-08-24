@@ -17,7 +17,11 @@
 		},
 		{
 			"path": "../fpcvalkyrie/scripts"
-		}
+		},
+		{
+			"path": "..\\jhc",
+			"name": "jhc"
+		},
 	],
 	"settings": {}
 }

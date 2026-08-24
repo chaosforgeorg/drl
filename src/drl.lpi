@@ -17,8 +17,7 @@
       <Icon Value="0"/>
     </General>
     <VersionInfo>
-      <UseVersionInfo Value="True"/>
-      <MinorVersionNr Value="10"/>
+      <UseVersionInfo Value="False"/>
       <CharSet Value="0000"/>
       <StringTable CompanyName="ChaosForge" FileDescription="DRL" LegalCopyright="(c) 2002-2025 by Kornel Kisielewicz" ProductName="DRL"/>
     </VersionInfo>

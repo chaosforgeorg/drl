@@ -434,7 +434,7 @@ function drl.register_cells()
 				end
 			end
 			if fully_resisted then damage = 0 end
-			being:apply_damage(damage,TARGET_FEET,DAMAGE_ACID)
+			being:apply_damage(damage,TARGET_FEET,DAMAGE_ACID,"acid")
 		end,
 
 		OnHazardQuery = function( being )
@@ -468,7 +468,7 @@ function drl.register_cells()
 				end
 			end
 			if fully_resisted then damage = 0 end
-			being:apply_damage(damage,TARGET_FEET,DAMAGE_FIRE)
+			being:apply_damage(damage,TARGET_FEET,DAMAGE_FIRE,"lava")
 		end,
 
 		OnHazardQuery = function( being )
@@ -502,7 +502,7 @@ function drl.register_cells()
 				end
 			end
 			if fully_resisted then damage = 0 end
-			being:apply_damage( damage, TARGET_FEET, DAMAGE_PLASMA )
+			being:apply_damage( damage, TARGET_FEET, DAMAGE_PLASMA, "blood" )
 		end,
 
 		OnHazardQuery = function( being )

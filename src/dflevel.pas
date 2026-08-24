@@ -127,6 +127,7 @@ TLevel = class(TLuaMapNode, ITextMap)
 
     function HasHook( aHook : Word ) : Boolean; override;
     function GetPerkList : TPerkList;
+    function GetPerkShort( aID : Integer ) : AnsiString;
 
   private
     function CellToID( const aCell : Byte ) : AnsiString; override;
@@ -212,9 +213,6 @@ type TProcessedUIDList = specialize TGArray<TUID>;
 
 procedure TLevel.ScriptLevel(script : string);
 begin
-  LuaPlayerX := 2;
-  LuaPlayerY := 2;
-
   with LuaSystem.GetTable( ['levels', script] ) do
   try
     FID := Script;
@@ -231,8 +229,6 @@ begin
     FAbbr   := GetString( 'abbr','' );
     if FSName = '' then FSName := FName;
     Call('Create',[]);
-    if ( LuaPlayerX > 0 ) and ( LuaPlayerY > 0 ) then
-      Place( Player, DropCoord( NewCoord2D(LuaPlayerX,LuaPlayerY), [ EF_NOBEINGS ], False ) );
     Include( FFlags, LF_SCRIPT );
   finally
     Free;
@@ -248,7 +244,7 @@ var iCount : Word;
 begin
   iCount := 0;
   repeat
-    RandomCoord := FArea.RandomInnerCoord();
+    RandomCoord := FArea.RandomInnerCoord( DRL.GameRNG );
     Inc( iCount );
   until isEmpty( RandomCoord, EmptyFlags ) or ( iCount > LIMES );
   if ( iCount > LIMES ) then raise EPlacementException.Create('');
@@ -531,6 +527,8 @@ var x,y         : Integer;
     iFloorCell  : Integer;
     iFloorStyle : Byte;
 begin
+  Player.Detach; // guarantee invariant
+  LuaSystem.State.ClearLuaProperties( Self );
   FActiveBeing := nil;
   FNextNode    := nil;
 
@@ -760,7 +758,7 @@ function TLevel.BeingExplored( coord: TCoord2D; aBeing: TBeing ) : boolean;
 begin
   if aBeing = nil then Exit(False);
   if Player.Flags[ BF_DARKNESS ] and not isVisible( coord ) then Exit(False);
-  Exit(LF_BEINGSVISIBLE in FFlags);
+  Exit(aBeing.Flags[ BF_VISIBLE ] or (LF_BEINGSVISIBLE in FFlags));
 end;
 
 function TLevel.BeingIntuited( coord: TCoord2D; aBeing: TBeing ) : boolean;
@@ -774,7 +772,7 @@ begin
    if aBeing = nil then Exit(False);
    if isVisible( aCoord ) then Exit( True );
    if Player.Flags[ BF_DARKNESS ] then Exit(False);
-   Exit(LF_BEINGSVISIBLE in FFlags);
+   Exit(aBeing.Flags[ BF_VISIBLE ] or (LF_BEINGSVISIBLE in FFlags));
 end;
 
 {$IFDEF CORNERMAP}
@@ -820,6 +818,11 @@ end;
 function TLevel.GetPerkList : TPerkList;
 begin
   Exit( FPerks.List );
+end;
+
+function TLevel.GetPerkShort( aID : Integer ) : AnsiString;
+begin
+  Exit( FPerks.GetShort( aID ) );
 end;
 
 procedure TLevel.CallHook( aHook : Byte; const aParams : array of const ) ;
@@ -920,13 +923,13 @@ begin
   inherited Destroy;
 end;
 
-function TLevel.DropItem( aItem : TItem; aCoord : TCoord2D; aNoHazard : Boolean; aDropAnim : Boolean ) : boolean;
+function TLevel.DropItem( aItem : TItem; aCoord : TCoord2D; aNoHazard : Boolean; aDropAnim : Boolean ) : Boolean;
 begin
   DropItem := true;
   if aItem = nil then Exit;
   if aNoHazard
-    then aCoord := DropCoord( aCoord, [ EF_NOITEMS,EF_NOBLOCK,EF_NOHARM,EF_NOSTAIRS ], True )
-    else aCoord := DropCoord( aCoord, [ EF_NOITEMS,EF_NOBLOCK,EF_NOSTAIRS ], True );
+    then aCoord := DropCoord( DRL.GameRNG, aCoord, [ EF_NOITEMS,EF_NOBLOCK,EF_NOHARM,EF_NOSTAIRS ], True )
+    else aCoord := DropCoord( DRL.GameRNG, aCoord, [ EF_NOITEMS,EF_NOBLOCK,EF_NOSTAIRS ], True );
 
   aItem.CallHook( Hook_OnDrop, [aItem.Parent] );
   if (aItem.Parent <> nil) and (aItem.Parent is TBeing) then
@@ -949,7 +952,7 @@ begin
   if aBeing.Flags[ BF_FLY ]
     then iBlockFlag := EF_NOBLOCKFLY
     else iBlockFlag := EF_NOBLOCK;
-  aCoord := DropCoord( aCoord, [ EF_NOTELE,EF_NOBEINGS,iBlockFlag,EF_NOSTAIRS ], False );
+  aCoord := DropCoord( DRL.GameRNG, aCoord, [ EF_NOTELE,EF_NOBEINGS,iBlockFlag,EF_NOSTAIRS ], False );
   Add( aBeing, aCoord );
   if ( not aBeing.IsPlayer ) and ( not aBeing.Flags[ BF_FRIENDLY ] ) and ( not aBeing.Flags[ BF_ILLUSION ] ) and ( not aBeing.Flags[ BF_NOKILL ] ) then
   begin
@@ -1041,7 +1044,7 @@ begin
       if Distance( iC, aCoord ) <= aData.Range then
         begin
           if not ShotContact( iC ) then Continue;
-          iDamage   := aData.Damage.Roll;
+          iDamage   := aData.Damage.Roll( DRL.GameRNG );
           iDistance := Distance( iC, aCoord );
           iPointDelay := aDelay + iDistance * aData.Delay;
           if not (efNoDistanceDrop in aData.Flags) then
@@ -1085,7 +1088,7 @@ begin
           end;
           if (aData.ContentID <> 0) and isEmpty( iC, [ EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM ] ) then
           begin
-            if (iDamage > 20) or ((efRandomContent in aData.Flags) and (Random(2) = 1)) then
+            if (iDamage > 20) or ((efRandomContent in aData.Flags) and (DRL.GameRNG.RLongInt( 2 ) = 1)) then
               Cell[iC] := aData.ContentID;
           end;
         end;
@@ -1151,7 +1154,7 @@ begin
     for iTC in FArea do
       if LightFlag[ iTC, lfDamage ] then
       begin
-        iDmg := Round( aDamage.Roll * (1.0-0.01*iFalloff*Max(0,Distance( aSource, iTC )-1)) );
+        iDmg := Round( aDamage.Roll( DRL.GameRNG ) * (1.0-0.01*iFalloff*Max(0,Distance( aSource, iTC )-1)) );
         iDmg := Math.Floor( iDmg * aDamageMul );
 
         if iDmg < 1 then iDmg := 1;
@@ -1202,7 +1205,7 @@ begin
       if cellFlagSet( iCoord, CF_RAISABLE ) then
         if not isVisible( iCoord ) then
           if isPassable( iCoord ) then
-            if Random(100) < aChance then
+            if DRL.GameRNG.RLongInt( 100 ) < aChance then
               Respawn( iCoord );
 end;
 
@@ -1367,7 +1370,7 @@ begin
     if LF_RESPAWN in FFlags  then
     begin
       if FLTime mod 100 = 0 then
-        if ((FLTime div 100)+20) > DWord(Random(100)) then
+        if ((FLTime div 100)+20) > DWord( DRL.GameRNG.RLongInt( 100 ) ) then
           Respawn( Min( (FLTime div 1000) + 10, 100 ) );
     end;
 
@@ -1734,24 +1737,27 @@ begin
 end;
 
 function lua_level_drop_being(L: Plua_State): Integer; cdecl;
-var State  : TDRLLuaState;
-    iBeing : TBeing;
-    Level  : TLevel;
+var iState   : TDRLLuaState;
+    iBeing   : TBeing;
+    iLevel   : TLevel;
+    iRespawn : Boolean;
 begin
-  State.Init(L);
-  Level := State.ToObject(1) as TLevel;
-  if State.IsNil(3) then Exit(0);
+  iState.Init(L);
+  iLevel := iState.ToObject(1) as TLevel;
+  if iState.IsNil(3) then Exit(0);
   try
-    if State.IsTable(2)
-      then iBeing := State.ToObject(2) as TBeing
-      else iBeing := TBeing.Create( State.ToId(2) );
-    Level.DropBeing( iBeing, State.ToCoord(3) );
-    State.Push( iBeing );
+    iRespawn := iState.ToBoolean( 4, False );
+    if iState.IsTable(2)
+      then iBeing := iState.ToObject(2) as TBeing
+      else iBeing := TBeing.Create( iState.ToId(2) );
+    if iRespawn then iBeing.Flags[ BF_RESPAWN ] := True;
+    iLevel.DropBeing( iBeing, iState.ToCoord(3) );
+    iState.Push( iBeing );
   except
     on EPlacementException do
     begin
       FreeAndNil( iBeing );
-      State.PushNil();
+      iState.PushNil();
     end;
   end;
   Result := 1;
@@ -1781,16 +1787,6 @@ begin
   Result := 1;
 end;
 
-function lua_level_player(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
-begin
-  State.Init(L);
-  if State.StackSize < 3 then Exit(0);
-  LuaPlayerX := State.ToInteger(2);
-  LuaPlayerY := State.ToInteger(3);
-  Result := 0;
-end;
-
 function lua_level_play_sound(L: Plua_State): Integer; cdecl;
 var iState : TDRLLuaState;
     iLevel : TLevel;
@@ -1815,35 +1811,61 @@ end;
 
 
 function lua_level_explosion(L: Plua_State): Integer; cdecl;
-var iState   : TDRLLuaState;
-    iLevel   : TLevel;
-    iData    : TExplosionData;
-    iTable   : TLuaTable;
+var iState            : TDRLLuaState;
+    iLevel            : TLevel;
+    iData             : TExplosionData;
+    iTable            : TLuaTable;
+    iSource           : TItem;
+    iKilledBy         : AnsiString;
+    iPreviousKilledBy : AnsiString;
+    iPreviousMelee    : Boolean;
+    iDelay            : Integer;
+    iTableIndex       : Integer;
+    iSourceIndex      : Integer;
 begin
   iState.Init(L);
   iLevel := iState.ToObject(1) as TLevel;
   Log( iState.ToPosition(2).ToString );
   if iState.IsNil(2) then Exit(0);
-  if iState.IsTable(3) or iState.IsTable(4) then
+
+  if iState.IsTable(3) then
   begin
-    if iState.IsTable(3) then
-    begin
-      iTable := iState.ToTable( 3 );
-      Initialize( iData );
-      ReadExplosion( iTable, iData );
-      iTable.Free;
-      iLevel.Explosion( 0, iState.ToPosition(2), iData, iState.ToObjectOrNil(4) as TItem, NewDirection(0) );
-    end
-    else
-    begin
-      iTable := iState.ToTable( 4 );
-      ReadExplosion( iTable, iData );
-      iTable.Free;
-      iLevel.Explosion( iState.ToInteger(3), iState.ToPosition(2), iData, iState.ToObjectOrNil(5) as TItem, NewDirection(0) );
-    end;
+    iDelay       := 0;
+    iTableIndex  := 3;
+    iSourceIndex := 4;
+  end
+  else if iState.IsTable(4) then
+  begin
+    iDelay       := iState.ToInteger(3);
+    iTableIndex  := 4;
+    iSourceIndex := 5;
   end
   else
+  begin
     iState.Error('Malformed level:explosion!');
+    Exit(0);
+  end;
+
+  iTable := iState.ToTable( iTableIndex );
+  Initialize( iData );
+  ReadExplosion( iTable, iData );
+  iTable.Free;
+
+  iSource := iState.ToObjectOrNil(iSourceIndex) as TItem;
+  iKilledBy := '';
+  if iState.IsString(iSourceIndex) then
+  begin
+    iKilledBy := iState.ToString(iSourceIndex);
+    if iKilledBy <> '' then
+    begin
+      iPreviousKilledBy := Player.KilledBy;
+      iPreviousMelee    := Player.KilledMelee;
+      Player.SetKilledBy( iKilledBy, False );
+    end;
+  end;
+  iLevel.Explosion( iDelay, iState.ToPosition(2), iData, iSource, NewDirection(0) );
+  if (iKilledBy <> '') and (DRL.State = DSPlaying) then
+    Player.SetKilledBy( iPreviousKilledBy, iPreviousMelee );
   Result := 0;
 end;
 
@@ -2124,10 +2146,9 @@ begin
   Result := 1;
 end;
 
-const lua_level_lib : array[0..26] of luaL_Reg = (
+const lua_level_lib : array[0..25] of luaL_Reg = (
       ( name : 'drop_item';  func : @lua_level_drop_item),
       ( name : 'drop_being'; func : @lua_level_drop_being),
-      ( name : 'player';     func : @lua_level_player),
       ( name : 'play_sound'; func : @lua_level_play_sound),
       ( name : 'nuke';       func : @lua_level_nuke),
       ( name : 'explosion';  func : @lua_level_explosion),

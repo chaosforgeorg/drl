@@ -70,7 +70,7 @@ register_level "the_lava_pits"
 		level:summon{ "lostsoul", 14 + 2*DIFFICULTY, cell = "lava" }
 		level:summon{ second,     5  +   DIFFICULTY, cell = "lava" }
 
-		level:player(4,11)
+		level:drop_being( player, coord( 4,11 ) )
 		level.status = 0
 	end,
 

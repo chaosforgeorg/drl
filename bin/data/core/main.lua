@@ -1,3 +1,6 @@
+core.declare( "VERSION_ENGINE",      "0.10.11" )
+core.declare( "VERSION_ENGINE_SAVE", "0.10.11" )
+
 require( "core:constants" )
 require( "core:commands" )
 require( "core:functions" )
@@ -140,14 +143,6 @@ function register_klass_badge( id )
 			end
 			return ""
 		end
-		register_badge( "any_"..id )  {
-			name = b.name,
-			desc = b.desc.." as any class",
-			level = b.level,
-			set   = id,
-			klass = "any",
-			achievement = acv_id( "any" ),
-		}
 		for _,k in ipairs(klasses) do
 			if k.OnPick then
 				register_badge( k.id.."_"..id ) {
@@ -160,14 +155,6 @@ function register_klass_badge( id )
 				}
 			end
 		end
-		register_badge( "all_"..id )  {
-			name = "Master "..b.name,
-			desc = b.desc.." w/each class",
-			level = b.level,
-			set   = id,
-			klass = "all",
-			achievement = acv_id( "all" ),
-		}
 	end
 end
 
@@ -293,8 +280,17 @@ register_being         = core.register_storage( "beings", "being", function( bp 
 				end
 			end
 
+			local SafeOnAction = function( func )
+				if func == nil then return nil end
+				return function( self )
+				  if not core.is_playing() then return nil end
+				  if not self.__ptr then return nil end
+				  func( self )
+				end
+			end
+
 			bp.OnCreate   = core.create_seq_function( OnCreate, bp.OnCreate )
-			bp.OnAction   = core.create_seq_function( ai_proto.OnAction, bp.OnAction )
+			bp.OnAction   = core.create_seq_function( SafeOnAction( ai_proto.OnAction ), SafeOnAction( bp.OnAction ) )
 			bp.OnAction   = core.create_seq_function( aitk.OnAction, bp.OnAction )
 			bp.OnAttacked = core.create_seq_function( bp.OnAttacked, ai_proto.OnAttacked )
 		else

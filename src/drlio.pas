@@ -7,9 +7,10 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlio;
 interface
 uses {$IFDEF WINDOWS}Windows,{$ENDIF} Classes, SysUtils,
-     vio, vrltools, vluaconfig, vglquadrenderer, vmessages, vtextures, vtigstyle,
-     vuitypes, vluastate,  viotypes, vioevent, vioconsole, vuielement, vgenerics, vutil,
-     dfdata, dfthing, dfbeing, drlspritemap, drlaudio, drlkeybindings, drlloadingview;
+     vio, viorl, vrltools, vluaconfig, vglquadrenderer, vmessages, vtextures, vtigstyle,
+     vluastate, viotypes, vioevent, vioconsole, vgenerics, vutil,
+     dfdata, dfthing, dfbeing, drlspritemap, drlaudio, drlkeybindings,
+     drlcontrollerbindings, drlloadingview;
 
 const TIG_EV_NONE      = 0;
       //TIG_EV_DROP      = 1;
@@ -32,19 +33,18 @@ const TIG_EV_NONE      = 0;
 
       TIG_EV_RESTART   = 100;
 
-type TCommandSet = set of Byte;
-     TKeySet     = set of Byte;
-
-type TASCIIImageMap       = specialize TGObjectHashMap<TUIStringArray>;
+type TASCIIImageMap       = specialize TGObjectHashMap<TIOStringArray>;
 type TStringHashMap       = specialize TGHashMap< AnsiString >;
 
-type TDRLIO = class( TIO )
+type TDRLIO = class( TIORL )
   constructor Create; reintroduce;
   procedure Reset; virtual;
+  procedure SetSeed( aCardinal : LongInt );
   procedure Initialize; virtual; abstract;
   procedure Initialize( iRenderer : TIOConsoleRenderer );
   procedure Reconfigure( aConfig : TLuaConfig ); virtual;
-  procedure Configure( aConfig : TLuaConfig; aReload : Boolean = False ); virtual;
+  procedure Configure( aConfig : TLuaConfig ); override; overload;
+  procedure Configure( aConfig : TLuaConfig; aReload : Boolean ); overload; virtual;
   procedure WaitForLayer( aHideHUD : Boolean ); reintroduce;
   procedure PreUpdate; override;
   destructor Destroy; override;
@@ -68,12 +68,11 @@ type TDRLIO = class( TIO )
 
   procedure LookDescription( aWhere : TCoord2D );
 
-  procedure Msg( const aText : AnsiString );
-  procedure Msg( const aText : AnsiString; const aParams : array of const );
+  procedure Msg( const aText : AnsiString ); override; overload;
   function  MsgGetRecent : TMessageBuffer;
   procedure MsgReset;
   // TODO: Could this be removed as well?
-  procedure MsgUpDate;
+  procedure MsgUpDate; override;
   procedure ErrorReport( const aText : AnsiString );
 
   procedure ClearAllMessages;
@@ -95,16 +94,16 @@ type TDRLIO = class( TIO )
   procedure addItemAnimation( aDuration : DWord; aDelay : DWord; aItem : TThing; aValue : Integer ); virtual;
   procedure addKillAnimation( aDuration : DWord; aDelay : DWord; aBeing : TThing; aReverse : Boolean = False ); virtual;
   procedure addMissileAnimation( aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aColor : Byte; aPic : Char; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False; aTrailNID : Word = 0 ); virtual; abstract;
-  procedure addMarkAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aColor : Byte; aPic : Char ); virtual; abstract;
+  procedure addMarkAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aColor : Byte; aPic : Char ); reintroduce; virtual; abstract;
   procedure addFXAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite ); virtual;
   procedure addParticleBurstAnimation( aDelay : DWord; aEmitterID : Word; aPosition : TCoord2D;
     aDirection : TDirection; aCount : Word; aDistanceScale, aSpreadScale : Single ); virtual;
   procedure addSoundAnimation( aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord ); virtual; abstract;
   procedure addRumbleAnimation( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord ); virtual;
-  procedure Explosion( aDelay : Integer; aWhere : TCoord2D; aData : TExplosionData ); virtual;
+  procedure Explosion( aDelay : Integer; aWhere : TCoord2D; aData : TExplosionData ); reintroduce; virtual;
   procedure PulseBlood( aValue : Single ); virtual;
 
-  class procedure RegisterLuaAPI( State : TLuaState );
+  class procedure RegisterLuaAPI( State : TLuaState ); reintroduce;
 
   function PushLayer( aLayer : TIOLayer ) : TIOLayer; override;
   procedure PreAction;
@@ -114,8 +113,8 @@ type TDRLIO = class( TIO )
   function ShiftHeld      : Boolean;  virtual;
 
   // Gamepad
-  function GetPadLTrigger : Boolean;  virtual;
-  function GetPadRTrigger : Boolean;  virtual;
+  function ResolveControllerAction( aButton : TIOPadButton; out aAction : TControllerAction ) : Boolean;
+  function ControllerActionHeld( aAction : TControllerAction ) : Boolean;
   function GetPadLDir     : TCoord2D; virtual;
   function IsGamepad      : Boolean;  virtual;
 
@@ -139,15 +138,12 @@ protected
   procedure ColorQuery(nkey,nvalue : Variant);
   function ScreenShotCallback( aEvent : TIOEvent ) : Boolean;
   function BBScreenShotCallback( aEvent : TIOEvent ) : Boolean;
-  function Chunkify( const aString : AnsiString; aStart : Integer; aColor : TIOColor ) : TUIChunkBuffer;
 protected
   FAudio       : TDRLAudio;
-  FMessages    : TMessages;
   FTime        : QWord;
   FLoading     : TLoadingView;
   FMTarget     : TCoord2D;
   FLastTarget  : TCoord2D;
-  FKeyCode     : TIOKeyCode;
   FASCII       : TASCIIImageMap;
 
   FHudEnabled  : Boolean;
@@ -159,6 +155,9 @@ protected
   FHintTarget  : AnsiString;
   FHintStatus  : AnsiString;
   FCachedAmmo  : Integer;
+
+  FSeedHUDText   : AnsiString;
+  FSeedHUDOffset : Integer;
 
   // Textmode only
   FTargetLast     : Boolean;
@@ -192,7 +191,7 @@ procedure EmitCrashInfo( const aInfo : AnsiString; aInGame : Boolean  );
 implementation
 
 uses math, video, dateutils, variants,
-     vsound, vluasystem, vuid, vlog, vdebug, vuiconsole, vmath,
+     vsound, vluasystem, vuid, vlog, vdebug, vmath,
      vsdlio, vglconsole, vtig, vtigio, vvector,
      dflevel, dfplayer, dfitem, dfhof,
      drlconfiguration, drlbase, drlmoreview, drlchoiceview, drlua, drlmodulechoiceview,
@@ -406,7 +405,7 @@ var Pos  : array[1..80] of Byte;
 begin
   if GraphicsVersion then Exit;
   for cn := 1 to 80  do Pos[cn] := 0;
-  for cn := 1 to 160 do MoveColumn(Random(80)+1);
+  for cn := 1 to 160 do MoveColumn(VisualRNG.RLongInt(80)+1);
   t := 1;
   repeat
     Inc(t);
@@ -434,10 +433,12 @@ end;
 
 constructor TDRLIO.Create;
 begin
+  inherited Create( FIODriver, nil );
   FLoading := nil;
   FAudio    := TDRLAudio.Create;
-  FMessages := TMessages.Create( 2, 77, @IO.EventMore, Option_MessageBuffer );
+  FMessages := TMessages.Create( 2, 77, @EventMore, Option_MessageBuffer );
   FMessages.GroupMultiple := Setting_GroupMessages;
+  inherited Configure( dfdata.Config );
   FASCII    := TASCIIImageMap.Create( True );
 
   FIODriver.SetTitle('DRL','DRL');
@@ -445,7 +446,6 @@ begin
   FKeySubMap := TStringHashMap.Create;
   FPadSubMap := TStringHashMap.Create;
   FTIGDefault := VTIGDefaultStyle;
-  inherited Create( FIODriver, nil, nil );
   Reset;
 end;
 
@@ -466,6 +466,8 @@ begin
   FHint        := '';
   FHintOverlay := '';
   FHintStatus  := '';
+  FSeedHUDText   := '';
+  FSeedHUDOffset := -2;
 
   FTargetEnabled := False;
   FTargetLast    := False;
@@ -475,13 +477,12 @@ end;
 
 procedure TDRLIO.Initialize( iRenderer : TIOConsoleRenderer );
 begin
-  inherited Initialize( iRenderer, nil, True );
+  inherited Initialize( iRenderer );
   if iRenderer = nil then Exit;
   VTIG_SetSubCallback( @TIGSubCallback );
   UpdateStyles;
   iRenderer.Clear;
   iRenderer.HideCursor;
-  FUIRoot.UpdateOnRender := False;
   FullUpdate;
 end;
 
@@ -540,14 +541,20 @@ begin
   Exit( VKMOD_SHIFT in FIODriver.GetModKeyState );
 end;
 
-function TDRLIO.GetPadLTrigger : Boolean;
+function TDRLIO.ResolveControllerAction( aButton : TIOPadButton; out aAction : TControllerAction ) : Boolean;
+var iCommand : Byte;
 begin
-  Exit( False );
+  iCommand := Config.PadCommands[ aButton ];
+  if iCommand > Byte( High( TControllerAction ) ) then Exit( False );
+  aAction := TControllerAction( iCommand );
+  Exit( True );
 end;
 
-function TDRLIO.GetPadRTrigger : Boolean;
+function TDRLIO.ControllerActionHeld( aAction : TControllerAction ) : Boolean;
+var iButton : TIOPadButton;
 begin
-  Exit( False );
+  iButton := Config.GetPadButton( Byte( aAction ) );
+  Exit( ( iButton <> VPAD_BUTTON_INVALID ) and PadState.Active( iButton ) );
 end;
 
 function TDRLIO.GetPadLDir     : TCoord2D;
@@ -623,7 +630,9 @@ begin
 end;
 
 procedure TDRLIO.Reconfigure( aConfig : TLuaConfig );
-var iInput : TInputKey;
+var iInput     : TInputKey;
+    iAction    : TControllerAction;
+    iPadString : AnsiString;
     procedure CtrlAssign( aWhat : TInputKey; aFrom : TInputKey );
     var iKey : TIOKeyCode;
     begin
@@ -637,6 +646,10 @@ var iInput : TInputKey;
     begin
       iKey := Configuration.GetInteger(KeyInfo[aWhat].ID);
       Exit( IOKeyCodeToStringShort( iKey ) );
+    end;
+    function GetPadString( aWhat : TControllerAction ) : Ansistring;
+    begin
+      Exit( VPadButtonToStringShort( GetControllerButton( Configuration, aWhat ) ) );
     end;
 begin
   FAudio.Reconfigure;
@@ -656,6 +669,8 @@ begin
   CtrlAssign( INPUT_TARGETUPRIGHT,   INPUT_WALKUPRIGHT );
   CtrlAssign( INPUT_TARGETDOWNLEFT,  INPUT_WALKDOWNLEFT );
   CtrlAssign( INPUT_TARGETDOWNRIGHT, INPUT_WALKDOWNRIGHT );
+
+  ApplyControllerBindings( Configuration, aConfig );
 
   FKeySubMap.Clear;
   FKeySubMap['input_ok']        := 'Enter';
@@ -687,19 +702,34 @@ begin
   FPadSubMap['input_right']     := 'Right';
   FPadSubMap['input_up']        := 'Up';
   FPadSubMap['input_down']      := 'Down';
-  FPadSubMap['input_help']      := 'Back';
-  FPadSubMap['input_menu']      := 'Back';
-  FPadSubMap['input_fire']      := 'X';
-  FPadSubMap['input_reload']    := 'Y';
-  FPadSubMap['input_pickup']    := 'B';
-  FPadSubMap['input_action']    := 'B';
+  FPadSubMap['input_help']      := GetPadString( CONTROLLER_MENU );
+  FPadSubMap['input_menu']      := GetPadString( CONTROLLER_MENU );
+  FPadSubMap['input_fire']      := GetPadString( CONTROLLER_FIRE );
+  FPadSubMap['input_reload']    := GetPadString( CONTROLLER_RELOAD );
+  FPadSubMap['input_pickup']    := GetPadString( CONTROLLER_ACTION );
+  FPadSubMap['input_action']    := GetPadString( CONTROLLER_ACTION );
   FPadSubMap['input_pgup']      := 'PgUp';
   FPadSubMap['input_pgdn']      := 'PgDn';
-  FPadSubMap['input_inventory'] := 'Start';
+  FPadSubMap['input_inventory'] := GetPadString( CONTROLLER_PLAYER );
+
+  // Controller help remains controller-specific even when opened after a
+  // keyboard or mouse event, while fixed UI labels keep their physical map.
+  for iAction in TControllerAction do
+  begin
+    iPadString := GetPadString( iAction );
+    FKeySubMap[ ControllerBindingInfo[ iAction ].ID ] := iPadString;
+    FPadSubMap[ ControllerBindingInfo[ iAction ].ID ] := iPadString;
+  end;
+end;
+
+procedure TDRLIO.Configure( aConfig : TLuaConfig );
+begin
+  Configure( aConfig, False );
 end;
 
 procedure TDRLIO.Configure ( aConfig : TLuaConfig; aReload : Boolean ) ;
 begin
+  inherited Configure( aConfig );
   // TODO : configurable
 
   if GodMode then
@@ -725,6 +755,7 @@ end;
 
 procedure TDRLIO.PreUpdate;
 begin
+  VTIG_Clear;
   if FHudEnabled then DrawHud;
   inherited PreUpdate;
 end;
@@ -745,7 +776,6 @@ var iFName : AnsiString;
     iName  : AnsiString;
     iExt   : AnsiString;
     iCount : DWord;
-    iCon   : TUIConsole;
 begin
   if GraphicsVersion
      then iExt := '.png'
@@ -765,9 +795,9 @@ begin
   Log('Writing screenshot...: '+iFName);
   if not GraphicsVersion then
   begin
-    iCon.Init( FConsole );
+{    iCon.Init( FConsole );
     if aBB then iCon.ScreenShot(iFName,1)
-           else iCon.ScreenShot(iFName);
+           else iCon.ScreenShot(iFName);}
   end
   else
   begin
@@ -777,11 +807,24 @@ begin
              else UI.Msg('Screenshot created.');}
 end;
 
+procedure TDRLIO.SetSeed( aCardinal : LongInt );
+var iChallengeText : AnsiString;
+begin
+  FSeedHUDText := ' ' + LuaSystem.Get([ 'diff', DRL.Difficulty, 'code' ]);
+  iChallengeText := '';
+  if DRL.Challenge <> '' then
+    iChallengeText += Copy( LuaSystem.Get([ 'chal', DRL.Challenge, 'abbr' ]), 3, MaxInt );
+  if DRL.SChallenge <> '' then
+    iChallengeText += Copy( LuaSystem.Get([ 'chal', DRL.SChallenge, 'abbr' ]), 3, MaxInt );
+  if iChallengeText <> '' then FSeedHUDText += '{r' + iChallengeText + '}';
+  FSeedHUDText += IntToStr( aCardinal );
+  FSeedHUDOffset := -2-VTIG_Length( FSeedHUDText );
+end;
+
 procedure TDRLIO.DrawHud;
-var iCon        : TUIConsole;
-    iWeapon     : TItem;
+var iWeapon     : TItem;
     i           : Integer;
-    iColor      : TUIColor;
+    iColor      : TIOColor;
     iHPP        : Integer;
     iPos        : TIOPoint;
     iBottom     : Integer;
@@ -793,7 +836,7 @@ var iCon        : TUIConsole;
     iBoss       : TBeing;
     iTraitStr   : Ansistring;
 
-  function ArmorColor( aValue : Integer ) : TUIColor;
+  function ArmorColor( aValue : Integer ) : TIOColor;
   begin
     case aValue of
      -100.. 25  : Exit(LightRed);
@@ -802,7 +845,7 @@ var iCon        : TUIConsole;
       else Exit(LightGray);
     end;
   end;
-  function NameColor( aValue : Integer ) : TUIColor;
+  function NameColor( aValue : Integer ) : TIOColor;
   begin
     case aValue of
      -100.. 25  : Exit(LightRed);
@@ -811,7 +854,7 @@ var iCon        : TUIConsole;
       else Exit(LightGray);
     end;
   end;
-  function WeaponColor( aWeapon : TItem ) : TUIColor;
+  function WeaponColor( aWeapon : TItem ) : TIOColor;
   begin
     if aWeapon.IType = ITEMTYPE_MELEE then Exit(lightgray);
     if ( aWeapon.Ammo = 0 ) and not ( aWeapon.Flags[ IF_NOAMMO ] ) then Exit(LightRed);
@@ -837,10 +880,6 @@ begin
     iCNormal := VTIGDefaultStyle.Color[ VTIG_TEXT_COLOR ];
     iCBold   := VTIGDefaultStyle.Color[ VTIG_BOLD_COLOR ];
   end;
-
-  iCon.Init( FConsole );
-  if GraphicsVersion then
-    iCon.Clear;
 
   if Player <> nil then
   begin
@@ -907,6 +946,7 @@ begin
         then iColor := LightMagenta;
 
     VTIG_FreeLabel( DRL.Level.Name, Point( -2-Length( DRL.Level.Name), iBottom ), iColor );
+    VTIG_FreeLabel( FSeedHUDText, Point( FSeedHUDOffset, iBottom+1 ) );
 
     iTraitStr := Player.GetTraitString;
     if iTraitStr <> '' then
@@ -976,27 +1016,13 @@ begin
   Exit(True);
 end;
 
-function TDRLIO.Chunkify( const aString : AnsiString; aStart : Integer; aColor : TIOColor ) : TUIChunkBuffer;
-var iCon       : TUIConsole;
-    iChunkList : TUIChunkList;
-    iPosition  : TUIPoint;
-    iColor     : TUIColor;
-begin
-  iCon.Init( IO.Console );
-  iPosition  := Point(aStart,0);
-  iColor     := aColor;
-  iChunkList := nil;
-  iCon.ChunkifyEx( iChunkList, iPosition, iColor, aString, iColor, Point(78,2) );
-  Exit( iCon.LinifyChunkList( iChunkList ) );
-end;
-
 procedure TDRLIO.ASCIILoader ( aStream : TStream; aName : Ansistring; aSize : DWord ) ;
-var iNewImage   : TUIStringArray;
+var iNewImage   : TIOStringArray;
     iIdent      : Ansistring;
 begin
   iIdent  := LowerCase(LeftStr(aName,Length(aName)-4));
   Log('Registering ascii file '+aName+' as '+iIdent+'...');
-  iNewImage  := TUIStringArray.Create;
+  iNewImage  := TIOStringArray.Create;
   while (aStream.Position < aSize) and (iNewImage.Size < 25) do
     iNewImage.Push( ReadLineFromStream( aStream, aSize ) );
   FASCII.Items[iIdent] := iNewImage;
@@ -1045,7 +1071,8 @@ begin
   if Assigned( DRL ) then
     DRL.Store.Update;
 
-  if GetPadRTrigger and (DRL <> nil) and (DRL.State = DSPlaying)
+  if ControllerActionHeld( CONTROLLER_MODIFIER_ALT )
+    and (DRL <> nil) and (DRL.State = DSPlaying)
     and (FTargeting or ( not isModal)) and ( FLastTarget <> DRL.Targeting.List.Current ) then
     begin
       FLastTarget := DRL.Targeting.List.Current;
@@ -1053,7 +1080,8 @@ begin
         LookDescription(FLastTarget);
     end;
 
-  if not GetPadRTrigger and (FLastTarget.X * FLastTarget.Y <> 0) then
+  if not ControllerActionHeld( CONTROLLER_MODIFIER_ALT )
+    and (FLastTarget.X * FLastTarget.Y <> 0) then
   begin
     FHintOverlay := '';
     FLastTarget.Create(0,0);
@@ -1120,7 +1148,6 @@ begin
     begin
       FIODriver.PollEvent( iEvent );
       OnEvent( iEvent );
-      Root.OnEvent( iEvent );
       Continue;
     end;
     Break;
@@ -1161,12 +1188,7 @@ end;
 
 procedure TDRLIO.Msg( const aText : AnsiString );
 begin
-  if FMessages <> nil then FMessages.Add(aText);
-end;
-
-procedure TDRLIO.Msg( const aText : AnsiString; const aParams : array of const );
-begin
-  Msg( Format( aText, aParams ) );
+  inherited Msg( aText );
 end;
 
 function TDRLIO.MsgGetRecent : TMessageBuffer;
@@ -1182,7 +1204,7 @@ end;
 
 procedure TDRLIO.MsgUpDate;
 begin
-  FMessages.Update;
+  inherited MsgUpdate;
   FHintOverlay := '';
 end;
 
@@ -1506,4 +1528,3 @@ begin
 end;
 
 end.
-

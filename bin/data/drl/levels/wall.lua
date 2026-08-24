@@ -59,7 +59,7 @@ register_level "the_wall"
 		level:summon{ "baron",  total - knights, area = left }
 		level.data.sound_crack = coord(28, 10)
 		
-		level:player(70,5)
+		level:drop_being( player, coord( 70,5 ) )
 		level.status = 0
 	end,
 

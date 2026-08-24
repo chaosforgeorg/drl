@@ -107,7 +107,8 @@ end;
 
 implementation
 
-uses sysutils, vtig, vvision, dfplayer, dflevel, drlbase, drlio, drlcommand, drlspritemap;
+uses sysutils, vtig, vvision, dfplayer, dflevel, drlbase, drlio, drlcommand,
+     drlcontrollerbindings, drlspritemap;
 
 constructor TLookModeView.Create;
 begin
@@ -394,16 +395,28 @@ begin
 end;
 
 function TTargetModeView.HandleEvent( const aEvent : TIOEvent ) : Boolean;
+var iAction : TControllerAction;
 begin
   if aEvent.EType <> VEVENT_PADDOWN then Exit( True );
-  case aEvent.Pad.Button of
-    VPAD_BUTTON_A :
+
+  // Target mode remains escapable through the fixed raw UI Cancel button,
+  // independent of the gameplay binding assigned to B.
+  if aEvent.Pad.Button = VPAD_BUTTON_B then
+  begin
+    Finalize;
+    Exit( True );
+  end;
+
+  if IO.ResolveControllerAction( aEvent.Pad.Button, iAction ) then
+  begin
+    case iAction of
+    CONTROLLER_MOVE :
       if IO.GetPadLDir.NotZero
         then MoveTarget( FTarget + IO.GetPadLDir )
         else begin
           with DRL.Level do
           begin
-            if IO.GetPadLTrigger
+            if IO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
               then IO.FullLook( Player )
               else if Being[FTarget] <> nil then
                 IO.FullLook( Being[FTarget] );
@@ -411,27 +424,37 @@ begin
           UpdateTarget;
           Exit( True );
         end;
-    VPAD_BUTTON_X : HandleFire;
-    VPAD_BUTTON_RIGHTSHOULDER : begin
+    CONTROLLER_FIRE : HandleFire;
+    CONTROLLER_TARGET_NEXT : begin
       FTarget := FTargets.Next;
       UpdateTarget;
     end;
-    VPAD_BUTTON_LEFTSHOULDER : begin
+    CONTROLLER_TARGET_PREV : begin
       FTarget := FTargets.Prev;
       UpdateTarget;
     end;
-    VPAD_BUTTON_BACK,
-    VPAD_BUTTON_GUIDE,
-    VPAD_BUTTON_START,
-    VPAD_BUTTON_B : begin
-      Finalize;
-      Exit( True );
+    CONTROLLER_UP    : MoveTarget( FTarget + NewCoord2D(0,-1) );
+    CONTROLLER_DOWN  : MoveTarget( FTarget + NewCoord2D(0,1) );
+    CONTROLLER_LEFT  : MoveTarget( FTarget + NewCoord2D(-1,0) );
+    CONTROLLER_RIGHT : MoveTarget( FTarget + NewCoord2D(1,0) );
+    CONTROLLER_MODIFIER_RUN,
+    CONTROLLER_MODIFIER_ALT : ;
+    else
+      // Back and Start retain their legacy exits when assigned an action
+      // target mode does not use.
+      if aEvent.Pad.Button in [ VPAD_BUTTON_BACK, VPAD_BUTTON_START ] then
+        Finalize;
     end;
-    VPAD_BUTTON_DPAD_UP    : MoveTarget( FTarget + NewCoord2D(0,-1) );
-    VPAD_BUTTON_DPAD_DOWN  : MoveTarget( FTarget + NewCoord2D(0,1) );
-    VPAD_BUTTON_DPAD_LEFT  : MoveTarget( FTarget + NewCoord2D(-1,0) );
-    VPAD_BUTTON_DPAD_RIGHT : MoveTarget( FTarget + NewCoord2D(1,0) );
+    Exit( True );
   end;
+
+  // Unassigned Back/Start and unbindable Guide retain their legacy exits.
+  if aEvent.Pad.Button in [
+    VPAD_BUTTON_BACK,
+    VPAD_BUTTON_START,
+    VPAD_BUTTON_GUIDE
+  ] then
+    Finalize;
   Exit( True );
 end;
 

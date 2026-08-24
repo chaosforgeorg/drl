@@ -1110,22 +1110,23 @@ function drl.register_challenges()
 		arch_win_mortem    = "completed 666 levels of torture",
 		arch_win_highscore = "completed 666 levels",
 
-		OnCreateEpisode = function ()
+		OnCreateEpisode = function ( episode_seed )
 			local LevCount = 100
 			local LevD = 9
 			local LevH = 17
+			math.randomseed( episode_seed )
 			player.episode = {}
 			if ARCHANGEL then LevCount = 666 end
 
 			for i=1,LevD - 1 do
-				player.episode[i] = { style = table.random_pick{1,5,8}, name = "Phobos L"..tostring(i), danger = i, deathname = "level "..tostring(i).." of the Phobos base" }
+				player.episode[i] = { style = table.random_pick{1,5,8}, name = "Phobos L"..tostring(i), danger = i, deathname = "level "..tostring(i).." of the Phobos base", seed = core.level_seed() }
 			end
 			for i=LevD, LevH - 1 do
-				player.episode[i] = { style = table.random_pick{2,6}, name = "Deimos L"..tostring(i), danger = i, deathname = "level "..tostring(i).." of the Deimos base" }
+				player.episode[i] = { style = table.random_pick{2,6}, name = "Deimos L"..tostring(i), danger = i, deathname = "level "..tostring(i).." of the Deimos base", seed = core.level_seed() }
 			end
 			for i=LevH,LevCount-1 do
 				if i < 25 then
-					player.episode[i] = { style = table.random_pick{3,7}, name = "Hell L"..tostring(i), danger = i, deathname = "level "..tostring(i).." of Hell" }
+					player.episode[i] = { style = table.random_pick{3,7}, name = "Hell L"..tostring(i), danger = i, deathname = "level "..tostring(i).." of Hell", seed = core.level_seed() }
 				else
 					local mod_value = {
 						{1,5,8},
@@ -1133,12 +1134,12 @@ function drl.register_challenges()
 						{3,7},
 					}
 					local list = mod_value[math.floor(i / 5) % 3 + 1]
-					player.episode[i] = { style = table.random_pick(list), name = "Beyond L"..tostring(i), danger = i, deathname = "level "..tostring(i).." of Beyond" }
+					player.episode[i] = { style = table.random_pick(list), name = "Beyond L"..tostring(i), danger = i, deathname = "level "..tostring(i).." of Beyond", seed = core.level_seed() }
 				end
 			end
 
 			-- Here is where we can add some Ao100 specific special levels like #88
-			player.episode[LevCount] = { style = 3, name = "Hell L"..tostring(LevCount), danger = LevCount*2, deathname = "level "..tostring(LevCount).." of Hell" }
+			player.episode[LevCount] = { style = 3, name = "Hell L"..tostring(LevCount), danger = LevCount*2, deathname = "level "..tostring(LevCount).." of Hell", seed = core.level_seed() }
 			statistics.bonus_levels_count = 0
 		end,
 
@@ -1304,7 +1305,8 @@ You can rest easy knowing that you're Boss. Yet at the last level you sensed som
 		end,
 
 		OnCreateEpisode = function ()
-			player.episode[1] = { style = 1, name = "Phobos L1", danger = 2, deathname = "level 1 of the Phobos base" }
+			local seed = player.episode[1].seed
+			player.episode[1] = { style = 1, name = "Phobos L1", danger = 2, deathname = "level 1 of the Phobos base", seed = seed }
 		end,
 
 		OnUnLoad = function ()

@@ -526,9 +526,9 @@ function generator.roll_event( weights )
 	local choice = weight_table.new()
 	for _,p in ipairs(perks) do
 		if p.tags and p.tags.event then
-			local min_dlevel = p.min_dlevel or 0
-			local min_diff   = p.min_diff or 0
-			if lvl >= min_dlevel and DIFFICULTY >= min_diff then
+			local min_lev  = p.min_lev or 0
+			local min_diff = p.min_diff or 0
+			if lvl >= min_lev and DIFFICULTY >= min_diff then
 				local weight = p.weight or 1
 				if type( weights ) == "table" then
 					weight = core.proto_weight( p, weights )

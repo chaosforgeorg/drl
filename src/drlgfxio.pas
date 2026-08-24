@@ -6,7 +6,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlgfxio;
 interface
-uses vglquadrenderer, vgltypes, vluaconfig, vioevent, viotypes, vuielement, vimage,
+uses vglquadrenderer, vgltypes, vluaconfig, vioevent, viotypes, vimage,
      vrltools, vutil, vtextures, vvector, vbitmapfont, vio, vparticleengine,
      drlio, drlspritemap, drlanimation, drlminimap, dfdata, dfthing;
 
@@ -19,7 +19,7 @@ type
     procedure Reset; override;
     procedure Initialize; override;
     procedure Reconfigure( aConfig : TLuaConfig ); override;
-    procedure Configure( aConfig : TLuaConfig; aReload : Boolean = False ); override;
+    procedure Configure( aConfig : TLuaConfig; aReload : Boolean ); override; overload;
     procedure Update( aMSec : DWord ); override;
     function PushLayer( aLayer : TIOLayer ) : TIOLayer; override;
     function OnEvent( const iEvent : TIOEvent ) : Boolean; override;
@@ -60,10 +60,8 @@ type
     procedure FinishTargeting; override;
 
     // Gamepad
-    function GetPadLTrigger : Boolean; override;
-    function GetPadRTrigger : Boolean; override;
-    function GetPadLDir     : TCoord2D; override;
-    function IsGamepad      : Boolean; override;
+    function GetPadLDir : TCoord2D; override;
+    function IsGamepad  : Boolean; override;
 
     // Fade control
     procedure FadeIn( aForce : Boolean = False ); override;
@@ -106,8 +104,6 @@ type
     FGPRight     : TVec2f;
     FGPLeftDir   : TCoord2D;
     FGPCamera    : Single;
-    FGPLTrigger  : Boolean;
-    FGPRTrigger  : Boolean;
     FGPDetected  : Boolean;
 
     FBloodValue       : Single;
@@ -145,11 +141,11 @@ implementation
 
 uses {$IFDEF WINDOWS}windows,{$ENDIF}
      classes, sysutils, math,
-     vdebug, vlog, vmath, vdf, vgl3library, vuid, vvision,
+     vdebug, vlog, vmath, vdf, vgl3library, vuid, vvision, vrandom,
      vglimage, vsdlio, vcolor, vglconsole, vioconsole,
      vtig, vtigstyle, vtigio,
      dfplayer, dfitem, dflevel,
-     drlbase, drlconfiguration, drlmodule;
+     drlbase, drlconfiguration, drlcontrollerbindings, drlmodule;
 
 
 procedure TDRLGFXIO.RecalculateScaling( aInitialize : Boolean );
@@ -252,7 +248,6 @@ begin
 
   FTextures  := TTextureManager.Create( Option_Blending );
   SpriteMap  := TDRLSpriteMap.Create( Vec2i( iWidth, iHeight ) );
-  FParticleEngine := TParticleEngine.Create;
   TSDLIODriver( FIODriver ).ShowMouse( False );
 
   FMCursor   := TDRLMouseCursor.Create;
@@ -264,6 +259,7 @@ begin
   FAnimations := TAnimationManager.Create;
   FMinimap    := TMinimap.Create;
   inherited Create;
+  FParticleEngine := TParticleEngine.Create( VisualRNG );
 end;
 
 procedure TDRLGFXIO.Reset;
@@ -297,8 +293,6 @@ begin
   FGPRight.Init();
   FGPLeft.Init();
   FGPLeftDir.Create(0,0);
-  FGPLTrigger := False;
-  FGPRTrigger := False;
   FGPCamera := 0.0;
 end;
 
@@ -699,16 +693,6 @@ begin
   SpriteMap.NewShift := SpriteMap.ShiftValue( Player.Position );
 end;
 
-function TDRLGFXIO.GetPadLTrigger : Boolean;
-begin
-  Exit( FGPLTrigger );
-end;
-
-function TDRLGFXIO.GetPadRTrigger : Boolean;
-begin
-  Exit( FGPRTrigger );
-end;
-
 function TDRLGFXIO.GetPadLDir     : TCoord2D;
 begin
   Exit( FGPLeftDir );
@@ -768,7 +752,7 @@ begin
   end;
 end;
 
-procedure TDRLGFXIO.Configure( aConfig : TLuaConfig; aReload : Boolean = False );
+procedure TDRLGFXIO.Configure( aConfig : TLuaConfig; aReload : Boolean );
 begin
   inherited Configure( aConfig, aReload );
 
@@ -848,7 +832,7 @@ begin
   begin
     if FTargeting
       then SpriteMap.Marker := SpriteMap.Target + FGPLeftDir
-      else if FGPRTrigger
+      else if ControllerActionHeld( CONTROLLER_MODIFIER_ALT )
         then SpriteMap.Marker := DRL.Targeting.List.Current + FGPLeftDir
         else SpriteMap.Marker := Player.Position + FGPLeftDir;
   end
@@ -991,7 +975,9 @@ begin
 end;
 
 function TDRLGFXIO.OnEvent( const iEvent : TIOEvent ) : Boolean;
-var iValue : Integer;
+var
+  iValue                : Integer;
+  iPhysicalLeftTrigger  : Boolean;
 begin
   if ( iEvent.EType = VEVENT_PADAXIS ) then
   begin
@@ -1004,8 +990,6 @@ begin
       VPAD_AXIS_RIGHT_Y : FGPRight.Y := iValue / 32000;
       VPAD_AXIS_LEFT_X  : FGPLeft.X  := iValue / 32000;
       VPAD_AXIS_LEFT_Y  : FGPLeft.Y  := iValue / 32000;
-      VPAD_AXIS_TRIGGERLEFT  : FGPLTrigger := iValue > 10000;
-      VPAD_AXIS_TRIGGERRIGHT : FGPRTrigger := iValue > 10000;
     end;
 
     if iEvent.PadAxis.Axis in [ VPAD_AXIS_LEFT_X, VPAD_AXIS_LEFT_Y] then
@@ -1017,8 +1001,6 @@ begin
     FGPRight.Init();
     FGPLeft.Init();
     FGPLeftDir.Create(0,0);
-    FGPLTrigger := False;
-    FGPRTrigger := False;
   end;
 
   if ( iEvent.EType = VEVENT_PADDOWN ) then FGPDetected := True;
@@ -1050,12 +1032,15 @@ begin
   end;
 
   if ( iEvent.EType = VEVENT_PADDOWN ) or ( iEvent.EType = VEVENT_PADUP ) then
+  begin
+    iPhysicalLeftTrigger := PadState.Active( VPAD_BUTTON_LEFTTRIGGER );
     case iEvent.Pad.Button of
-      VPAD_BUTTON_DPAD_UP     : begin VTIG_GetIOState.EventState.SetState( VTIG_IE_1, FGPLTrigger and iEvent.Pad.Pressed ); if FGPLTrigger and iEvent.Pad.Pressed then Exit( isModal ) end;
-      VPAD_BUTTON_DPAD_DOWN   : begin VTIG_GetIOState.EventState.SetState( VTIG_IE_4, FGPLTrigger and iEvent.Pad.Pressed ); if FGPLTrigger and iEvent.Pad.Pressed then Exit( isModal ) end;
-      VPAD_BUTTON_DPAD_LEFT   : begin VTIG_GetIOState.EventState.SetState( VTIG_IE_2, FGPLTrigger and iEvent.Pad.Pressed ); if FGPLTrigger and iEvent.Pad.Pressed then Exit( isModal ) end;
-      VPAD_BUTTON_DPAD_RIGHT  : begin VTIG_GetIOState.EventState.SetState( VTIG_IE_3, FGPLTrigger and iEvent.Pad.Pressed ); if FGPLTrigger and iEvent.Pad.Pressed then Exit( isModal ) end;
+      VPAD_BUTTON_DPAD_UP     : begin VTIG_GetIOState.EventState.SetState( VTIG_IE_1, iPhysicalLeftTrigger and iEvent.Pad.Pressed ); if iPhysicalLeftTrigger and iEvent.Pad.Pressed then Exit( isModal ) end;
+      VPAD_BUTTON_DPAD_DOWN   : begin VTIG_GetIOState.EventState.SetState( VTIG_IE_4, iPhysicalLeftTrigger and iEvent.Pad.Pressed ); if iPhysicalLeftTrigger and iEvent.Pad.Pressed then Exit( isModal ) end;
+      VPAD_BUTTON_DPAD_LEFT   : begin VTIG_GetIOState.EventState.SetState( VTIG_IE_2, iPhysicalLeftTrigger and iEvent.Pad.Pressed ); if iPhysicalLeftTrigger and iEvent.Pad.Pressed then Exit( isModal ) end;
+      VPAD_BUTTON_DPAD_RIGHT  : begin VTIG_GetIOState.EventState.SetState( VTIG_IE_3, iPhysicalLeftTrigger and iEvent.Pad.Pressed ); if iPhysicalLeftTrigger and iEvent.Pad.Pressed then Exit( isModal ) end;
     end;
+  end;
 
   Exit( inherited OnEvent( iEvent ) )
 end;
@@ -1090,7 +1075,8 @@ begin
   inherited DrawHUD;
   if Player = nil then Exit;
 
-  if IsGamepad and FGPLTrigger and ( not isModal ) then
+  if IsGamepad and ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
+    and ( not isModal ) then
   begin
     iPosY := 4;
     iPosX := 2;
@@ -1142,7 +1128,6 @@ end;
 procedure TDRLGFXIO.DeviceChanged;
 begin
   FadeReset;
-  FUIRoot.DeviceChanged;
   FCellX := (FConsole.GetDeviceArea.Dim.X) div (FConsole.SizeX);
   FCellY := (FConsole.GetDeviceArea.Dim.Y) div (FConsole.SizeY);
 end;
@@ -1233,4 +1218,3 @@ end;
 
 
 end.
-

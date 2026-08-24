@@ -126,7 +126,7 @@ register_level "hellgate"
 		generator.set_permanence( area( 1, 14, 50, MAXY ) )
 		generator.set_permanence( area( 51, 1, MAXX, MAXY ) )
 
-		level:player(2,10)
+		level:drop_being( player, coord( 2,10 ) )
 		level.flags[ LF_NOHOMING ]      = true
 		level.flags[ LF_NOBEINGREVEAL ] = true
 	end,
@@ -203,6 +203,7 @@ register_level "tower_of_babel"
 		level.flags[ LF_NOHOMING      ] = true
 		level.flags[ LF_NOBEINGREVEAL ] = true
 		generator.scatter_blood(area.FULL_SHRINKED,"floor",100)
+		level:drop_being( player, coord( 2,2 ) )
 	end,
 
 	OnEnterLevel = function ()
@@ -296,11 +297,8 @@ WWWWWWWWWWWWWWWWWWWWW...............####...............WWWWWWWWWWWWWWWWWWWWW
 		level.flags[ LF_NOHOMING      ] = true
 		level.flags[ LF_NOBEINGREVEAL ] = true
 
-		if math.random( 2 ) == 1 then
-			level:player(19,11)
-		else
-			level:player(60,10)
-		end
+		local player_pos = math.random( 2 ) == 1 and coord( 19,11 ) or coord( 60,10 )
+		level:drop_being( player, player_pos )
 		player.flags[ BF_STAIRSENSE ] = false
 	end,
 
@@ -365,7 +363,7 @@ register_level "hell_fortress"
 
 		level.flags[ LF_NOHOMING ]      = true
 		level.flags[ LF_NOBEINGREVEAL ] = true
-		level:player(2,10)
+		level:drop_being( player, coord( 2,10 ) )
 
 		local boss
 		if player.eq.armor and player.eq.armor.id == "uberarmor" then

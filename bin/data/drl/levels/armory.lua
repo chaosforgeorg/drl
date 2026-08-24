@@ -123,7 +123,7 @@ register_level "hells_armory"
 			level:summon{ "lostsoul", 8 + DIFFICULTY, cell = "lava" }
 		end
 
-		level:player(11,10)
+		level:drop_being( player, coord( 11,10 ) )
 	end,
 
 	OnKillAll = function ()

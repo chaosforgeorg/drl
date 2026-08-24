@@ -10,9 +10,6 @@ interface
 uses SysUtils, Classes, vluastate, vluasystem, vlualibrary, vrltools, vutil,
      vdf, viotypes, dfitem, dfbeing, dfthing, dfdata, drlmodule;
 
-var LuaPlayerX : Byte = 2;
-    LuaPlayerY : Byte = 2;
-
 type
 
 { TDRLLua }
@@ -46,7 +43,7 @@ end;
 implementation
 
 uses typinfo, variants,
-     vnode, vdebug, vluatools, vluadungen, vluaentitynode, vluatype, vmath,
+     vnode, vdebug, vlua, vluatools, vluadungen, vluaentitynode, vluatype, vmath,
      vtextures, vtigstyle, vvector,
      dfplayer, dflevel, dfmap, drlhooks, drlhelp, dfhof, drlbase, drlio, drlperk,
      drlgfxio, drlspritemap, vparticleengine;
@@ -221,6 +218,11 @@ begin
   Result := 1;
 end;
 
+function lua_core_visual_random(L: Plua_State): Integer; cdecl;
+begin
+  Exit( vlua_rng_random( L, IO.VisualRNG ) );
+end;
+
 function lua_core_register_cell(L: Plua_State): Integer; cdecl;
 var State : TDRLLuaState;
 begin
@@ -305,19 +307,27 @@ var iProgBase    : DWord;
   end;
   procedure SetupBase;
   begin
-    VersionModule     := LuaSystem.Get( 'VERSION_MODULE' );
-    VersionModuleSave := LuaSystem.Get( 'VERSION_MODULE_SAVE' );
-    DemoVersion       := False;
+    VersionEngine         := LuaSystem.Get( 'VERSION_ENGINE' );
+    VersionEngineSave     := LuaSystem.Get( 'VERSION_ENGINE_SAVE' );
+    VersionEngineExpected := LuaSystem.Get( 'VERSION_ENGINE_EXPECTED' );
+    VersionModule         := LuaSystem.Get( 'VERSION_MODULE' );
+    VersionModuleSave     := LuaSystem.Get( 'VERSION_MODULE_SAVE' );
+    DemoVersion           := False;
     if LuaSystem.RawDefined( 'DEMO' ) then
       DemoVersion := LuaSystem.Get( 'DEMO' );
 
+    Log( LOGINFO, 'ENGINE VERSION: '+VersionEngine );
+    Log( LOGINFO, 'EXPECTED ENGINE VERSION: '+VersionEngineExpected );
     Log( LOGINFO, 'BASE MODULE VERSION: '+VersionModule );
   end;
 
 begin
-  VersionModule     := '';
-  VersionModuleSave := '';
-  DemoVersion       := False;
+  VersionEngine         := '';
+  VersionEngineSave     := '';
+  VersionEngineExpected := '';
+  VersionModule         := '';
+  VersionModuleSave     := '';
+  DemoVersion           := False;
   IO.LoadStart;
   iProgBase := IO.LoadCurrent;
   IO.LoadProgress(iProgBase);
@@ -555,10 +565,11 @@ begin
   Result := 0;
 end;
 
-const lua_core_lib : array[0..12] of luaL_Reg = (
+const lua_core_lib : array[0..13] of luaL_Reg = (
     ( name : 'add_to_cell_set';func : @lua_core_add_to_cell_set),
     ( name : 'game_time';      func : @lua_core_game_time),
     ( name : 'time_ms';        func : @lua_core_time_ms),
+    ( name : 'visual_random';  func : @lua_core_visual_random),
     ( name : 'is_playing';func : @lua_core_is_playing),
     ( name : 'register_cell';   func : @lua_core_register_cell),
     ( name : 'register_emitter'; func : @lua_core_register_emitter),
@@ -597,9 +608,6 @@ begin
   ErrorFunc := @OnError;
   
   SetValue('WINDOWSVERSION', {$IFDEF WINDOWS}1{$ELSE}0{$ENDIF});
-  SetValue('VERSION', VERSION_STRING);
-  SetValue('VERSION_STRING', VERSION_STRING);
-  SetValue('VERSION_BETA',   VERSION_BETA);
   SetValue('GRAPHICSVERSION',GraphicsVersion);
   SetValue('GODMODE',        GodMode);
 
@@ -709,4 +717,3 @@ begin
 end;
 
 end.
-
