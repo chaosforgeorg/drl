@@ -100,6 +100,7 @@ const
   ForceConsole    : Boolean = False;
   ForceGraphics   : Boolean = False;
   ForceWindowed   : Boolean = False;
+  ForcePlayerName : AnsiString = '';
   ModdedGame      : Boolean = False;
   ForceRestart    : Ansistring = '';
   ModErrors       : TStringGArray = nil;

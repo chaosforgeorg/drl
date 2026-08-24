@@ -20,17 +20,18 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 
 program drl;
+
 uses SysUtils,
      {$IFDEF HEAPTRACE} heaptrc, {$ENDIF}
      {$IFDEF WINDOWS}   windows, {$ENDIF}
-     vdebug, drlbase, vlog, vutil, vos, vparams,
+     vapp, vdebug, drlbase, vlog, vutil, vos,
      dfdata, drlio, drlconfig, drlconfiguration, drlworkshop;
 
 {$IFDEF WINDOWS}
 var Handle : HWND;
     Title  : AnsiString;
 
-function ConsoleEventProc(CtrlType: DWORD): Bool; stdcall;
+function ConsoleEventProc( CtrlType : DWORD ) : Bool; stdcall;
 begin
   Result := True;
 end;
@@ -39,162 +40,228 @@ end;
 
 {$ENDIF}
 
-var RootPath   : AnsiString = '';
-    WorkshopID : Ansistring = '';
+type
+  TDRLApplication = class( TValkyrieApplication )
+  private
+    FWorkshopID : AnsiString;
+    FGameFailed : Boolean;
+  protected
+    procedure DefineOptions; override;
+    procedure ValidateOptions; override;
+    procedure BeforeConfiguration( var aPaths : TGamePaths ); override;
+    procedure LoadConfiguration( var aPaths : TGamePaths ); override;
+    procedure PublishPaths( const aPaths : TGamePaths ); override;
+    procedure ApplyOptions; override;
+    procedure BeforeDiagnostics; override;
+    function ExecuteApplicationCommand : Boolean; override;
 
+    procedure CreateGame; override;
+    procedure DestroyGame; override;
+    procedure InitializeGame; override;
+    function RunGame : TVRunResult; override;
+    procedure ShutdownGame; override;
+    procedure ResetGame; override;
+
+    procedure GameException( aException : Exception ); override;
+    procedure ApplicationException( aException : Exception ); override;
+  end;
+
+procedure TDRLApplication.DefineOptions;
 begin
-try
-  try
-    Configuration := TDRLConfiguration.Create;
-
-    {$IFDEF Darwin}
-    {$IFDEF OSX_APP_BUNDLE}
-    RootPath := GetResourcesPath();
-    DataPath          := RootPath;
-    ConfigurationPath := RootPath + 'config.lua';
-    SettingsPath      := RootPath + 'settings.lua';
-    {$ENDIF}
-    {$ELSE}
-      {$IFDEF UNIX}
-      {$ENDIF}
-    {$ENDIF}
-
-    {$IFDEF Windows}
-    RootPath := ExtractFilePath( ParamStr(0) );
-    if not FileExists( RootPath + 'config.lua' ) then
-      RootPath := '';
-    DataPath          := RootPath;
-    ConfigurationPath := RootPath + 'config.lua';
-    SettingsPath      := RootPath + 'settings.lua';
-
-    Title := 'DRL';
-    SetConsoleTitle(PChar(Title));
-    Sleep(40);
-    DisableAccessibilityShortcuts;
-    {$ENDIF}
-    ColorOverrides := nil;
-
-    with TParams.Create do
-    try
-      if isSet('god')    then
-      begin
-        GodMode           := True;
-        ConfigurationPath := RootPath + 'godmode.lua';
-      end;
-      if isSet('config')     then ConfigurationPath := get('config');
-      if isSet('publish')    then
-      begin
-        WorkshopID        := get('publish');
-        if WorkshopID <> '' then
-          Logger.AddSink( TConsoleLogSink.Create( LOGINFO, True ) );
-      end;
-      if isSet('nosound')    then ForceNoAudio      := True;
-      if isSet('window')     then ForceWindowed     := True;
-      if isSet('graphics')   then
-      begin
-        GraphicsVersion := True;
-        ForceGraphics := True;
-      end;
-      if isSet('console')    then
-      begin
-        GraphicsVersion := False;
-        ForceConsole := True;
-      end;
-
-      if FileExists( SettingsPath )
-        then Configuration.Read( SettingsPath )
-        else Configuration.Write( SettingsPath );
-
-      Config := TDRLConfig.Create( ConfigurationPath, False );
-      DataPath     := Config.Configure( 'DataPath', DataPath );
-      WritePath    := Config.Configure( 'WritePath', WritePath );
-      ScorePath    := Config.Configure( 'ScorePath', ScorePath );
-
-      CoreModuleID := Configuration.GetString('default_module');
-
-      if isSet('datapath')   then DataPath          := get('datapath');
-      if isSet('writepath')  then WritePath         := get('writepath');
-      if isSet('scorepath')  then ScorePath         := get('scorepath');
-      if isSet('name')       then Option_AlwaysName := get('name');
-      if isSet('module')     then CoreModuleID      := get('module');
-    finally
-      Free;
-    end;
-
-    {$IFDEF HEAPTRACE}
-    SetHeapTraceOutput( WritePath + 'heap.txt');
-    {$ENDIF}
-
-    Logger.AddSink( TTextFileLogSink.Create( LOGDEBUG, WritePath + 'runtime.log', False ) );
-    LogSystemInfo();
-    Logger.Log( LOGINFO, 'Log set to - ' + WritePath );
-
-    ErrorLogFileName := WritePath + 'error.log';
-    if WorkshopID <> '' then
-    begin
-      WorkshopPublish( WorkShopID );
-      FreeAndNil( Configuration );
-      Exit;
-    end;
-
-    drlbase.DRL := TDRL.Create;
-
-    repeat
-      if ForceRestart <> '' then
-      begin
-        drlbase.DRL.Modules.ScanModules;
-        CoreModuleID := ForceRestart;
-      end;
-      ForceRestart := '';
-      CoreModuleID := drlbase.DRL.Modules.Validate( CoreModuleID );
-      if CoreModuleID = '' then
-        drlbase.DRL.RunModuleChoice;
-
-      begin // Make and assign directories
-        if not DirectoryExists( WritePath + 'user' ) then CreateDir( WritePath + 'user' );
-        if not DirectoryExists( WritePath + 'user' + PathDelim + CoreModuleID ) then CreateDir( WritePath + 'user' + PathDelim + CoreModuleID );
-        ModuleUserPath := WritePath + 'user' + PathDelim + CoreModuleID + PathDelim;
-        if not DirectoryExists( ModuleUserPath + 'screenshot' ) then CreateDir( ModuleUserPath + 'screenshot' );
-        if not DirectoryExists( ModuleUserPath + 'mortem' ) then CreateDir( ModuleUserPath + 'mortem' );
-        if not DirectoryExists( ModuleUserPath + 'backup' ) then CreateDir( ModuleUserPath + 'backup' );
-      end;
-
-      drlbase.DRL.Initialize;
-
-      {$IFDEF WINDOWS}
-      if not GraphicsVersion then
-      begin
-        if Option_LockBreak then
-        begin
-          SetConsoleCtrlHandler(nil, False);
-          SetConsoleCtrlHandler(@ConsoleEventProc, True);
-        end;
-        if Option_LockClose then
-        begin
-          Handle := FindWindow(nil, PChar(Title));
-          RemoveMenu(GetSystemMenu( Handle, FALSE), SC_CLOSE , MF_GRAYED);
-          DrawMenuBar(FindWindow(nil, PChar(Title)));
-        end;
-      end;
-      {$ENDIF}
-      drlbase.DRL.Run;
-      drlbase.DRL.UnLoad;
-
-      drlbase.DRL.Reset;
-    until ForceRestart = '';
-  finally
-    FreeAndNil( Configuration );
-    FreeAndNil( drlbase.DRL );
-  end;
-except on e : Exception do
-  begin
-    Logger.Flush;
-    if not EXCEPTEMMITED then
-      EmitCrashInfo( e.Message, False );
-    raise
-  end;
+  AddFlag( 'god', #0, 'Enable god mode.' );
+  AddValueOption( 'publish', #0, 'WORKSHOP_ID', 'Publish WORKSHOP_ID to Steam Workshop.' );
+  AddFlag( 'no-sound', #0, 'Disable sound and music.' );
+  AddFlag( 'windowed', #0, 'Force windowed mode.' );
+  AddFlag( 'graphics', #0, 'Force graphical mode.' );
+  AddFlag( 'console', #0, 'Force console mode.' );
+  AddValueOption( 'name', #0, 'PLAYER_NAME', 'Use PLAYER_NAME for every game.' );
+  AddValueOption( 'module', #0, 'MODULE_ID', 'Use MODULE_ID as the core module.' );
 end;
 
+procedure TDRLApplication.ValidateOptions;
+begin
+  inherited ValidateOptions;
+  if HasOption( 'publish' ) and (GetOptionValue( 'publish' ) = '') then
+    FailOption( '--publish requires a non-empty WORKSHOP_ID' );
+end;
+
+procedure TDRLApplication.BeforeConfiguration( var aPaths : TGamePaths );
+begin
+  ColorOverrides := nil;
+
+  {$IFDEF WINDOWS}
+  drl.Title := Self.Title;
+  SetConsoleTitle( PChar(drl.Title) );
+  Sleep( 40 );
+  DisableAccessibilityShortcuts;
+  {$ENDIF}
+
+  if HasOption( 'god' ) then
+  begin
+    GodMode := True;
+    if not HasOption( 'config' ) then
+      aPaths.ConfigurationPath := aPaths.ResourcePath + 'godmode.lua';
+  end;
+
+  ForceNoAudio  := HasOption( 'no-sound' );
+  ForceWindowed := HasOption( 'windowed' );
+  ForceGraphics := HasOption( 'graphics' );
+  ForceConsole  := HasOption( 'console' );
+
+  if ForceGraphics then GraphicsVersion := True;
+  if ForceConsole  then GraphicsVersion := False;
+end;
+
+procedure TDRLApplication.LoadConfiguration( var aPaths : TGamePaths );
+begin
+  Configuration := TDRLConfiguration.Create;
+  if FileExists( aPaths.SettingsPath ) then
+    Configuration.Read( aPaths.SettingsPath )
+  else
+    Configuration.Write( aPaths.SettingsPath );
+
+  Config := TDRLConfig.Create( aPaths.ConfigurationPath, False );
+  aPaths.DataPath  := Config.Configure( 'DataPath', aPaths.DataPath );
+  aPaths.WritePath := Config.Configure( 'WritePath', aPaths.WritePath );
+  aPaths.ScorePath := Config.Configure( 'ScorePath', aPaths.ScorePath );
+
+  CoreModuleID := Configuration.GetString( 'default_module' );
+end;
+
+procedure TDRLApplication.PublishPaths( const aPaths : TGamePaths );
+begin
+  ConfigurationPath := aPaths.ConfigurationPath;
+  SettingsPath      := aPaths.SettingsPath;
+  DataPath          := aPaths.DataPath;
+  WritePath         := aPaths.WritePath;
+  ScorePath         := aPaths.ScorePath;
+end;
+
+procedure TDRLApplication.ApplyOptions;
+begin
+  if HasOption( 'name' ) then
+  begin
+    ForcePlayerName  := GetOptionValue( 'name' );
+    Option_AlwaysName := ForcePlayerName;
+  end;
+  if HasOption( 'module' ) then
+    CoreModuleID := GetOptionValue( 'module' );
+  if HasOption( 'publish' ) then
+    FWorkshopID := GetOptionValue( 'publish' );
+end;
+
+procedure TDRLApplication.BeforeDiagnostics;
+begin
+  if FWorkshopID <> '' then
+    Logger.AddSink( TConsoleLogSink.Create( LOGINFO, True ) );
+end;
+
+function TDRLApplication.ExecuteApplicationCommand : Boolean;
+begin
+  Result := FWorkshopID <> '';
+  if Result then
+    WorkshopPublish( FWorkshopID );
+end;
+
+procedure TDRLApplication.CreateGame;
+begin
+  drlbase.DRL := TDRL.Create;
+end;
+
+procedure TDRLApplication.DestroyGame;
+begin
+  if drlbase.DRL = nil then
+    FreeAndNil( Config );
+  FreeAndNil( Configuration );
+  FreeAndNil( drlbase.DRL );
+end;
+
+procedure TDRLApplication.InitializeGame;
+begin
+  FGameFailed := False;
+  if ForceRestart <> '' then
+  begin
+    drlbase.DRL.Modules.ScanModules;
+    CoreModuleID := ForceRestart;
+  end;
+  ForceRestart := '';
+  CoreModuleID := drlbase.DRL.Modules.Validate( CoreModuleID );
+  if CoreModuleID = '' then
+    drlbase.DRL.RunModuleChoice;
+
+  if not DirectoryExists( WritePath + 'user' ) then CreateDir( WritePath + 'user' );
+  if not DirectoryExists( WritePath + 'user' + PathDelim + CoreModuleID ) then
+    CreateDir( WritePath + 'user' + PathDelim + CoreModuleID );
+  ModuleUserPath := WritePath + 'user' + PathDelim + CoreModuleID + PathDelim;
+  if not DirectoryExists( ModuleUserPath + 'screenshot' ) then
+    CreateDir( ModuleUserPath + 'screenshot' );
+  if not DirectoryExists( ModuleUserPath + 'mortem' ) then
+    CreateDir( ModuleUserPath + 'mortem' );
+  if not DirectoryExists( ModuleUserPath + 'backup' ) then
+    CreateDir( ModuleUserPath + 'backup' );
+
+  drlbase.DRL.Initialize;
+
+  {$IFDEF WINDOWS}
+  if not GraphicsVersion then
+  begin
+    if Option_LockBreak then
+    begin
+      SetConsoleCtrlHandler( nil, False );
+      SetConsoleCtrlHandler( @ConsoleEventProc, True );
+    end;
+    if Option_LockClose then
+    begin
+      Handle := FindWindow( nil, PChar(drl.Title) );
+      RemoveMenu( GetSystemMenu( Handle, FALSE ), SC_CLOSE, MF_GRAYED );
+      DrawMenuBar( FindWindow( nil, PChar(drl.Title) ) );
+    end;
+  end;
+  {$ENDIF}
+end;
+
+function TDRLApplication.RunGame : TVRunResult;
+begin
+  drlbase.DRL.Run;
+  if ForceRestart <> '' then
+    Result := VRR_RELOAD_DATA
+  else
+    Result := VRR_QUIT;
+end;
+
+procedure TDRLApplication.ShutdownGame;
+begin
+  if not FGameFailed then
+    drlbase.DRL.UnLoad;
+end;
+
+procedure TDRLApplication.ResetGame;
+begin
+  drlbase.DRL.Reset;
+end;
+
+procedure TDRLApplication.GameException( aException : Exception );
+begin
+  FGameFailed := True;
+end;
+
+procedure TDRLApplication.ApplicationException( aException : Exception );
+begin
+  if Assigned( Logger ) then Logger.Flush;
+  if not EXCEPTEMMITED then
+    EmitCrashInfo( aException.Message, False );
+end;
+
+var Application : TDRLApplication;
+
+begin
+  Application := TDRLApplication.Create;
+  try
+    Application.Title := 'DRL';
+    Application.Initialize;
+    if not Application.Terminated then
+      Application.Run;
+  finally
+    Application.Free;
+  end;
 end.
-
-

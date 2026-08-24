@@ -66,6 +66,9 @@ begin
   Option_MaxWait          := Configure('MaxWait',Option_MaxWait);
   Option_ForceRaw         := Configure('ForceRaw',GodMode);
 
+  if ForcePlayerName <> '' then
+    Option_AlwaysName := ForcePlayerName;
+
   if ForceNoAudio then
   begin
     Option_Sound := False;
@@ -108,4 +111,3 @@ begin
 end;
 
 end.
-
