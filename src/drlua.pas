@@ -307,24 +307,27 @@ var iProgBase    : DWord;
   end;
   procedure SetupBase;
   begin
-    VersionEngine     := LuaSystem.Get( 'VERSION_ENGINE' );
-    VersionEngineSave := LuaSystem.Get( 'VERSION_ENGINE_SAVE' );
-    VersionModule     := LuaSystem.Get( 'VERSION_MODULE' );
-    VersionModuleSave := LuaSystem.Get( 'VERSION_MODULE_SAVE' );
-    DemoVersion       := False;
+    VersionEngine         := LuaSystem.Get( 'VERSION_ENGINE' );
+    VersionEngineSave     := LuaSystem.Get( 'VERSION_ENGINE_SAVE' );
+    VersionEngineExpected := LuaSystem.Get( 'VERSION_ENGINE_EXPECTED' );
+    VersionModule         := LuaSystem.Get( 'VERSION_MODULE' );
+    VersionModuleSave     := LuaSystem.Get( 'VERSION_MODULE_SAVE' );
+    DemoVersion           := False;
     if LuaSystem.RawDefined( 'DEMO' ) then
       DemoVersion := LuaSystem.Get( 'DEMO' );
 
     Log( LOGINFO, 'ENGINE VERSION: '+VersionEngine );
+    Log( LOGINFO, 'EXPECTED ENGINE VERSION: '+VersionEngineExpected );
     Log( LOGINFO, 'BASE MODULE VERSION: '+VersionModule );
   end;
 
 begin
-  VersionEngine     := '';
-  VersionEngineSave := '';
-  VersionModule     := '';
-  VersionModuleSave := '';
-  DemoVersion       := False;
+  VersionEngine         := '';
+  VersionEngineSave     := '';
+  VersionEngineExpected := '';
+  VersionModule         := '';
+  VersionModuleSave     := '';
+  DemoVersion           := False;
   IO.LoadStart;
   iProgBase := IO.LoadCurrent;
   IO.LoadProgress(iProgBase);
