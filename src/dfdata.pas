@@ -11,21 +11,22 @@ uses Classes, SysUtils, idea,
      vgenerics, vcolor, vutil, vrltools, vtigstyle, vluatable, vioevent, vvector,
      drlconfig, drlkeybindings;
 
-const CoreModuleID      : AnsiString = '';
-      ConfigurationPath : AnsiString = 'config.lua';
-      ModuleUserPath    : AnsiString = '';
-      DataPath          : AnsiString = '';
-      WritePath         : AnsiString = '';
-      ScorePath         : AnsiString = '';
-      SettingsPath      : AnsiString = 'settings.lua';
-
-      VersionEngine     : Ansistring = '';
-      VersionEngineSave : Ansistring = '';
-      VersionModule     : Ansistring = '';
-      VersionModuleSave : Ansistring = '';
-      SaveVersionEngine : Ansistring = '';
-      SaveVersionModule : Ansistring = '';
-      SaveModString     : Ansistring = '';
+const CoreModuleID          : AnsiString = '';
+      ConfigurationPath     : AnsiString = 'config.lua';
+      ModuleUserPath        : AnsiString = '';
+      DataPath              : AnsiString = '';
+      WritePath             : AnsiString = '';
+      ScorePath             : AnsiString = '';
+      SettingsPath          : AnsiString = 'settings.lua';
+    
+      VersionEngine         : Ansistring = '';
+      VersionEngineSave     : Ansistring = '';
+      VersionEngineExpected : Ansistring = '';
+      VersionModule         : Ansistring = '';
+      VersionModuleSave     : Ansistring = '';
+      SaveVersionEngine     : Ansistring = '';
+      SaveVersionModule     : Ansistring = '';
+      SaveModString         : Ansistring = '';
 
 var   MemorialWritten : Boolean;
 

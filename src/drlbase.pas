@@ -1320,7 +1320,7 @@ begin
   if FGameSeed = 0 then
   begin
     FGameRNG.Randomize;
-    FGameSeed := FGameRNG.RDWord( 1, 99999 );
+    FGameSeed := FGameRNG.RDWord( 1, 999999 );
   end;
   FGameRNG.SetSeed( FGameSeed );
   Result := FGameRNG.RDWord;
