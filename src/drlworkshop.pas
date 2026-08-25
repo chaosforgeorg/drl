@@ -12,7 +12,7 @@ procedure WorkshopPublish( aModID : Ansistring );
 implementation
 
 uses classes, sysutils,
-     vlog, vutil, vdebug, vstoreinterface,
+     vlog, vutil, vdebug, vlua, vrandom, vstoreinterface,
      drlmodule, dfdata;
 
 procedure WriteModuleFile( aPath : Ansistring; aModule : TDRLModule );
@@ -44,6 +44,7 @@ var iSteam   : TStoreInterface;
 begin
   Option_ForceRaw := not GodMode;
   iModules := nil;
+  LuaRNG := TRNG.Create( 0 );
   try
     Log(LOGINFO,'Request to publish mod '+aModID+'...' );
     iSteam := TStoreInterface.Get;
@@ -94,6 +95,7 @@ begin
 
   finally
     FreeAndNil( iModules );
+    FreeAndNil( LuaRNG );
   end;
 end;
 

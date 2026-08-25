@@ -9,7 +9,7 @@ interface
 uses vio, viotypes, vgenerics, vtextures, vtigstyle, dfdata, drlio;
 
 type TMainMenuViewMode = (
-  MAINMENU_FIRST, MAINMENU_INTRO, MAINMENU_MENU,
+  MAINMENU_FIRST, MAINMENU_INTRO, MAINMENU_ENGINECOMPAT, MAINMENU_MENU,
   MAINMENU_NEWGAME, MAINMENU_SEED,
   MAINMENU_DIFFICULTY, MAINMENU_FAIR, MAINMENU_KLASS, MAINMENU_TRAIT, MAINMENU_CTYPE, MAINMENU_NAME,
   MAINMENU_CPICK, MAINMENU_CFIRST, MAINMENU_CSECOND,
@@ -37,6 +37,7 @@ protected
   procedure Render;
   procedure UpdateFirst;
   procedure UpdateIntro;
+  procedure UpdateEngineCompat;
   procedure UpdateMenu;
   procedure UpdateNewGame;
   procedure UpdateSeed;
@@ -80,7 +81,7 @@ protected
   FBGTexture   : TTextureID;
   FLogoTexture : TTextureID;
   FName        : array[0..48] of Char;
-  FSeed        : array[0..6] of Char;
+  FSeed        : array[0..7] of Char;
   FSeedInvalid : Boolean;
 end;
 
@@ -135,7 +136,6 @@ const CTYPE_ANGEL  = 1;
 //      CTYPE_CUSTOM = 4;
 
       CTYPE_SECOND = 10;
-
 
 constructor TMainMenuView.Create( aInitial : TMainMenuViewMode = MAINMENU_FIRST; aResult : TMenuResult = nil );
 begin
@@ -236,12 +236,13 @@ begin
   end;
 
   if not GraphicsVersion then
-    if FMode in [MAINMENU_INTRO,MAINMENU_MENU,MAINMENU_NEWGAME,MAINMENU_SEED,MAINMENU_DIFFICULTY,MAINMENU_KLASS,MAINMENU_FAIR,MAINMENU_CTYPE,MAINMENU_NAME] then
+    if FMode in [MAINMENU_INTRO,MAINMENU_ENGINECOMPAT,MAINMENU_MENU,MAINMENU_NEWGAME,MAINMENU_SEED,MAINMENU_DIFFICULTY,MAINMENU_KLASS,MAINMENU_FAIR,MAINMENU_CTYPE,MAINMENU_NAME] then
       RenderASCIILogo;
 
   case FMode of
     MAINMENU_FIRST      : UpdateFirst;
     MAINMENU_INTRO      : UpdateIntro;
+    MAINMENU_ENGINECOMPAT : UpdateEngineCompat;
     MAINMENU_MENU       : UpdateMenu;
     MAINMENU_NEWGAME    : UpdateNewGame;
     MAINMENU_SEED       : UpdateSeed;
@@ -287,12 +288,45 @@ begin
 end;
 
 procedure TMainMenuView.UpdateIntro;
+  function EngineVersionCompatible : Boolean;
+  begin
+    Result := Copy( VersionEngine, 1, Length( VersionEngineExpected ) ) = VersionEngineExpected;
+  end;
 begin
   VTIG_FreeLabel( FIntro1, Point( 28, 9 ) );
   VTIG_FreeLabel( FIntro2, Rectangle(2,14,77,12) );
 
   if VTIG_EventCancel or VTIG_EventConfirm then
+    if EngineVersionCompatible
+      then FMode := MAINMENU_DONE
+      else FMode := MAINMENU_ENGINECOMPAT;
+end;
+
+procedure TMainMenuView.UpdateEngineCompat;
+begin
+  VTIG_BeginWindow( 'Engine version mismatch', 'mainmenu_enginecompat', Point( 52, 15 ), Point( 14, 7 ) );
+  VTIG_Text( 'This module expects a different {!engine version}.' );
+  VTIG_Text( '' );
+  VTIG_Text( 'Module version          : {!'+VersionModule+'}' );
+  VTIG_Text( 'Engine version          : {!'+VersionEngine+'}' );
+  VTIG_Text( 'Expected engine version : {!'+VersionEngineExpected+'}' );
+  VTIG_Text( '' );
+  VTIG_Text( 'Update the engine or the module, whichever is lower. Continuing may cause unstable behaviour!' );
+  VTIG_Text( '' );
+  if VTIG_Selectable( 'Exit' ) then
+  begin
+    DRL.SetState( DSQUIT );
     FMode := MAINMENU_DONE;
+  end;
+  if VTIG_Selectable( 'Continue' ) then
+    FMode := MAINMENU_DONE;
+  VTIG_End;
+
+  if VTIG_EventCancel then
+  begin
+    DRL.SetState( DSQUIT );
+    FMode := MAINMENU_DONE;
+  end;
 end;
 
 const
@@ -440,7 +474,7 @@ begin
         FSeedInvalid := False;
         IO.Console.ShowCursor;
         IO.Driver.StartTextInput;
-        if IO.IsGamepad then DRL.Store.StartText( 'Enter seed', 5 );
+        if IO.IsGamepad then DRL.Store.StartText( 'Enter seed', 6 );
         FMode := MAINMENU_SEED;
       end;
     end
@@ -466,11 +500,11 @@ var iStoreText   : AnsiString;
       iSeed : LongInt;
   begin
     Result := False;
-    if ( aText = '' ) or ( Length( aText ) > 5 ) then Exit;
+    if ( aText = '' ) or ( Length( aText ) > 6 ) then Exit;
     for i := 1 to Length( aText ) do
       if not ( aText[i] in ['0'..'9'] ) then Exit;
     iSeed := StrToIntDef( aText, 0 );
-    if ( iSeed < 1 ) or ( iSeed > 99999 ) then Exit;
+    if ( iSeed < 1 ) or ( iSeed > 999999 ) then Exit;
     FResult.Seed := Cardinal( iSeed );
     Exit( True );
   end;
@@ -482,7 +516,7 @@ begin
   VTIG_Begin( 'mainmenu_seed', Point( 30, 5 ), Point( 23, 16 ) );
   VTIG_PopStyle;
     VTIG_PushStyle( @TIGStyleColored );
-    VTIG_Text( 'Enter a seed (1..99999)' );
+    VTIG_Text( 'Enter a seed (1..999999)' );
     if VTIG_Input( @FSeed[0], High( FSeed ), [Ord('0')..Ord('9')] ) then
     begin
       iAccepted := AcceptSeed( AnsiString( FSeed ) );
@@ -501,7 +535,7 @@ begin
           begin
             StrPLCopy( @FSeed[0], iStoreText, High( FSeed ) );
             VTIG_ResetInput( 'mainmenu_seed' );
-            if IO.IsGamepad then DRL.Store.StartText( 'Enter seed', 5, iStoreText );
+            if IO.IsGamepad then DRL.Store.StartText( 'Enter seed', 6, iStoreText );
           end;
         end;
     end;
@@ -905,7 +939,7 @@ begin
   if FMode = MAINMENU_FIRST then
     IO.RenderUIBackgroundBlock( Point(4,1), Point(76,24), 0.7 );
 
-  if ( FMode in [MAINMENU_INTRO,MAINMENU_MENU,MAINMENU_NEWGAME,MAINMENU_SEED,MAINMENU_DIFFICULTY,MAINMENU_KLASS,MAINMENU_FAIR,MAINMENU_NAME,MAINMENU_CTYPE] )
+  if ( FMode in [MAINMENU_INTRO,MAINMENU_ENGINECOMPAT,MAINMENU_MENU,MAINMENU_NEWGAME,MAINMENU_SEED,MAINMENU_DIFFICULTY,MAINMENU_KLASS,MAINMENU_FAIR,MAINMENU_NAME,MAINMENU_CTYPE] )
     and IO.IsTopLayer( Self ) then
   begin
     iMin.Y  := Floor(iSize.Y / 25) * (-8);
