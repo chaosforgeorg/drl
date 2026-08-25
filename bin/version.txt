@@ -1,3 +1,6 @@
+0.10.12
+[fix] -- GH#348: Visual - possible fix for windows DPI scaling
+
 0.10.11
 [new] -- GJ#433: Game - support for game seeds and seeded games!
 [new] -- GJ#250: UI - non-UI controller bindings can be configured in the settings

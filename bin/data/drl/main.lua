@@ -1,9 +1,9 @@
 core.declare( "drl", {} )
 core.declare( "core_module", "drl" )
 core.declare( "DEMO", false )
-core.declare( "VERSION_MODULE",          "0.10.11" )
-core.declare( "VERSION_MODULE_SAVE",     "0.10.11" )
-core.declare( "VERSION_ENGINE_EXPECTED", "0.10.11" )
+core.declare( "VERSION_MODULE",          "0.10.12" )
+core.declare( "VERSION_MODULE_SAVE",     "0.10.12" )
+core.declare( "VERSION_ENGINE_EXPECTED", "0.10.12" )
 
 require( "drl:generator" )
 require( "drl:generators" )
