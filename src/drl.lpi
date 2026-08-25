@@ -29,7 +29,7 @@
     </PublishOptions>
     <RunParams>
       <local>
-        <CommandLineParams Value="-god"/>
+        <CommandLineParams Value="--god"/>
         <LaunchingApplication PathPlusParams="C:\Windows\system32\cmd.exe /C &quot;${TargetCmdLine}&quot;"/>
         <WorkingDirectory Value="..\bin"/>
       </local>
@@ -37,7 +37,7 @@
       <Modes Count="1">
         <Mode0 Name="default">
           <local>
-            <CommandLineParams Value="-god"/>
+            <CommandLineParams Value="--god"/>
             <LaunchingApplication PathPlusParams="C:\Windows\system32\cmd.exe /C &quot;${TargetCmdLine}&quot;"/>
             <WorkingDirectory Value="..\bin"/>
           </local>

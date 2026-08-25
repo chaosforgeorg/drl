@@ -4,7 +4,7 @@
 -- ----------------------------------------------------------------------
 
 -- Graphics mode. Can be CONSOLE for raw console, or TILES for graphical 
--- tiles. Overriden by -graphics and -console command line parameters.
+-- tiles. Overriden by --graphics and --console command line parameters.
 Graphics = "TILES"
 
 -- Sound engine, by default is FMOD on Windows, SDL on *nix. To use SDL on 
@@ -145,23 +145,23 @@ Messages = {
 }
 
 -- == Path configuration ==
--- You can use command line switch -config=/something/something/config.lua 
+-- You can use command line switch --config=/something/something/config.lua
 -- to load a different config!
 
 -- Uncomment the following paths if needed:
 
 -- This is the directory path to the read only data folder (current dir by
--- default, needs slash at end if changed). -datapath= to override on 
+-- default, needs slash at end if changed). --data-path= to override on
 -- command line.
 --DataPath = ""
 
 -- This is the directory path for writing (save, log) (current dir by
--- default, needs slash at end if changed). -writepath= to override on 
+-- default, needs slash at end if changed). --write-path= to override on
 -- command line.
 --WritePath = ""
 
 -- This is the directory path for score table (by default it will be the
--- same as WritePath, change for multi-user systems. -scorepath= to override
+-- same as WritePath, change for multi-user systems. --score-path= to override
 -- on command line.
 --ScorePath = ""
 

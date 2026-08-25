@@ -263,7 +263,7 @@ makefile = {
 			os.execute_in_dir( "makewad drl drlhq", "bin" )
 			os.mkdir( "bin/deploy/drl" )
 			os.copy( "bin/drl.wad", "bin/deploy/drl/drl.wad" )
-			os.execute_in_dir( "drl -publish drl -god", "bin" )
+			os.execute_in_dir( "drl", "bin", { "--publish=drl", "--god" } )
 		end,
 		install = function() makefile.commands.installhq() end,
 		installhq = function()
@@ -311,7 +311,7 @@ makefile = {
 		iss_nocomp  = { "wad", "mp3" },
 		iss_eicons  = {
 			{ name = "DRL", exe = "drl" },
-			{ name = "DRL (console mode)", exe = "drl", parameters = "-console" },
+			{ name = "DRL (console mode)", exe = "drl", parameters = "--console" },
 			{ name = "DRL Manual", file = "manual.txt" },
 			{ name = "ChaosForge Website", url = "http://www.chaosforge.org/" },
 			{ name = "DRL Website", url = "https://drl.chaosforge.org/" },
