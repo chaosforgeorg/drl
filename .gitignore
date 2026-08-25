@@ -16,7 +16,6 @@ bin/doom.prc
 bin/doomrl
 bin/drl.prc
 bin/log.txt
-bin/makewad
 bin/drlwad
 bin/modules.local.lua
 bin/user
@@ -31,7 +30,6 @@ src/doomrl.lps
 src/drl.lps
 src/drl.prc
 src/fpcmade.x86_64-linux
-src/makewad.lps
 tmp/
 !tmp/!readme.txt
 bin/console.history

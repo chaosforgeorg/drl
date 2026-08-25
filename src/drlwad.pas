@@ -247,13 +247,19 @@ end;
 procedure TDRLWadApplication.ProcessManifest;
 var iWadIndex : Integer;
     iWadTable : TLuaTable;
+    iValue    : TLuaIndexValue;
 begin
   FHasEncoded := False;
   iWadIndex := 0;
-  for iWadTable in TLuaITablesEnumerator.Create( FLua.NativeState, 'build' ) do
+  for iValue in FBuildTable.IPairs do
   begin
     Inc(iWadIndex);
-    ProcessWad(iWadTable, iWadIndex);
+    iWadTable := TLuaTable.Create(FLua.NativeState, iValue.Value.Index);
+    try
+      ProcessWad(iWadTable, iWadIndex);
+    finally
+      iWadTable.Free;
+    end;
   end;
 end;
 
