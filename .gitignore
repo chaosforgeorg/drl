@@ -17,6 +17,7 @@ bin/doomrl
 bin/drl.prc
 bin/log.txt
 bin/makewad
+bin/drlwad
 bin/modules.local.lua
 bin/user
 bin/settings.lua

@@ -12,7 +12,7 @@
             "label": "Unit test build scripts",
             "dependsOrder": "sequence",
             "dependsOn": [
-                 "Build makewad.exe (debug)",
+                 "Build drlwad.exe (debug)",
                  "Build drl.wad, core.wad",
                  "Syntax Check (debug)",
                  "Build drl.exe (debug)",
@@ -255,13 +255,13 @@
             "problemMatcher": []
         },
         {
-            "label": "Build makewad.exe (debug)",
+            "label": "Build drlwad.exe (debug)",
             "type": "shell",
             "group": {
                 "kind": "build",
             },
             "command": "${config:fpcPath}",
-            "args": [ //This command definition matches the Lazarus makewad.lpi build execution
+            "args": [ //drlwad deliberately has no Lazarus project file
                 "-Px86_64", //Set target CPU to be x86_64
                 "-Mobjfpc", //Switch on some Delphi extensions
                 "-Scgi", //Support C-style operators, label and goto commands, INLINE
@@ -279,10 +279,10 @@
                 "-Fu${config:lazarusPath}\\components\\lazutils\\lib\\x86_64-win64", //Include unit search path
                 "-Fu${config:lazarusPath}\\packager\\units\\x86_64-win64", //Include unit search path
                 "-FU${config:drlBasePath}\\${config:tmpPath}", //Write units to this folder
-                "-o${config:drlBasePath}\\${config:debugPath}\\${config:makewadExe}", //Executable location
+                "-o${config:drlBasePath}\\${config:debugPath}\\drlwad.exe", //Executable location
                 "-dLCL", //Enables conditional compilation of this symbol
                 "-dLCLwin32", //Enables conditional compilation of this symbol
-                "${config:makewadMainFile}" //The compilation file
+                "drlwad.pas" //The compilation file
             ],
             "presentation": {
                 "focus": true
@@ -311,7 +311,10 @@
             "group": {
                 "kind": "build",
             },
-            "command": "./${config:makewadExe}",
+            "command": "./drlwad.exe",
+            "args": [
+                ".."
+            ],
             "presentation": {
                 "focus": true
             },

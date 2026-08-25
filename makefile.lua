@@ -43,16 +43,23 @@ local function module_root_path(module_id)
 	return os.path_join(os.pwd(), "bin", path)
 end
 
-local function makewad_arguments(module_id, legacy_argument)
-	local arguments = { module_id }
-	if legacy_argument then
-		arguments[#arguments + 1] = legacy_argument
+local function run_drlwad(build_file, raise_errors)
+	os.execute_in_dir("drlwad", "bin", { build_file }, raise_errors)
+end
+
+local function jhc_build_root()
+	if module_paths.jhc then
+		return os.path_join(module_root_path("jhc"), "..")
 	end
-	if module_paths[module_id] then
-		arguments[#arguments + 1] = "--module-path"
-		arguments[#arguments + 1] = module_paths[module_id]
-	end
-	return arguments
+	return os.path_join(os.pwd(), "..", "jhc")
+end
+
+local function jhc_build_file(name)
+	return os.path_join(jhc_build_root(), name)
+end
+
+local function jhc_source_file(name)
+	return os.path_join(jhc_build_root(), "jhc", name)
 end
 
 local function prepare_steam_content(app_build)
@@ -120,6 +127,17 @@ function set_demo(path, value)
     f:close()
 end
 
+local function with_demo(path, action)
+	set_demo(path, true)
+	local success, message = xpcall(action, debug.traceback)
+	local restored, restore_message = pcall(set_demo, path, false)
+	if not restored then
+		if success then message = "" else message = tostring(message).."\n" end
+		error(message.."Failed to restore DEMO=false: "..tostring(restore_message), 0)
+	end
+	if not success then error(message, 0) end
+end
+
 makefile = {
 	name = "drl",
 	fpc_params = {
@@ -142,7 +160,7 @@ makefile = {
 	end,
 	post_build = function()
 	end,
-	source_files = { "drl.pas", "makewad.pas" },
+	source_files = { "drl.pas", "drlwad.pas" },
 	publish = {
 		lq = {
 			exec = { "drl" },
@@ -187,52 +205,38 @@ makefile = {
 	},
 	commands = {
 		jhc_demo_test = function()
-			os.execute_in_dir(
-				"makewad", "bin", makewad_arguments("jhc")
-			)
+			run_drlwad(jhc_build_file("build.lua"))
 			make.publish( "deploy", "jhc" )
 			local content_path, app_vdf_path =
 				prepare_steam_content("demo")
 			make.steam(content_path, app_vdf_path)
 		end,
 		jhc_demo = function()
-			local main_path = os.path_join(
-				module_root_path("jhc"), "main.lua"
-			)
-			set_demo(main_path, true)
-			os.execute_in_dir(
-				"makewad", "bin", makewad_arguments("jhc", "demo.txt")
-			)
-			set_demo(main_path, false)
+			local main_path = jhc_source_file("main.lua")
+			with_demo(main_path, function()
+				run_drlwad(jhc_build_file("demo.build.lua"), true)
+			end)
 			make.publish( "deploy", "jhc" )
 			local content_path, app_vdf_path =
 				prepare_steam_content("demo")
 			make.steam(content_path, app_vdf_path)
 		end,
 		jhc = function()
-			os.execute_in_dir(
-				"makewad", "bin", makewad_arguments("jhc")
-			)
+			run_drlwad(jhc_build_file("build.lua"))
 			make.publish( "deploy", "jhc" )
 			local content_path, app_vdf_path =
 				prepare_steam_content("main")
 			make.steam(content_path, app_vdf_path)
 		end,
 		jhc_build = function()
-			os.execute_in_dir(
-				"makewad", "bin", makewad_arguments("jhc")
-			)
+			run_drlwad(jhc_build_file("build.lua"))
 			make.publish( "deploy", "jhc" )
 		end,
 		jhc_demo_build = function()
-			local main_path = os.path_join(
-				module_root_path("jhc"), "main.lua"
-			)
-			set_demo(main_path, true)
-			os.execute_in_dir(
-				"makewad", "bin", makewad_arguments("jhc", "demo.txt")
-			)
-			set_demo(main_path, false)
+			local main_path = jhc_source_file("main.lua")
+			with_demo(main_path, function()
+				run_drlwad(jhc_build_file("demo.build.lua"), true)
+			end)
 			make.publish( "deploy-demo", "jhc" )
 		end,
 		jhc_push = function()
@@ -247,20 +251,20 @@ makefile = {
 		end,
 		lq = function()
 			if not BUILT then
-				os.execute_in_dir( "makewad", "bin" )
+				run_drlwad("..")
 				BUILT = true
 			end
 			make.package( make.publish( (OS_VER_PREFIX or "")..make.version_name().."-lq", "lq" ), PUBLISH_DIR )
 		end,
 		hq = function()
 			if not BUILT then
-				os.execute_in_dir( "makewad", "bin" )
+				run_drlwad("..")
 				BUILT = true
 			end
 			make.package( make.publish( (OS_VER_PREFIX or "")..make.version_name(), "hq" ), PUBLISH_DIR )
 		end,
 		drl_mod = function()
-			os.execute_in_dir( "makewad drl drlhq", "bin" )
+			run_drlwad(os.path_join("..", "drlhq.build.lua"))
 			os.mkdir( "bin/deploy/drl" )
 			os.copy( "bin/drl.wad", "bin/deploy/drl/drl.wad" )
 			os.execute_in_dir( "drl", "bin", { "--publish=drl", "--god" } )
@@ -268,7 +272,7 @@ makefile = {
 		install = function() makefile.commands.installhq() end,
 		installhq = function()
 			if not BUILT then
-				os.execute_in_dir( "makewad", "bin" )
+				run_drlwad("..")
 				BUILT = true
 			end
 			if OS == "WINDOWS" then	
@@ -279,7 +283,7 @@ makefile = {
 		end,
 		installlq = function()
 			if not BUILT then
-				os.execute_in_dir( "makewad", "bin" )
+				run_drlwad("..")
 				BUILT = true
 			end
 			if OS == "WINDOWS" then	
