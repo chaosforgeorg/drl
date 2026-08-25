@@ -142,7 +142,7 @@ makefile = {
 	end,
 	post_build = function()
 	end,
-	source_files = { "drl.pas", "makewad.pas", "drlwad.pas" },
+	source_files = { "drl.pas", "makewad.pas" },
 	publish = {
 		lq = {
 			exec = { "drl" },
