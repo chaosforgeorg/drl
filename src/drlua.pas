@@ -43,7 +43,7 @@ end;
 implementation
 
 uses typinfo, variants,
-     vnode, vdebug, vlua, vluatools, vluadungen, vluaentitynode, vluatype, vmath,
+     vnode, vapp, vdebug, vlua, vluatools, vluadungen, vluaentitynode, vluatype, vmath,
      vtextures, vtigstyle, vvector,
      dfplayer, dflevel, dfmap, drlhooks, drlhelp, dfhof, drlbase, drlio, drlperk,
      drlgfxio, drlspritemap, vparticleengine;
@@ -367,7 +367,7 @@ begin
         iData.RegisterLoader(FILETYPE_IMAGE ,@((IO as TDRLGFXIO).Textures.LoadTextureCallback));
         iData.Load('graphics');
       end;
-      IO.Audio.LoadBindingDataFile( iData, 'audio.lua', DataPath );
+      IO.Audio.LoadBindingDataFile( iData, 'audio.lua', Application.Paths.DataPath );
       FOpenData.Push( iData );
     end
     else

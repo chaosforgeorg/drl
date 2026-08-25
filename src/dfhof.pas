@@ -68,7 +68,7 @@ var HOF : THOF;
 
 implementation
 
-uses math, sysutils, strutils, variants,
+uses math, sysutils, strutils, variants, vapp,
      vluasystem, vluatable, vdebug, vtig, vutil, vrltools,
      drlbase, dfplayer;
 
@@ -729,8 +729,8 @@ end;
 procedure THOF.Init;
 var iScorePath : Ansistring;
 begin
-  iScorePath := ScorePath;
-  if iScorePath = '' then iScorePath := ModuleUserPath;
+  iScorePath := Application.Paths.ScorePath;
+  if iScorePath = '' then iScorePath := Application.Paths.ModuleUserPath;
   FScore := TScoreFile.Create( iScorePath + ScoreFile, MaxHOFEntries );
   FScore.SetCRC( '344ef'+{ModuleID+}'3321', '738af'+{ModuleID+}'92-5' );
   FScore.SetBackup( iScorePath+'backup'+PathDelim, Option_ScoreBackups );
@@ -741,9 +741,9 @@ begin
     FScore.Unlock;
   end;
 
-  FPlayerInfo := TVXMLDataFile.Create( ModuleUserPath + PlayerFile, 'player' );
+  FPlayerInfo := TVXMLDataFile.Create( Application.Paths.ModuleUserPath + PlayerFile, 'player' );
   FPlayerInfo.SetCRC( '344ef'+{ModuleID+}'3321', '738af'+{ModuleID+}'92-5' );
-  FPlayerInfo.SetBackup(  ModuleUserPath + 'backup'+PathDelim, Option_PlayerBackups );
+  FPlayerInfo.SetBackup(  Application.Paths.ModuleUserPath + 'backup'+PathDelim, Option_PlayerBackups );
   FPlayerInfo.Load;
 
   HOFOpen := True;

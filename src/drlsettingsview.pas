@@ -72,7 +72,7 @@ end;
 
 implementation
 
-uses math, sysutils, vutil, vdebug, vtig, vtigio,
+uses math, sysutils, vapp, vutil, vdebug, vtig, vtigio,
      drlconfiguration, drlbase;
 
 const CStates : array[ TSettingsViewState ] of record Title, ID : Ansistring; end = (
@@ -504,7 +504,7 @@ end;
 
 destructor TSettingsView.Destroy;
 begin
-  Configuration.Write( SettingsPath );
+  Configuration.Write( Application.Paths.SettingsPath );
   inherited Destroy;
 end;
 

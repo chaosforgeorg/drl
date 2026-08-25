@@ -190,7 +190,7 @@ procedure EmitCrashInfo( const aInfo : AnsiString; aInGame : Boolean  );
 
 implementation
 
-uses math, video, dateutils, variants,
+uses math, video, dateutils, variants, vapp,
      vsound, vluasystem, vuid, vlog, vdebug, vmath,
      vsdlio, vglconsole, vtig, vtigio, vvector,
      dflevel, dfplayer, dfitem, dfhof,
@@ -783,12 +783,12 @@ begin
 
   iName := 'DRL';
   if Player <> nil then iName := Player.Name;
-  if not DirectoryExists( ModuleUserPath + 'screenshot' ) then CreateDir( ModuleUserPath + 'screenshot' );
-  iFName := ModuleUserPath + 'screenshot'+PathDelim+ToProperFilename('['+FormatDateTime(Option_TimeStamp,Now)+'] '+iName)+iExt;
+  if not DirectoryExists( Application.Paths.ModuleUserPath + 'screenshot' ) then CreateDir( Application.Paths.ModuleUserPath + 'screenshot' );
+  iFName := Application.Paths.ModuleUserPath + 'screenshot'+PathDelim+ToProperFilename('['+FormatDateTime(Option_TimeStamp,Now)+'] '+iName)+iExt;
   iCount := 1;
   while FileExists(iFName) do
   begin
-    iFName := ModuleUserPath + 'screenshot'+PathDelim+ToProperFilename('['+FormatDateTime(Option_TimeStamp,Now)+'] '+iName)+'-'+IntToStr(iCount)+iExt;
+    iFName := Application.Paths.ModuleUserPath + 'screenshot'+PathDelim+ToProperFilename('['+FormatDateTime(Option_TimeStamp,Now)+'] '+iName)+'-'+IntToStr(iCount)+iExt;
     Inc(iCount);
   end;
 

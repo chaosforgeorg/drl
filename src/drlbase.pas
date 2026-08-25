@@ -134,7 +134,7 @@ implementation
 
 uses  {$IFDEF WINDOWS}Windows,{$ELSE}Unix,{$ENDIF}
      Classes, SysUtils,
-     vdebug, vlua, vstream,
+     vapp, vdebug, vlua, vstream,
      dfmap, dfbeing,
      drlio, drlgfxio, drltextio, zstream,
      drlspritemap, // remove
@@ -296,7 +296,7 @@ begin
   FreeAndNil( Config );
   IO.LoadStart;
   ColorOverrides := TIntHashMap.Create( );
-  Config := TDRLConfig.Create( ConfigurationPath, True );
+  Config := TDRLConfig.Create( Application.Paths.ConfigurationPath, True );
   IO.Configure( Config, True );
   FCoreHooks := [];
   FModuleHooks := [];
@@ -320,8 +320,8 @@ begin
   if GraphicsVersion then
     (IO as TDRLGFXIO).Textures.Upload;
 
-  if GodMode and FileExists( WritePath + 'god.lua') then
-    Lua.LoadFile( WritePath + 'god.lua');
+  if GodMode and FileExists( Application.Paths.WritePath + 'god.lua') then
+    Lua.LoadFile( Application.Paths.WritePath + 'god.lua');
   HOF.Init;
   FLevel := TLevel.Create;
   if not GraphicsVersion then
@@ -1643,7 +1643,7 @@ begin
   iGameRNG  := nil;
   try
     try
-      iStream := TGZFileStream.Create( ModuleUserPath + 'save',gzOpenRead );
+      iStream := TGZFileStream.Create( Application.Paths.ModuleUserPath + 'save',gzOpenRead );
       //      Stream := TDebugStream.Create( Stream );
       iModule := iStream.ReadAnsiString;
       if iModule <> CoreModuleID then Exit( False );
@@ -1693,7 +1693,7 @@ begin
       FreeAndNil( iGameRNG );
       FreeAndNil( iStream );
     end;
-    DeleteFile( ModuleUserPath + 'save' );
+    DeleteFile( Application.Paths.ModuleUserPath + 'save' );
 
     IO.Msg('Game loaded.');
 
@@ -1705,7 +1705,7 @@ begin
     on e : Exception do
     begin
       Log('Save file corrupted! Error while loading : '+ e.message );
-      DeleteFile( ModuleUserPath + 'save' );
+      DeleteFile( Application.Paths.ModuleUserPath + 'save' );
       LoadSaveFile := False;
       if iRecreate then
       begin
@@ -1746,7 +1746,7 @@ var Stream : TStream;
 begin
   Player.Statistics.OnSaveFile;
 
-  Stream := TGZFileStream.Create( ModuleUserPath + 'save',gzOpenWrite );
+  Stream := TGZFileStream.Create( Application.Paths.ModuleUserPath + 'save',gzOpenWrite );
   //      Stream := TDebugStream.Create( Stream );
 
   Stream.WriteAnsiString( CoreModuleID );
@@ -1778,12 +1778,12 @@ begin
   FreeAndNil( Stream );
   FLevel.Clear;
   if ForceShop then
-    CopyFileSimple( ModuleUserPath + 'save', ModuleUserPath + 'savedemo' );
+    CopyFileSimple( Application.Paths.ModuleUserPath + 'save', Application.Paths.ModuleUserPath + 'savedemo' );
 end;
 
 function TDRL.SaveExists : Boolean;
 begin
-  Exit( FileExists( ModuleUserPath + 'save' ) );
+  Exit( FileExists( Application.Paths.ModuleUserPath + 'save' ) );
 end;
 
 destructor TDRL.Destroy;

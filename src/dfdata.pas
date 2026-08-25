@@ -12,13 +12,6 @@ uses Classes, SysUtils, idea,
      drlconfig, drlkeybindings;
 
 const CoreModuleID          : AnsiString = '';
-      ConfigurationPath     : AnsiString = 'config.lua';
-      ModuleUserPath        : AnsiString = '';
-      DataPath              : AnsiString = '';
-      WritePath             : AnsiString = '';
-      ScorePath             : AnsiString = '';
-      SettingsPath          : AnsiString = 'settings.lua';
-    
       VersionEngine         : Ansistring = '';
       VersionEngineSave     : Ansistring = '';
       VersionEngineExpected : Ansistring = '';
@@ -101,6 +94,7 @@ const
   ForceConsole    : Boolean = False;
   ForceGraphics   : Boolean = False;
   ForceWindowed   : Boolean = False;
+  ForcePlayerName : AnsiString = '';
   ModdedGame      : Boolean = False;
   ForceRestart    : Ansistring = '';
   ModErrors       : TStringGArray = nil;

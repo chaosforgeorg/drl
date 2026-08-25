@@ -71,7 +71,7 @@ var Modules : TDRLModules;
 
 implementation
 
-uses sysutils, variants, vluatable, vdf, vstoreinterface, dfdata;
+uses sysutils, variants, vapp, vluatable, vdf, vstoreinterface, dfdata;
 
 function DRLModuleCompare( const A, B : TDRLModule ) : Integer;
 begin
@@ -108,18 +108,18 @@ begin
   try
     iLua := TLua.Create;
 
-    if FindFirst( DataPath + '*.wad', faAnyFile, iInfo ) = 0 then
+    if FindFirst( Application.Paths.DataPath + '*.wad', faAnyFile, iInfo ) = 0 then
     repeat
        if ( iInfo.Name <> 'player.wad' ) and ( iInfo.Name <> 'score.wad' ) then
-         ReadMetaFromWAD( iLua, DataPath + iInfo.Name );
+         ReadMetaFromWAD( iLua, Application.Paths.DataPath + iInfo.Name );
     until FindNext(iInfo) <> 0;
     FindClose(iInfo);
 
-    if FindFirst( DataPath + 'data' + PathDelim + '*', faDirectory, iInfo ) = 0 then
+    if FindFirst( Application.Paths.DataPath + 'data' + PathDelim + '*', faDirectory, iInfo ) = 0 then
     begin
       repeat
         if (iInfo.Attr and faDirectory <> 0) and (iInfo.Name <> '.') and (iInfo.Name <> '..') then
-          ReadMetaFromFolder( iLua,DataPath + 'data' + PathDelim + iInfo.Name + PathDelim, Option_ForceRaw );
+          ReadMetaFromFolder( iLua,Application.Paths.DataPath + 'data' + PathDelim + iInfo.Name + PathDelim, Option_ForceRaw );
       until FindNext(iInfo) <> 0;
     end;
     FindClose(iInfo);
@@ -320,7 +320,7 @@ var iManifestPath : AnsiString;
     );
   end;
 begin
-  iManifestPath := DataPath + 'modules.local.lua';
+  iManifestPath := Application.Paths.DataPath + 'modules.local.lua';
   if not FileExists( iManifestPath ) then Exit;
 
   aLua.Register( 'module_paths', Null );
@@ -392,4 +392,3 @@ begin
 end;
 
 end.
-

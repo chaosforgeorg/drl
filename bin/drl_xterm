@@ -1,4 +1,4 @@
 #!/bin/sh
 set -eu
 
-xterm -geometry 80x25 -e ./drl -console
+xterm -geometry 80x25 -e ./drl --console

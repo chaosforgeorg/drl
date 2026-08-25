@@ -87,7 +87,7 @@ end;
 
 implementation
 
-uses math, sysutils,
+uses math, sysutils, vapp,
      vutil, vtig, vtigio, vgltypes, vluasystem, vluavalue,
      dfhof,
      drlbase, drlgfxio, drlplayerview, drlhelpview, drlsettingsview, drlpagedview;
@@ -168,20 +168,20 @@ begin
 
   if FMode = MAINMENU_FIRST then
   begin
-    if not FileExists( WritePath + 'drl.prc' ) then
+    if not FileExists( Application.Paths.WritePath + 'drl.prc' ) then
     begin
-      WriteFileString( WritePath + 'drl.prc', 'DRL was already run.' );
+      WriteFileString( Application.Paths.WritePath + 'drl.prc', 'DRL was already run.' );
 
       FFirst := AnsiString( LuaSystem.ProtectedCall( [CoreModuleID,'GetFirstText'], [] ) );
       if FFirst = '' then FMode := MAINMENU_INTRO;
 
       if not DemoVersion then
       begin
-        if FileExists( ModuleUserPath + 'savedemo' ) then
+        if FileExists( Application.Paths.ModuleUserPath + 'savedemo' ) then
         begin
-          if ( not FileExists( ModuleUserPath + 'save' ) )
-            then RenameFile( ModuleUserPath + 'savedemo', ModuleUserPath + 'save' )
-            else DeleteFile( ModuleUserPath + 'savedemo' );
+          if ( not FileExists( Application.Paths.ModuleUserPath + 'save' ) )
+            then RenameFile( Application.Paths.ModuleUserPath + 'savedemo', Application.Paths.ModuleUserPath + 'save' )
+            else DeleteFile( Application.Paths.ModuleUserPath + 'savedemo' );
         end;
       end;
     end
@@ -607,7 +607,7 @@ begin
   if VTIG_Selectable( '  Delete save file' ) then
   begin
     FSaveExists := False;
-    DeleteFile( ModuleUserPath + 'save' );
+    DeleteFile( Application.Paths.ModuleUserPath + 'save' );
     FMode := MAINMENU_MENU;
   end;
 
