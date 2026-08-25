@@ -36,7 +36,7 @@ begin
   Result := True;
 end;
 
-{$R *.res}
+{$R drl.rc}
 
 {$ENDIF}
 
