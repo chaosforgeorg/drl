@@ -50,7 +50,6 @@ type
     procedure ValidateOptions; override;
     procedure BeforeConfiguration( var aPaths : TGamePaths ); override;
     procedure LoadConfiguration( var aPaths : TGamePaths ); override;
-    procedure PublishPaths( const aPaths : TGamePaths ); override;
     procedure ApplyOptions; override;
     procedure BeforeDiagnostics; override;
     function ExecuteApplicationCommand : Boolean; override;
@@ -128,15 +127,6 @@ begin
   CoreModuleID := Configuration.GetString( 'default_module' );
 end;
 
-procedure TDRLApplication.PublishPaths( const aPaths : TGamePaths );
-begin
-  ConfigurationPath := aPaths.ConfigurationPath;
-  SettingsPath      := aPaths.SettingsPath;
-  DataPath          := aPaths.DataPath;
-  WritePath         := aPaths.WritePath;
-  ScorePath         := aPaths.ScorePath;
-end;
-
 procedure TDRLApplication.ApplyOptions;
 begin
   if HasOption( 'name' ) then
@@ -189,16 +179,17 @@ begin
   if CoreModuleID = '' then
     drlbase.DRL.RunModuleChoice;
 
-  if not DirectoryExists( WritePath + 'user' ) then CreateDir( WritePath + 'user' );
-  if not DirectoryExists( WritePath + 'user' + PathDelim + CoreModuleID ) then
-    CreateDir( WritePath + 'user' + PathDelim + CoreModuleID );
-  ModuleUserPath := WritePath + 'user' + PathDelim + CoreModuleID + PathDelim;
-  if not DirectoryExists( ModuleUserPath + 'screenshot' ) then
-    CreateDir( ModuleUserPath + 'screenshot' );
-  if not DirectoryExists( ModuleUserPath + 'mortem' ) then
-    CreateDir( ModuleUserPath + 'mortem' );
-  if not DirectoryExists( ModuleUserPath + 'backup' ) then
-    CreateDir( ModuleUserPath + 'backup' );
+  if not DirectoryExists( Paths.WritePath + 'user' ) then
+    CreateDir( Paths.WritePath + 'user' );
+  if not DirectoryExists( Paths.WritePath + 'user' + PathDelim + CoreModuleID ) then
+    CreateDir( Paths.WritePath + 'user' + PathDelim + CoreModuleID );
+  FPaths.ModuleUserPath := Paths.WritePath + 'user' + PathDelim + CoreModuleID + PathDelim;
+  if not DirectoryExists( Paths.ModuleUserPath + 'screenshot' ) then
+    CreateDir( Paths.ModuleUserPath + 'screenshot' );
+  if not DirectoryExists( Paths.ModuleUserPath + 'mortem' ) then
+    CreateDir( Paths.ModuleUserPath + 'mortem' );
+  if not DirectoryExists( Paths.ModuleUserPath + 'backup' ) then
+    CreateDir( Paths.ModuleUserPath + 'backup' );
 
   drlbase.DRL.Initialize;
 
@@ -252,8 +243,6 @@ begin
     EmitCrashInfo( aException.Message, False );
 end;
 
-var Application : TDRLApplication;
-
 begin
   Application := TDRLApplication.Create;
   try
@@ -262,6 +251,6 @@ begin
     if not Application.Terminated then
       Application.Run;
   finally
-    Application.Free;
+    FreeAndNil( Application );
   end;
 end.

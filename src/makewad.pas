@@ -1,6 +1,6 @@
 {$INCLUDE drl.inc}
 program makewad;
-uses Classes,SysUtils, strutils, getopts, vlog, vpkg,vdf, vutil, dfdata, idea;
+uses Classes,SysUtils, strutils, getopts, vlog, vpkg,vdf, vutil, idea;
 
 var WAD         : TVDataCreator;
     EKey,DKKey  : TIDEAKey;
@@ -106,7 +106,7 @@ begin
 end;
 
 begin
-  Logger.AddSink( TTextFileLogSink.Create( LOGDEBUG, WritePath + 'runtime.log', False ) );
+  Logger.AddSink( TTextFileLogSink.Create( LOGDEBUG, 'runtime.log', False ) );
   Logger.AddSink( TConsoleLogSink.Create( LOGDEBUG ) );
 
   try

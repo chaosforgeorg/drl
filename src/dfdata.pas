@@ -12,13 +12,6 @@ uses Classes, SysUtils, idea,
      drlconfig, drlkeybindings;
 
 const CoreModuleID          : AnsiString = '';
-      ConfigurationPath     : AnsiString = 'config.lua';
-      ModuleUserPath        : AnsiString = '';
-      DataPath              : AnsiString = '';
-      WritePath             : AnsiString = '';
-      ScorePath             : AnsiString = '';
-      SettingsPath          : AnsiString = 'settings.lua';
-    
       VersionEngine         : Ansistring = '';
       VersionEngineSave     : Ansistring = '';
       VersionEngineExpected : Ansistring = '';
