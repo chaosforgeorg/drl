@@ -6,23 +6,30 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlconfiguration;
 interface
-uses vconfiguration;
+uses vconfiguration, vbindings;
 
 type TDRLConfiguration = class( TConfigurationManager )
   constructor Create;
+  destructor Destroy; override;
+private
+  FKeyBindings        : TBindingCatalog;
+  FControllerBindings : TBindingCatalog;
+public
+  property KeyBindings        : TBindingCatalog read FKeyBindings;
+  property ControllerBindings : TBindingCatalog read FControllerBindings;
 end;
 
 var Configuration : TDRLConfiguration;
 
 implementation
 
-uses vioevent, drlkeybindings, drlcontrollerbindings;
+uses SysUtils, drlkeybindings, drlcontrollerbindings;
 
 constructor TDRLConfiguration.Create;
 var iGroup : TConfigurationGroup;
-    iInput : TInputKey;
     iID    : Ansistring;
-const CInputGroups : array[1..7] of Ansistring = (
+const CInputGroups : array[1..8] of Ansistring = (
+  'keybindings_hidden',
   'keybindings_movement',
   'keybindings_actions',
   'keybindings_ui',
@@ -33,6 +40,8 @@ const CInputGroups : array[1..7] of Ansistring = (
 );
 begin
   inherited Create;
+  FKeyBindings := TBindingCatalog.Create(KeyInfo);
+  FControllerBindings := TBindingCatalog.Create(ControllerBindingInfo);
 
   iGroup := AddGroup( 'meta' );
   iGroup.AddInteger( 'config_version', 0 );
@@ -177,22 +186,20 @@ begin
     ;
 
   iGroup := AddGroup( CONTROLLER_BINDINGS_GAMEPLAY_GROUP );
-  RegisterControllerBindings( iGroup );
-
-  iGroup := AddGroup( 'keybindings_hidden' );
-  iGroup.AddInteger( 'input_escape', VKEY_ESCAPE );
-  iGroup.AddInteger( 'input_ok', VKEY_ENTER );
+  FControllerBindings.RegisterGroup(iGroup, CONTROLLER_BINDING_INFO_GROUP);
 
   for iID in CInputGroups do
-  begin
-    iGroup := AddGroup( iID );
-    for iInput in TInputKey do
-      if KeyInfo[ iInput ].Group = iID then
-        iGroup.AddInteger( KeyInfo[ iInput ].ID, KeyInfo[ iInput ].Default )
-          .SetName(KeyInfo[ iInput ].Name)
-          .SetDescription(KeyInfo[ iInput ].Description)
-          ;
-  end;
+    FKeyBindings.RegisterGroup(AddGroup(iID), iID);
+
+  FKeyBindings.ValidateRegistration;
+  FControllerBindings.ValidateRegistration;
+end;
+
+destructor TDRLConfiguration.Destroy;
+begin
+  FreeAndNil(FControllerBindings);
+  FreeAndNil(FKeyBindings);
+  inherited Destroy;
 end;
 
 end.

@@ -134,7 +134,7 @@ implementation
 
 uses  {$IFDEF WINDOWS}Windows,{$ELSE}Unix,{$ENDIF}
      Classes, SysUtils,
-     vapp, vdebug, vlua, vstream,
+     vapp, vbindings, vdebug, vlua, vstream,
      dfmap, dfbeing,
      drlio, drlgfxio, drltextio, zstream,
      drlspritemap, // remove
@@ -1215,11 +1215,24 @@ begin
 end;
 
 function TDRL.HandleKeyEvent( aEvent : TIOEvent ) : Boolean;
-var iInput : TInputKey;
+var iAction : TBindingAction;
+    iInput  : TInputKey;
 begin
   if aEvent.Key.Code = 0 then Exit( False );
   IO.KeyCode := IOKeyEventToIOKeyCode( aEvent.Key );
-  iInput     := TInputKey( Config.Commands[ IO.KeyCode ] );
+  iAction    := IO.GameBindings.ResolveKey( IO.KeyCode );
+
+  if iAction = BINDING_FORWARD_LUA then
+  begin
+    if aEvent.Key.Repeated then Exit( False );
+    Config.RunKey( IO.KeyCode );
+    Exit( HandleCommand( TCommand.Create( COMMAND_SKIP ) ) );
+  end;
+
+  if ( iAction < Ord( Low( TInputKey ) ) )
+    or ( iAction > Ord( High( TInputKey ) ) ) then
+    Exit( False );
+  iInput := TInputKey( iAction );
 
   // Handle key-repeat
   if aEvent.Key.Repeated then
@@ -1228,11 +1241,6 @@ begin
       Exit( False );
   FLastInputTime := IO.Time;
 
-  if ( Byte(iInput) = 255 ) then // GodMode Keys
-  begin
-    Config.RunKey( IO.KeyCode );
-    Exit( HandleCommand( TCommand.Create( COMMAND_SKIP ) ) );
-  end;
   if iInput <> INPUT_NONE then
   begin
     // Handle commands that should be handled by the UI

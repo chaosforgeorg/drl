@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlio;
 interface
 uses {$IFDEF WINDOWS}Windows,{$ENDIF} Classes, SysUtils,
-     vio, viorl, vrltools, vluaconfig, vglquadrenderer, vmessages, vtextures, vtigstyle,
+     vio, vbindings, viorl, vrltools, vluaconfig, vglquadrenderer, vmessages, vtextures, vtigstyle,
      vluastate, viotypes, vioevent, vioconsole, vgenerics, vutil,
      dfdata, dfthing, dfbeing, drlspritemap, drlaudio, drlkeybindings,
      drlcontrollerbindings, drlloadingview;
@@ -145,6 +145,7 @@ protected
   FMTarget     : TCoord2D;
   FLastTarget  : TCoord2D;
   FASCII       : TASCIIImageMap;
+  FGameBindings: TBindingContext;
 
   FHudEnabled  : Boolean;
   FWaiting     : Boolean;
@@ -169,15 +170,16 @@ protected
 
   FTIGDefault     : TTIGStyle;
 public
-  property KeyCode     : TIOKeyCode     read FKeyCode    write FKeyCode;
-  property Audio       : TDRLAudio     read FAudio;
-  property MTarget     : TCoord2D       read FMTarget    write FMTarget;
-  property ASCII       : TASCIIImageMap read FASCII;
-  property HintOverlay : AnsiString     read FHintOverlay write FHintOverlay;
-  property Targeting   : Boolean        read FTargeting   write FTargeting;
-  property HintStatus  : AnsiString     read FHintStatus  write FHintStatus;
-  property Time        : QWord          read FTime;
-  property NarrowMode  : Boolean        read FNarrowMode;
+  property KeyCode      : TIOKeyCode      read FKeyCode    write FKeyCode;
+  property GameBindings : TBindingContext read FGameBindings;
+  property Audio        : TDRLAudio       read FAudio;
+  property MTarget      : TCoord2D        read FMTarget    write FMTarget;
+  property ASCII        : TASCIIImageMap  read FASCII;
+  property HintOverlay  : AnsiString      read FHintOverlay write FHintOverlay;
+  property Targeting    : Boolean         read FTargeting   write FTargeting;
+  property HintStatus   : AnsiString      read FHintStatus  write FHintStatus;
+  property Time         : QWord           read FTime;
+  property NarrowMode   : Boolean         read FNarrowMode;
 
   // Textmode only
   property TargetEnabled : Boolean        read FTargetEnabled write FTargetEnabled;
@@ -434,7 +436,9 @@ end;
 constructor TDRLIO.Create;
 begin
   inherited Create( FIODriver, nil );
-  FLoading := nil;
+  FGameBindings := Bindings.CreateContext;
+
+  FLoading  := nil;
   FAudio    := TDRLAudio.Create;
   FMessages := TMessages.Create( 2, 77, @EventMore, Option_MessageBuffer );
   FMessages.GroupMultiple := Setting_GroupMessages;
@@ -506,8 +510,9 @@ begin
 end;
 
 function TDRLIO.OnEvent( const aEvent : TIOEvent ) : Boolean;
-var iInput : TInputKey;
-    iKey   : TIOKeyCode;
+var iAction : TBindingAction;
+    iInput  : TInputKey;
+    iKey    : TIOKeyCode;
 begin
   if ( aEvent.EType in [ VEVENT_MOUSEMOVE, VEVENT_MOUSEDOWN, VEVENT_MOUSEUP ] ) then
     if not Setting_Mouse then
@@ -518,10 +523,12 @@ begin
     case aEvent.Key.Code of
       VKEY_F1     : if ModdedGame then VTIG_GetIOState.EventState.SetState( TIG_EV_RESTART, aEvent.Key.Pressed and ( VKMOD_CTRL in aEvent.Key.ModState ) );
     end;
-    iKey := IOKeyEventToIOKeyCode( aEvent.Key );
-    if (iKey mod 256) <> 0 then
+    iKey    := IOKeyEventToIOKeyCode( aEvent.Key );
+    iAction := FGameBindings.ResolveKey( iKey );
+    if ( iAction >= Ord( Low( TInputKey ) ) ) and
+       ( iAction <= Ord( High( TInputKey ) ) ) then
     begin
-      iInput := TInputKey( Config.Commands[ iKey ] );
+      iInput := TInputKey( iAction );
       case iInput of
         INPUT_INVENTORY  : VTIG_GetIOState.EventState.SetState( TIG_EV_INVENTORY, aEvent.Key.Pressed );
         INPUT_EQUIPMENT  : VTIG_GetIOState.EventState.SetState( TIG_EV_EQUIPMENT, aEvent.Key.Pressed );
@@ -542,18 +549,20 @@ begin
 end;
 
 function TDRLIO.ResolveControllerAction( aButton : TIOPadButton; out aAction : TControllerAction ) : Boolean;
-var iCommand : Byte;
+var iBinding : TBindingAction;
 begin
-  iCommand := Config.PadCommands[ aButton ];
-  if iCommand > Byte( High( TControllerAction ) ) then Exit( False );
-  aAction := TControllerAction( iCommand );
+  iBinding := FGameBindings.ResolvePad( aButton );
+  if ( iBinding < Ord( Low( TControllerAction ) ) )
+    or ( iBinding > Ord( High( TControllerAction ) ) ) then
+    Exit( False );
+  aAction := TControllerAction( iBinding );
   Exit( True );
 end;
 
 function TDRLIO.ControllerActionHeld( aAction : TControllerAction ) : Boolean;
 var iButton : TIOPadButton;
 begin
-  iButton := Config.GetPadButton( Byte( aAction ) );
+  iButton := FGameBindings.GetPadButton( Ord( aAction ) );
   Exit( ( iButton <> VPAD_BUTTON_INVALID ) and PadState.Active( iButton ) );
 end;
 
@@ -630,36 +639,33 @@ begin
 end;
 
 procedure TDRLIO.Reconfigure( aConfig : TLuaConfig );
-var iInput     : TInputKey;
-    iAction    : TControllerAction;
+var iAction    : TControllerAction;
     iPadString : AnsiString;
     procedure CtrlAssign( aWhat : TInputKey; aFrom : TInputKey );
     var iKey : TIOKeyCode;
     begin
-      iKey := aConfig.Commands[ Configuration.GetInteger(KeyInfo[aFrom].ID) ];
+      iKey := Configuration.KeyBindings.ConfigurationValue( Ord( aFrom ) );
+      if iKey = 0 then Exit;
       if ( iKey and IOKeyCodeCtrlMask ) = 0
-        then aConfig.Commands[ iKey + IOKeyCodeCtrlMask ] := Word(aWhat)
-        else Log( LogWarn, 'Movement key assigned with Ctrl prevents targeting move assignemnt!' );
+        then FGameBindings.BindKey( iKey + IOKeyCodeCtrlMask, Ord( aWhat ) )
+        else Log( LOGWARN, 'Movement key assigned with Ctrl prevents targeting move assignment!' );
     end;
     function GetString( aWhat : TInputKey ) : Ansistring;
     var iKey : TIOKeyCode;
     begin
-      iKey := Configuration.GetInteger(KeyInfo[aWhat].ID);
+      iKey := FGameBindings.GetKey( Ord( aWhat ) );
       Exit( IOKeyCodeToStringShort( iKey ) );
     end;
     function GetPadString( aWhat : TControllerAction ) : Ansistring;
     begin
-      Exit( VPadButtonToStringShort( GetControllerButton( Configuration, aWhat ) ) );
+      Exit( VPadButtonToStringShort( FGameBindings.GetPadButton( Ord( aWhat ) ) ) );
     end;
 begin
   FAudio.Reconfigure;
-  aConfig.ResetCommands;
+  FGameBindings.Clear;
   if aConfig.TableExists('Keytable') then
-    aConfig.LoadKeybindings('Keytable');
-
-  for iInput in TInputKey do
-    if KeyInfo[iInput].ID <> '' then
-      aConfig.Commands[ Configuration.GetInteger(KeyInfo[iInput].ID) ] := Word(iInput);
+    aConfig.LoadKeybindings(FGameBindings, 'Keytable');
+  FGameBindings.LoadKeys(Configuration.KeyBindings);
 
   CtrlAssign( INPUT_TARGETLEFT,      INPUT_WALKLEFT );
   CtrlAssign( INPUT_TARGETRIGHT,     INPUT_WALKRIGHT );
@@ -670,7 +676,8 @@ begin
   CtrlAssign( INPUT_TARGETDOWNLEFT,  INPUT_WALKDOWNLEFT );
   CtrlAssign( INPUT_TARGETDOWNRIGHT, INPUT_WALKDOWNRIGHT );
 
-  ApplyControllerBindings( Configuration, aConfig );
+  ValidateControllerBindings( Configuration );
+  FGameBindings.LoadPad( Configuration.ControllerBindings );
 
   FKeySubMap.Clear;
   FKeySubMap['input_ok']        := 'Enter';
@@ -1096,6 +1103,7 @@ begin
 end;
 
 function TDRLIO.EventToUIInput( const aEvent : TIOEvent ) : Integer;
+var iAction : TBindingAction;
 begin
   if ( aEvent.EType = VEVENT_SYSTEM ) and ( aEvent.System.Code = VIO_SYSEVENT_QUIT ) then
     if Option_LockClose
@@ -1128,8 +1136,10 @@ begin
   if aEvent.EType = VEVENT_KEYDOWN then
   begin
     FKeyCode := IOKeyEventToIOKeyCode( aEvent.Key );
-    if (FKeyCode mod 256) <> 0
-      then Exit( Config.Commands[ FKeyCode ] );
+    iAction := FGameBindings.ResolveKey( FKeyCode );
+    if ( iAction >= Ord( Low( TInputKey ) ) ) and
+       ( iAction <= Ord( High( TInputKey ) ) ) then
+      Exit( iAction );
   end;
   Exit( inherited EventToUIInput( aEvent ) );
 end;

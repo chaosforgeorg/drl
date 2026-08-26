@@ -2,9 +2,10 @@
 unit drlcontrollerbindings;
 interface
 
-uses vconfiguration, vioevent, vluaconfig;
+uses vconfiguration, vioevent, vbindings;
 
 const CONTROLLER_BINDINGS_GAMEPLAY_GROUP  = 'controller_bindings_gameplay';
+      CONTROLLER_BINDING_INFO_GROUP       = 'controller_gameplay';
       CONTROLLER_CAPTURE_CANCEL_BUTTON    = VPAD_BUTTON_B;
       CONTROLLER_CAPTURE_CANCEL_HOLD_MS   = 1000;
 
@@ -42,34 +43,25 @@ const CONTROLLER_BINDING_MENU_ACTIONS : set of TControllerAction = [
   CONTROLLER_MODIFIER_ALT
 ];
 
-type TControllerBindingInfo = record
-    ID          : AnsiString;
-    Group       : AnsiString;
-    Default     : TIOPadButton;
-    Name        : AnsiString;
-    Description : AnsiString;
-end;
-
-const ControllerBindingInfo : array[TControllerAction] of TControllerBindingInfo = (
-    (ID: 'controller_gameplay_move';         Group: 'controller_gameplay'; Default: VPAD_BUTTON_A;             Name: 'Move / wait confirmation'; Description: 'Confirm left-stick movement or wait in place.'),
-    (ID: 'controller_gameplay_action';       Group: 'controller_gameplay'; Default: VPAD_BUTTON_B;             Name: 'Context action / pickup';  Description: 'Perform a context action or pick up an item.'),
-    (ID: 'controller_gameplay_fire';         Group: 'controller_gameplay'; Default: VPAD_BUTTON_X;             Name: 'Fire';                     Description: 'Fire the equipped weapon.'),
-    (ID: 'controller_gameplay_reload';       Group: 'controller_gameplay'; Default: VPAD_BUTTON_Y;             Name: 'Reload';                   Description: 'Reload the equipped weapon.'),
-    (ID: 'controller_gameplay_menu';         Group: 'controller_gameplay'; Default: VPAD_BUTTON_BACK;          Name: 'Game menu';                Description: 'Open the game menu.'),
-    (ID: 'controller_gameplay_player';       Group: 'controller_gameplay'; Default: VPAD_BUTTON_START;         Name: 'Player screen';            Description: 'Open the player screen.'),
-    (ID: 'controller_gameplay_active';       Group: 'controller_gameplay'; Default: VPAD_BUTTON_LEFTSTICK;     Name: 'Active skill';             Description: 'Use the active skill.'),
-    (ID: 'controller_gameplay_swap';         Group: 'controller_gameplay'; Default: VPAD_BUTTON_RIGHTSTICK;    Name: 'Swap weapon';              Description: 'Swap the equipped weapon.'),
-    (ID: 'controller_gameplay_target_prev';  Group: 'controller_gameplay'; Default: VPAD_BUTTON_LEFTSHOULDER;  Name: 'Previous target';          Description: 'Select the previous target.'),
-    (ID: 'controller_gameplay_target_next';  Group: 'controller_gameplay'; Default: VPAD_BUTTON_RIGHTSHOULDER; Name: 'Next target';              Description: 'Select the next target.'),
-    (ID: 'controller_gameplay_up';           Group: 'controller_gameplay'; Default: VPAD_BUTTON_DPAD_UP;       Name: 'Direction up';             Description: 'Move the target or selection up.'),
-    (ID: 'controller_gameplay_down';         Group: 'controller_gameplay'; Default: VPAD_BUTTON_DPAD_DOWN;     Name: 'Direction down';           Description: 'Move the target or selection down.'),
-    (ID: 'controller_gameplay_left';         Group: 'controller_gameplay'; Default: VPAD_BUTTON_DPAD_LEFT;     Name: 'Direction left';           Description: 'Move the target or selection left.'),
-    (ID: 'controller_gameplay_right';        Group: 'controller_gameplay'; Default: VPAD_BUTTON_DPAD_RIGHT;    Name: 'Direction right';          Description: 'Move the target or selection right.'),
-    (ID: 'controller_gameplay_modifier_run'; Group: 'controller_gameplay'; Default: VPAD_BUTTON_LEFTTRIGGER;   Name: 'Run / quickslot modifier'; Description: 'Modify movement and quickslot actions.'),
-    (ID: 'controller_gameplay_modifier_alt'; Group: 'controller_gameplay'; Default: VPAD_BUTTON_RIGHTTRIGGER;  Name: 'Aim / alternate modifier'; Description: 'Modify targeting, firing, reloading, and item actions.')
+const ControllerBindingInfo : array[TControllerAction] of TBindingInfo = (
+    ( Action: Ord(CONTROLLER_MOVE)        ; ID: 'controller_gameplay_move'        ; Group: CONTROLLER_BINDING_INFO_GROUP; Default: Ord(VPAD_BUTTON_A)            ; Name: 'Move / wait confirmation'; Description: 'Confirm left-stick movement or wait in place.' ),
+    ( Action: Ord(CONTROLLER_ACTION)      ; ID: 'controller_gameplay_action'      ; Group: CONTROLLER_BINDING_INFO_GROUP; Default: Ord(VPAD_BUTTON_B)            ; Name: 'Context action / pickup' ; Description: 'Perform a context action or pick up an item.' ),
+    ( Action: Ord(CONTROLLER_FIRE)        ; ID: 'controller_gameplay_fire'        ; Group: CONTROLLER_BINDING_INFO_GROUP; Default: Ord(VPAD_BUTTON_X)            ; Name: 'Fire'                    ; Description: 'Fire the equipped weapon.' ),
+    ( Action: Ord(CONTROLLER_RELOAD)      ; ID: 'controller_gameplay_reload'      ; Group: CONTROLLER_BINDING_INFO_GROUP; Default: Ord(VPAD_BUTTON_Y)            ; Name: 'Reload'                  ; Description: 'Reload the equipped weapon.' ),
+    ( Action: Ord(CONTROLLER_MENU)        ; ID: 'controller_gameplay_menu'        ; Group: CONTROLLER_BINDING_INFO_GROUP; Default: Ord(VPAD_BUTTON_BACK)         ; Name: 'Game menu'               ; Description: 'Open the game menu.' ),
+    ( Action: Ord(CONTROLLER_PLAYER)      ; ID: 'controller_gameplay_player'      ; Group: CONTROLLER_BINDING_INFO_GROUP; Default: Ord(VPAD_BUTTON_START)        ; Name: 'Player screen'           ; Description: 'Open the player screen.' ),
+    ( Action: Ord(CONTROLLER_ACTIVE)      ; ID: 'controller_gameplay_active'      ; Group: CONTROLLER_BINDING_INFO_GROUP; Default: Ord(VPAD_BUTTON_LEFTSTICK)    ; Name: 'Active skill'            ; Description: 'Use the active skill.' ),
+    ( Action: Ord(CONTROLLER_SWAP)        ; ID: 'controller_gameplay_swap'        ; Group: CONTROLLER_BINDING_INFO_GROUP; Default: Ord(VPAD_BUTTON_RIGHTSTICK)   ; Name: 'Swap weapon'             ; Description: 'Swap the equipped weapon.' ),
+    ( Action: Ord(CONTROLLER_TARGET_PREV) ; ID: 'controller_gameplay_target_prev' ; Group: CONTROLLER_BINDING_INFO_GROUP; Default: Ord(VPAD_BUTTON_LEFTSHOULDER) ; Name: 'Previous target'         ; Description: 'Select the previous target.' ),
+    ( Action: Ord(CONTROLLER_TARGET_NEXT) ; ID: 'controller_gameplay_target_next' ; Group: CONTROLLER_BINDING_INFO_GROUP; Default: Ord(VPAD_BUTTON_RIGHTSHOULDER); Name: 'Next target'             ; Description: 'Select the next target.' ),
+    ( Action: Ord(CONTROLLER_UP)          ; ID: 'controller_gameplay_up'          ; Group: CONTROLLER_BINDING_INFO_GROUP; Default: Ord(VPAD_BUTTON_DPAD_UP)      ; Name: 'Direction up'            ; Description: 'Move the target or selection up.' ),
+    ( Action: Ord(CONTROLLER_DOWN)        ; ID: 'controller_gameplay_down'        ; Group: CONTROLLER_BINDING_INFO_GROUP; Default: Ord(VPAD_BUTTON_DPAD_DOWN)    ; Name: 'Direction down'          ; Description: 'Move the target or selection down.' ),
+    ( Action: Ord(CONTROLLER_LEFT)        ; ID: 'controller_gameplay_left'        ; Group: CONTROLLER_BINDING_INFO_GROUP; Default: Ord(VPAD_BUTTON_DPAD_LEFT)    ; Name: 'Direction left'          ; Description: 'Move the target or selection left.' ),
+    ( Action: Ord(CONTROLLER_RIGHT)       ; ID: 'controller_gameplay_right'       ; Group: CONTROLLER_BINDING_INFO_GROUP; Default: Ord(VPAD_BUTTON_DPAD_RIGHT)   ; Name: 'Direction right'         ; Description: 'Move the target or selection right.' ),
+    ( Action: Ord(CONTROLLER_MODIFIER_RUN); ID: 'controller_gameplay_modifier_run'; Group: CONTROLLER_BINDING_INFO_GROUP; Default: Ord(VPAD_BUTTON_LEFTTRIGGER)  ; Name: 'Run / quickslot modifier'; Description: 'Modify movement and quickslot actions.' ),
+    ( Action: Ord(CONTROLLER_MODIFIER_ALT); ID: 'controller_gameplay_modifier_alt'; Group: CONTROLLER_BINDING_INFO_GROUP; Default: Ord(VPAD_BUTTON_RIGHTTRIGGER) ; Name: 'Aim / alternate modifier'; Description: 'Modify targeting, firing, reloading, and item actions.' )
 );
 
-procedure RegisterControllerBindings( aGroup : TConfigurationGroup );
 function IsControllerButton( aButton : TIOPadButton ) : Boolean;
 function IsControllerMenuAssignableButton( aButton : TIOPadButton ) : Boolean;
 function ControllerCaptureCancelHeld( aStartedAt : DWord; aNow : DWord ) : Boolean;
@@ -91,27 +83,9 @@ function SwapControllerBinding(
   aAction        : TControllerAction;
   aButton        : TIOPadButton
 ) : Boolean;
-procedure ApplyControllerBindings(
-  aConfiguration : TConfigurationManager;
-  aConfig        : TLuaConfig
-);
-
 implementation
 
 uses vdebug, vutil;
-
-procedure RegisterControllerBindings( aGroup : TConfigurationGroup );
-var iAction : TControllerAction;
-begin
-  for iAction in TControllerAction do
-    aGroup.AddInteger(
-      ControllerBindingInfo[ iAction ].ID,
-      Ord( ControllerBindingInfo[ iAction ].Default )
-    )
-      .SetName( ControllerBindingInfo[ iAction ].Name )
-      .SetDescription( ControllerBindingInfo[ iAction ].Description )
-      ;
-end;
 
 function IsControllerButton( aButton : TIOPadButton ) : Boolean;
 begin
@@ -243,15 +217,6 @@ begin
     ControllerBindingInfo[ aAction ].ID
   )^ := Ord( aButton );
   Exit( True );
-end;
-
-procedure ApplyControllerBindings( aConfiguration : TConfigurationManager; aConfig : TLuaConfig );
-var iAction : TControllerAction;
-begin
-  ValidateControllerBindings( aConfiguration );
-  aConfig.ResetPadCommands;
-  for iAction in TControllerAction do
-    aConfig.PadCommands[ GetControllerButton( aConfiguration, iAction ) ] := Byte( iAction );
 end;
 
 end.
