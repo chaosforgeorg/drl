@@ -194,7 +194,7 @@ implementation
 
 uses math, video, dateutils, variants, vapp,
      vsound, vluasystem, vuid, vlog, vdebug, vmath,
-     vsdlio, vglconsole, vtig, vtigio, vvector,
+     vsdlio, vglconsole, vtig, vtigio, vtigbindings, vvector,
      dflevel, dfplayer, dfitem, dfhof,
      drlconfiguration, drlbase, drlmoreview, drlchoiceview, drlua, drlmodulechoiceview,
      drlhudviews, drlplotview;
@@ -518,12 +518,13 @@ begin
     if not Setting_Mouse then
       Exit( False );
 
-  if ( aEvent.EType = VEVENT_KEYDOWN ) or ( aEvent.EType = VEVENT_KEYUP ) and ( not aEvent.Key.Repeated ) then
+  if ( aEvent.EType in [ VEVENT_KEYDOWN, VEVENT_KEYUP ] ) and
+     ( not aEvent.Key.Repeated ) then
   begin
-    case aEvent.Key.Code of
-      VKEY_F1     : if ModdedGame then VTIG_GetIOState.EventState.SetState( TIG_EV_RESTART, aEvent.Key.Pressed and ( VKMOD_CTRL in aEvent.Key.ModState ) );
-    end;
-    iKey    := IOKeyEventToIOKeyCode( aEvent.Key );
+    if ( aEvent.Key.Code = VKEY_F1 ) and ModdedGame then
+      VTIG_GetIOState.EventState.SetState( TIG_EV_RESTART,
+        aEvent.Key.Pressed and ( VKMOD_CTRL in aEvent.Key.ModState ) );
+    iKey := IOKeyEventToIOKeyCode( aEvent.Key );
     iAction := FGameBindings.ResolveKey( iKey );
     if ( iAction >= Ord( Low( TInputKey ) ) ) and
        ( iAction <= Ord( High( TInputKey ) ) ) then
@@ -660,6 +661,23 @@ var iAction    : TControllerAction;
     begin
       Exit( VPadButtonToStringShort( FGameBindings.GetPadButton( Ord( aWhat ) ) ) );
     end;
+    function GetUIKeyString( aWhat : TBindingAction ) : Ansistring;
+    begin
+      Exit( IOKeyCodeToStringShort(
+        Configuration.UIKeyBindings.ConfigurationValue( aWhat )
+      ) );
+    end;
+    function GetUIPadString( aWhat : TBindingAction ) : Ansistring;
+    begin
+      Exit( VPadButtonToStringShort(
+        Configuration.UIControllerBindings.GetButton( aWhat )
+      ) );
+    end;
+    function WithModifier( const aModifier, aValue : Ansistring ) : Ansistring;
+    begin
+      if aValue = '' then Exit( '' );
+      Exit( aModifier + '+' + aValue );
+    end;
 begin
   FAudio.Reconfigure;
   FGameBindings.Clear;
@@ -676,39 +694,51 @@ begin
   CtrlAssign( INPUT_TARGETDOWNLEFT,  INPUT_WALKDOWNLEFT );
   CtrlAssign( INPUT_TARGETDOWNRIGHT, INPUT_WALKDOWNRIGHT );
 
-  ValidateControllerBindings( Configuration );
+  Configuration.ControllerBindings.Validate;
   FGameBindings.LoadPad( Configuration.ControllerBindings );
 
+  UIBindings.Clear;
+  UIBindings.LoadKeys( Configuration.UIKeyBindings );
+  Configuration.UIControllerBindings.Validate;
+  UIBindings.LoadPad( Configuration.UIControllerBindings );
+  VTIG_ApplyDefaultPadAliases(
+    UIBindings,
+    Configuration.UIControllerBindings.ConfigurationValue( VTIG_IE_LEFT ) =
+      Ord( VPAD_BUTTON_DPAD_LEFT ),
+    Configuration.UIControllerBindings.ConfigurationValue( VTIG_IE_RIGHT ) =
+      Ord( VPAD_BUTTON_DPAD_RIGHT )
+  );
+
   FKeySubMap.Clear;
-  FKeySubMap['input_ok']        := 'Enter';
-  FKeySubMap['input_escape']    := 'Escape';
-  FKeySubMap['input_uidrop']    := 'Backspace';
-  FKeySubMap['input_uialtdrop'] := 'SHIFT+Backspace';
-  FKeySubMap['input_uiswap']    := 'Tab';
-  FKeySubMap['input_left']      := 'Left';
-  FKeySubMap['input_right']     := 'Right';
-  FKeySubMap['input_up']        := 'Up';
-  FKeySubMap['input_down']      := 'Down';
-  FKeySubMap['input_pgup']      := 'PgUp';
-  FKeySubMap['input_pgdn']      := 'PgDn';
+  FKeySubMap['input_ok']        := GetUIKeyString( VTIG_IE_CONFIRM );
+  FKeySubMap['input_escape']    := GetUIKeyString( VTIG_IE_CANCEL );
+  FKeySubMap['input_uidrop']    := GetUIKeyString( VTIG_IE_BACKSPACE );
+  FKeySubMap['input_uialtdrop'] := WithModifier( 'SHIFT', GetUIKeyString( VTIG_IE_BACKSPACE ) );
+  FKeySubMap['input_uiswap']    := GetUIKeyString( VTIG_IE_TAB );
+  FKeySubMap['input_left']      := GetUIKeyString( VTIG_IE_LEFT );
+  FKeySubMap['input_right']     := GetUIKeyString( VTIG_IE_RIGHT );
+  FKeySubMap['input_up']        := GetUIKeyString( VTIG_IE_UP );
+  FKeySubMap['input_down']      := GetUIKeyString( VTIG_IE_DOWN );
+  FKeySubMap['input_pgup']      := GetUIKeyString( VTIG_IE_PGUP );
+  FKeySubMap['input_pgdn']      := GetUIKeyString( VTIG_IE_PGDOWN );
   FKeySubMap['input_help']      := GetString( INPUT_HELP );
   FKeySubMap['input_fire']      := GetString( INPUT_FIRE );
   FKeySubMap['input_reload']    := GetString( INPUT_RELOAD );
   FKeySubMap['input_pickup']    := GetString( INPUT_PICKUP );
   FKeySubMap['input_action']    := GetString( INPUT_ACTION );
-  FKeySubMap['input_menu']      := 'Escape';
+  FKeySubMap['input_menu']      := GetUIKeyString( VTIG_IE_CANCEL );
   FKeySubMap['input_inventory'] := GetString( INPUT_INVENTORY );
 
   FPadSubMap.Clear;
-  FPadSubMap['input_ok']        := 'A';
-  FPadSubMap['input_escape']    := 'B';
-  FPadSubMap['input_uidrop']    := 'Y';
-  FPadSubMap['input_uialtdrop'] := 'RTrigger+Y';
-  FPadSubMap['input_uiswap']    := 'X';
-  FPadSubMap['input_left']      := 'Left';
-  FPadSubMap['input_right']     := 'Right';
-  FPadSubMap['input_up']        := 'Up';
-  FPadSubMap['input_down']      := 'Down';
+  FPadSubMap['input_ok']        := GetUIPadString( VTIG_IE_CONFIRM );
+  FPadSubMap['input_escape']    := GetUIPadString( VTIG_IE_CANCEL );
+  FPadSubMap['input_uidrop']    := GetUIPadString( VTIG_IE_BACKSPACE );
+  FPadSubMap['input_uialtdrop'] := WithModifier( 'RTrigger', GetUIPadString( VTIG_IE_BACKSPACE ) );
+  FPadSubMap['input_uiswap']    := GetUIPadString( VTIG_IE_TAB );
+  FPadSubMap['input_left']      := GetUIPadString( VTIG_IE_LEFT );
+  FPadSubMap['input_right']     := GetUIPadString( VTIG_IE_RIGHT );
+  FPadSubMap['input_up']        := GetUIPadString( VTIG_IE_UP );
+  FPadSubMap['input_down']      := GetUIPadString( VTIG_IE_DOWN );
   FPadSubMap['input_help']      := GetPadString( CONTROLLER_MENU );
   FPadSubMap['input_menu']      := GetPadString( CONTROLLER_MENU );
   FPadSubMap['input_fire']      := GetPadString( CONTROLLER_FIRE );

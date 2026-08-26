@@ -2,12 +2,12 @@
 unit drlcontrollerbindings;
 interface
 
-uses vconfiguration, vioevent, vbindings;
+uses vioevent, vbindings;
 
-const CONTROLLER_BINDINGS_GAMEPLAY_GROUP  = 'controller_bindings_gameplay';
-      CONTROLLER_BINDING_INFO_GROUP       = 'controller_gameplay';
-      CONTROLLER_CAPTURE_CANCEL_BUTTON    = VPAD_BUTTON_B;
-      CONTROLLER_CAPTURE_CANCEL_HOLD_MS   = 1000;
+const CONTROLLER_BINDINGS_GAMEPLAY_GROUP = 'controller_bindings_gameplay';
+      CONTROLLER_BINDING_INFO_GROUP      = 'controller_gameplay';
+      CONTROLLER_CAPTURE_CANCEL_BUTTON   = VPAD_BUTTON_B;
+      CONTROLLER_CAPTURE_CANCEL_HOLD_MS  = 1000;
 
 type TControllerAction = (
   CONTROLLER_MOVE,
@@ -43,6 +43,34 @@ const CONTROLLER_BINDING_MENU_ACTIONS : set of TControllerAction = [
   CONTROLLER_MODIFIER_ALT
 ];
 
+type TControllerBindingFlag = (
+  CONTROLLER_BINDING_ALLOW_UNBOUND,
+  CONTROLLER_BINDING_ALLOW_DPAD_CAPTURE
+);
+type TControllerBindingFlags = set of TControllerBindingFlag;
+
+type TControllerBindingCatalog = class( TBindingCatalog )
+  constructor Create(
+    const aInfo           : array of TBindingInfo;
+    aFlags                : TControllerBindingFlags;
+    const aInvalidWarning : Ansistring
+  );
+  function GetButton( aAction : TBindingAction ) : TIOPadButton;
+  function Valid : Boolean;
+  function Validate : Boolean;
+  function Swap( aAction : TBindingAction; aButton : TIOPadButton ) : Boolean;
+  function CanCapture( aButton : TIOPadButton ) : Boolean;
+private
+  FActions        : array of TBindingAction;
+  FFlags          : TControllerBindingFlags;
+  FInvalidWarning : Ansistring;
+  function FindAction( aButton : TIOPadButton;
+    out aAction : TBindingAction ) : Boolean;
+  function GetAllowsUnbound : Boolean;
+public
+  property AllowsUnbound : Boolean read GetAllowsUnbound;
+end;
+
 const ControllerBindingInfo : array[TControllerAction] of TBindingInfo = (
     ( Action: Ord(CONTROLLER_MOVE)        ; ID: 'controller_gameplay_move'        ; Group: CONTROLLER_BINDING_INFO_GROUP; Default: Ord(VPAD_BUTTON_A)            ; Name: 'Move / wait confirmation'; Description: 'Confirm left-stick movement or wait in place.' ),
     ( Action: Ord(CONTROLLER_ACTION)      ; ID: 'controller_gameplay_action'      ; Group: CONTROLLER_BINDING_INFO_GROUP; Default: Ord(VPAD_BUTTON_B)            ; Name: 'Context action / pickup' ; Description: 'Perform a context action or pick up an item.' ),
@@ -63,26 +91,10 @@ const ControllerBindingInfo : array[TControllerAction] of TBindingInfo = (
 );
 
 function IsControllerButton( aButton : TIOPadButton ) : Boolean;
-function IsControllerMenuAssignableButton( aButton : TIOPadButton ) : Boolean;
 function ControllerCaptureCancelHeld( aStartedAt : DWord; aNow : DWord ) : Boolean;
-function GetBindableControllerButton( const aEvent : TIOEvent; out aButton  : TIOPadButton ) : Boolean;
-function ControllerBindingsValid( aConfiguration : TConfigurationManager ) : Boolean;
-procedure ResetControllerBindings( aConfiguration : TConfigurationManager );
-function ValidateControllerBindings( aConfiguration : TConfigurationManager ) : Boolean;
-function GetControllerButton(
-  aConfiguration : TConfigurationManager;
-  aAction        : TControllerAction
-) : TIOPadButton;
-function FindControllerAction(
-  aConfiguration : TConfigurationManager;
-  aButton        : TIOPadButton;
-  out aAction    : TControllerAction
-) : Boolean;
-function SwapControllerBinding(
-  aConfiguration : TConfigurationManager;
-  aAction        : TControllerAction;
-  aButton        : TIOPadButton
-) : Boolean;
+function GetBindableControllerButton( const aEvent : TIOEvent;
+  out aButton : TIOPadButton ) : Boolean;
+
 implementation
 
 uses vdebug, vutil;
@@ -96,20 +108,115 @@ begin
   );
 end;
 
-function IsControllerMenuAssignableButton( aButton : TIOPadButton ) : Boolean;
+constructor TControllerBindingCatalog.Create(
+  const aInfo           : array of TBindingInfo;
+  aFlags                : TControllerBindingFlags;
+  const aInvalidWarning : Ansistring
+);
+var iInfo : Integer;
+begin
+  inherited Create( aInfo );
+  SetLength( FActions, Length( aInfo ) );
+  for iInfo := 0 to High( aInfo ) do
+    FActions[iInfo] := aInfo[iInfo].Action;
+  FFlags := aFlags;
+  FInvalidWarning := aInvalidWarning;
+end;
+
+function TControllerBindingCatalog.GetAllowsUnbound : Boolean;
+begin
+  Exit( CONTROLLER_BINDING_ALLOW_UNBOUND in FFlags );
+end;
+
+function TControllerBindingCatalog.GetButton(
+  aAction : TBindingAction
+) : TIOPadButton;
+var iValue : Integer;
+begin
+  iValue := ConfigurationValue( aAction );
+  if ( iValue < Ord( Low( TIOPadButton ) ) ) or
+     ( iValue > Ord( High( TIOPadButton ) ) ) then
+    Exit( VPAD_BUTTON_INVALID );
+  Result := TIOPadButton( iValue );
+end;
+
+function TControllerBindingCatalog.FindAction(
+  aButton     : TIOPadButton;
+  out aAction : TBindingAction
+) : Boolean;
+var iAction : TBindingAction;
 begin
   if not IsControllerButton( aButton ) then Exit( False );
-  case aButton of
-    VPAD_BUTTON_DPAD_UP,
-    VPAD_BUTTON_DPAD_DOWN,
-    VPAD_BUTTON_DPAD_LEFT,
-    VPAD_BUTTON_DPAD_RIGHT :
-      Exit( False );
+  for iAction in FActions do
+    if GetButton( iAction ) = aButton then
+    begin
+      aAction := iAction;
+      Exit( True );
+    end;
+  Exit( False );
+end;
+
+function TControllerBindingCatalog.Valid : Boolean;
+var iAction : TBindingAction;
+    iButton : TIOPadButton;
+    iSeen   : array[TIOPadButton] of Boolean;
+begin
+  for iButton := Low( TIOPadButton ) to High( TIOPadButton ) do
+    iSeen[iButton] := False;
+  for iAction in FActions do
+  begin
+    iButton := GetButton( iAction );
+    if AllowsUnbound and ( iButton = VPAD_BUTTON_INVALID ) then Continue;
+    if not IsControllerButton( iButton ) or iSeen[iButton] then Exit( False );
+    iSeen[iButton] := True;
   end;
   Exit( True );
 end;
 
-function ControllerCaptureCancelHeld( aStartedAt : DWord; aNow : DWord ) : Boolean;
+function TControllerBindingCatalog.Validate : Boolean;
+begin
+  Result := Valid;
+  if Result then Exit;
+  Log( LOGWARN, FInvalidWarning );
+  ResetValues;
+end;
+
+function TControllerBindingCatalog.Swap(
+  aAction : TBindingAction;
+  aButton : TIOPadButton
+) : Boolean;
+var iOldButton      : TIOPadButton;
+    iPreviousAction : TBindingAction;
+begin
+  if ( ( aButton = VPAD_BUTTON_INVALID ) and not AllowsUnbound ) or
+     ( ( aButton <> VPAD_BUTTON_INVALID ) and not IsControllerButton( aButton ) ) or
+     not Valid then Exit( False );
+
+  iOldButton := GetButton( aAction );
+  if iOldButton = aButton then Exit( True );
+  if FindAction( aButton, iPreviousAction ) then
+    SetConfigurationValue( iPreviousAction, Ord( iOldButton ) );
+  SetConfigurationValue( aAction, Ord( aButton ) );
+  Exit( True );
+end;
+
+function TControllerBindingCatalog.CanCapture(
+  aButton : TIOPadButton
+) : Boolean;
+begin
+  if not IsControllerButton( aButton ) then Exit( False );
+  if not ( CONTROLLER_BINDING_ALLOW_DPAD_CAPTURE in FFlags ) and
+     ( aButton in [
+       VPAD_BUTTON_DPAD_UP,
+       VPAD_BUTTON_DPAD_DOWN,
+       VPAD_BUTTON_DPAD_LEFT,
+       VPAD_BUTTON_DPAD_RIGHT
+     ] ) then Exit( False );
+  Exit( True );
+end;
+
+function ControllerCaptureCancelHeld( aStartedAt : DWord;
+  aNow : DWord ) : Boolean;
 begin
   Exit( aNow - aStartedAt >= CONTROLLER_CAPTURE_CANCEL_HOLD_MS );
 end;
@@ -120,102 +227,9 @@ function GetBindableControllerButton(
 ) : Boolean;
 begin
   aButton := VPAD_BUTTON_INVALID;
-  if not ( aEvent.EType in [ VEVENT_PADDOWN, VEVENT_PADUP ] )
-    or not IsControllerButton( aEvent.Pad.Button ) then
-    Exit( False );
+  if not ( aEvent.EType in [ VEVENT_PADDOWN, VEVENT_PADUP ] ) or
+     not IsControllerButton( aEvent.Pad.Button ) then Exit( False );
   aButton := aEvent.Pad.Button;
-  Exit( True );
-end;
-
-function GetControllerButton(
-  aConfiguration : TConfigurationManager;
-  aAction        : TControllerAction
-) : TIOPadButton;
-var iValue : Integer;
-begin
-  iValue := aConfiguration.GetInteger( ControllerBindingInfo[ aAction ].ID );
-  if ( iValue < Ord( Low( TIOPadButton ) ) )
-    or ( iValue > Ord( High( TIOPadButton ) ) ) then
-    Exit( VPAD_BUTTON_INVALID );
-  Result := TIOPadButton( iValue );
-end;
-
-function FindControllerAction(
-  aConfiguration : TConfigurationManager;
-  aButton        : TIOPadButton;
-  out aAction    : TControllerAction
-) : Boolean;
-var iAction : TControllerAction;
-begin
-  if not IsControllerButton( aButton ) then
-    Exit( False );
-  for iAction in TControllerAction do
-    if GetControllerButton( aConfiguration, iAction ) = aButton then
-    begin
-      aAction := iAction;
-      Exit( True );
-    end;
-  Exit( False );
-end;
-
-function ControllerBindingsValid( aConfiguration : TConfigurationManager ) : Boolean;
-var iAction : TControllerAction;
-    iButton : TIOPadButton;
-    iSeen   : array[TIOPadButton] of Boolean;
-begin
-  for iButton := Low( TIOPadButton ) to High( TIOPadButton ) do
-    iSeen[ iButton ] := False;
-  for iAction in TControllerAction do
-  begin
-    iButton := GetControllerButton( aConfiguration, iAction );
-    if not IsControllerButton( iButton ) or iSeen[ iButton ] then
-      Exit( False );
-    iSeen[ iButton ] := True;
-  end;
-  Exit( True );
-end;
-
-procedure ResetControllerBindings( aConfiguration : TConfigurationManager );
-var iAction : TControllerAction;
-begin
-  for iAction in TControllerAction do
-    aConfiguration.CastInteger( ControllerBindingInfo[ iAction ].ID ).Reset;
-end;
-
-function ValidateControllerBindings( aConfiguration : TConfigurationManager ) : Boolean;
-begin
-  Result := ControllerBindingsValid( aConfiguration );
-  if Result then
-    Exit;
-  Log(
-    LOGWARN,
-    'Malformed gameplay controller bindings; resetting the complete controller binding group.'
-  );
-  ResetControllerBindings( aConfiguration );
-end;
-
-function SwapControllerBinding(
-  aConfiguration : TConfigurationManager;
-  aAction        : TControllerAction;
-  aButton        : TIOPadButton
-) : Boolean;
-var iOldButton      : TIOPadButton;
-    iPreviousAction : TControllerAction;
-begin
-  if not IsControllerButton( aButton )
-    or not ControllerBindingsValid( aConfiguration ) then
-    Exit( False );
-
-  iOldButton := GetControllerButton( aConfiguration, aAction );
-  if iOldButton = aButton then
-    Exit( True );
-  if FindControllerAction( aConfiguration, aButton, iPreviousAction ) then
-    aConfiguration.AccessInteger(
-      ControllerBindingInfo[ iPreviousAction ].ID
-    )^ := Ord( iOldButton );
-  aConfiguration.AccessInteger(
-    ControllerBindingInfo[ aAction ].ID
-  )^ := Ord( aButton );
   Exit( True );
 end;
 

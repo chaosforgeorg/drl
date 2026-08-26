@@ -60,7 +60,6 @@ type TMoreLayer = class( TIOLayer )
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsModal : Boolean; override;
   function HandleInput( aInput : Integer ) : Boolean; override;
-  function HandleEvent( const aEvent : TIOEvent ) : Boolean; override;
 protected
   FPrompt   : AnsiString;
   FLength   : Byte;
@@ -276,7 +275,8 @@ end;
 
 procedure TMoreLayer.Update( aDTime : Integer; aActive : Boolean );
 begin
-  VTIG_FreeLabel( FPrompt, Point( 3, 2 ), Yellow )
+  VTIG_FreeLabel( FPrompt, Point( 3, 2 ), Yellow );
+  if VTIG_EventConfirm or VTIG_EventCancel then FFinished := True;
 end;
 
 function TMoreLayer.IsModal : Boolean;
@@ -286,14 +286,7 @@ end;
 
 function TMoreLayer.HandleInput( aInput : Integer ) : Boolean;
 begin
-  if TInputKey( aInput ) in [ INPUT_OK, INPUT_MLEFT, INPUT_QUIT, INPUT_HARDQUIT ] then
-    FFinished := True;
-  Exit( True );
-end;
-
-function TMoreLayer.HandleEvent( const aEvent : TIOEvent ) : Boolean;
-begin
-  if ( aEvent.EType = VEVENT_PADDOWN ) and ( aEvent.Pad.Button in [ VPAD_BUTTON_A, VPAD_BUTTON_B ] ) then
+  if TInputKey( aInput ) in [ INPUT_MLEFT, INPUT_QUIT, INPUT_HARDQUIT ] then
     FFinished := True;
   Exit( True );
 end;
