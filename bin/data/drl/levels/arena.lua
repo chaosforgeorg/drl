@@ -178,14 +178,18 @@ register_level "hells_arena"
 		generator.scatter_put( area( 5,3,68,15 ), translation, table.random_pick( column ), "floor",8+math.random(8))
 		level:transmute("water", "floor")
 		generator.scatter_blood(area.FULL_SHRINKED,"floor",100)
-		level.data.drop_zone = area.FULL_SHRINKED
-		level.data.final_reward = {
-			rocket = 3,
-			bazooka = 1,
-			scglobe = 1,
-			barmor = 1,
-			lmed = 1,
+		level.data.drop_zone = level.data.drop_zone or area.FULL_SHRINKED
+		level.data.final_reward =
+		{
+			{ id = "rocket",  amount = 3 },
+			{ id = "bazooka", amount = 1 },
+			{ id = "scglobe", amount = 1 },
+			{ id = "barmor",  amount = 1 },
+			{ id = "lmed",    amount = 1 },
 		}
+		for _,modifications in ipairs(level.data.reward_modifications or {}) do
+			drl.modify_rewards( level.data.final_reward, modifications )
+		end
 		level:drop_being( player, coord( 38,10 ) )
 	end,
 
@@ -264,9 +268,9 @@ register_level "hells_arena"
 		if level.status == 3 then
 			ui.continue( "The voice booms:\n{R\"Congratulations mortal! A pity you came to destroy us, for you would make a formidable Hell warrior!\"}\nYou hear screams everywhere!\n{R\"Champion! Blood! Champion! More BLOOD!\"}\nThe voice continues:\n{R\"I grant you the title of Hell's Arena Champion!\nAnd a promise is a promise... Search the arena again!\"}")
 
-			for iid, amount in pairs(level.data.final_reward) do
-				if amount > 0 then
-					level:area_drop(level.data.drop_zone, iid, amount, false, true )
+			for _,reward in ipairs(level.data.final_reward) do
+				if reward.amount > 0 then
+					level:area_drop(level.data.drop_zone, reward.id, reward.amount, false, true )
 				end
 			end
 			

@@ -1,5 +1,4 @@
 function drl.register_challenges()
-
 -- <action> [on <difficulty>][<special conditions>] (for badges)
 
 --EASY: Shotgunnery, Max Carnage, Pacifism
@@ -15,6 +14,12 @@ function drl.register_challenges()
 		name  = "Gargulec Medal",
 		desc  = "Complete AoB/100% kills",
 		hidden  = true,
+		requirements =
+		{
+			winonly   = true,
+			challenge = "challenge_aob",
+			kills     = 1.0,
+		},
 	}
 
 	register_medal "gargulec2"
@@ -23,6 +28,13 @@ function drl.register_challenges()
 		desc  = "Win Angel of Berserk on UV/100% kills",
 		hidden  = true,
 		removes = { "gargulec1" },
+		requirements =
+		{
+			winonly    = true,
+			challenge  = "challenge_aob",
+			difficulty = DIFF_VERYHARD,
+			kills      = 1.0,
+		},
 	}
 
 
@@ -47,17 +59,13 @@ function drl.register_challenges()
 			if player.klass == klasses.technician.nid then
 				player.inv:add("mod_tech")
 			end
-		end,
-
-		OnEnterLevel = function (l, lid)
-			if lid == "hells_arena" then
-				level.data.final_reward.rocket = nil
-				level.data.final_reward.bazooka = nil
-				if level.data.final_reward.lmed then
-					level.data.final_reward.lmed = level.data.final_reward.lmed + 1
-				end
-				level.data.final_reward.hphase = 1
-			end
+			table.insert(
+				player.level_data.hells_arena.reward_modifications,
+				{
+					remove = { "rocket", "bazooka", "hphase" },
+					add = { "lmed", "hphase" },
+				}
+			)
 		end,
 		
 		OnUseCheck = function (item,being)
@@ -71,17 +79,6 @@ function drl.register_challenges()
 		OnPickup = function(item,being)
 			if not being:is_player() then return end
 			if item.id == "lhglobe" then player:add_perk("berserk",100) end
-		end,
-
-		OnMortem = function ()
-			if not player:has_won() then return end
-			if statistics.unique_kills == statistics.max_unique_kills then
-				player:add_medal( "gargulec1" )
-				if DIFFICULTY >= DIFF_VERYHARD then
-					player:add_medal( "gargulec2" )
-					player:remove_medal( "gargulec1" )
-				end
-			end
 		end,
 	}
 
@@ -154,15 +151,13 @@ function drl.register_challenges()
 
 		OnCreatePlayer = function ()
 			player.inv:add( table.random_pick({"mod_agility","mod_bulk","mod_tech"}) )
-		end,
-
-		OnEnterLevel = function (l, lid)
-			if lid == "hells_arena" then
-				level.data.final_reward.rocket = nil
-				level.data.final_reward.bazooka = nil
-				level.data.final_reward.pammo = 1
-				level.data.final_reward.mod_power = 1
-			end
+			table.insert(
+				player.level_data.hells_arena.reward_modifications,
+				{
+					remove = { "rocket", "bazooka", "pammo", "mod_power" },
+					add = { "pammo", "mod_power" },
+				}
+			)
 		end,
 		
 		OnUseCheck = function (item,being)
@@ -253,15 +248,13 @@ function drl.register_challenges()
 			if player.klass == klasses.technician.nid then
 				player.inv:add("mod_tech")
 			end
-		end,
-
-		OnEnterLevel = function (l, lid)
-			if lid == "hells_arena" then
-				level.data.final_reward.rocket = nil
-				level.data.final_reward.bazooka = nil
-				level.data.final_reward.pshell = 1
-				level.data.final_reward.dshotgun = 1
-			end
+			table.insert(
+				player.level_data.hells_arena.reward_modifications,
+				{
+					remove = { "rocket", "bazooka", "pshell", "dshotgun" },
+					add = { "pshell", "dshotgun" },
+				}
+			)
 		end,
 		
 		OnUseCheck = function (item,being)
@@ -365,15 +358,13 @@ function drl.register_challenges()
 				end
 				player.speed = player.speed + 20
 			end
-		end,
-
-		OnEnterLevel = function (l, lid)
-			if lid == "hells_arena" then
-				level.data.final_reward.rocket = nil
-				level.data.final_reward.bazooka = nil
-				level.data.final_reward.pammo = 1
-				level.data.final_reward.pshell = 1
-			end
+			table.insert(
+				player.level_data.hells_arena.reward_modifications,
+				{
+					remove = { "rocket", "bazooka", "pammo", "pshell" },
+					add = { "pammo", "pshell" },
+				}
+			)
 		end,
 		
 
@@ -457,13 +448,13 @@ function drl.register_challenges()
 				end
 			end
 			player.flags[ BF_IMPATIENT ] = true
-		end,
-
-		OnEnterLevel = function (l, lid)
-			if lid == "hells_arena" then
-				level.data.final_reward.lmed = nil
-				level.data.final_reward.sboots = 1
-			end
+			table.insert(
+				player.level_data.hells_arena.reward_modifications,
+				{
+					remove = { "lmed", "sboots" },
+					add = { "sboots" },
+				}
+			)
 		end,
 		
 	}
@@ -630,13 +621,14 @@ function drl.register_challenges()
 		let         = "P",
 		secondary   = { "AoCn", "AoOC", "A100", "AoLT", "AoRA", "AoD" },
 
-		OnEnterLevel = function (l, lid)
-			if lid == "hells_arena" then
-				level.data.final_reward.scglobe = nil
-				if level.data.final_reward.lmed then
-					level.data.final_reward.lmed = level.data.final_reward.lmed + 1
-				end
-			end
+		OnCreatePlayer = function ()
+			table.insert(
+				player.level_data.hells_arena.reward_modifications,
+				{
+					remove = { "scglobe" },
+					add = { "lmed" },
+				}
+			)
 		end,
 		
 		OnPickupCheck = function(item,being)
@@ -705,6 +697,10 @@ function drl.register_challenges()
 		arch_rating      = "BLADE",
 		arch_rank        = 6,
 
+		OnCreatePlayer = function ()
+			player.level_data.hells_arena.drop_zone = area(3,8,7,12)
+		end,
+
 		OnEnterLevel = function (l, lid)
 			player.flags[ BF_STAIRSENSE ] = false
 			if ARCHANGEL then
@@ -713,9 +709,6 @@ function drl.register_challenges()
 			else
 				player:nuke(5*60*10)
 				ui.msg_feel("\"Thermonuclear bomb deployed. 5 minutes till explosion.\"")
-			end
-			if lid == "hells_arena" then
-				level.data.drop_zone = area(3,8,7,12)
 			end
 		end,
 
@@ -950,15 +943,13 @@ function drl.register_challenges()
 				player.inv:add("mod_tech")
 			end
 			player.flags[ BF_NOHEAL ] = true
-		end,
-
-		OnEnterLevel = function (l, lid)
-			if lid == "hells_arena" then
-				level.data.final_reward.barmor = nil
-				level.data.final_reward.rarmor = 1
-				level.data.final_reward.lmed = nil
-				level.data.final_reward.psboots = 1
-			end
+			table.insert(
+				player.level_data.hells_arena.reward_modifications,
+				{
+					remove = { "barmor", "rarmor", "lmed", "psboots" },
+					add = { "rarmor", "psboots" },
+				}
+			)
 		end,
 		
 		OnLevelUp = function (l)
@@ -1024,6 +1015,13 @@ function drl.register_challenges()
 		name  = "Dervis' Medallion",
 		desc  = "Win Angel of 100 on Nightmare!",
 		hidden  = true,
+		requirements =
+		{
+			winonly    = true,
+			challenge  = "challenge_a100",
+			difficulty = DIFF_NIGHTMARE,
+			condition  = function() return not ARCHANGEL end,
+		},
 	}
 
 	register_challenge "challenge_a100"
@@ -1110,9 +1108,6 @@ function drl.register_challenges()
 				if ARCHANGEL then
 					ui.msg_enter("Or wait... false alarm. Still 566 to go.")
 				else
-					if DIFFICULTY == DIFF_NIGHTMARE then
-						player:add_medal("dervis")
-					end
 					player:win()
 				end
 			-- Adding flavour text
@@ -1306,6 +1301,12 @@ You can rest easy knowing that you're Boss. Yet at the last level you sensed som
 		name  = "Thomas's Medal",
 		desc  = "Win AoHu as Conqueror",
 		hidden  = true,
+		requirements =
+		{
+			winonly   = true,
+			challenge = "challenge_aohu",
+			condition = function() return statistics.bonus_levels_completed == statistics.bonus_levels_count end,
+		},
 	}
 
 
@@ -1340,25 +1341,19 @@ You can rest easy knowing that you're Boss. Yet at the last level you sensed som
 			if player.klass == klasses.technician.nid then
 				player.inv:add("mod_tech")
 			end
-		end,
-
-		OnEnterLevel = function (l, lid)
-			if lid == "hells_arena" then
-				level.data.final_reward.barmor = nil
-				level.data.final_reward[table.random_pick{"uparmor","uballisticarmor","uacidboots"}] = 1
-			end
+			local reward = table.random_pick{"uparmor","uballisticarmor","uacidboots"}
+			table.insert(
+				player.level_data.hells_arena.reward_modifications,
+				{
+					remove = { "barmor", reward },
+					add = { reward },
+				}
+			)
 		end,
 		
 		OnPreLevelUp = function ()
 			return not ARCHANGEL
 		end,
-
-		OnMortem = function ()
-			if player:has_won() and statistics.bonus_levels_completed == statistics.bonus_levels_count then
-				player:add_medal( "thomas" )
-			end
-		end,
-
 	}
 
 	register_badge "everyman3"
