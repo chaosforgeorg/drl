@@ -705,7 +705,7 @@ end
 
 function drl.award_badges()
 	for _,badge in ipairs( badges ) do
-		if badge.challenge ~= "" and core.is_challenge( "challenge_"..badge.challenge ) and
+		if badge.challenge ~= "" and core.is_challenge( badge.challenge ) and
 			core.check_badge_conditions( badge.requirements )
 		then
 			player:add_badge( badge.id )

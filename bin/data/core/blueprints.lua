@@ -128,14 +128,14 @@ core.register_blueprint "medal"
 
 core.register_blueprint "badge"
 {
-	id          = { true,  core.TSTRING },
-	name        = { true,  core.TSTRING },
-	desc        = { true,  core.TSTRING },
-	level       = { true,  core.TNUMBER },
-	set         = { false, core.TSTRING, "" },
-	klass       = { false, core.TSTRING, "" },
-	achievement = { false, core.TSTRING, "" },
-	challenge    = { false, core.TSTRING, "" },
+	id           = { true,  core.TSTRING },
+	name         = { true,  core.TSTRING },
+	desc         = { true,  core.TSTRING },
+	level        = { true,  core.TNUMBER },
+	set          = { false, core.TSTRING, "" },
+	klass        = { false, core.TSTRING, "" },
+	achievement  = { false, core.TSTRING, "" },
+	challenge    = { false, core.TIDIN( "chal" ), "" },
 	requirements = { false, core.TTABLE },
 }
 

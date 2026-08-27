@@ -164,7 +164,7 @@ function core.check_badge_conditions( t )
 	if not t then return true end
 	if t.winonly and not player:has_won() then return false end
 	if t.challenge then
-		if not core.is_challenge( "challenge_"..t.challenge ) then return false end
+		if not core.is_challenge( t.challenge ) then return false end
 	end
 	if t.kills then
 		if statistics.unique_kills < statistics.max_unique_kills * t.kills then
