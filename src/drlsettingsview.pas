@@ -77,8 +77,8 @@ end;
 
 implementation
 
-uses math, sysutils, vapp, vutil, vdebug, vtig, vtigio, vtigbindings,
-     drlconfiguration, drlbase;
+uses math, sysutils, vapp, vutil, vdebug, vtig, vtigio,
+     drlconfiguration, drlbase, drluibindings;
 
 const CStates : array[ TSettingsViewState ] of record Title, ID : Ansistring; end = (
    ( Title : 'Settings'; ID : 'general' ),
@@ -93,8 +93,8 @@ const CStates : array[ TSettingsViewState ] of record Title, ID : Ansistring; en
    ( Title : 'Settings (Keybindings - Multi-move)'; ID : 'keybindings_running' ),
    ( Title : 'Settings (Keybindings - Helper)'; ID : 'keybindings_helper' ),
    ( Title : 'Settings (Keybindings - Legacy)'; ID : 'keybindings_legacy' ),
-   ( Title : 'Settings (UI bindings - Keyboard)'; ID : VTIG_KEY_BINDING_GROUP ),
-   ( Title : 'Settings (UI bindings - Controller)'; ID : VTIG_PAD_BINDING_GROUP ),
+   ( Title : 'Settings (UI bindings - Keyboard)'; ID : UI_KEY_BINDING_GROUP ),
+   ( Title : 'Settings (UI bindings - Controller)'; ID : UI_PAD_BINDING_GROUP ),
    ( Title : ''; ID : '' )
 );
 
@@ -306,7 +306,7 @@ begin
             begin
               ControllerCapture(
                 Configuration.UIControllerBindings,
-                VTIGPadBindingInfo[ i ].Action,
+                UIPadBindingInfo[ i ].Action,
                 iSelected = i
               );
               if iSelected = i then iHover := iEntry;
@@ -599,7 +599,7 @@ begin
   end;
 
   if not aSelected then Exit;
-  if aBindings.AllowsUnbound and VTIG_Event( VTIG_IE_BACKSPACE ) then
+  if aBindings.AllowsUnbound and VTIG_Event( UI_BINDING_DROP ) then
   begin
     if aBindings.Swap( aAction, VPAD_BUTTON_INVALID ) then Reconfigure;
     Exit;
@@ -645,7 +645,7 @@ begin
         FKey     := 0;
         Exit( False );
       end;
-    if VTIG_Event( [VTIG_IE_BACKSPACE] ) then
+    if VTIG_Event( UI_BINDING_DROP ) then
       aValue^ := 0;
   end;
   Exit( False );

@@ -27,7 +27,7 @@ var Configuration : TDRLConfiguration;
 
 implementation
 
-uses SysUtils, vtigbindings, drlkeybindings;
+uses SysUtils, drlkeybindings, drluibindings;
 
 constructor TDRLConfiguration.Create;
 var iGroup : TConfigurationGroup;
@@ -50,9 +50,9 @@ begin
     [],
     'Malformed gameplay controller bindings; resetting the complete controller binding group.'
   );
-  FUIKeyBindings := TBindingCatalog.Create( VTIGKeyBindingInfo );
+  FUIKeyBindings := TBindingCatalog.Create( UIKeyBindingInfo );
   FUIControllerBindings := TControllerBindingCatalog.Create(
-    VTIGPadBindingInfo,
+    UIPadBindingInfo,
     [
       CONTROLLER_BINDING_ALLOW_UNBOUND,
       CONTROLLER_BINDING_ALLOW_DPAD_CAPTURE
@@ -206,9 +206,9 @@ begin
   FControllerBindings.RegisterGroup(iGroup, CONTROLLER_BINDING_INFO_GROUP);
 
   FUIKeyBindings.RegisterGroup(
-    AddGroup( VTIG_KEY_BINDING_GROUP ), VTIG_KEY_BINDING_GROUP );
+    AddGroup( UI_KEY_BINDING_GROUP ), UI_KEY_BINDING_GROUP );
   FUIControllerBindings.RegisterGroup(
-    AddGroup( VTIG_PAD_BINDING_GROUP ), VTIG_PAD_BINDING_GROUP );
+    AddGroup( UI_PAD_BINDING_GROUP ), UI_PAD_BINDING_GROUP );
 
   for iID in CInputGroups do
     FKeyBindings.RegisterGroup(AddGroup(iID), iID);
