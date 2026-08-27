@@ -114,6 +114,16 @@ core.register_blueprint "klass"
 	OnUseActive = { false,  core.TFUNC },
 }
 
+core.register_blueprint "requirements"
+{
+	winonly    = { false, core.TBOOL },
+	challenge  = { false, core.TSTRING },
+	difficulty = { false, core.TNUMBER },
+	kills      = { false, core.TNUMBER },
+	trait      = { false, core.TNUMBER },
+	condition  = { false, core.TFUNC },
+}
+
 core.register_blueprint "medal"
 {
 	id        = { true,  core.TSTRING },
@@ -122,7 +132,7 @@ core.register_blueprint "medal"
 	score     = { false, core.TNUMBER, 0 },
 	hidden    = { false, core.TBOOL,   false },
 	removes   = { false, core.TARRAY( core.TIDIN("medals") ) },
-	requirements = { false, core.TTABLE },
+	requirements = { false, "requirements" },
 }
 
 core.register_blueprint "badge"
@@ -135,7 +145,7 @@ core.register_blueprint "badge"
 	klass        = { false, core.TSTRING, "" },
 	achievement  = { false, core.TSTRING, "" },
 	challenge    = { false, core.TIDIN( "chal" ), "" },
-	requirements = { false, core.TTABLE },
+	requirements = { false, "requirements" },
 }
 
 core.register_blueprint "award_level"
