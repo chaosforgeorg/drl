@@ -163,8 +163,12 @@ end
 function core.check_badge_conditions( t )
 	if not t then return true end
 	if t.winonly and not player:has_won() then return false end
-	if t.challenge then
-		if not core.is_challenge( t.challenge ) then return false end
+	if t.challenge ~= nil then
+		if t.challenge == "" then
+			if CHALLENGE ~= "" then return false end
+		elseif not core.is_challenge( t.challenge ) then
+			return false
+		end
 	end
 	if t.kills then
 		if statistics.unique_kills < statistics.max_unique_kills * t.kills then
@@ -176,17 +180,20 @@ function core.check_badge_conditions( t )
 			return false
 		end
 	end
+	if t.trait and not player:has_trait( t.trait ) then return false end
 	if t.condition and not t.condition() then return false end
 	return true
 end
 
-local function copy_master_requirements( source )
-	return {
-		winonly   = true,
-		challenge = source.challenge,
+local function copy_master_requirements( source, trait )
+	return
+	{
+		winonly    = true,
+		challenge  = source.challenge,
 		difficulty = source.difficulty,
-		kills      = source.kills,
-		condition  = source.condition,
+		kills       = source.kills,
+		trait       = trait,
+		condition   = source.condition,
 	}
 end
 
@@ -197,6 +204,7 @@ function register_master_badge( id )
 		assert( traits[b.mid], "Master trait '"..b.mid.."' not found!" )
 		assert( traits[b.mid].master, "'"..b.mid.."' not a master trait!" )
 		local name = traits[b.mid].name
+		local trait = traits[b.mid].nid
 
 		register_badge ( id.."_1" )
 		{
@@ -205,6 +213,11 @@ function register_master_badge( id )
 			level = 1,
 			set   = id,
 			klass = b.klass,
+			requirements =
+			{
+				trait     = trait,
+				condition = function() return player.episode[ level.index ].episode >= 3 end,
+			},
 		}
 		register_badge ( id.."_2" )
 		{
@@ -213,6 +226,11 @@ function register_master_badge( id )
 			level = 2,
 			set   = id,
 			klass = b.klass,
+			requirements =
+			{
+				winonly = true,
+				trait   = trait,
+			},
 		}
 		register_badge ( id.."_3" )
 		{
@@ -221,6 +239,12 @@ function register_master_badge( id )
 			level = 3,
 			set   = id,
 			klass = b.klass,
+			requirements =
+			{
+				winonly    = true,
+				difficulty = DIFF_HARD,
+				trait      = trait,
+			},
 		}
 		register_badge ( id.."_4" )
 		{
@@ -229,7 +253,7 @@ function register_master_badge( id )
 			level = 4,
 			set   = id,
 			klass = b.klass,
-			requirements = copy_master_requirements( b.platinum ),
+			requirements = copy_master_requirements( b.platinum, trait ),
 		}
 		register_badge ( id.."_5" )
 		{
@@ -238,7 +262,7 @@ function register_master_badge( id )
 			level = 5,
 			set   = id,
 			klass = b.klass,
-			requirements = copy_master_requirements( b.diamond ),
+			requirements = copy_master_requirements( b.diamond, trait ),
 		}
 	end
 end
