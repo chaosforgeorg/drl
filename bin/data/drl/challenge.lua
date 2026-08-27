@@ -1306,7 +1306,6 @@ You can rest easy knowing that you're Boss. Yet at the last level you sensed som
 		name  = "Thomas's Medal",
 		desc  = "Win AoHu as Conqueror",
 		hidden  = true,
-		winonly = true,
 	}
 
 

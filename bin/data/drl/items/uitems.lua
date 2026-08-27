@@ -1144,7 +1144,10 @@ function drl.register_unique_items()
 		name = "Gutts' Sorrow",
 		desc = "Awarded for dying with the Dragonslayer",
 		hidden = true,
-		condition = function() return player.hp <= 0 and (player.eq.weapon and player.eq.weapon.id == "udragon") end,
+		requirements =
+		{
+			condition = function() return player.hp <= 0 and (player.eq.weapon and player.eq.weapon.id == "udragon") end,
+		},
 	}
 
 	register_perk "perk_udragon"

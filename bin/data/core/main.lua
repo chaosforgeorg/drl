@@ -160,7 +160,7 @@ function register_klass_badge( id )
 	end
 end
 
-function core.check_badge_conditions( t )
+function core.check_award_requirements( t )
 	if not t then return true end
 	if t.winonly and not player:has_won() then return false end
 	if t.challenge ~= nil then
@@ -473,23 +473,18 @@ function core.kills_count_group( weapon_group )
 end
 
 function core.award_medals()
-	-- Prefetch win condition
-	local win = player:has_won()
-
 	-- Iterate through the medals
 	for _,medal_proto in ipairs(medals) do
-		if medal_proto.condition and ( ( not medal_proto.winonly ) or win ) then
-			if medal_proto.condition() then
-				player:add_medal( medal_proto.id )
-				--if the player already has lesser medals in their player.wad, remove them from mortem
-				if medal_proto.removes then
-					for _,zero_medal in ipairs(medal_proto.removes) do
-						local medal_count = player_data.get_counted( 'medals', 'medal', zero_medal )
-						if medal_count <= 0 then
-							player:add_medal( zero_medal )
-						else
-							player:remove_medal( zero_medal )
-						end
+		if medal_proto.requirements and core.check_award_requirements( medal_proto.requirements ) then
+			player:add_medal( medal_proto.id )
+			--if the player already has lesser medals in their player.wad, remove them from mortem
+			if medal_proto.removes then
+				for _,zero_medal in ipairs(medal_proto.removes) do
+					local medal_count = player_data.get_counted( 'medals', 'medal', zero_medal )
+					if medal_count <= 0 then
+						player:add_medal( zero_medal )
+					else
+						player:remove_medal( zero_medal )
 					end
 				end
 			end

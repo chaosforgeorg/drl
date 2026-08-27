@@ -120,10 +120,9 @@ core.register_blueprint "medal"
 	name      = { true,  core.TSTRING },
 	desc      = { true,  core.TSTRING },
 	score     = { false, core.TNUMBER, 0 },
-	winonly   = { false, core.TBOOL,   false },
 	hidden    = { false, core.TBOOL,   false },
 	removes   = { false, core.TARRAY( core.TIDIN("medals") ) },
-	condition = { false, core.TFUNC },
+	requirements = { false, core.TTABLE },
 }
 
 core.register_blueprint "badge"

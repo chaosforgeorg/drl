@@ -112,16 +112,22 @@ function drl.register_awards()
 	{
 		name  = "Medal of Prejudice",
 		desc  = "Won with 100% kills",
-		winonly = true,
-		condition = function() return statistics.unique_kills == statistics.max_unique_kills end,
+		requirements =
+		{
+			winonly   = true,
+			condition = function() return statistics.unique_kills == statistics.max_unique_kills end,
+		},
 	}
 
 	register_medal "killfew"
 	{
 		name  = "Medal of Pacifism",
 		desc  = "Won with 10% or less kills",
-		winonly = true,
-		condition = function() return statistics.unique_kills / statistics.max_unique_kills <= 0.1 end,
+		requirements =
+		{
+			winonly   = true,
+			condition = function() return statistics.unique_kills / statistics.max_unique_kills <= 0.1 end,
+		},
 	}
 
 	register_medal "shotguns"
@@ -129,8 +135,11 @@ function drl.register_awards()
 		name  = "Shotgunnery Cross",
 		desc  = "Won & killed only with shotguns/fists",
 		hidden  = true,
-		winonly = true,
-		condition = function() return kills.get_type( "other" ) + kills.get_type( "melee" ) + core.kills_count_group( "shotgun" ) == statistics.kills end,
+		requirements =
+		{
+			winonly   = true,
+			condition = function() return kills.get_type( "other" ) + kills.get_type( "melee" ) + core.kills_count_group( "shotgun" ) == statistics.kills end,
+		},
 	}
 
 	register_medal "pistols"
@@ -138,8 +147,11 @@ function drl.register_awards()
 		name  = "Marksmanship Cross",
 		desc  = "Won & killed only with pistols/fists",
 		hidden  = true,
-		winonly = true,
-		condition = function() return kills.get_type( "other" ) + kills.get_type( "melee" ) + core.kills_count_group( "pistol" ) == statistics.kills end,
+		requirements =
+		{
+			winonly   = true,
+			condition = function() return kills.get_type( "other" ) + kills.get_type( "melee" ) + core.kills_count_group( "pistol" ) == statistics.kills end,
+		},
 	}
 
 	register_medal "knives"
@@ -147,8 +159,11 @@ function drl.register_awards()
 		name  = "Malicious Knives Cross",
 		desc  = "Won & killed only with knives/fists",
 		hidden  = true,
-		winonly = true,
-		condition = function() return kills.get_type( "other" ) + kills.get_type( "melee" ) + kills.get_type( "knife" ) == statistics.kills end,
+		requirements =
+		{
+			winonly   = true,
+			condition = function() return kills.get_type( "other" ) + kills.get_type( "melee" ) + kills.get_type( "knife" ) == statistics.kills end,
+		},
 	}
 
 	register_medal "fist"
@@ -156,9 +171,12 @@ function drl.register_awards()
 		name  = "Sunrise Iron Fist",
 		desc  = "Won & killed only with your bare hands",
 		hidden  = true,
-		winonly = true,
 		removes = { "knives" , "shotguns", "pistols" },
-		condition = function() return kills.get_type( "other" ) + kills.get_type( "melee" ) == statistics.kills end,
+		requirements =
+		{
+			winonly   = true,
+			condition = function() return kills.get_type( "other" ) + kills.get_type( "melee" ) == statistics.kills end,
+		},
 	}
 
 	register_medal "zen"
@@ -166,16 +184,22 @@ function drl.register_awards()
 		name  = "Zen Master's Cross",
 		desc  = "Won & killed w/o using fists/weapons",
 		hidden  = true,
-		winonly = true,
 		removes = { "fist" , "knives" , "shotguns", "pistols" },
-		condition = function() return kills.get_type( "other" ) == statistics.kills end,
+		requirements =
+		{
+			winonly   = true,
+			condition = function() return kills.get_type( "other" ) == statistics.kills end,
+		},
 	}
 
 	register_medal "uac1"
 	{
 		name  = "UAC Star (bronze cluster)",
 		desc  = "25+ kills without taking damage",
-		condition = function() return statistics.kills_non_damage >= 25 end,
+		requirements =
+		{
+			condition = function() return statistics.kills_non_damage >= 25 end,
+		},
 	}
 
 	register_medal "uac2"
@@ -183,7 +207,10 @@ function drl.register_awards()
 		name  = "UAC Star (silver cluster)",
 		desc  = "50+ kills without taking damage",
 		removes = { "uac1" },
-		condition = function() return statistics.kills_non_damage >= 50 end,
+		requirements =
+		{
+			condition = function() return statistics.kills_non_damage >= 50 end,
+		},
 	}
 
 	register_medal "uac3"
@@ -191,45 +218,63 @@ function drl.register_awards()
 		name  = "UAC Star (gold cluster)",
 		desc  = "100+ kills without taking damage",
 		removes = { "uac1", "uac2" },
-		condition = function() return statistics.kills_non_damage >= 100 end,
+		requirements =
+		{
+			condition = function() return statistics.kills_non_damage >= 100 end,
+		},
 	}
 
 	register_medal "icarus1"
 	{
 		name  = "Minor Icarus Cross",
 		desc  = "Won the game in less than 40,000 turns",
-		winonly = true,
-		condition = function() return statistics.game_time < 40000 end,
+		requirements =
+		{
+			winonly   = true,
+			condition = function() return statistics.game_time < 40000 end,
+		},
 	}
 
 	register_medal "icarus2"
 	{
 		name  = "Major Icarus Cross",
 		desc  = "Won the game in less than 20,000 turns",
-		winonly = true,
 		removes = { "icarus1" },
-		condition = function() return statistics.game_time < 20000 end,
+		requirements =
+		{
+			winonly   = true,
+			condition = function() return statistics.game_time < 20000 end,
+		},
 	}
 
 	register_medal "gambler"
 	{
 		name  = "Gambler's Shield",
 		desc  = "Pulled at least 25 levers in one game",
-		condition = function() return statistics.levers_pulled > 24 end,
+		requirements =
+		{
+			condition = function() return statistics.levers_pulled > 24 end,
+		},
 	}
 
 	register_medal "aurora"
 	{
 		name  = "Aurora Medallion",
 		desc  = "Found more than 3 uniques in one game",
-		condition = function() return statistics.uniques_found > 3 end,
+		requirements =
+		{
+			condition = function() return statistics.uniques_found > 3 end,
+		},
 	}
 
 	register_medal "explorer"
 	{
 		name  = "Explorer Pin",
 		desc  = "Visited all generated levels",
-		condition = function() return statistics.bonus_levels_count > 0 and statistics.bonus_levels_visited == statistics.bonus_levels_count end,
+		requirements =
+		{
+			condition = function() return statistics.bonus_levels_count > 0 and statistics.bonus_levels_visited == statistics.bonus_levels_count end,
+		},
 	}
 
 	register_medal "conqueror"
@@ -237,33 +282,45 @@ function drl.register_awards()
 		name  = "Conqueror Pin",
 		desc  = "Completed all generated levels",
 		removes = { "explorer" },
-		condition = function() return statistics.bonus_levels_count > 0 and statistics.bonus_levels_completed == statistics.bonus_levels_count end,
+		requirements =
+		{
+			condition = function() return statistics.bonus_levels_count > 0 and statistics.bonus_levels_completed == statistics.bonus_levels_count end,
+		},
 	}
 
 	register_medal "competn1"
 	{
 		name  = "Compet-n Silver Cross",
 		desc  = "Won the game in under 30 minutes",
-		winonly = true,
-		condition = function() return statistics.real_time < 30*60 end,
+		requirements =
+		{
+			winonly   = true,
+			condition = function() return statistics.real_time < 30*60 end,
+		},
 	}
 
 	register_medal "competn2"
 	{
 		name  = "Compet-n Gold Cross",
 		desc  = "Won the game in under 20 minutes",
-		winonly = true,
 		removes = { "competn1" },
-		condition = function() return statistics.real_time < 20*60 end,
+		requirements =
+		{
+			winonly   = true,
+			condition = function() return statistics.real_time < 20*60 end,
+		},
 	}
 
 	register_medal "competn3"
 	{
 		name  = "Compet-n Platinum Cross",
 		desc  = "Won the game in under 10 minutes",
-		winonly = true,
 		removes = { "competn1", "competn2" },
-		condition = function() return statistics.real_time < 10*60 end,
+		requirements =
+		{
+			winonly   = true,
+			condition = function() return statistics.real_time < 10*60 end,
+		},
 	}
 
 	register_medal "fallout1"
@@ -271,7 +328,10 @@ function drl.register_awards()
 		name  = "Fallout Gold Cross",
 		desc  = "Nuked at least 3 levels in one game",
 		hidden  = true,
-		condition = function() return statistics.levels_nuked >= 3 end,
+		requirements =
+		{
+			condition = function() return statistics.levels_nuked >= 3 end,
+		},
 	}
 
 	register_medal "fallout2"
@@ -280,7 +340,10 @@ function drl.register_awards()
 		desc  = "Nuked at least 6 levels in one game",
 		hidden  = true,
 		removes = { "fallout1" },
-		condition = function() return statistics.levels_nuked >= 6 end,
+		requirements =
+		{
+			condition = function() return statistics.levels_nuked >= 6 end,
+		},
 	}
 
 	register_medal "fallout3"
@@ -289,7 +352,10 @@ function drl.register_awards()
 		desc  = "Nuked at least 12 levels in one game",
 		hidden  = true,
 		removes = { "fallout1", "fallout2" },
-		condition = function() return statistics.levels_nuked >= 12 end,
+		requirements =
+		{
+			condition = function() return statistics.levels_nuked >= 12 end,
+		},
 	}
 
 
@@ -298,15 +364,21 @@ function drl.register_awards()
 		name  = "Iron Skull",
 		desc  = "Took 5,000+ damage in one game",
 		hidden  = true,
-		condition = function() return statistics.damage_taken >= 5000 end,
+		requirements =
+		{
+			condition = function() return statistics.damage_taken >= 5000 end,
+		},
 	}
 
 	register_medal "untouchable1"
 	{
 		name  = "Untouchable Pin",
 		desc  = "Won taking less than 500 damage",
-		winonly = true,
-		condition = function() return statistics.damage_taken < 500 end,
+		requirements =
+		{
+			winonly   = true,
+			condition = function() return statistics.damage_taken < 500 end,
+		},
 	}
 
 	register_medal "untouchable2"
@@ -314,9 +386,12 @@ function drl.register_awards()
 		name  = "Untouchable Medal",
 		desc  = "Won taking less than 200 damage",
 		hidden  = true,
-		winonly = true,
 		removes = { "untouchable1" },
-		condition = function() return statistics.damage_taken < 200 end,
+		requirements =
+		{
+			winonly   = true,
+			condition = function() return statistics.damage_taken < 200 end,
+		},
 	}
 
 	register_medal "untouchable3"
@@ -324,16 +399,22 @@ function drl.register_awards()
 		name  = "Untouchable Cross",
 		desc  = "Won taking less than 50 damage",
 		hidden  = true,
-		winonly = true,
 		removes = { "untouchable1", "untouchable2" },
-		condition = function() return statistics.damage_taken < 50 end,
+		requirements =
+		{
+			winonly   = true,
+			condition = function() return statistics.damage_taken < 50 end,
+		},
 	}
 
 	register_medal "experience1"
 	{
 		name  = "Experience Medal",
 		desc  = "Reach experience level 20+",
-		condition = function() return player.explevel >= 20 end,
+		requirements =
+		{
+			condition = function() return player.explevel >= 20 end,
+		},
 	}
 
 	register_medal "experience2"
@@ -341,7 +422,10 @@ function drl.register_awards()
 		name  = "Experience Cross",
 		desc  = "Reach experience level 25",
 		removes = { "experience1" },
-		condition = function() return player.explevel >= 25 end,
+		requirements =
+		{
+			condition = function() return player.explevel >= 25 end,
+		},
 	}
 
 	-- Because it is ridiculous to die when you are past level 20
@@ -350,7 +434,10 @@ function drl.register_awards()
 		name  = "Purple Heart",
 		desc  = "Reach experience level 20+ and die",
 		hidden = true,
-		condition = function() return player.explevel >= 20 and player.hp <= 0 end,
+		requirements =
+		{
+			condition = function() return player.explevel >= 20 and player.hp <= 0 end,
+		},
 	}
 
   -- Below not implemented! --
@@ -901,7 +988,7 @@ end
 function drl.award_badges()
 	for _,badge in ipairs( badges ) do
 		if badge.requirements and ( badge.challenge == "" or core.is_challenge( badge.challenge ) ) and
-			core.check_badge_conditions( badge.requirements )
+			core.check_award_requirements( badge.requirements )
 		then
 			player:add_badge( badge.id )
 		end
