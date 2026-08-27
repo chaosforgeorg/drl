@@ -704,6 +704,14 @@ function drl.register_awards()
 end
 
 function drl.award_badges()
+	for _,badge in ipairs( badges ) do
+		if badge.challenge ~= "" and core.is_challenge( "challenge_"..badge.challenge ) and
+			core.check_badge_conditions( badge.requirements )
+		then
+			player:add_badge( badge.id )
+		end
+	end
+
 	-- UAC, veteran, strongman and elite badges
 	if player:has_won() then
 		local is_conqueror = (statistics.bonus_levels_completed == statistics.bonus_levels_count)

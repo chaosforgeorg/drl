@@ -135,7 +135,8 @@ core.register_blueprint "badge"
 	set         = { false, core.TSTRING, "" },
 	klass       = { false, core.TSTRING, "" },
 	achievement = { false, core.TSTRING, "" },
-	condition   = { false, core.TFUNC },
+	challenge    = { false, core.TSTRING, "" },
+	requirements = { false, core.TTABLE },
 }
 
 core.register_blueprint "award_level"
@@ -736,4 +737,3 @@ core.register_blueprint "emitter"
 	looping         = { false, core.TBOOL, false },
 	attached        = { false, core.TBOOL, false },
 }
-

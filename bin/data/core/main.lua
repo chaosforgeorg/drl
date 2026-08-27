@@ -152,18 +152,19 @@ function register_klass_badge( id )
 					set   = id,
 					klass = k.id,
 					achievement = acv_id( k.id ),
+					challenge = b.challenge,
+					requirements = b.requirements,
 				}
 			end
 		end
 	end
 end
 
-function check_condition( t )
+function core.check_badge_conditions( t )
+	if not t then return true end
+	if t.winonly and not player:has_won() then return false end
 	if t.challenge then
-		local id = "challenge_"..t.challenge
-		if not ( CHALLENGE == id or SCHALLENGE == id ) then
-			return false
-		end
+		if not core.is_challenge( "challenge_"..t.challenge ) then return false end
 	end
 	if t.kills then
 		if statistics.unique_kills < statistics.max_unique_kills * t.kills then
@@ -175,9 +176,20 @@ function check_condition( t )
 			return false
 		end
 	end
+	if t.condition and not t.condition() then return false end
 	return true
 end
- 
+
+local function copy_master_requirements( source )
+	return {
+		winonly   = true,
+		challenge = source.challenge,
+		difficulty = source.difficulty,
+		kills      = source.kills,
+		condition  = source.condition,
+	}
+end
+
 function register_master_badge( id )
 	return function( b )
 		assert( b.mid )
@@ -217,9 +229,7 @@ function register_master_badge( id )
 			level = 4,
 			set   = id,
 			klass = b.klass,
-			condition = function()
-				return player:has_trait( b.mid ) and check_condition( b.platinum )
-			end
+			requirements = copy_master_requirements( b.platinum ),
 		}
 		register_badge ( id.."_5" )
 		{
@@ -228,9 +238,7 @@ function register_master_badge( id )
 			level = 5,
 			set   = id,
 			klass = b.klass,
-			condition = function()
-				return player:has_trait( b.mid ) and check_condition( b.diamond )
-			end
+			requirements = copy_master_requirements( b.diamond ),
 		}
 	end
 end
