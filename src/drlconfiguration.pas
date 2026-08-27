@@ -6,23 +6,34 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlconfiguration;
 interface
-uses vconfiguration;
+uses vconfiguration, vbindings, drlcontrollerbindings;
 
 type TDRLConfiguration = class( TConfigurationManager )
   constructor Create;
+  destructor Destroy; override;
+private
+  FKeyBindings          : TBindingCatalog;
+  FControllerBindings   : TControllerBindingCatalog;
+  FUIKeyBindings        : TBindingCatalog;
+  FUIControllerBindings : TControllerBindingCatalog;
+public
+  property KeyBindings          : TBindingCatalog read FKeyBindings;
+  property ControllerBindings   : TControllerBindingCatalog read FControllerBindings;
+  property UIKeyBindings        : TBindingCatalog read FUIKeyBindings;
+  property UIControllerBindings : TControllerBindingCatalog read FUIControllerBindings;
 end;
 
 var Configuration : TDRLConfiguration;
 
 implementation
 
-uses vioevent, drlkeybindings, drlcontrollerbindings;
+uses SysUtils, drlkeybindings, drluibindings;
 
 constructor TDRLConfiguration.Create;
 var iGroup : TConfigurationGroup;
-    iInput : TInputKey;
     iID    : Ansistring;
-const CInputGroups : array[1..7] of Ansistring = (
+const CInputGroups : array[1..8] of Ansistring = (
+  'keybindings_hidden',
   'keybindings_movement',
   'keybindings_actions',
   'keybindings_ui',
@@ -33,6 +44,21 @@ const CInputGroups : array[1..7] of Ansistring = (
 );
 begin
   inherited Create;
+  FKeyBindings := TBindingCatalog.Create(KeyInfo);
+  FControllerBindings := TControllerBindingCatalog.Create(
+    ControllerBindingInfo,
+    [],
+    'Malformed gameplay controller bindings; resetting the complete controller binding group.'
+  );
+  FUIKeyBindings := TBindingCatalog.Create( UIKeyBindingInfo );
+  FUIControllerBindings := TControllerBindingCatalog.Create(
+    UIPadBindingInfo,
+    [
+      CONTROLLER_BINDING_ALLOW_UNBOUND,
+      CONTROLLER_BINDING_ALLOW_DPAD_CAPTURE
+    ],
+    'Malformed UI controller bindings; resetting the complete UI controller binding group.'
+  );
 
   iGroup := AddGroup( 'meta' );
   iGroup.AddInteger( 'config_version', 0 );
@@ -177,22 +203,29 @@ begin
     ;
 
   iGroup := AddGroup( CONTROLLER_BINDINGS_GAMEPLAY_GROUP );
-  RegisterControllerBindings( iGroup );
+  FControllerBindings.RegisterGroup(iGroup, CONTROLLER_BINDING_INFO_GROUP);
 
-  iGroup := AddGroup( 'keybindings_hidden' );
-  iGroup.AddInteger( 'input_escape', VKEY_ESCAPE );
-  iGroup.AddInteger( 'input_ok', VKEY_ENTER );
+  FUIKeyBindings.RegisterGroup(
+    AddGroup( UI_KEY_BINDING_GROUP ), UI_KEY_BINDING_GROUP );
+  FUIControllerBindings.RegisterGroup(
+    AddGroup( UI_PAD_BINDING_GROUP ), UI_PAD_BINDING_GROUP );
 
   for iID in CInputGroups do
-  begin
-    iGroup := AddGroup( iID );
-    for iInput in TInputKey do
-      if KeyInfo[ iInput ].Group = iID then
-        iGroup.AddInteger( KeyInfo[ iInput ].ID, KeyInfo[ iInput ].Default )
-          .SetName(KeyInfo[ iInput ].Name)
-          .SetDescription(KeyInfo[ iInput ].Description)
-          ;
-  end;
+    FKeyBindings.RegisterGroup(AddGroup(iID), iID);
+
+  FKeyBindings.ValidateRegistration;
+  FControllerBindings.ValidateRegistration;
+  FUIKeyBindings.ValidateRegistration;
+  FUIControllerBindings.ValidateRegistration;
+end;
+
+destructor TDRLConfiguration.Destroy;
+begin
+  FreeAndNil(FUIControllerBindings);
+  FreeAndNil(FUIKeyBindings);
+  FreeAndNil(FControllerBindings);
+  FreeAndNil(FKeyBindings);
+  inherited Destroy;
 end;
 
 end.

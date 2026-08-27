@@ -8,7 +8,7 @@ unit drlplayerview;
 interface
 uses vioevent, viotypes, vgenerics, vtigstyle,
      dfitem, dfdata, drlhooks,
-     drlio, drltraits, drlconfirmview;
+     drlio, drluibindings, drltraits, drlconfirmview;
 
 type TPlayerViewState = (
   PLAYERVIEW_INVENTORY,
@@ -411,7 +411,7 @@ begin
     begin
       if ( FCommandMode in [0, COMMAND_USE] ) then
       begin
-        if VTIG_Event( VTIG_IE_BACKSPACE ) then
+        if VTIG_Event( UI_BINDING_DROP ) then
         begin
           FState := PLAYERVIEW_PENDING;
           DRL.HandleCommand( TCommand.Create(
@@ -629,7 +629,7 @@ begin
       end;
     end
     else
-    if VTIG_Event( VTIG_IE_TAB ) then
+    if VTIG_Event( UI_BINDING_SWAP ) then
     begin
       if CannotUnequip then Exit;
       InitSwapMode( TEqSlot(iSelected) );
@@ -638,7 +638,7 @@ begin
     else
     if Assigned( FEq[iSelected].Item ) then
     begin
-      if VTIG_Event( VTIG_IE_BACKSPACE ) then
+      if VTIG_Event( UI_BINDING_DROP ) then
       begin
         if CannotUnequip then Exit;
         FState := PLAYERVIEW_CLOSING;

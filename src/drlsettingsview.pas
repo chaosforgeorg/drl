@@ -6,7 +6,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlsettingsview;
 interface
-uses vio, viotypes, vioevent, vconfiguration, drlio, dfdata,
+uses vio, viotypes, vioevent, vconfiguration, vbindings, drlio, dfdata,
      drlcontrollerbindings;
 
 type TSettingsViewState = (
@@ -22,6 +22,8 @@ type TSettingsViewState = (
   SETTINGSVIEW_KEYMULTIMOVE,
   SETTINGSVIEW_KEYHELPER,
   SETTINGSVIEW_KEYLEGACY,
+  SETTINGSVIEW_UIKEYBOARD,
+  SETTINGSVIEW_UICONTROLLER,
   SETTINGSVIEW_DONE
 );
 
@@ -31,7 +33,8 @@ const SETTINGSVIEW_KEYS : set of TSettingsViewState = [
   SETTINGSVIEW_KEYUI,
   SETTINGSVIEW_KEYMULTIMOVE,
   SETTINGSVIEW_KEYHELPER,
-  SETTINGSVIEW_KEYLEGACY
+  SETTINGSVIEW_KEYLEGACY,
+  SETTINGSVIEW_UIKEYBOARD
 ];
 
 type TSettingsView = class( TIOLayer )
@@ -45,7 +48,9 @@ protected
   procedure Reconfigure;
   procedure Reset( aGroup : TConfigurationGroup );
   function KeyCapture( aValue : PInteger; aSelected : Boolean ) : Boolean;
-  procedure ControllerCapture( aAction   : TControllerAction; aSelected : Boolean );
+  function CaptureControllerBindings : TControllerBindingCatalog;
+  procedure ControllerCapture( aBindings : TControllerBindingCatalog;
+    aAction : TBindingAction; aSelected : Boolean );
 protected
   FState               : TSettingsViewState;
   FSize                : TIOPoint;
@@ -53,7 +58,7 @@ protected
   FCapture             : Boolean;
   FKey                 : Word;
   FControllerCapture   : Boolean;
-  FControllerAction    : TControllerAction;
+  FControllerAction    : TBindingAction;
   FControllerButton    : TIOPadButton;
   FControllerCandidate : TIOPadButton;
   FControllerCancel    : Boolean;
@@ -73,7 +78,7 @@ end;
 implementation
 
 uses math, sysutils, vapp, vutil, vdebug, vtig, vtigio,
-     drlconfiguration, drlbase;
+     drlconfiguration, drlbase, drluibindings;
 
 const CStates : array[ TSettingsViewState ] of record Title, ID : Ansistring; end = (
    ( Title : 'Settings'; ID : 'general' ),
@@ -88,10 +93,12 @@ const CStates : array[ TSettingsViewState ] of record Title, ID : Ansistring; en
    ( Title : 'Settings (Keybindings - Multi-move)'; ID : 'keybindings_running' ),
    ( Title : 'Settings (Keybindings - Helper)'; ID : 'keybindings_helper' ),
    ( Title : 'Settings (Keybindings - Legacy)'; ID : 'keybindings_legacy' ),
+   ( Title : 'Settings (UI bindings - Keyboard)'; ID : UI_KEY_BINDING_GROUP ),
+   ( Title : 'Settings (UI bindings - Controller)'; ID : UI_PAD_BINDING_GROUP ),
    ( Title : ''; ID : '' )
 );
 
-const CSub : array[ 1..11 ] of record State : TSettingsViewState; Select, Desc : Ansistring; end = (
+const CSub : array[ 1..13 ] of record State : TSettingsViewState; Select, Desc : Ansistring; end = (
   ( State : SETTINGSVIEW_DISPLAY;     Select : 'Display';                  Desc : 'Configure video and display options.' ),
   ( State : SETTINGSVIEW_AUDIO;       Select : 'Audio';                    Desc : 'Configure audio, music and sound options.' ),
   ( State : SETTINGSVIEW_GAMEPLAY;    Select : 'Gameplay';                 Desc : 'Configure gameplay options.' ),
@@ -102,7 +109,9 @@ const CSub : array[ 1..11 ] of record State : TSettingsViewState; Select, Desc :
   ( State : SETTINGSVIEW_KEYUI;       Select : 'Keybindings - UI';         Desc : 'Configure keybindings accessing UI elements (inventory, etc.).' ),
   ( State : SETTINGSVIEW_KEYMULTIMOVE;Select : 'Keybindings - Multi-move'; Desc : 'Configure keybindings for repeat movement.' ),
   ( State : SETTINGSVIEW_KEYHELPER;   Select : 'Keybindings - Helper';     Desc : 'Configure extra helper keybindings and quickslot keys.' ),
-  ( State : SETTINGSVIEW_KEYLEGACY;   Select : 'Keybindings - Legacy';     Desc : 'Keybindings that are no longer needed, but some may want them back.' )
+  ( State : SETTINGSVIEW_KEYLEGACY;   Select : 'Keybindings - Legacy';     Desc : 'Keybindings that are no longer needed, but some may want them back.' ),
+  ( State : SETTINGSVIEW_UIKEYBOARD;  Select : 'UI bindings - Keyboard';   Desc : 'Configure keyboard navigation shared by menus and dialogs.' ),
+  ( State : SETTINGSVIEW_UICONTROLLER;Select : 'UI bindings - Controller'; Desc : 'Configure controller navigation shared by menus and dialogs.' )
 );
 
 constructor TSettingsView.Create;
@@ -116,7 +125,7 @@ begin
 
   FCapture             := False;
   FControllerCapture   := False;
-  FControllerAction    := CONTROLLER_MOVE;
+  FControllerAction    := Ord( CONTROLLER_MOVE );
   FControllerButton    := VPAD_BUTTON_INVALID;
   FControllerCandidate := VPAD_BUTTON_INVALID;
   FControllerCancel    := False;
@@ -242,6 +251,12 @@ begin
           if iAction in CONTROLLER_BINDING_MENU_ACTIONS then
             VTIG_Selectable( ControllerBindingInfo[ iAction ].Name );
       end
+      else if FState = SETTINGSVIEW_UICONTROLLER then
+      begin
+        for iEntry in iGroup.Entries do
+          if iEntry.Name <> '' then
+            VTIG_Selectable( iEntry.Name );
+      end
       else
       begin
         if iGroup <> nil then
@@ -272,11 +287,29 @@ begin
           for iAction in TControllerAction do
             if iAction in CONTROLLER_BINDING_MENU_ACTIONS then
             begin
-              ControllerCapture( iAction, iSelected = i );
+              ControllerCapture(
+                Configuration.ControllerBindings,
+                Ord( iAction ),
+                iSelected = i
+              );
               if iSelected = i then
                 iHover := Configuration.CastInteger(
                   ControllerBindingInfo[ iAction ].ID
                 );
+              Inc( i );
+            end;
+        end
+        else if FState = SETTINGSVIEW_UICONTROLLER then
+        begin
+          for iEntry in iGroup.Entries do
+            if iEntry.Name <> '' then
+            begin
+              ControllerCapture(
+                Configuration.UIControllerBindings,
+                UIPadBindingInfo[ i ].Action,
+                iSelected = i
+              );
+              if iSelected = i then iHover := iEntry;
               Inc( i );
             end;
         end
@@ -398,7 +431,9 @@ begin
     then VTIG_Text( iHover.Description );
 
 
-  if FState = SETTINGSVIEW_CONTROLLER then
+  if FState = SETTINGSVIEW_UICONTROLLER then
+    VTIG_End('{l<{!{$input_up},{$input_down}}> select, <{!{$input_ok}}> rebind, <{!{$input_uidrop}}> clear, <{!{$input_escape}}> back}')
+  else if FState = SETTINGSVIEW_CONTROLLER then
     VTIG_End('{l<{!{$input_up},{$input_down}}> select, <{!{$input_ok}}> rebind, <{!{$input_escape}}> back}')
   else if FState in SETTINGSVIEW_KEYS
     then VTIG_End('{l<{!{$input_up},{$input_down}}> select, <{!{$input_ok}}> change/enter, <{!{$input_escape}}> back, <{!{$input_uidrop}}> clear}')
@@ -423,8 +458,8 @@ begin
   begin
     if FState = SETTINGSVIEW_GENERAL
       then Reset( nil )
-      else if FState = SETTINGSVIEW_CONTROLLER
-        then ResetControllerBindings( Configuration )
+      else if FState in [ SETTINGSVIEW_CONTROLLER, SETTINGSVIEW_UICONTROLLER ]
+        then CaptureControllerBindings.ResetValues
       else Reset( iGroup );
     Reconfigure;
   end;
@@ -442,6 +477,7 @@ end;
 
 function TSettingsView.HandleEvent( const aEvent : TIOEvent ) : Boolean;
 var iButton        : TIOPadButton;
+    iBindings      : TControllerBindingCatalog;
     iNow           : DWord;
     iBHoldComplete : Boolean;
 begin
@@ -483,7 +519,8 @@ begin
         else if iButton = FControllerCandidate then
         begin
           FControllerCandidate := VPAD_BUTTON_INVALID;
-          if IsControllerMenuAssignableButton( iButton ) then
+          iBindings := CaptureControllerBindings;
+          if ( iBindings <> nil ) and iBindings.CanCapture( iButton ) then
             FControllerButton := iButton
           else
             FControllerMessage := 'D-pad directions are fixed.';
@@ -497,7 +534,9 @@ begin
   begin
     if aEvent.Key.Code = VKEY_ESCAPE
       then FKey := VKEY_ESCAPE
-      else FKey := IOKeyEventToIOKeyCode( aEvent.Key );
+      else if FState = SETTINGSVIEW_UIKEYBOARD
+        then FKey := aEvent.Key.Code
+        else FKey := IOKeyEventToIOKeyCode( aEvent.Key );
   end;
   Exit( True );
 end;
@@ -508,13 +547,25 @@ begin
   inherited Destroy;
 end;
 
+function TSettingsView.CaptureControllerBindings : TControllerBindingCatalog;
+begin
+  case FState of
+    SETTINGSVIEW_CONTROLLER:
+      Exit( Configuration.ControllerBindings );
+    SETTINGSVIEW_UICONTROLLER:
+      Exit( Configuration.UIControllerBindings );
+  end;
+  Exit( nil );
+end;
+
 procedure TSettingsView.ControllerCapture(
-  aAction   : TControllerAction;
+  aBindings : TControllerBindingCatalog;
+  aAction   : TBindingAction;
   aSelected : Boolean
 );
 var iCurrent : TIOPadButton;
 begin
-  iCurrent := GetControllerButton( Configuration, aAction );
+  iCurrent := aBindings.GetButton( aAction );
   VTIG_InputField( VPadButtonToDisplayString( iCurrent ) );
 
   if FControllerCapture and ( FControllerAction = aAction ) then
@@ -522,8 +573,7 @@ begin
     VTIG_Begin( 'controller_capture', Point( 56, 8 ) );
     VTIG_Text( 'Release one controller button to bind.' );
     VTIG_Text( 'Hold {!B} for one second or press {!Escape} to cancel.' );
-    if FControllerMessage <> '' then
-      VTIG_Text( FControllerMessage );
+    if FControllerMessage <> '' then VTIG_Text( FControllerMessage );
     VTIG_End;
 
     if FControllerCancel then
@@ -531,38 +581,39 @@ begin
     else if FControllerButton <> VPAD_BUTTON_INVALID then
     begin
       FControllerCapture := False;
-      if ( FControllerButton <> iCurrent )
-        and SwapControllerBinding(
-          Configuration,
-          FControllerAction,
-          FControllerButton
-        ) then
-        Reconfigure;
+      if ( FControllerButton <> iCurrent ) and
+         aBindings.Swap( aAction, FControllerButton ) then Reconfigure;
     end;
 
     if not FControllerCapture then
     begin
-      FControllerButton    := VPAD_BUTTON_INVALID;
+      FControllerButton := VPAD_BUTTON_INVALID;
       FControllerCandidate := VPAD_BUTTON_INVALID;
-      FControllerCancel    := False;
-      FControllerBHold     := False;
-      FControllerBStart    := 0;
-      FControllerMessage   := '';
+      FControllerCancel := False;
+      FControllerBHold := False;
+      FControllerBStart := 0;
+      FControllerMessage := '';
     end;
     VTIG_EventClear;
     Exit;
   end;
 
-  if aSelected and VTIG_EventConfirm then
+  if not aSelected then Exit;
+  if aBindings.AllowsUnbound and VTIG_Event( UI_BINDING_DROP ) then
   begin
-    FControllerCapture   := True;
-    FControllerAction    := aAction;
-    FControllerButton    := VPAD_BUTTON_INVALID;
+    if aBindings.Swap( aAction, VPAD_BUTTON_INVALID ) then Reconfigure;
+    Exit;
+  end;
+  if VTIG_EventConfirm then
+  begin
+    FControllerCapture := True;
+    FControllerAction := aAction;
+    FControllerButton := VPAD_BUTTON_INVALID;
     FControllerCandidate := VPAD_BUTTON_INVALID;
-    FControllerCancel    := False;
-    FControllerBHold     := False;
-    FControllerBStart    := 0;
-    FControllerMessage   := '';
+    FControllerCancel := False;
+    FControllerBHold := False;
+    FControllerBStart := 0;
+    FControllerMessage := '';
     VTIG_EventClear;
   end;
 end;
@@ -594,7 +645,7 @@ begin
         FKey     := 0;
         Exit( False );
       end;
-    if VTIG_Event( [VTIG_IE_BACKSPACE] ) then
+    if VTIG_Event( UI_BINDING_DROP ) then
       aValue^ := 0;
   end;
   Exit( False );

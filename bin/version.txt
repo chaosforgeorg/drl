@@ -1,109 +1,110 @@
 0.10.12
-[fix] -- GH#348: Visual - possible fix for windows DPI scaling
+GHD#364 [new] -- UI - you can rebind UI controls (up/down/escape/etc)
+GHD#348 [fix] -- Visual - possible fix for windows DPI scaling
 
 0.10.11
-[new] -- GJ#433: Game - support for game seeds and seeded games!
-[new] -- GJ#250: UI - non-UI controller bindings can be configured in the settings
-[new] -- GJ#421: Game - damage taken and kill streak are now in the mortem
-[new] -- GJ#423: Game - fixed group weight adjustment and generation max-level
-[mod] -- GJ#424: Game - better death reasons for damage in player turn
-[mod] -- GJ#424: Game - invoking melee items will properly count as melee kills not other
-[mod] -- GJ#439: Game - the game will warn if engine and module versions are mismatched
-[fix] -- GJ#440: Game - respawned enemies will transfer respawn status to enemies spawned by them (i.e. lost souls)
+GHJ#433 [new] -- Game - support for game seeds and seeded games!
+GHJ#250 [new] -- UI - non-UI controller bindings can be configured in the settings
+GHJ#421 [new] -- Game - damage taken and kill streak are now in the mortem
+GHJ#423 [new] -- Game - fixed group weight adjustment and generation max-level
+GHJ#424 [mod] -- Game - better death reasons for damage in player turn
+GHJ#424 [mod] -- Game - invoking melee items will properly count as melee kills not other
+GHJ#439 [mod] -- Game - the game will warn if engine and module versions are mismatched
+GHJ#440 [fix] -- Game - respawned enemies will transfer respawn status to enemies spawned by them (i.e. lost souls)
 
 0.10.10b
-[mod] -- GJ#188: Game - targeting/missle path algorithm matched against visibility
-[mod] -- GJ#220: Game - fly and shoothrough flags propely separated (fixes flying and shooting through gaps)
-[mod] -- GJ#220: UI - if the autotargeted shot would hit a wall before reaching the target, mark the wall with a red marker
-[mod] -- GJ#317: Sound - upgraded the Audio system - faster loading, no longer will the game be obnoxiously loud and fixes several bugs
-[mod] -- GJ#400: Game - fluids will now damage boots even if there's 100% feet protection
-[fix] -- GH#289: Sound - music wont crash if too many sounds are played simultaneously
-[fix] -- GJ#317: Sound - multiple sounds played at the same time will be handled gracefully
-[fix] -- GJ#342: Game - fixed a class of bugs related to explosion/shotgun or explosion/explosion order
-[fix] -- GD#332: Visual - fixed rendering of glyphs on some Radeon/Intel cards
+GHJ#188 [mod] -- Game - targeting/missle path algorithm matched against visibility
+GHJ#220 [mod] -- Game - fly and shoothrough flags propely separated (fixes flying and shooting through gaps)
+GHJ#220 [mod] -- UI - if the autotargeted shot would hit a wall before reaching the target, mark the wall with a red marker
+GHJ#317 [mod] -- Sound - upgraded the Audio system - faster loading, no longer will the game be obnoxiously loud and fixes several bugs
+GHJ#400 [mod] -- Game - fluids will now damage boots even if there's 100% feet protection
+GHD#289 [fix] -- Sound - music wont crash if too many sounds are played simultaneously
+GHJ#317 [fix] -- Sound - multiple sounds played at the same time will be handled gracefully
+GHJ#342 [fix] -- Game - fixed a class of bugs related to explosion/shotgun or explosion/explosion order
+GHD#332 [fix] -- Visual - fixed rendering of glyphs on some Radeon/Intel cards
 
 0.10.9
-[new] -- GJ#356: UI - targeting reticule size larger for larger enemies
-[mod] -- GJ#355: Game - you can now melee scenery on the gamepad/deck using fire command with melee weapons
-[mod] -- GJ#357: Game - powerups refresh instead of stacking
-[mod] -- GJ#357: Game - buffed berserk powerup duration (300->500)
-[mod] -- GJ#354: Game - increased the falloff of shotguns to compensate for range 1 buff
-[mod] -- GJ#357: Game - powerups refresh instead of stacking
-[mod] -- GJ#357: Game - Nightmare doesn't really need it's 1.2x XP multiplier anymore
-[fix] -- GJ#237: Game - file I/O fixed, should fix rare corruption crashes
-[fix] -- GH#349: Game - fixed onyx nanofiber crash
-[fix] -- GJ#360: UI - mouse control now auto-reloads based on shotcost instead of only when ammo is zero
+GHJ#356 [new] -- UI - targeting reticule size larger for larger enemies
+GHJ#355 [mod] -- Game - you can now melee scenery on the gamepad/deck using fire command with melee weapons
+GHJ#357 [mod] -- Game - powerups refresh instead of stacking
+GHJ#357 [mod] -- Game - buffed berserk powerup duration (300->500)
+GHJ#354 [mod] -- Game - increased the falloff of shotguns to compensate for range 1 buff
+GHJ#357 [mod] -- Game - powerups refresh instead of stacking
+GHJ#357 [mod] -- Game - Nightmare doesn't really need it's 1.2x XP multiplier anymore
+GHJ#237 [fix] -- Game - file I/O fixed, should fix rare corruption crashes
+GHD#349 [fix] -- Game - fixed onyx nanofiber crash
+GHJ#360 [fix] -- UI - mouse control now auto-reloads based on shotcost instead of only when ammo is zero
 
 0.10.8
-[new] -- GJ#242: UI - SHIFT-G will now equip items from ground if at all possible (old one goes to inv, or ground if full)
-[mod] -- GJ#326: Game - fixed broken recharge rates, buffed some recharge items
-[mod] -- GJ#326: Game - Item [m]ore info has explicitly listed weapon group and ammo type
-[mod] -- GJ#284: Game - on Angel of Max Carnage everyone will now always hit instead of 98%
-[mod] -- GJ#284: Game - AUTOHIT effects still have 50% miss rate in the dark and don't apply to non-target enemies
-[mod] -- GJ#---: Game - vaults can now drop boots and melee weapons (no knives, steel boots rarer)
-[mod] -- GJ#316: Game - Berserker stacking limited to 30s, Berserk Pack +50% duration
-[mod] -- GJ#---: Game - armor/boots based 100% resistances will not fully prevent armor degradation
-[mod] -- GJ#---: Traits - Berserker - defensive berserk works as a refresh not cumulative
-[mod] -- GJ#---: Traits - Berserker - self damage (including fluids) won't trigger berserker
-[fix] -- GJ#298: Game - fixed dual weapon second shot targeting after knockback
-[fix] -- GJ#---: Game - fixed nuclear overload access violation
-[fix] -- GJ#299: Game - fixed rare interaction that bricked rocket launchers
-[fix] -- GJ#---: Game - fixed sprite visibility issues when dying from multi-shot weapons
-[fix] -- GJ#---: Game - missile launcher no longer needs pumping, has full reload and rocket jump
-[fix] -- GJ#---: Game - assault shotgun no longer needs pumping, has full reload
-[fix] -- GJ#---: Game - nightmare imps regained their explosion radius
-[fix] -- GJ#---: Game - fix a source of Mastermind crashes
-[fix] -- GJ#---: Game - fixed power armor, nanofibre skin and Mother-In-Law assemblies when N wasn't last mod
-[fix] -- GH#---: ASCII - fixed name input and look mode cursor [joseph-hlucny]
+GHJ#242 [new] -- UI - SHIFT-G will now equip items from ground if at all possible (old one goes to inv, or ground if full)
+GHJ#326 [mod] -- Game - fixed broken recharge rates, buffed some recharge items
+GHJ#326 [mod] -- Game - Item [m]ore info has explicitly listed weapon group and ammo type
+GHJ#284 [mod] -- Game - on Angel of Max Carnage everyone will now always hit instead of 98%
+GHJ#284 [mod] -- Game - AUTOHIT effects still have 50% miss rate in the dark and don't apply to non-target enemies
+GHJ#--- [mod] -- Game - vaults can now drop boots and melee weapons (no knives, steel boots rarer)
+GHJ#316 [mod] -- Game - Berserker stacking limited to 30s, Berserk Pack +50% duration
+GHJ#--- [mod] -- Game - armor/boots based 100% resistances will not fully prevent armor degradation
+GHJ#--- [mod] -- Traits - Berserker - defensive berserk works as a refresh not cumulative
+GHJ#--- [mod] -- Traits - Berserker - self damage (including fluids) won't trigger berserker
+GHJ#298 [fix] -- Game - fixed dual weapon second shot targeting after knockback
+GHJ#--- [fix] -- Game - fixed nuclear overload access violation
+GHJ#299 [fix] -- Game - fixed rare interaction that bricked rocket launchers
+GHJ#--- [fix] -- Game - fixed sprite visibility issues when dying from multi-shot weapons
+GHJ#--- [fix] -- Game - missile launcher no longer needs pumping, has full reload and rocket jump
+GHJ#--- [fix] -- Game - assault shotgun no longer needs pumping, has full reload
+GHJ#--- [fix] -- Game - nightmare imps regained their explosion radius
+GHJ#--- [fix] -- Game - fix a source of Mastermind crashes
+GHJ#--- [fix] -- Game - fixed power armor, nanofibre skin and Mother-In-Law assemblies when N wasn't last mod
+GHD#--- [fix] -- ASCII - fixed name input and look mode cursor [joseph-hlucny]
 
 0.10.7
-[new] -- GJ#229: Game - blood flood event added
-[new] -- GJ#276: UI - Character screen reformated and showing more data
-[mod] -- GJ#227: Game - shotgun falloff is counted from range 1 (full damage), not from player position
-[mod] -- GJ#234: Game - better tile pick when dropping items
-[mod] -- GH#337: UI - Windows - disabled StickyKeys, ToggleKeys and FilterKeys on game start
-[mod] -- GH#337: Game - chaingun accuracy +2->+3
-[mod] -- GH#337: Game - tristar blaster damage 4d5->4d6
-[mod] -- GH#337: Game - blood skull healing 5->10
-[mod] -- GH#337: Game - blaster made twice as common
-[mod] -- GH#337: Game - Charch's Null Pointer - doubled speed count drain
-[fix] -- GJ#255: Game - fixed internal tohit chances when targeting enemies behind enemies
-[fix] -- GJ#255: Game - fixed multiple "On level X he" messages in history log
-[fix] -- GJ#255: Game - fixed permanent berserk effect
-[fix] -- GH#---: UI - fixed melee tohit value in Character screen
-[fix] -- GH#---: UI - fixed marine resistance values in klass description
-[fix] -- GH#---: UI - fixed AoHu/ArchoHu HP description (20% of HP)
-[fix] -- GH#---: UI - clarified Scavenger trait description
-[fix] -- GH#---: Game - marines get +12 HP instead of +10 from Ironman
+GHJ#229 [new] -- Game - blood flood event added
+GHJ#276 [new] -- UI - Character screen reformated and showing more data
+GHJ#227 [mod] -- Game - shotgun falloff is counted from range 1 (full damage), not from player position
+GHJ#234 [mod] -- Game - better tile pick when dropping items
+GHD#337 [mod] -- UI - Windows - disabled StickyKeys, ToggleKeys and FilterKeys on game start
+GHD#337 [mod] -- Game - chaingun accuracy +2->+3
+GHD#337 [mod] -- Game - tristar blaster damage 4d5->4d6
+GHD#337 [mod] -- Game - blood skull healing 5->10
+GHD#337 [mod] -- Game - blaster made twice as common
+GHD#337 [mod] -- Game - Charch's Null Pointer - doubled speed count drain
+GHJ#255 [fix] -- Game - fixed internal tohit chances when targeting enemies behind enemies
+GHJ#255 [fix] -- Game - fixed multiple "On level X he" messages in history log
+GHJ#255 [fix] -- Game - fixed permanent berserk effect
+GHD#--- [fix] -- UI - fixed melee tohit value in Character screen
+GHD#--- [fix] -- UI - fixed marine resistance values in klass description
+GHD#--- [fix] -- UI - fixed AoHu/ArchoHu HP description (20% of HP)
+GHD#--- [fix] -- UI - clarified Scavenger trait description
+GHD#--- [fix] -- Game - marines get +12 HP instead of +10 from Ironman
 
 0.10.6
-[mod] -- GJ#228: affects timing now are based on ticks not turns
-[mod] -- GJ#228: berserk effect times halved to balance out the tick change
-[mod] -- GJ#259: UI - items have a "more" screen too! Access using m or RTrigger+A from inventory
-[mod] -- GJ#259: UI - use SHIFT-m to force target info on self
-[mod] -- GJ#259: UI - RTrigger+LTrigger-A will always show self info
-[mod] -- GJ#228: Game - dual-reload will always work when dual wielding if primary weapon has no alt-reload
-[mod] -- GJ#228: Game - removed niche reload-single from double shotguns
+GHJ#228 [mod] -- affects timing now are based on ticks not turns
+GHJ#228 [mod] -- berserk effect times halved to balance out the tick change
+GHJ#259 [mod] -- UI - items have a "more" screen too! Access using m or RTrigger+A from inventory
+GHJ#259 [mod] -- UI - use SHIFT-m to force target info on self
+GHJ#259 [mod] -- UI - RTrigger+LTrigger-A will always show self info
+GHJ#228 [mod] -- Game - dual-reload will always work when dual wielding if primary weapon has no alt-reload
+GHJ#228 [mod] -- Game - removed niche reload-single from double shotguns
 
 0.10.5
-[new] -- GJ#225: you can assign quickslots directly from equipment screen
-[mod] -- GJ#231: melee weapons will display damage type
-[mod] -- GJ#243: UI - reloading will use ammo stack on ground if matching (unless in combat+pack)
+GHJ#225 [new] -- you can assign quickslots directly from equipment screen
+GHJ#231 [mod] -- melee weapons will display damage type
+GHJ#243 [mod] -- UI - reloading will use ammo stack on ground if matching (unless in combat+pack)
 
 0.10.4a
-[new] -- GJ#113: defence markers added (corneshooting indicator)
-[new] -- GJ#144: UI - quickslot support for gamepad
-[mod] -- GH#333: changed knockback calculation so that even lower knockback armor protection matters
-[mod] -- GJ#166: phasing will try not to place the player on any liquid
-[mod] -- GJ#165: direct hit damage calculated before knockback 
-[mod] -- GH#---: on kill all special level trigger once each enemy is killed once
-[mod] -- GH#328: UI - inv/eq/trait/char keys are active when panel is up!
-[mod] -- GH#---: level up happens after the player turn
-[mod] -- GH#331: default swap time with prepared is 0.5 (down from 0.8)
-[fix] -- GJ#199: fixed ammo-less weapons not behaving properly when dual wielding
-[fix] -- GJ#196: fixed AoRA on death crash
-[fix] -- GH#---: fixed several bugs related to checking if a level is nuked
-[fix] -- GH#336: fixed auto-target behavior on darkness levels
+GHJ#113 [new] -- defence markers added (corneshooting indicator)
+GHJ#144 [new] -- UI - quickslot support for gamepad
+GHD#333 [mod] -- changed knockback calculation so that even lower knockback armor protection matters
+GHJ#166 [mod] -- phasing will try not to place the player on any liquid
+GHJ#165 [mod] -- direct hit damage calculated before knockback 
+GHD#--- [mod] -- on kill all special level trigger once each enemy is killed once
+GHD#328 [mod] -- UI - inv/eq/trait/char keys are active when panel is up!
+GHD#--- [mod] -- level up happens after the player turn
+GHD#331 [mod] -- default swap time with prepared is 0.5 (down from 0.8)
+GHJ#199 [fix] -- fixed ammo-less weapons not behaving properly when dual wielding
+GHJ#196 [fix] -- fixed AoRA on death crash
+GHD#--- [fix] -- fixed several bugs related to checking if a level is nuked
+GHD#336 [fix] -- fixed auto-target behavior on darkness levels
 
 0.10.0g
 [new] -- GH#189: G-version - Gamepad support!
