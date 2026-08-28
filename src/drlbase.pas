@@ -103,6 +103,7 @@ TDRL = class(TVObject)
        FSChallenge      : AnsiString;
        FArchAngel       : Boolean;
        FDataLoaded      : Boolean;
+       FNeedsRestart    : Boolean;
        FGameWon         : Boolean;
        FCrashSave       : Boolean;
        FParticles       : TParticleStore;
@@ -299,6 +300,7 @@ procedure TDRL.Load;
 var iLua : TDRLLua;
     i    : Integer;
 begin
+  FNeedsRestart := False;
   FreeAndNil( Config );
   IO.LoadStart;
   ColorOverrides := TIntHashMap.Create( );
@@ -496,9 +498,15 @@ end;
 procedure TDRL.RegisterChallengeRuntimes;
 begin
   if ( FChallenge <> '' ) and LuaSystem.Defined([ 'chal', FChallenge, 'OnRegister' ]) then
+  begin
     LuaSystem.Call([ 'chal', FChallenge, 'OnRegister' ], []);
+    FNeedsRestart := True;
+  end;
   if ( FSChallenge <> '' ) and LuaSystem.Defined([ 'chal', FSChallenge, 'OnRegister' ]) then
+  begin
     LuaSystem.Call([ 'chal', FSChallenge, 'OnRegister' ], []);
+    FNeedsRestart := True;
+  end;
 end;
 
 procedure TDRL.PreAction;
@@ -1619,6 +1627,11 @@ repeat
   IO.BloodSlideDown(20);
   FreeAndNil(Player);
 
+  if FNeedsRestart and Option_MenuReturn then
+  begin
+    ForceRestart := CoreModuleID;
+    Break;
+  end;
 until not Option_MenuReturn;
   FreeAndNil( iResult );
 end;
@@ -1691,6 +1704,12 @@ begin
       FChallenge       := iStream.ReadAnsiString;
       FArchAngel       := iStream.ReadByte <> 0;
       FSChallenge      := iStream.ReadAnsiString;
+
+      LuaSystem.SetValue('DIFFICULTY', FDifficulty);
+      LuaSystem.SetValue('CHALLENGE',  FChallenge);
+      LuaSystem.SetValue('SCHALLENGE', FSChallenge);
+      LuaSystem.SetValue('ARCHANGEL', FArchAngel);
+      RegisterChallengeRuntimes;
 
       FGameSeed   := iStream.ReadDWord;
       FSeededGame := iStream.ReadBool;
