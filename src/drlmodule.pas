@@ -35,7 +35,8 @@ type
 { TDRLModules }
 
 TDRLModules = class(TVObject)
-  constructor Create( const aDataPath : AnsiString );
+  constructor Create( const aDataPath : AnsiString;
+    const aModulesFile : AnsiString = '' );
   procedure ScanModules;
   function Validate( const aCoreModuleID : Ansistring ) : Ansistring;
   procedure ActivateModules( const aCoreModuleID : Ansistring );
@@ -50,6 +51,7 @@ private
   FCoreModuleID  : Ansistring;
   FModString     : Ansistring;
   FDataPath      : AnsiString;
+  FModulesFile   : AnsiString;
 private
   function ReadMetaFromModule( aLua : TLua; aOverride : Boolean;
     const aExpectedID : AnsiString = '';
@@ -81,9 +83,11 @@ begin
   Exit( CompareStr( A.ID, B.ID ) );
 end;
 
-constructor TDRLModules.Create( const aDataPath : AnsiString );
+constructor TDRLModules.Create( const aDataPath : AnsiString;
+  const aModulesFile : AnsiString );
 begin
-  FDataPath := aDataPath;
+  FDataPath    := aDataPath;
+  FModulesFile := aModulesFile;
   FModules       := TModuleArray.Create( True );
   FModuleMap     := TModuleHash.Create;
   FActiveModules := TModuleList.Create;
@@ -312,6 +316,7 @@ procedure TDRLModules.ScanExternalModules( aLua : TLua );
 var iManifestPath : AnsiString;
     iModuleID     : AnsiString;
     iPath         : AnsiString;
+    iPathAbsolute : Boolean;
     iPaths        : TLuaTable;
     iPair         : TLuaValuePair;
 
@@ -322,7 +327,14 @@ var iManifestPath : AnsiString;
     );
   end;
 begin
-  iManifestPath := FDataPath + 'modules.local.lua';
+  if FModulesFile = '' then
+    iManifestPath := FDataPath + 'modules.local.lua'
+  else
+  begin
+    iManifestPath := ExpandFileName( FModulesFile );
+    if not FileExists( iManifestPath ) then
+      raise Exception.CreateFmt('External module manifest not found: %s', [ iManifestPath ]);
+  end;
   if not FileExists( iManifestPath ) then Exit;
 
   aLua.Register( 'module_paths', Null );
@@ -338,6 +350,10 @@ begin
       if not iPair.Value.IsString then MalformedEntry;
       iPath := Trim( iPair.Value.ToString );
       if iPath = '' then MalformedEntry;
+      iPathAbsolute := (ExtractFileDrive(iPath) <> '') or
+        (iPath[1] = PathDelim) or (iPath[1] = '/') or (iPath[1] = '\');
+      if not iPathAbsolute then
+        iPath := ExtractFilePath( iManifestPath ) + iPath;
       iPath := IncludeTrailingPathDelimiter( ExpandFileName( iPath ) );
 
       if ( not DirectoryExists( iPath ) )

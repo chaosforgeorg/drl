@@ -43,7 +43,8 @@ type TDRLRuntime = class( TRLRuntime )
     procedure ResetGameData; override;
     procedure GameException( aException : Exception ); override;
   public
-    constructor Create( const aPaths : TGamePaths; var aConfiguration : TObject ); reintroduce;
+    constructor Create( const aPaths : TGamePaths; var aConfiguration : TObject;
+      const aModulesFile : AnsiString ); reintroduce;
     destructor Destroy; override;
     procedure Reconfigure;
     property Modules : TDRLModules read FModules;
@@ -58,7 +59,8 @@ type TDRLRuntime = class( TRLRuntime )
 // Runtime services and game state belong below this class.
 type TDRLApplication = class( TRLApplication )
   private
-    FWorkshopID : AnsiString;
+    FWorkshopID  : AnsiString;
+    FModulesFile : AnsiString;
   protected
     procedure DefineOptions; override;
     procedure ValidateOptions; override;
@@ -93,12 +95,13 @@ end;
 
 { TDRLRuntime }
 
-constructor TDRLRuntime.Create( const aPaths : TGamePaths; var aConfiguration : TObject );
+constructor TDRLRuntime.Create( const aPaths : TGamePaths;
+  var aConfiguration : TObject; const aModulesFile : AnsiString );
 begin
   inherited Create(aPaths, aConfiguration);
   ApplyConfiguration;
   FStore := TStoreInterface.Get;
-  FModules := TDRLModules.Create(Paths.DataPath);
+  FModules := TDRLModules.Create(Paths.DataPath, aModulesFile);
   FModules.ScanModules;
   ModErrors := TStringGArray.Create;
   TDRLIO(IO).Modules := FModules;
@@ -378,6 +381,7 @@ begin
   AddFlag('console', #0, 'Force console mode.');
   AddValueOption('name', #0, 'PLAYER_NAME', 'Use PLAYER_NAME for every game.');
   AddValueOption('module', #0, 'MODULE_ID', 'Use MODULE_ID as the core module.');
+  AddValueOption('modules-file', #0, 'FILE', 'Load external module paths from FILE.');
 end;
 
 procedure TDRLApplication.ValidateOptions;
@@ -385,6 +389,8 @@ begin
   inherited ValidateOptions;
   if HasOption('publish') and (GetOptionValue('publish') = '') then
     FailOption('--publish requires a non-empty WORKSHOP_ID');
+  if HasOption('modules-file') and (GetOptionValue('modules-file') = '') then
+    FailOption('--modules-file requires a non-empty FILE');
 end;
 
 procedure TDRLApplication.BeforeConfiguration( var aPaths : TGamePaths );
@@ -449,6 +455,8 @@ begin
   end;
   if HasOption('module') then
     CoreModuleID := GetOptionValue('module');
+  if HasOption('modules-file') then
+    FModulesFile := GetOptionValue('modules-file');
   if HasOption('publish') then
     FWorkshopID := GetOptionValue('publish');
 end;
@@ -461,7 +469,7 @@ end;
 
 function TDRLApplication.CreateRuntime( const aPaths : TGamePaths; var aConfiguration : TObject ) : TRLRuntime;
 begin
-  Result := TDRLRuntime.Create(aPaths, aConfiguration);
+  Result := TDRLRuntime.Create(aPaths, aConfiguration, FModulesFile);
 end;
 
 function TDRLApplication.ExecuteGameUtility : Boolean;
