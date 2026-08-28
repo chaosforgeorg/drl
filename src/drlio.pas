@@ -440,7 +440,7 @@ begin
   FLoading  := nil;
   FAudio    := TDRLAudio.Create;
   FMessages := TMessages.Create( 2, 77, @EventMore, Option_MessageBuffer );
-  FMessages.GroupMultiple := Setting_GroupMessages;
+  FMessages.GroupMultiple := Configuration.GetBoolean( 'group_messages' );
   inherited Configure( dfdata.Config );
   FASCII    := TASCIIImageMap.Create( True );
 
@@ -679,6 +679,7 @@ var iAction    : TControllerAction;
     end;
 begin
   FAudio.Reconfigure;
+  FMessages.GroupMultiple := Setting_GroupMessages;
   FGameBindings.Clear;
   if aConfig.TableExists('Keytable') then
     aConfig.LoadKeybindings(FGameBindings, 'Keytable');

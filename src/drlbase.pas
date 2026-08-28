@@ -8,7 +8,7 @@ unit drlbase;
 interface
 
 uses vnode, vutil, vuid, viotypes, vrltools, vluasystem, vioevent, vstoreinterface,
-     vrandom,
+     vrandom, vrlapp,
      dflevel, dfdata, dfhof, dfitem,
      drlhooks, drlua, drlcommand, drlkeybindings, drlmodule, drlparticles;
 
@@ -33,16 +33,19 @@ type TDRLState = ( DSStart,      DSMenu,    DSLoading,   DSCrashLoading,
                     DSPlaying,    DSSaving,  DSNextLevel,
                     DSQuit,       DSFinished );
 
-type
-
-{ TDRL }
-
-TDRL = class(TVObject)
-       constructor Create;
+// TDRL
+//
+// Transitional Stage 2 boundary: currently combines DRL module/data lifecycle
+// with one-playthrough state and behavior. Stage 3 moves the former into
+// TDRLRuntime and extracts the latter as TDRLSession, removing this composite
+// as a separate architectural object.
+type TDRL = class(TVObject)
+       constructor Create( aRuntime : TRLRuntime );
        procedure RunModuleChoice;
        procedure Reset;
        procedure Reconfigure;
        procedure Initialize;
+       procedure PrepareLoad;
        procedure Load;
        procedure UnLoad;
        function LoadSaveFile : Boolean;
@@ -78,6 +81,8 @@ TDRL = class(TVObject)
        procedure PreAction;
        procedure CreatePlayer( aResult : TMenuResult );
        function PrepareGameSeed( aRequestedSeed : Cardinal ) : Cardinal;
+       function GetGameRNG : TRNG;
+       procedure ApplyConfiguration;
      private
        FState           : TDRLState;
        FLevel           : TLevel;
@@ -107,7 +112,7 @@ TDRL = class(TVObject)
        FParticles       : TParticleStore;
        FGameSeed        : Cardinal;
        FSeededGame      : Boolean;
-       FGameRNG         : TRNG;
+       FRuntime         : TRLRuntime;
      public
        property GameWon : Boolean read FGameWon write FGameWon;
        property Difficulty : Byte read FDifficulty;
@@ -123,7 +128,7 @@ TDRL = class(TVObject)
        property Particles : TParticleStore read FParticles;
        property GameSeed : Cardinal read FGameSeed;
        property SeededGame : Boolean read FSeededGame;
-       property GameRNG : TRNG read FGameRNG;
+       property GameRNG : TRNG read GetGameRNG;
      end;
 
 var DRL : TDRL;
@@ -140,7 +145,7 @@ uses  {$IFDEF WINDOWS}Windows,{$ELSE}Unix,{$ENDIF}
      drlspritemap, // remove
      drlplayerview, drlingamemenuview, drlhelpview, drlassemblyview,
      drlpagedview, drlrankupview, drlmainmenuview, drlhudviews, drlmessagesview,
-     drlconfiguration, drlcontrollerbindings, drlhelp, drlconfig, dfplayer;
+     drlconfiguration, drlcontrollerbindings, drlhelp, dfplayer;
 
 const PAD_REPEAT_START = 400;
       PAD_REPEAT       = 100;
@@ -289,14 +294,10 @@ begin
   {$ENDIF}
 end;
 
-procedure TDRL.Load;
-var iLua : TDRLLua;
-    i    : Integer;
+procedure TDRL.PrepareLoad;
 begin
-  FreeAndNil( Config );
   IO.LoadStart;
   ColorOverrides := TIntHashMap.Create( );
-  Config := TDRLConfig.Create( Application.Paths.ConfigurationPath, True );
   IO.Configure( Config, True );
   FCoreHooks := [];
   FModuleHooks := [];
@@ -306,9 +307,12 @@ begin
   Help := THelp.Create;
 
   SetState( DSLoading );
-  LuaRNG := FGameRNG;
-  iLua := TDRLLua.Create();
-  LuaSystem := iLua;
+  LuaRNG := GameRNG;
+end;
+
+procedure TDRL.Load;
+var i : Integer;
+begin
   LuaSystem.CallDefaultResult := True;
 //  Modules.RegisterAwards( LuaSystem.Raw );
   FCoreHooks   := LoadHooks( [ 'core' ], GlobalHooks );
@@ -360,35 +364,35 @@ begin
   if Assigned( IO ) then IO.AnimationWipe;
   FDataLoaded := False;
   HOF.Done;
-  FreeAndNil(LuaSystem);
+  drlbase.Lua := nil;
   FreeAndNil(Help);
   FreeAndNil(FLevel);
   FreeAndNil(ColorOverrides);
   FreeAndNil(Cells);
 end;
 
-constructor TDRL.Create;
+constructor TDRL.Create( aRuntime : TRLRuntime );
 begin
+  FRuntime := aRuntime;
   FGameSeed := 0;
-  FGameRNG  := TRNG.Create( 0 );
-  LuaRNG    := FGameRNG;
+  LuaRNG := GameRNG;
   FParticles := TParticleStore.Create;
   FTargeting := TTargeting.Create;
   Reset;
   FStore     := TStoreInterface.Get;
-  Reconfigure;
+  ApplyConfiguration;
   if GraphicsVersion then
-  begin
-    IO := TDRLGFXIO.Create;
     FParticles.Initialize( TDRLGFXIO(IO).ParticleEngine );
-  end
-  else
-    IO := TDRLTextIO.Create;
 
   ModErrors := TStringGArray.Create;
 
   FModules := TDRLModules.Create;
   FModules.ScanModules;
+end;
+
+function TDRL.GetGameRNG : TRNG;
+begin
+  Result := FRuntime.GameRNG;
 end;
 
 procedure TDRL.RunModuleChoice;
@@ -431,8 +435,13 @@ end;
 
 procedure TDRL.Reconfigure;
 begin
+  ApplyConfiguration;
   if Assigned( IO ) then
     IO.Reconfigure( Config );
+end;
+
+procedure TDRL.ApplyConfiguration;
+begin
   Setting_AlwaysRandomName := Configuration.GetBoolean( 'always_random_name' );
   Setting_NoIntro          := Configuration.GetBoolean( 'skip_intro' );
   Setting_Flash            := Configuration.GetBoolean( 'flashing_fx' );
@@ -1327,11 +1336,11 @@ begin
   FGameSeed := aRequestedSeed;
   if FGameSeed = 0 then
   begin
-    FGameRNG.Randomize;
-    FGameSeed := FGameRNG.RDWord( 1, 999999 );
+    GameRNG.Randomize;
+    FGameSeed := GameRNG.RDWord( 1, 999999 );
   end;
-  FGameRNG.SetSeed( FGameSeed );
-  Result := FGameRNG.RDWord;
+  GameRNG.SetSeed( FGameSeed );
+  Result := GameRNG.RDWord;
 end;
 
 
@@ -1351,14 +1360,10 @@ var iRank       : THOFRank;
 begin
   iResult    := TMenuResult.Create;
   iEpisodeSeed := 0;
-  DRL.Load;
-
   IO.PushLayer( TMainMenuView.Create );
   IO.WaitForLayer( True );
   if FState <> DSQuit then
 repeat
-  if not FDataLoaded then
-    DRL.Load;
   IO.LoadStop;
 
   StatusEffect   := StatusNormal;
@@ -1402,7 +1407,7 @@ repeat
 
   if (not(State in [DSLoading, DSCrashLoading])) then
   begin
-    FGameRNG.SetSeed( iEpisodeSeed );
+    GameRNG.SetSeed( iEpisodeSeed );
     CallHook( Hook_OnCreateEpisode, [QWord( iEpisodeSeed )] );
   end;
   CallHook( Hook_OnLoaded, [(State in [DSLoading, DSCrashLoading])] );
@@ -1439,7 +1444,7 @@ repeat
         Free;
       end;
 
-      if iLevelSeed <> 0 then FGameRNG.SetSeed( iLevelSeed );
+      if iLevelSeed <> 0 then GameRNG.SetSeed( iLevelSeed );
       if iScript <> ''
         then
           FLevel.ScriptLevel(iScript)
@@ -1680,10 +1685,7 @@ begin
       FGameSeed   := iStream.ReadDWord;
       FSeededGame := iStream.ReadBool;
       iGameRNG := TRNG.CreateFromStream( iStream );
-      LuaRNG := iGameRNG;
-      FreeAndNil( FGameRNG );
-      FGameRNG := iGameRNG;
-      iGameRNG := nil;
+      FRuntime.ReplaceGameRNG( iGameRNG );
 
       Player := TPlayer.CreateFromStream( iStream );
       FCrashSave := iStream.ReadByte <> 0;
@@ -1769,7 +1771,7 @@ begin
   Stream.WriteAnsiString( FSChallenge );
   Stream.WriteDWord( FGameSeed );
   Stream.WriteBool( FSeededGame );
-  FGameRNG.WriteToStream( Stream );
+  GameRNG.WriteToStream( Stream );
 
   Player.WriteToStream(Stream);
   Player.Detach;
@@ -1798,13 +1800,10 @@ destructor TDRL.Destroy;
 begin
   UnLoad;
   LuaRNG := nil;
-  FreeAndNil( FGameRNG );
   FParticles.Initialize( nil );
   FreeAndNil( ModErrors );
   FreeAndNil( FModules );
-  FreeAndNil( Config );
   FreeAndNil( FTargeting );
-  FreeAndNil( IO );
   FreeAndNil( FParticles );
   FreeAndNil( UIDs );
   Log('DRL destroyed.');

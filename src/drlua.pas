@@ -460,6 +460,8 @@ end;
 destructor TDRLLua.Destroy;
 var iData : TVDataFile;
 begin
+  if drlbase.Lua = Self then
+    drlbase.Lua := nil;
   for iData in FOpenData do
     iData.Free;
   FreeAndNil( FOpenData );
