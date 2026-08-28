@@ -78,6 +78,7 @@ TDRL = class(TVObject)
        procedure PreAction;
        procedure CreatePlayer( aResult : TMenuResult );
        function PrepareGameSeed( aRequestedSeed : Cardinal ) : Cardinal;
+       procedure RegisterChallengeRuntimes;
      private
        FState           : TDRLState;
        FLevel           : TLevel;
@@ -490,6 +491,14 @@ begin
   FSChallengeHooks := [];
   if FChallenge  <> '' then FChallengeHooks  := LoadHooks( ['chal',FChallenge], GlobalHooks );
   if FSChallenge <> '' then FSChallengeHooks := LoadHooks( ['chal',FSChallenge], GlobalHooks );
+end;
+
+procedure TDRL.RegisterChallengeRuntimes;
+begin
+  if ( FChallenge <> '' ) and LuaSystem.Defined([ 'chal', FChallenge, 'OnRegister' ]) then
+    LuaSystem.Call([ 'chal', FChallenge, 'OnRegister' ], []);
+  if ( FSChallenge <> '' ) and LuaSystem.Defined([ 'chal', FSChallenge, 'OnRegister' ]) then
+    LuaSystem.Call([ 'chal', FSChallenge, 'OnRegister' ], []);
 end;
 
 procedure TDRL.PreAction;
@@ -1394,6 +1403,7 @@ repeat
   end
   else
   begin
+    RegisterChallengeRuntimes;
     iEpisodeSeed := PrepareGameSeed( iResult.Seed );
     CreatePlayer( iResult );
   end;
