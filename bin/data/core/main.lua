@@ -89,7 +89,29 @@ register_perk       = core.register_storage( "perks", "perk", function (a)
 end )
 register_trait      = core.register_storage( "traits", "trait" )
 register_ai         = core.register_storage( "ais", "ai" )
-register_challenge  = core.register_storage( "chal", "challenge" )
+register_challenge  = core.register_storage( "chal", "challenge", function( challenge )
+	if not challenge.runtime then return end
+
+	local runtime_source = challenge.runtime
+	local runtime_id = "perk_"..challenge.id
+
+	local function register_runtime()
+		register_perk( runtime_id )( runtime_source )
+	end
+
+	local function attach_runtime()
+		player:add_perk( runtime_id )
+	end
+
+	challenge.runtime = runtime_id
+	challenge.OnCreatePlayer = core.create_seq_function( attach_runtime, challenge.OnCreatePlayer )
+
+	if BASE_MODULE_LOADING then
+		register_runtime()
+	else
+		challenge.OnRegister = core.create_seq_function( register_runtime, challenge.OnRegister )
+	end
+end )
 register_itemset    = core.register_storage( "itemsets", "itemset" )
 register_emitter    = core.register_storage( "emitters", "emitter", function( e )
 	if #e.shape_params == 0 then e.shape_params = {0, 0, 0} end

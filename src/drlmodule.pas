@@ -22,6 +22,7 @@ type TDRLModule = class
 
     Source       : ( DRLMWAD, DRLMSOURCE, DRLMSTEAM );
     Hooks        : TFlags;
+    function IsBaseLoading : Boolean;
   end;
 
 type TModuleArray = specialize TGObjectArray< TDRLModule >;
@@ -72,6 +73,11 @@ var Modules : TDRLModules;
 implementation
 
 uses sysutils, variants, vapp, vluatable, vdf, vstoreinterface, dfdata;
+
+function TDRLModule.IsBaseLoading : Boolean;
+begin
+  Exit( ( ID = 'core' ) or IsBase );
+end;
 
 function DRLModuleCompare( const A, B : TDRLModule ) : Integer;
 begin

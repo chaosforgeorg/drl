@@ -387,8 +387,9 @@ core.register_blueprint "challenge"
 	removemedals  = { false, core.TARRAY( core.TIDIN("medals") ) },
 	win_mortem    = { false, core.TSTRING },
 	win_highscore = { false, core.TSTRING },
+	secondary     = { false, core.TTABLE },
+	runtime       = { false, core.TTABLE },
 
-	secondary          = { false, core.TTABLE },
 	arch_name          = { false, core.TSTRING },
 	arch_description   = { false, core.TSTRING },
 	arch_rating        = { false, core.TSTRING },
@@ -397,6 +398,7 @@ core.register_blueprint "challenge"
     arch_win_highscore = { false, core.TSTRING },
 
 	OnCreate         = { false, core.TFUNC },
+	OnRegister       = { false, core.TFUNC },
 	OnDie            = { false, core.TFUNC },
 	OnDieCheck       = { false, core.TFUNC },
 	OnPickup         = { false, core.TFUNC },

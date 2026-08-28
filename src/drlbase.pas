@@ -233,7 +233,12 @@ begin
   for iModule in FModules.ActiveModules do
     if aHook in iModule.Hooks then
     try
-      LuaSystem.ProtectedCall([iModule.ID,HookNames[aHook]],aParams);
+      LuaSystem.SetValue( 'BASE_MODULE_LOADING', iModule.IsBaseLoading );
+      try
+        LuaSystem.ProtectedCall([iModule.ID,HookNames[aHook]],aParams);
+      finally
+        LuaSystem.SetValue( 'BASE_MODULE_LOADING', False );
+      end;
     except
       on E : Exception do
       begin
