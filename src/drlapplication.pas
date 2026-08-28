@@ -30,6 +30,7 @@ type TDRLRuntime = class( TRLRuntime )
     FModuleHooks : TFlags;
     FDataLoaded  : Boolean;
     procedure ApplyConfiguration;
+    procedure CreateSession( aInitializeData : Boolean );
     procedure ReleaseSession;
     procedure SafeCallModuleHook( aHook : Byte; const aParams : array of Const );
     procedure UnloadGameData;
@@ -41,7 +42,7 @@ type TDRLRuntime = class( TRLRuntime )
     function RunGame : TVRunResult; override;
     procedure ShutdownGameData; override;
     procedure ResetGameData; override;
-    procedure GameException( aException : Exception ); override;
+    procedure HandleGameException( aException : Exception ); override;
   public
     constructor Create( const aPaths : TGamePaths; var aConfiguration : TObject;
       const aModulesFile : AnsiString ); reintroduce;
@@ -69,8 +70,7 @@ type TDRLApplication = class( TRLApplication )
     procedure ApplyOptions; override;
     procedure BeforeDiagnostics; override;
     function CreateRuntime( const aPaths : TGamePaths; var aConfiguration : TObject ) : TRLRuntime; override;
-    function ExecuteGameUtility : Boolean; override;
-    procedure DestroyGame; override;
+    function ExecuteApplicationCommand : Boolean; override;
     procedure ApplicationException( aException : Exception ); override;
   end;
 
@@ -81,6 +81,43 @@ uses
   vdebug, vlog, vlua,
   dfdata, dfhof, dfmap, drlconfig, drlconfiguration, drlgfxio, drlhelp, drlhooks,
   drlio, drlua, drltextio, drlworkshop;
+
+type TDRLConfigurationState = class( TDRLConfiguration )
+  private
+    FLuaConfig : TDRLConfig;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure ReplaceLuaConfig( aConfig : TDRLConfig );
+    property LuaConfig : TDRLConfig read FLuaConfig;
+  end;
+
+constructor TDRLConfigurationState.Create;
+begin
+  inherited Create;
+  drlconfiguration.Configuration := Self;
+end;
+
+destructor TDRLConfigurationState.Destroy;
+begin
+  if dfdata.Config = FLuaConfig then
+    dfdata.Config := nil;
+  if drlconfiguration.Configuration = Self then
+    drlconfiguration.Configuration := nil;
+  FreeAndNil( FLuaConfig );
+  inherited Destroy;
+end;
+
+procedure TDRLConfigurationState.ReplaceLuaConfig( aConfig : TDRLConfig );
+var iPrevious : TDRLConfig;
+begin
+  if aConfig = nil then
+    raise Exception.Create('TDRLConfigurationState requires a Lua configuration');
+  iPrevious := FLuaConfig;
+  FLuaConfig := aConfig;
+  dfdata.Config := FLuaConfig;
+  iPrevious.Free;
+end;
 
 {$IFDEF WINDOWS}
 var
@@ -117,7 +154,6 @@ begin
   TDRLIO(IO).Store := nil;
   FreeAndNil(ModErrors);
   FreeAndNil(FModules);
-  FreeAndNil(Config);
   inherited Destroy;
 end;
 
@@ -143,9 +179,22 @@ begin
   Result := TDRLLua.Create(FModules, Paths.DataPath);
 end;
 
+procedure TDRLRuntime.CreateSession( aInitializeData : Boolean );
+begin
+  FSession := TDRLSession.Create( Self, FModules, FStore, Paths );
+  TDRLIO(IO).Session := FSession;
+  drlbase.DRL := FSession;
+  if not aInitializeData then Exit;
+  FSession.InitializeLevel;
+  FSession.SetDataHooks( FCoreHooks, FModuleHooks );
+  if not GraphicsVersion then
+    (IO as TDRLTextIO).SetTextMap( FSession.Level );
+end;
+
+// Phase order: select module and paths; create an initial session shell;
+// prepare IO/configuration, then non-Lua data owners.
 procedure TDRLRuntime.PrepareGameData;
-var iConfig     : TDRLConfig;
-    iModulePath : AnsiString;
+var iModulePath : AnsiString;
 begin
   FGameFailed := False;
   if ForceRestart <> '' then
@@ -172,9 +221,7 @@ begin
     CreateDir(iModulePath + 'backup');
 
   FModules.ActivateModules(CoreModuleID);
-  FSession := TDRLSession.Create(Self, FModules, FStore, Paths);
-  TDRLIO(IO).Session := FSession;
-  drlbase.DRL := FSession;
+  CreateSession( False );
   TDRLIO(IO).Initialize;
   TDRLIO(IO).LoadStart;
   ProgramRealTime := MSecNow();
@@ -198,9 +245,10 @@ begin
   end;
   {$ENDIF}
 
-  iConfig := TDRLConfig.Create(Paths.ConfigurationPath, True);
-  FreeAndNil(Config);
-  Config := iConfig;
+  Assert( Self.Configuration is TDRLConfigurationState );
+  TDRLConfigurationState( Self.Configuration ).ReplaceLuaConfig(
+    TDRLConfig.Create( Paths.ConfigurationPath, True )
+  );
   TDRLIO(IO).LoadStart;
   FDataLoaded := True;
   ColorOverrides := TIntHashMap.Create;
@@ -212,6 +260,8 @@ begin
   LuaRNG := GameRNG;
 end;
 
+// Phase order: publish Lua; load hooks and module data; then prepare
+// presentation data and attach the initial level.
 procedure TDRLRuntime.InitializeGameData;
 var i : Integer;
 begin
@@ -258,6 +308,7 @@ begin
   TDRLIO(IO).LoadStop;
 end;
 
+// One loaded generation can serve one or more playthrough sessions.
 function TDRLRuntime.RunGame : TVRunResult;
 var iFirstSession : Boolean;
     iSessionResult : TDRLSessionResult;
@@ -269,13 +320,7 @@ begin
        (not Option_MenuReturn) then
       Break;
     ReleaseSession;
-    FSession := TDRLSession.Create(Self, FModules, FStore, Paths);
-    TDRLIO(IO).Session := FSession;
-    drlbase.DRL := FSession;
-    FSession.InitializeLevel;
-    FSession.SetDataHooks(FCoreHooks, FModuleHooks);
-    if not GraphicsVersion then
-      (IO as TDRLTextIO).SetTextMap(FSession.Level);
+    CreateSession( True );
     iFirstSession := False;
   until False;
   if ForceRestart <> '' then
@@ -284,6 +329,7 @@ begin
     Result := VRR_QUIT;
 end;
 
+// Normal release only; failed-generation release is deferred to destruction.
 procedure TDRLRuntime.ShutdownGameData;
 begin
   if not FGameFailed then
@@ -299,7 +345,7 @@ begin
   TDRLIO(IO).Reset;
 end;
 
-procedure TDRLRuntime.GameException( aException : Exception );
+procedure TDRLRuntime.HandleGameException( aException : Exception );
 begin
   FGameFailed := True;
 end;
@@ -395,8 +441,6 @@ end;
 
 procedure TDRLApplication.BeforeConfiguration( var aPaths : TGamePaths );
 begin
-  ColorOverrides := nil;
-
   {$IFDEF WINDOWS}
   ConsoleTitle := Self.Title;
   SetConsoleTitle(PChar(ConsoleTitle));
@@ -421,27 +465,23 @@ begin
 end;
 
 function TDRLApplication.CreateConfiguration( var aPaths : TGamePaths ) : TObject;
-var iConfiguration : TDRLConfiguration;
+var iState : TDRLConfigurationState;
 begin
-  iConfiguration := nil;
+  iState := TDRLConfigurationState.Create;
   try
-    iConfiguration := TDRLConfiguration.Create;
-    Configuration := iConfiguration;
-    if FileExists(aPaths.SettingsPath) then
-      iConfiguration.Read(aPaths.SettingsPath)
+    if FileExists( aPaths.SettingsPath ) then
+      iState.Read( aPaths.SettingsPath )
     else
-      iConfiguration.Write(aPaths.SettingsPath);
+      iState.Write( aPaths.SettingsPath );
 
-    Config := TDRLConfig.Create(aPaths.ConfigurationPath, False);
-    aPaths.DataPath  := Config.Configure('DataPath', aPaths.DataPath);
-    aPaths.WritePath := Config.Configure('WritePath', aPaths.WritePath);
-    aPaths.ScorePath := Config.Configure('ScorePath', aPaths.ScorePath);
-    CoreModuleID := iConfiguration.GetString('default_module');
-    Result := iConfiguration;
+    iState.ReplaceLuaConfig( TDRLConfig.Create( aPaths.ConfigurationPath, False ) );
+    aPaths.DataPath  := iState.LuaConfig.Configure( 'DataPath', aPaths.DataPath );
+    aPaths.WritePath := iState.LuaConfig.Configure( 'WritePath', aPaths.WritePath );
+    aPaths.ScorePath := iState.LuaConfig.Configure( 'ScorePath', aPaths.ScorePath );
+    CoreModuleID := iState.GetString( 'default_module' );
+    Result := iState;
   except
-    FreeAndNil(Config);
-    FreeAndNil(iConfiguration);
-    Configuration := nil;
+    iState.Free;
     raise;
   end;
 end;
@@ -472,19 +512,11 @@ begin
   Result := TDRLRuntime.Create(aPaths, aConfiguration, FModulesFile);
 end;
 
-function TDRLApplication.ExecuteGameUtility : Boolean;
+function TDRLApplication.ExecuteApplicationCommand : Boolean;
 begin
   Result := FWorkshopID <> '';
   if Result then
     WorkshopPublish(FWorkshopID, Paths.DataPath);
-end;
-
-procedure TDRLApplication.DestroyGame;
-begin
-  if Runtime = nil then
-    FreeAndNil(Config);
-  inherited DestroyGame;
-  Configuration := nil;
 end;
 
 procedure TDRLApplication.ApplicationException( aException : Exception );
