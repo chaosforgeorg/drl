@@ -12,7 +12,10 @@ uses vglquadrenderer, vgltypes, vluaconfig, vioevent, viotypes, vimage,
 
 type
 
-{ TDRLGFXIO }
+// TDRLGFXIO
+//
+// Architectural boundary: owns the concrete graphical rendering and
+// animation backend. Gameplay policy belongs outside this adapter.
 
  TDRLGFXIO = class( TDRLIO )
     constructor Create; reintroduce;
@@ -26,10 +29,9 @@ type
     procedure UpdateMinimap;
     destructor Destroy; override;
 
-    procedure WaitForAnimation( aStrict : Boolean = True ); override;
     function AnimationsRunning : Boolean; override;
     function AnimationsBlockingFinished : Boolean; override;
-    procedure AnimationWipe; override;
+    procedure ClearAnimations; override;
     procedure Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0); override;
     procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ); override;
     procedure addMoveAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aWipeBump : Boolean ); override;
@@ -320,8 +322,8 @@ var iCoreData   : TVDataFile;
     iReadRaw    : Boolean;
     iModule     : TDRLModule;
 begin
-  FGPDetected := DRL.Store.IsSteamDeck;
-  iModule     := DRL.Modules.CoreModule;
+  FGPDetected := Store.IsSteamDeck;
+  iModule     := Modules.CoreModule;
   iReadRaw    := not iModule.Path.EndsWith('.wad');
   if iReadRaw then
   begin
@@ -393,7 +395,7 @@ begin
     RecalculateScaling( False );
   DeviceChanged;
   TGLConsoleRenderer( FConsole ).HideCursor;
-  TSDLIODriver(FIODriver).GamePadSupport := DRL.Store.IsSteamDeck or Configuration.GetBoolean( 'enable_gamepad' );
+  TSDLIODriver(FIODriver).GamePadSupport := Store.IsSteamDeck or Configuration.GetBoolean( 'enable_gamepad' );
 
   inherited Reconfigure(aConfig);
 end;
@@ -416,26 +418,19 @@ begin
   inherited Destroy;
 end;
 
-procedure TDRLGFXIO.WaitForAnimation( aStrict : Boolean = True );
-begin
-  inherited WaitForAnimation( aStrict );
-  if aStrict then
-    FAnimations.Clear;
-end;
-
 function TDRLGFXIO.AnimationsRunning : Boolean;
 begin
-  if DRL.State <> DSPlaying then Exit(False);
+  if Session.State <> DSPlaying then Exit(False);
   Exit( not FAnimations.Finished );
 end;
 
 function TDRLGFXIO.AnimationsBlockingFinished : Boolean;
 begin
-  if DRL.State <> DSPlaying then Exit(True);
+  if Session.State <> DSPlaying then Exit(True);
   Exit( FAnimations.BlockingFinished );
 end;
 
-procedure TDRLGFXIO.AnimationWipe;
+procedure TDRLGFXIO.ClearAnimations;
 begin
   FAnimations.Clear;
 end;
@@ -448,7 +443,7 @@ end;
 
 procedure TDRLGFXIO.addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection );
 begin
-  if DRL.State <> DSPlaying then Exit;
+  if Session.State <> DSPlaying then Exit;
   if Setting_ScreenShake then
     if not TGFXScreenShakeAnimation.Update( aDuration, aDelay, aStrength, aDirection ) then
       FAnimations.addAnimation( TGFXScreenShakeAnimation.Create( aDuration, aDelay, aStrength, aDirection ) );
@@ -457,7 +452,7 @@ end;
 procedure TDRLGFXIO.addMoveAnimation ( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aWipeBump : Boolean );
 var iCount : Integer;
 begin
-  if DRL.State <> DSPlaying then Exit;
+  if Session.State <> DSPlaying then Exit;
   iCount := 0;
   if aWipeBump then
     with FAnimations do
@@ -472,7 +467,7 @@ end;
 
 procedure TDRLGFXIO.addBumpAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aAmount : Single );
 begin
-  if DRL.State <> DSPlaying then Exit;
+  if Session.State <> DSPlaying then Exit;
   FAnimations.AddAnimation(TGFXBumpAnimation.Create(aDuration, aDelay, aUID, aFrom, aTo, aSprite, True, aAmount ));
   FAnimations.AddAnimation(TGFXBumpAnimation.Create(aDuration, aDelay, aUID, aTo, aFrom, aSprite, True, -aAmount ));
 end;
@@ -492,26 +487,26 @@ end;
 
 procedure TDRLGFXIO.addScreenMoveAnimation(aDuration: DWord; aTo: TCoord2D);
 begin
-  if DRL.State <> DSPlaying then Exit;
+  if Session.State <> DSPlaying then Exit;
   if not TGFXScreenMoveAnimation.Update( aDuration, aTo ) then
     FAnimations.addAnimation( TGFXScreenMoveAnimation.Create( aDuration, aTo ) );
 end;
 
 procedure TDRLGFXIO.addCellAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aValue : Integer );
 begin
-  if DRL.State <> DSPlaying then Exit;
+  if Session.State <> DSPlaying then Exit;
   FAnimations.addAnimation( TGFXCellAnimation.Create( aDuration, aDelay, aCoord, aSprite, aValue ) );
 end;
 
 procedure TDRLGFXIO.addItemAnimation( aDuration : DWord; aDelay : DWord; aItem : TThing; aValue : Integer );
 begin
-  if DRL.State <> DSPlaying then Exit;
+  if Session.State <> DSPlaying then Exit;
   FAnimations.addAnimation( TGFXItemAnimation.Create( aDuration, aDelay, aItem.UID, aValue ) );
 end;
 
 procedure TDRLGFXIO.addKillAnimation( aDuration : DWord; aDelay : DWord; aBeing : TThing; aReverse : Boolean = False );
 begin
-  if DRL.State <> DSPlaying then Exit;
+  if Session.State <> DSPlaying then Exit;
   if SF_PAINANIM in aBeing.Sprite.Flags then
     FAnimations.addAnimation( TGFXKillAnimation.Create( aDuration, aDelay, aBeing.UID, aReverse ) );
 end;
@@ -521,7 +516,7 @@ procedure TDRLGFXIO.addMissileAnimation(aDuration: DWord; aDelay: DWord; aSource
   aTarget: TCoord2D; aColor: Byte; aPic: Char; aDrawDelay: Word;
   aSprite: TSprite; aRay: Boolean; aTrailNID : Word);
 begin
-  if DRL.State <> DSPlaying then Exit;
+  if Session.State <> DSPlaying then Exit;
   FAnimations.addAnimation(
     TGFXMissileAnimation.Create( aDuration, aDelay, aSource,
       aTarget, aDrawDelay, aSprite, aRay, aTrailNID ) );
@@ -530,14 +525,14 @@ end;
 procedure TDRLGFXIO.addMarkAnimation(aDuration: DWord; aDelay: DWord;
   aCoord: TCoord2D; aSprite : TSprite; aColor: Byte; aPic: Char);
 begin
-  if DRL.State <> DSPlaying then Exit;
+  if Session.State <> DSPlaying then Exit;
   FAnimations.addAnimation( TGFXMarkAnimation.Create(aDuration, aDelay, aCoord, aSprite ) )
 end;
 
 procedure TDRLGFXIO.addFXAnimation(aDuration: DWord; aDelay: DWord;
   aCoord: TCoord2D; aSprite : TSprite);
 begin
-  if DRL.State <> DSPlaying then Exit;
+  if Session.State <> DSPlaying then Exit;
   FAnimations.addAnimation( TGFXFXAnimation.Create(aDuration, aDelay, aCoord, aSprite) )
 end;
 
@@ -545,7 +540,7 @@ procedure TDRLGFXIO.addParticleBurstAnimation( aDelay : DWord; aEmitterID : Word
   aPosition : TCoord2D; aDirection : TDirection; aCount : Word;
   aDistanceScale, aSpreadScale : Single );
 begin
-  if DRL.State <> DSPlaying then Exit;
+  if Session.State <> DSPlaying then Exit;
   if ( aEmitterID = 0 ) or ( aCount = 0 ) then Exit;
   FAnimations.AddAnimation( TGFXParticleBurstAnimation.Create(
     aDelay, aEmitterID, aPosition, aDirection, aCount, aDistanceScale, aSpreadScale ) );
@@ -553,14 +548,14 @@ end;
 
 procedure TDRLGFXIO.addSoundAnimation(aDelay: DWord; aPosition: TCoord2D; aSoundID: DWord);
 begin
-  if DRL.State <> DSPlaying then Exit;
+  if Session.State <> DSPlaying then Exit;
   if aSoundID > 0 then
     FAnimations.addAnimation( TSoundEventAnimation.Create( aDelay, aPosition, aSoundID ) )
 end;
 
 procedure TDRLGFXIO.addRumbleAnimation( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord );
 begin
-  if DRL.State <> DSPlaying then Exit;
+  if Session.State <> DSPlaying then Exit;
   if (not Setting_GamepadRumble) or (not IsGamepad ) then Exit;
   if aDelay = 0
     then IO.Driver.Rumble( aLow, aHigh, aDuration )
@@ -644,8 +639,8 @@ begin
   inherited SetAutoTarget( aTarget );
   SpriteMap.SetAutoTarget( aTarget );
 
-  if ( DRL.State <> DSPlaying )    then Exit;
-  iLevel := DRL.Level;
+  if ( Session.State <> DSPlaying )    then Exit;
+  iLevel := Session.Level;
   if ( iLevel = nil )              then Exit;
   iLevel.Markers.Wipe(0);
   if ( aTarget = Player.Position ) or ( not iLevel.isProperCoord( aTarget ) ) then Exit;
@@ -656,7 +651,7 @@ begin
 
   Include( iSprite.Flags, SF_COSPLAY );
   if iLevel.isVisible( aTarget ) then
-    with DRL.Targeting do
+    with Session.Targeting do
     begin
       iFirst := List.Current;
       repeat
@@ -833,7 +828,7 @@ begin
     if FTargeting
       then SpriteMap.Marker := SpriteMap.Target + FGPLeftDir
       else if ControllerActionHeld( CONTROLLER_MODIFIER_ALT )
-        then SpriteMap.Marker := DRL.Targeting.List.Current + FGPLeftDir
+        then SpriteMap.Marker := Session.Targeting.List.Current + FGPLeftDir
         else SpriteMap.Marker := Player.Position + FGPLeftDir;
   end
   else
@@ -851,14 +846,14 @@ begin
   glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
   FProjection := GLCreateOrtho( 0, iSizeX, iSizeY, 0, -16384, 16384 );
 
-  if (DRL <> nil) and (DRL.State = DSPlaying) then
+  if (Session <> nil) and (Session.State = DSPlaying) then
   begin
     if FTIGConsoleView = nil then
        FConsole.HideCursor;
     //if not UI.AnimationsRunning then SpriteMap.NewShift := SpriteMap.ShiftValue( Player.Position );
 
     SpriteMap.Update( aMSec, FProjection );
-    DRL.Particles.Update( aMSec * 0.001 );
+    Session.Particles.Update( aMSec * 0.001 );
     FParticleEngine.Render( SpriteMap.Engine );
     FAnimations.Draw;
     glEnable( GL_DEPTH_TEST );
@@ -890,7 +885,7 @@ begin
   if Setting_BloodPulse then
   begin
     iBloodTarget := FBloodValueTarget;
-    if (DRL <> nil) and (DRL.State = DSPlaying) then
+    if (Session <> nil) and (Session.State = DSPlaying) then
     begin
       iBloodValue := 0;
 
@@ -909,7 +904,7 @@ begin
     if FBloodValueTarget > 0 then
       FBloodValueTarget -= Minf( FBloodValueTarget, aMSec / 500 );
 
-    if (DRL <> nil) and (DRL.State = DSPlaying) and (FBloodValue > 0.02) then
+    if (Session <> nil) and (Session.State = DSPlaying) and (FBloodValue > 0.02) then
     begin
       FPostSheet.PushTexturedQuad(
         GLVec2i(1,1), GLVec2i( FIODriver.GetSizeX, FIODriver.GetSizeY ),
@@ -1013,7 +1008,7 @@ begin
     FMouseLock     := False;
 
     if ( iEvent.EType = VEVENT_MOUSEMOVE ) and ( VMB_BUTTON_MIDDLE in iEvent.MouseMove.ButtonState ) then
-        if ( DRL.State = DSPlaying ) and ( not isModal ) then
+        if ( Session <> nil ) and ( Session.State = DSPlaying ) and ( not isModal ) then
         begin
           SpriteMap.NewShift := Clamp(
             Vec2i(
@@ -1053,21 +1048,21 @@ var i       : Byte;
     iPoint  : vutil.TPoint;
     iCoord  : TCoord2D;
 begin
-  if (Player <> nil) and (DRL.Level <> nil) and (not isModal)
+  if (Player <> nil) and (Session.Level <> nil) and (not isModal)
     and (FMCursor <> nil) and FMCursor.Active and FIODriver.GetMousePos( iPoint )
     and AnimationsBlockingFinished then
   begin
     iCoord := SpriteMap.DevicePointToCoord( iPoint );
-    if DRL.Level.isProperCoord( iCoord ) then
-      if DRL.Level.isVisible(iCoord) and ( DRL.Level.Being[ iCoord ] <> nil )
+    if Session.Level.isProperCoord( iCoord ) then
+      if Session.Level.isVisible(iCoord) and ( Session.Level.Being[ iCoord ] <> nil )
         then
         begin
-          FHintOverlay := DRL.Level.GetTargetDescription(iCoord);
-          FHintStatus  := DRL.Level.Being[ iCoord ].GetTraitString;
+          FHintOverlay := Session.Level.GetTargetDescription(iCoord);
+          FHintStatus  := Session.Level.Being[ iCoord ].GetTraitString;
         end
         else
         begin
-          FHintOverlay := DRL.Level.GetLookDescription(iCoord);
+          FHintOverlay := Session.Level.GetLookDescription(iCoord);
           FHintStatus  := '';
         end;
   end;
@@ -1205,7 +1200,7 @@ begin
   iRenderer := TGLConsoleRenderer.Create( ReadDefaultFont, 80, 25, 0, [VIO_CON_CURSOR, VIO_CON_BGCOLOR, VIO_CON_EXTCOLOR ] );
   iRenderer.SetPositionScale( (FIODriver.GetSizeX - 80*10*FFontMult) div 2, 0, FLineSpace, FFontMult );
   iRenderer.GlyphStretch := True;
-  TSDLIODriver(FIODriver).GamePadSupport := DRL.Store.IsSteamDeck or Configuration.GetBoolean( 'enable_gamepad' );
+  TSDLIODriver(FIODriver).GamePadSupport := Store.IsSteamDeck or Configuration.GetBoolean( 'enable_gamepad' );
   inherited Initialize( iRenderer );
   DeviceChanged;
   iTIGStyle.Color[ VTIG_SELECTED_BACKGROUND_COLOR ] := DarkGray;

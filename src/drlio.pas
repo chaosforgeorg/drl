@@ -7,10 +7,10 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlio;
 interface
 uses {$IFDEF WINDOWS}Windows,{$ENDIF} Classes, SysUtils,
-     vio, vbindings, viorl, vrltools, vluaconfig, vglquadrenderer, vmessages, vtextures, vtigstyle,
+     vio, vbindings, viorl, vrltools, vluaconfig, vglquadrenderer, vstoreinterface, vtextures, vtigstyle,
      vluastate, viotypes, vioevent, vioconsole, vgenerics, vutil,
      dfdata, dfthing, dfbeing, drlspritemap, drlaudio, drlkeybindings,
-     drlcontrollerbindings, drlloadingview;
+     drlbase, drlcontrollerbindings, drlloadingview, drlmodule;
 
 const TIG_EV_NONE      = 0;
       TIG_EV_INVENTORY = 2;
@@ -35,6 +35,7 @@ const TIG_EV_NONE      = 0;
 type TASCIIImageMap       = specialize TGObjectHashMap<TIOStringArray>;
 type TStringHashMap       = specialize TGHashMap< AnsiString >;
 
+// Architectural boundary: adapts shared roguelike presentation mechanics to DRL policy and its active session.
 type TDRLIO = class( TIORL )
   constructor Create; reintroduce;
   procedure Reset; virtual;
@@ -68,21 +69,15 @@ type TDRLIO = class( TIORL )
   procedure LookDescription( aWhere : TCoord2D );
 
   procedure Msg( const aText : AnsiString ); override; overload;
-  function  MsgGetRecent : TMessageBuffer;
-  procedure MsgReset;
   // TODO: Could this be removed as well?
   procedure MsgUpDate; override;
   procedure ErrorReport( const aText : AnsiString );
 
-  procedure ClearAllMessages;
   procedure ASCIILoader( aStream : TStream; aName : Ansistring; aSize : DWord );
 
   procedure BloodSlideDown( aDelayTime : Word );
 
   procedure WaitForAnimation( aStrict : Boolean = True ); virtual;
-  function AnimationsRunning : Boolean; virtual; abstract;
-  function AnimationsBlockingFinished : Boolean; virtual; abstract;
-  procedure AnimationWipe; virtual; abstract;
   procedure Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0); virtual; abstract;
   procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ); virtual;
   procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single );
@@ -144,7 +139,9 @@ protected
   FMTarget     : TCoord2D;
   FLastTarget  : TCoord2D;
   FASCII       : TASCIIImageMap;
-  FGameBindings: TBindingContext;
+  FModules     : TDRLModules;
+  FStore       : TStoreInterface;
+  FSession     : TDRLSession;
 
   FHudEnabled  : Boolean;
   FWaiting     : Boolean;
@@ -170,7 +167,6 @@ protected
   FTIGDefault     : TTIGStyle;
 public
   property KeyCode      : TIOKeyCode      read FKeyCode    write FKeyCode;
-  property GameBindings : TBindingContext read FGameBindings;
   property Audio        : TDRLAudio       read FAudio;
   property MTarget      : TCoord2D        read FMTarget    write FMTarget;
   property ASCII        : TASCIIImageMap  read FASCII;
@@ -179,6 +175,9 @@ public
   property HintStatus   : AnsiString      read FHintStatus  write FHintStatus;
   property Time         : QWord           read FTime;
   property NarrowMode   : Boolean         read FNarrowMode;
+  property Modules      : TDRLModules     read FModules write FModules;
+  property Store        : TStoreInterface read FStore write FStore;
+  property Session      : TDRLSession     read FSession write FSession;
 
   // Textmode only
   property TargetEnabled : Boolean        read FTargetEnabled write FTargetEnabled;
@@ -191,11 +190,11 @@ procedure EmitCrashInfo( const aInfo : AnsiString; aInGame : Boolean  );
 
 implementation
 
-uses math, video, dateutils, variants, vapp,
+uses math, video, dateutils, variants,
      vsound, vluasystem, vuid, vlog, vdebug, vmath,
      vsdlio, vglconsole, vtig, vtigio, vvector,
      dflevel, dfplayer, dfitem, dfhof,
-     drlconfiguration, drluibindings, drlbase, drlmoreview, drlchoiceview, drlua, drlmodulechoiceview,
+     drlconfiguration, drluibindings, drlmoreview, drlchoiceview, drlua, drlmodulechoiceview,
      drlhudviews, drlplotview;
 
 function TIGSubCallback( const aID : Ansistring ) : Ansistring;
@@ -238,40 +237,18 @@ begin
 end;
 
 procedure TDRLIO.WaitForAnimation( aStrict : Boolean = True );
-var iTime : DWord;
 begin
   if FWaiting then Exit;
-  if DRL.State <> DSPlaying then Exit;
+  if ( FSession = nil ) or ( FSession.State <> DSPlaying ) then Exit;
   FWaiting := True;
-  iTime := IO.Driver.GetMs;
-  if aStrict then
-  begin
-    while AnimationsRunning do
-    begin
-      IO.Delay(5);
-      if ( IO.Driver.GetMs - iTime ) > 2000 then
-        begin
-          Log(LOGWARN, 'Emergency animation break!' );
-          AnimationWipe;
-          Break;
-        end;
-    end;
-  end
-  else
-  begin
-    while not AnimationsBlockingFinished do
-    begin
-      IO.Delay(5);
-      if ( IO.Driver.GetMs - iTime ) > 2000 then
-        begin
-          Log(LOGWARN, 'Emergency animation break!' );
-          AnimationWipe;
-          Break;
-        end;
-    end;
+  try
+    if not WaitForAnimationCompletion( aStrict, 2000 ) then
+      Log( LOGWARN, 'Emergency animation break!' );
+    if aStrict then ClearAnimations;
+  finally
+    FWaiting := False;
   end;
-  FWaiting := False;
-  DRL.Level.RevealBeings;
+  if FSession.Level <> nil then FSession.Level.RevealBeings;
 end;
 
 procedure TDRLIO.addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection );
@@ -339,7 +316,7 @@ var iCoord    : TCoord2D;
     iLevel    : TLevel;
     iSound    : Word;
 begin
-  iLevel := DRL.Level;
+  iLevel := FSession.Level;
   if not iLevel.isProperCoord( aWhere ) then Exit;
 
   if aData.SoundID <> '' then
@@ -356,7 +333,7 @@ begin
   end;
 
   if GraphicsVersion and ( aData.EmitterID > 0 ) then
-    DRL.Particles.AddEmitterDirect( aData.EmitterID,
+    FSession.Particles.AddEmitterDirect( aData.EmitterID,
       Vec3f( ( aWhere.X - 1 ) * 32 + 16, ( aWhere.Y - 1 ) * 32 + 16, 0 ) );
 
   for iCoord in NewArea( aWhere, aData.Range ).Clamped( iLevel.Area ) do
@@ -435,12 +412,11 @@ end;
 constructor TDRLIO.Create;
 begin
   inherited Create( FIODriver, nil );
-  FGameBindings := Bindings.CreateContext;
 
   FLoading  := nil;
   FAudio    := TDRLAudio.Create;
-  FMessages := TMessages.Create( 2, 77, @EventMore, Option_MessageBuffer );
-  FMessages.GroupMultiple := Setting_GroupMessages;
+  InitializeMessages( 2, 77, @EventMore, Option_MessageBuffer );
+  Messages.GroupMultiple := Configuration.GetBoolean( 'group_messages' );
   inherited Configure( dfdata.Config );
   FASCII    := TASCIIImageMap.Create( True );
 
@@ -625,9 +601,9 @@ end;
 
 procedure TDRLIO.SetAutoTarget( aTarget : TCoord2D );
 begin
-  FHintTarget := DRL.Level.GetTargetDescription( aTarget );
-  if DRL.Level.isVisible( aTarget ) and ( DRL.Level.Being[ aTarget ] <> nil ) 
-    then FHintStatus := DRL.Level.Being[ aTarget ].GetTraitString
+  FHintTarget := FSession.Level.GetTargetDescription( aTarget );
+  if FSession.Level.isVisible( aTarget ) and ( FSession.Level.Being[ aTarget ] <> nil )
+    then FHintStatus := FSession.Level.Being[ aTarget ].GetTraitString
     else FHintStatus := '';
 end;
 
@@ -679,6 +655,7 @@ var iAction    : TControllerAction;
     end;
 begin
   FAudio.Reconfigure;
+  FMessages.GroupMultiple := Setting_GroupMessages;
   FGameBindings.Clear;
   if aConfig.TableExists('Keytable') then
     aConfig.LoadKeybindings(FGameBindings, 'Keytable');
@@ -800,7 +777,6 @@ end;
 destructor TDRLIO.Destroy;
 begin
   FreeAndNil( FAudio );
-  FreeAndNil( FMessages );
   FreeAndNil( FASCII );
   FreeAndNil( FKeySubMap );
   FreeAndNil( FPadSubMap );
@@ -814,32 +790,26 @@ var iFName : AnsiString;
     iExt   : AnsiString;
     iCount : DWord;
 begin
+  if FSession = nil then Exit;
   if GraphicsVersion
      then iExt := '.png'
      else iExt := '.txt';
 
   iName := 'DRL';
   if Player <> nil then iName := Player.Name;
-  if not DirectoryExists( Application.Paths.ModuleUserPath + 'screenshot' ) then CreateDir( Application.Paths.ModuleUserPath + 'screenshot' );
-  iFName := Application.Paths.ModuleUserPath + 'screenshot'+PathDelim+ToProperFilename('['+FormatDateTime(Option_TimeStamp,Now)+'] '+iName)+iExt;
+  if not DirectoryExists( FSession.Paths.ModuleUserPath + 'screenshot' ) then CreateDir( FSession.Paths.ModuleUserPath + 'screenshot' );
+  iFName := FSession.Paths.ModuleUserPath + 'screenshot'+PathDelim+ToProperFilename('['+FormatDateTime(Option_TimeStamp,Now)+'] '+iName)+iExt;
   iCount := 1;
   while FileExists(iFName) do
   begin
-    iFName := Application.Paths.ModuleUserPath + 'screenshot'+PathDelim+ToProperFilename('['+FormatDateTime(Option_TimeStamp,Now)+'] '+iName)+'-'+IntToStr(iCount)+iExt;
+    iFName := FSession.Paths.ModuleUserPath + 'screenshot'+PathDelim+ToProperFilename('['+FormatDateTime(Option_TimeStamp,Now)+'] '+iName)+'-'+IntToStr(iCount)+iExt;
     Inc(iCount);
   end;
 
   Log('Writing screenshot...: '+iFName);
-  if not GraphicsVersion then
-  begin
-{    iCon.Init( FConsole );
-    if aBB then iCon.ScreenShot(iFName,1)
-           else iCon.ScreenShot(iFName);}
-  end
-  else
-  begin
-    TSDLIODriver(FIODriver).ScreenShot(iFName);
-  end;
+  if GraphicsVersion
+    then CaptureScreen( iFName )
+    else SaveConsoleTextDump( iFName );
     {  if aBB then UI.Msg('BB Screenshot created.')
              else UI.Msg('Screenshot created.');}
 end;
@@ -847,12 +817,12 @@ end;
 procedure TDRLIO.SetSeed( aCardinal : LongInt );
 var iChallengeText : AnsiString;
 begin
-  FSeedHUDText := ' ' + LuaSystem.Get([ 'diff', DRL.Difficulty, 'code' ]);
+  FSeedHUDText := ' ' + LuaSystem.Get([ 'diff', FSession.Difficulty, 'code' ]);
   iChallengeText := '';
-  if DRL.Challenge <> '' then
-    iChallengeText += Copy( LuaSystem.Get([ 'chal', DRL.Challenge, 'abbr' ]), 3, MaxInt );
-  if DRL.SChallenge <> '' then
-    iChallengeText += Copy( LuaSystem.Get([ 'chal', DRL.SChallenge, 'abbr' ]), 3, MaxInt );
+  if FSession.Challenge <> '' then
+    iChallengeText += Copy( LuaSystem.Get([ 'chal', FSession.Challenge, 'abbr' ]), 3, MaxInt );
+  if FSession.SChallenge <> '' then
+    iChallengeText += Copy( LuaSystem.Get([ 'chal', FSession.SChallenge, 'abbr' ]), 3, MaxInt );
   if iChallengeText <> '' then FSeedHUDText += '{r' + iChallengeText + '}';
   FSeedHUDText += IntToStr( aCardinal );
   FSeedHUDOffset := -2-VTIG_Length( FSeedHUDText );
@@ -977,12 +947,12 @@ begin
       else VTIG_FreeLabel( Player.Inv.Slot[efTorso].Description,  iPos + Point(31,0), ArmorColor(Player.Inv.Slot[efTorso].Durability) );
 
     iColor := Red;
-    if DRL.Level.Empty
+    if FSession.Level.Empty
       then iColor := Blue
-      else if DRL.Level.Flags[ LF_ENRAGE ]
+      else if FSession.Level.Flags[ LF_ENRAGE ]
         then iColor := LightMagenta;
 
-    VTIG_FreeLabel( DRL.Level.Name, Point( -2-Length( DRL.Level.Name), iBottom ), iColor );
+    VTIG_FreeLabel( FSession.Level.Name, Point( -2-Length( FSession.Level.Name), iBottom ), iColor );
     VTIG_FreeLabel( FSeedHUDText, Point( FSeedHUDOffset, iBottom+1 ) );
 
     iTraitStr := Player.GetTraitString;
@@ -1005,9 +975,9 @@ begin
   if GraphicsVersion and ( FHint <> '' ) then
     VTIG_FreeLabel( ' '+FHint+' ', Point( 20, 4 ), Yellow );
 
-  if ( DRL.Level <> nil ) and ( DRL.Level.Boss <> 0 ) then
+  if ( FSession.Level <> nil ) and ( FSession.Level.Boss <> 0 ) then
   begin
-    iBoss := UIDs.Get( DRL.Level.Boss ) as TBeing;
+    iBoss := UIDs.Get( FSession.Level.Boss ) as TBeing;
     if iBoss <> nil then
     begin
       VTIG_FreeLabel( iBoss.Name, Point( 40 - Ceil(Length( iBoss.Name ) / 2), 3 ), iCBold );
@@ -1105,14 +1075,14 @@ procedure TDRLIO.Update( aMSec : DWord );
 begin
   if Assigned( Sound ) then
     Sound.Update;
-  if Assigned( DRL ) then
-    DRL.Store.Update;
+  if Assigned( FStore ) then
+    FStore.Update;
 
   if ControllerActionHeld( CONTROLLER_MODIFIER_ALT )
-    and (DRL <> nil) and (DRL.State = DSPlaying)
-    and (FTargeting or ( not isModal)) and ( FLastTarget <> DRL.Targeting.List.Current ) then
+    and (FSession <> nil) and (FSession.State = DSPlaying)
+    and (FTargeting or ( not isModal)) and ( FLastTarget <> FSession.Targeting.List.Current ) then
     begin
-      FLastTarget := DRL.Targeting.List.Current;
+      FLastTarget := FSession.Targeting.List.Current;
       if (FLastTarget.X * FLastTarget.Y <> 0) and (FLastTarget <> Player.Position) then
         LookDescription(FLastTarget);
     end;
@@ -1142,26 +1112,32 @@ begin
   if (aEvent.EType = VEVENT_MOUSEMOVE) then
   begin
     if not Setting_Mouse then Exit( Integer( INPUT_NONE ) );
-    FMTarget := SpriteMap.DevicePointToCoord( aEvent.MouseMove.Pos );
-    if DRL.Level <> nil then
-      if DRL.Level.isProperCoord( FMTarget ) then
-        Exit( Integer( INPUT_MMOVE ) );
+    if FSession <> nil then
+    begin
+      FMTarget := SpriteMap.DevicePointToCoord( aEvent.MouseMove.Pos );
+      if FSession.Level <> nil then
+        if FSession.Level.isProperCoord( FMTarget ) then
+          Exit( Integer( INPUT_MMOVE ) );
+    end;
   end;
   if aEvent.EType = VEVENT_MOUSEDOWN then
   begin
     if not Setting_Mouse then Exit( Integer( INPUT_NONE ) );
-    FMTarget := SpriteMap.DevicePointToCoord( aEvent.Mouse.Pos );
-    if DRL.Level <> nil then
-      if DRL.Level.isProperCoord( FMTarget ) then
-      begin
-        case aEvent.Mouse.Button of
-          VMB_BUTTON_LEFT     : Exit( Integer( INPUT_MLEFT ) );
-          VMB_BUTTON_MIDDLE   : Exit( Integer( INPUT_MMIDDLE ) );
-          VMB_BUTTON_RIGHT    : Exit( Integer( INPUT_MRIGHT ) );
-          VMB_WHEEL_UP        : Exit( Integer( INPUT_MSCRUP ) );
-          VMB_WHEEL_DOWN      : Exit( Integer( INPUT_MSCRDOWN ) );
+    if FSession <> nil then
+    begin
+      FMTarget := SpriteMap.DevicePointToCoord( aEvent.Mouse.Pos );
+      if FSession.Level <> nil then
+        if FSession.Level.isProperCoord( FMTarget ) then
+        begin
+          case aEvent.Mouse.Button of
+            VMB_BUTTON_LEFT     : Exit( Integer( INPUT_MLEFT ) );
+            VMB_BUTTON_MIDDLE   : Exit( Integer( INPUT_MMIDDLE ) );
+            VMB_BUTTON_RIGHT    : Exit( Integer( INPUT_MRIGHT ) );
+            VMB_WHEEL_UP        : Exit( Integer( INPUT_MSCRUP ) );
+            VMB_WHEEL_DOWN      : Exit( Integer( INPUT_MSCRDOWN ) );
+          end;
         end;
-      end;
+    end;
   end;
   if aEvent.EType = VEVENT_KEYDOWN then
   begin
@@ -1212,14 +1188,14 @@ end;
 procedure TDRLIO.LookDescription(aWhere: TCoord2D);
 var LookDesc : string;
 begin
-  LookDesc := DRL.Level.GetLookDescription( aWhere );
+  LookDesc := FSession.Level.GetLookDescription( aWhere );
   if Option_BlindMode then LookDesc += ' | '+BlindCoord( aWhere - Player.Position );
-  if DRL.Level.isVisible(aWhere) and (DRL.Level.Being[aWhere] <> nil) then
+  if FSession.Level.isVisible(aWhere) and (FSession.Level.Being[aWhere] <> nil) then
   begin
     if isGamepad
       then LookDesc += ' | <{LA}> more'
       else LookDesc += ' | <{Lm}>ore';
-    FHintStatus := DRL.Level.Being[ aWhere ].GetTraitString;
+    FHintStatus := FSession.Level.Being[ aWhere ].GetTraitString;
   end
   else
     FHintStatus := '';
@@ -1229,17 +1205,6 @@ end;
 procedure TDRLIO.Msg( const aText : AnsiString );
 begin
   inherited Msg( aText );
-end;
-
-function TDRLIO.MsgGetRecent : TMessageBuffer;
-begin
-  Exit( FMessages.Content );
-end;
-
-procedure TDRLIO.MsgReset;
-begin
-  FMessages.Reset;
-  FMessages.Update;
 end;
 
 procedure TDRLIO.MsgUpDate;
@@ -1254,11 +1219,6 @@ begin
   PushLayer( TMoreLayer.Create( False ) );
   WaitForLayer( False );
   Msg('{yError written to error.log, please report!}');
-end;
-
-procedure TDRLIO.ClearAllMessages;
-begin
-  FMessages.Clear;
 end;
 
 (**************************** LUA UI *****************************)
@@ -1472,7 +1432,7 @@ begin
   iState.Init(L);
   ForceShop := iState.ToBoolean(1);
   IO.FadeOut(0.5);
-  DRL.SetState( DSSaving );
+  IO.Session.SetState( DSSaving );
   Result := 0;
 end;
 
@@ -1480,7 +1440,7 @@ function lua_ui_get_target(L: Plua_State): Integer; cdecl;
 var iState : TDRLLuaState;
 begin
   iState.Init(L);
-  iState.PushCoord( DRL.Targeting.List.Current );
+  iState.PushCoord( IO.Session.Targeting.List.Current );
   Result := 1;
 end;
 
@@ -1488,7 +1448,7 @@ function lua_ui_reset_auto_target(L: Plua_State): Integer; cdecl;
 var iState : TDRLLuaState;
 begin
   iState.Init(L);
-  DRL.ResetAutoTarget;
+  IO.Session.ResetAutoTarget;
   Result := 0;
 end;
 

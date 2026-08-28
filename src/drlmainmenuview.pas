@@ -87,7 +87,7 @@ end;
 
 implementation
 
-uses math, sysutils, vapp,
+uses math, sysutils,
      vutil, vtig, vtigio, vgltypes, vluasystem, vluavalue,
      dfhof,
      drlbase, drlgfxio, drlplayerview, drlhelpview, drlsettingsview, drlpagedview;
@@ -150,7 +150,7 @@ begin
   FMode       := aInitial;
   FResult     := aResult;
   FSaveExists := False;
-  FJHCLink    := (CoreModuleID = 'drl') and ( not DRL.Store.IsSteam );
+  FJHCLink    := (CoreModuleID = 'drl') and ( not IO.Store.IsSteam );
   if (not FJHCLink) and DemoVersion then
     FJHCLink := True;
   FArrayCType := nil;
@@ -168,20 +168,20 @@ begin
 
   if FMode = MAINMENU_FIRST then
   begin
-    if not FileExists( Application.Paths.WritePath + 'drl.prc' ) then
+    if not FileExists( IO.Session.Paths.WritePath + 'drl.prc' ) then
     begin
-      WriteFileString( Application.Paths.WritePath + 'drl.prc', 'DRL was already run.' );
+      WriteFileString( IO.Session.Paths.WritePath + 'drl.prc', 'DRL was already run.' );
 
       FFirst := AnsiString( LuaSystem.ProtectedCall( [CoreModuleID,'GetFirstText'], [] ) );
       if FFirst = '' then FMode := MAINMENU_INTRO;
 
       if not DemoVersion then
       begin
-        if FileExists( Application.Paths.ModuleUserPath + 'savedemo' ) then
+        if FileExists( IO.Session.Paths.ModuleUserPath + 'savedemo' ) then
         begin
-          if ( not FileExists( Application.Paths.ModuleUserPath + 'save' ) )
-            then RenameFile( Application.Paths.ModuleUserPath + 'savedemo', Application.Paths.ModuleUserPath + 'save' )
-            else DeleteFile( Application.Paths.ModuleUserPath + 'savedemo' );
+          if ( not FileExists( IO.Session.Paths.ModuleUserPath + 'save' ) )
+            then RenameFile( IO.Session.Paths.ModuleUserPath + 'savedemo', IO.Session.Paths.ModuleUserPath + 'save' )
+            else DeleteFile( IO.Session.Paths.ModuleUserPath + 'savedemo' );
         end;
       end;
     end
@@ -272,7 +272,7 @@ begin
             FName[0] := #0;
             IO.Driver.StartTextInput;
             if IO.IsGamepad then
-              DRL.Store.StartText( 'Enter name', 30 );
+              IO.Store.StartText( 'Enter name', 30 );
             FMode := MAINMENU_NAME;
           end;
       end;
@@ -474,7 +474,7 @@ begin
         FSeedInvalid := False;
         IO.Console.ShowCursor;
         IO.Driver.StartTextInput;
-        if IO.IsGamepad then DRL.Store.StartText( 'Enter seed', 6 );
+        if IO.IsGamepad then IO.Store.StartText( 'Enter seed', 6 );
         FMode := MAINMENU_SEED;
       end;
     end
@@ -523,7 +523,7 @@ begin
       FSeedInvalid := not iAccepted;
     end;
 
-    if (not iAccepted) and DRL.Store.GetText( iStoreText, @iStoreCancel ) then
+    if (not iAccepted) and IO.Store.GetText( iStoreText, @iStoreCancel ) then
     begin
       if iStoreCancel
         then iCancelled := True
@@ -535,7 +535,7 @@ begin
           begin
             StrPLCopy( @FSeed[0], iStoreText, High( FSeed ) );
             VTIG_ResetInput( 'mainmenu_seed' );
-            if IO.IsGamepad then DRL.Store.StartText( 'Enter seed', 6, iStoreText );
+            if IO.IsGamepad then IO.Store.StartText( 'Enter seed', 6, iStoreText );
           end;
         end;
     end;
@@ -589,7 +589,7 @@ begin
     VTIG_Text('Save game version : {!'+SaveVersionModule+'}' );
     VTIG_Text('This game version : {!'+VersionModuleSave+'}' );
     VTIG_Text('');
-    if DRL.Store.IsSteam
+    if IO.Store.IsSteam
       then VTIG_Text('You can try to download the direct previous version from {!Steam} Betas tab and finish the game, or delete the save file now.')
       else VTIG_Text('You can try downloading the previous version from the web and finish the game, or delete the save file now.');
   end
@@ -597,7 +597,7 @@ begin
   begin
     VTIG_Text('Save file uses different mods!');
     VTIG_Text('Save file IDs : {!'+SaveModString+'}' );
-    VTIG_Text('Current IDs   : {!'+DRL.Modules.ModString+'}' );
+    VTIG_Text('Current IDs   : {!'+IO.Modules.ModString+'}' );
     VTIG_Text('');
     VTIG_Text('You can exit the game and try to match the mods or delete the save file now.');
   end;
@@ -607,7 +607,7 @@ begin
   if VTIG_Selectable( '  Delete save file' ) then
   begin
     FSaveExists := False;
-    DeleteFile( Application.Paths.ModuleUserPath + 'save' );
+    DeleteFile( IO.Session.Paths.ModuleUserPath + 'save' );
     FMode := MAINMENU_MENU;
   end;
 
@@ -653,7 +653,7 @@ begin
     IO.Console.HideCursor;
     FMode := MAINMENU_DONE;
   end;
-  if DRL.Store.GetText( iStoreText, @iStoreCancel ) then
+  if IO.Store.GetText( iStoreText, @iStoreCancel ) then
   begin
     IO.Driver.StopTextInput;
     IO.Console.HideCursor;

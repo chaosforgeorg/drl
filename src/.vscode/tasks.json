@@ -23,7 +23,7 @@
         {
             "label": "Update libraries (debug)",
             "type": "shell",
-            "command": "xcopy /Y /D ${config:drlBasePath}\\${config:libPath}\\* ${config:drlBasePath}\\${config:debugPath}",
+            "command": "xcopy /Y /D ${workspaceFolder}\\..\\${config:libPath}\\* ${workspaceFolder}\\..\\${config:debugPath}",
         },
         {
             "label": "Build drl.exe (debug)",
@@ -53,20 +53,20 @@
                 "-vm4056", //Suppress message 4056
                 "-vm4055", //Suppress message 4055
                 "-vm3250", //Suppress message 3250
-                "-Fi${config:drlBasePath}\\${config:debugPath}", //Include file search path
-                "-Fi${config:valkyrieSourcePath}\\libs", //Include file search path
-                "-Fi${config:valkyrieSourcePath}\\src", //Include file search path
-                "-Fu${config:valkyrieSourcePath}\\libs", //Include unit search path
-                "-Fu${config:valkyrieSourcePath}\\src", //Include unit search path
+                "-Fi${workspaceFolder}\\..\\${config:debugPath}", //Include file search path
+                "-Fi${workspaceFolder}\\..\\..\\fpcvalkyrie\\libs", //Include file search path
+                "-Fi${workspaceFolder}\\..\\..\\fpcvalkyrie\\src", //Include file search path
+                "-Fu${workspaceFolder}\\..\\..\\fpcvalkyrie\\libs", //Include unit search path
+                "-Fu${workspaceFolder}\\..\\..\\fpcvalkyrie\\src", //Include unit search path
                 "-Fu${config:lazarusPath}\\lcl\\units\\x86_64-win64\\win32", //Include unit search path
                 "-Fu${config:lazarusPath}\\lcl\\units\\x86_64-win64", //Include unit search path
                 "-Fu${config:lazarusPath}\\components\\freetype\\lib\\x86_64-win64", //Include unit search path
                 "-Fu${config:lazarusPath}\\components\\lazutils\\lib\\x86_64-win64", //Include unit search path
                 "-Fu${config:lazarusPath}\\packager\\units\\x86_64-win64", //Include unit search path
-                "-Fu${config:drlBasePath}\\src", //Include unit search path
-                "-FU${config:drlBasePath}\\${config:tmpPath}", //Write units to this folder
+                "-Fu${workspaceFolder}\\..\\src", //Include unit search path
+                "-FU${workspaceFolder}\\..\\${config:tmpPath}", //Write units to this folder
 //                "-FE${config:debugPath}",  //This option writes units and executables to this location. However units is overriden by FU and executable is overriden by o so parameter is not required.
-                "-o${config:drlBasePath}\\${config:debugPath}\\${config:drlExe}", //Executable location
+                "-o${workspaceFolder}\\..\\${config:debugPath}\\${config:drlExe}", //Executable location
                 "-dLCL", //Enables conditional compilation of this symbol
                 "-dLCLwin32", //Enables conditional compilation of this symbol
                 "${config:drlMainFile}" //The compilation file
@@ -97,7 +97,7 @@
         {
             "label": "Update libraries (release)",
             "type": "shell",
-            "command": "xcopy /Y /D ${config:drlBasePath}\\${config:libPath}\\* ${config:drlBasePath}\\${config:releasePath}",
+            "command": "xcopy /Y /D ${workspaceFolder}\\..\\${config:libPath}\\* ${workspaceFolder}\\..\\${config:releasePath}",
         },
         {
             "label": "Build drl.exe (release)",
@@ -113,8 +113,8 @@
                 "-XXs", //Strip symbols from the executable
                 "-B", //Recompile all used units (make clean)
                 "-v", //Be verbose
-                "-FU${config:drlBasePath}\\${config:tmpPath}", //Write units to this folder
-                "-FE${config:drlBasePath}\\${config:releasePath}" //The target folder for the executable
+                "-FU${workspaceFolder}\\..\\${config:tmpPath}", //Write units to this folder
+                "-FE${workspaceFolder}\\..\\${config:releasePath}" //The target folder for the executable
             ],
             "presentation": {
                 "focus": true
@@ -150,19 +150,19 @@
                 "-B", //Recompile all used units (make clean)
                 "-v", //Be verbose
                 "-s", //Do not call the assembler and linker
-                "-Fi${config:drlBasePath}\\${config:libPath}", //Include file search path
-                "-Fi${config:valkyrieSourcePath}\\libs", //Include file search path
-                "-Fi${config:valkyrieSourcePath}\\src", //Include file search path
-                "-Fu${config:valkyrieSourcePath}\\libs", //Include unit search path
-                "-Fu${config:valkyrieSourcePath}\\src", //Include unit search path
+                "-Fi${workspaceFolder}\\..\\${config:libPath}", //Include file search path
+                "-Fi${workspaceFolder}\\..\\..\\fpcvalkyrie\\libs", //Include file search path
+                "-Fi${workspaceFolder}\\..\\..\\fpcvalkyrie\\src", //Include file search path
+                "-Fu${workspaceFolder}\\..\\..\\fpcvalkyrie\\libs", //Include unit search path
+                "-Fu${workspaceFolder}\\..\\..\\fpcvalkyrie\\src", //Include unit search path
                 "-Fu${config:lazarusPath}\\lcl\\units\\x86_64-win64\\win32", //Include unit search path
                 "-Fu${config:lazarusPath}\\lcl\\units\\x86_64-win64", //Include unit search path
                 "-Fu${config:lazarusPath}\\components\\freetype\\lib\\x86_64-win64", //Include unit search path
                 "-Fu${config:lazarusPath}\\components\\lazutils\\lib\\x86_64-win64", //Include unit search path
                 "-Fu${config:lazarusPath}\\packager\\units\\x86_64-win64", //Include unit search path
-                "-Fu${config:drlBasePath}\\src", //Include unit search path
-                "-o${config:drlBasePath}\\${config:debugPath}\\${config:drlExe}", //Executable location
-                "-FU${config:drlBasePath}\\${config:tmpPath}", //Write units to this folder
+                "-Fu${workspaceFolder}\\..\\src", //Include unit search path
+                "-o${workspaceFolder}\\..\\${config:debugPath}\\${config:drlExe}", //Executable location
+                "-FU${workspaceFolder}\\..\\${config:tmpPath}", //Write units to this folder
             ],
             "presentation": {
                 "focus": true
@@ -218,7 +218,7 @@
             "group": {
                 "kind": "test",
             },
-            "command": "${config:drlBasePath}\\${config:debugPath}\\${config:drlExe}",
+            "command": "${workspaceFolder}\\..\\${config:debugPath}\\${config:drlExe}",
             "args": [],
             "presentation": {
                 "focus": true
@@ -232,7 +232,7 @@
             "args": [
                 "-ErrorAction",
                 "SilentlyContinue",
-                "${config:drlBasePath}\\${config:tmpPath}"
+                "${workspaceFolder}\\..\\${config:tmpPath}"
             ],
             "presentation": {
                 "reveal": "silent"
@@ -247,7 +247,7 @@
                 "-ErrorAction",
                 "SilentlyContinue",
                 "-Force",
-                "${config:drlBasePath}\\${config:tmpPath}\\*"
+                "${workspaceFolder}\\..\\${config:tmpPath}\\*"
             ],
             "presentation": {
                 "focus": true
@@ -271,15 +271,15 @@
                 "-gl", //Lineinfo debugging
                 "-l", //Print a line stating which program this is and its version
                 "-vewnhibq", //Be verbose, showing errors, warnings, notes, hints, informational messages, all procedural declarations if an overload occurs, message numbers
-                "-Fu${config:valkyrieSourcePath}\\libs", //Include unit search path
-                "-Fu${config:valkyrieSourcePath}\\src", //Include unit search path
+                "-Fu${workspaceFolder}\\..\\..\\fpcvalkyrie\\libs", //Include unit search path
+                "-Fu${workspaceFolder}\\..\\..\\fpcvalkyrie\\src", //Include unit search path
                 "-Fu${config:lazarusPath}\\lcl\\units\\x86_64-win64\\win32", //Include unit search path
                 "-Fu${config:lazarusPath}\\lcl\\units\\x86_64-win64", //Include unit search path
                 "-Fu${config:lazarusPath}\\components\\freetype\\lib\\x86_64-win64", //Include unit search path
                 "-Fu${config:lazarusPath}\\components\\lazutils\\lib\\x86_64-win64", //Include unit search path
                 "-Fu${config:lazarusPath}\\packager\\units\\x86_64-win64", //Include unit search path
-                "-FU${config:drlBasePath}\\${config:tmpPath}", //Write units to this folder
-                "-o${config:drlBasePath}\\${config:debugPath}\\drlwad.exe", //Executable location
+                "-FU${workspaceFolder}\\..\\${config:tmpPath}", //Write units to this folder
+                "-o${workspaceFolder}\\..\\${config:debugPath}\\drlwad.exe", //Executable location
                 "-dLCL", //Enables conditional compilation of this symbol
                 "-dLCLwin32", //Enables conditional compilation of this symbol
                 "drlwad.pas" //The compilation file
@@ -306,7 +306,7 @@
             "label": "Build drl.wad, core.wad",
             "type": "shell",
             "options": {
-                "cwd": "${config:drlBasePath}\\${config:debugPath}"
+                "cwd": "${workspaceFolder}\\..\\${config:debugPath}"
             },
             "group": {
                 "kind": "build",
@@ -324,7 +324,7 @@
             "label": "Build the release package (lq)",
             "type": "shell",
             "options": {
-                "cwd": "${config:drlBasePath}"
+                "cwd": "${workspaceFolder}\\.."
             },
             "command": "${config:luaPath}",
             "args": [
@@ -340,7 +340,7 @@
             "label": "Build the release package (hq)",
             "type": "shell",
             "options": {
-                "cwd": "${config:drlBasePath}"
+                "cwd": "${workspaceFolder}\\.."
             },
             "command": "${config:luaPath}",
             "args": [
@@ -356,7 +356,7 @@
             "label": "Build the release package (install)",
             "type": "shell",
             "options": {
-                "cwd": "${config:drlBasePath}"
+                "cwd": "${workspaceFolder}\\.."
             },
             "command": "${config:luaPath}",
             "args": [
@@ -372,7 +372,7 @@
             "label": "Build the release package (install+lq)",
             "type": "shell",
             "options": {
-                "cwd": "${config:drlBasePath}"
+                "cwd": "${workspaceFolder}\\.."
             },
             "command": "${config:luaPath}",
             "args": [
@@ -388,7 +388,7 @@
             "label": "Build the release package (install+hq)",
             "type": "shell",
             "options": {
-                "cwd": "${config:drlBasePath}"
+                "cwd": "${workspaceFolder}\\.."
             },
             "command": "${config:luaPath}",
             "args": [
@@ -404,7 +404,7 @@
             "label": "Build the release package (all)",
             "type": "shell",
             "options": {
-                "cwd": "${config:drlBasePath}"
+                "cwd": "${workspaceFolder}\\.."
             },
             "command": "${config:luaPath}",
             "args": [
@@ -420,7 +420,7 @@
             "label": "Build the release package (all+lq)",
             "type": "shell",
             "options": {
-                "cwd": "${config:drlBasePath}"
+                "cwd": "${workspaceFolder}\\.."
             },
             "command": "${config:luaPath}",
             "args": [

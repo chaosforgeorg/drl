@@ -15,7 +15,7 @@ type
 { TDRLLua }
 
 TDRLLua = class(TLuaSystem)
-       constructor Create; reintroduce;
+       constructor Create( aModules : TDRLModules; const aDataPath : AnsiString ); reintroduce;
        procedure OnError(const ErrorString : Ansistring); override;
        procedure RegisterPlayer(Thing: TThing);
        function HookName( aHook : Byte ) : AnsiString;
@@ -25,6 +25,8 @@ TDRLLua = class(TLuaSystem)
        procedure LoadFiles( const aDirectory : AnsiString; aLoader : TVDFLoader; aWildcard : AnsiString = '*' );
      private
        FOpenData : TVDataFileArray;
+       FModules  : TDRLModules;
+       FDataPath : AnsiString;
      end;
 
 type
@@ -43,7 +45,7 @@ end;
 implementation
 
 uses typinfo, variants,
-     vnode, vapp, vdebug, vlua, vluatools, vluadungen, vluaentitynode, vluatype, vmath,
+     vnode, vdebug, vlua, vluatools, vluadungen, vluaentitynode, vluatype, vmath,
      vtextures, vtigstyle, vvector,
      dfplayer, dflevel, dfmap, drlhooks, drlhelp, dfhof, drlbase, drlio, drlperk,
      drlgfxio, drlspritemap, vparticleengine;
@@ -332,7 +334,7 @@ begin
   iProgBase := IO.LoadCurrent;
   IO.LoadProgress(iProgBase);
 
-  for iModule in DRL.Modules.ActiveModules do
+  for iModule in FModules.ActiveModules do
   begin
     iData := nil;
 
@@ -367,7 +369,7 @@ begin
         iData.RegisterLoader(FILETYPE_IMAGE ,@((IO as TDRLGFXIO).Textures.LoadTextureCallback));
         iData.Load('graphics');
       end;
-      IO.Audio.LoadBindingDataFile( iData, 'audio.lua', Application.Paths.DataPath );
+      IO.Audio.LoadBindingDataFile( iData, 'audio.lua', FDataPath );
       FOpenData.Push( iData );
     end
     else
@@ -460,6 +462,8 @@ end;
 destructor TDRLLua.Destroy;
 var iData : TVDataFile;
 begin
+  if drlbase.Lua = Self then
+    drlbase.Lua := nil;
   for iData in FOpenData do
     iData.Free;
   FreeAndNil( FOpenData );
@@ -585,9 +589,11 @@ const lua_core_lib : array[0..13] of luaL_Reg = (
     ( name : nil;          func : nil; )
 );
 
-constructor TDRLLua.Create;
+constructor TDRLLua.Create( aModules : TDRLModules; const aDataPath : AnsiString );
 var Count : Byte;
 begin
+  FModules := aModules;
+  FDataPath := aDataPath;
   if GodMode
     then inherited Create( Config.Raw )
     else inherited Create( nil );

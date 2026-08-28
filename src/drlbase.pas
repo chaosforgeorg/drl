@@ -7,19 +7,26 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlbase;
 interface
 
-uses vnode, vutil, vuid, viotypes, vrltools, vluasystem, vioevent, vstoreinterface,
-     vrandom,
+uses vapp, vnode, vutil, vuid, viotypes, vrltools, vluasystem, vioevent, vstoreinterface,
+     vrandom, vrlapp,
      dflevel, dfdata, dfhof, dfitem,
      drlhooks, drlua, drlcommand, drlkeybindings, drlmodule, drlparticles;
 
+type TDRLSession = class;
+
+// TTargeting
+//
+// Architectural boundary: owns target-selection history and calculations for
+// one session. It may inspect that session's current level, but owns neither.
 type TTargeting = class
-  constructor Create;
+  constructor Create( aSession : TDRLSession );
   procedure Clear;
   procedure ClearPosition;
   procedure Update( aRange : Integer );
   procedure OnTarget( aTarget : TCoord2D; aMove : Boolean );
   destructor Destroy; override;
 private
+  FSession : TDRLSession;
   FList    : TAutoTarget;
   FLastUID : TUID;
   FLastPos : TCoord2D;
@@ -32,29 +39,28 @@ end;
 type TDRLState = ( DSStart,      DSMenu,    DSLoading,   DSCrashLoading,
                     DSPlaying,    DSSaving,  DSNextLevel,
                     DSQuit,       DSFinished );
+type TDRLSessionResult = ( DSR_Quit, DSR_Played );
 
-type
-
-{ TDRL }
-
-TDRL = class(TVObject)
-       constructor Create;
-       procedure RunModuleChoice;
+// TDRLSession
+//
+// Architectural boundary: owns one playthrough, including player and level
+// state, targeting, gameplay input, progression, and the save payload. Module
+// and data-generation policy belongs to TDRLRuntime.
+type TDRLSession = class(TVObject)
+       constructor Create( aRuntime : TRLRuntime; aModules : TDRLModules;
+         aStore : TStoreInterface; const aPaths : TGamePaths );
+       procedure InitializeLevel;
        procedure Reset;
        procedure Reconfigure;
-       procedure Initialize;
-       procedure Load;
-       procedure UnLoad;
+       procedure SetDataHooks( aCoreHooks, aModuleHooks : TFlags );
        function LoadSaveFile : Boolean;
        procedure WriteSaveFile( aCrash : Boolean );
        function SaveExists : Boolean;
        function Action( aInput : TInputKey ) : Boolean;
-       procedure Run;
+       function Run( aShowIntro : Boolean ) : TDRLSessionResult;
        destructor Destroy; override;
        procedure CallHook( Hook : Byte; const Params : array of Const );
        function  CallHookCheck( Hook : Byte; const Params : array of Const ) : Boolean;
-       procedure CallModuleHook( aHook : Byte; const aParams : array of Const );
-       procedure SafeCallModuleHook( aHook : Byte; const aParams : array of Const );
        procedure SetState( aNewState : TDRLState );
        procedure ClearPlayerView;
        procedure OpenJHCPage;
@@ -78,6 +84,7 @@ TDRL = class(TVObject)
        procedure PreAction;
        procedure CreatePlayer( aResult : TMenuResult );
        function PrepareGameSeed( aRequestedSeed : Cardinal ) : Cardinal;
+       function GetGameRNG : TRNG;
      private
        FState           : TDRLState;
        FLevel           : TLevel;
@@ -101,13 +108,13 @@ TDRL = class(TVObject)
        FChallenge       : AnsiString;
        FSChallenge      : AnsiString;
        FArchAngel       : Boolean;
-       FDataLoaded      : Boolean;
        FGameWon         : Boolean;
        FCrashSave       : Boolean;
        FParticles       : TParticleStore;
        FGameSeed        : Cardinal;
        FSeededGame      : Boolean;
-       FGameRNG         : TRNG;
+       FRuntime         : TRLRuntime;
+       FPaths           : TGamePaths;
      public
        property GameWon : Boolean read FGameWon write FGameWon;
        property Difficulty : Byte read FDifficulty;
@@ -123,10 +130,11 @@ TDRL = class(TVObject)
        property Particles : TParticleStore read FParticles;
        property GameSeed : Cardinal read FGameSeed;
        property SeededGame : Boolean read FSeededGame;
-       property GameRNG : TRNG read FGameRNG;
+       property GameRNG : TRNG read GetGameRNG;
+       property Paths : TGamePaths read FPaths;
      end;
 
-var DRL : TDRL;
+var DRL : TDRLSession;
 var Lua : TDRLLua;
 
 
@@ -134,19 +142,20 @@ implementation
 
 uses  {$IFDEF WINDOWS}Windows,{$ELSE}Unix,{$ENDIF}
      Classes, SysUtils,
-     vapp, vbindings, vdebug, vlua, vstream,
+     vbindings, vdebug, vlua, vstream,
      dfmap, dfbeing,
      drlio, drlgfxio, drltextio, zstream,
      drlspritemap, // remove
      drlplayerview, drlingamemenuview, drlhelpview, drlassemblyview,
      drlpagedview, drlrankupview, drlmainmenuview, drlhudviews, drlmessagesview,
-     drlconfiguration, drlcontrollerbindings, drlhelp, drlconfig, dfplayer;
+     drlapplication, drlcontrollerbindings, dfplayer;
 
 const PAD_REPEAT_START = 400;
       PAD_REPEAT       = 100;
 
-constructor TTargeting.Create;
+constructor TTargeting.Create( aSession : TDRLSession );
 begin
+  FSession := aSession;
   FList    := TAutoTarget.Create( NewCoord2D(0,0) );
 end;
 
@@ -165,10 +174,10 @@ end;
 procedure TTargeting.Update( aRange : Integer );
 var iBeing : TBeing;
 begin
-  DRL.Level.UpdateAutoTarget( FList, Player, aRange );
-  if (FLastUID <> 0) and DRL.Level.isAlive( FLastUID ) then
+  FSession.Level.UpdateAutoTarget( FList, Player, aRange );
+  if (FLastUID <> 0) and FSession.Level.isAlive( FLastUID ) then
   begin
-    iBeing := DRL.Level.FindChild( FLastUID ) as TBeing;
+    iBeing := FSession.Level.FindChild( FLastUID ) as TBeing;
     if iBeing <> nil then
       if iBeing.isVisible then
         if Distance( iBeing.Position, Player.Position ) <= aRange then
@@ -177,7 +186,7 @@ begin
 
   if FLastPos.X*FLastPos.Y <> 0 then
     if FLastUID = 0 then
-//    if DRL.Level.isVisible( FLastPos ) then
+//    if FSession.Level.isVisible( FLastPos ) then
 //      if Distance( FLastPos, Player.Position ) <= aRange then
           FList.PriorityTarget( FLastPos );
 end;
@@ -188,11 +197,11 @@ begin
     then FPrevPos := FLastPos
     else FPrevPos := aTarget;
   FLastUID := 0;
-  if (not aMove) and (DRL.Level.Being[ aTarget ] <> nil) then
-     if DRL.Level.Flags[ LF_BEINGSVISIBLE ] 
-       or DRL.Level.isVisible(aTarget) 
-       or DRL.Level.Being[ aTarget ].Flags[ BF_VISIBLE ] then
-    FLastUID := DRL.Level.Being[ aTarget ].UID;
+  if (not aMove) and (FSession.Level.Being[ aTarget ] <> nil) then
+     if FSession.Level.Flags[ LF_BEINGSVISIBLE ]
+       or FSession.Level.isVisible(aTarget)
+       or FSession.Level.Being[ aTarget ].Flags[ BF_VISIBLE ] then
+    FLastUID := FSession.Level.Being[ aTarget ].UID;
   FLastPos := aTarget;
 end;
 
@@ -202,7 +211,7 @@ begin
   inherited Destroy;
 end;
 
-procedure TDRL.CallHook( Hook : Byte; const Params : array of const ) ;
+procedure TDRLSession.CallHook( Hook : Byte; const Params : array of const ) ;
 begin
   if (Hook in FModuleHooks) then LuaSystem.ProtectedCall([CoreModuleID,Lua.HookName(Hook)],Params);
   if (FChallenge <> '')  and (Hook in FChallengeHooks) then LuaSystem.ProtectedCall(['chal',FChallenge,Lua.HookName(Hook)],Params);
@@ -210,7 +219,7 @@ begin
   if (Hook in FCoreHooks) then LuaSystem.ProtectedCall(['core',Lua.HookName(Hook)],Params);
 end;
 
-function TDRL.CallHookCheck ( Hook : Byte; const Params : array of const ) : Boolean;
+function TDRLSession.CallHookCheck ( Hook : Byte; const Params : array of const ) : Boolean;
 begin
   if (Hook in FCoreHooks) then if not LuaSystem.ProtectedCall(['core',HookNames[Hook]],Params) then Exit( False );
   if (FChallenge <> '') and (Hook in FChallengeHooks) then if not LuaSystem.ProtectedCall(['chal',FChallenge,HookNames[Hook]],Params) then Exit( False );
@@ -219,37 +228,7 @@ begin
   Exit( True );
 end;
 
-procedure TDRL.CallModuleHook( aHook : Byte; const aParams : array of const ) ;
-var iModule : TDRLModule;
-begin
-  for iModule in FModules.ActiveModules do
-    if aHook in iModule.Hooks then
-      LuaSystem.ProtectedCall([iModule.ID,HookNames[aHook]],aParams);
-end;
-
-procedure TDRL.SafeCallModuleHook( aHook : Byte; const aParams : array of const ) ;
-var iModule : TDRLModule;
-begin
-  for iModule in FModules.ActiveModules do
-    if aHook in iModule.Hooks then
-    try
-      LuaSystem.ProtectedCall([iModule.ID,HookNames[aHook]],aParams);
-    except
-      on E : Exception do
-      begin
-        if ModdedGame then
-        begin
-          ModErrors.Push('Error : Mod "'+iModule.ID+'" failed to execute '+HookNames[aHook]+'!');
-          ModErrors.Push('Path  : '+iModule.Path);
-          ModErrors.Push( E.Message );
-          ModErrors.Push( '' );
-        end
-        else raise;
-      end;
-    end;
-end;
-
-procedure TDRL.SetState( aNewState: TDRLState );
+procedure TDRLSession.SetState( aNewState: TDRLState );
 begin
   if ( FState = aNewState ) then Exit;
   if ( FState = DSPlaying ) then
@@ -260,12 +239,12 @@ begin
   FState := aNewState;
 end;
 
-procedure TDRL.ClearPlayerView;
+procedure TDRLSession.ClearPlayerView;
 begin
   FPlayerView := nil;
 end;
 
-procedure TDRL.OpenJHCPage;
+procedure TDRLSession.OpenJHCPage;
 const JHCURL      = 'https://store.steampowered.com/app/3126530/Jupiter_Hell_Classic/';
       JHCSTEAMURL = 'steam://store/3126530';
       JHCID       = 3126530;
@@ -289,115 +268,46 @@ begin
   {$ENDIF}
 end;
 
-procedure TDRL.Load;
-var iLua : TDRLLua;
-    i    : Integer;
+constructor TDRLSession.Create( aRuntime : TRLRuntime; aModules : TDRLModules;
+  aStore : TStoreInterface; const aPaths : TGamePaths );
 begin
-  FreeAndNil( Config );
-  IO.LoadStart;
-  ColorOverrides := TIntHashMap.Create( );
-  Config := TDRLConfig.Create( Application.Paths.ConfigurationPath, True );
-  IO.Configure( Config, True );
-  FCoreHooks := [];
-  FModuleHooks := [];
-  FChallengeHooks := [];
-  FSChallengeHooks := [];
-  Cells := TCells.Create;
-  Help := THelp.Create;
-
-  SetState( DSLoading );
-  LuaRNG := FGameRNG;
-  iLua := TDRLLua.Create();
-  LuaSystem := iLua;
-  LuaSystem.CallDefaultResult := True;
-//  Modules.RegisterAwards( LuaSystem.Raw );
-  FCoreHooks   := LoadHooks( [ 'core' ], GlobalHooks );
-  FModuleHooks := LoadHooks( [CoreModuleID], GlobalHooks );
-
-  SafeCallModuleHook( Hook_OnLoad, [] );
-  Reconfigure;
-
-  if GraphicsVersion then
-    (IO as TDRLGFXIO).Textures.Upload;
-
-  if GodMode and FileExists( Application.Paths.WritePath + 'god.lua') then
-    Lua.LoadFile( Application.Paths.WritePath + 'god.lua');
-  HOF.Init;
-  FLevel := TLevel.Create;
-  if not GraphicsVersion then
-    (IO as TDRLTextIO).SetTextMap( FLevel );
-
-  HARDSPRITE_HIGHLIGHT    := Lua.Get( 'HARDSPRITE_HIGHLIGHT' );
-  HARDSPRITE_EXPL         := Lua.Get( 'HARDSPRITE_EXPL' );
-  HARDSPRITE_SELECT       := Lua.Get( 'HARDSPRITE_SELECT' );
-  HARDSPRITE_MARK         := Lua.Get( 'HARDSPRITE_MARK' );
-  HARDSPRITE_GRID         := Lua.Get( 'HARDSPRITE_GRID' );
-  HARDSPRITE_SHIELD       := Lua.Get( 'HARDSPRITE_SHIELD' );
-  HARDSPRITE_SHIELD_COUNT := Lua.Get( 'HARDSPRITE_SHIELD_COUNT' );
-  HARDEMITTER_BLOOD       := 0;
-  if Lua.RawDefined( 'HARDEMITTER_BLOOD' ) then
-    HARDEMITTER_BLOOD     := Lua.Get( 'HARDEMITTER_BLOOD', 0 );
-  for i := 0 to 3 do
-  begin
-    HARDSPRITE_DECAL_BLOOD[i]      := 0;
-    HARDSPRITE_DECAL_WALL_BLOOD[i] := 0;
-  end;
-
-  if Lua.RawDefined( 'HARDSPRITE_DECAL_BLOOD_1' ) then
-    for i := 0 to 3 do
-      HARDSPRITE_DECAL_BLOOD[i] := Lua.Get( 'HARDSPRITE_DECAL_BLOOD_'+IntToStr(i+1), 0 );
-
-  if Lua.RawDefined( 'HARDSPRITE_DECAL_WALL_BLOOD_1' ) then
-    for i := 0 to 3 do
-      HARDSPRITE_DECAL_WALL_BLOOD[i] := Lua.Get( 'HARDSPRITE_DECAL_WALL_BLOOD_'+IntToStr(i+1), 0 );
-
-  FDataLoaded := True;
-  IO.LoadStop;
-end;
-
-procedure TDRL.UnLoad;
-begin
-  if Assigned( IO ) then IO.AnimationWipe;
-  FDataLoaded := False;
-  HOF.Done;
-  FreeAndNil(LuaSystem);
-  FreeAndNil(Help);
-  FreeAndNil(FLevel);
-  FreeAndNil(ColorOverrides);
-  FreeAndNil(Cells);
-end;
-
-constructor TDRL.Create;
-begin
+  FRuntime := aRuntime;
+  FModules := aModules;
+  FStore := aStore;
+  FPaths := aPaths;
   FGameSeed := 0;
-  FGameRNG  := TRNG.Create( 0 );
-  LuaRNG    := FGameRNG;
+  LuaRNG := GameRNG;
   FParticles := TParticleStore.Create;
-  FTargeting := TTargeting.Create;
+  FTargeting := TTargeting.Create(Self);
   Reset;
-  FStore     := TStoreInterface.Get;
-  Reconfigure;
   if GraphicsVersion then
-  begin
-    IO := TDRLGFXIO.Create;
     FParticles.Initialize( TDRLGFXIO(IO).ParticleEngine );
-  end
-  else
-    IO := TDRLTextIO.Create;
-
-  ModErrors := TStringGArray.Create;
-
-  FModules := TDRLModules.Create;
-  FModules.ScanModules;
 end;
 
-procedure TDRL.RunModuleChoice;
+procedure TDRLSession.InitializeLevel;
 begin
-  IO.RunModuleChoice;
+  Assert( FLevel = nil );
+  FLevel := TLevel.Create;
+end;
+
+function TDRLSession.GetGameRNG : TRNG;
+begin
+  Result := FRuntime.GameRNG;
+end;
+
+procedure TDRLSession.SetDataHooks( aCoreHooks, aModuleHooks : TFlags );
+begin
+  FCoreHooks := aCoreHooks;
+  FModuleHooks := aModuleHooks;
+end;
+
+procedure TDRLSession.Reconfigure;
+begin
+  TDRLRuntime(FRuntime).Reconfigure;
 end;
 
 
-procedure TDRL.Reset;
+procedure TDRLSession.Reset;
 begin
   FreeAndNil( FLevel );
 
@@ -407,7 +317,6 @@ begin
   FChallenge  := '';
   FSChallenge := '';
   FArchAngel  := False;
-  FDataLoaded := False;
   FGameWon    := False;
   FCrashSave  := False;
   FSeededGame := False;
@@ -417,8 +326,6 @@ begin
   FPadMoveNext     := 0;
   FLastFrameTime   := 0;
   FPadMoved        := False;
-  FCoreHooks       := [];;
-  FModuleHooks     := [];
   FChallengeHooks  := [];
   FSChallengeHooks := [];
   FLastInputTime   := 0;
@@ -426,44 +333,9 @@ begin
   FPadMoveActive   := False;
 
   FParticles.Clear;
-  if IO <> nil then IO.Reset;
 end;
 
-procedure TDRL.Reconfigure;
-begin
-  if Assigned( IO ) then
-    IO.Reconfigure( Config );
-  Setting_AlwaysRandomName := Configuration.GetBoolean( 'always_random_name' );
-  Setting_NoIntro          := Configuration.GetBoolean( 'skip_intro' );
-  Setting_Flash            := Configuration.GetBoolean( 'flashing_fx' );
-  Setting_Glow             := Configuration.GetBoolean( 'glow_fx' );
-  Setting_BloodPulse       := Configuration.GetBoolean( 'pulse_fx' );
-  Setting_ScreenShake      := Configuration.GetBoolean( 'screen_shake' );
-  Setting_RunOverItems     := Configuration.GetBoolean( 'run_over_items' );
-  Setting_HideHints        := Configuration.GetBoolean( 'hide_hints' );
-  Setting_EmptyConfirm     := Configuration.GetBoolean( 'empty_confirm' );
-  Setting_Mouse            := Configuration.GetBoolean( 'enable_mouse' );
-  Setting_GamepadRumble    := Configuration.GetBoolean( 'enable_rumble' );
-  Setting_MouseEdgePan     := Configuration.GetBoolean( 'mouse_edge_pan' );
-  Setting_UnlockAll        := Configuration.GetBoolean( 'unlock_all' );
-  Setting_MenuSound        := Configuration.GetBoolean( 'menu_sound' );
-  Setting_WaitSound        := Configuration.GetBoolean( 'wait_sound' );
-  Setting_GroupMessages    := Configuration.GetBoolean( 'group_messages' );
-  Setting_ItemDropAnimation:= Configuration.GetBoolean( 'item_drop_animation' );
-  Setting_Fade             := Configuration.GetBoolean( 'fade_fx' );
-end;
-
-procedure TDRL.Initialize;
-begin
-  FModules.ActivateModules( CoreModuleID );
-  IO.Initialize;
-  IO.LoadStart;
-  ProgramRealTime := MSecNow();
-  IO.Configure( Config );
-  IO.Reconfigure( Config );
-end;
-
-procedure TDRL.Apply ( aResult : TMenuResult ) ;
+procedure TDRLSession.Apply ( aResult : TMenuResult ) ;
 begin
   if aResult.Quit   then SetState( DSQuit );
   if not aResult.Loaded then
@@ -487,7 +359,7 @@ begin
   if FSChallenge <> '' then FSChallengeHooks := LoadHooks( ['chal',FSChallenge], GlobalHooks );
 end;
 
-procedure TDRL.PreAction;
+procedure TDRLSession.PreAction;
 begin
   FLevel.CalculateVision( Player.Position );
   StatusEffect := Player.GetPerkEffect;
@@ -503,7 +375,7 @@ begin
      (FPlayerView as TPlayerView).Retain;
 end;
 
-function TDRL.Action( aInput : TInputKey ) : Boolean;
+function TDRLSession.Action( aInput : TInputKey ) : Boolean;
 var iDir : TDirection;
 begin
   if aInput in [INPUT_RUNWAIT]+INPUT_MULTIMOVE then
@@ -557,7 +429,7 @@ begin
   Exit( False );
 end;
 
-function TDRL.HandleActionCommand( aInput : TInputKey ) : Boolean;
+function TDRLSession.HandleActionCommand( aInput : TInputKey ) : Boolean;
 var iItem   : TItem;
     iID     : AnsiString;
     iFlag   : Byte;
@@ -628,7 +500,7 @@ begin
   Exit( HandleActionCommand( iTarget, iFlag ) );
 end;
 
-function TDRL.HandleActionCommand( aTarget : TCoord2D; aFlag : Byte ) : Boolean;
+function TDRLSession.HandleActionCommand( aTarget : TCoord2D; aFlag : Byte ) : Boolean;
 begin
   if Level.isProperCoord( aTarget ) then
   begin
@@ -648,7 +520,7 @@ begin
   Exit( False );
 end;
 
-function TDRL.HandleMoveCommand( aInput : TInputKey; aAlt : Boolean ) : Boolean;
+function TDRLSession.HandleMoveCommand( aInput : TInputKey; aAlt : Boolean ) : Boolean;
 var iDir        : TDirection;
     iTarget     : TCoord2D;
     iMoveResult : TMoveResult;
@@ -707,7 +579,7 @@ begin
   Exit( False );
 end;
 
-function TDRL.HandleFireCommand( aAlt : Boolean; aMouse : Boolean; aAuto : Boolean; aPad : Boolean ) : Boolean;
+function TDRLSession.HandleFireCommand( aAlt : Boolean; aMouse : Boolean; aAuto : Boolean; aPad : Boolean ) : Boolean;
 var iTarget     : TCoord2D;
     iItem       : TItem;
     iFireTitle  : AnsiString;
@@ -861,7 +733,7 @@ begin
   Exit( HandleCommand( TCommand.Create( iCommand, iTarget, iItem ) ) )
 end;
 
-function TDRL.HandleUsableCommand( aItem : TItem ) : Boolean;
+function TDRLSession.HandleUsableCommand( aItem : TItem ) : Boolean;
 var iRange      : Integer;
     iLimitRange : Boolean;
 begin
@@ -874,7 +746,7 @@ begin
   Exit( False );
 end;
 
-function TDRL.HandleUnloadCommand( aItem : TItem ) : Boolean;
+function TDRLSession.HandleUnloadCommand( aItem : TItem ) : Boolean;
 var iID         : AnsiString;
     iItemTypes  : TItemTypeSet;
 begin
@@ -913,14 +785,14 @@ begin
   Exit( HandleCommand( TCommand.Create( COMMAND_UNLOAD, aItem, iID ) ) );
 end;
 
-function TDRL.HandleSwapWeaponCommand : Boolean;
+function TDRLSession.HandleSwapWeaponCommand : Boolean;
 begin
   if ( Player.Inv.Slot[ efWeapon ] <> nil ) and ( not Player.Inv.Slot[ efWeapon ].CallHookCheck( Hook_OnUnequipCheck, [ Player, False ] ) ) then Exit( False );
   if ( Player.Inv.Slot[ efWeapon2 ] <> nil ) and ( Player.Inv.Slot[ efWeapon2 ].isAmmoPack )        then begin IO.Msg('Nothing to swap!'); Exit( False ); end;
   Exit( HandleCommand( TCommand.Create( COMMAND_SWAPWEAPON ) ) );
 end;
 
-function TDRL.HandlePickupCommand( aAlt : Boolean ) : Boolean;
+function TDRLSession.HandlePickupCommand( aAlt : Boolean ) : Boolean;
 var iItem : TItem;
 begin
   if not aAlt then Exit( HandleCommand( TCommand.Create( COMMAND_PICKUP ) ) );
@@ -933,11 +805,11 @@ begin
   if iItem.isRelic then
     Exit( HandleCommand( TCommand.Create( COMMAND_PICKUP ) ) );
   if iItem.IType = ITEMTYPE_URANGED
-    then Exit( DRL.HandleUsableCommand( iItem ) );
+    then Exit( HandleUsableCommand( iItem ) );
   Exit( HandleCommand( TCommand.Create( COMMAND_USE, iItem ) ) );
 end;
 
-function TDRL.HandleCommand( aCommand : TCommand ) : Boolean;
+function TDRLSession.HandleCommand( aCommand : TCommand ) : Boolean;
 begin
   if not ( aCommand.Command in [ COMMAND_FIRE, COMMAND_ALTFIRE, COMMAND_RELOAD ] ) then
     FTargeting.ClearPosition;
@@ -975,20 +847,20 @@ end;
   Exit( True );
 end;
 
-procedure TDRL.ResetAutoTarget;
+procedure TDRLSession.ResetAutoTarget;
 begin
   FTargeting.Clear;
   FTargeting.Update( Player.Vision );
   IO.SetAutoTarget( FTargeting.List.Current );
 end;
 
-function TDRL.HandleMouseEvent( aEvent : TIOEvent ) : Boolean;
+function TDRLSession.HandleMouseEvent( aEvent : TIOEvent ) : Boolean;
 var iAlt     : Boolean;
     iButton  : TIOMouseButton;
 begin
   if not Setting_Mouse then Exit( False );
   IO.MTarget := SpriteMap.DevicePointToCoord( aEvent.Mouse.Pos );
-  if DRL.Level.isProperCoord( IO.MTarget ) then
+  if Level.isProperCoord( IO.MTarget ) then
   begin
     iButton  := aEvent.Mouse.Button;
     iAlt     := False;
@@ -1071,7 +943,7 @@ begin
   Exit( False );
 end;
 
-function TDRL.HandlePadMovement( aPressed : Boolean ) : Boolean;
+function TDRLSession.HandlePadMovement( aPressed : Boolean ) : Boolean;
 var iTarget : TCoord2D;
     iCell   : Integer;
 begin
@@ -1129,7 +1001,7 @@ begin
   Exit( Result );
 end;
 
-function TDRL.HandlePadEvent( aEvent : TIOEvent ) : Boolean;
+function TDRLSession.HandlePadEvent( aEvent : TIOEvent ) : Boolean;
 var iItem   : TItem;
     iAction : TControllerAction;
 begin
@@ -1214,7 +1086,7 @@ begin
   Exit( False );
 end;
 
-function TDRL.HandleKeyEvent( aEvent : TIOEvent ) : Boolean;
+function TDRLSession.HandleKeyEvent( aEvent : TIOEvent ) : Boolean;
 var iAction : TBindingAction;
     iInput  : TInputKey;
 begin
@@ -1252,7 +1124,7 @@ begin
     end;
 
     case iInput of
-//      INPUT_ESCAPE     : begin if GodMode then DRL.SetState( DSQuit ); Exit; end;
+//      INPUT_ESCAPE     : begin if GodMode then SetState( DSQuit ); Exit; end;
       INPUT_TARGETNEXT : begin IO.SetAutoTarget( FTargeting.List.Next ); Exit; end;
       INPUT_ESCAPE     : begin ResetAutoTarget; IO.PushLayer( TInGameMenuView.Create ); Exit; end;
       INPUT_QUIT       : begin IO.PushLayer( TAbandonView.Create ); Exit; end;
@@ -1272,12 +1144,12 @@ begin
 
       INPUT_HARDQUIT   : begin
         Option_MenuReturn := False;
-        DRL.SetState( DSQuit );
+        SetState( DSQuit );
         Player.Score := -100000;
         Exit;
       end;
 
-      INPUT_LEGACYSAVE: begin DRL.SetState( DSSaving ); Exit; end;
+      INPUT_LEGACYSAVE: begin SetState( DSSaving ); Exit; end;
       INPUT_TRAITS    : begin FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_TRAITS ) ); Exit; end;
       INPUT_RUN       : begin
         Player.MultiMove.Stop;
@@ -1309,7 +1181,7 @@ begin
   Exit( False );
 end;
 
-function TDRL.MoveTargetEvent( aCoord : TCoord2D ) : Boolean;
+function TDRLSession.MoveTargetEvent( aCoord : TCoord2D ) : Boolean;
 begin
   if FLevel.isProperCoord( aCoord ) then
   begin
@@ -1322,20 +1194,20 @@ begin
   Exit( False );
 end;
 
-function TDRL.PrepareGameSeed( aRequestedSeed : Cardinal ) : Cardinal;
+function TDRLSession.PrepareGameSeed( aRequestedSeed : Cardinal ) : Cardinal;
 begin
   FGameSeed := aRequestedSeed;
   if FGameSeed = 0 then
   begin
-    FGameRNG.Randomize;
-    FGameSeed := FGameRNG.RDWord( 1, 999999 );
+    GameRNG.Randomize;
+    FGameSeed := GameRNG.RDWord( 1, 999999 );
   end;
-  FGameRNG.SetSeed( FGameSeed );
-  Result := FGameRNG.RDWord;
+  GameRNG.SetSeed( FGameSeed );
+  Result := GameRNG.RDWord;
 end;
 
 
-procedure TDRL.Run;
+function TDRLSession.Run( aShowIntro : Boolean ) : TDRLSessionResult;
 var iRank       : THOFRank;
     iResult     : TMenuResult;
     iEvent      : TIOEvent;
@@ -1349,16 +1221,16 @@ var iRank       : THOFRank;
     iEpisodeSeed : Cardinal;
     iLevelSeed   : Cardinal;
 begin
+  Result := DSR_Quit;
   iResult    := TMenuResult.Create;
   iEpisodeSeed := 0;
-  DRL.Load;
-
-  IO.PushLayer( TMainMenuView.Create );
-  IO.WaitForLayer( True );
+  if aShowIntro then
+  begin
+    IO.PushLayer( TMainMenuView.Create );
+    IO.WaitForLayer( True );
+  end;
   if FState <> DSQuit then
-repeat
-  if not FDataLoaded then
-    DRL.Load;
+  begin
   IO.LoadStop;
 
   StatusEffect   := StatusNormal;
@@ -1370,7 +1242,7 @@ repeat
   NoPlayerRecord := False;
   NoScoreRecord  := False;
 
-  IO.ClearAllMessages;
+  IO.MsgClear;
 
   IO.Audio.PlayMusic('start');
   SetState( DSMenu );
@@ -1379,7 +1251,12 @@ repeat
   IO.PushLayer( TMainMenuView.Create( MAINMENU_MENU, iResult ) );
   IO.WaitForLayer( True );
   Apply( iResult );
-  if State = DSQuit then Break;
+  if State = DSQuit then
+  begin
+    FreeAndNil(iResult);
+    Exit;
+  end;
+  Result := DSR_Played;
 
   if iResult.Loaded then
   begin
@@ -1402,7 +1279,7 @@ repeat
 
   if (not(State in [DSLoading, DSCrashLoading])) then
   begin
-    FGameRNG.SetSeed( iEpisodeSeed );
+    GameRNG.SetSeed( iEpisodeSeed );
     CallHook( Hook_OnCreateEpisode, [QWord( iEpisodeSeed )] );
   end;
   CallHook( Hook_OnLoaded, [(State in [DSLoading, DSCrashLoading])] );
@@ -1439,7 +1316,7 @@ repeat
         Free;
       end;
 
-      if iLevelSeed <> 0 then FGameRNG.SetSeed( iLevelSeed );
+      if iLevelSeed <> 0 then GameRNG.SetSeed( iLevelSeed );
       if iScript <> ''
         then
           FLevel.ScriptLevel(iScript)
@@ -1604,11 +1481,11 @@ repeat
   IO.BloodSlideDown(20);
   FreeAndNil(Player);
 
-until not Option_MenuReturn;
+  end;
   FreeAndNil( iResult );
 end;
 
-procedure TDRL.CreatePlayer ( aResult : TMenuResult ) ;
+procedure TDRLSession.CreatePlayer ( aResult : TMenuResult ) ;
 var iTraitID : AnsiString;
     iTrait   : Byte;
 begin
@@ -1637,7 +1514,7 @@ begin
   Player.UpdateVisual;
 end;
 
-function TDRL.LoadSaveFile: Boolean;
+function TDRLSession.LoadSaveFile: Boolean;
 var iStream    : TStream;
     iRecreate  : Boolean;
     iModule    : Ansistring;
@@ -1651,7 +1528,7 @@ begin
   iGameRNG  := nil;
   try
     try
-      iStream := TGZFileStream.Create( Application.Paths.ModuleUserPath + 'save',gzOpenRead );
+      iStream := TGZFileStream.Create( FPaths.ModuleUserPath + 'save',gzOpenRead );
       //      Stream := TDebugStream.Create( Stream );
       iModule := iStream.ReadAnsiString;
       if iModule <> CoreModuleID then Exit( False );
@@ -1663,7 +1540,7 @@ begin
       if SaveVersionModule <> VersionModuleSave then Exit( False );
 
       SaveModString     := iStream.ReadAnsiString;
-      if SaveModString <> DRL.Modules.ModString then Exit( False );
+      if SaveModString <> FModules.ModString then Exit( False );
 
       SaveVersionEngine := '';
       SaveVersionModule := '';
@@ -1680,10 +1557,7 @@ begin
       FGameSeed   := iStream.ReadDWord;
       FSeededGame := iStream.ReadBool;
       iGameRNG := TRNG.CreateFromStream( iStream );
-      LuaRNG := iGameRNG;
-      FreeAndNil( FGameRNG );
-      FGameRNG := iGameRNG;
-      iGameRNG := nil;
+      FRuntime.ReplaceGameRNG( iGameRNG );
 
       Player := TPlayer.CreateFromStream( iStream );
       FCrashSave := iStream.ReadByte <> 0;
@@ -1701,7 +1575,7 @@ begin
       FreeAndNil( iGameRNG );
       FreeAndNil( iStream );
     end;
-    DeleteFile( Application.Paths.ModuleUserPath + 'save' );
+    DeleteFile( FPaths.ModuleUserPath + 'save' );
 
     IO.Msg('Game loaded.');
 
@@ -1713,7 +1587,7 @@ begin
     on e : Exception do
     begin
       Log('Save file corrupted! Error while loading : '+ e.message );
-      DeleteFile( Application.Paths.ModuleUserPath + 'save' );
+      DeleteFile( FPaths.ModuleUserPath + 'save' );
       LoadSaveFile := False;
       if iRecreate then
       begin
@@ -1749,12 +1623,12 @@ begin
 end;
 
 
-procedure TDRL.WriteSaveFile( aCrash : Boolean );
+procedure TDRLSession.WriteSaveFile( aCrash : Boolean );
 var Stream : TStream;
 begin
   Player.Statistics.OnSaveFile;
 
-  Stream := TGZFileStream.Create( Application.Paths.ModuleUserPath + 'save',gzOpenWrite );
+  Stream := TGZFileStream.Create( FPaths.ModuleUserPath + 'save',gzOpenWrite );
   //      Stream := TDebugStream.Create( Stream );
 
   Stream.WriteAnsiString( CoreModuleID );
@@ -1769,7 +1643,7 @@ begin
   Stream.WriteAnsiString( FSChallenge );
   Stream.WriteDWord( FGameSeed );
   Stream.WriteBool( FSeededGame );
-  FGameRNG.WriteToStream( Stream );
+  GameRNG.WriteToStream( Stream );
 
   Player.WriteToStream(Stream);
   Player.Detach;
@@ -1786,25 +1660,19 @@ begin
   FreeAndNil( Stream );
   FLevel.Clear;
   if ForceShop then
-    CopyFileSimple( Application.Paths.ModuleUserPath + 'save', Application.Paths.ModuleUserPath + 'savedemo' );
+    CopyFileSimple( FPaths.ModuleUserPath + 'save', FPaths.ModuleUserPath + 'savedemo' );
 end;
 
-function TDRL.SaveExists : Boolean;
+function TDRLSession.SaveExists : Boolean;
 begin
-  Exit( FileExists( Application.Paths.ModuleUserPath + 'save' ) );
+  Exit( FileExists( FPaths.ModuleUserPath + 'save' ) );
 end;
 
-destructor TDRL.Destroy;
+destructor TDRLSession.Destroy;
 begin
-  UnLoad;
-  LuaRNG := nil;
-  FreeAndNil( FGameRNG );
   FParticles.Initialize( nil );
-  FreeAndNil( ModErrors );
-  FreeAndNil( FModules );
-  FreeAndNil( Config );
+  FreeAndNil( FLevel );
   FreeAndNil( FTargeting );
-  FreeAndNil( IO );
   FreeAndNil( FParticles );
   FreeAndNil( UIDs );
   Log('DRL destroyed.');
