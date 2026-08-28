@@ -105,7 +105,7 @@ var Player     : TPlayer;
 
 implementation
 
-uses math, vapp, vuid, variants, vioevent, vgenerics,
+uses math, vuid, variants, vioevent, vgenerics,
      vnode, vcolor, vdebug, vluasystem, vluastate, vtig,
      dfmap, dflevel,
      drlhooks, drlio, drlspritemap, drlbase, drlperk,
@@ -625,7 +625,7 @@ begin
   MortemData := TIOStringArray.Create;
   LuaSystem.ProtectedCall([CoreModuleID,'RunPrintMortem'],[]);
 
-  iMortemPath := Application.Paths.ModuleUserPath + 'mortem.txt';
+  iMortemPath := IO.Session.Paths.ModuleUserPath + 'mortem.txt';
   iMortemList := TStringList.Create;
   try
     for iString in MortemData do
@@ -639,7 +639,7 @@ begin
 
   if Option_MortemArchive then
   begin
-    iString := Application.Paths.ModuleUserPath + 'mortem'+PathDelim+ToProperFilename('['+FormatDateTime(Option_TimeStamp,Now)+'] '+Name)+'.txt';
+    iString := IO.Session.Paths.ModuleUserPath + 'mortem'+PathDelim+ToProperFilename('['+FormatDateTime(Option_TimeStamp,Now)+'] '+Name)+'.txt';
     Log('Writing mortem...: '+iString);
     try
       iMortemList := TStringList.Create;

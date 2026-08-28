@@ -77,7 +77,7 @@ end;
 
 implementation
 
-uses math, sysutils, vapp, vutil, vdebug, vtig, vtigio,
+uses math, sysutils, vutil, vdebug, vtig, vtigio,
      drlconfiguration, drlbase, drluibindings;
 
 const CStates : array[ TSettingsViewState ] of record Title, ID : Ansistring; end = (
@@ -148,12 +148,12 @@ begin
         FResolutions[i] := IntToStr( Width ) + 'x' + IntToStr( Height )
   end;
 
-  SetLength( FModules, DRL.Modules.CoreModules.Size + 1 );
+  SetLength( FModules, IO.Modules.CoreModules.Size + 1 );
   FModCurrent := Configuration.GetString('default_module');
   FModules[0] := 'Ask on launch';
   FModValue := -1;
-  for i := 1 to DRL.Modules.CoreModules.Size do
-    with DRL.Modules.CoreModules[i-1] do
+  for i := 1 to IO.Modules.CoreModules.Size do
+    with IO.Modules.CoreModules[i-1] do
     begin
       if FModCurrent = ID then
         FModValue := i;
@@ -162,7 +162,7 @@ begin
   if FModCurrent = '' then FModValue := 0;
   if FModValue = -1 then
   begin
-    FModValue := DRL.Modules.CoreModules.Size + 1;
+    FModValue := IO.Modules.CoreModules.Size + 1;
     SetLength( FModules, FModValue + 1 );
     FModules[FModValue] := FModCurrent+' (missing)';
   end;
@@ -361,9 +361,9 @@ begin
                   with iEntry as TStringConfigurationEntry do
                   begin
                     if FModValue = 0 then Value := ''
-                    else if FModValue >= (DRL.Modules.CoreModules.Size+1)
+                    else if FModValue >= (IO.Modules.CoreModules.Size+1)
                       then Value := FModCurrent
-                      else Value := DRL.Modules.CoreModules[FModValue-1].ID;
+                      else Value := IO.Modules.CoreModules[FModValue-1].ID;
                     if ( DRL.State = DSMenu ) and ( Value <> '' ) and ( Value <> CoreModuleID ) then
                     begin
                       FRestart := Value;
@@ -543,7 +543,7 @@ end;
 
 destructor TSettingsView.Destroy;
 begin
-  Configuration.Write( Application.Paths.SettingsPath );
+  Configuration.Write( IO.Session.Paths.SettingsPath );
   inherited Destroy;
 end;
 

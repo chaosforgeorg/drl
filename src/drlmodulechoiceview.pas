@@ -17,7 +17,7 @@ end;
 
 implementation
 
-uses vtig, drlbase, drlmodule;
+uses vtig, drlmodule;
 
 constructor TModuleChoiceView.Create;
 begin
@@ -34,7 +34,7 @@ begin
   VTIG_BeginWindow( 'DRL module choice', 'core_module_choice', Point( 40, -1 ) );
   VTIG_Text( 'Select core module to run' );
   VTIG_Ruler;
-  for iModule in DRL.Modules.CoreModules do
+  for iModule in IO.Modules.CoreModules do
      if VTIG_Selectable( iModule.Name ) then
        iResult := iModule.ID;
   VTIG_Ruler;
@@ -53,4 +53,3 @@ begin
 end;
 
 end.
-

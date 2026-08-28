@@ -35,7 +35,7 @@ type
 { TDRLModules }
 
 TDRLModules = class(TVObject)
-  constructor Create;
+  constructor Create( const aDataPath : AnsiString );
   procedure ScanModules;
   function Validate( const aCoreModuleID : Ansistring ) : Ansistring;
   procedure ActivateModules( const aCoreModuleID : Ansistring );
@@ -49,6 +49,7 @@ private
   FCoreModule    : TDRLModule;
   FCoreModuleID  : Ansistring;
   FModString     : Ansistring;
+  FDataPath      : AnsiString;
 private
   function ReadMetaFromModule( aLua : TLua; aOverride : Boolean;
     const aExpectedID : AnsiString = '';
@@ -71,7 +72,7 @@ var Modules : TDRLModules;
 
 implementation
 
-uses sysutils, variants, vapp, vluatable, vdf, vstoreinterface, dfdata;
+uses sysutils, variants, vluatable, vdf, vstoreinterface, dfdata;
 
 function DRLModuleCompare( const A, B : TDRLModule ) : Integer;
 begin
@@ -80,8 +81,9 @@ begin
   Exit( CompareStr( A.ID, B.ID ) );
 end;
 
-constructor TDRLModules.Create;
+constructor TDRLModules.Create( const aDataPath : AnsiString );
 begin
+  FDataPath := aDataPath;
   FModules       := TModuleArray.Create( True );
   FModuleMap     := TModuleHash.Create;
   FActiveModules := TModuleList.Create;
@@ -108,18 +110,18 @@ begin
   try
     iLua := TLua.Create;
 
-    if FindFirst( Application.Paths.DataPath + '*.wad', faAnyFile, iInfo ) = 0 then
+    if FindFirst( FDataPath + '*.wad', faAnyFile, iInfo ) = 0 then
     repeat
        if ( iInfo.Name <> 'player.wad' ) and ( iInfo.Name <> 'score.wad' ) then
-         ReadMetaFromWAD( iLua, Application.Paths.DataPath + iInfo.Name );
+         ReadMetaFromWAD( iLua, FDataPath + iInfo.Name );
     until FindNext(iInfo) <> 0;
     FindClose(iInfo);
 
-    if FindFirst( Application.Paths.DataPath + 'data' + PathDelim + '*', faDirectory, iInfo ) = 0 then
+    if FindFirst( FDataPath + 'data' + PathDelim + '*', faDirectory, iInfo ) = 0 then
     begin
       repeat
         if (iInfo.Attr and faDirectory <> 0) and (iInfo.Name <> '.') and (iInfo.Name <> '..') then
-          ReadMetaFromFolder( iLua,Application.Paths.DataPath + 'data' + PathDelim + iInfo.Name + PathDelim, Option_ForceRaw );
+          ReadMetaFromFolder( iLua,FDataPath + 'data' + PathDelim + iInfo.Name + PathDelim, Option_ForceRaw );
       until FindNext(iInfo) <> 0;
     end;
     FindClose(iInfo);
@@ -320,7 +322,7 @@ var iManifestPath : AnsiString;
     );
   end;
 begin
-  iManifestPath := Application.Paths.DataPath + 'modules.local.lua';
+  iManifestPath := FDataPath + 'modules.local.lua';
   if not FileExists( iManifestPath ) then Exit;
 
   aLua.Register( 'module_paths', Null );

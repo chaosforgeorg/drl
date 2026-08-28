@@ -6,7 +6,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit dfhof;
 interface
-uses Classes, DOM, vnode, vxml, vxmldata, dfdata;
+uses Classes, DOM, vapp, vnode, vxml, vxmldata, dfdata;
 
 const MaxHofEntries = 500;
       MaxID         = 1023;
@@ -19,7 +19,7 @@ const PlayerFile = 'player.wad';
 { THOF }
 
 type THOF = object
-  procedure Init;
+  procedure Init( const aPaths : TGamePaths );
   procedure Add( const Name : AnsiString; aScore : LongInt; const aKillerID : AnsiString; Level, DLev : Word; nChal, nAbbr : AnsiString );
   function RankCheck( out aResult : THOFRank ) : Boolean;
   function GetPagedPlayerReport : TPagedReport;
@@ -68,7 +68,7 @@ var HOF : THOF;
 
 implementation
 
-uses math, sysutils, strutils, variants, vapp,
+uses math, sysutils, strutils, variants,
      vluasystem, vluatable, vdebug, vtig, vutil, vrltools,
      drlbase, dfplayer;
 
@@ -726,11 +726,11 @@ begin
   FreeAndNil( iChals );
 end;
 
-procedure THOF.Init;
+procedure THOF.Init( const aPaths : TGamePaths );
 var iScorePath : Ansistring;
 begin
-  iScorePath := Application.Paths.ScorePath;
-  if iScorePath = '' then iScorePath := Application.Paths.ModuleUserPath;
+  iScorePath := aPaths.ScorePath;
+  if iScorePath = '' then iScorePath := aPaths.ModuleUserPath;
   FScore := TScoreFile.Create( iScorePath + ScoreFile, MaxHOFEntries );
   FScore.SetCRC( '344ef'+{ModuleID+}'3321', '738af'+{ModuleID+}'92-5' );
   FScore.SetBackup( iScorePath+'backup'+PathDelim, Option_ScoreBackups );
@@ -741,9 +741,9 @@ begin
     FScore.Unlock;
   end;
 
-  FPlayerInfo := TVXMLDataFile.Create( Application.Paths.ModuleUserPath + PlayerFile, 'player' );
+  FPlayerInfo := TVXMLDataFile.Create( aPaths.ModuleUserPath + PlayerFile, 'player' );
   FPlayerInfo.SetCRC( '344ef'+{ModuleID+}'3321', '738af'+{ModuleID+}'92-5' );
-  FPlayerInfo.SetBackup(  Application.Paths.ModuleUserPath + 'backup'+PathDelim, Option_PlayerBackups );
+  FPlayerInfo.SetBackup(  aPaths.ModuleUserPath + 'backup'+PathDelim, Option_PlayerBackups );
   FPlayerInfo.Load;
 
   HOFOpen := True;
