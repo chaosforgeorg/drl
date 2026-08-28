@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlio;
 interface
 uses {$IFDEF WINDOWS}Windows,{$ENDIF} Classes, SysUtils,
-     vio, vbindings, viorl, vrltools, vluaconfig, vglquadrenderer, vmessages, vstoreinterface, vtextures, vtigstyle,
+     vio, vbindings, viorl, vrltools, vluaconfig, vglquadrenderer, vstoreinterface, vtextures, vtigstyle,
      vluastate, viotypes, vioevent, vioconsole, vgenerics, vutil,
      dfdata, dfthing, dfbeing, drlspritemap, drlaudio, drlkeybindings,
      drlbase, drlcontrollerbindings, drlloadingview, drlmodule;
@@ -35,6 +35,7 @@ const TIG_EV_NONE      = 0;
 type TASCIIImageMap       = specialize TGObjectHashMap<TIOStringArray>;
 type TStringHashMap       = specialize TGHashMap< AnsiString >;
 
+// Architectural boundary: adapts shared roguelike presentation mechanics to DRL policy and its active session.
 type TDRLIO = class( TIORL )
   constructor Create; reintroduce;
   procedure Reset; virtual;
@@ -68,21 +69,15 @@ type TDRLIO = class( TIORL )
   procedure LookDescription( aWhere : TCoord2D );
 
   procedure Msg( const aText : AnsiString ); override; overload;
-  function  MsgGetRecent : TMessageBuffer;
-  procedure MsgReset;
   // TODO: Could this be removed as well?
   procedure MsgUpDate; override;
   procedure ErrorReport( const aText : AnsiString );
 
-  procedure ClearAllMessages;
   procedure ASCIILoader( aStream : TStream; aName : Ansistring; aSize : DWord );
 
   procedure BloodSlideDown( aDelayTime : Word );
 
   procedure WaitForAnimation( aStrict : Boolean = True ); virtual;
-  function AnimationsRunning : Boolean; virtual; abstract;
-  function AnimationsBlockingFinished : Boolean; virtual; abstract;
-  procedure AnimationWipe; virtual; abstract;
   procedure Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0); virtual; abstract;
   procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ); virtual;
   procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single );
@@ -144,7 +139,6 @@ protected
   FMTarget     : TCoord2D;
   FLastTarget  : TCoord2D;
   FASCII       : TASCIIImageMap;
-  FGameBindings: TBindingContext;
   FModules     : TDRLModules;
   FStore       : TStoreInterface;
   FSession     : TDRLSession;
@@ -173,7 +167,6 @@ protected
   FTIGDefault     : TTIGStyle;
 public
   property KeyCode      : TIOKeyCode      read FKeyCode    write FKeyCode;
-  property GameBindings : TBindingContext read FGameBindings;
   property Audio        : TDRLAudio       read FAudio;
   property MTarget      : TCoord2D        read FMTarget    write FMTarget;
   property ASCII        : TASCIIImageMap  read FASCII;
@@ -244,40 +237,18 @@ begin
 end;
 
 procedure TDRLIO.WaitForAnimation( aStrict : Boolean = True );
-var iTime : DWord;
 begin
   if FWaiting then Exit;
-  if FSession.State <> DSPlaying then Exit;
+  if ( FSession = nil ) or ( FSession.State <> DSPlaying ) then Exit;
   FWaiting := True;
-  iTime := IO.Driver.GetMs;
-  if aStrict then
-  begin
-    while AnimationsRunning do
-    begin
-      IO.Delay(5);
-      if ( IO.Driver.GetMs - iTime ) > 2000 then
-        begin
-          Log(LOGWARN, 'Emergency animation break!' );
-          AnimationWipe;
-          Break;
-        end;
-    end;
-  end
-  else
-  begin
-    while not AnimationsBlockingFinished do
-    begin
-      IO.Delay(5);
-      if ( IO.Driver.GetMs - iTime ) > 2000 then
-        begin
-          Log(LOGWARN, 'Emergency animation break!' );
-          AnimationWipe;
-          Break;
-        end;
-    end;
+  try
+    if not WaitForAnimationCompletion( aStrict, 2000 ) then
+      Log( LOGWARN, 'Emergency animation break!' );
+    if aStrict then ClearAnimations;
+  finally
+    FWaiting := False;
   end;
-  FWaiting := False;
-  FSession.Level.RevealBeings;
+  if FSession.Level <> nil then FSession.Level.RevealBeings;
 end;
 
 procedure TDRLIO.addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection );
@@ -441,12 +412,11 @@ end;
 constructor TDRLIO.Create;
 begin
   inherited Create( FIODriver, nil );
-  FGameBindings := Bindings.CreateContext;
 
   FLoading  := nil;
   FAudio    := TDRLAudio.Create;
-  FMessages := TMessages.Create( 2, 77, @EventMore, Option_MessageBuffer );
-  FMessages.GroupMultiple := Configuration.GetBoolean( 'group_messages' );
+  InitializeMessages( 2, 77, @EventMore, Option_MessageBuffer );
+  Messages.GroupMultiple := Configuration.GetBoolean( 'group_messages' );
   inherited Configure( dfdata.Config );
   FASCII    := TASCIIImageMap.Create( True );
 
@@ -807,7 +777,6 @@ end;
 destructor TDRLIO.Destroy;
 begin
   FreeAndNil( FAudio );
-  FreeAndNil( FMessages );
   FreeAndNil( FASCII );
   FreeAndNil( FKeySubMap );
   FreeAndNil( FPadSubMap );
@@ -838,16 +807,9 @@ begin
   end;
 
   Log('Writing screenshot...: '+iFName);
-  if not GraphicsVersion then
-  begin
-{    iCon.Init( FConsole );
-    if aBB then iCon.ScreenShot(iFName,1)
-           else iCon.ScreenShot(iFName);}
-  end
-  else
-  begin
-    TSDLIODriver(FIODriver).ScreenShot(iFName);
-  end;
+  if GraphicsVersion
+    then CaptureScreen( iFName )
+    else SaveConsoleTextDump( iFName );
     {  if aBB then UI.Msg('BB Screenshot created.')
              else UI.Msg('Screenshot created.');}
 end;
@@ -1245,17 +1207,6 @@ begin
   inherited Msg( aText );
 end;
 
-function TDRLIO.MsgGetRecent : TMessageBuffer;
-begin
-  Exit( FMessages.Content );
-end;
-
-procedure TDRLIO.MsgReset;
-begin
-  FMessages.Reset;
-  FMessages.Update;
-end;
-
 procedure TDRLIO.MsgUpDate;
 begin
   inherited MsgUpdate;
@@ -1268,11 +1219,6 @@ begin
   PushLayer( TMoreLayer.Create( False ) );
   WaitForLayer( False );
   Msg('{yError written to error.log, please report!}');
-end;
-
-procedure TDRLIO.ClearAllMessages;
-begin
-  FMessages.Clear;
 end;
 
 (**************************** LUA UI *****************************)

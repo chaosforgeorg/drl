@@ -12,7 +12,10 @@ uses vglquadrenderer, vgltypes, vluaconfig, vioevent, viotypes, vimage,
 
 type
 
-{ TDRLGFXIO }
+// TDRLGFXIO
+//
+// Architectural boundary: owns the concrete graphical rendering and
+// animation backend. Gameplay policy belongs outside this adapter.
 
  TDRLGFXIO = class( TDRLIO )
     constructor Create; reintroduce;
@@ -26,10 +29,9 @@ type
     procedure UpdateMinimap;
     destructor Destroy; override;
 
-    procedure WaitForAnimation( aStrict : Boolean = True ); override;
     function AnimationsRunning : Boolean; override;
     function AnimationsBlockingFinished : Boolean; override;
-    procedure AnimationWipe; override;
+    procedure ClearAnimations; override;
     procedure Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0); override;
     procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ); override;
     procedure addMoveAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aWipeBump : Boolean ); override;
@@ -416,13 +418,6 @@ begin
   inherited Destroy;
 end;
 
-procedure TDRLGFXIO.WaitForAnimation( aStrict : Boolean = True );
-begin
-  inherited WaitForAnimation( aStrict );
-  if aStrict then
-    FAnimations.Clear;
-end;
-
 function TDRLGFXIO.AnimationsRunning : Boolean;
 begin
   if Session.State <> DSPlaying then Exit(False);
@@ -435,7 +430,7 @@ begin
   Exit( FAnimations.BlockingFinished );
 end;
 
-procedure TDRLGFXIO.AnimationWipe;
+procedure TDRLGFXIO.ClearAnimations;
 begin
   FAnimations.Clear;
 end;

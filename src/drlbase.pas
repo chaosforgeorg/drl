@@ -1242,7 +1242,7 @@ begin
   NoPlayerRecord := False;
   NoScoreRecord  := False;
 
-  IO.ClearAllMessages;
+  IO.MsgClear;
 
   IO.Audio.PlayMusic('start');
   SetState( DSMenu );

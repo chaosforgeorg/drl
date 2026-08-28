@@ -357,7 +357,7 @@ procedure TDRLRuntime.UnloadGameData;
 begin
   if not FDataLoaded then Exit;
   if Assigned(IO) then
-    TDRLIO(IO).AnimationWipe;
+    TDRLIO(IO).ClearAnimations;
   FDataLoaded := False;
   HOF.Done;
   drlbase.Lua := nil;

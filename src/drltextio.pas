@@ -9,6 +9,10 @@ interface
 
 uses vrltools, vtextmap, vioevent, drlio, dfdata;
 
+// TDRLTextIO
+//
+// Architectural boundary: owns the concrete text rendering and animation
+// backend. Gameplay policy belongs outside this adapter.
 type TDRLTextIO = class( TDRLIO )
     constructor Create; reintroduce;
     procedure Reset; override;
@@ -17,10 +21,9 @@ type TDRLTextIO = class( TDRLIO )
     procedure Update( aMSec : DWord ); override;
     function OnEvent( const aEvent : TIOEvent ) : Boolean; override;
 
-    procedure WaitForAnimation( aStrict : Boolean = True ); override;
     function AnimationsRunning : Boolean; override;
     function AnimationsBlockingFinished : Boolean; override;
-    procedure AnimationWipe; override;
+    procedure ClearAnimations; override;
     procedure Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0); override;
     procedure addMissileAnimation( aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aColor : Byte; aPic : Char; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False; aTrailNID : Word = 0 ); override;
     procedure addMarkAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aColor : Byte; aPic : Char ); override;
@@ -115,13 +118,6 @@ begin
   Exit( inherited OnEvent( aEvent ) );
 end;
 
-procedure TDRLTextIO.WaitForAnimation( aStrict : Boolean = True );
-begin
-  inherited WaitForAnimation( aStrict );
-  if aStrict then
-    FTextMap.ClearAnimations;
-end;
-
 function TDRLTextIO.AnimationsRunning : Boolean;
 begin
   if Session.State <> DSPlaying then Exit(False);
@@ -134,7 +130,7 @@ begin
   Exit( FTextMap.AnimationsBlockingFinished );
 end;
 
-procedure TDRLTextIO.AnimationWipe;
+procedure TDRLTextIO.ClearAnimations;
 begin
   FTextMap.ClearAnimations;
 end;
