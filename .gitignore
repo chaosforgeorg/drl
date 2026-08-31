@@ -30,6 +30,7 @@ src/doomrl.lps
 src/drl.lps
 src/drl.prc
 src/fpcmade.x86_64-linux
+src/.vscode/settings.json
 tmp/
 !tmp/!readme.txt
 bin/console.history

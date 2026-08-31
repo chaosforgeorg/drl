@@ -1,0 +1,19 @@
+{
+    "debugPath": "bin",
+    "releasePath": "bin",
+    "libPath": "ext\\windows",
+    "instantFpcPath": "C:\\lazarus\\fpc\\3.2.2\\bin\\x86_64-win64\\instantfpc.exe",
+    "fpcPath": "C:\\lazarus\\fpc\\3.2.2\\bin\\x86_64-win64\\fpc.exe",
+    "lazarusPath": "C:\\lazarus",
+    "drlMainFile": "drl.pas",
+    "drlExe": "drl.exe",
+    "drlwadMainFile": "drlwad.pas",
+    "drlwadExe": "drlwad.exe",
+    "tmpPath": "tmp",
+    "luaPath": "c:\\Tools\\lua5.1.exe",
+
+    // Copilot auto-approve settings for build tasks
+    "github.copilot.chat.agent.autoApprove": [
+        "run_task"
+    ]
+}
