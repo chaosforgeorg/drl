@@ -112,16 +112,22 @@ function drl.register_awards()
 	{
 		name  = "Medal of Prejudice",
 		desc  = "Won with 100% kills",
-		winonly = true,
-		condition = function() return statistics.unique_kills == statistics.max_unique_kills end,
+		requirements =
+		{
+			winonly   = true,
+			condition = function() return statistics.unique_kills == statistics.max_unique_kills end,
+		},
 	}
 
 	register_medal "killfew"
 	{
 		name  = "Medal of Pacifism",
 		desc  = "Won with 10% or less kills",
-		winonly = true,
-		condition = function() return statistics.unique_kills / statistics.max_unique_kills <= 0.1 end,
+		requirements =
+		{
+			winonly   = true,
+			condition = function() return statistics.unique_kills / statistics.max_unique_kills <= 0.1 end,
+		},
 	}
 
 	register_medal "shotguns"
@@ -129,8 +135,11 @@ function drl.register_awards()
 		name  = "Shotgunnery Cross",
 		desc  = "Won & killed only with shotguns/fists",
 		hidden  = true,
-		winonly = true,
-		condition = function() return kills.get_type( "other" ) + kills.get_type( "melee" ) + core.kills_count_group( "shotgun" ) == statistics.kills end,
+		requirements =
+		{
+			winonly   = true,
+			condition = function() return kills.get_type( "other" ) + kills.get_type( "melee" ) + core.kills_count_group( "shotgun" ) == statistics.kills end,
+		},
 	}
 
 	register_medal "pistols"
@@ -138,8 +147,11 @@ function drl.register_awards()
 		name  = "Marksmanship Cross",
 		desc  = "Won & killed only with pistols/fists",
 		hidden  = true,
-		winonly = true,
-		condition = function() return kills.get_type( "other" ) + kills.get_type( "melee" ) + core.kills_count_group( "pistol" ) == statistics.kills end,
+		requirements =
+		{
+			winonly   = true,
+			condition = function() return kills.get_type( "other" ) + kills.get_type( "melee" ) + core.kills_count_group( "pistol" ) == statistics.kills end,
+		},
 	}
 
 	register_medal "knives"
@@ -147,8 +159,11 @@ function drl.register_awards()
 		name  = "Malicious Knives Cross",
 		desc  = "Won & killed only with knives/fists",
 		hidden  = true,
-		winonly = true,
-		condition = function() return kills.get_type( "other" ) + kills.get_type( "melee" ) + kills.get_type( "knife" ) == statistics.kills end,
+		requirements =
+		{
+			winonly   = true,
+			condition = function() return kills.get_type( "other" ) + kills.get_type( "melee" ) + kills.get_type( "knife" ) == statistics.kills end,
+		},
 	}
 
 	register_medal "fist"
@@ -156,9 +171,12 @@ function drl.register_awards()
 		name  = "Sunrise Iron Fist",
 		desc  = "Won & killed only with your bare hands",
 		hidden  = true,
-		winonly = true,
 		removes = { "knives" , "shotguns", "pistols" },
-		condition = function() return kills.get_type( "other" ) + kills.get_type( "melee" ) == statistics.kills end,
+		requirements =
+		{
+			winonly   = true,
+			condition = function() return kills.get_type( "other" ) + kills.get_type( "melee" ) == statistics.kills end,
+		},
 	}
 
 	register_medal "zen"
@@ -166,16 +184,22 @@ function drl.register_awards()
 		name  = "Zen Master's Cross",
 		desc  = "Won & killed w/o using fists/weapons",
 		hidden  = true,
-		winonly = true,
 		removes = { "fist" , "knives" , "shotguns", "pistols" },
-		condition = function() return kills.get_type( "other" ) == statistics.kills end,
+		requirements =
+		{
+			winonly   = true,
+			condition = function() return kills.get_type( "other" ) == statistics.kills end,
+		},
 	}
 
 	register_medal "uac1"
 	{
 		name  = "UAC Star (bronze cluster)",
 		desc  = "25+ kills without taking damage",
-		condition = function() return statistics.kills_non_damage >= 25 end,
+		requirements =
+		{
+			condition = function() return statistics.kills_non_damage >= 25 end,
+		},
 	}
 
 	register_medal "uac2"
@@ -183,7 +207,10 @@ function drl.register_awards()
 		name  = "UAC Star (silver cluster)",
 		desc  = "50+ kills without taking damage",
 		removes = { "uac1" },
-		condition = function() return statistics.kills_non_damage >= 50 end,
+		requirements =
+		{
+			condition = function() return statistics.kills_non_damage >= 50 end,
+		},
 	}
 
 	register_medal "uac3"
@@ -191,45 +218,63 @@ function drl.register_awards()
 		name  = "UAC Star (gold cluster)",
 		desc  = "100+ kills without taking damage",
 		removes = { "uac1", "uac2" },
-		condition = function() return statistics.kills_non_damage >= 100 end,
+		requirements =
+		{
+			condition = function() return statistics.kills_non_damage >= 100 end,
+		},
 	}
 
 	register_medal "icarus1"
 	{
 		name  = "Minor Icarus Cross",
 		desc  = "Won the game in less than 40,000 turns",
-		winonly = true,
-		condition = function() return statistics.game_time < 40000 end,
+		requirements =
+		{
+			winonly   = true,
+			condition = function() return statistics.game_time < 40000 end,
+		},
 	}
 
 	register_medal "icarus2"
 	{
 		name  = "Major Icarus Cross",
 		desc  = "Won the game in less than 20,000 turns",
-		winonly = true,
 		removes = { "icarus1" },
-		condition = function() return statistics.game_time < 20000 end,
+		requirements =
+		{
+			winonly   = true,
+			condition = function() return statistics.game_time < 20000 end,
+		},
 	}
 
 	register_medal "gambler"
 	{
 		name  = "Gambler's Shield",
 		desc  = "Pulled at least 25 levers in one game",
-		condition = function() return statistics.levers_pulled > 24 end,
+		requirements =
+		{
+			condition = function() return statistics.levers_pulled > 24 end,
+		},
 	}
 
 	register_medal "aurora"
 	{
 		name  = "Aurora Medallion",
 		desc  = "Found more than 3 uniques in one game",
-		condition = function() return statistics.uniques_found > 3 end,
+		requirements =
+		{
+			condition = function() return statistics.uniques_found > 3 end,
+		},
 	}
 
 	register_medal "explorer"
 	{
 		name  = "Explorer Pin",
 		desc  = "Visited all generated levels",
-		condition = function() return statistics.bonus_levels_count > 0 and statistics.bonus_levels_visited == statistics.bonus_levels_count end,
+		requirements =
+		{
+			condition = function() return statistics.bonus_levels_count > 0 and statistics.bonus_levels_visited == statistics.bonus_levels_count end,
+		},
 	}
 
 	register_medal "conqueror"
@@ -237,33 +282,45 @@ function drl.register_awards()
 		name  = "Conqueror Pin",
 		desc  = "Completed all generated levels",
 		removes = { "explorer" },
-		condition = function() return statistics.bonus_levels_count > 0 and statistics.bonus_levels_completed == statistics.bonus_levels_count end,
+		requirements =
+		{
+			condition = function() return statistics.bonus_levels_count > 0 and statistics.bonus_levels_completed == statistics.bonus_levels_count end,
+		},
 	}
 
 	register_medal "competn1"
 	{
 		name  = "Compet-n Silver Cross",
 		desc  = "Won the game in under 30 minutes",
-		winonly = true,
-		condition = function() return statistics.real_time < 30*60 end,
+		requirements =
+		{
+			winonly   = true,
+			condition = function() return statistics.real_time < 30*60 end,
+		},
 	}
 
 	register_medal "competn2"
 	{
 		name  = "Compet-n Gold Cross",
 		desc  = "Won the game in under 20 minutes",
-		winonly = true,
 		removes = { "competn1" },
-		condition = function() return statistics.real_time < 20*60 end,
+		requirements =
+		{
+			winonly   = true,
+			condition = function() return statistics.real_time < 20*60 end,
+		},
 	}
 
 	register_medal "competn3"
 	{
 		name  = "Compet-n Platinum Cross",
 		desc  = "Won the game in under 10 minutes",
-		winonly = true,
 		removes = { "competn1", "competn2" },
-		condition = function() return statistics.real_time < 10*60 end,
+		requirements =
+		{
+			winonly   = true,
+			condition = function() return statistics.real_time < 10*60 end,
+		},
 	}
 
 	register_medal "fallout1"
@@ -271,7 +328,10 @@ function drl.register_awards()
 		name  = "Fallout Gold Cross",
 		desc  = "Nuked at least 3 levels in one game",
 		hidden  = true,
-		condition = function() return statistics.levels_nuked >= 3 end,
+		requirements =
+		{
+			condition = function() return statistics.levels_nuked >= 3 end,
+		},
 	}
 
 	register_medal "fallout2"
@@ -280,7 +340,10 @@ function drl.register_awards()
 		desc  = "Nuked at least 6 levels in one game",
 		hidden  = true,
 		removes = { "fallout1" },
-		condition = function() return statistics.levels_nuked >= 6 end,
+		requirements =
+		{
+			condition = function() return statistics.levels_nuked >= 6 end,
+		},
 	}
 
 	register_medal "fallout3"
@@ -289,7 +352,10 @@ function drl.register_awards()
 		desc  = "Nuked at least 12 levels in one game",
 		hidden  = true,
 		removes = { "fallout1", "fallout2" },
-		condition = function() return statistics.levels_nuked >= 12 end,
+		requirements =
+		{
+			condition = function() return statistics.levels_nuked >= 12 end,
+		},
 	}
 
 
@@ -298,15 +364,21 @@ function drl.register_awards()
 		name  = "Iron Skull",
 		desc  = "Took 5,000+ damage in one game",
 		hidden  = true,
-		condition = function() return statistics.damage_taken >= 5000 end,
+		requirements =
+		{
+			condition = function() return statistics.damage_taken >= 5000 end,
+		},
 	}
 
 	register_medal "untouchable1"
 	{
 		name  = "Untouchable Pin",
 		desc  = "Won taking less than 500 damage",
-		winonly = true,
-		condition = function() return statistics.damage_taken < 500 end,
+		requirements =
+		{
+			winonly   = true,
+			condition = function() return statistics.damage_taken < 500 end,
+		},
 	}
 
 	register_medal "untouchable2"
@@ -314,9 +386,12 @@ function drl.register_awards()
 		name  = "Untouchable Medal",
 		desc  = "Won taking less than 200 damage",
 		hidden  = true,
-		winonly = true,
 		removes = { "untouchable1" },
-		condition = function() return statistics.damage_taken < 200 end,
+		requirements =
+		{
+			winonly   = true,
+			condition = function() return statistics.damage_taken < 200 end,
+		},
 	}
 
 	register_medal "untouchable3"
@@ -324,16 +399,22 @@ function drl.register_awards()
 		name  = "Untouchable Cross",
 		desc  = "Won taking less than 50 damage",
 		hidden  = true,
-		winonly = true,
 		removes = { "untouchable1", "untouchable2" },
-		condition = function() return statistics.damage_taken < 50 end,
+		requirements =
+		{
+			winonly   = true,
+			condition = function() return statistics.damage_taken < 50 end,
+		},
 	}
 
 	register_medal "experience1"
 	{
 		name  = "Experience Medal",
 		desc  = "Reach experience level 20+",
-		condition = function() return player.explevel >= 20 end,
+		requirements =
+		{
+			condition = function() return player.explevel >= 20 end,
+		},
 	}
 
 	register_medal "experience2"
@@ -341,7 +422,10 @@ function drl.register_awards()
 		name  = "Experience Cross",
 		desc  = "Reach experience level 25",
 		removes = { "experience1" },
-		condition = function() return player.explevel >= 25 end,
+		requirements =
+		{
+			condition = function() return player.explevel >= 25 end,
+		},
 	}
 
 	-- Because it is ridiculous to die when you are past level 20
@@ -350,7 +434,10 @@ function drl.register_awards()
 		name  = "Purple Heart",
 		desc  = "Reach experience level 20+ and die",
 		hidden = true,
-		condition = function() return player.explevel >= 20 and player.hp <= 0 end,
+		requirements =
+		{
+			condition = function() return player.explevel >= 20 and player.hp <= 0 end,
+		},
 	}
 
   -- Below not implemented! --
@@ -368,6 +455,11 @@ function drl.register_awards()
 		name  = "UAC Bronze Badge",
 		desc  = "Win {!standard} game on any difficulty",
 		level = 1,
+		requirements =
+		{
+			winonly   = true,
+			challenge = "",
+		},
 	}
 
 	register_badge "buac2"
@@ -375,6 +467,12 @@ function drl.register_awards()
 		name  = "UAC Silver Badge",
 		desc  = "Win {!standard} game on Hurt Me Plenty",
 		level = 2,
+		requirements =
+		{
+			winonly    = true,
+			challenge  = "",
+			difficulty = DIFF_HARD,
+		},
 	}
 
 	register_badge "buac3"
@@ -382,6 +480,12 @@ function drl.register_awards()
 		name  = "UAC Gold Badge",
 		desc  = "Win {!standard} game on Ultra-Violence",
 		level = 3,
+		requirements =
+		{
+			winonly    = true,
+			challenge  = "",
+			difficulty = DIFF_VERYHARD,
+		},
 	}
 
 	register_badge "buac4"
@@ -389,6 +493,12 @@ function drl.register_awards()
 		name  = "UAC Platinum Badge",
 		desc  = "Win {!standard} game on N!",
 		level = 4,
+		requirements =
+		{
+			winonly    = true,
+			challenge  = "",
+			difficulty = DIFF_NIGHTMARE,
+		},
 	}
 
 	register_badge "buac5"
@@ -396,6 +506,13 @@ function drl.register_awards()
 		name  = "UAC Diamond Badge",
 		desc  = "Win {!standard} N! game under 20 min",
 		level = 5,
+		requirements =
+		{
+			winonly    = true,
+			challenge  = "",
+			difficulty = DIFF_NIGHTMARE,
+			condition  = function() return statistics.real_time <= 20*60 end,
+		},
 	}
 
 	register_badge "buac6"
@@ -403,6 +520,13 @@ function drl.register_awards()
 		name  = "UAC Angelic Badge",
 		desc  = "Win {!standard} N! damageless",
 		level = 6,
+		requirements =
+		{
+			winonly    = true,
+			challenge  = "",
+			difficulty = DIFF_NIGHTMARE,
+			condition  = function() return statistics.damage_taken == 0 end,
+		},
 	}
 
 -- VETERAN
@@ -412,6 +536,11 @@ function drl.register_awards()
 		name  = "Veteran Bronze Badge",
 		desc  = "Win game on any difficulty w/100% kills",
 		level = 1,
+		requirements =
+		{
+			winonly = true,
+			kills   = 1.0,
+		},
 	}
 
 	register_badge "veteran2"
@@ -419,6 +548,12 @@ function drl.register_awards()
 		name  = "Veteran Silver Badge",
 		desc  = "Win game on Hurt Me Plenty w/100% kills",
 		level = 2,
+		requirements =
+		{
+			winonly    = true,
+			difficulty = DIFF_HARD,
+			kills      = 1.0,
+		},
 	}
 
 	register_badge "veteran3"
@@ -426,6 +561,12 @@ function drl.register_awards()
 		name  = "Veteran Gold Badge",
 		desc  = "Win game on UV/100% kills",
 		level = 3,
+		requirements =
+		{
+			winonly    = true,
+			difficulty = DIFF_VERYHARD,
+			kills      = 1.0,
+		},
 	}
 
 	register_badge "veteran4"
@@ -433,6 +574,12 @@ function drl.register_awards()
 		name  = "Veteran Platinum Badge",
 		desc  = "Fully win the game on UV",
 		level = 4,
+		requirements =
+		{
+			winonly    = true,
+			difficulty = DIFF_VERYHARD,
+			condition  = function() return kills.get("jc") > 0 and player.hp > 0 end,
+		},
 	}
 
 	register_badge "veteran5"
@@ -440,6 +587,12 @@ function drl.register_awards()
 		name  = "Veteran Diamond Badge",
 		desc  = "Fully win the game on N!",
 		level = 5,
+		requirements =
+		{
+			winonly    = true,
+			difficulty = DIFF_NIGHTMARE,
+			condition  = function() return kills.get("jc") > 0 and player.hp > 0 end,
+		},
 	}
 
 	register_badge "veteran6"
@@ -447,6 +600,13 @@ function drl.register_awards()
 		name  = "Veteran Angelic Badge",
 		desc  = "Fully win on N!/100%",
 		level = 6,
+		requirements =
+		{
+			winonly    = true,
+			difficulty = DIFF_NIGHTMARE,
+			kills      = 1.0,
+			condition  = function() return kills.get("jc") > 0 and player.hp > 0 end,
+		},
 	}
 
 -- STRONGMAN
@@ -456,6 +616,15 @@ function drl.register_awards()
 		name  = "Strongman Bronze Badge",
 		desc  = "Win {!standard} game using basic melee weapons",
 		level = 1,
+		requirements =
+		{
+			winonly   = true,
+			challenge = "",
+			condition = function()
+				return kills.get_type( "other" ) + kills.get_type( "melee" ) +
+					kills.get_type( "knife" ) + kills.get_type( "chainsaw" ) == statistics.kills
+			end,
+		},
 	}
 
 	register_badge "strongman2"
@@ -463,6 +632,14 @@ function drl.register_awards()
 		name  = "Strongman Silver Badge",
 		desc  = "Win {!standard} game using knives/fists",
 		level = 2,
+		requirements =
+		{
+			winonly   = true,
+			challenge = "",
+			condition = function()
+				return kills.get_type( "other" ) + kills.get_type( "melee" ) + kills.get_type( "knife" ) == statistics.kills
+			end,
+		},
 	}
 
 	register_badge "strongman3"
@@ -470,6 +647,15 @@ function drl.register_awards()
 		name  = "Strongman Gold Badge",
 		desc  = "Win {!standard} game using knives/fists HMP",
 		level = 3,
+		requirements =
+		{
+			winonly    = true,
+			challenge  = "",
+			difficulty = DIFF_HARD,
+			condition  = function()
+				return kills.get_type( "other" ) + kills.get_type( "melee" ) + kills.get_type( "knife" ) == statistics.kills
+			end,
+		},
 	}
 
 	register_badge "strongman4"
@@ -477,6 +663,15 @@ function drl.register_awards()
 		name  = "Strongman Platinum Badge",
 		desc  = "Win {!standard} game using only fists HMP",
 		level = 4,
+		requirements =
+		{
+			winonly    = true,
+			challenge  = "",
+			difficulty = DIFF_HARD,
+			condition  = function()
+				return kills.get_type( "other" ) + kills.get_type( "melee" ) == statistics.kills
+			end,
+		},
 	}
 
 	register_badge "strongman5"
@@ -484,6 +679,14 @@ function drl.register_awards()
 		name  = "Strongman Diamond Badge",
 		desc  = "Win {!standard} game fist-only HMP/100% kills",
 		level = 5,
+		requirements =
+		{
+			winonly    = true,
+			challenge  = "",
+			difficulty = DIFF_HARD,
+			kills      = 1.0,
+			condition  = function() return kills.get_type( "other" ) + kills.get_type( "melee" ) == statistics.kills end,
+		},
 	}
 
 	register_badge "strongman6"
@@ -491,6 +694,14 @@ function drl.register_awards()
 		name  = "Strongman Angelic Badge",
 		desc  = "Win {!standard} game fist-only N!/90% kills",
 		level = 6,
+		requirements =
+		{
+			winonly    = true,
+			challenge  = "",
+			difficulty = DIFF_NIGHTMARE,
+			kills      = 0.9,
+			condition  = function() return kills.get_type( "other" ) + kills.get_type( "melee" ) == statistics.kills end,
+		},
 	}
 
 -- SPEEDRUNNER
@@ -500,6 +711,12 @@ function drl.register_awards()
 		name  = "Speedrunner Bronze Badge",
 		desc  = "Win {!standard} game under 30 minutes",
 		level = 1,
+		requirements =
+		{
+			winonly   = true,
+			challenge = "",
+			condition = function() return statistics.real_time <= 30*60 end,
+		},
 	}
 
 	register_badge "speedrunner2"
@@ -507,6 +724,13 @@ function drl.register_awards()
 		name  = "Speedrunner Silver Badge",
 		desc  = "Win {!standard} HNTR game under 25 minutes",
 		level = 2,
+		requirements =
+		{
+			winonly    = true,
+			challenge  = "",
+			difficulty = DIFF_MEDIUM,
+			condition  = function() return statistics.real_time <= 25*60 end,
+		},
 	}
 
 	register_badge "speedrunner3"
@@ -514,6 +738,13 @@ function drl.register_awards()
 		name  = "Speedrunner Gold Badge",
 		desc  = "Win {!standard} HMP game under 20 minutes",
 		level = 3,
+		requirements =
+		{
+			winonly    = true,
+			challenge  = "",
+			difficulty = DIFF_HARD,
+			condition  = function() return statistics.real_time <= 20*60 end,
+		},
 	}
 --[[
 
@@ -537,6 +768,13 @@ function drl.register_awards()
 		name  = "Speedrunner Angelic Badge",
 		desc  = "Win {!standard} N! game under 4 minutes",
 		level = 6,
+		requirements =
+		{
+			winonly    = true,
+			challenge  = "",
+			difficulty = DIFF_NIGHTMARE,
+			condition  = function() return statistics.real_time <= 4*60 end,
+		},
 	}
 
 -- ELITE
@@ -546,6 +784,13 @@ function drl.register_awards()
 		name  = "Elite Platinum Badge",
 		desc  = "Win {!standard} UV game as Conqueror",
 		level = 4,
+		requirements =
+		{
+			winonly    = true,
+			challenge  = "",
+			difficulty = DIFF_VERYHARD,
+			condition  = function() return statistics.bonus_levels_completed == statistics.bonus_levels_count end,
+		},
 	}
 
 	register_badge "elite5"
@@ -553,6 +798,13 @@ function drl.register_awards()
 		name  = "Elite Diamond Badge",
 		desc  = "Win {!standard} N!/90% kills",
 		level = 5,
+		requirements =
+		{
+			winonly    = true,
+			challenge  = "",
+			difficulty = DIFF_NIGHTMARE,
+			kills      = 0.9,
+		},
 	}
 
 	register_badge "elite6"
@@ -560,6 +812,14 @@ function drl.register_awards()
 		name  = "Elite Angelic Badge",
 		desc  = "Win {!standard} N!/100% as Conqueror",
 		level = 6,
+		requirements =
+		{
+			winonly    = true,
+			challenge  = "",
+			difficulty = DIFF_NIGHTMARE,
+			kills      = 1.0,
+			condition  = function() return statistics.bonus_levels_completed == statistics.bonus_levels_count end,
+		},
 	}
 
 -- Demonic
@@ -569,6 +829,13 @@ function drl.register_awards()
 		name  = "Demonic Platinum Badge",
 		desc  = "Win {!standard} N! as Explorer",
 		level = 4,
+		requirements =
+		{
+			winonly    = true,
+			challenge  = "",
+			difficulty = DIFF_NIGHTMARE,
+			condition  = function() return statistics.bonus_levels_visited == statistics.bonus_levels_count end,
+		},
 	}
 
 	register_badge "demonic5"
@@ -576,6 +843,13 @@ function drl.register_awards()
 		name  = "Demonic Diamond Badge",
 		desc  = "Win {!standard} N! with Untouchable Medal",
 		level = 5,
+		requirements =
+		{
+			winonly    = true,
+			challenge  = "",
+			difficulty = DIFF_NIGHTMARE,
+			condition  = function() return statistics.damage_taken < 200 end,
+		},
 	}
 
 	register_badge "demonic6"
@@ -583,6 +857,14 @@ function drl.register_awards()
 		name  = "Demonic Angelic Badge",
 		desc  = "Win {!standard} N!/100% damageless",
 		level = 6,
+		requirements =
+		{
+			winonly    = true,
+			challenge  = "",
+			difficulty = DIFF_NIGHTMARE,
+			kills      = 1.0,
+			condition  = function() return statistics.damage_taken == 0 end,
+		},
 	}
 
 -- Common special level
@@ -704,103 +986,19 @@ function drl.register_awards()
 end
 
 function drl.award_badges()
-	-- UAC, veteran, strongman and elite badges
-	if player:has_won() then
-		local is_conqueror = (statistics.bonus_levels_completed == statistics.bonus_levels_count)
-		local is_explorer  = (statistics.bonus_levels_visited   == statistics.bonus_levels_count)
-		local is_maxkills  = (statistics.unique_kills >= statistics.max_unique_kills)
-		local is_90kills   = (statistics.unique_kills >= statistics.max_unique_kills * 0.9)
-		local is_zerodmg   = (statistics.damage_taken == 0)
-		local is_fullwin   = (kills.get("jc") > 0 and player.hp > 0)
-
-		-- veteran badges
-		if is_maxkills then
-			player:add_badge( "veteran1" )
-			if DIFFICULTY >= DIFF_HARD      then player:add_badge("veteran2") end
-			if DIFFICULTY >= DIFF_VERYHARD  then player:add_badge("veteran3") end
+	for _,badge in ipairs( badges ) do
+		if badge.requirements and ( badge.challenge == "" or core.is_challenge( badge.challenge ) ) and
+			core.check_award_requirements( badge.requirements )
+		then
+			player:add_badge( badge.id )
 		end
-		if is_fullwin then
-			if DIFFICULTY >= DIFF_VERYHARD  then player:add_badge("veteran4") end
-			if DIFFICULTY >= DIFF_NIGHTMARE then 
-				player:add_badge("veteran5") 
-				if is_maxkills then
-					player:add_badge("veteran6") 
-				end
-			end
+	end
+
+	if player:has_won() and CHALLENGE == "" then
+		player:set_achievement("drl_legacy_2")
+		if DIFFICULTY >= DIFF_HARD then
+			player:set_achievement("drl_legacy_3")
 		end
-
-		if CHALLENGE == "" then
-			-- basic UAC badges
-			player:add_badge( "buac1" )
-			if DIFFICULTY >= DIFF_HARD      then player:add_badge("buac2") end
-			if DIFFICULTY >= DIFF_VERYHARD  then player:add_badge("buac3") end
-			if DIFFICULTY >= DIFF_NIGHTMARE then
-				player:add_badge("buac4")
-				if statistics.real_time <= 20*60 then player:add_badge("buac5") end
-				if is_zerodmg                    then player:add_badge("buac6") end
-			end
-
-			local melee_other = kills.get_type( "other" ) + kills.get_type( "melee" )
-
-			-- strongman badges
-			if melee_other + kills.get_type( "knife" ) + kills.get_type( "chainsaw" ) == statistics.kills then player:add_badge("strongman1") end
-			if melee_other + kills.get_type( "knife" ) == statistics.kills then
-				player:add_badge("strongman2")
-				if DIFFICULTY >= DIFF_HARD then player:add_badge("strongman3") end
-			end
-			if melee_other == statistics.kills and DIFFICULTY >= DIFF_HARD then
-				player:add_badge("strongman4")
-				if is_maxkills then player:add_badge("strongman5") end
-				if DIFFICULTY >= DIFF_NIGHTMARE and is_90kills then
-					player:add_badge("strongman6")
-				end
-			end
-			
-			-- speedrunner badges
-			if statistics.real_time <= 30*60 then
-				player:add_badge("speedrunner1")
-			end
-			if statistics.real_time <= 25*60 and DIFFICULTY >= DIFF_MEDIUM then
-				player:add_badge("speedrunner2")
-			end
-			if statistics.real_time <= 20*60 and DIFFICULTY >= DIFF_HARD then
-				player:add_badge("speedrunner3")
-			end
-			if statistics.real_time <= 4*60 and DIFFICULTY >= DIFF_NIGHTMARE then
-				player:add_badge("speedrunner6")
-			end
-
-			-- elite badges
-			if DIFFICULTY >= DIFF_VERYHARD  and is_conqueror then player:add_badge("elite4") end
-			if DIFFICULTY >= DIFF_NIGHTMARE then
-				if is_90kills then player:add_badge("elite5") end
-				if is_maxkills and is_conqueror then player:add_badge("elite6") end
-			end
-
-			-- demonic badges
-			if DIFFICULTY >= DIFF_NIGHTMARE then
-				if is_explorer                   then player:add_badge("demonic4") end
-				if statistics.damage_taken < 200 then player:add_badge("demonic5") end
-				if is_zerodmg and is_maxkills    then player:add_badge("demonic6") end
-			end
-			player:set_achievement("drl_legacy_2")
-			if DIFFICULTY >= DIFF_HARD then
-				player:set_achievement("drl_legacy_3")
-			end
-		end
-		--[[
-		if CHALLENGE == CHALLENGE_HASTE then
-			-- speedrunner badges
-			if statistics.real_time <= 10*60 then
-				if DIFFICULTY >= DIFF_HARD then
-					player:add_badge("speedrunner4")
-				end
-				if DIFFICULTY >= DIFF_NIGHTMARE then
-					player:add_badge("speedrunner5")
-				end
-			end
-		end
-		--]]
 	end
 end
 

@@ -568,7 +568,13 @@ begin
   if VTIG_EventCancel or VTIG_EventConfirm then
   begin
     FSaveExists := False;
-    FMode := MAINMENU_MENU;
+    if DRL.DataReloadRequired then
+    begin
+      FResult.ReloadData := True;
+      FMode := MAINMENU_DONE;
+    end
+    else
+      FMode := MAINMENU_MENU;
   end;
 end;
 

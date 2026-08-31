@@ -114,28 +114,38 @@ core.register_blueprint "klass"
 	OnUseActive = { false,  core.TFUNC },
 }
 
+core.register_blueprint "requirements"
+{
+	winonly    = { false, core.TBOOL },
+	challenge  = { false, core.TSTRING },
+	difficulty = { false, core.TNUMBER },
+	kills      = { false, core.TNUMBER },
+	trait      = { false, core.TNUMBER },
+	condition  = { false, core.TFUNC },
+}
+
 core.register_blueprint "medal"
 {
 	id        = { true,  core.TSTRING },
 	name      = { true,  core.TSTRING },
 	desc      = { true,  core.TSTRING },
 	score     = { false, core.TNUMBER, 0 },
-	winonly   = { false, core.TBOOL,   false },
 	hidden    = { false, core.TBOOL,   false },
 	removes   = { false, core.TARRAY( core.TIDIN("medals") ) },
-	condition = { false, core.TFUNC },
+	requirements = { false, "requirements" },
 }
 
 core.register_blueprint "badge"
 {
-	id          = { true,  core.TSTRING },
-	name        = { true,  core.TSTRING },
-	desc        = { true,  core.TSTRING },
-	level       = { true,  core.TNUMBER },
-	set         = { false, core.TSTRING, "" },
-	klass       = { false, core.TSTRING, "" },
-	achievement = { false, core.TSTRING, "" },
-	condition   = { false, core.TFUNC },
+	id           = { true,  core.TSTRING },
+	name         = { true,  core.TSTRING },
+	desc         = { true,  core.TSTRING },
+	level        = { true,  core.TNUMBER },
+	set          = { false, core.TSTRING, "" },
+	klass        = { false, core.TSTRING, "" },
+	achievement  = { false, core.TSTRING, "" },
+	challenge    = { false, core.TIDIN( "chal" ), "" },
+	requirements = { false, "requirements" },
 }
 
 core.register_blueprint "award_level"
@@ -377,8 +387,9 @@ core.register_blueprint "challenge"
 	removemedals  = { false, core.TARRAY( core.TIDIN("medals") ) },
 	win_mortem    = { false, core.TSTRING },
 	win_highscore = { false, core.TSTRING },
+	secondary     = { false, core.TTABLE },
+	runtime       = { false, core.TTABLE },
 
-	secondary          = { false, core.TTABLE },
 	arch_name          = { false, core.TSTRING },
 	arch_description   = { false, core.TSTRING },
 	arch_rating        = { false, core.TSTRING },
@@ -387,6 +398,7 @@ core.register_blueprint "challenge"
     arch_win_highscore = { false, core.TSTRING },
 
 	OnCreate         = { false, core.TFUNC },
+	OnRegister       = { false, core.TFUNC },
 	OnDie            = { false, core.TFUNC },
 	OnDieCheck       = { false, core.TFUNC },
 	OnPickup         = { false, core.TFUNC },
@@ -736,4 +748,3 @@ core.register_blueprint "emitter"
 	looping         = { false, core.TBOOL, false },
 	attached        = { false, core.TBOOL, false },
 }
-

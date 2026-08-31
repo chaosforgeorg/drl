@@ -39,7 +39,7 @@ end;
 type TDRLState = ( DSStart,      DSMenu,    DSLoading,   DSCrashLoading,
                     DSPlaying,    DSSaving,  DSNextLevel,
                     DSQuit,       DSFinished );
-type TDRLSessionResult = ( DSR_Quit, DSR_Played );
+type TDRLSessionResult = ( DSR_Quit, DSR_Played, DSR_ReloadData );
 
 // TDRLSession
 //
@@ -84,6 +84,7 @@ type TDRLSession = class(TVObject)
        procedure PreAction;
        procedure CreatePlayer( aResult : TMenuResult );
        function PrepareGameSeed( aRequestedSeed : Cardinal ) : Cardinal;
+       procedure RegisterChallengeRuntimes;
        function GetGameRNG : TRNG;
      private
        FState           : TDRLState;
@@ -108,6 +109,7 @@ type TDRLSession = class(TVObject)
        FChallenge       : AnsiString;
        FSChallenge      : AnsiString;
        FArchAngel       : Boolean;
+       FReloadData      : Boolean;
        FGameWon         : Boolean;
        FCrashSave       : Boolean;
        FParticles       : TParticleStore;
@@ -130,6 +132,7 @@ type TDRLSession = class(TVObject)
        property Particles : TParticleStore read FParticles;
        property GameSeed : Cardinal read FGameSeed;
        property SeededGame : Boolean read FSeededGame;
+       property DataReloadRequired : Boolean read FReloadData;
        property GameRNG : TRNG read GetGameRNG;
        property Paths : TGamePaths read FPaths;
      end;
@@ -317,6 +320,7 @@ begin
   FChallenge  := '';
   FSChallenge := '';
   FArchAngel  := False;
+  FReloadData := False;
   FGameWon    := False;
   FCrashSave  := False;
   FSeededGame := False;
@@ -357,6 +361,20 @@ begin
   FSChallengeHooks := [];
   if FChallenge  <> '' then FChallengeHooks  := LoadHooks( ['chal',FChallenge], GlobalHooks );
   if FSChallenge <> '' then FSChallengeHooks := LoadHooks( ['chal',FSChallenge], GlobalHooks );
+end;
+
+procedure TDRLSession.RegisterChallengeRuntimes;
+begin
+  if ( FChallenge <> '' ) and LuaSystem.Defined( [ 'chal', FChallenge, 'OnRegister' ] ) then
+  begin
+    FReloadData := True;
+    LuaSystem.Call( [ 'chal', FChallenge, 'OnRegister' ], [] );
+  end;
+  if ( FSChallenge <> '' ) and LuaSystem.Defined( [ 'chal', FSChallenge, 'OnRegister' ] ) then
+  begin
+    FReloadData := True;
+    LuaSystem.Call( [ 'chal', FSChallenge, 'OnRegister' ], [] );
+  end;
 end;
 
 procedure TDRLSession.PreAction;
@@ -1250,10 +1268,16 @@ begin
 
   IO.PushLayer( TMainMenuView.Create( MAINMENU_MENU, iResult ) );
   IO.WaitForLayer( True );
+  if iResult.ReloadData then
+  begin
+    Result := DSR_ReloadData;
+    FreeAndNil( iResult );
+    Exit;
+  end;
   Apply( iResult );
   if State = DSQuit then
   begin
-    FreeAndNil(iResult);
+    FreeAndNil( iResult );
     Exit;
   end;
   Result := DSR_Played;
@@ -1266,6 +1290,7 @@ begin
   end
   else
   begin
+    RegisterChallengeRuntimes;
     iEpisodeSeed := PrepareGameSeed( iResult.Seed );
     CreatePlayer( iResult );
   end;
@@ -1481,6 +1506,8 @@ begin
   IO.BloodSlideDown(20);
   FreeAndNil(Player);
 
+  if FReloadData and Option_MenuReturn then
+    Result := DSR_ReloadData;
   end;
   FreeAndNil( iResult );
 end;
@@ -1553,6 +1580,12 @@ begin
       FChallenge       := iStream.ReadAnsiString;
       FArchAngel       := iStream.ReadByte <> 0;
       FSChallenge      := iStream.ReadAnsiString;
+
+      LuaSystem.SetValue('DIFFICULTY', FDifficulty);
+      LuaSystem.SetValue('CHALLENGE',  FChallenge);
+      LuaSystem.SetValue('SCHALLENGE', FSChallenge);
+      LuaSystem.SetValue('ARCHANGEL', FArchAngel);
+      RegisterChallengeRuntimes;
 
       FGameSeed   := iStream.ReadDWord;
       FSeededGame := iStream.ReadBool;
