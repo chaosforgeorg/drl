@@ -60,6 +60,7 @@ end;
 type TMenuResult = class
   Quit       : Boolean;
   Loaded     : Boolean;
+  ReloadData : Boolean;
   ArchAngel  : Boolean;
   Challenge  : AnsiString;
   SChallenge : AnsiString;
@@ -508,6 +509,7 @@ procedure TMenuResult.Reset;
 begin
   Quit       := False;
   Loaded     := False;
+  ReloadData := False;
   Difficulty := 0;
   Challenge  := '';
   SChallenge := '';

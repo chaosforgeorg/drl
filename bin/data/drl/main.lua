@@ -581,6 +581,35 @@ function drl.RunPrintMortem()
 	player:mortem_print( "{r--------------------------------------------------------------} " )
 end
 
+function drl.modify_rewards( rewards, modifications )
+	for _,id in ipairs( modifications.remove or {} ) do
+		for index = #rewards,1,-1 do
+			if rewards[index].id == id then
+				table.remove( rewards, index )
+			end
+		end
+	end
+	for _,addition in ipairs( modifications.add or {} ) do
+		local id     = type(addition) == "table" and addition[1] or addition
+		local amount = type(addition) == "table" and addition[2] or 1
+		local found
+		for _,reward in ipairs( rewards ) do
+			if reward.id == id then
+				reward.amount = reward.amount + amount
+				found = true
+				break
+			end
+		end
+		if not found then
+			table.insert( rewards, { id = id, amount = amount } )
+		end
+	end
+end
+
+function drl.OnCreatePlayer()
+	player.level_data.hells_arena = { reward_modifications = {} }
+end
+
 function drl.OnCreateEpisode()
 	player.episode = {}
 	local paired = {

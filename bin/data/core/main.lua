@@ -89,7 +89,29 @@ register_perk       = core.register_storage( "perks", "perk", function (a)
 end )
 register_trait      = core.register_storage( "traits", "trait" )
 register_ai         = core.register_storage( "ais", "ai" )
-register_challenge  = core.register_storage( "chal", "challenge" )
+register_challenge  = core.register_storage( "chal", "challenge", function( challenge )
+	if not challenge.runtime then return end
+
+	local runtime_source = challenge.runtime
+	local runtime_id = "perk_"..challenge.id
+
+	local function register_runtime()
+		register_perk( runtime_id )( runtime_source )
+	end
+
+	local function attach_runtime()
+		player:add_perk( runtime_id )
+	end
+
+	challenge.runtime = runtime_id
+	challenge.OnCreatePlayer = core.create_seq_function( attach_runtime, challenge.OnCreatePlayer )
+
+	if BASE_MODULE_LOADING then
+		register_runtime()
+	else
+		challenge.OnRegister = core.create_seq_function( register_runtime, challenge.OnRegister )
+	end
+end )
 register_itemset    = core.register_storage( "itemsets", "itemset" )
 register_emitter    = core.register_storage( "emitters", "emitter", function( e )
 	if #e.shape_params == 0 then e.shape_params = {0, 0, 0} end
@@ -152,16 +174,21 @@ function register_klass_badge( id )
 					set   = id,
 					klass = k.id,
 					achievement = acv_id( k.id ),
+					challenge = b.challenge,
+					requirements = b.requirements,
 				}
 			end
 		end
 	end
 end
 
-function check_condition( t )
-	if t.challenge then
-		local id = "challenge_"..t.challenge
-		if not ( CHALLENGE == id or SCHALLENGE == id ) then
+function core.check_award_requirements( t )
+	if not t then return true end
+	if t.winonly and not player:has_won() then return false end
+	if t.challenge ~= nil then
+		if t.challenge == "" then
+			if CHALLENGE ~= "" then return false end
+		elseif not core.is_challenge( t.challenge ) then
 			return false
 		end
 	end
@@ -175,9 +202,23 @@ function check_condition( t )
 			return false
 		end
 	end
+	if t.trait and not player:has_trait( t.trait ) then return false end
+	if t.condition and not t.condition() then return false end
 	return true
 end
- 
+
+local function copy_master_requirements( source, trait )
+	return
+	{
+		winonly    = true,
+		challenge  = source.challenge,
+		difficulty = source.difficulty,
+		kills       = source.kills,
+		trait       = trait,
+		condition   = source.condition,
+	}
+end
+
 function register_master_badge( id )
 	return function( b )
 		assert( b.mid )
@@ -185,6 +226,7 @@ function register_master_badge( id )
 		assert( traits[b.mid], "Master trait '"..b.mid.."' not found!" )
 		assert( traits[b.mid].master, "'"..b.mid.."' not a master trait!" )
 		local name = traits[b.mid].name
+		local trait = traits[b.mid].nid
 
 		register_badge ( id.."_1" )
 		{
@@ -193,6 +235,11 @@ function register_master_badge( id )
 			level = 1,
 			set   = id,
 			klass = b.klass,
+			requirements =
+			{
+				trait     = trait,
+				condition = function() return player.episode[ level.index ].episode >= 3 end,
+			},
 		}
 		register_badge ( id.."_2" )
 		{
@@ -201,6 +248,11 @@ function register_master_badge( id )
 			level = 2,
 			set   = id,
 			klass = b.klass,
+			requirements =
+			{
+				winonly = true,
+				trait   = trait,
+			},
 		}
 		register_badge ( id.."_3" )
 		{
@@ -209,6 +261,12 @@ function register_master_badge( id )
 			level = 3,
 			set   = id,
 			klass = b.klass,
+			requirements =
+			{
+				winonly    = true,
+				difficulty = DIFF_HARD,
+				trait      = trait,
+			},
 		}
 		register_badge ( id.."_4" )
 		{
@@ -217,9 +275,7 @@ function register_master_badge( id )
 			level = 4,
 			set   = id,
 			klass = b.klass,
-			condition = function()
-				return player:has_trait( b.mid ) and check_condition( b.platinum )
-			end
+			requirements = copy_master_requirements( b.platinum, trait ),
 		}
 		register_badge ( id.."_5" )
 		{
@@ -228,9 +284,7 @@ function register_master_badge( id )
 			level = 5,
 			set   = id,
 			klass = b.klass,
-			condition = function()
-				return player:has_trait( b.mid ) and check_condition( b.diamond )
-			end
+			requirements = copy_master_requirements( b.diamond, trait ),
 		}
 	end
 end
@@ -441,23 +495,18 @@ function core.kills_count_group( weapon_group )
 end
 
 function core.award_medals()
-	-- Prefetch win condition
-	local win = player:has_won()
-
 	-- Iterate through the medals
 	for _,medal_proto in ipairs(medals) do
-		if medal_proto.condition and ( ( not medal_proto.winonly ) or win ) then
-			if medal_proto.condition() then
-				player:add_medal( medal_proto.id )
-				--if the player already has lesser medals in their player.wad, remove them from mortem
-				if medal_proto.removes then
-					for _,zero_medal in ipairs(medal_proto.removes) do
-						local medal_count = player_data.get_counted( 'medals', 'medal', zero_medal )
-						if medal_count <= 0 then
-							player:add_medal( zero_medal )
-						else
-							player:remove_medal( zero_medal )
-						end
+		if medal_proto.requirements and core.check_award_requirements( medal_proto.requirements ) then
+			player:add_medal( medal_proto.id )
+			--if the player already has lesser medals in their player.wad, remove them from mortem
+			if medal_proto.removes then
+				for _,zero_medal in ipairs(medal_proto.removes) do
+					local medal_count = player_data.get_counted( 'medals', 'medal', zero_medal )
+					if medal_count <= 0 then
+						player:add_medal( zero_medal )
+					else
+						player:remove_medal( zero_medal )
 					end
 				end
 			end

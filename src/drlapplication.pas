@@ -315,15 +315,15 @@ var iFirstSession : Boolean;
 begin
   iFirstSession := True;
   repeat
-    iSessionResult := FSession.Run(iFirstSession);
-    if (ForceRestart <> '') or (iSessionResult = DSR_Quit) or
+    iSessionResult := FSession.Run( iFirstSession );
+    if (ForceRestart <> '') or (iSessionResult in [DSR_Quit, DSR_ReloadData]) or
        (not Option_MenuReturn) then
       Break;
     ReleaseSession;
     CreateSession( True );
     iFirstSession := False;
   until False;
-  if ForceRestart <> '' then
+  if (ForceRestart <> '') or (iSessionResult = DSR_ReloadData) then
     Result := VRR_RELOAD_DATA
   else
     Result := VRR_QUIT;
@@ -385,7 +385,12 @@ begin
   for iModule in FModules.ActiveModules do
     if aHook in iModule.Hooks then
     try
-      LuaSystem.ProtectedCall([iModule.ID, HookNames[aHook]], aParams);
+      LuaSystem.SetValue( 'BASE_MODULE_LOADING', iModule.IsBaseLoading );
+      try
+        LuaSystem.ProtectedCall( [iModule.ID, HookNames[aHook]], aParams );
+      finally
+        LuaSystem.SetValue( 'BASE_MODULE_LOADING', False );
+      end;
     except
       on E : Exception do
       begin

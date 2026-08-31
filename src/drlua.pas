@@ -358,7 +358,12 @@ begin
           if DemoVersion then Halt(0);
           ModdedGame := True;
         end;
-        LoadStream( iData,'','main.lua' );
+        LuaSystem.SetValue( 'BASE_MODULE_LOADING', iModule.IsBaseLoading );
+        try
+          LoadStream( iData,'','main.lua' );
+        finally
+          LuaSystem.SetValue( 'BASE_MODULE_LOADING', False );
+        end;
       end;
       iData.RegisterLoader( FILETYPE_RAW, @Help.StreamLoader );
       iData.Load('help');
@@ -383,7 +388,12 @@ begin
             ModdedGame := True;
           end;
           RegisterModule( iModule.ID, iModule.Path );
-          LoadFile( iModule.Path + 'main.lua' );
+          LuaSystem.SetValue( 'BASE_MODULE_LOADING', iModule.IsBaseLoading );
+          try
+            LoadFile( iModule.Path + 'main.lua' );
+          finally
+            LuaSystem.SetValue( 'BASE_MODULE_LOADING', False );
+          end;
         end;
         LoadFiles( iModule.Path + 'help', @Help.StreamLoader, '*.hlp' );
         LoadFiles( iModule.Path + 'ascii', @IO.ASCIILoader, '*.asc' );
@@ -616,6 +626,7 @@ begin
   SetValue('WINDOWSVERSION', {$IFDEF WINDOWS}1{$ELSE}0{$ENDIF});
   SetValue('GRAPHICSVERSION',GraphicsVersion);
   SetValue('GODMODE',        GodMode);
+  SetValue( 'BASE_MODULE_LOADING', False );
 
   for Count := 0 to 15 do SetValue(ColorNames[Count],Count);
   TDRLIO.RegisterLuaAPI( State );
