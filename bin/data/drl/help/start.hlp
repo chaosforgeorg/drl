@@ -158,8 +158,9 @@ so use them wisely.
 Oh, I almost forgot! To shoot, just press "f" to fire at the currently 
 selected target! You can swap between visible targets using "TAB", or 
 hold "Ctrl" to move the target reticule manually with the arrow keys.
-Some weapons allow an alternative fire mode, such as the chainfiring 
-mode of the chaingun - to use it, press "SHIFT-f".
+Rotary weapons spool up as you keep firing at enemies, gaining additional
+shots. Their alternate fire shoots without spooling up, press "SHIFT-f" to
+use it.
 
 Ok, I hear you cry -- "Out of ammo!" Don't panic. Press "r" to reload your
 weapon (Some weapons allow you an alternative reload by pressing SHIFT-r).

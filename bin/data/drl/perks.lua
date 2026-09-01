@@ -168,33 +168,70 @@ function drl.register_perks()
 		end,
 	}
 
-	register_perk "perk_altfire_chainfire"
+	register_perk "perk_spool"
 	{
-		name   = "",
-		short  = "chainfire",
-		desc   = "spins up to fire longer bursts",
-		color  = LIGHTBLUE,
-		tags   = { "altfire" },
+		name   = "Spool-up",
+		desc   = "spools up when firing at enemies, granting bonus shots",
+		color  = WHITE,
+		tags   = {},
 
-		OnAdd = function(self)
-			self:add_property( "pp_chainfire", false )
-			self.flags[ IF_ALTTARGET ] = true
-			self.flags[ IF_ALTCHAIN  ] = true
+		OnPreAction = function( self )
+			local being = self.parent
+			being:add_property( "SPOOL_TARGET", false )
 		end,
 
-		OnRemove = function(self)
-			self:remove_property( "pp_chainfire" )
-			self.flags[ IF_ALTTARGET ] = false
-			self.flags[ IF_ALTCHAIN  ] = false
-		end,
-
-		OnAltFire = function( self, being, target )
-			self.pp_chainfire = true
+		OnFire = function( self, being, is_melee, alt )
+			if is_melee or alt then return true end
+			local target = being:get_target()
+			if level:get_being( target ) then
+				being:add_property( "SPOOL_TARGET", true )
+			end
 			return true
 		end,
 
-		OnFired = function( self, being )
-			self.pp_chainfire = false
+		OnUnequipCheck = function( self, being )
+			being:remove_perk( "spool_1", true )
+			being:remove_perk( "spool_2", true )
+			return true
+		end,
+
+		OnPostAction = function( self )
+			local being = self.parent
+			if not being then return end
+			if being.eq.weapon ~= self then return end
+
+			if being:get_property( "SPOOL_TARGET", false ) then
+				if not being:is_perk( "spool_2" ) then
+					if being:remove_perk( "spool_1", true ) then
+						being:add_perk( "spool_2" )
+					else
+						being:add_perk( "spool_1" )
+					end
+				end
+			else
+				being:remove_perk( "spool_1", true )
+				being:remove_perk( "spool_2", true )
+			end
+		end,
+	}
+
+	register_perk "perk_altfire_spool"
+	{
+		name   = "",
+		short  = "no spool",
+		desc   = "fires without spooling up",
+		color  = LIGHTBLUE,
+		tags   = { "altfire" },
+
+		OnAdd = function( self )
+			self.flags[ IF_ALTTARGET ] = true
+		end,
+
+		OnRemove = function( self )
+			self.flags[ IF_ALTTARGET ] = false
+		end,
+
+		OnAltFire = function( self, being )
 			return true
 		end,
 	}
@@ -273,7 +310,7 @@ function drl.register_perks()
 				self.ammomax       = self.shots
 				self.ammo          = self.shots
 				self.damage_sides  = self.damage_sides + 1
-				self.flags[ IF_ALTCHAIN ] = false
+				self:remove_perk( "perk_spool" )
 			end
 			return true
 		end,

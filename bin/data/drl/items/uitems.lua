@@ -765,7 +765,8 @@ function drl.register_unique_items()
 		},
 
 		OnCreate = function(self)
-			self:add_perk( "perk_altfire_chainfire" )
+			self:add_perk( "perk_altfire_spool" )
+			self:add_perk( "perk_spool" )
 		end,
 	}
 

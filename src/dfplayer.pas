@@ -388,9 +388,8 @@ begin
   end;
 
   FEnemiesInVision := iLevel.GetEnemiesVisible;
-  if FEnemiesInVision > 0
-    then FMultiMove.Stop
-    else FChainFire := 0;
+  if FEnemiesInVision > 0 then
+    FMultiMove.Stop;
 
   if FMultiMove.Active then
   begin
@@ -431,7 +430,6 @@ begin
   FStatistics.OnLevelEnter;
 
   FTargetPos.Create(0,0);
-  FChainFire := 0;
 end;
 
 procedure TPlayer.ExamineNPC;

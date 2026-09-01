@@ -157,7 +157,6 @@ protected
   FSeedHUDOffset : Integer;
 
   // Textmode only
-  FTargetLast     : Boolean;
   FTargetEnabled  : Boolean;
 
   // String subs
@@ -181,7 +180,6 @@ public
 
   // Textmode only
   property TargetEnabled : Boolean        read FTargetEnabled write FTargetEnabled;
-  property TargetLast    : Boolean        read FTargetLast    write FTargetLast;
 end;
 
 var IO : TDRLIO;
@@ -449,7 +447,6 @@ begin
   FSeedHUDOffset := -2;
 
   FTargetEnabled := False;
-  FTargetLast    := False;
   FCachedAmmo    := -1;
   FLastTarget.Create(0,0);
 end;

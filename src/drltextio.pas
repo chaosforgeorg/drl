@@ -232,8 +232,6 @@ begin
   if FTargetEnabled then
   begin
     iLevel := Session.Level;
-    if FTargetLast then
-      Paint( Player.TargetPos, Yellow );
     if ( Player.Position <> FTarget ) then
     begin
       iColor := Green;

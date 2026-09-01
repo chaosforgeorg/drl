@@ -173,4 +173,30 @@ function drl.register_affects()
 		end,
 	}
 
+	register_perk "spool_1"
+	{
+		short          = "spool +1",
+		desc           = "rotary weapon spooling up, {!+1} bonus shots",
+		color          = BLUE,
+		color_expire   = BLUE,
+
+		getShotsBonus  = function( self, weapon, alt )
+			if weapon and weapon:is_perk( "perk_spool" ) then return 1 end
+			return 0
+		end,
+	}
+
+	register_perk "spool_2"
+	{
+		short          = "spool +2",
+		desc           = "rotary weapon fully spooled, {!+2} bonus shots",
+		color          = LIGHTBLUE,
+		color_expire   = LIGHTBLUE,
+
+		getShotsBonus  = function( self, weapon, alt )
+			if weapon and weapon:is_perk( "perk_spool" ) then return 2 end
+			return 0
+		end,
+	}
+
 end

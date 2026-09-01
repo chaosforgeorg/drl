@@ -66,7 +66,9 @@ protected
 end;
 
 type TTargetModeView = class( TIOLayer )
-  constructor Create( aItem : TItem; aCommand : Byte; aActionName : AnsiString; aRange: byte; aLimitRange : Boolean; aTargets: TAutoTarget; aChainFire : Byte );
+  constructor Create( aItem : TItem; aCommand : Byte;
+    aActionName : AnsiString; aRange : Byte; aLimitRange : Boolean;
+    aTargets : TAutoTarget );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsModal : Boolean; override;
   function HandleInput( aInput : Integer ) : Boolean; override;
@@ -83,7 +85,6 @@ protected
   FPosition   : TCoord2D;
   FColor      : Byte;
   FRange      : Byte;
-  FChainFire  : Byte;
   FActionName : AnsiString;
   FNameLen    : Byte;
   FTargets    : TAutoTarget;
@@ -291,8 +292,9 @@ begin
   Exit( True );
 end;
 
-constructor TTargetModeView.Create( aItem : TItem; aCommand : Byte; aActionName : AnsiString;
-  aRange: byte; aLimitRange : Boolean; aTargets: TAutoTarget; aChainFire : Byte );
+constructor TTargetModeView.Create( aItem : TItem; aCommand : Byte;
+  aActionName : AnsiString; aRange : Byte; aLimitRange : Boolean;
+  aTargets : TAutoTarget );
 begin
   FFirst        := True;
   FTargets      := aTargets;
@@ -305,8 +307,6 @@ begin
   FColor        := Green;
   FItem         := aItem;
   FCommand      := aCommand;
-  FChainFire    := aChainFire;
-  IO.TargetLast := FChainFire > 0;
   IO.Targeting  := True;
 end;
 
@@ -460,7 +460,6 @@ begin
   begin
     DRL.Targeting.OnTarget( FTarget, False );
     Player.TargetPos := FTarget;
-    Player.ChainFire := FChainFire;
     DRL.HandleCommand( TCommand.Create( FCommand, FTarget, FItem ) );
   end;
 end;

@@ -613,7 +613,7 @@ function drl.register_traits()
 	{
 		name   = "Ammochain",
 		quote  = "\"Hey, Chaingun! The hell with respect!\"",
-		desc   = "True gunners do not think of such unimportant things like ammo supply! As long as you use your trusty chain-fire weapons you only use up one ammo per volley!",
+		desc   = "True gunners do not think of such unimportant things like ammo supply! As long as you use your trusty spool-capable weapons you only use up one ammo per volley!",
 		author = "Kornel",
 		abbr   = "MAc",
 		master = true,
@@ -622,7 +622,7 @@ function drl.register_traits()
 		end,
 
 		getAmmoCostMul = function( self, weapon, alt, shots )
-			if weapon and weapon.flags[ IF_ALTCHAIN ] then
+			if weapon and weapon:is_perk( "perk_spool" ) then
 				return 1.0 / shots
 			end
 			return 1.0
@@ -646,7 +646,7 @@ function drl.register_traits()
 	{
 		name   = "Entrenchment",
 		quote  = "\"Hoy, hoy, I'm the boy... Packin' 80 pounds of heavenly joy!\"",
-		desc   = "Once the barrels get rollin' you become one hardcore fighting platform... when chainfiring a rapid weapon you get +50% to all resistances, and volleys after the first, take just one ammo!",
+		desc   = "Once the barrels get rollin' you become one hardcore fighting platform... while a spool-capable weapon is spooling, you get +50% to all resistances, and volleys after the first take just one ammo!",
 		abbr   = "MEn",
 		master = true,
 
@@ -654,14 +654,15 @@ function drl.register_traits()
 		end,
 
 		getResistBonus = function ( self, resist, target )
-			if self.chainfire > 0 then
+			if self:is_perk( "spool_1" ) or self:is_perk( "spool_2" ) then
 				return 50
 			end
 			return 0
 		end,
 
 		getAmmoCostMul = function( self, weapon, alt, shots )
-			if alt and weapon and self.chainfire > 0 and weapon.flags[ IF_ALTCHAIN ] then
+			if weapon and weapon:is_perk( "perk_spool" )
+			and ( self:is_perk( "spool_1" ) or self:is_perk( "spool_2" ) ) then
 				return 1.0 / shots
 			end
 			return 1.0

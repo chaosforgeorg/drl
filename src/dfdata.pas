@@ -369,7 +369,6 @@ function Percent(Value : Integer) : string;
 function Seconds(Value : Integer) : string;
 function ItemTypeSetFromFlags( const aFlags : TFlags ) : TItemTypeSet;
 function ExplosionFlagsFromFlags( const aFlags : TFlags ) : TExplosionFlags;
-function RotateTowards( aSource, aTarget1, aTarget2 : TCoord2D; aAmount : Real ) : TCoord2D;
 function MSecNow : Comp;
 function DurationString( aSeconds : int64 ) : Ansistring;
 function BlindCoord( const where : TCoord2D ) : string;
@@ -599,31 +598,6 @@ begin
   ExplosionFlagsFromFlags := [];
   for iCount in TExplosionFlags  do
     if Byte( iCount ) in aFlags then Include( ExplosionFlagsFromFlags, iCount );
-end;
-
-function RotateTowards( aSource, aTarget1, aTarget2: TCoord2D; aAmount : Real ): TCoord2D;
-var iVector1, iVector2 : TCoord2D;
-    iCos, iSin, iAngle : Float;
-    iAT1, iAT2         : Float;
-    iSign              : Integer;
-begin
-  if aTarget1 = aTarget2 then Exit( aTarget2 );
-  iVector1  := aTarget1 - aSource;
-  iVector2  := aTarget2 - aSource;
-  iAT1      := arctan2( iVector1.y, iVector1.x );
-  iAT2      := arctan2( iVector2.y, iVector2.x );
-  if iAT1 < 0 then iAT1 += 2*PI;
-  if iAT2 < 0 then iAT2 += 2*PI;
-  iAngle    := iAT2 - iAT1;
-  iSign     := Sign( iAngle );
-  if Floor( Abs( iAngle ) / aAmount ) < 1 then Exit( aTarget2 );
-  if Abs( iAngle ) > PI then iSign := -iSign;
-
-  iCos := cos( aAmount * iSign );
-  iSin := sin( aAmount * iSign );
-  
-  RotateTowards.x := aSource.x + Round((iVector1.x * iCos) - (iVector1.y * iSin));
-  RotateTowards.y := aSource.y + Round((iVector1.y * iCos) + (iVector1.x * iSin));
 end;
 
 function MSecNow: Comp;

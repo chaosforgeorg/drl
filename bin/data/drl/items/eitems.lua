@@ -319,7 +319,8 @@ function drl.register_exotic_items()
 		hitsprite     = SPRITE_BLAST,
 
 		OnCreate = function(self)
-			self:add_perk( "perk_altfire_chainfire" )
+			self:add_perk( "perk_altfire_spool" )
+			self:add_perk( "perk_spool" )
 		end,
 	}
 
@@ -390,7 +391,8 @@ function drl.register_exotic_items()
 		hitsprite     = SPRITE_BLAST,
 
 		OnCreate = function(self)
-			self:add_perk( "perk_altfire_chainfire" )
+			self:add_perk( "perk_altfire_spool" )
+			self:add_perk( "perk_spool" )
 		end,
 	}
 
@@ -463,7 +465,8 @@ function drl.register_exotic_items()
 		hitsprite     = SPRITE_BLAST,
 
 		OnCreate = function(self)
-			self:add_perk( "perk_altfire_chainfire" )
+			self:add_perk( "perk_altfire_spool" )
+			self:add_perk( "perk_spool" )
 			self:add_perk( "perk_altreload_nuke" )
 			self:add_perk( "perk_weapon_recharge" )
 			self.pp_recharge.delay  = 40
