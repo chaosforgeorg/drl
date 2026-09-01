@@ -165,7 +165,7 @@ IF_HARDCOVER      = 67;
 IF_ILLUSION       = 68;
 IF_ALTTARGET      = 69;
 IF_ALTMANUAL      = 70;
-IF_ALTCHAIN       = 71;
+
 IF_DESTROY        = 72;
 IF_AUTOAMMO       = 73;
 IF_REVEALED       = 74;

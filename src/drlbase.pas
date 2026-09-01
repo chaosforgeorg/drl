@@ -30,10 +30,8 @@ private
   FList    : TAutoTarget;
   FLastUID : TUID;
   FLastPos : TCoord2D;
-  FPrevPos : TCoord2D;
 public
   property List : TAutoTarget read FList;
-  property PrevPos : TCoord2D read FPrevPos;
 end;
 
 type TDRLState = ( DSStart,      DSMenu,    DSLoading,   DSCrashLoading,
@@ -196,9 +194,6 @@ end;
 
 procedure TTargeting.OnTarget( aTarget : TCoord2D; aMove : Boolean );
 begin
-  if FLastPos.X*FLastPos.Y <> 0
-    then FPrevPos := FLastPos
-    else FPrevPos := aTarget;
   FLastUID := 0;
   if (not aMove) and (FSession.Level.Being[ aTarget ] <> nil) then
      if FSession.Level.Flags[ LF_BEINGSVISIBLE ]
