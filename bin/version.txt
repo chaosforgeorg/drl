@@ -1,4 +1,5 @@
 0.10.12
+GHJ#467 [new] -- Game - removed old Chainfire and replaced with JHC spooling
 GHD#364 [new] -- UI - you can rebind UI controls (up/down/escape/etc)
 GHD#348 [fix] -- Visual - possible fix for windows DPI scaling
 
