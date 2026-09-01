@@ -47,8 +47,16 @@ function drl.register_challenges()
 		rank        = 1,
 		abbr        = "AoB",
 		let         = "B",
-		removemedals = { "pistols", "shotguns" },
+		removemedals= { "pistols", "shotguns" },
 		secondary   = { "AoCn", "AoOC", "A100", "AoLT", "AoI", "AoP", "AoRA", "AoD", "AoMs" },
+		runtime     = {
+			OnUseCheck = function (self,item)
+				if not item then return true end
+				if item.itype ~= ITEMTYPE_RANGED then return true end
+				ui.msg("You pull the trigger, but nothing happens. You're a berserker, dumbass!")
+				return false
+			end,
+		},
 
 		OnCreatePlayer = function ()
 			player.inv:clear()
@@ -67,15 +75,6 @@ function drl.register_challenges()
 				}
 			)
 		end,
-		
-		OnUseCheck = function (item,being)
-			if not being:is_player() then return true end
-			if not item then return true end
-			if item.itype ~= ITEMTYPE_RANGED then return true end
-			ui.msg("You pull the trigger, but nothing happens. You're a berserker, dumbass!")
-			return false
-		end,
-
 		OnPickup = function(item,being)
 			if not being:is_player() then return end
 			if item.id == "lhglobe" then player:add_perk("berserk",100) end
@@ -147,7 +146,16 @@ function drl.register_challenges()
 		abbr        = "AoMr",
 		let         = "R",
 		secondary   = { "AoCn", "AoOC", "A100", "AoLT", "AoI", "AoP", "AoRA", "AoD", "AoMs" },
-		removemedals = { "pistols" },
+		removemedals= { "pistols" },
+		runtime     = {
+			OnUseCheck = function (self,item)
+				if not item then return true end
+				if item.itype ~= ITEMTYPE_RANGED and item.itype ~= ITEMTYPE_MELEE then return true end
+				if item.group == "pistol" then return true end
+				ui.msg("This weapon isn't worthy of a marksman!")
+				return false
+			end,
+		},
 
 		OnCreatePlayer = function ()
 			player.inv:add( table.random_pick({"mod_agility","mod_bulk","mod_tech"}) )
@@ -159,16 +167,6 @@ function drl.register_challenges()
 				}
 			)
 		end,
-		
-		OnUseCheck = function (item,being)
-			if not being:is_player() then return true end
-			if not item then return true end
-			if item.itype ~= ITEMTYPE_RANGED and item.itype ~= ITEMTYPE_MELEE then return true end
-			if item.group == "pistol" then return true end
-			ui.msg("This weapon isn't worthy of a marksman!")
-			return false
-		end,
-
 	}
 
 	register_badge "marksman1"
@@ -236,7 +234,16 @@ function drl.register_challenges()
 		abbr        = "AoSh",
 		let         = "S",
 		secondary   = { "AoCn", "AoOC", "A100", "AoLT", "AoI", "AoP", "AoRA", "AoD", "AoMs" },
-		removemedals = { "shotguns" },
+		removemedals= { "shotguns" },
+		runtime     = {
+			OnUseCheck = function (self,item)
+				if not item then return true end
+				if item.itype ~= ITEMTYPE_RANGED and item.itype ~= ITEMTYPE_MELEE then return true end
+				if item.group == "shotgun" then return true end
+				ui.msg("This is a weapon for wimps, not a true man!")
+				return false
+			end,
+		},
 
 		OnCreatePlayer = function ()
 			player.inv:clear()
@@ -256,16 +263,6 @@ function drl.register_challenges()
 				}
 			)
 		end,
-		
-		OnUseCheck = function (item,being)
-			if not being:is_player() then return true end
-			if not item then return true end
-			if item.itype ~= ITEMTYPE_RANGED and item.itype ~= ITEMTYPE_MELEE then return true end
-			if item.group == "shotgun" then return true end
-			ui.msg("This is a weapon for wimps, not a true man!")
-			return false
-		end,
-
 	}
 
 	register_badge "shotgun1"
@@ -620,6 +617,16 @@ function drl.register_challenges()
 		abbr        = "AoP",
 		let         = "P",
 		secondary   = { "AoCn", "AoOC", "A100", "AoLT", "AoRA", "AoD" },
+		runtime = {
+			OnPickupCheck = function(self,item)
+				if item.itype == ITEMTYPE_POWER then
+					ui.msg('Impure.')
+					return false
+				else
+					return true
+				end
+			end,
+		},
 
 		OnCreatePlayer = function ()
 			table.insert(
@@ -631,16 +638,6 @@ function drl.register_challenges()
 			)
 		end,
 		
-		OnPickupCheck = function(item,being)
-			if not being:is_player() then return true end
-			if item.itype == ITEMTYPE_POWER then
-				ui.msg('Impure.')
-				return false
-			else
-				return true
-			end
-		end,
-
 	}
 
 	register_badge "purity3"
@@ -928,6 +925,16 @@ function drl.register_challenges()
 		arch_rating      = "BLADE",
 		arch_rank        = 6,
 
+		runtime = {
+			OnPickupCheck = function(self,item)
+				if item.flags[IF_GLOBE] then
+					ui.msg("Nothing happens.")
+					return false
+				end
+				return true
+			end,
+		},
+
 		OnCreatePlayer = function ()
 			player.inv:clear()
 			if CHALLENGE ~= "challenge_aob" then
@@ -959,15 +966,6 @@ function drl.register_challenges()
 				player.hp = 2 * player.hpmax
 				player:remove_perk( "tired" )
 			end
-		end,
-
-		OnPickupCheck = function(item,being)
-			if not being:is_player() then return true end
-			if item.flags[IF_GLOBE] then
-				ui.msg("Nothing happens.")
-				return false
-			end
-			return true
 		end,
 
 	}
@@ -1208,13 +1206,22 @@ You can rest easy knowing that you're Boss. Yet at the last level you sensed som
 		rank        = 5,
 		abbr        = "AoPc",
 		let         = "F",
-		removemedals = { "zen", "fist", "knives", "experience1", "experience2", "purple", "killfew", "pistols", "shotguns" },
+		removemedals= { "zen", "fist", "knives", "experience1", "experience2", "purple", "killfew", "pistols", "shotguns" },
 		secondary   = { "AoCn", "AoOC", "A100", "AoI", "AoP", "AoD", "AoMs" },
 
 		arch_name        = "Archangel of Pacifism",
 		arch_description = "The monsters are beings too! They don't deserve to be killed! It's all the fault of that damn Spider Mastermind, she should be NUKED! You start with a Thermie, and... that's it -- no freebies for pacifists. Of course - *no* weapon usage.",
 		arch_rating      = "BLADE",
 		arch_rank        = 7,
+
+		runtime = {
+			OnUseCheck = function (self,item)
+				if not item then return true end
+				if item.itype ~= ITEMTYPE_RANGED and item.itype ~= ITEMTYPE_MELEE then return true end
+				ui.msg("No way! You're a pacifist!")
+				return false
+			end,
+		},
 
 		OnCreatePlayer = function ()
 			player.inv:clear()
@@ -1239,15 +1246,6 @@ You can rest easy knowing that you're Boss. Yet at the last level you sensed som
 				level.map[coord(77,19)] = "stairs"
 			end
 		end,
-
-		OnUseCheck = function (item,being)
-			if not being:is_player() then return true end
-			if not item then return true end
-			if item.itype ~= ITEMTYPE_RANGED and item.itype ~= ITEMTYPE_MELEE then return true end
-			ui.msg("No way! You're a pacifist!")
-			return false
-		end,
-
 		OnCreateEpisode = function ()
 			local seed = player.episode[1].seed
 			player.episode[1] = { style = 1, name = "Phobos L1", danger = 2, deathname = "level 1 of the Phobos base", seed = seed }

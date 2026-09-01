@@ -141,6 +141,25 @@ register_level "unholy_cathedral"
 			level = 5,
 		}
 
+		register_perk "perk_unholy_cathedral"
+		{
+            name     = "Unholy Aura",
+            desc     = "Your ranged weapons are cursed and refuse to fire in the Unholy Cathedral.",
+            color    = LIGHTRED,
+
+			OnUseCheck = function(self,item)
+				if item and item.itype == ITEMTYPE_RANGED then
+					ui.msg("You pull the trigger... nothing happens!")
+					return false
+				end
+				return true
+			end,
+		}
+
+	end,
+
+	OnEnterLevel = function ()
+		player:add_perk( "perk_unholy_cathedral" )
 	end,
 
 	Create = function ()
@@ -206,15 +225,8 @@ register_level "unholy_cathedral"
 		end
 	end,
 
-	OnUseCheck = function(item,being)
-		if being:is_player() and item and item.itype == ITEMTYPE_RANGED then
-			ui.msg("You pull the trigger... nothing happens!")
-			return false
-		end
-		return true
-	end,
-
 	OnExit = function ()
+		player:remove_perk( "perk_unholy_cathedral", true )
 		if level.status == 0 then
 			ui.msg("...Or wonder, till it drives you mad,")
 			ui.msg("What would have followed if you had....")
