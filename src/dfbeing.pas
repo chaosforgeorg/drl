@@ -2072,12 +2072,10 @@ begin
   begin
     if (Inv.Slot[meleeWeaponSlot] <> nil) and Inv.Slot[meleeWeaponSlot].isMelee then
     begin
-      if not DRL.CallHookCheck(Hook_OnUseCheck,[Inv.Slot[meleeWeaponSlot], Self]) then Exit(efTorso);
       if not CallHookCheck( Hook_OnUseCheck, [ Inv.Slot[meleeWeaponSlot] ] ) then Exit( efTorso );
     end
     else
     begin
-      if not DRL.CallHookCheck(Hook_OnUseCheck,[nil, Self]) then Exit(efTorso);
       if not CallHookCheck( Hook_OnUseCheck, [ nil ] ) then Exit( efTorso );
     end;
   end;

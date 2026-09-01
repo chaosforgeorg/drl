@@ -401,7 +401,6 @@ core.register_blueprint "challenge"
 	OnRegister       = { false, core.TFUNC },
 	OnPickup         = { false, core.TFUNC },
 	OnPickupCheck    = { false, core.TFUNC },
-	OnUseCheck       = { false, core.TFUNC },
 	OnEnterLevel     = { false, core.TFUNC },
 	OnExit           = { false, core.TFUNC },
 	OnUnLoad         = { false, core.TFUNC },
@@ -682,7 +681,6 @@ core.register_blueprint "level"
 
 	OnPickup         = { false, core.TFUNC },
 	OnUse            = { false, core.TFUNC },
-	OnUseCheck       = { false, core.TFUNC },
 	OnKill           = { false, core.TFUNC },
 	OnKillAll        = { false, core.TFUNC },
 	OnEnterLevel     = { false, core.TFUNC },
