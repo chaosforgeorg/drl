@@ -1061,8 +1061,8 @@ begin
   isOnGround := TLevel(Parent).Item[ FPosition ] = aItem;
   if aItem = nil then Exit( false );
   if (not aItem.isLever) and (not aItem.isUsable) and (not aItem.isAmmoPack) and (not aItem.isWearable) then Exit( False );
-  if ((not aItem.isWearable) and (not aItem.CallHookCheck( Hook_OnUseCheck,[Self] ))) or (aItem.isWearable and ( (not aItem.CallHookCheck( Hook_OnEquipCheck,[Self] )) or (not aItem.CallHookCheck( Hook_OnPickupCheck,[Self] )) )) then Exit( False );
   if (not aItem.isWearable) and (not CallHookCheck( Hook_OnUseCheck, [ aItem ] )) then Exit( False );
+  if ((not aItem.isWearable) and (not aItem.CallHookCheck( Hook_OnUseCheck,[Self] ))) or (aItem.isWearable and ( (not aItem.CallHookCheck( Hook_OnEquipCheck,[Self] )) or (not aItem.CallHookCheck( Hook_OnPickupCheck,[Self] )) )) then Exit( False );
 
   isLever   := aItem.isLever;
   isUsable  := aItem.isUsable;
@@ -3120,8 +3120,8 @@ begin
   iWeapon := iState.ToObject( 3 ) as TItem;
   iDelay  := iState.ToInteger( 4, 0 );
   if ( iBeing = nil ) or ( iWeapon = nil ) then Exit( 0 );
-  if iWeapon.CallHookCheck( Hook_OnUseCheck, [ iBeing ] ) and
-     iBeing.CallHookCheck( Hook_OnUseCheck, [ iWeapon ] )
+  if iBeing.CallHookCheck( Hook_OnUseCheck, [ iWeapon ] ) and
+     iWeapon.CallHookCheck( Hook_OnUseCheck, [ iBeing ] )
     then iState.Push( iBeing.ActionFire( iTarget, iWeapon, False, iDelay, iState.ToBoolean( 5, False ) ) )
     else iState.Push( False );
   Result := 1;
