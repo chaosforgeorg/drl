@@ -601,7 +601,6 @@ function TDRLSession.HandleFireCommand( aAlt : Boolean; aMouse : Boolean; aAuto 
 var iTarget     : TCoord2D;
     iItem       : TItem;
     iFireTitle  : AnsiString;
-    iChainFire  : Byte;
     iLimitRange : Boolean;
     iRange      : Byte;
     iCommand    : Byte;
@@ -611,9 +610,6 @@ begin
   IO.MsgUpdate;
   iLimitRange := False;
   iFireTitle  := '';
-  iChainFire  := Player.ChainFire;
-  if iChainFire > 0 then aAuto := False;
-  Player.ChainFire := 0;
 
   iItem := Player.Inv.Slot[ efWeapon ];
   if (iItem = nil) or (not iItem.isWeapon) then
@@ -710,15 +706,7 @@ begin
       iFireTitle := 'Choose fire target:';
       if aAlt then
       begin
-        if iItem.Flags[ IF_ALTCHAIN ] then
-        begin
-          case iChainFire of
-            0      : iFireTitle := 'Alternate fire ({Ginitial}):';
-            1      : iFireTitle := 'Alternate fire ({Ywarming}):';
-            2..255 : iFireTitle := 'Alternate fire ({Rfull}):';
-          end;
-        end
-        else if iItem.Flags[ IF_ALTTARGET ] 
+        if iItem.Flags[ IF_ALTTARGET ]
           then iFireTitle := 'Fire target ({L'+iItem.GetAltFireName+'}):'
           else begin iFireTitle := ''; iTarget := Player.Position; end;
       end;
@@ -733,7 +721,7 @@ begin
     if iRange = 0 then iRange := Player.Vision;
     if iRange <> Player.Vision then
       FTargeting.Update( iRange );
-    IO.PushLayer( TTargetModeView.Create( iItem, iCommand, iFireTitle, iRange+1, iLimitRange, FTargeting.List, iChainFire ) );
+    IO.PushLayer( TTargetModeView.Create( iItem, iCommand, iFireTitle, iRange+1, iLimitRange, FTargeting.List ) );
     Exit( False );
   end;
 
@@ -760,7 +748,7 @@ begin
   if iRange <> Player.Vision then
     FTargeting.Update( iRange );
   iLimitRange := aItem.Flags[ IF_EXACTHIT ];
-  IO.PushLayer( TTargetModeView.Create( aItem, COMMAND_USE, 'Choose target:', iRange+1, iLimitRange, FTargeting.List, 0 ) );
+  IO.PushLayer( TTargetModeView.Create( aItem, COMMAND_USE, 'Choose target:', iRange+1, iLimitRange, FTargeting.List ) );
   Exit( False );
 end;
 
@@ -1377,12 +1365,6 @@ begin
 
     while ( State = DSPlaying ) do
     begin
-      if Player.ChainFire > 0 then
-      begin
-        Action( INPUT_ALTFIRE );
-        Continue;
-      end;
-
       if ( Player.MultiMove.Active ) then
       begin
         iInput := Player.GetMultiMoveInput;

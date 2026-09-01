@@ -164,7 +164,6 @@ TBeing = class(TThing,IPathQuery)
     FMovePos       : TCoord2D;
     FLastPos       : TCoord2D;
     FBloodBoots    : Byte;
-    FChainFire     : Byte;
     FPath          : TPathFinder;
     FPathHazards   : TFlags;
     FPathClear     : TFlags;
@@ -188,7 +187,6 @@ TBeing = class(TThing,IPathQuery)
     property can_dual_wield       : Boolean read canDualWield;
     property can_dual_wield_melee : Boolean read canDualWieldMelee;
     property last_command : Byte       read FLastCommand.Command;
-    property ChainFire    : Byte       read FChainFire    write FChainFire;
     property HPMax        : Word       read FHPMax        write FHPMax;
     property HPNom        : Word       read FHPNom        write FHPNom;
 
@@ -346,7 +344,6 @@ begin
   FLastCommand.Command := 0;
 
   FBloodBoots   := 0;
-  FChainFire    := 0;
   FSpriteMod    := 0;
   FTargetSize   := 0;
 
@@ -460,18 +457,15 @@ procedure TBeing.HandleShots ( aTarget : TCoord2D; aGun : TItem; aShots : DWord;
 var iScatter     : DWord;
     iCount       : DWord;
     iSeqBase     : DWord;
-    iChainTarget : TCoord2D;
     iMissileRange: SmallInt;
     iRay         : TAssistedRay;
     iSteps       : SmallInt;
-    iChaining    : Boolean;
 begin
   Assert( aGun <> nil );
   iSeqBase := 0;
   if not isPlayer then iSeqBase := 100;
   iSeqBase += aDelay;
   iMissileRange := Max( 30, aGun.Range );
-  iChaining := aAltFire and ( aGun.Flags[ IF_ALTCHAIN ] ) and ( aShots > 1 );
 
   if aGun.Flags[ IF_SCATTER ] then
   begin
@@ -490,14 +484,8 @@ begin
     until false;
     iScatter := Max(1,(iSteps div 4)); {**** SCATTER TIME!}
   end;
-  if iChaining then
-  begin
-    iChainTarget := aTarget;
-    aTarget      := FTargetPos;
-  end;
   for iCount := 1 to aShots do
   begin
-    if iChaining then aTarget := RotateTowards( FPosition, aTarget, iChainTarget, PI/6 );
     if aGun.Flags[ IF_SCATTER ] then
        begin
             if not SendMissile( TLevel(Parent).Area.Clamped(aTarget.RandomShifted( DRL.GameRNG, iScatter )), aGun, aAltFire, iSeqBase+(iCount-1)*aGun.MisDelay*3, iCount-1 ) then Exit;
@@ -890,16 +878,12 @@ begin
 end;
 
 function TBeing.ActionFire ( aTarget : TCoord2D; aWeapon : TItem; aAltFire : Boolean; aDelay : Integer = 0; aForceSingle : Boolean = False ) : Boolean;
-var iChainFire  : Byte;
-    iLimitRange : Boolean;
+var iLimitRange : Boolean;
     iRange      : Byte;
     iDist       : Byte;
     iAltFire    : Boolean;
     iTargetUID  : TUID;
 begin
-  iChainFire  := FChainFire;
-  FChainFire  := 0;
-
   if (aWeapon = nil) then Exit( False );
   iAltFire    := aAltFire and aWeapon.HasHook( Hook_OnAltFire );
 
@@ -940,14 +924,6 @@ begin
   FTargetPos := aTarget;
   if not aWeapon.CallHookCheck( Hook_OnFire, [Self, False, aAltFire] ) then Exit( False );
   if not CallHookCheck( Hook_OnFire, [aWeapon, False, aAltFire] ) then Exit( False );
-
-  if iAltFire and aWeapon.Flags[ IF_ALTCHAIN ] then
-  begin
-    if ( iChainFire > 0 )
-      then FTargetPos := DRL.Targeting.PrevPos
-      else FTargetPos := aTarget;
-  end;
-  FChainFire := iChainFire;
 
   if aWeapon <> Inv.Slot[ efWeapon ]
     then Dec( FSpeedCount, getFireCost( iAltFire, False, aWeapon ) )
@@ -1462,7 +1438,6 @@ var iShots       : Integer;
     iShotsBonus  : Integer;
     iShotCost    : Integer;
     iShotsCost   : Integer;
-    iChaining    : Boolean;
     iFreeShot    : Boolean;
     iResult      : Boolean;
     iSecond      : Boolean;
@@ -1475,21 +1450,10 @@ begin
   iUIDW := aGun.UID;
   iUID  := FUID;
 
-  iShotsBonus  := GetBonus( Hook_getShotsBonus,  [ aGun, aAlt ] );
-
-  iShots       := Max( aGun.Shots, 1 );
-  iChaining    := aAlt and ( aGun.Flags[ IF_ALTCHAIN ] ) and ( iShots > 1 );
-  iShots       += iShotsBonus;
+  iShotsBonus := GetBonus( Hook_getShotsBonus, [ aGun, aAlt ] );
+  iShots      := Max( aGun.Shots, 1 );
+  iShots      += iShotsBonus;
   iSecond      := (aGun = FInv.Slot[ efWeapon2 ]);
-
-  if iChaining then
-  begin
-    case FChainFire of
-      0      : iShots -= aGun.Shots div 3;
-      1      : ;
-      2..255 : iShots += aGun.Shots div 2;
-    end;
-  end;
 
   iFreeShot := False;
   if aGun.Flags[ IF_NOAMMO ] or aGun.isUsable then iFreeShot := true;
@@ -1514,8 +1478,6 @@ begin
 
     aGun.Ammo := aGun.Ammo - iShotsCost;
   end;
-
-  if iChaining and ( FChainFire < 255 ) then Inc( FChainFire );
 
   if iShots < 1 then Exit;
 
