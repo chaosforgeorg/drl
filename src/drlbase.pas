@@ -656,6 +656,7 @@ begin
     if iItem.Flags[ IF_ALTMANUAL ]         then aAuto := False;
   end;
   if not iItem.CallHookCheck( Hook_OnUseCheck, [Player,aAlt] ) then Exit( False );
+  if not Player.CallHookCheck( Hook_OnUseCheck, [ iItem, aAlt ] ) then Exit( False );
 
   if aAlt then
   begin
