@@ -1,9 +1,7 @@
-* text=auto
+* text=auto eol=lf
 
-*.pas text eol=lf
-*.pp  text eol=lf
-*.inc text eol=lf
-*.lua text eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
 
 *.png binary
 *.jpg binary
