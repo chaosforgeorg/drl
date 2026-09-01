@@ -369,7 +369,7 @@ begin
     PlaySound( iEvent.SoundID, iEvent.Coord );
   end;
   if FAudio <> nil then FAudio.Update(aMSec);
-  UpdateHeartbeat;
+  if DRL    <> nil then UpdateHeartbeat;
 end;
 
 procedure TDRLAudio.PlaySound( const aSoundID : AnsiString; aVolumePercent : Integer );
