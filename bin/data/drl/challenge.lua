@@ -617,6 +617,16 @@ function drl.register_challenges()
 		abbr        = "AoP",
 		let         = "P",
 		secondary   = { "AoCn", "AoOC", "A100", "AoLT", "AoRA", "AoD" },
+		runtime = {
+			OnPickupCheck = function(self,item)
+				if item.itype == ITEMTYPE_POWER then
+					ui.msg('Impure.')
+					return false
+				else
+					return true
+				end
+			end,
+		},
 
 		OnCreatePlayer = function ()
 			table.insert(
@@ -628,16 +638,6 @@ function drl.register_challenges()
 			)
 		end,
 		
-		OnPickupCheck = function(item,being)
-			if not being:is_player() then return true end
-			if item.itype == ITEMTYPE_POWER then
-				ui.msg('Impure.')
-				return false
-			else
-				return true
-			end
-		end,
-
 	}
 
 	register_badge "purity3"
@@ -925,6 +925,16 @@ function drl.register_challenges()
 		arch_rating      = "BLADE",
 		arch_rank        = 6,
 
+		runtime = {
+			OnPickupCheck = function(self,item)
+				if item.flags[IF_GLOBE] then
+					ui.msg("Nothing happens.")
+					return false
+				end
+				return true
+			end,
+		},
+
 		OnCreatePlayer = function ()
 			player.inv:clear()
 			if CHALLENGE ~= "challenge_aob" then
@@ -956,15 +966,6 @@ function drl.register_challenges()
 				player.hp = 2 * player.hpmax
 				player:remove_perk( "tired" )
 			end
-		end,
-
-		OnPickupCheck = function(item,being)
-			if not being:is_player() then return true end
-			if item.flags[IF_GLOBE] then
-				ui.msg("Nothing happens.")
-				return false
-			end
-			return true
 		end,
 
 	}

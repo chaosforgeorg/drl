@@ -400,7 +400,6 @@ core.register_blueprint "challenge"
 	OnCreate         = { false, core.TFUNC },
 	OnRegister       = { false, core.TFUNC },
 	OnPickup         = { false, core.TFUNC },
-	OnPickupCheck    = { false, core.TFUNC },
 	OnEnterLevel     = { false, core.TFUNC },
 	OnExit           = { false, core.TFUNC },
 	OnUnLoad         = { false, core.TFUNC },

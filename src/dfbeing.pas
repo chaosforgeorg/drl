@@ -982,7 +982,8 @@ begin
 
   if iItem.isPower or iItem.isRelic then
   begin
-    if iItem.CallHookCheck(Hook_OnPickupCheck,[Self]) then
+    if CallHookCheck( Hook_OnPickupCheck, [ iItem ] ) and
+       iItem.CallHookCheck( Hook_OnPickupCheck, [ Self ] ) then
     begin
       iItem.PlaySound( 'powerup', FPosition );
       CallHook( Hook_OnPickUpItem, [iItem] );
@@ -1007,7 +1008,8 @@ begin
 
   if iItem.isStackable then
   begin
-    if not iItem.CallHookCheck(Hook_OnPickupCheck,[Self]) then  Exit( False );
+    if not CallHookCheck( Hook_OnPickupCheck, [ iItem ] ) then Exit( False );
+    if not iItem.CallHookCheck( Hook_OnPickupCheck, [ Self ] ) then Exit( False );
     iAmount := Inv.AddStack(iItem.NID,iItem.Amount);
     if iAmount <> iItem.Amount then
     begin
@@ -1025,7 +1027,8 @@ begin
 
   if Inv.isFull then Exit( Fail( 'You don''t have enough room in your backpack.', [] ) );
 
-  if not iItem.CallHookCheck(Hook_OnPickupCheck,[Self]) then  Exit( False );
+  if not CallHookCheck( Hook_OnPickupCheck, [ iItem ] ) then Exit( False );
+  if not iItem.CallHookCheck( Hook_OnPickupCheck, [ Self ] ) then Exit( False );
   iItem.PlaySound('pickup', FPosition );
   if isPlayer then IO.Msg('You picked up %s.',[iItem.GetName(false)]);
   Inv.Add(iItem);
@@ -1061,8 +1064,17 @@ begin
   isOnGround := TLevel(Parent).Item[ FPosition ] = aItem;
   if aItem = nil then Exit( false );
   if (not aItem.isLever) and (not aItem.isUsable) and (not aItem.isAmmoPack) and (not aItem.isWearable) then Exit( False );
-  if (not aItem.isWearable) and (not CallHookCheck( Hook_OnUseCheck, [ aItem ] )) then Exit( False );
-  if ((not aItem.isWearable) and (not aItem.CallHookCheck( Hook_OnUseCheck,[Self] ))) or (aItem.isWearable and ( (not aItem.CallHookCheck( Hook_OnEquipCheck,[Self] )) or (not aItem.CallHookCheck( Hook_OnPickupCheck,[Self] )) )) then Exit( False );
+  if aItem.isWearable then
+  begin
+    if not aItem.CallHookCheck( Hook_OnEquipCheck, [ Self ] ) then Exit( False );
+    if not CallHookCheck( Hook_OnPickupCheck, [ aItem ] ) then Exit( False );
+    if not aItem.CallHookCheck( Hook_OnPickupCheck, [ Self ] ) then Exit( False );
+  end
+  else
+  begin
+    if not CallHookCheck( Hook_OnUseCheck, [ aItem ] ) then Exit( False );
+    if not aItem.CallHookCheck( Hook_OnUseCheck, [ Self ] ) then Exit( False );
+  end;
 
   isLever   := aItem.isLever;
   isUsable  := aItem.isUsable;
