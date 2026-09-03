@@ -331,10 +331,6 @@ register_level "central_processing"
 		end
 	end,
 
-	OnEnterLevel = function ()
-		level.status = 0
-	end,
-
 	OnTick = function ()
 		local platform_up = (core.game_time() % 500 > 249)
 		if not level.data.platform:contains(player.position) then

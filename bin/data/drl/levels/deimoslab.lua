@@ -171,10 +171,6 @@ register_level "deimos_lab"
 		end
 	end,
 
-	OnEnterLevel = function ()
-		level.status = 0
-	end,
-
 	OnExit = function ()
 		local result = level.status
 			if player.nuketime > 1 then

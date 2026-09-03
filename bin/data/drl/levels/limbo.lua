@@ -130,7 +130,6 @@ register_level "limbo"
 
 	OnEnterLevel = function ()
 		ui.msg_feel("The smell of blood! You can barely believe this living hell...")
-		level.status = 0
 		ui.msg_feel("Suddenly with a wail, arch-viles appear!")
 		level:summon("arch",3 + 2 * DIFFICULTY )
 		player:add_badge("reaper1")

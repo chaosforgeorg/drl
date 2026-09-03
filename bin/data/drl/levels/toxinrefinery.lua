@@ -236,10 +236,6 @@ register_level "toxin_refinery"
 		end
 	end,
 
-	OnEnterLevel = function ()
-		level.status = 0
-	end,
-
 	OnTick = function ()
 		if (level.data.half_wall_down_time > 0) and (core.game_time() >= level.data.half_wall_down_time) and not level.data.half_wall:contains(player.position) then
 			local target = level:get_being(level.data.half_wall_coord)

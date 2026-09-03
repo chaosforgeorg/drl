@@ -171,7 +171,6 @@ register_level "hells_armory"
 	end,
 
 	OnEnterLevel = function ()
-		level.status = 0
 		ui.msg_feel("You hear the sounds of heavy machinery.")
 	end,
 

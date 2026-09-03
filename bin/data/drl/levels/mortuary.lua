@@ -72,7 +72,6 @@ XX.XX
 		ui.msg_feel("The smell of blood! Can this be real?? The floor is")
 		ui.msg_feel("covered in blood, and there are corpses everywhere!")
 
-		level.status = 0
 		ui.msg_feel("Suddenly with a wail, arch-viles appear!")
 		level:summon("arch",3+DIFFICULTY)
 		player:add_badge("reaper1")

@@ -191,10 +191,10 @@ register_level "hells_arena"
 			drl.modify_rewards( level.data.final_reward, modifications )
 		end
 		level:drop_being( player, coord( 38,10 ) )
+		level.status = 1
 	end,
 
 	OnEnterLevel = function ()
-		level.status = 1
 		ui.continue("A devilish voice announces:\n{R\"Welcome to Hell's Arena, mortal! You are either very foolish, or very brave. Either way I like it!\"}")
 		ui.continue("{R\"And so do the crowds!\"}\nSuddenly you hear screams everywhere!\n{R\"Blood! Blood! BLOOD!\"}")
 		ui.continue("The voice booms again:\n{R\"Kill all enemies and I shall reward thee!\"}")

@@ -87,10 +87,6 @@ register_level "military_base"
 		end
 	end,
 
-	OnEnterLevel = function ()
-		level.status = 0
-	end,
-
 	OnExit = function ()
 		local result = level.status
 		if result < 2 then

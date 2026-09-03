@@ -171,10 +171,6 @@ register_level "phobos_lab"
 		end
 	end,
 
-	OnEnterLevel = function ()
-		level.status = 0
-	end,
-
 	OnExit = function ()
 		if level.status == 4 then
 			core.special_complete()

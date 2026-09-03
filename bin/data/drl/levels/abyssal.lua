@@ -100,10 +100,6 @@ register_level "abyssal_plains"
 		level.status = 2
 	end,
 
-	OnEnterLevel = function ()
-		level.status = 0
-	end,
-
 	OnTick = function ()
 		local time = core.game_time()
 		local res = level.status

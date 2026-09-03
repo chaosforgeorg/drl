@@ -189,10 +189,6 @@ register_level "the_asmos_den"
 		level:drop_being( player, coord( 77,19 ) )
 	end,
 
-	OnEnterLevel = function ()
-		level.status = 0
-	end,
-
 	OnPickup = function (item)
 		if level.status == 0 and item.id == "uhellwrap" then
 			ui.msg("A deafening voice speaks: \"So you think you can steal Hell's riches? ")
