@@ -677,7 +677,6 @@ core.register_blueprint "level"
 	canGenerate      = { false, core.TFUNC },
 	OnRegister       = { false, core.TFUNC },
 
-	OnUse            = { false, core.TFUNC },
 	OnKill           = { false, core.TFUNC },
 	OnKillAll        = { false, core.TFUNC },
 	OnEnterLevel     = { false, core.TFUNC },

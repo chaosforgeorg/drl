@@ -11,13 +11,24 @@ register_level "house_of_pain"
 		return DIFFICULTY > 1
 	end,
 
-	OnUse = function (item)
-		if item.id == "phase" or item.id == "hphase" or item.id == "hstaff" then
-			ui.msg("Hey, no teleporting in the House!")
-			return false
-		elseif item.id == "uarenastaff" then
-			level.data.is_staff = true
-		end
+	OnRegister = function ()
+		register_perk "perk_house_of_pain"
+		{
+			name  = "House Rules",
+			desc  = "The House of Pain enforces its own rules.",
+			color = LIGHTRED,
+
+			OnUseCheck = function(self,item)
+				if not item then return true end
+				if item.id == "phase" or item.id == "hphase" or item.id == "hstaff" then
+					ui.msg("Hey, no teleporting in the House!")
+					return false
+				elseif item.id == "uarenastaff" then
+					level.data.is_staff = true
+				end
+				return true
+			end,
+		}
 	end,
 
 	Create = function ()
@@ -144,6 +155,7 @@ register_level "house_of_pain"
 
 
 	OnEnterLevel = function ()
+		player:add_perk( "perk_house_of_pain" )
 		level.status = 0
 		local choice = ui.query("A deathly high-pitched voice cackles!\n{R\"Well, who do we have here?\"} it begins. {R\"It seems that you've stumbled into my luxurious home. Would you care to have access?\"}")
 		if choice then
@@ -157,6 +169,7 @@ register_level "house_of_pain"
 	end,
 
 	OnExit = function ()
+		player:remove_perk( "perk_house_of_pain", true )
 		local result = level.status
 		if result == 0 then
 			ui.msg("Better show myself out...")

@@ -19,7 +19,7 @@ const
   Hook_OnPickup        = 7;   // Trait, Being, Item, Perk
   Hook_OnPickupCheck   = 8;   // Item, Perk
   Hook_OnFirstPickup   = 9;   // Item
-  Hook_OnUse           = 10;  // Item, Level, Module, Challenge, Core (Chained)
+  Hook_OnUse           = 10;  // Item, Perk
   Hook_OnUseCheck      = 11;  // Item, Perk
   Hook_OnAltFire       = 12;  // Item
   Hook_OnAltReload     = 13;  // Item
@@ -178,7 +178,7 @@ ItemHooks    := [ Hook_OnCreate, Hook_OnPickup, Hook_OnFirstPickup,
   Hook_OnUse, Hook_OnUseCheck, Hook_OnAltFire, Hook_OnEquip, Hook_OnUnequip,
   Hook_OnEnter, Hook_OnFire, Hook_OnAct, Hook_OnDestroy, Hook_OnDescribe, Hook_OnPickupCheck, 
   Hook_OnUnequipCheck, Hook_OnDrop ];
-ChainedHooks := [ Hook_OnCreate, Hook_OnUse ];
+ChainedHooks := [ Hook_OnCreate ];
 LevelHooks   := ChainedHooks + [ Hook_OnEnterLevel, Hook_OnKill, Hook_OnKillAll, Hook_OnExit, Hook_OnTick,
   Hook_OnNuked ];
 GlobalHooks  := LevelHooks + [ Hook_OnEnterLevel, Hook_OnKill, Hook_OnExit, Hook_OnTick,
