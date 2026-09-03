@@ -611,6 +611,7 @@ begin
   end;
 
   CallHook( Hook_OnEnterLevel,[FIndex,FID] );
+  DRL.CallHook( Hook_OnEnterLevel, [FIndex,FID] );
   Player.CallHook( Hook_OnEnterLevel,[FIndex,FID] );
 
   if GraphicsVersion then
@@ -671,6 +672,7 @@ procedure TLevel.Leave;
 var TimeDiff : LongInt;
 begin
   CallHook(Hook_OnExit,[FIndex,FID, FStatus]);
+  DRL.CallHook( Hook_OnExit, [FIndex,FID, FStatus] );
   if ( Player.HP > 0 ) and ( not ( Hook_OnExit in FHooks ) ) then
   begin
     TimeDiff :=  Player.Statistics.GameTime - Player.Statistics['entry_time'];
@@ -830,7 +832,6 @@ begin
   if aHook in FHooks then 
     if LF_SCRIPT in FFlags then // not needed?
       LuaSystem.ProtectedCall( [ 'levels', FID, HookNames[aHook] ], aParams );
-  DRL.CallHook( aHook, aParams );
 end;
 
 function TLevel.DamageTile( aCoord : TCoord2D; aDamage : Integer; aDamageType : TDamageType; aFloor : Boolean = True ) : Boolean;
@@ -1353,6 +1354,7 @@ begin
     Player.Statistics.OnTick;
 
     CallHook( Hook_OnTick,[ FLTime ] );
+    DRL.CallHook( Hook_OnTick, [FLTime] );
 
     if LF_RESPAWN in FFlags  then
     begin

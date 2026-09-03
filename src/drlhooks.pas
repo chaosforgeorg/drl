@@ -28,8 +28,8 @@ const
   Hook_OnAdd           = 16;  // Perk
   Hook_OnRemove        = 17;  // Perk
   Hook_OnTick10        = 18;  // Perk
-  Hook_OnKill          = 19;  // Item (separate), Trait, Being (separate), Level, Module, Challenge
-  Hook_OnKillAll       = 20;  // Level, Module, Challenge
+  Hook_OnKill          = 19;  // Item (separate), Trait, Being (separate), Level
+  Hook_OnKillAll       = 20;  // Level
   Hook_OnHitBeing      = 21;  // Item
   Hook_OnReload        = 22;  // Item
   Hook_OnDescribe      = 23;  // Item, Perk
@@ -41,20 +41,20 @@ const
   Hook_OnFire          = 29;  // Trait (separate), Item (not chained)
   Hook_OnFired         = 30;  // Trait, Being, Item, Perk
   Hook_OnExit          = 31;  // Level, Module, Challenge
-  Hook_OnTick          = 32;  // Perk, Being (separate), Level, Module, Challenge
-  Hook_OnNuked         = 33;  // Level, Module, Challenge
+  Hook_OnTick          = 32;  // Perk, Being (separate), Level, Module
+  Hook_OnNuked         = 33;  // Level
   Hook_OnLoad          = 34;  // Module
-  Hook_OnLoaded        = 35;  // Module, Challenge
+  Hook_OnLoaded        = 35;  // Module
   Hook_OnUnLoad        = 36;  // Module, Challenge
   Hook_OnCreatePlayer  = 37;  // Module, Challenge
   Hook_OnLevelUp       = 38;  // Module, Challenge
   Hook_OnPreLevelUp    = 39;  // Module, Challenge
   Hook_OnWinGame       = 40;  // Module, Challenge
   Hook_OnMortem        = 41;  // Module, Challenge
-  Hook_OnMortemPrint   = 42;  // Reserved (not dispatched)
+  Hook_Reserved42      = 42;
   Hook_OnCreateEpisode = 43;  // Module, Challenge
-  Hook_OnIntro         = 44;  // Module, Challenge
-  Hook_OnGenerate      = 45;  // Module, Challenge
+  Hook_OnIntro         = 44;  // Module
+  Hook_OnGenerate      = 45;  // Module
 
   // TODO: merge with above
   Hook_OnPostMove      = 46;   // Trait, Being
@@ -106,7 +106,7 @@ const HookNames : array[ 0..HookAmount-1 ] of AnsiString = (
       'OnHitBeing', 'OnReload', 'OnDescribe', 'OnEquipCheck', 'OnAct', 'OnDestroy', 'OnEnter', 'OnEnterLevel',
       'OnFire', 'OnFired', 'OnExit', 'OnTick', 'OnNuked',
       'OnLoad','OnLoaded','OnUnLoad', 'OnCreatePlayer', 'OnLevelUp','OnPreLevelUp',
-      'OnWinGame', 'OnMortem', 'OnMortemPrint', 'OnCreateEpisode', 'OnIntro' , 'OnGenerate',
+      'OnWinGame', 'OnMortem', 'Reserved42', 'OnCreateEpisode', 'OnIntro' , 'OnGenerate',
 
       'OnPostMove', 'OnPreReload', 'OnDamage', 'OnReceiveDamage', 'OnPreAction', 'OnPostAction',
       'OnCanDualWield', 'OnCanMaxDamage',
@@ -179,8 +179,9 @@ ItemHooks    := [ Hook_OnCreate, Hook_OnPickup, Hook_OnFirstPickup,
   Hook_OnUnequipCheck, Hook_OnDrop ];
 LevelHooks   := [ Hook_OnEnterLevel, Hook_OnKill, Hook_OnKillAll, Hook_OnExit, Hook_OnTick,
   Hook_OnNuked ];
-GlobalHooks  := LevelHooks + [ Hook_OnCreate, Hook_OnLoad, Hook_OnLoaded, Hook_OnUnLoad, Hook_OnCreatePlayer, Hook_OnLevelUp,
-  Hook_OnPreLevelUp, Hook_OnWinGame, Hook_OnMortem, Hook_OnMortemPrint, Hook_OnCreateEpisode,
+GlobalHooks  := [ Hook_OnCreate, Hook_OnEnterLevel, Hook_OnExit, Hook_OnTick,
+  Hook_OnLoad, Hook_OnLoaded, Hook_OnUnLoad, Hook_OnCreatePlayer, Hook_OnLevelUp,
+  Hook_OnPreLevelUp, Hook_OnWinGame, Hook_OnMortem, Hook_OnCreateEpisode,
   Hook_OnIntro, Hook_OnGenerate ];
 ModuleHooks  := [ Hook_OnLoad ];
 

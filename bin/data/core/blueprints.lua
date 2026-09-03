@@ -407,7 +407,6 @@ core.register_blueprint "challenge"
 	OnPreLevelUp     = { false, core.TFUNC },
 	OnWinGame        = { false, core.TFUNC },
 	OnMortem         = { false, core.TFUNC },
-	OnMortemPrint    = { false, core.TFUNC },
 	OnCreateEpisode  = { false, core.TFUNC },
 }
 
