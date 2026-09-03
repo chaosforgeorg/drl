@@ -158,10 +158,6 @@ register_level "unholy_cathedral"
 
 	end,
 
-	OnEnterLevel = function ()
-		player:add_perk( "perk_unholy_cathedral" )
-	end,
-
 	Create = function ()
 		core.special_create()
 		level:set_generator_style( 1 )
@@ -214,6 +210,7 @@ register_level "unholy_cathedral"
 
 		level:drop_being( player, coord( 3,10 ) )
 		level.status = 0
+		player:add_perk( "perk_unholy_cathedral" )
 	end,
 
 	OnKillAll = function ()

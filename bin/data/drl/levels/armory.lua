@@ -5,7 +5,7 @@ register_level "hells_armory"
 	name  = "Hell's Armory",
 	entry = "On @1 he entered Hell's Armory.",
 	level = 9,
-	welcome = "You enter Hell's Armory.",
+	welcome = "You enter Hell's Armory. You hear the sounds of heavy machinery.",
 
 	canGenerate = function ()
 		return DIFFICULTY > 1
@@ -168,10 +168,6 @@ register_level "hells_armory"
 				item.name  = ma.name.." schematics"
 			end
 		end
-	end,
-
-	OnEnterLevel = function ()
-		ui.msg_feel("You hear the sounds of heavy machinery.")
 	end,
 
 	OnExit = function ()

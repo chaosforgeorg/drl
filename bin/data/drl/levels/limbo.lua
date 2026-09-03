@@ -5,7 +5,7 @@ register_level "limbo"
 	name  = "Limbo",
 	entry = "On @1 he was foolish enough to enter Limbo!",
 	level = 20,
-	welcome = "You arrive at Limbo.",
+	welcome = "You arrive at Limbo. The smell of blood! You can barely believe this living hell... Suddenly with a wail, arch-viles appear!",
 
 	canGenerate = function ()
 		return DIFFICULTY > 1
@@ -129,8 +129,6 @@ register_level "limbo"
 	end,
 
 	OnEnterLevel = function ()
-		ui.msg_feel("The smell of blood! You can barely believe this living hell...")
-		ui.msg_feel("Suddenly with a wail, arch-viles appear!")
 		level:summon("arch",3 + 2 * DIFFICULTY )
 		player:add_badge("reaper1")
 	end,

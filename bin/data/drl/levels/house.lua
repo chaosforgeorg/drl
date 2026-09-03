@@ -90,6 +90,8 @@ register_level "house_of_pain"
 		generator.set_permanence( area.FULL, true, "ldoor" )
 
 		level:drop_being( player, coord( 14,10 ) )
+		player:add_perk( "perk_house_of_pain" )
+		level.flags[ LF_NORESPAWN ] = true
 	end,
 
 	OnKillAll = function ()
@@ -155,8 +157,6 @@ register_level "house_of_pain"
 
 
 	OnEnterLevel = function ()
-		player:add_perk( "perk_house_of_pain" )
-		level.status = 0
 		local choice = ui.query("A deathly high-pitched voice cackles!\n{R\"Well, who do we have here?\"} it begins. {R\"It seems that you've stumbled into my luxurious home. Would you care to have access?\"}")
 		if choice then
 			ui.msg("Well then, enjoy yourself. Just be wary of my other guests!")
@@ -165,7 +165,6 @@ register_level "house_of_pain"
 			ui.msg("No? All right, I'll see you out then.")
 			level:set_cell( 14, 11, "stairs" )
 		end
-		level.flags[ LF_NORESPAWN ] = true
 	end,
 
 	OnExit = function ()

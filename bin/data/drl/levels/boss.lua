@@ -38,7 +38,7 @@ register_badge "hellgate5"
 register_level "hellgate"
 {
 	name  = "Phobos Anomaly",
-	welcome = "You arrive at the Phobos Anomaly.",
+	welcome = "You arrive at the Phobos Anomaly. You sense a certain tension.",
 
 	OnRegister = function ()
 
@@ -129,12 +129,11 @@ register_level "hellgate"
 		level:drop_being( player, coord( 2,10 ) )
 		level.flags[ LF_NOHOMING ]      = true
 		level.flags[ LF_NOBEINGREVEAL ] = true
+		player:add_history( "He arrived at the Phobos Anomaly." )
+		level.status = 1
 	end,
 
 	OnEnterLevel = function ()
-		player:add_history( "He arrived at the Phobos Anomaly." )
-		level.status = 1
-		ui.msg_feel("You sense a certain tension.")
 		level:play_sound( "baron.act", player.position )
 	end,
 
@@ -204,10 +203,10 @@ register_level "tower_of_babel"
 		level.flags[ LF_NOBEINGREVEAL ] = true
 		generator.scatter_blood(area.FULL_SHRINKED,"floor",100)
 		level:drop_being( player, coord( 2,2 ) )
+		player:add_history( "He found the Tower of Babel." )
 	end,
 
 	OnEnterLevel = function ()
-		player:add_history( "He found the Tower of Babel." )
 		local boss = level:summon("cyberdemon")
 		boss.is_boss = true
 	end,
@@ -300,6 +299,7 @@ WWWWWWWWWWWWWWWWWWWWW...............####...............WWWWWWWWWWWWWWWWWWWWW
 		local player_pos = math.random( 2 ) == 1 and coord( 19,11 ) or coord( 60,10 )
 		level:drop_being( player, player_pos )
 		player.flags[ BF_STAIRSENSE ] = false
+		player:add_history( "Then at last he found Dis!" )
 	end,
 
 	OnNuked = function()
@@ -312,7 +312,6 @@ WWWWWWWWWWWWWWWWWWWWW...............####...............WWWWWWWWWWWWWWWWWWWWW
 	end,
 
 	OnEnterLevel = function ()
-		player:add_history( "Then at last he found Dis!" )
 		local boss = level:drop_being("mastermind",coord(39,19))
 		boss.is_boss = true
 	end,
@@ -372,9 +371,6 @@ register_level "hell_fortress"
 			boss = level:drop_being("jc",coord(76,11))
 		end
 		boss.is_boss = true
-	end,
-
-	OnEnterLevel = function ()
 		player:add_history( "He defeated the Mastermind and found the TRUE EVIL!" )
 	end,
 
