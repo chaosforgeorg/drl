@@ -278,6 +278,7 @@ begin
     FAmount := Round( FAmount * Double(LuaSystem.Get([ 'diff', DRL.Difficulty, 'ammofactor' ])) );
 
   CallHook( Hook_OnCreate, [] );
+  DRL.CallHook( Hook_OnCreate, [Self] );
 end;
 
 function TItem.MenuColor: byte;

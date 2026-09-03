@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit dfthing;
 interface
-uses SysUtils, Classes, vluaentitynode, vutil, vrltools, vluatable,
+uses SysUtils, Classes, vluaentitynode, vrltools, vluatable,
      vvector, dfdata, drlhooks, drlperk;
 
 type String16 = string[16];
@@ -128,12 +128,10 @@ begin
   CallHook := False;
   if aHook in FHooks         then begin CallHook := True; iState := DRL.State; LuaSystem.ProtectedRunHook(Self, Lua.HookName(aHook), aParams ); if DRL.State <> iState then Exit; end;
   if FPerks <> nil then if FPerks.CallHook( aHook, aParams ) then CallHook := True;
-  if aHook in ChainedHooks   then begin CallHook := True; DRL.Level.CallHook( aHook, ConcatConstArray( [ Self ], aParams ) ); end;
 end;
 
 function TThing.CallHookCheck ( aHook : Byte; const aParams : array of const ) : Boolean;
 begin
-  if aHook in ChainedHooks then if not DRL.Level.CallHookCheck( aHook, ConcatConstArray( [ Self ], aParams ) ) then Exit( False );
   if aHook in FHooks then if not LuaSystem.ProtectedRunHook(Self, HookNames[aHook], aParams ) then Exit( False );
   if FPerks <> nil then if not FPerks.CallHookCheck( aHook, aParams ) then Exit( False );
   Exit( True );

@@ -383,7 +383,10 @@ begin
   FHPDecayMax   := 100;
 
   if not isPlayer then
-    CallHook(Hook_OnCreate,[]);
+  begin
+    CallHook( Hook_OnCreate, [] );
+    DRL.CallHook( Hook_OnCreate, [Self] );
+  end;
 end;
 
 function TBeing.getAmmoItem ( Weapon : TItem ) : TItem;

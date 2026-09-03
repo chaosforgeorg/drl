@@ -68,7 +68,6 @@ TLevel = class(TLuaMapNode, ITextMap)
     function CallHook( coord : TCoord2D; aCellID : Word; Hook : TCellHook ) : Variant; overload;
     function CallHook( coord : TCoord2D; What : TThing; Hook : TCellHook ) : Variant; overload;
     procedure CallHook( aHook : Byte; const aParams : array of const );
-    function CallHookCheck( aHook : Byte; const aParams : array of const ) : Boolean;
 
     procedure DropCorpse( aCoord : TCoord2D; CellID : Byte );
     function DamageTile( aCoord : TCoord2D; aDamage : Integer; aDamageType : TDamageType; aFloor : Boolean = True ) : Boolean;
@@ -833,18 +832,6 @@ begin
       LuaSystem.ProtectedCall( [ 'levels', FID, HookNames[aHook] ], aParams );
   DRL.CallHook( aHook, aParams );
 end;
-
-function TLevel.CallHookCheck( aHook : Byte; const aParams : array of const ) : Boolean;
-begin
-  if not DRL.CallHookCheck( aHook, aParams ) then Exit( False );
-  if aHook in FHooks then 
-    if LF_SCRIPT in FFlags then
-      if not LuaSystem.ProtectedCall( [ 'levels', FID, HookNames[aHook] ], aParams ) then 
-        Exit( False );
-  if not FPerks.CallHookCheck( aHook, aParams ) then Exit( False );
-  Exit( True );
-end;
-
 
 function TLevel.DamageTile( aCoord : TCoord2D; aDamage : Integer; aDamageType : TDamageType; aFloor : Boolean = True ) : Boolean;
 var iCellID  : Byte;

@@ -9,7 +9,7 @@ interface
 uses vutil, vluasystem, dfdata;
 
 const
-  Hook_OnCreate        = 0;   // Being and Item -> Module, Challenge (Chained through Level)
+  Hook_OnCreate        = 0;   // Being and Item; Module and Challenge notified explicitly
   Hook_OnAction        = 1;   // Being
   Hook_OnAttacked      = 2;   // Trait, Being
   Hook_OnUseActive     = 3;   // Trait, Being
@@ -92,7 +92,6 @@ const AllHooks      : TFlags = [ 0..HookAmount-1 ];
 
 var   BeingHooks       : TFlags;
       ItemHooks        : TFlags;
-      ChainedHooks     : TFlags;
       FullInvHooks     : TFlags;
       NoInventoryHooks : TFlags;
       LevelHooks       : TFlags;
@@ -178,11 +177,9 @@ ItemHooks    := [ Hook_OnCreate, Hook_OnPickup, Hook_OnFirstPickup,
   Hook_OnUse, Hook_OnUseCheck, Hook_OnAltFire, Hook_OnEquip, Hook_OnUnequip,
   Hook_OnEnter, Hook_OnFire, Hook_OnAct, Hook_OnDestroy, Hook_OnDescribe, Hook_OnPickupCheck, 
   Hook_OnUnequipCheck, Hook_OnDrop ];
-ChainedHooks := [ Hook_OnCreate ];
-LevelHooks   := ChainedHooks + [ Hook_OnEnterLevel, Hook_OnKill, Hook_OnKillAll, Hook_OnExit, Hook_OnTick,
+LevelHooks   := [ Hook_OnEnterLevel, Hook_OnKill, Hook_OnKillAll, Hook_OnExit, Hook_OnTick,
   Hook_OnNuked ];
-GlobalHooks  := LevelHooks + [ Hook_OnEnterLevel, Hook_OnKill, Hook_OnExit, Hook_OnTick,
-  Hook_OnLoad, Hook_OnLoaded, Hook_OnUnLoad, Hook_OnCreatePlayer, Hook_OnLevelUp,
+GlobalHooks  := LevelHooks + [ Hook_OnCreate, Hook_OnLoad, Hook_OnLoaded, Hook_OnUnLoad, Hook_OnCreatePlayer, Hook_OnLevelUp,
   Hook_OnPreLevelUp, Hook_OnWinGame, Hook_OnMortem, Hook_OnMortemPrint, Hook_OnCreateEpisode,
   Hook_OnIntro, Hook_OnGenerate ];
 ModuleHooks  := [ Hook_OnLoad ];
