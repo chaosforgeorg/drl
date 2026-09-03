@@ -15,8 +15,8 @@ const
   Hook_OnUseActive     = 3;   // Trait, Being
   Hook_OnDie           = 4;   // Trait, Being, Level, Module, Challenge, Core (Chained)
   Hook_OnDieCheck      = 5;   // Trait, Being, Level, Module, Challenge, Core (Chained)
-  Hook_OnPickupItem    = 6;   // Trait, Being, Level, Module, Challenge, Core (Chained)
-  Hook_OnPickup        = 7;   // Item, Level, Module, Challenge, Core (Chained)
+  Hook_Reserved06      = 6;
+  Hook_OnPickup        = 7;   // Trait, Being, Item, Perk
   Hook_OnPickupCheck   = 8;   // Item, Perk
   Hook_OnFirstPickup   = 9;   // Item
   Hook_OnUse           = 10;  // Item, Level, Module, Challenge, Core (Chained)
@@ -90,18 +90,19 @@ const
 
 const AllHooks      : TFlags = [ 0..HookAmount-1 ];
 
-var   BeingHooks    : TFlags;
-      ItemHooks     : TFlags;
-      ChainedHooks  : TFlags;
-      FullInvHooks  : TFlags;
-      LevelHooks    : TFlags;
-      GlobalHooks   : TFlags;
-      ModuleHooks   : TFlags;
+var   BeingHooks       : TFlags;
+      ItemHooks        : TFlags;
+      ChainedHooks     : TFlags;
+      FullInvHooks     : TFlags;
+      NoInventoryHooks : TFlags;
+      LevelHooks       : TFlags;
+      GlobalHooks      : TFlags;
+      ModuleHooks      : TFlags;
 
 
 const HookNames : array[ 0..HookAmount-1 ] of AnsiString = (
       'OnCreate', 'OnAction', 'OnAttacked', 'OnUseActive', 'OnDie', 'OnDieCheck',
-      'OnPickupItem', 'OnPickup','OnPickupCheck','OnFirstPickup','OnUse','OnUseCheck',
+      'Reserved06', 'OnPickup','OnPickupCheck','OnFirstPickup','OnUse','OnUseCheck',
       'OnAltFire', 'OnAltReload', 'OnEquip', 'OnUnequip', 'OnAdd', 'OnRemove', 'OnTick10', 'OnKill', 'OnKillAll',
       'OnHitBeing', 'OnReload', 'OnDescribe', 'OnEquipCheck', 'OnAct', 'OnDestroy', 'OnEnter', 'OnEnterLevel',
       'OnFire', 'OnFired', 'OnExit', 'OnTick', 'OnNuked',
@@ -166,17 +167,18 @@ initialization
 
 AllHooks     := [ 0..HookAmount-1 ];
 BeingHooks   := [ Hook_OnCreate, Hook_OnAction, Hook_OnAttacked, Hook_OnUseActive,
-  Hook_OnDie, Hook_OnDieCheck, Hook_OnPickUpItem, Hook_OnDropItem, Hook_OnPostMove, Hook_OnKill,
+  Hook_OnDie, Hook_OnDieCheck, Hook_OnPickup, Hook_OnDropItem, Hook_OnPostMove, Hook_OnKill,
   Hook_OnDamage, Hook_OnReceiveDamage, Hook_OnPreAction, Hook_OnEnterLevel, Hook_OnAct, Hook_OnCanAct,
   Hook_getDamageBonus, Hook_getToHitBonus, Hook_getShotsBonus, Hook_getFireCostBonus,
   Hook_getDefenceBonus, Hook_getDodgeBonus, Hook_getMoveBonus, Hook_getBodyBonus,
   Hook_getResistBonus, Hook_getDamageMul, Hook_getFireCostMul, Hook_getAmmoCostMul ];
 FullInvHooks := [ Hook_OnPreAction, Hook_OnPostAction, Hook_OnTick ];
+NoInventoryHooks := [ Hook_OnPickup ];
 ItemHooks    := [ Hook_OnCreate, Hook_OnPickup, Hook_OnFirstPickup,
   Hook_OnUse, Hook_OnUseCheck, Hook_OnAltFire, Hook_OnEquip, Hook_OnUnequip,
   Hook_OnEnter, Hook_OnFire, Hook_OnAct, Hook_OnDestroy, Hook_OnDescribe, Hook_OnPickupCheck, 
   Hook_OnUnequipCheck, Hook_OnDrop ];
-ChainedHooks := [ Hook_OnCreate, Hook_OnPickup, Hook_OnUse ];
+ChainedHooks := [ Hook_OnCreate, Hook_OnUse ];
 LevelHooks   := ChainedHooks + [ Hook_OnEnterLevel, Hook_OnKill, Hook_OnKillAll, Hook_OnExit, Hook_OnTick,
   Hook_OnNuked ];
 GlobalHooks  := LevelHooks + [ Hook_OnEnterLevel, Hook_OnKill, Hook_OnExit, Hook_OnTick,

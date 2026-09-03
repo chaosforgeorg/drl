@@ -217,8 +217,9 @@ begin
   CallHook := FTraits.CallHook( aHook, aParams );
   if inherited CallHook( aHook, aParams ) then
     CallHook := True;
-  if FInv.CallHook( aHook, aHook in FullInvHooks, aParams ) then
-    CallHook := True;
+  if not ( aHook in NoInventoryHooks ) then
+    if FInv.CallHook( aHook, aHook in FullInvHooks, aParams ) then
+      CallHook := True;
 end;
 
 function TPlayer.CallHookCheck( aHook : Byte; const aParams : array of Const ) : Boolean;

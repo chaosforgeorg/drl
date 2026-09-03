@@ -59,7 +59,7 @@ core.register_blueprint "trait"
 	OnDie           = { false, core.TFUNC },
 	OnDieCheck      = { false, core.TFUNC },
 	OnUseActive     = { false, core.TFUNC },
-	OnPickupItem    = { false, core.TFUNC },
+	OnPickup        = { false, core.TFUNC },
 	OnPostMove      = { false, core.TFUNC },
 	OnKill          = { false, core.TFUNC },
 	OnFire          = { false, core.TFUNC },
@@ -296,7 +296,7 @@ core.register_blueprint "being"
 	OnKill          = { false, core.TFUNC },
 	OnDie           = { false, core.TFUNC },
 	OnDieCheck      = { false, core.TFUNC },
-	OnPickupItem    = { false, core.TFUNC },
+	OnPickup        = { false, core.TFUNC },
 	OnUseActive     = { false, core.TFUNC },
 	OnPostMove      = { false, core.TFUNC },
 	OnDamage        = { false, core.TFUNC },
@@ -399,7 +399,6 @@ core.register_blueprint "challenge"
 
 	OnCreate         = { false, core.TFUNC },
 	OnRegister       = { false, core.TFUNC },
-	OnPickup         = { false, core.TFUNC },
 	OnEnterLevel     = { false, core.TFUNC },
 	OnExit           = { false, core.TFUNC },
 	OnUnLoad         = { false, core.TFUNC },
@@ -678,7 +677,6 @@ core.register_blueprint "level"
 	canGenerate      = { false, core.TFUNC },
 	OnRegister       = { false, core.TFUNC },
 
-	OnPickup         = { false, core.TFUNC },
 	OnUse            = { false, core.TFUNC },
 	OnKill           = { false, core.TFUNC },
 	OnKillAll        = { false, core.TFUNC },
