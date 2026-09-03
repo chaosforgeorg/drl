@@ -50,7 +50,7 @@ type TDRLSession = class(TVObject)
        procedure InitializeLevel;
        procedure Reset;
        procedure Reconfigure;
-       procedure SetDataHooks( aCoreHooks, aModuleHooks : TFlags );
+       procedure SetModuleHooks( aModuleHooks : TFlags );
        function LoadSaveFile : Boolean;
        procedure WriteSaveFile( aCrash : Boolean );
        function SaveExists : Boolean;
@@ -98,7 +98,6 @@ type TDRLSession = class(TVObject)
        FPadMoved        : Boolean;
        FModules         : TDRLModules;
 
-       FCoreHooks       : TFlags;
        FChallengeHooks  : TFlags;
        FSChallengeHooks : TFlags;
        FModuleHooks     : TFlags;
@@ -214,12 +213,10 @@ begin
   if (Hook in FModuleHooks) then LuaSystem.ProtectedCall([CoreModuleID,Lua.HookName(Hook)],Params);
   if (FChallenge <> '')  and (Hook in FChallengeHooks) then LuaSystem.ProtectedCall(['chal',FChallenge,Lua.HookName(Hook)],Params);
   if (FSChallenge <> '') and (Hook in FSChallengeHooks) then LuaSystem.ProtectedCall(['chal',FSChallenge,Lua.HookName(Hook)],Params);
-  if (Hook in FCoreHooks) then LuaSystem.ProtectedCall(['core',Lua.HookName(Hook)],Params);
 end;
 
 function TDRLSession.CallHookCheck ( Hook : Byte; const Params : array of const ) : Boolean;
 begin
-  if (Hook in FCoreHooks) then if not LuaSystem.ProtectedCall(['core',HookNames[Hook]],Params) then Exit( False );
   if (FChallenge <> '') and (Hook in FChallengeHooks) then if not LuaSystem.ProtectedCall(['chal',FChallenge,HookNames[Hook]],Params) then Exit( False );
   if (FSChallenge <> '') and (Hook in FSChallengeHooks) then if not LuaSystem.ProtectedCall(['chal',FSChallenge,HookNames[Hook]],Params) then Exit( False );
   if Hook in FModuleHooks then if not LuaSystem.ProtectedCall([CoreModuleID,HookNames[Hook]],Params) then Exit( False );
@@ -293,9 +290,8 @@ begin
   Result := FRuntime.GameRNG;
 end;
 
-procedure TDRLSession.SetDataHooks( aCoreHooks, aModuleHooks : TFlags );
+procedure TDRLSession.SetModuleHooks( aModuleHooks : TFlags );
 begin
-  FCoreHooks := aCoreHooks;
   FModuleHooks := aModuleHooks;
 end;
 

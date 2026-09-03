@@ -26,7 +26,6 @@ type TDRLRuntime = class( TRLRuntime )
     FGameFailed  : Boolean;
     FModules     : TDRLModules;
     FStore       : TStoreInterface;
-    FCoreHooks   : TFlags;
     FModuleHooks : TFlags;
     FDataLoaded  : Boolean;
     procedure ApplyConfiguration;
@@ -186,7 +185,7 @@ begin
   drlbase.DRL := FSession;
   if not aInitializeData then Exit;
   FSession.InitializeLevel;
-  FSession.SetDataHooks( FCoreHooks, FModuleHooks );
+  FSession.SetModuleHooks( FModuleHooks );
   if not GraphicsVersion then
     (IO as TDRLTextIO).SetTextMap( FSession.Level );
 end;
@@ -253,7 +252,6 @@ begin
   FDataLoaded := True;
   ColorOverrides := TIntHashMap.Create;
   TDRLIO(IO).Configure(Config, True);
-  FCoreHooks := [];
   FModuleHooks := [];
   Cells := TCells.Create;
   Help := THelp.Create;
@@ -266,7 +264,6 @@ procedure TDRLRuntime.InitializeGameData;
 var i : Integer;
 begin
   LuaSystem.CallDefaultResult := True;
-  FCoreHooks := LoadHooks(['core'], GlobalHooks);
   FModuleHooks := LoadHooks([CoreModuleID], GlobalHooks);
   SafeCallModuleHook(Hook_OnLoad, []);
   ApplyConfiguration;
@@ -304,7 +301,7 @@ begin
     for i := 0 to 3 do
       HARDSPRITE_DECAL_WALL_BLOOD[i] := drlbase.Lua.Get('HARDSPRITE_DECAL_WALL_BLOOD_'+IntToStr(i+1), 0);
 
-  FSession.SetDataHooks(FCoreHooks, FModuleHooks);
+  FSession.SetModuleHooks(FModuleHooks);
   TDRLIO(IO).LoadStop;
 end;
 

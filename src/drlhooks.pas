@@ -9,12 +9,12 @@ interface
 uses vutil, vluasystem, dfdata;
 
 const
-  Hook_OnCreate        = 0;   // Being and Item -> Level, Module, Challenge, Core (Chained)
+  Hook_OnCreate        = 0;   // Being and Item -> Module, Challenge (Chained through Level)
   Hook_OnAction        = 1;   // Being
   Hook_OnAttacked      = 2;   // Trait, Being
   Hook_OnUseActive     = 3;   // Trait, Being
-  Hook_OnDie           = 4;   // Trait, Being, Level, Module, Challenge, Core (Chained)
-  Hook_OnDieCheck      = 5;   // Trait, Being, Level, Module, Challenge, Core (Chained)
+  Hook_OnDie           = 4;   // Trait, Being, Perk
+  Hook_OnDieCheck      = 5;   // Trait, Being, Perk
   Hook_Reserved06      = 6;
   Hook_OnPickup        = 7;   // Trait, Being, Item, Perk
   Hook_OnPickupCheck   = 8;   // Item, Perk
@@ -28,8 +28,8 @@ const
   Hook_OnAdd           = 16;  // Perk
   Hook_OnRemove        = 17;  // Perk
   Hook_OnTick10        = 18;  // Perk
-  Hook_OnKill          = 19;  // Item (separate), Trait, Being (separate), Level, Module, Challenge, Core (Chained)
-  Hook_OnKillAll       = 20;  // Level, Module, Challenge, Core (Chained)
+  Hook_OnKill          = 19;  // Item (separate), Trait, Being (separate), Level, Module, Challenge
+  Hook_OnKillAll       = 20;  // Level, Module, Challenge
   Hook_OnHitBeing      = 21;  // Item
   Hook_OnReload        = 22;  // Item
   Hook_OnDescribe      = 23;  // Item, Perk
@@ -37,24 +37,24 @@ const
   Hook_OnAct           = 25;  // Item, Being (hack)
   Hook_OnDestroy       = 26;  // Item
   Hook_OnEnter         = 27;  // Item (separate)
-  Hook_OnEnterLevel    = 28;  // Level, Module, Challenge, Core (chained)
+  Hook_OnEnterLevel    = 28;  // Trait, Being, Perk, Level, Module, Challenge
   Hook_OnFire          = 29;  // Trait (separate), Item (not chained)
-  Hook_OnFired         = 30;  // Trait (separate), Item, Level, Module, Challenge, Core (Chained)
-  Hook_OnExit          = 31;  // Level, Module, Challenge, Core (Chained)
-  Hook_OnTick          = 32;  // Perk, Being (Separate), Level, Module, Challenge, Core (Chained)
-  Hook_OnNuked         = 33;  // Level, Module, Challenge, Core (Chained)
-  Hook_OnLoad          = 34;  // Module, Challenge, Core (Chained)
-  Hook_OnLoaded        = 35;  // Module, Challenge, Core (Chained)
-  Hook_OnUnLoad        = 36;  // Module, Challenge, Core (Chained)
-  Hook_OnCreatePlayer  = 37;  // Module, Challenge, Core (Chained)
-  Hook_OnLevelUp       = 38;  // Module, Challenge, Core (Chained)
-  Hook_OnPreLevelUp    = 39;  // Module, Challenge, Core (Chained)
-  Hook_OnWinGame       = 40;  // Module, Challenge, Core (Chained)
-  Hook_OnMortem        = 41;  // Module, Challenge, Core (Chained)
-  Hook_OnMortemPrint   = 42;  // Module, Challenge, Core (Chained)
-  Hook_OnCreateEpisode = 43;  // Module, Challenge, Core (Chained)
-  Hook_OnIntro         = 44;  // Module, Challenge, Core (Chained)
-  Hook_OnGenerate      = 45;  // Module, Challenge, Core (Chained)
+  Hook_OnFired         = 30;  // Trait, Being, Item, Perk
+  Hook_OnExit          = 31;  // Level, Module, Challenge
+  Hook_OnTick          = 32;  // Perk, Being (separate), Level, Module, Challenge
+  Hook_OnNuked         = 33;  // Level, Module, Challenge
+  Hook_OnLoad          = 34;  // Module
+  Hook_OnLoaded        = 35;  // Module, Challenge
+  Hook_OnUnLoad        = 36;  // Module, Challenge
+  Hook_OnCreatePlayer  = 37;  // Module, Challenge
+  Hook_OnLevelUp       = 38;  // Module, Challenge
+  Hook_OnPreLevelUp    = 39;  // Module, Challenge
+  Hook_OnWinGame       = 40;  // Module, Challenge
+  Hook_OnMortem        = 41;  // Module, Challenge
+  Hook_OnMortemPrint   = 42;  // Reserved (not dispatched)
+  Hook_OnCreateEpisode = 43;  // Module, Challenge
+  Hook_OnIntro         = 44;  // Module, Challenge
+  Hook_OnGenerate      = 45;  // Module, Challenge
 
   // TODO: merge with above
   Hook_OnPostMove      = 46;   // Trait, Being
