@@ -289,7 +289,21 @@ function register_master_badge( id )
 	end
 end
 
-register_level   = core.register_storage( "levels", "level" )
+register_level   = core.register_storage( "levels", "level", function( level_def )
+	if not level_def.runtime then return end
+
+	local runtime_source = level_def.runtime
+	local runtime_id = "perk_level_"..level_def.id
+
+	register_perk( runtime_id )( runtime_source )
+
+	local function attach_runtime()
+		level:add_perk( runtime_id )
+	end
+
+	level_def.runtime = runtime_id
+	level_def.Create = core.create_seq_function( attach_runtime, level_def.Create )
+end )
 levels.default = {}
 
 register_requirement   = core.register_storage( "requirements", "requirement" )

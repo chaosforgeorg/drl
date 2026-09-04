@@ -141,7 +141,7 @@ register_level "unholy_cathedral"
 			level = 5,
 		}
 
-		register_perk "perk_unholy_cathedral"
+		register_perk "perk_player_unholy_cathedral"
 		{
             name     = "Unholy Aura",
             desc     = "Your ranged weapons are cursed and refuse to fire in the Unholy Cathedral.",
@@ -210,7 +210,7 @@ register_level "unholy_cathedral"
 
 		level:drop_being( player, coord( 3,10 ) )
 		level.status = 0
-		player:add_perk( "perk_unholy_cathedral" )
+		player:add_perk( "perk_player_unholy_cathedral" )
 	end,
 
 	OnKillAll = function ()
@@ -223,7 +223,7 @@ register_level "unholy_cathedral"
 	end,
 
 	OnExit = function ()
-		player:remove_perk( "perk_unholy_cathedral", true )
+		player:remove_perk( "perk_player_unholy_cathedral", true )
 		if level.status == 0 then
 			ui.msg("...Or wonder, till it drives you mad,")
 			ui.msg("What would have followed if you had....")

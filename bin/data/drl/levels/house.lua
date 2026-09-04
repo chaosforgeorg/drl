@@ -12,7 +12,7 @@ register_level "house_of_pain"
 	end,
 
 	OnRegister = function ()
-		register_perk "perk_house_of_pain"
+		register_perk "perk_player_house_of_pain"
 		{
 			name  = "House Rules",
 			desc  = "The House of Pain enforces its own rules.",
@@ -90,7 +90,7 @@ register_level "house_of_pain"
 		generator.set_permanence( area.FULL, true, "ldoor" )
 
 		level:drop_being( player, coord( 14,10 ) )
-		player:add_perk( "perk_house_of_pain" )
+		player:add_perk( "perk_player_house_of_pain" )
 		level.flags[ LF_NORESPAWN ] = true
 	end,
 
@@ -168,7 +168,7 @@ register_level "house_of_pain"
 	end,
 
 	OnExit = function ()
-		player:remove_perk( "perk_house_of_pain", true )
+		player:remove_perk( "perk_player_house_of_pain", true )
 		local result = level.status
 		if result == 0 then
 			ui.msg("Better show myself out...")

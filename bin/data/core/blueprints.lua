@@ -671,6 +671,7 @@ core.register_blueprint "level"
 	entry         = { false, core.TSTRING },
 	welcome       = { false, core.TSTRING },
 	level         = { false, core.TANY },
+	runtime       = { false, core.TTABLE },
 
 	Create           = { true,  core.TFUNC },
 	canGenerate      = { false, core.TFUNC },
