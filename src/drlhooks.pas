@@ -9,17 +9,17 @@ interface
 uses vutil, vluasystem, dfdata;
 
 const
-  Hook_OnCreate        = 0;   // Being and Item -> Level, Module, Challenge, Core (Chained)
+  Hook_OnCreate        = 0;   // Being and Item; Module and Challenge notified explicitly
   Hook_OnAction        = 1;   // Being
   Hook_OnAttacked      = 2;   // Trait, Being
   Hook_OnUseActive     = 3;   // Trait, Being
-  Hook_OnDie           = 4;   // Trait, Being, Level, Module, Challenge, Core (Chained)
-  Hook_OnDieCheck      = 5;   // Trait, Being, Level, Module, Challenge, Core (Chained)
-  Hook_OnPickupItem    = 6;   // Trait, Being, Level, Module, Challenge, Core (Chained)
-  Hook_OnPickup        = 7;   // Item, Level, Module, Challenge, Core (Chained)
+  Hook_OnDie           = 4;   // Trait, Being, Perk
+  Hook_OnDieCheck      = 5;   // Trait, Being, Perk
+  Hook_Reserved06      = 6;
+  Hook_OnPickup        = 7;   // Trait, Being, Item, Perk
   Hook_OnPickupCheck   = 8;   // Item, Perk
   Hook_OnFirstPickup   = 9;   // Item
-  Hook_OnUse           = 10;  // Item, Level, Module, Challenge, Core (Chained)
+  Hook_OnUse           = 10;  // Item, Perk
   Hook_OnUseCheck      = 11;  // Item, Perk
   Hook_OnAltFire       = 12;  // Item
   Hook_OnAltReload     = 13;  // Item
@@ -28,8 +28,8 @@ const
   Hook_OnAdd           = 16;  // Perk
   Hook_OnRemove        = 17;  // Perk
   Hook_OnTick10        = 18;  // Perk
-  Hook_OnKill          = 19;  // Item (separate), Trait, Being (separate), Level, Module, Challenge, Core (Chained)
-  Hook_OnKillAll       = 20;  // Level, Module, Challenge, Core (Chained)
+  Hook_OnKill          = 19;  // Item (separate), Trait, Being (separate), Level
+  Hook_OnKillAll       = 20;  // Level
   Hook_OnHitBeing      = 21;  // Item
   Hook_OnReload        = 22;  // Item
   Hook_OnDescribe      = 23;  // Item, Perk
@@ -37,24 +37,24 @@ const
   Hook_OnAct           = 25;  // Item, Being (hack)
   Hook_OnDestroy       = 26;  // Item
   Hook_OnEnter         = 27;  // Item (separate)
-  Hook_OnEnterLevel    = 28;  // Level, Module, Challenge, Core (chained)
+  Hook_OnEnterLevel    = 28;  // Trait, Being, Perk, Level, Module, Challenge
   Hook_OnFire          = 29;  // Trait (separate), Item (not chained)
-  Hook_OnFired         = 30;  // Trait (separate), Item, Level, Module, Challenge, Core (Chained)
-  Hook_OnExit          = 31;  // Level, Module, Challenge, Core (Chained)
-  Hook_OnTick          = 32;  // Perk, Being (Separate), Level, Module, Challenge, Core (Chained)
-  Hook_OnNuked         = 33;  // Level, Module, Challenge, Core (Chained)
-  Hook_OnLoad          = 34;  // Module, Challenge, Core (Chained)
-  Hook_OnLoaded        = 35;  // Module, Challenge, Core (Chained)
-  Hook_OnUnLoad        = 36;  // Module, Challenge, Core (Chained)
-  Hook_OnCreatePlayer  = 37;  // Module, Challenge, Core (Chained)
-  Hook_OnLevelUp       = 38;  // Module, Challenge, Core (Chained)
-  Hook_OnPreLevelUp    = 39;  // Module, Challenge, Core (Chained)
-  Hook_OnWinGame       = 40;  // Module, Challenge, Core (Chained)
-  Hook_OnMortem        = 41;  // Module, Challenge, Core (Chained)
-  Hook_OnMortemPrint   = 42;  // Module, Challenge, Core (Chained)
-  Hook_OnCreateEpisode = 43;  // Module, Challenge, Core (Chained)
-  Hook_OnIntro         = 44;  // Module, Challenge, Core (Chained)
-  Hook_OnGenerate      = 45;  // Module, Challenge, Core (Chained)
+  Hook_OnFired         = 30;  // Trait, Being, Item, Perk
+  Hook_OnExitLevel     = 31;  // Level, Module, Challenge
+  Hook_OnTick          = 32;  // Perk, Being (separate), Level, Module
+  Hook_OnNuked         = 33;  // Level
+  Hook_OnLoad          = 34;  // Module
+  Hook_OnLoaded        = 35;  // Module
+  Hook_OnUnLoad        = 36;  // Module, Challenge
+  Hook_OnCreatePlayer  = 37;  // Module, Challenge
+  Hook_OnLevelUp       = 38;  // Module, Challenge
+  Hook_OnPreLevelUp    = 39;  // Module, Challenge
+  Hook_OnWinGame       = 40;  // Module, Challenge
+  Hook_OnMortem        = 41;  // Module, Challenge
+  Hook_Reserved42      = 42;
+  Hook_OnCreateEpisode = 43;  // Module, Challenge
+  Hook_OnIntro         = 44;  // Module
+  Hook_OnGenerate      = 45;  // Module
 
   // TODO: merge with above
   Hook_OnPostMove      = 46;   // Trait, Being
@@ -90,23 +90,22 @@ const
 
 const AllHooks      : TFlags = [ 0..HookAmount-1 ];
 
-var   BeingHooks    : TFlags;
-      ItemHooks     : TFlags;
-      ChainedHooks  : TFlags;
-      FullInvHooks  : TFlags;
-      LevelHooks    : TFlags;
-      GlobalHooks   : TFlags;
-      ModuleHooks   : TFlags;
+var   BeingHooks       : TFlags;
+      ItemHooks        : TFlags;
+      FullInvHooks     : TFlags;
+      NoInventoryHooks : TFlags;
+      GlobalHooks      : TFlags;
+      ModuleHooks      : TFlags;
 
 
 const HookNames : array[ 0..HookAmount-1 ] of AnsiString = (
       'OnCreate', 'OnAction', 'OnAttacked', 'OnUseActive', 'OnDie', 'OnDieCheck',
-      'OnPickupItem', 'OnPickup','OnPickupCheck','OnFirstPickup','OnUse','OnUseCheck',
+      'Reserved06', 'OnPickup','OnPickupCheck','OnFirstPickup','OnUse','OnUseCheck',
       'OnAltFire', 'OnAltReload', 'OnEquip', 'OnUnequip', 'OnAdd', 'OnRemove', 'OnTick10', 'OnKill', 'OnKillAll',
       'OnHitBeing', 'OnReload', 'OnDescribe', 'OnEquipCheck', 'OnAct', 'OnDestroy', 'OnEnter', 'OnEnterLevel',
-      'OnFire', 'OnFired', 'OnExit', 'OnTick', 'OnNuked',
+      'OnFire', 'OnFired', 'OnExitLevel', 'OnTick', 'OnNuked',
       'OnLoad','OnLoaded','OnUnLoad', 'OnCreatePlayer', 'OnLevelUp','OnPreLevelUp',
-      'OnWinGame', 'OnMortem', 'OnMortemPrint', 'OnCreateEpisode', 'OnIntro' , 'OnGenerate',
+      'OnWinGame', 'OnMortem', 'Reserved42', 'OnCreateEpisode', 'OnIntro' , 'OnGenerate',
 
       'OnPostMove', 'OnPreReload', 'OnDamage', 'OnReceiveDamage', 'OnPreAction', 'OnPostAction',
       'OnCanDualWield', 'OnCanMaxDamage',
@@ -166,22 +165,20 @@ initialization
 
 AllHooks     := [ 0..HookAmount-1 ];
 BeingHooks   := [ Hook_OnCreate, Hook_OnAction, Hook_OnAttacked, Hook_OnUseActive,
-  Hook_OnDie, Hook_OnDieCheck, Hook_OnPickUpItem, Hook_OnDropItem, Hook_OnPostMove, Hook_OnKill,
+  Hook_OnDie, Hook_OnDieCheck, Hook_OnPickup, Hook_OnDropItem, Hook_OnPostMove, Hook_OnKill,
   Hook_OnDamage, Hook_OnReceiveDamage, Hook_OnPreAction, Hook_OnEnterLevel, Hook_OnAct, Hook_OnCanAct,
   Hook_getDamageBonus, Hook_getToHitBonus, Hook_getShotsBonus, Hook_getFireCostBonus,
   Hook_getDefenceBonus, Hook_getDodgeBonus, Hook_getMoveBonus, Hook_getBodyBonus,
   Hook_getResistBonus, Hook_getDamageMul, Hook_getFireCostMul, Hook_getAmmoCostMul ];
 FullInvHooks := [ Hook_OnPreAction, Hook_OnPostAction, Hook_OnTick ];
+NoInventoryHooks := [ Hook_OnPickup ];
 ItemHooks    := [ Hook_OnCreate, Hook_OnPickup, Hook_OnFirstPickup,
   Hook_OnUse, Hook_OnUseCheck, Hook_OnAltFire, Hook_OnEquip, Hook_OnUnequip,
   Hook_OnEnter, Hook_OnFire, Hook_OnAct, Hook_OnDestroy, Hook_OnDescribe, Hook_OnPickupCheck, 
   Hook_OnUnequipCheck, Hook_OnDrop ];
-ChainedHooks := [ Hook_OnCreate, Hook_OnPickup, Hook_OnUse ];
-LevelHooks   := ChainedHooks + [ Hook_OnEnterLevel, Hook_OnKill, Hook_OnKillAll, Hook_OnExit, Hook_OnTick,
-  Hook_OnNuked ];
-GlobalHooks  := LevelHooks + [ Hook_OnEnterLevel, Hook_OnKill, Hook_OnExit, Hook_OnTick,
+GlobalHooks  := [ Hook_OnCreate, Hook_OnEnterLevel, Hook_OnExitLevel, Hook_OnTick,
   Hook_OnLoad, Hook_OnLoaded, Hook_OnUnLoad, Hook_OnCreatePlayer, Hook_OnLevelUp,
-  Hook_OnPreLevelUp, Hook_OnWinGame, Hook_OnMortem, Hook_OnMortemPrint, Hook_OnCreateEpisode,
+  Hook_OnPreLevelUp, Hook_OnWinGame, Hook_OnMortem, Hook_OnCreateEpisode,
   Hook_OnIntro, Hook_OnGenerate ];
 ModuleHooks  := [ Hook_OnLoad ];
 

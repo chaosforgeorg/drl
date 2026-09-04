@@ -2,10 +2,41 @@
 
 register_level "military_base"
 {
-	name  = "Military Base",
-	entry = "On @1 he marched into the Military Base.",
+	name    = "Military Base",
+	entry   = "On @1 he marched into the Military Base.",
 	welcome = "You enter the Military Base. Arriving here again sure takes you back!",
-	level = 7,
+	level   = 7,
+
+	runtime = {
+		OnTick = function ( self )
+			local res = self.status
+			if res == 0 and player.x < 6 and player.y > 7 and player.y < 14 then
+				local y
+				for _, y in ipairs { 9, 10, 11, 12 } do
+					self.map[coord(6,y)] = "floor"
+					self.map[coord(6,y)] = "door"
+				end
+				self.status = 1
+			end
+		end,
+
+		OnKillAll = function ( self )
+			self.status = 2
+			ui.msg("They can all rest easy now...")
+		end,
+
+		OnExitLevel = function ( self )
+			local result = self.status
+			if result < 2 then
+				ui.msg("Too many memories to go destroying them all...")
+				player:add_history("He left without a fuss.")
+			else
+				core.special_complete()
+				ui.msg("Better to end their tortured bodies here and now.")
+				player:add_history("He purified his fellow comrades.")
+			end
+		end,
+	},
 
 	Create = function ()
 		core.special_create()
@@ -69,39 +100,5 @@ register_level "military_base"
 
 		level:drop_being( player, coord( 38,19 ) )
 	end,
-
-	OnKillAll = function ()
-		level.status = 2
-		ui.msg("They can all rest easy now...")
-	end,
-
-	OnTick = function ()
-		local res = level.status
-		if res == 0 and player.x < 6 and player.y > 7 and player.y < 14 then
-			local y
-			for _, y in ipairs { 9, 10, 11, 12 } do
-				level.map[coord(6,y)] = "floor"
-				level.map[coord(6,y)] = "door"
-			end
-			level.status = 1
-		end
-	end,
-
-	OnEnterLevel = function ()
-		level.status = 0
-	end,
-
-	OnExit = function ()
-		local result = level.status
-		if result < 2 then
-			ui.msg("Too many memories to go destroying them all...")
-			player:add_history("He left without a fuss.")
-		else
-			core.special_complete()
-			ui.msg("Better to end their tortured bodies here and now.")
-			player:add_history("He purified his fellow comrades.")
-		end
-	end,
-
 
 }

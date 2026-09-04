@@ -2,10 +2,83 @@
 
 register_level "mt_erebus"
 {
-	name  = "Mt. Erebus",
-	entry = "On @1 he arrived at Mt. Erebus.",
+	name    = "Mt. Erebus",
+	entry   = "On @1 he arrived at Mt. Erebus.",
 	welcome = "You arrive at Mt. Erebus. You shiver before the mountain of eternal fire!",
-	level = 22,
+	level   = 22,
+
+	runtime = {
+		OnTick = function ( self )
+			local newStatus = 0
+			local msg
+	--		ui.msg( level.status )
+	--		if level.data.zoneReset:contains( player.position ) then level:transmute("floor", "cwall", level.data.zoneOfEffect)
+	--		    level.status = 0
+	--			return
+	--		end
+			if self.status > 2 then return end
+			if self.status < 3 and self.data.zone3:contains( player.position ) then
+				if newStatus == 0 then
+					msg = "The molten cliffs give way leaving you tremendously exposed."
+					newStatus = 3
+				end
+				self:transmute_by_flag( "cwall", "floor", LFMARKER3, self.data.mountain)
+			end
+			if self.status < 2 and self.data.zone2:contains( player.position ) then
+				if newStatus == 0 then
+					msg = "A violent earthquake shakes your being."
+					newStatus = 2
+				end
+				self:transmute_by_flag( "cwall", "floor", LFMARKER2, self.data.mountain)
+				newStatus = 2
+			end
+			if self.status < 1 and (self.data.zone1a:contains( player.position ) or self.data.zone1b:contains( player.position )) then
+				if newStatus == 0 then
+					msg = "The safety of the earth dissolves in front of you."
+					newStatus = 1
+				end
+				self:transmute_by_flag( "cwall", "floor", LFMARKER1, self.data.mountain)
+			end
+			if newStatus == 0 then return false end
+			ui.msg( msg )
+			self.status = newStatus
+			return true
+		end,
+
+		OnKillAll = function ( self )
+			local result = self.status
+			if result < 4 then
+				ui.msg("That seems to be all of them... wait! Something is moving there, or is it just lava glow?")
+				--In the event of a nuke disable the need to open up the walls (unlike Limbo).
+				--This inconsistency is partly due to historical reasons but also because the spawning of the elemental shouldn'can't be behind a wall.
+				--However the elemental is killed immediately in practice because it appears at the end of the monster list.
+				self:transmute( "cwall", "floor", self.data.mountain )
+				self.status = 4
+				local element = self:summon("lava_elemental")
+				element.inv:add( item.new("lava_element") )
+			elseif result == 4 then
+				ui.msg("Tough son of a bitch... now to get that shiny object he left behind...")
+				self.status = 5
+			end
+		end,
+
+		OnExitLevel = function ( self )
+			local result = self.status
+			if result < 4 then
+				ui.msg("Better leave, before this thing blows!")
+				player:add_history("He decided it was too dangerous.")
+			elseif result == 4 then
+				ui.msg("There goes my beard... at least I'm still alive.")
+				player:add_history("He fled there from the monstrous lava elemental.")
+			elseif result == 5 then
+				core.special_complete()
+				ui.msg("Lava elementals my ass. I don't care.")
+				player:add_badge("lava1")
+				if core.is_challenge("challenge_aoi") then player:add_badge("lava2") end
+				player:add_history("He managed to raise Mt. Erebus completely!")
+			end
+		end,
+	},
 
 	OnRegister = function ()
 		register_item "lever_erebus"
@@ -124,74 +197,4 @@ register_level "mt_erebus"
 		level.status = 0
 	end,
 
-	OnKillAll = function ()
-		local result = level.status
-		if result < 4 then
-			ui.msg("That seems to be all of them... wait! Something is moving there, or is it just lava glow?")
-			--In the event of a nuke disable the need to open up the walls (unlike Limbo).
-			--This inconsistency is partly due to historical reasons but also because the spawning of the elemental shouldn'can't be behind a wall.
-			--However the elemental is killed immediately in practice because it appears at the end of the monster list.
-			level:transmute( "cwall", "floor", level.data.mountain )
-			level.status = 4
-			local element = level:summon("lava_elemental")
-			element.inv:add( item.new("lava_element") )
-		elseif result == 4 then
-			ui.msg("Tough son of a bitch... now to get that shiny object he left behind...")
-			level.status = 5
-		end
-	end,
-
-	OnExit = function ()
-		local result = level.status
-		if result < 4 then
-			ui.msg("Better leave, before this thing blows!")
-			player:add_history("He decided it was too dangerous.")
-		elseif result == 4 then
-			ui.msg("There goes my beard... at least I'm still alive.")
-			player:add_history("He fled there from the monstrous lava elemental.")
-		elseif result == 5 then
-			core.special_complete()
-			ui.msg("Lava elementals my ass. I don't care.")
-			player:add_badge("lava1")
-			if core.is_challenge("challenge_aoi") then player:add_badge("lava2") end
-			player:add_history("He managed to raise Mt. Erebus completely!")
-		end
-	end,
-
-	OnTick = function ()
-		local newStatus = 0
-		local msg
---		ui.msg( level.status )
---		if level.data.zoneReset:contains( player.position ) then level:transmute("floor", "cwall", level.data.zoneOfEffect)
---		    level.status = 0
---			return
---		end
-		if level.status > 2 then return end
-		if level.status < 3 and level.data.zone3:contains( player.position ) then
-			if newStatus == 0 then
-				msg = "The molten cliffs give way leaving you tremendously exposed."
-				newStatus = 3
-			end
-			level:transmute_by_flag( "cwall", "floor", LFMARKER3, level.data.mountain)
-		end
-		if level.status < 2 and level.data.zone2:contains( player.position ) then
-			if newStatus == 0 then
-				msg = "A violent earthquake shakes your being."
-				newStatus = 2
-			end
-			level:transmute_by_flag( "cwall", "floor", LFMARKER2, level.data.mountain)
-			newStatus = 2
-		end
-		if level.status < 1 and (level.data.zone1a:contains( player.position ) or level.data.zone1b:contains( player.position )) then
-			if newStatus == 0 then
-				msg = "The safety of the earth dissolves in front of you."
-				newStatus = 1
-			end
-			level:transmute_by_flag( "cwall", "floor", LFMARKER1, level.data.mountain)
-		end
-		if newStatus == 0 then return false end
-		ui.msg( msg )
-		level.status = newStatus
-		return true
-	end
 }

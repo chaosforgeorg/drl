@@ -267,7 +267,7 @@ function drl.register_base_data()
 		OnDie      = function(self, overkill) return end,
 		OnDieCheck = function(self, overkill) return true end,
 
-		OnPickupItem = function(self,i)
+		OnPickup = function(self,i)
 			if not self:has_found_item( i.id ) then
 				if i.flags[ IF_UNIQUE ] then
 					statistics.uniques_found = statistics.uniques_found + 1

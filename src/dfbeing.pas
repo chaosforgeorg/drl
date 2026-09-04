@@ -383,7 +383,10 @@ begin
   FHPDecayMax   := 100;
 
   if not isPlayer then
-    CallHook(Hook_OnCreate,[]);
+  begin
+    CallHook( Hook_OnCreate, [] );
+    DRL.CallHook( Hook_OnCreate, [Self] );
+  end;
 end;
 
 function TBeing.getAmmoItem ( Weapon : TItem ) : TItem;
@@ -962,7 +965,7 @@ begin
        iItem.CallHookCheck( Hook_OnPickupCheck, [ Self ] ) then
     begin
       iItem.PlaySound( 'powerup', FPosition );
-      CallHook( Hook_OnPickUpItem, [iItem] );
+      CallHook( Hook_OnPickup, [iItem] );
       iItem.CallHook(Hook_OnPickUp, [Self]);
     end;
     if not iItem.Flags[ IF_NODESTROY ] then
@@ -990,7 +993,7 @@ begin
     if iAmount <> iItem.Amount then
     begin
       iItem.playSound( 'pickup', FPosition );
-      CallHook( Hook_OnPickUpItem, [iItem] );
+      CallHook( Hook_OnPickup, [iItem] );
       iItem.CallHook( Hook_OnPickup, [Self] );
       iName := iItem.Name;
       iCount := iItem.Amount-iAmount;
@@ -1008,7 +1011,7 @@ begin
   iItem.PlaySound('pickup', FPosition );
   if isPlayer then IO.Msg('You picked up %s.',[iItem.GetName(false)]);
   Inv.Add(iItem);
-  CallHook( Hook_OnPickUpItem, [iItem] );
+  CallHook( Hook_OnPickup, [iItem] );
   if aApplyCost then
     Dec(FSpeedCount,ActionCostPickUp);
   iItem.CallHook(Hook_OnPickup, [Self]);
@@ -1120,7 +1123,7 @@ begin
     aItem.PlaySound( 'use', FPosition );
   if isEquip or isUsable then
     begin
-      CallHook( Hook_OnPickUpItem, [aItem] );
+      CallHook( Hook_OnPickup, [aItem] );
       aItem.CallHook( Hook_OnPickup,[Self] )
     end;
   if isEquip and (iOldItem <> nil) then

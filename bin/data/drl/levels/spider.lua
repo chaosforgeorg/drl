@@ -2,11 +2,42 @@
 
 register_level "spiders_lair"
 {
-	name  = "Spider's Lair",
-	entry = "On @1 he ventured into the Spider's Lair.",
+	name    = "Spider's Lair",
+	entry   = "On @1 he ventured into the Spider's Lair.",
 	welcome = "You descend into the Spider's Lair. Mechanical clicks everywhere! Oh my god it's full of spiders!",
-	level = 14,
+	level   = 14,
 
+	runtime = {
+		OnKillAll = function ( self )
+			if self.status == 0 then
+				ui.msg("Suddenly the webs fade. From under the webs, items emerge...")
+				self:drop("cell",4)
+				self:drop("ashard",2)
+				self:drop("psboots")
+				self:drop("scglobe")
+				self:drop("pcell")
+
+				self:drop_item("bfg9000", coord(41,10), true, true, true )
+				self.status = 1
+				if CHALLENGE == "challenge_aohu" then
+					player:add_medal("everyspider")
+				end
+			end
+		end,
+
+		OnExitLevel = function ( self )
+			if self.status == 0 then
+				ui.msg("Arachnophobia!")
+				player:add_history("He fled the Lair, knowing how to fear Arachnotrons!")
+			else
+				core.special_complete()
+				ui.msg("Silence rules the spidery lands...")
+				player:add_history("He cleared the Lair, kickin' serious spider ass!")
+				player:add_badge("arachno1")
+				if core.is_challenge("challenge_aod") then player:add_badge("arachno2") end
+			end
+		end,
+	},
 
 	OnRegister = function ()
 
@@ -84,35 +115,4 @@ register_level "spiders_lair"
 		level.status = 0
 	end,
 
-	OnKillAll = function ()
-		if level.status == 0 then
-			ui.msg("Suddenly the webs fade. From under the webs, items emerge...")
-			level:drop("cell",4)
-			level:drop("ashard",2)
-			level:drop("psboots")
-			level:drop("scglobe")
-			level:drop("pcell")
-
-			level:drop_item("bfg9000", coord(41,10), true, true, true )
-			level.status = 1
-			if CHALLENGE == "challenge_aohu" then
-				player:add_medal("everyspider")
-			end
-		end
-	end,
-
-	OnExit = function ()
-		if level.status == 0 then
-			ui.msg("Arachnophobia!")
-			player:add_history("He fled the Lair, knowing how to fear Arachnotrons!")
-		else
-			core.special_complete()
-			ui.msg("Silence rules the spidery lands...")
-			player:add_history("He cleared the Lair, kickin' serious spider ass!")
-			player:add_badge("arachno1")
-			if core.is_challenge("challenge_aod") then player:add_badge("arachno2") end
-		end
-	end,
-
 }
-

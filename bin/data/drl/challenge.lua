@@ -56,6 +56,9 @@ function drl.register_challenges()
 				ui.msg("You pull the trigger, but nothing happens. You're a berserker, dumbass!")
 				return false
 			end,
+			OnPickup = function(self,item)
+				if item.id == "lhglobe" then self:add_perk("berserk",100) end
+			end,
 		},
 
 		OnCreatePlayer = function ()
@@ -74,10 +77,6 @@ function drl.register_challenges()
 					add = { "lmed", "hphase" },
 				}
 			)
-		end,
-		OnPickup = function(item,being)
-			if not being:is_player() then return end
-			if item.id == "lhglobe" then player:add_perk("berserk",100) end
 		end,
 	}
 
@@ -1095,7 +1094,7 @@ function drl.register_challenges()
 			end
 		end,
 
-		OnExit = function (l)
+		OnExitLevel = function (l)
 			    if l == 25 then ui.msg_enter("Well, that was easy. Now starts the really hard part...")
 			elseif l == 50 then ui.msg_enter("Halfway there, and it's getting less and less funny!")
 			elseif l == 75 then ui.msg_enter("Just 25 more, you can make it!")

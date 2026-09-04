@@ -59,7 +59,7 @@ core.register_blueprint "trait"
 	OnDie           = { false, core.TFUNC },
 	OnDieCheck      = { false, core.TFUNC },
 	OnUseActive     = { false, core.TFUNC },
-	OnPickupItem    = { false, core.TFUNC },
+	OnPickup        = { false, core.TFUNC },
 	OnPostMove      = { false, core.TFUNC },
 	OnKill          = { false, core.TFUNC },
 	OnFire          = { false, core.TFUNC },
@@ -215,6 +215,9 @@ core.register_blueprint "perk"
 	OnPreAction    = { false, core.TFUNC },
 	OnPostAction   = { false, core.TFUNC },
 	OnKill         = { false, core.TFUNC },
+	OnKillAll      = { false, core.TFUNC },
+	OnExitLevel    = { false, core.TFUNC },
+	OnNuked        = { false, core.TFUNC },
 	OnHitBeing     = { false, core.TFUNC },
 	OnEnter        = { false, core.TFUNC },
 	OnEnterLevel   = { false, core.TFUNC },
@@ -296,7 +299,7 @@ core.register_blueprint "being"
 	OnKill          = { false, core.TFUNC },
 	OnDie           = { false, core.TFUNC },
 	OnDieCheck      = { false, core.TFUNC },
-	OnPickupItem    = { false, core.TFUNC },
+	OnPickup        = { false, core.TFUNC },
 	OnUseActive     = { false, core.TFUNC },
 	OnPostMove      = { false, core.TFUNC },
 	OnDamage        = { false, core.TFUNC },
@@ -399,16 +402,14 @@ core.register_blueprint "challenge"
 
 	OnCreate         = { false, core.TFUNC },
 	OnRegister       = { false, core.TFUNC },
-	OnPickup         = { false, core.TFUNC },
 	OnEnterLevel     = { false, core.TFUNC },
-	OnExit           = { false, core.TFUNC },
+	OnExitLevel      = { false, core.TFUNC },
 	OnUnLoad         = { false, core.TFUNC },
 	OnCreatePlayer   = { false, core.TFUNC },
 	OnLevelUp        = { false, core.TFUNC },
 	OnPreLevelUp     = { false, core.TFUNC },
 	OnWinGame        = { false, core.TFUNC },
 	OnMortem         = { false, core.TFUNC },
-	OnMortemPrint    = { false, core.TFUNC },
 	OnCreateEpisode  = { false, core.TFUNC },
 }
 
@@ -673,19 +674,12 @@ core.register_blueprint "level"
 	entry         = { false, core.TSTRING },
 	welcome       = { false, core.TSTRING },
 	level         = { false, core.TANY },
+	runtime       = { false, core.TTABLE },
 
 	Create           = { true,  core.TFUNC },
 	canGenerate      = { false, core.TFUNC },
 	OnRegister       = { false, core.TFUNC },
 
-	OnPickup         = { false, core.TFUNC },
-	OnUse            = { false, core.TFUNC },
-	OnKill           = { false, core.TFUNC },
-	OnKillAll        = { false, core.TFUNC },
-	OnEnterLevel     = { false, core.TFUNC },
-	OnExit           = { false, core.TFUNC },
-	OnTick           = { false, core.TFUNC },
-	OnNuked          = { false, core.TFUNC },
 }
 
 core.register_blueprint "room"

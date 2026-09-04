@@ -3,10 +3,138 @@
 register_level "hells_arena"
 {
 
-	name  = "Hell's Arena",
-	entry = "On @1 he entered Hell's Arena.",
+	name    = "Hell's Arena",
+	entry   = "On @1 he entered Hell's Arena.",
 	welcome = "You enter Hell's Arena",
-	level = 2,
+	level   = 2,
+
+	runtime = {
+		OnEnterLevel = function ( self )
+			ui.continue("A devilish voice announces:\n{R\"Welcome to Hell's Arena, mortal! You are either very foolish, or very brave. Either way I like it!\"}")
+			ui.continue("{R\"And so do the crowds!\"}\nSuddenly you hear screams everywhere!\n{R\"Blood! Blood! BLOOD!\"}")
+			ui.continue("The voice booms again:\n{R\"Kill all enemies and I shall reward thee!\"}")
+
+			self:summon("demon",3)
+			self:summon("lostsoul",2)
+
+			if DIFFICULTY > 1 then
+				self:summon("cacodemon",DIFFICULTY - 1)
+			end
+		end,
+
+		OnKill = function ( self )
+			local temp = math.random(3)
+			if     temp == 1 then ui.msg("The crowds go wild! \"BLOOD! BLOOD!\"")
+			elseif temp == 2 then ui.msg("The crowds cheer! \"Blood! Blood!\"")
+			else                  ui.msg("The crowds cheer! \"Kill! Kill!\"") end
+		end,
+
+		OnKillAll = function ( self, wipe )
+			if not wipe then return end
+			if self.status == 1 then
+				ui.continue("The voice booms:\n{R\"Not bad mortal! For the weakling that you are, you show some determination.\"}\nYou hear screams everywhere!\n{R\"More Blood! More BLOOD!\"}")
+				local choice = ui.query("The voice continues:\n{R\"I can now let you go free, or you may try to complete the challenge!\nDo you want to continue the fight?\"}" )
+				if choice then
+					ui.msg("The voice booms, \"I like it! Let the show go on!\"")
+					ui.msg("You hear screams everywhere! \"More Blood! More BLOOD!\"")
+					self:drop("chaingun")
+					self:summon("demon",3)
+					self:summon("cacodemon",DIFFICULTY)
+					self.status = 2
+				else
+					ui.msg("The voice booms, \"Coward!\" ")
+					ui.msg("You hear screams everywhere! \"Coward! Coward! COWARD!\"")
+					self.flags[ LF_NORESPAWN ] = true
+				end
+				return
+			end
+
+			if self.status == 2 then
+				ui.continue("The voice booms:\n{R\"Impressive mortal! Your determination to survive makes me excited!\"}\nYou hear screams everywhere!\n{R\"More Blood! More BLOOD!\"}")
+				local choice = ui.query("The voice continues:\n{R\"I can let you go now, and give you a small reward, or you can choose to fight the final challenge!\nDo you want to continue the fight?\"}")
+				if choice then
+					ui.msg_feel("The voice booms, \"Excellent! May the fight begin!!!\"")
+					ui.msg_feel("You hear screams everywhere! \"Kill, Kill, KILL!\"")
+
+					self:drop("shell",4)
+					self:drop("ammo",4)
+					if CHALLENGE == "challenge_aob" then
+						self:drop("lhglobe")
+					end
+
+					if DIFFICULTY == 1 then self:summon("cacodemon",2) end
+					if DIFFICULTY == 2 then self:summon("cacodemon",3) end
+					if DIFFICULTY == 3 then self:summon("knight",2) end
+					if DIFFICULTY > 3  then self:summon("baron",2) end
+
+					self.status = 3
+				else
+					ui.msg_feel("The voice booms, \"Too bad, you won't make it far then...!\" ")
+					ui.msg_feel("You hear screams everywhere! \"Boooo...\"")
+
+					self:drop("shell",3)
+					self:drop("lmed")
+					self:drop("smed")
+					self.flags[ LF_NORESPAWN ] = true
+				end
+				return
+			end
+
+			if self.status == 3 then
+				ui.continue( "The voice booms:\n{R\"Congratulations mortal! A pity you came to destroy us, for you would make a formidable Hell warrior!\"}\nYou hear screams everywhere!\n{R\"Champion! Blood! Champion! More BLOOD!\"}\nThe voice continues:\n{R\"I grant you the title of Hell's Arena Champion!\nAnd a promise is a promise... Search the arena again!\"}")
+
+				for _,reward in ipairs(self.data.final_reward) do
+					if reward.amount > 0 then
+						self:area_drop(self.data.drop_zone, reward.id, reward.amount, false, true )
+					end
+				end
+
+				self.status = 4
+				player:add_medal("hellchampion")
+				if statistics.damage_on_level == 0 then
+					player:add_medal("hellchampion2")
+					if player_data.count('player/medals/medal[@id="hellchampion"]') > 0 then
+						player:remove_medal("hellchampion")
+					end
+					if DIFFICULTY >= DIFF_NIGHTMARE then
+						player:add_medal("hellchampion3")
+						if player_data.count('player/medals/medal[@id="hellchampion2"]') > 0 then
+							player:remove_medal("hellchampion2")
+						end
+					end
+				end
+				self.flags[ LF_NORESPAWN ] = true
+			end
+		end,
+
+		OnExitLevel = function ( self )
+			local result = self.status
+				if player.nuketime > 1 then
+					ui.msg("\"To hell with your damn game.\"")
+					player:add_history( "He saw, left a present and left." )
+			elseif result == 1 then player:add_history( "He cowardly fled the Arena." )
+			elseif result == 2 then player:add_history("He left the Arena before it got too hot.")
+			elseif result == 3 then player:add_history("He fought desperately in the Arena but didn't have what it takes.")
+			elseif result == 4 then player:add_history("He left the Arena as a champion!") end
+			ui.msg("The voice laughs, \"Flee mortal, flee! There's no hiding in hell!\"")
+
+			-- badges --
+			if result == 4 then
+				core.special_complete()
+				player:add_badge("arena1")
+				if DIFFICULTY >= DIFF_VERYHARD then
+					player:add_badge("arena2")
+					if core.is_challenge("challenge_aoi") or core.is_challenge("challenge_aoms") then player:add_medal("chessmaster1") end
+					if core.is_challenge("challenge_aomr") then player:add_badge("arena3") end
+					if DIFFICULTY >= DIFF_NIGHTMARE then
+						player:add_badge("arena4")
+						if core.is_challenge("challenge_aoi") or core.is_challenge("challenge_aoms") then player:add_medal("chessmaster2") end
+						if core.is_challenge("challenge_aob") then player:add_badge("arena5") end
+					end
+				end
+			end
+		end,
+	},
 
 	OnRegister = function ()
 
@@ -191,133 +319,7 @@ register_level "hells_arena"
 			drl.modify_rewards( level.data.final_reward, modifications )
 		end
 		level:drop_being( player, coord( 38,10 ) )
-	end,
-
-	OnEnterLevel = function ()
 		level.status = 1
-		ui.continue("A devilish voice announces:\n{R\"Welcome to Hell's Arena, mortal! You are either very foolish, or very brave. Either way I like it!\"}")
-		ui.continue("{R\"And so do the crowds!\"}\nSuddenly you hear screams everywhere!\n{R\"Blood! Blood! BLOOD!\"}")
-		ui.continue("The voice booms again:\n{R\"Kill all enemies and I shall reward thee!\"}")
-
-		level:summon("demon",3)
-		level:summon("lostsoul",2)
-
-		if DIFFICULTY > 1 then
-			level:summon("cacodemon",DIFFICULTY - 1)
-		end
-	end,
-
-	OnKill = function ()
-		local temp = math.random(3)
-		if     temp == 1 then ui.msg("The crowds go wild! \"BLOOD! BLOOD!\"")
-		elseif temp == 2 then ui.msg("The crowds cheer! \"Blood! Blood!\"")
-		else                  ui.msg("The crowds cheer! \"Kill! Kill!\"") end
-	end,
-
-	OnKillAll = function ( wipe )
-		if not wipe then return end
-		if level.status == 1 then
-			ui.continue("The voice booms:\n{R\"Not bad mortal! For the weakling that you are, you show some determination.\"}\nYou hear screams everywhere!\n{R\"More Blood! More BLOOD!\"}")
-			local choice = ui.query("The voice continues:\n{R\"I can now let you go free, or you may try to complete the challenge!\nDo you want to continue the fight?\"}" )
-			if choice then
-				ui.msg("The voice booms, \"I like it! Let the show go on!\"")
-				ui.msg("You hear screams everywhere! \"More Blood! More BLOOD!\"")
-				level:drop("chaingun")
-				level:summon("demon",3)
-				level:summon("cacodemon",DIFFICULTY)
-				level.status = 2
-			else
-				ui.msg("The voice booms, \"Coward!\" ")
-				ui.msg("You hear screams everywhere! \"Coward! Coward! COWARD!\"")
-				level.flags[ LF_NORESPAWN ] = true
-			end
-			return
-		end
-
-		if level.status == 2 then
-			ui.continue("The voice booms:\n{R\"Impressive mortal! Your determination to survive makes me excited!\"}\nYou hear screams everywhere!\n{R\"More Blood! More BLOOD!\"}")
-			local choice = ui.query("The voice continues:\n{R\"I can let you go now, and give you a small reward, or you can choose to fight the final challenge!\nDo you want to continue the fight?\"}")
-			if choice then
-				ui.msg_feel("The voice booms, \"Excellent! May the fight begin!!!\"")
-				ui.msg_feel("You hear screams everywhere! \"Kill, Kill, KILL!\"")
-
-				level:drop("shell",4)
-				level:drop("ammo",4)
-				if CHALLENGE == "challenge_aob" then
-					level:drop("lhglobe")
-				end
-
-				if DIFFICULTY == 1 then level:summon("cacodemon",2) end
-				if DIFFICULTY == 2 then level:summon("cacodemon",3) end
-				if DIFFICULTY == 3 then level:summon("knight",2) end
-				if DIFFICULTY > 3  then level:summon("baron",2) end
-
-				level.status = 3
-			else
-				ui.msg_feel("The voice booms, \"Too bad, you won't make it far then...!\" ")
-				ui.msg_feel("You hear screams everywhere! \"Boooo...\"")
-
-				level:drop("shell",3)
-				level:drop("lmed")
-				level:drop("smed")
-				level.flags[ LF_NORESPAWN ] = true
-			end
-			return
-		end
-
-		if level.status == 3 then
-			ui.continue( "The voice booms:\n{R\"Congratulations mortal! A pity you came to destroy us, for you would make a formidable Hell warrior!\"}\nYou hear screams everywhere!\n{R\"Champion! Blood! Champion! More BLOOD!\"}\nThe voice continues:\n{R\"I grant you the title of Hell's Arena Champion!\nAnd a promise is a promise... Search the arena again!\"}")
-
-			for _,reward in ipairs(level.data.final_reward) do
-				if reward.amount > 0 then
-					level:area_drop(level.data.drop_zone, reward.id, reward.amount, false, true )
-				end
-			end
-			
-			level.status = 4
-			player:add_medal("hellchampion")
-			if statistics.damage_on_level == 0 then
-				player:add_medal("hellchampion2")
-				if player_data.count('player/medals/medal[@id="hellchampion"]') > 0 then
-					player:remove_medal("hellchampion")
-				end
-				if DIFFICULTY >= DIFF_NIGHTMARE then
-					player:add_medal("hellchampion3")
-					if player_data.count('player/medals/medal[@id="hellchampion2"]') > 0 then
-						player:remove_medal("hellchampion2")
-					end
-				end
-			end
-			level.flags[ LF_NORESPAWN ] = true
-		end
-	end,
-
-	OnExit = function ()
-		local result = level.status
-			if player.nuketime > 1 then
-				ui.msg("\"To hell with your damn game.\"")
-				player:add_history( "He saw, left a present and left." )
-		elseif result == 1 then player:add_history( "He cowardly fled the Arena." )
-		elseif result == 2 then player:add_history("He left the Arena before it got too hot.")
-		elseif result == 3 then player:add_history("He fought desperately in the Arena but didn't have what it takes.")
-		elseif result == 4 then player:add_history("He left the Arena as a champion!") end
-		ui.msg("The voice laughs, \"Flee mortal, flee! There's no hiding in hell!\"")
-
-		-- badges --
-		if result == 4 then
-			core.special_complete()
-			player:add_badge("arena1")
-			if DIFFICULTY >= DIFF_VERYHARD then
-				player:add_badge("arena2")
-				if core.is_challenge("challenge_aoi") or core.is_challenge("challenge_aoms") then player:add_medal("chessmaster1") end
-				if core.is_challenge("challenge_aomr") then player:add_badge("arena3") end
-				if DIFFICULTY >= DIFF_NIGHTMARE then
-					player:add_badge("arena4")
-					if core.is_challenge("challenge_aoi") or core.is_challenge("challenge_aoms") then player:add_medal("chessmaster2") end
-					if core.is_challenge("challenge_aob") then player:add_badge("arena5") end
-				end
-			end
-		end
 	end,
 
 }

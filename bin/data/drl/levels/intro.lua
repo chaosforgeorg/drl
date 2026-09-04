@@ -2,7 +2,47 @@
 
 register_level "intro"
 {
-	name  = "Phobos Base Entry",
+	name = "Phobos Base Entry",
+
+	runtime = {
+		OnTick = function ( self )
+			if CHALLENGE == "" then
+				-- XXX Can we discover the actual key registered for the action?
+				ui.set_hint("")
+				local p = player.position
+
+				if p.x < 14 then
+					if ui.is_pad() then
+						ui.set_hint("Hint : hold left joy for direction, press <{!{$controller_gameplay_move}}> to confirm move!")
+					else
+						ui.set_hint("Hint : use {!numpad} or {!arrows} to move around!")
+					end
+				elseif p.x < 20 then
+					ui.set_hint("Hint : press <{!{$input_menu}}> for menu and {!Help}!")
+				elseif p.x < 25 then
+					ui.set_hint("Hint : you can turn off hints in the {!Settings} menu!")
+				end
+				if player.exp < 30  and player.enemiesinvision > 0 then
+					ui.set_hint("Hint : press <{!{$input_fire}}> to fire your weapon!")
+				end
+				if player.eq.weapon and player.eq.weapon.ammo == 0 then
+					ui.set_hint("Hint : press <{!{$input_reload}}> to reload your weapon!")
+				end
+				local item = self:get_item(p)
+				if item then
+					ui.set_hint("Hint : press <{!{$input_pickup}}> to get items from the ground!")
+				end
+				local tile = cells[ self:get_cell( p ) ].id
+				if tile == "stairs" then
+					ui.set_hint("Hint : press <{!{$input_action}}> to move downstairs!")
+				end
+			end
+		end,
+
+		OnExitLevel = function ( self )
+			ui.set_hint("")
+		end,
+	},
 
 	Create = function ()
 		level:fill( "rock" )
@@ -209,47 +249,7 @@ register_level "intro"
 
 		level:drop_being( player, coord( 4,10 ) )
 		player:set_achievement("drl_legacy_1")
-	end,
-
-	OnEnterLevel = function ()
 		player:add_history( "He started his journey on the surface of Phobos." )
-	end,
-
-	OnTick = function ()
-		if CHALLENGE == "" then
-			-- XXX Can we discover the actual key registered for the action?
-			ui.set_hint("")
-			local p = player.position
-			
-			if p.x < 14 then
-				if ui.is_pad() then
-					ui.set_hint("Hint : hold left joy for direction, press <{!{$controller_gameplay_move}}> to confirm move!")
-				else
-					ui.set_hint("Hint : use {!numpad} or {!arrows} to move around!")
-				end
-			elseif p.x < 20 then
-				ui.set_hint("Hint : press <{!{$input_menu}}> for menu and {!Help}!")
-			elseif p.x < 25 then
-				ui.set_hint("Hint : you can turn off hints in the {!Settings} menu!")
-			end
-			if player.exp < 30  and player.enemiesinvision > 0 then
-				ui.set_hint("Hint : press <{!{$input_fire}}> to fire your weapon!")
-			end
-			if player.eq.weapon and player.eq.weapon.ammo == 0 then
-				ui.set_hint("Hint : press <{!{$input_reload}}> to reload your weapon!")
-			end
-			local item = level:get_item(p)
-			if item then
-				ui.set_hint("Hint : press <{!{$input_pickup}}> to get items from the ground!")
-			end
-			local tile = cells[ level:get_cell( p ) ].id
-			if tile == "stairs" then
-				ui.set_hint("Hint : press <{!{$input_action}}> to move downstairs!")
-			end
-		end
-	end,
-	OnExit = function ()
-		ui.set_hint("")
 	end,
 
 }

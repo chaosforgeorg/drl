@@ -2,10 +2,64 @@
 
 register_level "toxin_refinery"
 {
-	name  = "Toxin Refinery",
-	entry = "On @1 he waded into the Toxin Refinery.",
+	name    = "Toxin Refinery",
+	entry   = "On @1 he waded into the Toxin Refinery.",
 	welcome = "The stench of toxins chokes you briefly.",
-	level = 4,
+	level   = 4,
+
+	runtime = {
+		OnTick = function ( self )
+			if (self.data.half_wall_down_time > 0) and (core.game_time() >= self.data.half_wall_down_time) and not self.data.half_wall:contains(player.position) then
+				local target = self:get_being(self.data.half_wall_coord)
+				if target then
+					if target:is_player() then return false end
+					target:kill()
+				end
+				--Transmuting fails if the square is actually a bloodpool
+				self.map[self.data.half_wall_coord] = "wall"
+				self.data.half_wall_down_time = 0
+			elseif self.data.half_wall_down_time == 0 and (self.data.half_wall_trigger:contains(player.position) or self.data.half_wall_trigger2:contains(player.position)) then
+				self:transmute("wall", "floor", self.data.half_wall)
+				self.data.half_wall_down_time = core.game_time() + 150
+			end
+			if self.data.darkness_end_time > 0 and self.data.darkness_end_time < core.game_time() then
+				player.vision = player.vision + self.data.vision_reduction
+				player.flags[ BF_DARKNESS ] = self.data.old_darkness
+				self.data.darkness_end_time = 0
+			end
+			if self.data.half_wall:contains(player.position) then
+				self:transmute( "wall", "floor", self.data.secret1)
+			elseif not self.data.trap2_triggered and self.data.trap2_trigger:contains(player.position) then
+				self:play_sound("door.open", player.position)
+				self:transmute( "wall", "floor", self.data.trap2_wall1)
+				self.data.trap2_triggered = true
+			end
+		end,
+
+		OnKillAll = function ( self )
+			if not self.data.kill_all then
+				self.data.kill_all  = true
+				ui.msg("The acrid smell begins to dissipate.")
+				self.status = 4
+			end
+		end,
+
+		OnExitLevel = function ( self )
+			if self.data.kill_all  then
+				core.special_complete()
+				ui.msg("You were a green machine.")
+				player:add_history("He was the antidote.")
+			else
+				ui.msg("That'll set them back a bit.")
+				player:add_history("He couldn't quite finish the job.")
+			end
+			if self.data.darkness_end_time > 0 then
+				player.vision = player.vision + self.data.vision_reduction
+				player.flags[ BF_DARKNESS ] = self.data.old_darkness
+				self.data.darkness_end_time = 0
+			end
+		end,
+	},
 
 	OnRegister = function ()
 		register_item "lever_toxinrefinery1"
@@ -226,62 +280,6 @@ register_level "toxin_refinery"
 		end
 
 		level:drop_being( player, coord( 36,18 ) )
-	end,
-
-	OnKillAll = function ()
-		if not level.data.kill_all then
-			level.data.kill_all  = true
-			ui.msg("The acrid smell begins to dissipate.")
-			level.status = 4
-		end
-	end,
-
-	OnEnterLevel = function ()
-		level.status = 0
-	end,
-
-	OnTick = function ()
-		if (level.data.half_wall_down_time > 0) and (core.game_time() >= level.data.half_wall_down_time) and not level.data.half_wall:contains(player.position) then
-			local target = level:get_being(level.data.half_wall_coord)
-			if target then
-				if target:is_player() then return false end
-				target:kill()
-			end
-			--Transmuting fails if the square is actually a bloodpool
-			level.map[level.data.half_wall_coord] = "wall"
-			level.data.half_wall_down_time = 0
-		elseif level.data.half_wall_down_time == 0 and (level.data.half_wall_trigger:contains(player.position) or level.data.half_wall_trigger2:contains(player.position)) then
-			level:transmute("wall", "floor", level.data.half_wall)
-			level.data.half_wall_down_time = core.game_time() + 150
-		end
-		if level.data.darkness_end_time > 0 and level.data.darkness_end_time < core.game_time() then
-			player.vision = player.vision + level.data.vision_reduction
-			player.flags[ BF_DARKNESS ] = level.data.old_darkness
-			level.data.darkness_end_time = 0
-		end
-		if level.data.half_wall:contains(player.position) then
-			level:transmute( "wall", "floor", level.data.secret1)
-		elseif not level.data.trap2_triggered and level.data.trap2_trigger:contains(player.position) then
-			level:play_sound("door.open", player.position)
-			level:transmute( "wall", "floor", level.data.trap2_wall1)
-			level.data.trap2_triggered = true
-		end
-	end,
-
-	OnExit = function ()
-		if level.data.kill_all  then
-			core.special_complete()
-			ui.msg("You were a green machine.")
-			player:add_history("He was the antidote.")
-		else
-			ui.msg("That'll set them back a bit.")
-			player:add_history("He couldn't quite finish the job.")
-		end
-		if level.data.darkness_end_time > 0 then
-			player.vision = player.vision + level.data.vision_reduction
-			player.flags[ BF_DARKNESS ] = level.data.old_darkness
-			level.data.darkness_end_time = 0
-		end
 	end,
 
 }

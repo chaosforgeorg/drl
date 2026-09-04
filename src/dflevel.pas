@@ -68,7 +68,6 @@ TLevel = class(TLuaMapNode, ITextMap)
     function CallHook( coord : TCoord2D; aCellID : Word; Hook : TCellHook ) : Variant; overload;
     function CallHook( coord : TCoord2D; What : TThing; Hook : TCellHook ) : Variant; overload;
     procedure CallHook( aHook : Byte; const aParams : array of const );
-    function CallHookCheck( aHook : Byte; const aParams : array of const ) : Boolean;
 
     procedure DropCorpse( aCoord : TCoord2D; CellID : Byte );
     function DamageTile( aCoord : TCoord2D; aDamage : Integer; aDamageType : TDamageType; aFloor : Boolean = True ) : Boolean;
@@ -173,7 +172,6 @@ TLevel = class(TLuaMapNode, ITextMap)
     property Markers : TMarkerStore                 read FMarkers;
     property Decals  : TDecalStore                  read FDecals;
     property AccuracyBonus : Integer                read FAccuracyBonus;
-    property Hooks : TFlags                         read FHooks;
     property Item     [ Index : TCoord2D ] : TItem  read getItem;
     property Being    [ Index : TCoord2D ] : TBeing read getBeing;
     property CellBottom [ Index : TCoord2D ] : Byte read getCellBottom;
@@ -233,8 +231,6 @@ begin
   finally
     Free;
   end;
-  FHooks := LoadHooks( [ 'levels', script ], LevelHooks );
-
   AfterGeneration;
 end;
 
@@ -612,6 +608,7 @@ begin
   end;
 
   CallHook( Hook_OnEnterLevel,[FIndex,FID] );
+  DRL.CallHook( Hook_OnEnterLevel, [FIndex,FID] );
   Player.CallHook( Hook_OnEnterLevel,[FIndex,FID] );
 
   if GraphicsVersion then
@@ -671,8 +668,9 @@ end;
 procedure TLevel.Leave;
 var TimeDiff : LongInt;
 begin
-  CallHook(Hook_OnExit,[FIndex,FID, FStatus]);
-  if ( Player.HP > 0 ) and ( not ( Hook_OnExit in FHooks ) ) then
+  CallHook( Hook_OnExitLevel, [FIndex,FID, FStatus] );
+  DRL.CallHook( Hook_OnExitLevel, [FIndex,FID, FStatus] );
+  if ( Player.HP > 0 ) and ( not HasHook( Hook_OnExitLevel ) ) then
   begin
     TimeDiff :=  Player.Statistics.GameTime - Player.Statistics['entry_time'];
     if TimeDiff < 100 then
@@ -828,23 +826,7 @@ end;
 procedure TLevel.CallHook( aHook : Byte; const aParams : array of const ) ;
 begin
   FPerks.CallHook( aHook, aParams );
-  if aHook in FHooks then 
-    if LF_SCRIPT in FFlags then // not needed?
-      LuaSystem.ProtectedCall( [ 'levels', FID, HookNames[aHook] ], aParams );
-  DRL.CallHook( aHook, aParams );
 end;
-
-function TLevel.CallHookCheck( aHook : Byte; const aParams : array of const ) : Boolean;
-begin
-  if not DRL.CallHookCheck( aHook, aParams ) then Exit( False );
-  if aHook in FHooks then 
-    if LF_SCRIPT in FFlags then
-      if not LuaSystem.ProtectedCall( [ 'levels', FID, HookNames[aHook] ], aParams ) then 
-        Exit( False );
-  if not FPerks.CallHookCheck( aHook, aParams ) then Exit( False );
-  Exit( True );
-end;
-
 
 function TLevel.DamageTile( aCoord : TCoord2D; aDamage : Integer; aDamageType : TDamageType; aFloor : Boolean = True ) : Boolean;
 var iCellID  : Byte;
@@ -1312,7 +1294,7 @@ begin
   if ( iEnemiesLeft < 4 ) and ( not ( LF_NOBEINGREVEAL in FFlags ) ) then
     Include( FFlags, LF_BEINGSVISIBLE );
 
-  if Hook_OnKillAll in FHooks then
+  if HasHook( Hook_OnKillAll ) then
   begin
     iUniqueEnemiesLeft := 0;
     if iEnemiesLeft > 0       then iUniqueEnemiesLeft := EnemiesLeft( True );
@@ -1323,7 +1305,7 @@ begin
   begin
     if (not (LF_RESPAWN in FFlags)) and ( EnemiesLeft() = 0 ) then
     begin
-      if not (Hook_OnKillAll in FHooks) then
+      if not HasHook( Hook_OnKillAll ) then
         IO.Msg('You feel relatively safe now.');
       FEmpty := True;
       if ( not ( LF_NOITEMREVEAL in FFlags ) ) then
@@ -1366,6 +1348,7 @@ begin
     Player.Statistics.OnTick;
 
     CallHook( Hook_OnTick,[ FLTime ] );
+    DRL.CallHook( Hook_OnTick, [FLTime] );
 
     if LF_RESPAWN in FFlags  then
     begin
