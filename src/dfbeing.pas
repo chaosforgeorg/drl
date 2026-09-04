@@ -2303,6 +2303,8 @@ begin
   if (iWeapon = nil) or (iWeapon.isMelee) then
   begin
     if Distance( FPosition, aBeing.Position ) > 1 then Exit( 0 );
+    if ( BF_AUTOHIT in FFlags )
+      or ( ( iWeapon <> nil ) and iWeapon.Flags[ IF_AUTOHIT ] ) then Exit( 100 );
     iToHit := getToHit( iWeapon, False, True ) - aBeing.GetBonus( Hook_getDefenceBonus, [True] );
     Exit( toHitToChance( 12 + iToHit ) );
   end;
