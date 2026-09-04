@@ -52,6 +52,25 @@ register_level "central_processing"
 				self:play_sound("door.open", self.data.door4_coord)
 			end
 		end,
+
+		OnKillAll = function ( self )
+			if not self.data.kill_all then
+				self.data.kill_all  = true
+				ui.msg("The machinery falls silent.")
+				self.status = 4
+			end
+		end,
+
+		OnExitLevel = function ( self )
+			if self.data.kill_all  then
+				core.special_complete()
+				ui.msg("No meat left to process.")
+				player:add_history("Nothing stood in his way.")
+			else
+				ui.msg("Just too many to count.")
+				player:add_history("He couldn't quite finish the job.")
+			end
+		end,
 	},
 
 	OnRegister = function ()
@@ -369,25 +388,5 @@ register_level "central_processing"
 
 		level:drop_being( player, coord( 5,11 ) )
 	end,
-
-	OnKillAll = function ()
-		if not level.data.kill_all then
-			level.data.kill_all  = true
-			ui.msg("The machinery falls silent.")
-			level.status = 4
-		end
-	end,
-
-	OnExit = function ()
-		if level.data.kill_all  then
-			core.special_complete()
-			ui.msg("No meat left to process.")
-			player:add_history("Nothing stood in his way.")
-		else
-			ui.msg("Just too many to count.")
-			player:add_history("He couldn't quite finish the job.")
-		end
-	end,
-
 
 }

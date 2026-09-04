@@ -11,6 +11,36 @@ register_level "the_wall"
 		OnKill = function ( self )
 			self.status = 1
 		end,
+
+		OnKillAll = function ( self )
+			if self.status == 2 then return end
+			self:transmute_by_flag("wall", "floor", LFMARKER1, area.FULL)
+			self:play_sound( "revenant.die", self.data.sound_crack)
+			ui.msg("Peace comes back to this evil place. Cracks begin to appear as if in deference to your achievement.")
+			self.status = 2
+			if CHALLENGE == "challenge_aohu" then
+				player:add_medal("everysoldier")
+			end
+		end,
+
+		OnExitLevel = function ( self )
+			local result = self.status
+			if result == 0 then
+				ui.msg("Hearing them scream soothes the soul...")
+				player:add_history("Not knowing what to do, he left.")
+			elseif result == 1 then
+				ui.msg("This must be madness!")
+				player:add_history("He broke into the Wall, but gave up against the overwhelming forces.")
+			elseif result == 2 then
+				core.special_complete()
+				ui.msg("All in all, we're just another brick in the wall.")
+				player:add_history("He massacred the evil behind the Wall!")
+				player:add_badge("wall1")
+				if core.is_challenge("challenge_aomr") or core.is_challenge("challenge_aob") or core.is_challenge("challenge_aosh") then
+					player:add_badge("wall2")
+				end
+			end
+		end,
 	},
 
 	Create = function ()
@@ -69,33 +99,4 @@ register_level "the_wall"
 		level.status = 0
 	end,
 
-	OnKillAll = function ()
-		if level.status == 2 then return end
-		level:transmute_by_flag("wall", "floor", LFMARKER1, area.FULL)
-		level:play_sound( "revenant.die", level.data.sound_crack)
-		ui.msg("Peace comes back to this evil place. Cracks begin to appear as if in deference to your achievement.")
-		level.status = 2
-		if CHALLENGE == "challenge_aohu" then
-			player:add_medal("everysoldier")
-		end
-	end,
-
-	OnExit = function ()
-		local result = level.status
-		if result == 0 then
-			ui.msg("Hearing them scream soothes the soul...")
-			player:add_history("Not knowing what to do, he left.")
-		elseif result == 1 then
-			ui.msg("This must be madness!")
-			player:add_history("He broke into the Wall, but gave up against the overwhelming forces.")
-		elseif result == 2 then
-			core.special_complete()
-			ui.msg("All in all, we're just another brick in the wall.")
-			player:add_history("He massacred the evil behind the Wall!")
-			player:add_badge("wall1")
-			if core.is_challenge("challenge_aomr") or core.is_challenge("challenge_aob") or core.is_challenge("challenge_aosh") then
-				player:add_badge("wall2")
-			end
-		end
-	end,
 }

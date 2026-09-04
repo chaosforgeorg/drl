@@ -39,6 +39,45 @@ register_level "containment_area"
 				self.status = 1
 			end
 		end,
+
+		OnKillAll = function ( self )
+			if self.status ~= 3 then return end
+			self:transmute_by_flag( "wall", "floor", LFMARKER1, area.FULL)
+			self:play_sound( "door.close", self.data.sound_location)
+			ui.msg("I guess I prefered the Wall. The air seems less claustrophic now.")
+			self.status = 4
+		end,
+
+		OnNuked = function ( self )
+			--Just check that everyone is dead
+			for b in self:beings() do
+				if not b:is_player() then return end
+			end
+			--Skip the wall trap sequence if required
+			self.status = 4
+		end,
+
+		OnExitLevel = function ( self )
+			local result = self.status
+			if result == 0 then
+				ui.msg("I guess this tincan will stay closed...")
+				player:add_history("Not knowing what to do, he left.")
+			elseif result < 4 then
+				ui.msg("It's way too hairy down here!")
+				player:add_history("He broke into the Containment Area, but gave up against the overwhelming forces.")
+			elseif result == 4 then
+				core.special_complete()
+				ui.msg("Luckily it's not as bad as tricks and traps...")
+				player:add_history("He emerged from the Containment Area victorious!")
+				player:add_badge("wall1")
+				if CHALLENGE == "challenge_aohu" then
+					player:add_medal("everysoldier")
+				end
+				if core.is_challenge("challenge_aomr") or core.is_challenge("challenge_aob") or core.is_challenge("challenge_aosh") then
+					player:add_badge("wall2")
+				end
+			end
+		end,
 	},
 
 	Create = function ()
@@ -104,42 +143,4 @@ PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
 		level.status = 0
 	end,
 
-	OnKillAll = function ()
-		if level.status ~= 3 then return end
-		level:transmute_by_flag( "wall", "floor", LFMARKER1, area.FULL)
-		level:play_sound( "door.close", level.data.sound_location)
-		ui.msg("I guess I prefered the Wall. The air seems less claustrophic now.")
-		level.status = 4
-	end,
-
-	OnNuked = function ()
-		--Just check that everyone is dead
-		for b in level:beings() do
-			if not b:is_player() then return end
-		end
-		--Skip the wall trap sequence if required
-		level.status = 4
-	end,
-
-	OnExit = function ()
-		local result = level.status
-		if result == 0 then
-			ui.msg("I guess this tincan will stay closed...")
-			player:add_history("Not knowing what to do, he left.")
-		elseif result < 4 then
-			ui.msg("It's way too hairy down here!")
-			player:add_history("He broke into the Containment Area, but gave up against the overwhelming forces.")
-		elseif result == 4 then
-			core.special_complete()
-			ui.msg("Luckily it's not as bad as tricks and traps...")
-			player:add_history("He emerged from the Containment Area victorious!")
-			player:add_badge("wall1")
-			if CHALLENGE == "challenge_aohu" then
-				player:add_medal("everysoldier")
-			end
-			if core.is_challenge("challenge_aomr") or core.is_challenge("challenge_aob") or core.is_challenge("challenge_aosh") then
-				player:add_badge("wall2")
-			end
-		end
-	end,
 }

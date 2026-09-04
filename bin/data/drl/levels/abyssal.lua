@@ -35,6 +35,39 @@ register_level "abyssal_plains"
 				self.status = 2
 			end
 		end,
+
+		OnKillAll = function ( self )
+			if self.status > 0 then
+				if not self.data.kill_add then
+					self.data.kill_all  = true
+					ui.msg("\"Ugly motherfuckers.\"")
+				end
+			end
+			--on the off-chance the player nuke/invulns through the level
+			self:transmute( "gwall", "floor" )
+		end,
+
+		OnNuked = function ( self )
+			for b in self:beings() do
+				if not b:is_player() then return end
+			end
+			self.data.kill_all = true
+			--Skip the wall trap sequence if required
+			self.status = 2
+		end,
+
+		OnExitLevel = function ( self )
+			if self.data.kill_all  then
+				ui.msg("Sure can make a guy miss the REAL plains...")
+				player:add_history("He slaughtered the beasts living there.")
+	 	 		player:add_badge("skull1")
+				if core.is_challenge("challenge_aora") then player:add_badge("skull2") end
+				core.special_complete()
+			else
+				ui.msg("Damn, that was way too close for comfort!.")
+				player:add_history("He barely escaped the trap set for him.")
+			end
+		end,
 	},
 
 	Create = function ()
@@ -109,39 +142,5 @@ register_level "abyssal_plains"
 		level.data.kill_all  = false
 		level:drop_being( player, coord( 2,11 ) )
 	end,
-
-	OnKillAll = function ()
-		if level.status > 0 then
-			if not level.data.kill_add then
-				level.data.kill_all  = true
-				ui.msg("\"Ugly motherfuckers.\"")
-			end
-		end
-		--on the off-chance the player nuke/invulns through the level
-		level:transmute( "gwall", "floor" )
-	end,
-
-	OnNuked = function()
-		for b in level:beings() do
-			if not b:is_player() then return end
-		end
-		level.data.kill_all = true
-		--Skip the wall trap sequence if required
-		level.status = 2
-	end,
-
-	OnExit = function ()
-		if level.data.kill_all  then
-			ui.msg("Sure can make a guy miss the REAL plains...")
-			player:add_history("He slaughtered the beasts living there.")
- 	 		player:add_badge("skull1")
-			if core.is_challenge("challenge_aora") then player:add_badge("skull2") end
-			core.special_complete()
-		else
-			ui.msg("Damn, that was way too close for comfort!.")
-			player:add_history("He barely escaped the trap set for him.")
-		end
-	end,
-
 
 }

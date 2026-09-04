@@ -215,6 +215,9 @@ core.register_blueprint "perk"
 	OnPreAction    = { false, core.TFUNC },
 	OnPostAction   = { false, core.TFUNC },
 	OnKill         = { false, core.TFUNC },
+	OnKillAll      = { false, core.TFUNC },
+	OnExitLevel    = { false, core.TFUNC },
+	OnNuked        = { false, core.TFUNC },
 	OnHitBeing     = { false, core.TFUNC },
 	OnEnter        = { false, core.TFUNC },
 	OnEnterLevel   = { false, core.TFUNC },
@@ -400,7 +403,7 @@ core.register_blueprint "challenge"
 	OnCreate         = { false, core.TFUNC },
 	OnRegister       = { false, core.TFUNC },
 	OnEnterLevel     = { false, core.TFUNC },
-	OnExit           = { false, core.TFUNC },
+	OnExitLevel      = { false, core.TFUNC },
 	OnUnLoad         = { false, core.TFUNC },
 	OnCreatePlayer   = { false, core.TFUNC },
 	OnLevelUp        = { false, core.TFUNC },
@@ -677,12 +680,6 @@ core.register_blueprint "level"
 	canGenerate      = { false, core.TFUNC },
 	OnRegister       = { false, core.TFUNC },
 
-	OnKill           = { false, core.TFUNC },
-	OnKillAll        = { false, core.TFUNC },
-	OnEnterLevel     = { false, core.TFUNC },
-	OnExit           = { false, core.TFUNC },
-	OnTick           = { false, core.TFUNC },
-	OnNuked          = { false, core.TFUNC },
 }
 
 core.register_blueprint "room"

@@ -2,14 +2,45 @@
 
 register_level "unholy_cathedral"
 {
-	name  = "Unholy Cathedral",
-	entry = "On @1 he invaded the Unholy Cathedral!",
-	welcome = "You arrive at the Unholy Cathedral. You feel something sinister in the air.",
-	level = 19,
+	name        = "Unholy Cathedral",
+	entry       = "On @1 he invaded the Unholy Cathedral!",
+	welcome     = "You arrive at the Unholy Cathedral. You feel something sinister in the air.",
+	level       = 19,
 
 	canGenerate = function ()
 		return DIFFICULTY > 1
 	end,
+
+	runtime = {
+		OnKillAll = function ( self )
+			if self.status == 0 then
+				self.status = 1
+				ui.msg("As you kill the Angel of Death the cathedral suddenly")
+				ui.msg_enter("starts to fall apart!")
+				self:nuke()
+			end
+		end,
+
+		OnExitLevel = function ( self )
+			player:remove_perk( "perk_player_unholy_cathedral", true )
+			if self.status == 0 then
+				ui.msg("...Or wonder, till it drives you mad,")
+				ui.msg("What would have followed if you had....")
+				player:add_history("He fled the Unholy Cathedral seeing no chance to win.")
+			else
+				core.special_complete()
+				ui.msg("Never again...")
+				player:add_history("He then destroyed the Unholy Cathedral!")
+				if not self.flags[ LF_NUKED ] then
+					player:add_badge("death3")
+					if DIFFICULTY >= DIFF_NIGHTMARE then
+						player:add_badge("death4")
+						if not player:has_trait( "brute" ) then player:add_badge("death5") end
+					end
+				end
+			end
+		end,
+	},
 
 	OnRegister = function ()
 
@@ -213,32 +244,4 @@ register_level "unholy_cathedral"
 		player:add_perk( "perk_player_unholy_cathedral" )
 	end,
 
-	OnKillAll = function ()
-		if level.status == 0 then
-			level.status = 1
-			ui.msg("As you kill the Angel of Death the cathedral suddenly")
-			ui.msg_enter("starts to fall apart!")
-			level:nuke()
-		end
-	end,
-
-	OnExit = function ()
-		player:remove_perk( "perk_player_unholy_cathedral", true )
-		if level.status == 0 then
-			ui.msg("...Or wonder, till it drives you mad,")
-			ui.msg("What would have followed if you had....")
-			player:add_history("He fled the Unholy Cathedral seeing no chance to win.")
-		else
-			core.special_complete()
-			ui.msg("Never again...")
-			player:add_history("He then destroyed the Unholy Cathedral!")
-			if not level.flags[ LF_NUKED ] then
-				player:add_badge("death3")
-				if DIFFICULTY >= DIFF_NIGHTMARE then
-					player:add_badge("death4")
-					if not player:has_trait( "brute" ) then player:add_badge("death5") end
-				end
-			end
-		end
-	end,
 }

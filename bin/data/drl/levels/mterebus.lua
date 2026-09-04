@@ -44,6 +44,40 @@ register_level "mt_erebus"
 			self.status = newStatus
 			return true
 		end,
+
+		OnKillAll = function ( self )
+			local result = self.status
+			if result < 4 then
+				ui.msg("That seems to be all of them... wait! Something is moving there, or is it just lava glow?")
+				--In the event of a nuke disable the need to open up the walls (unlike Limbo).
+				--This inconsistency is partly due to historical reasons but also because the spawning of the elemental shouldn'can't be behind a wall.
+				--However the elemental is killed immediately in practice because it appears at the end of the monster list.
+				self:transmute( "cwall", "floor", self.data.mountain )
+				self.status = 4
+				local element = self:summon("lava_elemental")
+				element.inv:add( item.new("lava_element") )
+			elseif result == 4 then
+				ui.msg("Tough son of a bitch... now to get that shiny object he left behind...")
+				self.status = 5
+			end
+		end,
+
+		OnExitLevel = function ( self )
+			local result = self.status
+			if result < 4 then
+				ui.msg("Better leave, before this thing blows!")
+				player:add_history("He decided it was too dangerous.")
+			elseif result == 4 then
+				ui.msg("There goes my beard... at least I'm still alive.")
+				player:add_history("He fled there from the monstrous lava elemental.")
+			elseif result == 5 then
+				core.special_complete()
+				ui.msg("Lava elementals my ass. I don't care.")
+				player:add_badge("lava1")
+				if core.is_challenge("challenge_aoi") then player:add_badge("lava2") end
+				player:add_history("He managed to raise Mt. Erebus completely!")
+			end
+		end,
 	},
 
 	OnRegister = function ()
@@ -161,40 +195,6 @@ register_level "mt_erebus"
 
 		level:drop_being( player, coord( 4,11 ) )
 		level.status = 0
-	end,
-
-	OnKillAll = function ()
-		local result = level.status
-		if result < 4 then
-			ui.msg("That seems to be all of them... wait! Something is moving there, or is it just lava glow?")
-			--In the event of a nuke disable the need to open up the walls (unlike Limbo).
-			--This inconsistency is partly due to historical reasons but also because the spawning of the elemental shouldn'can't be behind a wall.
-			--However the elemental is killed immediately in practice because it appears at the end of the monster list.
-			level:transmute( "cwall", "floor", level.data.mountain )
-			level.status = 4
-			local element = level:summon("lava_elemental")
-			element.inv:add( item.new("lava_element") )
-		elseif result == 4 then
-			ui.msg("Tough son of a bitch... now to get that shiny object he left behind...")
-			level.status = 5
-		end
-	end,
-
-	OnExit = function ()
-		local result = level.status
-		if result < 4 then
-			ui.msg("Better leave, before this thing blows!")
-			player:add_history("He decided it was too dangerous.")
-		elseif result == 4 then
-			ui.msg("There goes my beard... at least I'm still alive.")
-			player:add_history("He fled there from the monstrous lava elemental.")
-		elseif result == 5 then
-			core.special_complete()
-			ui.msg("Lava elementals my ass. I don't care.")
-			player:add_badge("lava1")
-			if core.is_challenge("challenge_aoi") then player:add_badge("lava2") end
-			player:add_history("He managed to raise Mt. Erebus completely!")
-		end
 	end,
 
 }

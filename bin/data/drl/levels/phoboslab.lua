@@ -29,6 +29,21 @@ register_level "phobos_lab"
 				end
 			end
 		end,
+
+		OnKillAll = function ( self )
+			if self.status < 4 then
+				ui.msg("\"This lab won't do any more experiments... I wonder if there are others?\"")
+				self.status = 4
+			end
+		end,
+
+		OnExitLevel = function ( self )
+			if self.status == 4 then
+				core.special_complete()
+			end
+			ui.msg("\"So much for the lab, next time I'll use neurotoxin...\"")
+			player:add_history("He broke through the lab.")
+		end,
 	},
 
 	OnRegister = function ()
@@ -165,21 +180,5 @@ register_level "phobos_lab"
 		level.flags[ LF_SHARPFLUID ] = true
 		level:drop_being( player, coord( 57,19 ) )
 	end,
-
-	OnKillAll = function ()
-		if level.status < 4 then
-			ui.msg("\"This lab won't do any more experiments... I wonder if there are others?\"")
-			level.status = 4
-		end
-	end,
-
-	OnExit = function ()
-		if level.status == 4 then
-			core.special_complete()
-		end
-		ui.msg("\"So much for the lab, next time I'll use neurotoxin...\"")
-		player:add_history("He broke through the lab.")
-	end,
-
 
 }

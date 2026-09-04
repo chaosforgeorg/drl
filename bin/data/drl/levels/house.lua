@@ -60,6 +60,41 @@ register_level "house_of_pain"
 				self:set_cell( 14, 11, "stairs" )
 			end
 		end,
+
+		OnKillAll = function ( self )
+			local res = self.status
+			if res < 5 then
+				if not self.data.is_staff then
+					ui.msg("The doors unlock.")
+					self:transmute("ldoor","door")
+				end
+				if res == 0 then
+					self.status = 1
+				elseif res == 2 then
+					self.status = 3
+				elseif res == 4 then
+					ui.continue("The voice wails:\n{R\"I'm impressed! Why don't you come back to the first room and we'll see if I can't give you a just reward.\"}")
+					self:transmute( { "iwall", "gwall" }, "rwall")
+					self.status = 5
+				end
+			end
+		end,
+
+		OnExitLevel = function ( self )
+			player:remove_perk( "perk_player_house_of_pain", true )
+			local result = self.status
+			if result == 0 then
+				ui.msg("Better show myself out...")
+				player:add_history("He left the House without drawing too much attention.")
+			elseif result == 1 then
+				ui.msg("Enough!")
+				player:add_history("He fled the House on fire!")
+			else
+				core.special_complete()
+				ui.msg("My house, my rules.")
+				player:add_history("He conquered the House!")
+			end
+		end,
 	},
 
 	canGenerate = function ()
@@ -148,42 +183,6 @@ register_level "house_of_pain"
 		player:add_perk( "perk_player_house_of_pain" )
 		level.flags[ LF_NORESPAWN ] = true
 	end,
-
-	OnKillAll = function ()
-		local res = level.status
-		if res < 5 then
-			if not level.data.is_staff then
-				ui.msg("The doors unlock.")
-				level:transmute("ldoor","door")
-			end
-			if res == 0 then
-				level.status = 1
-			elseif res == 2 then
-				level.status = 3
-			elseif res == 4 then
-				ui.continue("The voice wails:\n{R\"I'm impressed! Why don't you come back to the first room and we'll see if I can't give you a just reward.\"}")
-				level:transmute( { "iwall", "gwall" }, "rwall")
-				level.status = 5
-			end
-		end
-	end,
-
-	OnExit = function ()
-		player:remove_perk( "perk_player_house_of_pain", true )
-		local result = level.status
-		if result == 0 then
-			ui.msg("Better show myself out...")
-			player:add_history("He left the House without drawing too much attention.")
-		elseif result == 1 then
-			ui.msg("Enough!")
-			player:add_history("He fled the House on fire!")
-		else
-			core.special_complete()
-			ui.msg("My house, my rules.")
-			player:add_history("He conquered the House!")
-		end
-	end,
-
 
 }
 --]]--

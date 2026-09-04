@@ -2,14 +2,68 @@
 
 register_level "deimos_lab"
 {
-	name  = "Deimos Lab",
-	entry = "On @1 he entered Deimos Lab.",
-	level = 9,
-	welcome = "You arrive at the Deimos Lab entry area.",
+	name        = "Deimos Lab",
+	entry       = "On @1 he entered Deimos Lab.",
+	level       = 9,
+	welcome     = "You arrive at the Deimos Lab entry area.",
 
 	canGenerate = function ()
 		return DIFFICULTY > 1
 	end,
+
+	runtime = {
+		OnKillAll = function ( self )
+			if self.status == 6 then
+				self.status = 7
+
+				player:add_medal("armory1")
+				if statistics.damage_on_level == 0 then
+					player:add_medal("armory2")
+					if player_data.count('player/medals/medal[@id="armory1"]') > 0 then
+						player:remove_medal("armory1")
+					end
+				end
+
+				self:transmute( "gwall", "floor", self.data.vault2 )
+				ui.msg("The lab caches open.")
+
+				local reward1,reward2 = generator.roll_pair{ "umod_sniper","umod_firestorm","umod_nano","umod_onyx","ucarmor" }
+				local reward3         = table.random_pick{"mod_power","mod_agility","mod_bulk","mod_tech"}
+				self:drop_item(reward3,coord(37,10), true, true, true)
+				self:drop_item(reward2,coord(42,11), true, true, true)
+				self:drop_item(reward1,coord(37,11), true, true, true)
+
+				local id = core.get_unknown_assembly( 1 )
+				if id then
+					local item = self:drop_item("schematic_1",coord(42,10), true, true, true)
+					local ma   = mod_arrays[id]
+					item.ammo  = ma.nid
+					item.name  = ma.name.." schematics"
+				end
+			end
+		end,
+
+		OnExitLevel = function ( self )
+			local result = self.status
+				if player.nuketime > 1 then
+				ui.msg("Cleansed with fire.")
+				player:add_history( "He decided to nuke the forbidden Lab." )
+			elseif result == 0 then
+				ui.msg("Let it lie, that which is eternally dead...")
+				player:add_history("He left the Deimos Lab without drawing too much attention.")
+			elseif result < 6 then
+				ui.msg("Better safe than sorry.")
+				player:add_history("He fought hard, but decided the reward was not worth it.")
+			elseif result == 6 then
+				ui.msg("This is madness!")
+				player:add_history("He fled the lab after unleashing a nightmare!")
+			else
+				core.special_complete()
+				ui.msg("Gotta love the craft...")
+				player:add_history("He destroyed the evil within and reaped the rewards!")
+			end
+		end,
+	},
 
 	OnRegister = function ()
 
@@ -138,58 +192,6 @@ register_level "deimos_lab"
 		end
 
 		level:drop_being( player, coord( 3,3 ) )
-	end,
-
-	OnKillAll = function ()
-		if level.status == 6 then
-			level.status = 7
-
-			player:add_medal("armory1")
-			if statistics.damage_on_level == 0 then
-				player:add_medal("armory2")
-				if player_data.count('player/medals/medal[@id="armory1"]') > 0 then
-					player:remove_medal("armory1")
-				end
-			end
-
-			level:transmute( "gwall", "floor", level.data.vault2 )
-			ui.msg("The lab caches open.")
-
-			local reward1,reward2 = generator.roll_pair{ "umod_sniper","umod_firestorm","umod_nano","umod_onyx","ucarmor" }
-			local reward3         = table.random_pick{"mod_power","mod_agility","mod_bulk","mod_tech"}
-			level:drop_item(reward3,coord(37,10), true, true, true)
-			level:drop_item(reward2,coord(42,11), true, true, true)
-			level:drop_item(reward1,coord(37,11), true, true, true)
-
-			local id = core.get_unknown_assembly( 1 )
-			if id then
-				local item = level:drop_item("schematic_1",coord(42,10), true, true, true)
-				local ma   = mod_arrays[id]
-				item.ammo  = ma.nid
-				item.name  = ma.name.." schematics"
-			end
-		end
-	end,
-
-	OnExit = function ()
-		local result = level.status
-			if player.nuketime > 1 then
-			ui.msg("Cleansed with fire.")
-			player:add_history( "He decided to nuke the forbidden Lab." )
-		elseif result == 0 then
-			ui.msg("Let it lie, that which is eternally dead...")
-			player:add_history("He left the Deimos Lab without drawing too much attention.")
-		elseif result < 6 then
-			ui.msg("Better safe than sorry.")
-			player:add_history("He fought hard, but decided the reward was not worth it.")
-		elseif result == 6 then
-			ui.msg("This is madness!")
-			player:add_history("He fled the lab after unleashing a nightmare!")
-		else
-			core.special_complete()
-			ui.msg("Gotta love the craft...")
-			player:add_history("He destroyed the evil within and reaped the rewards!")
-		end
 	end,
 
 }

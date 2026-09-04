@@ -15,6 +15,21 @@ register_level "the_chained_court"
 				self:play_sound( "baron.act", player.position )
 			end
 		end,
+
+		OnKillAll = function ( self )
+			if self.status == 0 then
+				ui.msg("So much for hellish fair-play.")
+				self:transmute( "wall", "floor", area(7,5,11,16) )
+				player:add_history("He defeated the Hell Arena Master!")
+				self.status = 3
+			end
+		end,
+
+		OnExitLevel = function ( self )
+			if self.status == 3 then
+				core.special_complete()
+			end
+		end,
 	},
 
 	OnRegister = function ()
@@ -318,20 +333,6 @@ register_level "the_chained_court"
 			generator.set_permanence( area(34,4,43,17), false )
 		end
 		level:drop_being( player, player_pos )
-	end,
-	OnKillAll = function ()
-		if level.status == 0 then
-			ui.msg("So much for hellish fair-play.")
-			level:transmute( "wall", "floor", area(7,5,11,16) )
-			player:add_history("He defeated the Hell Arena Master!")
-			level.status = 3
-		end
-	end,
-
-	OnExit = function ()
-		if level.status == 3 then
-			core.special_complete()
-		end
 	end,
 
 }

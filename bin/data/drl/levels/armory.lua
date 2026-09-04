@@ -2,14 +2,78 @@
 
 register_level "hells_armory"
 {
-	name  = "Hell's Armory",
-	entry = "On @1 he entered Hell's Armory.",
-	level = 9,
-	welcome = "You enter Hell's Armory. You hear the sounds of heavy machinery.",
+	name        = "Hell's Armory",
+	entry       = "On @1 he entered Hell's Armory.",
+	level       = 9,
+	welcome     = "You enter Hell's Armory. You hear the sounds of heavy machinery.",
 
 	canGenerate = function ()
 		return DIFFICULTY > 1
 	end,
+
+	runtime = {
+		OnKillAll = function ( self )
+			if self.status == 1 then
+				self.status = 2
+
+				player:add_medal("armory1")
+				if statistics.damage_on_level == 0 then
+					player:add_medal("armory2")
+					if player_data.count('player/medals/medal[@id="armory1"]') > 0 then
+						player:remove_medal("armory1")
+					end
+				end
+
+				ui.msg("The lab cache opens.")
+				for x = 4,5 do
+					for y = 9,11 do
+						self.map[ coord(x,y) ] = "floor"
+					end
+				end
+				player:play_sound("lever.use")
+
+				local reward1 = table.random_pick{ "umod_sniper","umod_firestorm","umod_nano","umod_onyx" }
+				local reward2 = table.random_pick{ "mod_power","mod_agility","mod_bulk","mod_tech","ucarmor"}
+
+				if player:has_medal("armory2") then
+					if reward1 == "umod_nano" then
+						reward2 = "umod_onyx"
+					else
+						reward2 = "umod_nano"
+					end
+				end
+
+				self:drop_item(reward1,coord(4,9), true, true, true)
+				self:drop_item(reward2,coord(4,11), true, true, true)
+
+				local id = core.get_unknown_assembly( 1 )
+				if id then
+					local item = self:drop_item("schematic_1",coord(42,10), true, true, true)
+					local ma   = mod_arrays[id]
+					item.ammo  = ma.nid
+					item.name  = ma.name.." schematics"
+				end
+			end
+		end,
+
+		OnExitLevel = function ( self )
+			local result = self.status
+				if player.nuketime > 1 then
+				ui.msg("Cleansed with fire.")
+				player:add_history( "He decided to nuke Hell's production center." )
+			elseif result == 0 then
+				ui.msg("Let it lie, that which is eternally dead...")
+				player:add_history("He left the Armory without drawing too much attention.")
+			elseif result == 1 then
+				ui.msg("This is madness!")
+				player:add_history("He fled being chased by a nightmare!")
+			else
+				core.special_complete()
+				ui.msg("Gotta love the craft...")
+				player:add_history("He destroyed the evil within and reaped the rewards!")
+			end
+		end,
+	},
 
 	OnRegister = function ()
 
@@ -124,68 +188,6 @@ register_level "hells_armory"
 		end
 
 		level:drop_being( player, coord( 11,10 ) )
-	end,
-
-	OnKillAll = function ()
-		if level.status == 1 then
-			level.status = 2
-
-			player:add_medal("armory1")
-			if statistics.damage_on_level == 0 then
-				player:add_medal("armory2")
-				if player_data.count('player/medals/medal[@id="armory1"]') > 0 then
-					player:remove_medal("armory1")
-				end
-			end
-
-			ui.msg("The lab cache opens.")
-			for x = 4,5 do
-				for y = 9,11 do
-					level.map[ coord(x,y) ] = "floor"
-				end
-			end
-			player:play_sound("lever.use")
-
-			local reward1 = table.random_pick{ "umod_sniper","umod_firestorm","umod_nano","umod_onyx" }
-			local reward2 = table.random_pick{ "mod_power","mod_agility","mod_bulk","mod_tech","ucarmor"}
-
-			if player:has_medal("armory2") then
-				if reward1 == "umod_nano" then
-					reward2 = "umod_onyx"
-				else
-					reward2 = "umod_nano"
-				end
-			end
-
-			level:drop_item(reward1,coord(4,9), true, true, true)
-			level:drop_item(reward2,coord(4,11), true, true, true)
-
-			local id = core.get_unknown_assembly( 1 )
-			if id then
-				local item = level:drop_item("schematic_1",coord(42,10), true, true, true)
-				local ma   = mod_arrays[id]
-				item.ammo  = ma.nid
-				item.name  = ma.name.." schematics"
-			end
-		end
-	end,
-
-	OnExit = function ()
-		local result = level.status
-			if player.nuketime > 1 then
-			ui.msg("Cleansed with fire.")
-			player:add_history( "He decided to nuke Hell's production center." )
-		elseif result == 0 then
-			ui.msg("Let it lie, that which is eternally dead...")
-			player:add_history("He left the Armory without drawing too much attention.")
-		elseif result == 1 then
-			ui.msg("This is madness!")
-			player:add_history("He fled being chased by a nightmare!")
-		else
-			core.special_complete()
-			ui.msg("Gotta love the craft...")
-			player:add_history("He destroyed the evil within and reaped the rewards!")
-		end
 	end,
 
 }

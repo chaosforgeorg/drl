@@ -13,6 +13,47 @@ register_level "the_vaults"
 				self.status = 1
 			end
 		end,
+
+		OnKillAll = function ( self )
+			if self.status == 1 then
+				self.status = 2
+				ui.msg("You would think there would be an easier way in. At least I got the loot!")
+			else
+				self.status = 4
+				ui.msg("Well, they sure opened up. Now to see if there's anything left worth taking...")
+			end
+		end,
+
+		OnExitLevel = function ( self )
+			local result = self.status
+			player:add_badge("vaults1")
+			if result == 0 then
+				ui.msg("All these treasures left behind...")
+				player:add_history("He came, he saw, but he left.")
+			elseif result == 1 or result == 3 then
+				ui.msg("At least I got something!")
+				player:add_history("He managed to scavenge a part of the Vaults' treasures.")
+				player:add_badge("vaults2")
+			elseif result == 2 or result == 4 then
+				core.special_complete()
+				ui.msg("Eternal death awaits any who would seek to steal the treasures secured within the Vaults...")
+				if result == 2 then
+					player:add_history("He managed to clear the Vaults completely!")
+				else
+					player:add_history("He cracked the Vaults and cleared them out!")
+				end
+				player:add_badge("vaults2")
+				if not self.flags[ LF_NUKED ] then
+					player:add_badge("vaults3")
+					if result ~= 4 then
+						player:add_badge("vaults4")
+						if DIFFICULTY >= DIFF_VERYHARD then
+							player:add_badge("vaults5")
+						end
+					end
+				end
+			end
+		end,
 	},
 
 	canGenerate = function ()
@@ -145,44 +186,4 @@ register_level "the_vaults"
 		level.status = 0
 	end,
 
-	OnKillAll = function ()
-		if level.status == 1 then
-			level.status = 2
-			ui.msg("You would think there would be an easier way in. At least I got the loot!")
-		else
-			level.status = 4
-			ui.msg("Well, they sure opened up. Now to see if there's anything left worth taking...")
-		end
-	end,
-
-	OnExit = function ()
-		local result = level.status
-		player:add_badge("vaults1")
-		if result == 0 then
-			ui.msg("All these treasures left behind...")
-			player:add_history("He came, he saw, but he left.")
-		elseif result == 1 or result == 3 then
-			ui.msg("At least I got something!")
-			player:add_history("He managed to scavenge a part of the Vaults' treasures.")
-			player:add_badge("vaults2")
-		elseif result == 2 or result == 4 then
-			core.special_complete()
-			ui.msg("Eternal death awaits any who would seek to steal the treasures secured within the Vaults...")
-			if result == 2 then
-				player:add_history("He managed to clear the Vaults completely!")
-			else
-				player:add_history("He cracked the Vaults and cleared them out!")
-			end
-			player:add_badge("vaults2")
-			if not level.flags[ LF_NUKED ] then
-				player:add_badge("vaults3")
-				if result ~= 4 then
-					player:add_badge("vaults4")
-					if DIFFICULTY >= DIFF_VERYHARD then
-						player:add_badge("vaults5")
-					end
-				end
-			end
-		end
-	end,
 }

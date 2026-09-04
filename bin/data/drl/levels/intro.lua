@@ -38,6 +38,10 @@ register_level "intro"
 				end
 			end
 		end,
+
+		OnExitLevel = function ( self )
+			ui.set_hint("")
+		end,
 	},
 
 	Create = function ()
@@ -246,10 +250,6 @@ register_level "intro"
 		level:drop_being( player, coord( 4,10 ) )
 		player:set_achievement("drl_legacy_1")
 		player:add_history( "He started his journey on the surface of Phobos." )
-	end,
-
-	OnExit = function ()
-		ui.set_hint("")
 	end,
 
 }

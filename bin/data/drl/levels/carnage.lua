@@ -11,6 +11,12 @@ register_level "halls_of_carnage"
 		OnTick = function ( self )
 			generator.events_flood_tick()
 		end,
+
+		OnExitLevel = function ( self )
+			if self:get_enemies_left( true ) == 0 then
+				core.special_complete()
+			end
+		end,
 	},
 
 	Create = function ()
@@ -85,9 +91,4 @@ register_level "halls_of_carnage"
 		}
 	end,
 
-	OnExit = function ()
-		if level:get_enemies_left( true ) == 0 then
-			core.special_complete()
-		end
-	end,
 }

@@ -35,6 +35,30 @@ register_level "toxin_refinery"
 				self.data.trap2_triggered = true
 			end
 		end,
+
+		OnKillAll = function ( self )
+			if not self.data.kill_all then
+				self.data.kill_all  = true
+				ui.msg("The acrid smell begins to dissipate.")
+				self.status = 4
+			end
+		end,
+
+		OnExitLevel = function ( self )
+			if self.data.kill_all  then
+				core.special_complete()
+				ui.msg("You were a green machine.")
+				player:add_history("He was the antidote.")
+			else
+				ui.msg("That'll set them back a bit.")
+				player:add_history("He couldn't quite finish the job.")
+			end
+			if self.data.darkness_end_time > 0 then
+				player.vision = player.vision + self.data.vision_reduction
+				player.flags[ BF_DARKNESS ] = self.data.old_darkness
+				self.data.darkness_end_time = 0
+			end
+		end,
 	},
 
 	OnRegister = function ()
@@ -256,30 +280,6 @@ register_level "toxin_refinery"
 		end
 
 		level:drop_being( player, coord( 36,18 ) )
-	end,
-
-	OnKillAll = function ()
-		if not level.data.kill_all then
-			level.data.kill_all  = true
-			ui.msg("The acrid smell begins to dissipate.")
-			level.status = 4
-		end
-	end,
-
-	OnExit = function ()
-		if level.data.kill_all  then
-			core.special_complete()
-			ui.msg("You were a green machine.")
-			player:add_history("He was the antidote.")
-		else
-			ui.msg("That'll set them back a bit.")
-			player:add_history("He couldn't quite finish the job.")
-		end
-		if level.data.darkness_end_time > 0 then
-			player.vision = player.vision + level.data.vision_reduction
-			player.flags[ BF_DARKNESS ] = level.data.old_darkness
-			level.data.darkness_end_time = 0
-		end
 	end,
 
 }

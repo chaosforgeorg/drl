@@ -64,6 +64,21 @@ register_level "hellgate"
 				self.status = 3
 			end
 		end,
+
+		OnKillAll = function ( self )
+			ui.msg("Why do they have to come in pairs? And what's that shimmering thing?")
+			player:add_badge("hellgate1")
+			if not self.flags[ LF_NUKED ] and statistics.damage_on_level == 0 then
+				player:add_badge("hellgate2")
+				if DIFFICULTY >= DIFF_VERYHARD then
+					player:add_property("anomaly_win",true)
+				end
+			end
+		end,
+
+		OnExitLevel = function ( self )
+			if DIFFICULTY >= DIFF_NIGHTMARE and not self.flags[ LF_NUKED ] and statistics.damage_on_level == 0 then player:add_badge("hellgate4") end
+		end,
 	},
 
 	OnRegister = function ()
@@ -159,22 +174,6 @@ register_level "hellgate"
 		level.status = 1
 	end,
 
-	OnKillAll = function ()
-		ui.msg("Why do they have to come in pairs? And what's that shimmering thing?")
-		player:add_badge("hellgate1")
-		if not level.flags[ LF_NUKED ] and statistics.damage_on_level == 0 then
-			player:add_badge("hellgate2")
-			if DIFFICULTY >= DIFF_VERYHARD then
-				player:add_property("anomaly_win",true)
-			end
-		end
-	end,
-
-	OnExit = function ()
-		if DIFFICULTY >= DIFF_NIGHTMARE and not level.flags[ LF_NUKED ] and statistics.damage_on_level == 0 then player:add_badge("hellgate4") end
-	end,
-
-
 }
 
 register_level "tower_of_babel"
@@ -186,6 +185,17 @@ register_level "tower_of_babel"
 		OnEnterLevel = function ( self )
 			local boss = self:summon("cyberdemon")
 			boss.is_boss = true
+		end,
+
+		OnKillAll = function ( self )
+			if not (self.flags[ LF_NUKED ] and not player.flags[BF_INV]) then
+				player:exit( nil, 1.0 )
+				drl.plot_outro_2()
+				if not self.flags[ LF_NUKED ] and statistics.damage_on_level == 0 then
+					if DIFFICULTY >= DIFF_MEDIUM then player:add_badge("hellgate3") end
+					if DIFFICULTY >= DIFF_VERYHARD and player:has_property("anomaly_win") then player:add_badge("hellgate5") end
+				end
+			end
 		end,
 	},
 
@@ -215,17 +225,6 @@ register_level "tower_of_babel"
 		player:add_history( "He found the Tower of Babel." )
 	end,
 
-	OnKillAll = function ()
-		if not (level.flags[ LF_NUKED ] and not player.flags[BF_INV]) then
-			player:exit( nil, 1.0 )
-			drl.plot_outro_2()
-			if not level.flags[ LF_NUKED ] and statistics.damage_on_level == 0 then
-				if DIFFICULTY >= DIFF_MEDIUM then player:add_badge("hellgate3") end
-				if DIFFICULTY >= DIFF_VERYHARD and player:has_property("anomaly_win") then player:add_badge("hellgate5") end
-			end
-		end
-	end,
-
 }
 
 register_level "dis"
@@ -237,6 +236,22 @@ register_level "dis"
 		OnEnterLevel = function ( self )
 			local boss = self:drop_being("mastermind",coord(39,19))
 			boss.is_boss = true
+		end,
+
+		OnNuked = function ( self )
+			if player.hp > 0 then
+				ui.msg_enter("You ingenious son of a gun! You're as smart as Hell itself!")
+				ui.msg("But... something's wrong!")
+				ui.msg("You sense a menace, a threat so evil it kills your mind!")
+				ui.msg("Was not all evil destroyed???")
+			end
+		end,
+
+		OnKillAll = function ( self )
+			if not (self.flags[ LF_NUKED ] and player.flags[BF_INV]) then
+				ui.msg_enter("Congratulations! You defeated the Spider Mastermind!")
+				player:win()
+			end
 		end,
 	},
 
@@ -313,28 +328,18 @@ WWWWWWWWWWWWWWWWWWWWW...............####...............WWWWWWWWWWWWWWWWWWWWW
 		player:add_history( "Then at last he found Dis!" )
 	end,
 
-	OnNuked = function()
-		if player.hp > 0 then
-			ui.msg_enter("You ingenious son of a gun! You're as smart as Hell itself!")
-			ui.msg("But... something's wrong!")
-			ui.msg("You sense a menace, a threat so evil it kills your mind!")
-			ui.msg("Was not all evil destroyed???")
-		end
-	end,
-
-	OnKillAll = function ()
-		if not (level.flags[ LF_NUKED ] and player.flags[BF_INV]) then
-			ui.msg_enter("Congratulations! You defeated the Spider Mastermind!")
-			player:win()
-		end
-	end,
-
 }
 
 register_level "hell_fortress"
 {
-	name = "Hell Fortress",
+	name    = "Hell Fortress",
 	welcome = "This is it. This is the lair of all evil! What will you meet here?",
+
+	runtime = {
+		OnKillAll = function ( self )
+			player:win()
+		end,
+	},
 
 	Create = function ()
 		level:fill( "rwall" )
@@ -380,7 +385,4 @@ register_level "hell_fortress"
 		player:add_history( "He defeated the Mastermind and found the TRUE EVIL!" )
 	end,
 
-	OnKillAll = function ()
-		player:win()
-	end,
 }

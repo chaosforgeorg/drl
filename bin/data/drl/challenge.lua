@@ -1094,7 +1094,7 @@ function drl.register_challenges()
 			end
 		end,
 
-		OnExit = function (l)
+		OnExitLevel = function (l)
 			    if l == 25 then ui.msg_enter("Well, that was easy. Now starts the really hard part...")
 			elseif l == 50 then ui.msg_enter("Halfway there, and it's getting less and less funny!")
 			elseif l == 75 then ui.msg_enter("Just 25 more, you can make it!")

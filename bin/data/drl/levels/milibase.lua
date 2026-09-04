@@ -19,6 +19,23 @@ register_level "military_base"
 				self.status = 1
 			end
 		end,
+
+		OnKillAll = function ( self )
+			self.status = 2
+			ui.msg("They can all rest easy now...")
+		end,
+
+		OnExitLevel = function ( self )
+			local result = self.status
+			if result < 2 then
+				ui.msg("Too many memories to go destroying them all...")
+				player:add_history("He left without a fuss.")
+			else
+				core.special_complete()
+				ui.msg("Better to end their tortured bodies here and now.")
+				player:add_history("He purified his fellow comrades.")
+			end
+		end,
 	},
 
 	Create = function ()
@@ -83,23 +100,5 @@ register_level "military_base"
 
 		level:drop_being( player, coord( 38,19 ) )
 	end,
-
-	OnKillAll = function ()
-		level.status = 2
-		ui.msg("They can all rest easy now...")
-	end,
-
-	OnExit = function ()
-		local result = level.status
-		if result < 2 then
-			ui.msg("Too many memories to go destroying them all...")
-			player:add_history("He left without a fuss.")
-		else
-			core.special_complete()
-			ui.msg("Better to end their tortured bodies here and now.")
-			player:add_history("He purified his fellow comrades.")
-		end
-	end,
-
 
 }

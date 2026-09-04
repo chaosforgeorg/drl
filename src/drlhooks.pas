@@ -40,7 +40,7 @@ const
   Hook_OnEnterLevel    = 28;  // Trait, Being, Perk, Level, Module, Challenge
   Hook_OnFire          = 29;  // Trait (separate), Item (not chained)
   Hook_OnFired         = 30;  // Trait, Being, Item, Perk
-  Hook_OnExit          = 31;  // Level, Module, Challenge
+  Hook_OnExitLevel     = 31;  // Level, Module, Challenge
   Hook_OnTick          = 32;  // Perk, Being (separate), Level, Module
   Hook_OnNuked         = 33;  // Level
   Hook_OnLoad          = 34;  // Module
@@ -94,7 +94,6 @@ var   BeingHooks       : TFlags;
       ItemHooks        : TFlags;
       FullInvHooks     : TFlags;
       NoInventoryHooks : TFlags;
-      LevelHooks       : TFlags;
       GlobalHooks      : TFlags;
       ModuleHooks      : TFlags;
 
@@ -104,7 +103,7 @@ const HookNames : array[ 0..HookAmount-1 ] of AnsiString = (
       'Reserved06', 'OnPickup','OnPickupCheck','OnFirstPickup','OnUse','OnUseCheck',
       'OnAltFire', 'OnAltReload', 'OnEquip', 'OnUnequip', 'OnAdd', 'OnRemove', 'OnTick10', 'OnKill', 'OnKillAll',
       'OnHitBeing', 'OnReload', 'OnDescribe', 'OnEquipCheck', 'OnAct', 'OnDestroy', 'OnEnter', 'OnEnterLevel',
-      'OnFire', 'OnFired', 'OnExit', 'OnTick', 'OnNuked',
+      'OnFire', 'OnFired', 'OnExitLevel', 'OnTick', 'OnNuked',
       'OnLoad','OnLoaded','OnUnLoad', 'OnCreatePlayer', 'OnLevelUp','OnPreLevelUp',
       'OnWinGame', 'OnMortem', 'Reserved42', 'OnCreateEpisode', 'OnIntro' , 'OnGenerate',
 
@@ -177,9 +176,7 @@ ItemHooks    := [ Hook_OnCreate, Hook_OnPickup, Hook_OnFirstPickup,
   Hook_OnUse, Hook_OnUseCheck, Hook_OnAltFire, Hook_OnEquip, Hook_OnUnequip,
   Hook_OnEnter, Hook_OnFire, Hook_OnAct, Hook_OnDestroy, Hook_OnDescribe, Hook_OnPickupCheck, 
   Hook_OnUnequipCheck, Hook_OnDrop ];
-LevelHooks   := [ Hook_OnEnterLevel, Hook_OnKill, Hook_OnKillAll, Hook_OnExit, Hook_OnTick,
-  Hook_OnNuked ];
-GlobalHooks  := [ Hook_OnCreate, Hook_OnEnterLevel, Hook_OnExit, Hook_OnTick,
+GlobalHooks  := [ Hook_OnCreate, Hook_OnEnterLevel, Hook_OnExitLevel, Hook_OnTick,
   Hook_OnLoad, Hook_OnLoaded, Hook_OnUnLoad, Hook_OnCreatePlayer, Hook_OnLevelUp,
   Hook_OnPreLevelUp, Hook_OnWinGame, Hook_OnMortem, Hook_OnCreateEpisode,
   Hook_OnIntro, Hook_OnGenerate ];
