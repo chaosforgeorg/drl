@@ -2,10 +2,24 @@
 
 register_level "military_base"
 {
-	name  = "Military Base",
-	entry = "On @1 he marched into the Military Base.",
+	name    = "Military Base",
+	entry   = "On @1 he marched into the Military Base.",
 	welcome = "You enter the Military Base. Arriving here again sure takes you back!",
-	level = 7,
+	level   = 7,
+
+	runtime = {
+		OnTick = function ( self )
+			local res = self.status
+			if res == 0 and player.x < 6 and player.y > 7 and player.y < 14 then
+				local y
+				for _, y in ipairs { 9, 10, 11, 12 } do
+					self.map[coord(6,y)] = "floor"
+					self.map[coord(6,y)] = "door"
+				end
+				self.status = 1
+			end
+		end,
+	},
 
 	Create = function ()
 		core.special_create()
@@ -73,18 +87,6 @@ register_level "military_base"
 	OnKillAll = function ()
 		level.status = 2
 		ui.msg("They can all rest easy now...")
-	end,
-
-	OnTick = function ()
-		local res = level.status
-		if res == 0 and player.x < 6 and player.y > 7 and player.y < 14 then
-			local y
-			for _, y in ipairs { 9, 10, 11, 12 } do
-				level.map[coord(6,y)] = "floor"
-				level.map[coord(6,y)] = "door"
-			end
-			level.status = 1
-		end
 	end,
 
 	OnExit = function ()

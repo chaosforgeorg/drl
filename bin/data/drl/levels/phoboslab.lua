@@ -2,10 +2,34 @@
 
 register_level "phobos_lab"
 {
-	name  = "Phobos Lab",
-	entry = "On @1 he sneaked into the Phobos Lab.",
+	name    = "Phobos Lab",
+	entry   = "On @1 he sneaked into the Phobos Lab.",
 	welcome = "You arrive at the Phobos Lab. You are overcome by the feeling of nostalgia!",
-	level = 7,
+	level   = 7,
+
+	runtime = {
+		OnTick = function ( self )
+			if self.status == 1 then
+				if player.x < 12 then
+					ui.msg("The walls lower!")
+					self:transmute( "wall", "floor", self.data.trap11 )
+					self:transmute( "wall", "floor", self.data.trap12 )
+					player:remove_perk("enviro")
+					self:play_sound( "door.open", player.position )
+					self.status = 2
+				end
+			elseif self.status == 2 then
+				if player.x > 30 then
+					ui.msg("The walls lower!")
+					self:transmute( "wall", "floor", self.data.trap21 )
+					self:transmute( "wall", "floor", self.data.trap22 )
+					player:remove_perk("enviro")
+					self:play_sound( "door.open", player.position )
+					self.status = 3
+				end
+			end
+		end,
+	},
 
 	OnRegister = function ()
 		register_item "lever_phoboslab1"
@@ -146,28 +170,6 @@ register_level "phobos_lab"
 		if level.status < 4 then
 			ui.msg("\"This lab won't do any more experiments... I wonder if there are others?\"")
 			level.status = 4
-		end
-	end,
-
-	OnTick = function ()
-		if level.status == 1 then
-			if player.x < 12 then
-				ui.msg("The walls lower!")
-				level:transmute( "wall", "floor", level.data.trap11 )
-				level:transmute( "wall", "floor", level.data.trap12 )
-				player:remove_perk("enviro")
-				level:play_sound( "door.open", player.position )
-				level.status = 2
-			end
-		elseif level.status == 2 then
-			if player.x > 30 then
-				ui.msg("The walls lower!")
-				level:transmute( "wall", "floor", level.data.trap21 )
-				level:transmute( "wall", "floor", level.data.trap22 )
-				player:remove_perk("enviro")
-				level:play_sound( "door.open", player.position )
-				level.status = 3
-			end
 		end
 	end,
 

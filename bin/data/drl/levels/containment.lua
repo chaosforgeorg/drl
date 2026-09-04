@@ -2,10 +2,44 @@
 
 register_level "containment_area"
 {
-	name  = "Containment Area",
-	entry = "On @1 he arrived at the Containment Area.",
+	name    = "Containment Area",
+	entry   = "On @1 he arrived at the Containment Area.",
 	welcome = "You enter the Containment Area. You feel something is hidden behind this wall.",
-	level = 11,
+	level   = 11,
+
+	runtime = {
+		OnTick = function ( self )
+			local res = self.status
+			if res > 2 then return end
+			if res < 2 and self.data.middle:contains( player.position ) then
+				ui.msg( "\"This is too easy...\"" )
+				res = 2
+			end
+			if self.data.right:contains( player.position ) then
+				ui.msg( "\"It's a trap!\"" )
+				self:transmute("ldoor","door")
+				res = 3
+				self:play_sound( "phasing", player.position )
+
+				local total   = 8 + DIFFICULTY
+				local knights = math.max( 9 - (3*( DIFFICULTY - 1 ) ), 0 )
+				self:summon{ "knight", knights,         area = self.data.middle }
+				self:summon{ "baron",  total - knights, area = self.data.middle }
+				if DIFFICULTY >= 4 then
+					self:summon{ "arch",  DIFFICULTY-3,     area = self.data.middle }
+				end
+				self:play_sound( "phasing", player.position, 50 )
+				self:play_sound( "baron.act", player.position, 100 )
+			end
+			self.status = res
+		end,
+
+		OnKill = function ( self )
+			if self.status < 1 then
+				self.status = 1
+			end
+		end,
+	},
 
 	Create = function ()
 		core.special_create()
@@ -85,38 +119,6 @@ PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
 		end
 		--Skip the wall trap sequence if required
 		level.status = 4
-	end,
-
-	OnTick = function ()
-		local res = level.status
-		if res > 2 then return end
-		if res < 2 and level.data.middle:contains( player.position ) then
-			ui.msg( "\"This is too easy...\"" )
-			res = 2
-		end
-		if level.data.right:contains( player.position ) then
-			ui.msg( "\"It's a trap!\"" )
-			level:transmute("ldoor","door")
-			res = 3
-			level:play_sound( "phasing", player.position )
-			
-			local total   = 8 + DIFFICULTY
-			local knights = math.max( 9 - (3*( DIFFICULTY - 1 ) ), 0 )
-			level:summon{ "knight", knights,         area = level.data.middle }
-			level:summon{ "baron",  total - knights, area = level.data.middle }
-			if DIFFICULTY >= 4 then
-				level:summon{ "arch",  DIFFICULTY-3,     area = level.data.middle }
-			end
-			level:play_sound( "phasing", player.position, 50 ) 
-			level:play_sound( "baron.act", player.position, 100 )
-		end
-		level.status = res
-	end,
-
-	OnKill = function ()
-		if level.status < 1 then
-			level.status = 1
-		end
 	end,
 
 	OnExit = function ()

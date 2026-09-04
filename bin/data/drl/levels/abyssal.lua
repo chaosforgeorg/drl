@@ -2,10 +2,40 @@
 
 register_level "abyssal_plains"
 {
-	name  = "Abyssal Plains",
-	entry = "On @1 he romped upon the Abyssal Plains.",
+	name    = "Abyssal Plains",
+	entry   = "On @1 he romped upon the Abyssal Plains.",
 	welcome = "You enter the Abyssal Plains. Well isn't this... just... dandy.",
-	level = 12,
+	level   = 12,
+
+	runtime = {
+		OnTick = function ( self )
+			local time = core.game_time()
+			local res = self.status
+			if res > 1 then return end
+			if res == 0 and self.data.inner_room:contains(player.position) then
+				ui.msg("Suddenly you're trapped in!")
+				self:play_sound( "door.close", player.position )
+				self:transmute( "gwall", "floor" )
+				self:transmute_by_flag("floor", "rwall", LFMARKER1, area.FULL)
+				generator.set_permanence( area.FULL )
+
+				ui.msg("You hear a howl of agony!")
+				local agony = self:drop_being("agony",coord(42,11))
+				for i = 1,3 do
+					agony.inv:add( item.new(table.random_pick{"ufskull","ubskull","uhskull"}) )
+				end
+
+				self.data.drop_time = time
+				self.status = 1
+			end
+			if res == 1 and (time - 400 > self.data.drop_time or self.data.kill_all) then
+				ui.msg("Finally, the walls retract into the ground.")
+				self:transmute_by_flag( "rwall", "floor", LFMARKER1, area.FULL )
+				generator.set_permanence( area.FULL )
+				self.status = 2
+			end
+		end,
+	},
 
 	Create = function ()
 		core.special_create()
@@ -98,34 +128,6 @@ register_level "abyssal_plains"
 		level.data.kill_all = true
 		--Skip the wall trap sequence if required
 		level.status = 2
-	end,
-
-	OnTick = function ()
-		local time = core.game_time()
-		local res = level.status
-		if res > 1 then return end
-		if res == 0 and level.data.inner_room:contains(player.position) then
-			ui.msg("Suddenly you're trapped in!")
-			level:play_sound( "door.close", player.position )
-			level:transmute( "gwall", "floor" )
-			level:transmute_by_flag("floor", "rwall", LFMARKER1, area.FULL)
-			generator.set_permanence( area.FULL )
-
-			ui.msg("You hear a howl of agony!")
-			local agony = level:drop_being("agony",coord(42,11))
-			for i = 1,3 do
-				agony.inv:add( item.new(table.random_pick{"ufskull","ubskull","uhskull"}) )
-			end
-
-			level.data.drop_time = time
-			level.status = 1
-		end
-		if res == 1 and (time - 400 > level.data.drop_time or level.data.kill_all) then
-			ui.msg("Finally, the walls retract into the ground.")
-			level:transmute_by_flag( "rwall", "floor", LFMARKER1, area.FULL )
-			generator.set_permanence( area.FULL )
-			level.status = 2
-		end
 	end,
 
 	OnExit = function ()

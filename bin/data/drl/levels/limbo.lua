@@ -2,10 +2,17 @@
 
 register_level "limbo"
 {
-	name  = "Limbo",
-	entry = "On @1 he was foolish enough to enter Limbo!",
-	level = 20,
+	name    = "Limbo",
+	entry   = "On @1 he was foolish enough to enter Limbo!",
+	level   = 20,
 	welcome = "You arrive at Limbo. The smell of blood! You can barely believe this living hell... Suddenly with a wail, arch-viles appear!",
+
+	runtime = {
+		OnEnterLevel = function ( self )
+			self:summon("arch",3 + 2 * DIFFICULTY )
+			player:add_badge("reaper1")
+		end,
+	},
 
 	canGenerate = function ()
 		return DIFFICULTY > 1
@@ -126,11 +133,6 @@ register_level "limbo"
 		end
 
 		level:drop_being( player, coord( 38,10 ) )
-	end,
-
-	OnEnterLevel = function ()
-		level:summon("arch",3 + 2 * DIFFICULTY )
-		player:add_badge("reaper1")
 	end,
 
 	OnKillAll = function ()

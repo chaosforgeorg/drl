@@ -3,10 +3,32 @@
 register_level "hells_arena"
 {
 
-	name  = "Hell's Arena",
-	entry = "On @1 he entered Hell's Arena.",
+	name    = "Hell's Arena",
+	entry   = "On @1 he entered Hell's Arena.",
 	welcome = "You enter Hell's Arena",
-	level = 2,
+	level   = 2,
+
+	runtime = {
+		OnEnterLevel = function ( self )
+			ui.continue("A devilish voice announces:\n{R\"Welcome to Hell's Arena, mortal! You are either very foolish, or very brave. Either way I like it!\"}")
+			ui.continue("{R\"And so do the crowds!\"}\nSuddenly you hear screams everywhere!\n{R\"Blood! Blood! BLOOD!\"}")
+			ui.continue("The voice booms again:\n{R\"Kill all enemies and I shall reward thee!\"}")
+
+			self:summon("demon",3)
+			self:summon("lostsoul",2)
+
+			if DIFFICULTY > 1 then
+				self:summon("cacodemon",DIFFICULTY - 1)
+			end
+		end,
+
+		OnKill = function ( self )
+			local temp = math.random(3)
+			if     temp == 1 then ui.msg("The crowds go wild! \"BLOOD! BLOOD!\"")
+			elseif temp == 2 then ui.msg("The crowds cheer! \"Blood! Blood!\"")
+			else                  ui.msg("The crowds cheer! \"Kill! Kill!\"") end
+		end,
+	},
 
 	OnRegister = function ()
 
@@ -192,26 +214,6 @@ register_level "hells_arena"
 		end
 		level:drop_being( player, coord( 38,10 ) )
 		level.status = 1
-	end,
-
-	OnEnterLevel = function ()
-		ui.continue("A devilish voice announces:\n{R\"Welcome to Hell's Arena, mortal! You are either very foolish, or very brave. Either way I like it!\"}")
-		ui.continue("{R\"And so do the crowds!\"}\nSuddenly you hear screams everywhere!\n{R\"Blood! Blood! BLOOD!\"}")
-		ui.continue("The voice booms again:\n{R\"Kill all enemies and I shall reward thee!\"}")
-
-		level:summon("demon",3)
-		level:summon("lostsoul",2)
-
-		if DIFFICULTY > 1 then
-			level:summon("cacodemon",DIFFICULTY - 1)
-		end
-	end,
-
-	OnKill = function ()
-		local temp = math.random(3)
-		if     temp == 1 then ui.msg("The crowds go wild! \"BLOOD! BLOOD!\"")
-		elseif temp == 2 then ui.msg("The crowds cheer! \"Blood! Blood!\"")
-		else                  ui.msg("The crowds cheer! \"Kill! Kill!\"") end
 	end,
 
 	OnKillAll = function ( wipe )

@@ -2,10 +2,18 @@
 
 register_level "the_vaults"
 {
-	name  = "The Vaults",
-	entry = "On @1 he entered the Vaults.",
+	name    = "The Vaults",
+	entry   = "On @1 he entered the Vaults.",
 	welcome = "You enter the Vaults. There's a presence here...",
-	level = 17,
+	level   = 17,
+
+	runtime = {
+		OnKill = function ( self )
+			if self.status == 0 then
+				self.status = 1
+			end
+		end,
+	},
 
 	canGenerate = function ()
 		return DIFFICULTY > 1
@@ -144,12 +152,6 @@ register_level "the_vaults"
 		else
 			level.status = 4
 			ui.msg("Well, they sure opened up. Now to see if there's anything left worth taking...")
-		end
-	end,
-
-	OnKill = function ()
-		if level.status == 0 then
-			level.status = 1
 		end
 	end,
 

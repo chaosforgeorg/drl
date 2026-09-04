@@ -2,10 +2,21 @@
 
 register_level "the_mortuary"
 {
-	name  = "The Mortuary",
-	entry = "On @1 he was foolish enough to enter the Mortuary!",
-	level = 20,
+	name    = "The Mortuary",
+	entry   = "On @1 he was foolish enough to enter the Mortuary!",
+	level   = 20,
 	welcome = "You enter the Mortuary.",
+
+	runtime = {
+		OnEnterLevel = function ( self )
+			ui.msg_feel("The smell of blood! Can this be real?? The floor is")
+			ui.msg_feel("covered in blood, and there are corpses everywhere!")
+
+			ui.msg_feel("Suddenly with a wail, arch-viles appear!")
+			self:summon("arch",3+DIFFICULTY)
+			player:add_badge("reaper1")
+		end,
+	},
 
 	canGenerate = function ()
 	return DIFFICULTY > 1
@@ -66,15 +77,6 @@ XX.XX
 		end
 
 		level:drop_being( player, coord( 38,10 ) )
-	end,
-
-	OnEnterLevel = function ()
-		ui.msg_feel("The smell of blood! Can this be real?? The floor is")
-		ui.msg_feel("covered in blood, and there are corpses everywhere!")
-
-		ui.msg_feel("Suddenly with a wail, arch-viles appear!")
-		level:summon("arch",3+DIFFICULTY)
-		player:add_badge("reaper1")
 	end,
 
 	OnKillAll = function ()

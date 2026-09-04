@@ -2,10 +2,49 @@
 
 register_level "mt_erebus"
 {
-	name  = "Mt. Erebus",
-	entry = "On @1 he arrived at Mt. Erebus.",
+	name    = "Mt. Erebus",
+	entry   = "On @1 he arrived at Mt. Erebus.",
 	welcome = "You arrive at Mt. Erebus. You shiver before the mountain of eternal fire!",
-	level = 22,
+	level   = 22,
+
+	runtime = {
+		OnTick = function ( self )
+			local newStatus = 0
+			local msg
+	--		ui.msg( level.status )
+	--		if level.data.zoneReset:contains( player.position ) then level:transmute("floor", "cwall", level.data.zoneOfEffect)
+	--		    level.status = 0
+	--			return
+	--		end
+			if self.status > 2 then return end
+			if self.status < 3 and self.data.zone3:contains( player.position ) then
+				if newStatus == 0 then
+					msg = "The molten cliffs give way leaving you tremendously exposed."
+					newStatus = 3
+				end
+				self:transmute_by_flag( "cwall", "floor", LFMARKER3, self.data.mountain)
+			end
+			if self.status < 2 and self.data.zone2:contains( player.position ) then
+				if newStatus == 0 then
+					msg = "A violent earthquake shakes your being."
+					newStatus = 2
+				end
+				self:transmute_by_flag( "cwall", "floor", LFMARKER2, self.data.mountain)
+				newStatus = 2
+			end
+			if self.status < 1 and (self.data.zone1a:contains( player.position ) or self.data.zone1b:contains( player.position )) then
+				if newStatus == 0 then
+					msg = "The safety of the earth dissolves in front of you."
+					newStatus = 1
+				end
+				self:transmute_by_flag( "cwall", "floor", LFMARKER1, self.data.mountain)
+			end
+			if newStatus == 0 then return false end
+			ui.msg( msg )
+			self.status = newStatus
+			return true
+		end,
+	},
 
 	OnRegister = function ()
 		register_item "lever_erebus"
@@ -158,40 +197,4 @@ register_level "mt_erebus"
 		end
 	end,
 
-	OnTick = function ()
-		local newStatus = 0
-		local msg
---		ui.msg( level.status )
---		if level.data.zoneReset:contains( player.position ) then level:transmute("floor", "cwall", level.data.zoneOfEffect)
---		    level.status = 0
---			return
---		end
-		if level.status > 2 then return end
-		if level.status < 3 and level.data.zone3:contains( player.position ) then
-			if newStatus == 0 then
-				msg = "The molten cliffs give way leaving you tremendously exposed."
-				newStatus = 3
-			end
-			level:transmute_by_flag( "cwall", "floor", LFMARKER3, level.data.mountain)
-		end
-		if level.status < 2 and level.data.zone2:contains( player.position ) then
-			if newStatus == 0 then
-				msg = "A violent earthquake shakes your being."
-				newStatus = 2
-			end
-			level:transmute_by_flag( "cwall", "floor", LFMARKER2, level.data.mountain)
-			newStatus = 2
-		end
-		if level.status < 1 and (level.data.zone1a:contains( player.position ) or level.data.zone1b:contains( player.position )) then
-			if newStatus == 0 then
-				msg = "The safety of the earth dissolves in front of you."
-				newStatus = 1
-			end
-			level:transmute_by_flag( "cwall", "floor", LFMARKER1, level.data.mountain)
-		end
-		if newStatus == 0 then return false end
-		ui.msg( msg )
-		level.status = newStatus
-		return true
-	end
 }

@@ -2,10 +2,16 @@
 
 register_level "halls_of_carnage"
 {
-	name  = "Halls of Carnage",
-	entry = "On @1 he ventured into the Halls of Carnage.",
+	name    = "Halls of Carnage",
+	entry   = "On @1 he ventured into the Halls of Carnage.",
 	welcome = "You enter the Halls of Carnage. You feel you need to run!",
-	level = 14,
+	level   = 14,
+
+	runtime = {
+		OnTick = function ( self )
+			generator.events_flood_tick()
+		end,
+	},
 
 	Create = function ()
 		core.special_create()
@@ -77,10 +83,6 @@ register_level "halls_of_carnage"
 			flood_min  = 0,
 			cell		= "lava",
 		}
-	end,
-
-	OnTick = function()
-		generator.events_flood_tick()
 	end,
 
 	OnExit = function ()

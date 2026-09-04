@@ -2,10 +2,16 @@
 
 register_level "the_wall"
 {
-	name  = "The Wall",
-	entry = "On @1 he witnessed the Wall.",
+	name    = "The Wall",
+	entry   = "On @1 he witnessed the Wall.",
 	welcome = "You arrive at the Wall. You feel uneasy.",
-	level = 11,
+	level   = 11,
+
+	runtime = {
+		OnKill = function ( self )
+			self.status = 1
+		end,
+	},
 
 	Create = function ()
 		core.special_create()
@@ -72,10 +78,6 @@ register_level "the_wall"
 		if CHALLENGE == "challenge_aohu" then
 			player:add_medal("everysoldier")
 		end
-	end,
-
-	OnKill = function ()
-		level.status = 1
 	end,
 
 	OnExit = function ()
