@@ -84,15 +84,15 @@ register_level "unholy_cathedral"
 			damage      = "8d8",
 			damagetype  = DAMAGE_PLASMA,
 
+			perks = { "perk_spear_altfire" },
+
 			OnFirstPickup = function(self,being)
 				being:quick_weapon("spear")
 				ui.blink( WHITE, 100 )
 				ui.msg("You perceive an aura of holiness around this weapon!")
 			end,
 
-			OnCreate = function(self)
-				self:add_perk( "perk_spear_altfire" )
-			end,
+
 		}
 
 		register_perk "perk_uscythe_altfire"
@@ -140,15 +140,15 @@ register_level "unholy_cathedral"
 			damage      = "9d9",
 			damagetype  = DAMAGE_PLASMA,
 
+			perks = { "perk_uscythe_altfire" },
+
 			OnFirstPickup = function(self,being)
 				being:quick_weapon("uscythe")
 				ui.blink( RED, 100 )
 				ui.msg("You perceive an aura of evil around this weapon!")
 			end,
 
-			OnCreate = function(self)
-				self:add_perk( "perk_uscythe_altfire" )
-			end,
+
 		}
 
 		register_badge "death3"

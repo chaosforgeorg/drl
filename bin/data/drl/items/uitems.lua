@@ -105,9 +105,7 @@ function drl.register_unique_items()
 		missprite     = SPRITE_PLASMASHOT,
 		hitsprite     = SPRITE_BLAST,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_unullpointer_hit" )
-		end,
+		perks = { "perk_unullpointer_hit" },
 	}
 
 	register_item "umodstaff"
@@ -170,10 +168,7 @@ function drl.register_unique_items()
 		group       = "melee",
 
 		properties = { BLADE = true },
-
-		OnCreate = function(self)
-			self:add_perk( "perk_ubutcher_kill" )
-		end,
+		perks      = { "perk_ubutcher_kill" },
 	}
 
 	register_item "umjoll"
@@ -202,8 +197,9 @@ function drl.register_unique_items()
 		missprite  = SPRITE_CLEAVER,
 		hitsprite  = SPRITE_BLAST,
 
+		perks = { "perk_altfire_throw" },
+
 		OnCreate = function(self)
-			self:add_perk( "perk_altfire_throw" )
 			self.flags[ IF_THROWDROP ] = false
 		end,
 	}
@@ -256,10 +252,7 @@ function drl.register_unique_items()
 		group       = "melee",
 
 		properties = { BLADE = true },
-
-		OnCreate = function(self)
-			self:add_perk( "perk_usubtle_altfire" )
-		end,
+		perks      = { "perk_usubtle_altfire" },
 	}
 
 	register_perk "perk_uni_trigun_altreload"
@@ -314,10 +307,10 @@ function drl.register_unique_items()
 		missprite     = SPRITE_SHOT,
 		hitsprite     = SPRITE_BLAST,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_altfire_aimed" )
-			self:add_perk( "perk_uni_trigun_altreload" )
-		end,
+		perks = {
+			"perk_altfire_aimed",
+			"perk_uni_trigun_altreload",
+		},
 	}
 
 	register_item "ujackal"
@@ -353,9 +346,7 @@ function drl.register_unique_items()
 			color = RED,
 		},
 
-		OnCreate = function(self)
-			self:add_perk( "perk_altfire_aimed" )
-		end,
+		perks = { "perk_altfire_aimed" },
 	}
 
 	register_perk "perk_umega_kill"
@@ -465,9 +456,7 @@ function drl.register_unique_items()
 		missprite     = SPRITE_SHOT,
 		hitsprite     = SPRITE_BLAST,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_umega_kill" )
-		end,
+		perks = { "perk_umega_kill" },
 	}
 
 	register_medal "cleric"
@@ -536,10 +525,10 @@ function drl.register_unique_items()
 		missprite     = SPRITE_SHOT,
 		hitsprite     = SPRITE_BLAST,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_uberetta_altreload" )
-			self:add_perk( "perk_uberetta_kill" )
-		end,
+		perks = {
+			"perk_uberetta_altreload",
+			"perk_uberetta_kill",
+		},
 	}
 
 	register_perk "perk_uberetta_kill"
@@ -598,9 +587,7 @@ function drl.register_unique_items()
 		falloff       = 5,
 		knockback     = 8,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_usjack_altreload" )
-		end,
+		perks = { "perk_usjack_altreload" },
 	}
 
 	register_item "ufshotgun"
@@ -723,8 +710,9 @@ function drl.register_unique_items()
 			content = "acid",
 		},
 
+		perks = { "perk_uacid" },
+
 		OnCreate = function( self )
-			self:add_perk( "perk_uacid" )
 			self.ammo = 0
 		end,
 	}
@@ -766,10 +754,10 @@ function drl.register_unique_items()
 			knockback = 16,
 		},
 
-		OnCreate = function(self)
-			self:add_perk( "perk_altfire_spool" )
-			self:add_perk( "perk_spool" )
-		end,
+		perks = {
+			"perk_altfire_spool",
+			"perk_spool",
+		},
 	}
 
 	register_item "urailgun"
@@ -826,8 +814,9 @@ function drl.register_unique_items()
 		armor      = 3,
 		movemod    = 20,
 
+		perks = { "perk_armor_recharge" },
+
 		OnCreate = function(self)
-			self:add_perk( "perk_armor_recharge" )
 			self.pp_recharge.delay  = 50
 			self.pp_recharge.amount = 1
 			self.pp_recharge.tick   = 5
@@ -853,9 +842,7 @@ function drl.register_unique_items()
 
 		resist = { shrapnel = 20, melee = 20, bullet = 20, acid = 20, fire = 20, plasma = 20  },
 
-		OnCreate = function(self)
-			self:add_perk( "perk_cursed" )
-		end,
+		perks = { "perk_cursed" },
 	}
 
 	register_item "unarmor"
@@ -875,9 +862,7 @@ function drl.register_unique_items()
 		movemod    = 10,
 		knockmod   = -20,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_necrocharge" )
-		end,
+		perks = { "perk_necrocharge" },
 	}
 
 	register_perk "perk_umedparmor"
@@ -919,9 +904,7 @@ function drl.register_unique_items()
 		armor      = 6,
 		movemod    = -15,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_umedparmor" )
-		end,
+		perks = { "perk_umedparmor" },
 	}
 
 	register_perk "perk_ulavaarmor"
@@ -964,9 +947,7 @@ function drl.register_unique_items()
 		movemod    = -15,
 		knockmod   = -20,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_ulavaarmor" )
-		end,
+		perks = { "perk_ulavaarmor" },
 	}
 
 	register_item "uenviroboots"
@@ -1006,8 +987,9 @@ function drl.register_unique_items()
 		armor      = 6,
 		movemod    = 20,
 
+		perks = { "perk_armor_recharge" },
+
 		OnCreate = function(self)
-			self:add_perk( "perk_armor_recharge" )
 			self.pp_recharge.delay  = 50
 			self.pp_recharge.amount = 1
 			self.pp_recharge.tick   = 5
@@ -1128,10 +1110,10 @@ function drl.register_unique_items()
 
 		resist = { shrapnel = 50, melee = 50, bullet = 50 },
 
-		OnCreate = function(self)
-			self:add_perk( "perk_cursed" )
-			self:add_perk( "perk_uberarmor" )
-		end,
+		perks = {
+			"perk_cursed",
+			"perk_uberarmor",
+		},
 	}
 
 	register_medal "dragonslayer"
@@ -1238,11 +1220,10 @@ function drl.register_unique_items()
 		damagetype  = DAMAGE_MELEE,
 
 		properties = { BLADE = true },
-
-		OnCreate = function(self)
-			self:add_perk( "perk_cursed" )
-			self:add_perk( "perk_udragon_altfire" )
-			self:add_perk( "perk_udragon" )
-		end,
+		perks      = {
+			"perk_cursed",
+			"perk_udragon_altfire",
+			"perk_udragon",
+		},
 	}
 end

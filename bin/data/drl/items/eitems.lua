@@ -116,9 +116,7 @@ function drl.register_exotic_items()
 			knockback = 16,
 		},
 
-		OnCreate = function(self)
-			self:add_perk( "perk_altreload_overcharge" )
-		end,
+		perks = { "perk_altreload_overcharge" },
 
 		OnFirstPickup = function(self,being)
 			if not being:is_player() then return end
@@ -160,9 +158,12 @@ function drl.register_exotic_items()
 		missprite     = SPRITE_SHOT,
 		hitsprite     = SPRITE_BLAST,
 
+		perks = {
+			"perk_altfire_aimed",
+			"perk_weapon_recharge",
+		},
+
 		OnCreate = function(self)
-			self:add_perk( "perk_altfire_aimed" )
-			self:add_perk( "perk_weapon_recharge" )
 			self.pp_recharge.delay  = 30
 			self.pp_recharge.amount = 1
 		end,
@@ -196,9 +197,7 @@ function drl.register_exotic_items()
 		missprite     = SPRITE_SHOT,
 		hitsprite     = SPRITE_BLAST,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_altfire_aimed" )
-		end,
+		perks = { "perk_altfire_aimed" },
 	}
 
 	register_item "uashotgun"
@@ -225,9 +224,7 @@ function drl.register_exotic_items()
 		range         = 15,
 		hitsprite     = SPRITE_BLAST,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_altreload_full" )
-		end,
+		perks = { "perk_altreload_full" },
 	}
 
 	register_item "upshotgun"
@@ -318,10 +315,10 @@ function drl.register_exotic_items()
 		},
 		hitsprite     = SPRITE_BLAST,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_altfire_spool" )
-			self:add_perk( "perk_spool" )
-		end,
+		perks = {
+			"perk_altfire_spool",
+			"perk_spool",
+		},
 	}
 
 	register_item "utristar"
@@ -390,10 +387,10 @@ function drl.register_exotic_items()
 		missprite     = SPRITE_SHOT,
 		hitsprite     = SPRITE_BLAST,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_altfire_spool" )
-			self:add_perk( "perk_spool" )
-		end,
+		perks = {
+			"perk_altfire_spool",
+			"perk_spool",
+		},
 	}
 
 	register_item "umbazooka"
@@ -429,10 +426,10 @@ function drl.register_exotic_items()
 			color 	= RED,
 		},
 
-		OnCreate = function(self)
-			self:add_perk( "perk_altfire_rocketjump" )
-			self:add_perk( "perk_altreload_full" )
-		end,
+		perks = {
+			"perk_altfire_rocketjump",
+			"perk_altreload_full",
+		},
 	}
 
 	register_item "unplasma"
@@ -464,11 +461,14 @@ function drl.register_exotic_items()
 		missprite     = SPRITE_PLASMASHOT,
 		hitsprite     = SPRITE_BLAST,
 
+		perks = {
+			"perk_altfire_spool",
+			"perk_spool",
+			"perk_altreload_nuke",
+			"perk_weapon_recharge",
+		},
+
 		OnCreate = function(self)
-			self:add_perk( "perk_altfire_spool" )
-			self:add_perk( "perk_spool" )
-			self:add_perk( "perk_altreload_nuke" )
-			self:add_perk( "perk_weapon_recharge" )
 			self.pp_recharge.delay  = 40
 			self.pp_recharge.tick   = 2
 		end,
@@ -511,9 +511,12 @@ function drl.register_exotic_items()
 			knockback = 16,
 		},
 
+		perks = {
+			"perk_altreload_nuke",
+			"perk_weapon_recharge",
+		},
+
 		OnCreate = function(self)
-			self:add_perk( "perk_altreload_nuke" )
-			self:add_perk( "perk_weapon_recharge" )
 			self.pp_recharge.delay  = 0
 			self.pp_recharge.tick   = 5
 			self.pp_recharge.amount = 1
@@ -583,10 +586,10 @@ function drl.register_exotic_items()
 		missprite     = SPRITE_PLASMASHOT,
 		hitsprite     = SPRITE_BLAST,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_utrans_altfire" )
-			self:add_perk( "perk_utrans_hit" )
-		end,
+		perks = {
+			"perk_utrans_altfire",
+			"perk_utrans_hit",
+		},
 	}
 
 	register_item "unapalm"
@@ -761,9 +764,7 @@ function drl.register_exotic_items()
 		armor      = 2,
 		movemod    = -15,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_umedarmor" )
-		end,
+		perks = { "perk_umedarmor" },
 	}
 
 	register_item "uduelarmor"

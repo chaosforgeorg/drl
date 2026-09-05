@@ -28,10 +28,7 @@ function drl.register_regular_items()
 		hitsprite   = SPRITE_BLAST,
 
 		properties = { BLADE = true },
-
-		OnCreate = function(self)
-			self:add_perk( "perk_altfire_throw" )
-		end,
+		perks      = { "perk_altfire_throw" },
 	}
 
 	-- Armors --
@@ -562,9 +559,7 @@ function drl.register_regular_items()
 		missprite     = SPRITE_SHOT,
 		hitsprite     = SPRITE_BLAST,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_altfire_aimed" )
-		end,
+		perks = { "perk_altfire_aimed" },
 	}
 
 	register_item "shotgun"
@@ -619,9 +614,7 @@ function drl.register_regular_items()
 		knockback     = 8,
 		hitsprite     = SPRITE_BLAST,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_altfire_single" )
-		end,
+		perks = { "perk_altfire_single" },
 	}
 
 	register_item "ashotgun"
@@ -649,10 +642,10 @@ function drl.register_regular_items()
 		knockback     = 8,
 		hitsprite     = SPRITE_BLAST,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_altreload_full" )
-			self:add_perk( "perk_pump_action" )
-		end,
+		perks = {
+			"perk_altreload_full",
+			"perk_pump_action",
+		},
 	}
 
 	register_item "bazooka"
@@ -687,9 +680,7 @@ function drl.register_regular_items()
 			color 	= RED,
 		},
 
-		OnCreate = function(self)
-			self:add_perk( "perk_altfire_rocketjump" )
-		end,
+		perks = { "perk_altfire_rocketjump" },
 	}
 
 	register_item "chaingun"
@@ -720,10 +711,10 @@ function drl.register_regular_items()
 		missprite     = SPRITE_SHOT,
 		hitsprite     = SPRITE_BLAST,
 		
-		OnCreate = function(self)
-			self:add_perk( "perk_altfire_spool" )
-			self:add_perk( "perk_spool" )
-		end,
+		perks = {
+			"perk_altfire_spool",
+			"perk_spool",
+		},
 	}
 
 	register_item "plasma"
@@ -755,11 +746,11 @@ function drl.register_regular_items()
 		missprite     = SPRITE_PLASMASHOT,
 		hitsprite     = SPRITE_BLAST,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_altfire_spool" )
-			self:add_perk( "perk_spool" )
-			self:add_perk( "perk_altreload_overcharge" )
-		end,
+		perks = {
+			"perk_altfire_spool",
+			"perk_spool",
+			"perk_altreload_overcharge",
+		},
 	}
 
 	-- Packs --
