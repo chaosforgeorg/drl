@@ -588,7 +588,6 @@ begin
   if FScore = -1000 then Exit;
 
   FStatistics.Update;
-  DRL.CallHook(Hook_OnMortem,[ not NoPlayerRecord ]);
   if LuaSystem.Defined([CoreModuleID,'RunAwards']) then
     LuaSystem.ProtectedCall([CoreModuleID,'RunAwards'],[NoPlayerRecord]);
 
