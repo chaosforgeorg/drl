@@ -47,7 +47,8 @@ type TSettingsView = class( TIOLayer )
 protected
   procedure Reconfigure;
   procedure Reset( aGroup : TConfigurationGroup );
-  function KeyCapture( aValue : PInteger; aSelected : Boolean ) : Boolean;
+  procedure KeyCapture( aBindings : TBindingCatalog;
+    aAction : TBindingAction; aSelected : Boolean );
   function CaptureControllerBindings : TControllerBindingCatalog;
   procedure ControllerCapture( aBindings : TControllerBindingCatalog;
     aAction : TBindingAction; aSelected : Boolean );
@@ -179,6 +180,7 @@ var iSelected : Integer;
     iHover    : TConfigurationEntry;
     iMode     : TIntegerConfigurationEntry;
     iAction   : TControllerAction;
+    iBindings : TBindingCatalog;
     i         : Integer;
     iRResult  : ( None, Cancel, Confirm );
 begin
@@ -315,11 +317,14 @@ begin
         end
         else if FState in SETTINGSVIEW_KEYS then
         begin
+          if FState = SETTINGSVIEW_UIKEYBOARD then
+            iBindings := Configuration.UIKeyBindings
+          else
+            iBindings := Configuration.KeyBindings;
           for iEntry in iGroup.Entries do
             if iEntry.Name <> '' then
             begin
-              with iEntry as TIntegerConfigurationEntry do
-                KeyCapture( Access, iSelected = i );
+              KeyCapture( iBindings, iBindings.ActionForID( iEntry.ID ), iSelected = i );
               if iSelected = i then iHover := iEntry;
               Inc( i );
             end;
@@ -618,9 +623,10 @@ begin
   end;
 end;
 
-function TSettingsView.KeyCapture( aValue : PInteger; aSelected : Boolean ) : Boolean;
+procedure TSettingsView.KeyCapture( aBindings : TBindingCatalog;
+  aAction : TBindingAction; aSelected : Boolean );
 begin
-  VTIG_InputField( IOKeyCodeToStringShort( aValue^ ) );
+  VTIG_InputField( IOKeyCodeToStringShort( aBindings.ConfigurationValue( aAction ) ) );
   if aSelected then
   begin
     if FCapture then
@@ -633,7 +639,7 @@ begin
       begin
         FCapture := False;
         if FKey <> VKEY_ESCAPE then
-          aValue^ := FKey;
+          aBindings.SetKey( aAction, FKey );
         FKey := 0;
       end;
       VTIG_EventClear;
@@ -643,16 +649,17 @@ begin
       begin
         FCapture := True;
         FKey     := 0;
-        Exit( False );
+        Exit;
       end;
     if VTIG_Event( UI_BINDING_DROP ) then
-      aValue^ := 0;
+      aBindings.SetKey( aAction, 0 );
   end;
-  Exit( False );
 end;
 
 procedure TSettingsView.Reset( aGroup : TConfigurationGroup );
-var iEntry : TConfigurationEntry;
+var iEntry    : TConfigurationEntry;
+    iBindings : TBindingCatalog;
+    iAction   : TBindingAction;
 begin
   if aGroup = nil then
   begin
@@ -662,7 +669,19 @@ begin
   end;
 
   for iEntry in aGroup.Entries do
-    iEntry.Reset;
+  begin
+    iBindings := Configuration.KeyBindings;
+    iAction := iBindings.ActionForID( iEntry.ID );
+    if iAction = BINDING_NONE then
+    begin
+      iBindings := Configuration.UIKeyBindings;
+      iAction := iBindings.ActionForID( iEntry.ID );
+    end;
+    if iAction = BINDING_NONE then
+      iEntry.Reset
+    else
+      iBindings.SetKey( iAction, TIntegerConfigurationEntry( iEntry ).Default );
+  end;
 end;
 
 procedure TSettingsView.Reconfigure;

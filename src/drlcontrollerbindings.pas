@@ -61,11 +61,8 @@ type TControllerBindingCatalog = class( TBindingCatalog )
   function Swap( aAction : TBindingAction; aButton : TIOPadButton ) : Boolean;
   function CanCapture( aButton : TIOPadButton ) : Boolean;
 private
-  FActions        : array of TBindingAction;
   FFlags          : TControllerBindingFlags;
   FInvalidWarning : Ansistring;
-  function FindAction( aButton : TIOPadButton;
-    out aAction : TBindingAction ) : Boolean;
   function GetAllowsUnbound : Boolean;
 public
   property AllowsUnbound : Boolean read GetAllowsUnbound;
@@ -113,12 +110,8 @@ constructor TControllerBindingCatalog.Create(
   aFlags                : TControllerBindingFlags;
   const aInvalidWarning : Ansistring
 );
-var iInfo : Integer;
 begin
   inherited Create( aInfo );
-  SetLength( FActions, Length( aInfo ) );
-  for iInfo := 0 to High( aInfo ) do
-    FActions[iInfo] := aInfo[iInfo].Action;
   FFlags := aFlags;
   FInvalidWarning := aInvalidWarning;
 end;
@@ -140,32 +133,16 @@ begin
   Result := TIOPadButton( iValue );
 end;
 
-function TControllerBindingCatalog.FindAction(
-  aButton     : TIOPadButton;
-  out aAction : TBindingAction
-) : Boolean;
-var iAction : TBindingAction;
-begin
-  if not IsControllerButton( aButton ) then Exit( False );
-  for iAction in FActions do
-    if GetButton( iAction ) = aButton then
-    begin
-      aAction := iAction;
-      Exit( True );
-    end;
-  Exit( False );
-end;
-
 function TControllerBindingCatalog.Valid : Boolean;
-var iAction : TBindingAction;
+var iInfo   : TBindingInfo;
     iButton : TIOPadButton;
     iSeen   : array[TIOPadButton] of Boolean;
 begin
   for iButton := Low( TIOPadButton ) to High( TIOPadButton ) do
     iSeen[iButton] := False;
-  for iAction in FActions do
+  for iInfo in FInfo do
   begin
-    iButton := GetButton( iAction );
+    iButton := GetButton( iInfo.Action );
     if AllowsUnbound and ( iButton = VPAD_BUTTON_INVALID ) then Continue;
     if not IsControllerButton( iButton ) or iSeen[iButton] then Exit( False );
     iSeen[iButton] := True;
@@ -194,7 +171,10 @@ begin
 
   iOldButton := GetButton( aAction );
   if iOldButton = aButton then Exit( True );
-  if FindAction( aButton, iPreviousAction ) then
+  iPreviousAction := BINDING_NONE;
+  if aButton <> VPAD_BUTTON_INVALID then
+    iPreviousAction := ActionForValue( Ord( aButton ) );
+  if iPreviousAction <> BINDING_NONE then
     SetConfigurationValue( iPreviousAction, Ord( iOldButton ) );
   SetConfigurationValue( aAction, Ord( aButton ) );
   Exit( True );
