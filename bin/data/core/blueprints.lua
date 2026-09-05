@@ -51,6 +51,7 @@ core.register_blueprint "trait"
 	author          = { false, core.TSTRING },
 	master          = { false, core.TBOOL,   false },
 	abbr            = { true,  core.TSTRING },
+	perks           = { false, core.TARRAY( core.TSTRING ) },
 
 	OnPick          = { false, core.TFUNC },
 	OnPreAction     = { false, core.TFUNC },
@@ -102,6 +103,7 @@ core.register_blueprint "klass"
 	hidden      = { false, core.TBOOL, false },
 	traits      = { true,  core.TARRAY("klass_trait") },
 	core_trait  = { false, core.TIDIN("traits") },
+	perks       = { false, core.TARRAY( core.TSTRING ) },
 
 	OnPick      = { false,  core.TFUNC },
 	OnUseActive = { false,  core.TFUNC },
@@ -232,6 +234,7 @@ core.register_blueprint "ai"
 	id          = { true,  core.TSTRING },
 	states      = { true,  core.TMAP( core.TSTRING, core.TFUNC ) },
 	funcs       = { false, core.TMAP( core.TSTRING, core.TFUNC ), {} },
+	perks       = { false, core.TARRAY( core.TSTRING ) },
 
 	OnCreate    = { true,  core.TFUNC },
 	OnAttacked  = { true,  core.TFUNC },
@@ -277,6 +280,7 @@ core.register_blueprint "being"
 	ai_group    = { false, core.TSTRING, "demon" },
 	is_group    = false,
 	properties  = { false, core.TTABLE },
+	perks       = { false, core.TARRAY( core.TSTRING ) },
 	resist      = { false, core.TTABLE },
 
 	desc            = { true,  core.TSTRING },
@@ -366,6 +370,7 @@ core.register_blueprint "challenge"
 	win_highscore = { false, core.TSTRING },
 	secondary     = { false, core.TTABLE },
 	runtime       = { false, core.TTABLE },
+	perks         = { false, core.TARRAY( core.TSTRING ) },
 
 	arch_name          = { false, core.TSTRING },
 	arch_description   = { false, core.TSTRING },
@@ -421,6 +426,7 @@ core.register_blueprint "item"
 	flags          = { false, core.TFLAGS, {} },
 	firstmsg       = { false, core.TSTRING },
 	properties     = { false, core.TTABLE },
+	perks          = { false, core.TARRAY( core.TSTRING ) },
 	resist         = { false, core.TTABLE },
 	tags           = { false, core.TTABLE, {} },
 	max            = { false, core.TNUMBER, 1 },
@@ -649,6 +655,7 @@ core.register_blueprint "level"
 	welcome       = { false, core.TSTRING },
 	level         = { false, core.TANY },
 	runtime       = { false, core.TTABLE },
+	perks         = { false, core.TARRAY( core.TSTRING ) },
 
 	Create           = { true,  core.TFUNC },
 	canGenerate      = { false, core.TFUNC },
