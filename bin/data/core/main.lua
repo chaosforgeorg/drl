@@ -329,6 +329,18 @@ register_being_group   = core.register_array_storage( "being_groups", "being_gro
 end
 )
 
+local function add_properties( self, properties )
+	if not properties then return end
+	for key, value in pairs( properties ) do
+		if type( value ) == "userdata" then
+			value = value:clone()
+		else
+			value = table.copy( value )
+		end
+		self:add_property( key, value )
+	end
+end
+
 register_being         = core.register_storage( "beings", "being", function( bp )
 		bp.name_plural = bp.name_plural or bp.name.."s"
 		bp.tags        = table.toset( bp.tags )
@@ -411,6 +423,8 @@ register_being         = core.register_storage( "beings", "being", function( bp 
 					self.resist[ k ] = v
 				end
 			end
+			-- Explicit parent constructors must not reapply property defaults.
+			if self.__proto == bp then add_properties( self, bp.properties ) end
 		end
 		bp.OnCreate = core.create_seq_function( OnCreate, bp.OnCreate )
 	end
@@ -482,6 +496,8 @@ register_item          = core.register_storage( "items", "item", function( ip )
 			if ip.group == "shotgun" then
 				self.flags[ IF_SHOTGUN ] = true
 			end
+			-- Explicit parent constructors must not reapply property defaults.
+			if self.__proto == ip then add_properties( self, ip.properties ) end
 		end
 		ip.OnCreate = core.create_seq_function( OnCreate, ip.OnCreate )
 	end

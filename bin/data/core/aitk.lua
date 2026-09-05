@@ -166,7 +166,7 @@ end
 
 function aitk.flock_on_attacked( self, target )
     if self == target then return end
-    if target and target:has_property("master") then return end
+    if target and target:has_property("MASTER") then return end
     local target = target or uids.get( self.target )
     for b in level:beings_in_range( self, self.flock_max or 4 ) do
         if b.id == self.id then
@@ -405,7 +405,7 @@ function aitk.basic_on_attacked( self, target )
     if self == target then return end
     if self:has_property("boredom") then self.boredom = 0 end
     if target then 
-        if target:has_property("master") then return end
+        if target:has_property("MASTER") then return end
         if target.id == self.id then return end
         if self.ai_group == "player" and target.ai_group == "player" then return end
         self.target = target.uid
@@ -421,7 +421,7 @@ function aitk.disciplined_on_attacked( self, target )
     if self == target then return end
     if self:has_property("boredom") then self.boredom = 0 end
     if target then 
-        if target:has_property("master") then return end
+        if target:has_property("MASTER") then return end
         if target.id == self.id then return end
         if self.ai_group == target.ai_group then return end
         self.target = target.uid
@@ -564,7 +564,7 @@ function aitk.try_hunt( self )
         end
     end
     if self.retaliate then attackchance = 100 end
-    if self:has_property("attackrange") and self.attackrange < dist then
+    if self:has_property("ATTACKRANGE") and self.ATTACKRANGE < dist then
         attackchance = math.floor( attackchance / 3 )
     end
     if dist == 1 and (not self.nomelee) then

@@ -237,17 +237,21 @@ function drl.register_base_data()
 		ai_type      = "",
 		ai_group     = "player",
 
-		OnCreate = function(self)
-			self:add_property( "medals", {} )
-			self:add_property( "badges", {} )
-			self:add_property( "awards", {} )
-			self:add_property( "assemblies", {} )
-			self:add_property( "items_found", {} )
-			self:add_property( "history", {} )
-			self:add_property( "episode", {} )
-			self:add_property( "level_data", {} )
-			self:add_property( "crash_index", 0 )
+		properties = {
+			medals       = {},
+			badges       = {},
+			awards       = {},
+			assemblies   = {},
+			items_found  = {},
+			history      = {},
+			episode      = {},
+			level_data   = {},
+			crash_index  = 0,
+			RUNNING_TIME = 30,
+			TECH_BONUS   = 0,
+		},
 
+		OnCreate = function(self)
 			if rawget(_G,"DIFFICULTY") then
 				self.hp    = 50
 				self.hpmax = self.hp
@@ -256,8 +260,6 @@ function drl.register_base_data()
 				self.expfactor = diff[DIFFICULTY].expfactor
 			end
 
-			self:add_property( "runningtime", 30 )
-			self:add_property( "techbonus", 0 )
 			self:set_coscolor{ 0.8, 0.7, 0.7, 1.0 }
 		end,
 
@@ -294,7 +296,7 @@ function drl.register_base_data()
 				self:remove_perk( "running", false )
 				return false
 			else
-				self:add_perk( "running", self.runningtime * 10 )
+				self:add_perk( "running", self.RUNNING_TIME * 10 )
 				self.scount = self.scount - 100
 				return true
 			end
@@ -648,7 +650,7 @@ function drl.OnCreateEpisode()
 		if (not level_proto.canGenerate) or level_proto.canGenerate() then
 			local index = core.resolve_range(level_proto.level)
 			local from  = player.episode[index]
-			table.insert( player.episode, { 
+			table.insert( player.episode, {
 				script = level_proto.id,
 				style  = from.style,
 				danger = from.danger,

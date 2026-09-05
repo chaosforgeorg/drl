@@ -65,7 +65,7 @@ function drl.register_unique_items()
 		OnHitBeing = function(self,being,target)
 			target:play_sound("phasing")
 			being:msg("Suddenly "..target:get_name(true,false).." crashes!")
-			if target:has_property("is_boss") and target.is_boss then
+			if target:has_property("IS_BOSS") and target.IS_BOSS then
 				target.scount = math.max( target.scount - 1000, 1000 )
 			else
 				target.scount = math.max( target.scount - 2000, 1000 )
@@ -169,8 +169,9 @@ function drl.register_unique_items()
 		damagetype  = DAMAGE_MELEE,
 		group       = "melee",
 
+		properties = { BLADE = true },
+
 		OnCreate = function(self)
-			self:add_property( "BLADE", true )
 			self:add_perk( "perk_ubutcher_kill" )
 		end,
 	}
@@ -254,9 +255,10 @@ function drl.register_unique_items()
 		damagetype  = DAMAGE_SPLASMA,
 		group       = "melee",
 
+		properties = { BLADE = true },
+
 		OnCreate = function(self)
 			self:add_perk( "perk_usubtle_altfire" )
-			self:add_property( "BLADE", true )
 		end,
 	}
 
@@ -543,7 +545,7 @@ function drl.register_unique_items()
 	register_perk "perk_uberetta_kill"
 	{
 		OnKill = function (self,being,target)
-			if target.id == "mastermind" and target.is_boss then
+			if target.id == "mastermind" and target.IS_BOSS then
 				being:add_medal("cleric")
 			end
 		end,
@@ -1154,7 +1156,7 @@ function drl.register_unique_items()
 	register_perk "perk_udragon"
 	{
 		OnKill = function (self,being,target)
-			if target.id == "mastermind" and target.is_boss then
+			if target.id == "mastermind" and target.IS_BOSS then
 				being:add_medal("dragonslayer")
 			end
 		end,
@@ -1235,10 +1237,11 @@ function drl.register_unique_items()
 		damage      = "9d9",
 		damagetype  = DAMAGE_MELEE,
 
+		properties = { BLADE = true },
+
 		OnCreate = function(self)
 			self:add_perk( "perk_cursed" )
 			self:add_perk( "perk_udragon_altfire" )
-			self:add_property( "BLADE", true )
 			self:add_perk( "perk_udragon" )
 		end,
 	}

@@ -340,7 +340,7 @@ function being:pick_item_to_mod( mod, filter )
 
 	local proto     = mod.__proto
 	local modletter = proto.mod_letter
-	local techbonus = self.techbonus
+	local techbonus = self.TECH_BONUS
 
 	local choice = {
 		title = "Choose an item to mod",

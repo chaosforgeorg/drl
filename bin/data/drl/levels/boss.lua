@@ -184,7 +184,7 @@ register_level "tower_of_babel"
 	runtime = {
 		OnEnterLevel = function ( self )
 			local boss = self:summon("cyberdemon")
-			boss.is_boss = true
+			boss.IS_BOSS = true
 		end,
 
 		OnKillAll = function ( self )
@@ -235,7 +235,7 @@ register_level "dis"
 	runtime = {
 		OnEnterLevel = function ( self )
 			local boss = self:drop_being("mastermind",coord(39,19))
-			boss.is_boss = true
+			boss.IS_BOSS = true
 		end,
 
 		OnNuked = function ( self )
@@ -381,7 +381,7 @@ register_level "hell_fortress"
 		else
 			boss = level:drop_being("jc",coord(76,11))
 		end
-		boss.is_boss = true
+		boss.IS_BOSS = true
 		player:add_history( "He defeated the Mastermind and found the TRUE EVIL!" )
 	end,
 

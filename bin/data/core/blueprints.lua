@@ -276,6 +276,7 @@ core.register_blueprint "being"
 	ai_type     = { true,  core.TSTRING }, -- TIDIN("ais")
 	ai_group    = { false, core.TSTRING, "demon" },
 	is_group    = false,
+	properties  = { false, core.TTABLE },
 	resist      = { false, core.TTABLE },
 
 	desc            = { true,  core.TSTRING },
@@ -419,6 +420,7 @@ core.register_blueprint "item"
 	set            = { false, core.TIDIN("itemsets") },
 	flags          = { false, core.TFLAGS, {} },
 	firstmsg       = { false, core.TSTRING },
+	properties     = { false, core.TTABLE },
 	resist         = { false, core.TTABLE },
 	tags           = { false, core.TTABLE, {} },
 	max            = { false, core.TNUMBER, 1 },

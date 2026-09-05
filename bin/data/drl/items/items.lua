@@ -27,8 +27,9 @@ function drl.register_regular_items()
 		missprite   = SPRITE_KNIFE,
 		hitsprite   = SPRITE_BLAST,
 
+		properties = { BLADE = true },
+
 		OnCreate = function(self)
-			self:add_property( "BLADE", true )
 			self:add_perk( "perk_altfire_throw" )
 		end,
 	}
@@ -1029,7 +1030,7 @@ function drl.register_regular_items()
 			elseif item.itype == ITEMTYPE_BOOTS then
 				item.armor = item.armor * 2
 			end
-			item:add_mod( 'P', being.techbonus )
+			item:add_mod( 'P', being.TECH_BONUS )
 			return true
 		end,
 	}
@@ -1085,7 +1086,7 @@ function drl.register_regular_items()
 				item.resist.fire     = (item.resist.fire or 0)     + 10
 				item.resist.plasma   = (item.resist.plasma or 0)   + 10
 			end
-			item:add_mod( 'T', being.techbonus )
+			item:add_mod( 'T', being.TECH_BONUS )
 			return true
 		end,
 	}
@@ -1145,7 +1146,7 @@ function drl.register_regular_items()
 			elseif item.itype == ITEMTYPE_BOOTS then
 				item.movemod = item.movemod + 10
 			end
-			item:add_mod( 'A', being.techbonus )
+			item:add_mod( 'A', being.TECH_BONUS )
 			-- A little easter egg for applying A-mod on shotgun
 			if item.group == "shotgun" then
 				ui.msg( "You suddenly feel a little silly." )
@@ -1218,7 +1219,7 @@ function drl.register_regular_items()
 				item.maxdurability = item.maxdurability + 100
 				item.movemod = item.movemod - 10
 			end
-			item:add_mod( 'B', being.techbonus )
+			item:add_mod( 'B', being.TECH_BONUS )
 			return true
 		end,
 	}
@@ -1339,14 +1340,12 @@ function drl.register_regular_items()
 
 		flags  = { IF_FEATURENAME },
 
-		OnCreate = function(self)
-			self:add_property( "target_area", area.FULL_SHRINKED:clone() )
-		end,
+		properties = { TARGET_AREA = area.FULL_SHRINKED },
 
 		OnUse = function(self,being)
 			statistics.levers_pulled = statistics.levers_pulled + 1
 			ui.msg("Suddenly water starts gushing from the ground!")
-			level:flood( "water", self.target_area )
+			level:flood( "water", self.TARGET_AREA )
 			return true
 		end,
 
@@ -1370,20 +1369,18 @@ function drl.register_regular_items()
 
 		flags  = { IF_FEATURENAME },
 
-		OnCreate = function(self)
-			self:add_property( "target_area", area.FULL_SHRINKED:clone() )
-		end,
+		properties = { TARGET_AREA = area.FULL_SHRINKED },
 
 		OnUse = function(self,being)
 			statistics.levers_pulled = statistics.levers_pulled + 1
-			if self.target_area:size() >= area.FULL_SHRINKED:size() then
+			if self.TARGET_AREA:size() >= area.FULL_SHRINKED:size() then
 				-- Really?  Censoring "f***" when the plot has it?
 				ui.msg("WTF?! Acid splashes everywhere!")
 				being:add_history("He flooded the entire @1 with acid!")
 			else
 				ui.msg("Green acid covers the floor!")
 			end
-			level:flood( "acid", self.target_area )
+			level:flood( "acid", self.TARGET_AREA )
 			return true
 		end,
 
@@ -1406,19 +1403,17 @@ function drl.register_regular_items()
 
 		flags  = { IF_FEATURENAME },
 
-		OnCreate = function(self)
-			self:add_property( "target_area", area.FULL_SHRINKED:clone() )
-		end,
+		properties = { TARGET_AREA = area.FULL_SHRINKED },
 
 		OnUse = function(self,being)
 			statistics.levers_pulled = statistics.levers_pulled + 1
-			if self.target_area:size() >= area.FULL_SHRINKED:size() then
+			if self.TARGET_AREA:size() >= area.FULL_SHRINKED:size() then
 				ui.msg("Oh shit... oh shit... OH SHIT!!!!")
 				being:add_history("He flooded the entire @1 with lava!")
 			else
 				ui.msg("The ground explodes in flames!")
 			end
-			level:flood( "lava", self.target_area )
+			level:flood( "lava", self.TARGET_AREA )
 			return true
 		end,
 
@@ -1441,13 +1436,11 @@ function drl.register_regular_items()
 
 		flags  = { IF_FEATURENAME },
 
-		OnCreate = function(self)
-			self:add_property( "target_area", area.FULL_SHRINKED:clone() )
-		end,
+		properties = { TARGET_AREA = area.FULL_SHRINKED },
 
 		OnUse = function(self,being)
 			statistics.levers_pulled = statistics.levers_pulled + 1
-			for c in self.target_area() do
+			for c in self.TARGET_AREA() do
 				local target = level:get_being(c)
 				if target and not target:is_player() then
 					target:apply_damage( 20, TARGET_INTERNAL, DAMAGE_FIRE, nil )
@@ -1475,14 +1468,12 @@ function drl.register_regular_items()
 
 		flags  = { IF_FEATURENAME },
 
-		OnCreate = function(self)
-			self:add_property( "target_area", area.FULL_SHRINKED:clone() )
-		end,
+		properties = { TARGET_AREA = area.FULL_SHRINKED },
 
 		OnUse = function(self,being)
 			statistics.levers_pulled = statistics.levers_pulled + 1
 			local position = self.position
-			for c in self.target_area() do
+			for c in self.TARGET_AREA() do
 				local item = level:get_item( c )
 				if item and item.hp > 0 then
 					level:damage_tile( c, 1000, DAMAGE_PLASMA )
@@ -1510,13 +1501,11 @@ function drl.register_regular_items()
 
 		flags  = { IF_FEATURENAME },
 
-		OnCreate = function(self)
-			self:add_property( "target_area", area.FULL_SHRINKED:clone() )
-		end,
+		properties = { TARGET_AREA = area.FULL_SHRINKED },
 
 		OnUse = function(self,being)
 			statistics.levers_pulled = statistics.levers_pulled + 1
-			local room = self.target_area:clamped( area.FULL_SHRINKED )
+			local room = self.TARGET_AREA:clamped( area.FULL_SHRINKED )
 			level:play_sound( "barrel.explode", being.position )
 			for c in room() do
 				local tile = cells[level.map[c]]
@@ -1548,13 +1537,14 @@ function drl.register_regular_items()
 
 		flags  = { IF_FEATURENAME },
 
+		properties = { TARGET_AREA = area.FULL_SHRINKED },
+
 		OnCreate = function(self)
-			self:add_property( "charges", math.random(3) )
-			self:add_property( "target_area", area.FULL_SHRINKED:clone() )
+			self:add_property( "CHARGES", math.random(3) )
 		end,
 
 		OnUseCheck = function( self )
-			if self.charges == 0 then
+			if self.CHARGES == 0 then
 				ui.msg("Nothing happens.")
 				return false
 			end
@@ -1568,8 +1558,8 @@ function drl.register_regular_items()
 			for c = 1,amount do
 				being:spawn( list:roll().id )
 			end
-			self.charges = self.charges - 1
-			return self.charges == 0
+			self.CHARGES = self.CHARGES - 1
+			return self.CHARGES == 0
 		end,
 
 		OnDescribe = item.get_lever_description,
@@ -1590,7 +1580,7 @@ function drl.register_regular_items()
 		flags  = { IF_FEATURENAME },
 
 		OnCreate = function(self)
-			self:add_property( "charges", math.random(3) )
+			self:add_property( "CHARGES", math.random(3) )
 		end,
 
 		OnUseCheck = function(self,being)
@@ -1616,7 +1606,7 @@ function drl.register_regular_items()
 			local boots = being.eq.boots
 			local damaged_armor = armor and armor:is_damaged()
 			local damaged_boots = boots and boots:is_damaged()
-			self.charges = self.charges - 1
+			self.CHARGES = self.CHARGES - 1
 			ui.blink( YELLOW, 50 )
 			if damaged_armor then
 				if armor:fix(25) then
@@ -1632,7 +1622,7 @@ function drl.register_regular_items()
 					ui.msg( "Your boots look better!" )
 				end
 			end
-			return self.charges == 0
+			return self.CHARGES == 0
 		end,
 
 		OnDescribe = item.get_lever_description,
@@ -1653,7 +1643,7 @@ function drl.register_regular_items()
 		flags  = { IF_FEATURENAME },
 
 		OnCreate = function( self )
-			self:add_property( "charges", math.random(3) )
+			self:add_property( "CHARGES", math.random(3) )
 		end,
 
 		OnUseCheck = function(self,being)
@@ -1673,11 +1663,11 @@ function drl.register_regular_items()
 			statistics.levers_pulled = statistics.levers_pulled + 1
 			ui.msg("MediTech depot. Proceeding with treatment...")
 			being:remove_perk( "tired" )
-			self.charges = self.charges - 1
+			self.CHARGES = self.CHARGES - 1
 			local heal = (being.hpmax * diff[DIFFICULTY].powerfactor) / 4 + 2
 			being.hp = math.min( being.hp + heal,being.hpmax )
 			ui.msg("You feel healed.")
-			return self.charges == 0
+			return self.CHARGES == 0
 		end,
 
 		OnDescribe = item.get_lever_description,
@@ -1698,7 +1688,7 @@ function drl.register_regular_items()
 		flags  = { IF_FEATURENAME },
 
 		OnCreate = function( self )
-			self:add_property( "charges", math.random(3) + 1 )
+			self:add_property( "CHARGES", math.random(3) + 1 )
 		end,
 
 		OnUseCheck = function(self,being)
@@ -1717,10 +1707,10 @@ function drl.register_regular_items()
 		OnUse = function(self,being)
 			statistics.levers_pulled = statistics.levers_pulled + 1
 			ui.msg("Ammo dispenser. Dispensing requested ammo...")
-			self.charges = self.charges - 1
+			self.CHARGES = self.CHARGES - 1
 			local ammo_id = items[being.eq.weapon.ammoid].id
 			level:drop_item( ammo_id, being.position, true, true, true )
-			return self.charges == 0
+			return self.CHARGES == 0
 		end,
 
 		OnDescribe = item.get_lever_description,

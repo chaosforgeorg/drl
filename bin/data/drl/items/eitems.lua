@@ -982,7 +982,7 @@ function drl.register_exotic_items()
 				item.radius = item.radius + 2
 			end
 			ui.msg( "You upgrade your weapon!" )
-			item:add_mod( 'F', being.techbonus )
+			item:add_mod( 'F', being.TECH_BONUS )
 			return true
 		end,
 	}
@@ -1037,7 +1037,7 @@ function drl.register_exotic_items()
 			else
 				item.flags[IF_FARHIT] = true
 			end
-			item:add_mod( 'S', being.techbonus )
+			item:add_mod( 'S', being.TECH_BONUS )
 			return true
 		end,
 	}
@@ -1106,7 +1106,7 @@ function drl.register_exotic_items()
 			local item = self.chosen_item
 			self:remove_property("chosen_item")
 			ui.msg( "You upgrade your gear!" )
-			item:add_mod( 'N', being.techbonus )
+			item:add_mod( 'N', being.TECH_BONUS )
 			if item:has_property("pp_recharge") then
 				local r = item.pp_recharge
 				if r.delay == 0 then
@@ -1175,7 +1175,7 @@ function drl.register_exotic_items()
 			ui.msg( "You upgrade your gear!" )
 			item.durability = 100
 			item.flags[ IF_NODURABILITY ] = true
-			item:add_mod( 'O', being.techbonus )
+			item:add_mod( 'O', being.TECH_BONUS )
 			return true
 		end,
 	}
