@@ -199,6 +199,7 @@ core.register_blueprint "perk"
 	OnPickup       = { false, core.TFUNC },
 	OnDrop         = { false, core.TFUNC },
 	OnFirstPickup  = { false, core.TFUNC },
+	OnAct          = { false, core.TFUNC },
 	OnPickupCheck  = { false, core.TFUNC },
 	OnUse          = { false, core.TFUNC },
 	OnUseCheck     = { false, core.TFUNC },
