@@ -470,7 +470,6 @@ core.register_blueprint "item"
 		[ITEMTYPE_POWER]   = {
 			ascii    = { false, core.TSTRING, "^" },
 			slevel   = { false, core.TNUMBER },
-			OnPickup = { true, core.TFUNC },
 			OnEnter  = { false, core.TFUNC },
 		},
 		[ITEMTYPE_RELIC]   = {

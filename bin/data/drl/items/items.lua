@@ -156,12 +156,14 @@ function drl.register_regular_items()
 
 		type    = ITEMTYPE_POWER,
 
-		OnPickup = function(self,being)
-			being:msg("You feel better.")
-			being:remove_perk( "tired" )
-			local amount = math.floor( 10 * diff[DIFFICULTY].powerfactor * being:get_property( "MEDKIT_BONUS", 1 ) )
-			being.hp = math.min( being.hp +  amount, 2*being.hpmax )
-		end,
+		runtime = {
+			OnPickup = function(self,being)
+				being:msg("You feel better.")
+				being:remove_perk( "tired" )
+				local amount = math.floor( 10 * diff[DIFFICULTY].powerfactor * being:get_property( "MEDKIT_BONUS", 1 ) )
+				being.hp = math.min( being.hp +  amount, 2*being.hpmax )
+			end,
+		},
 	}
 
 	register_item "bpack"
@@ -174,13 +176,15 @@ function drl.register_regular_items()
 
 		type    = ITEMTYPE_POWER,
 
-		OnPickup = function(self,being)
-			being:apply_powerup_perk( "berserk", 500 )
-			if (not being.flags[ BF_NOHEAL ]) and being.hp < being.hpmax then
-				being.hp = being.hpmax
-			end
-			being:remove_perk( "tired" )
-		end,
+		runtime = {
+			OnPickup = function(self,being)
+				being:apply_powerup_perk( "berserk", 500 )
+				if (not being.flags[ BF_NOHEAL ]) and being.hp < being.hpmax then
+					being.hp = being.hpmax
+				end
+				being:remove_perk( "tired" )
+			end,
+		},
 	}
 
 	register_item "iglobe"
@@ -194,10 +198,12 @@ function drl.register_regular_items()
 
 		type    = ITEMTYPE_POWER,
 
-		OnPickup = function(self,being)
-			being:apply_powerup_perk( "inv", 500 )
-			being:remove_perk( "tired" )
-		end,
+		runtime = {
+			OnPickup = function(self,being)
+				being:apply_powerup_perk( "inv", 500 )
+				being:remove_perk( "tired" )
+			end,
+		},
 	}
 
 	register_item "scglobe"
@@ -212,12 +218,14 @@ function drl.register_regular_items()
 
 		type    = ITEMTYPE_POWER,
 
-		OnPickup = function(self,being)
-			being:msg("SuperCharge!")
-			ui.blink(LIGHTBLUE,100)
-			being.hp = 2 * being.hpmax
-			being:remove_perk( "tired" )
-		end,
+		runtime = {
+			OnPickup = function(self,being)
+				being:msg("SuperCharge!")
+				ui.blink(LIGHTBLUE,100)
+				being.hp = 2 * being.hpmax
+				being:remove_perk( "tired" )
+			end,
+		},
 	}
 
 	register_item "lhglobe"
@@ -231,15 +239,17 @@ function drl.register_regular_items()
 
 		type    = ITEMTYPE_POWER,
 
-		OnPickup = function(self,being)
-			being:msg("You feel like new!")
-			being:remove_perk( "tired" )
-			local amount = math.floor( 10 * diff[DIFFICULTY].powerfactor * being:get_property( "MEDKIT_BONUS", 1 ) )
-			being.hp = math.min( being.hp + amount, 2*being.hpmax )
-			if being.hp < being.hpmax then
-				being.hp = being.hpmax
-			end
-		end,
+		runtime = {
+			OnPickup = function(self,being)
+				being:msg("You feel like new!")
+				being:remove_perk( "tired" )
+				local amount = math.floor( 10 * diff[DIFFICULTY].powerfactor * being:get_property( "MEDKIT_BONUS", 1 ) )
+				being.hp = math.min( being.hp + amount, 2*being.hpmax )
+				if being.hp < being.hpmax then
+					being.hp = being.hpmax
+				end
+			end,
+		},
 	}
 
 	register_item "msglobe"
@@ -253,16 +263,18 @@ function drl.register_regular_items()
 
 		type    = ITEMTYPE_POWER,
 
-		OnPickup = function(self,being)
-			being:msg("MegaSphere!")
-			ui.blink(LIGHTMAGENTA,100)
-			if not being.flags[ BF_NOHEAL ] then
-				being.hp = 2*being.hpmax
-			end
-			being:remove_perk( "tired" )
-			if being.eq.armor then being.eq.armor:fix() end
-			if being.eq.boots then being.eq.boots:fix() end
-		end,
+		runtime = {
+			OnPickup = function(self,being)
+				being:msg("MegaSphere!")
+				ui.blink(LIGHTMAGENTA,100)
+				if not being.flags[ BF_NOHEAL ] then
+					being.hp = 2*being.hpmax
+				end
+				being:remove_perk( "tired" )
+				if being.eq.armor then being.eq.armor:fix() end
+				if being.eq.boots then being.eq.boots:fix() end
+			end,
+		},
 	}
 
 	register_item "map"
@@ -276,21 +288,23 @@ function drl.register_regular_items()
 
 		type    = ITEMTYPE_POWER,
 
-		OnPickup = function(self,being)
-			being:msg( "Everything seems clear now." )
-			ui.blink(WHITE,50)
-			for c in area.FULL() do
-				local cell = cells[ level.map[ c ] ]
-				if cell.flags[ CF_BLOCKMOVE ] or cell.flags[ CF_NOCHANGE ] then
-					level:set_light_flag( c, LFEXPLORED, true )
+		runtime = {
+			OnPickup = function(self,being)
+				being:msg( "Everything seems clear now." )
+				ui.blink(WHITE,50)
+				for c in area.FULL() do
+					local cell = cells[ level.map[ c ] ]
+					if cell.flags[ CF_BLOCKMOVE ] or cell.flags[ CF_NOCHANGE ] then
+						level:set_light_flag( c, LFEXPLORED, true )
+					end
 				end
-			end
-			level.flags[ LF_ITEMSVISIBLE ] = true
-			if being:has_property( "MAP_EXPERT" ) then
-				being:msg( "You download tracking data to your PDA." )
-				level.flags[ LF_BEINGSVISIBLE ] = true
-			end
-		end,
+				level.flags[ LF_ITEMSVISIBLE ] = true
+				if being:has_property( "MAP_EXPERT" ) then
+					being:msg( "You download tracking data to your PDA." )
+					level.flags[ LF_BEINGSVISIBLE ] = true
+				end
+			end,
+		},
 	}
 
 	register_item "pmap"
@@ -304,18 +318,20 @@ function drl.register_regular_items()
 
 		type    = ITEMTYPE_POWER,
 
-		OnPickup = function(self,being)
-			being:msg( "You download tracking data to your PDA." )
-			ui.blink(LIGHTGREEN,50)
-			for c in area.FULL() do
-				local cell = cells[ level.map[ c ] ]
-				if cell.flags[ CF_BLOCKMOVE ] or cell.flags[ CF_NOCHANGE ] then
-					level:set_light_flag( c, LFEXPLORED, true )
+		runtime = {
+			OnPickup = function(self,being)
+				being:msg( "You download tracking data to your PDA." )
+				ui.blink(LIGHTGREEN,50)
+				for c in area.FULL() do
+					local cell = cells[ level.map[ c ] ]
+					if cell.flags[ CF_BLOCKMOVE ] or cell.flags[ CF_NOCHANGE ] then
+						level:set_light_flag( c, LFEXPLORED, true )
+					end
 				end
-			end
-			level.flags[ LF_ITEMSVISIBLE ] = true
-			level.flags[ LF_BEINGSVISIBLE ] = true
-		end,
+				level.flags[ LF_ITEMSVISIBLE ] = true
+				level.flags[ LF_BEINGSVISIBLE ] = true
+			end,
+		},
 	}
 
 	register_item "gpack"
@@ -329,9 +345,11 @@ function drl.register_regular_items()
 
 		type    = ITEMTYPE_POWER,
 
-		OnPickup = function(self,being)
-			being:apply_powerup_perk( "light", 600 )
-		end,
+		runtime = {
+			OnPickup = function(self,being)
+				being:apply_powerup_perk( "light", 600 )
+			end,
+		},
 	}
 
 	register_item "backpack"
@@ -347,17 +365,19 @@ function drl.register_regular_items()
 		
 		type    = ITEMTYPE_POWER,
 
-		OnPickup = function(self,being)
-			if being:has_property( "BACKPACK" ) then
-				ui.msg("Another backpack? Who needs two anyway.")
-				return
-			end
-			self.flags[ IF_NODESTROY ] = false
-			ui.msg("BackPack!")
-			ui.blink(YELLOW,50)
-			being:add_property( "BACKPACK", 4 )
-			being:resort_stacks()
-		end,
+		runtime = {
+			OnPickup = function(self,being)
+				if being:has_property( "BACKPACK" ) then
+					ui.msg("Another backpack? Who needs two anyway.")
+					return
+				end
+				self.flags[ IF_NODESTROY ] = false
+				ui.msg("BackPack!")
+				ui.blink(YELLOW,50)
+				being:add_property( "BACKPACK", 4 )
+				being:resort_stacks()
+			end,
+		},
 	}
 
 	register_item "ashard"
@@ -371,35 +391,37 @@ function drl.register_regular_items()
 
 		type    = ITEMTYPE_POWER,
 
-		OnPickup = function(self,being)
-			local armor = being.eq.armor
-			local boots = being.eq.boots
-			if not armor and not boots then
-				being:msg( "You have no armor to fix! Nothing happens." )
-				return
-			end
-			local damaged_armor = armor and armor:is_damaged()
-			local damaged_boots = boots and boots:is_damaged()
-			if not damaged_armor and not damaged_boots then
-				being:msg( "You have no armor that needs fixing! Nothing happens." )
-				return
-			end
-			ui.blink( YELLOW, 50 )
-			if damaged_armor then
-				if armor:fix(25*diff[DIFFICULTY].powerfactor) then
-					being:msg( "Your armor looks like new!" )
-				else
-					being:msg( "Your armor looks better!" )
+		runtime = {
+			OnPickup = function(self,being)
+				local armor = being.eq.armor
+				local boots = being.eq.boots
+				if not armor and not boots then
+					being:msg( "You have no armor to fix! Nothing happens." )
+					return
 				end
-			end
-			if damaged_boots then
-				if boots:fix(10*diff[DIFFICULTY].powerfactor) then
-					being:msg( "Your boots look like new!" )
-				else
-					being:msg( "Your boots look better!" )
+				local damaged_armor = armor and armor:is_damaged()
+				local damaged_boots = boots and boots:is_damaged()
+				if not damaged_armor and not damaged_boots then
+					being:msg( "You have no armor that needs fixing! Nothing happens." )
+					return
 				end
-			end
-		end,
+				ui.blink( YELLOW, 50 )
+				if damaged_armor then
+					if armor:fix(25*diff[DIFFICULTY].powerfactor) then
+						being:msg( "Your armor looks like new!" )
+					else
+						being:msg( "Your armor looks better!" )
+					end
+				end
+				if damaged_boots then
+					if boots:fix(10*diff[DIFFICULTY].powerfactor) then
+						being:msg( "Your boots look like new!" )
+					else
+						being:msg( "Your boots look better!" )
+					end
+				end
+			end,
+		},
 	}
 
 	-- Ammo --
@@ -1737,12 +1759,14 @@ function drl.register_regular_items()
 		type    = ITEMTYPE_POWER,
 		slevel  = 0,
 
-		OnPickup = function(self,being)
-			self.flags[ IF_NODESTROY ] = false
-			ui.blink(LIGHTGREEN,100)
-			player:add_assembly(mod_arrays[self.ammo].id)
-			ui.msg_enter("You suddenly know how to assemble "..mod_arrays[self.ammo].name.."!")
-		end,
+		runtime = {
+			OnPickup = function(self,being)
+				self.flags[ IF_NODESTROY ] = false
+				ui.blink(LIGHTGREEN,100)
+				player:add_assembly(mod_arrays[self.ammo].id)
+				ui.msg_enter("You suddenly know how to assemble "..mod_arrays[self.ammo].name.."!")
+			end,
+		},
 	}
 
 	register_item "schematic_1"
@@ -1758,12 +1782,14 @@ function drl.register_regular_items()
 		type    = ITEMTYPE_POWER,
 		slevel  = 1,
 
-		OnPickup = function(self,being)
-			self.flags[ IF_NODESTROY ] = false
-			ui.blink(LIGHTGREEN,100)
-			player:add_assembly(mod_arrays[self.ammo].id)
-			ui.msg_enter("You suddenly know how to assemble "..mod_arrays[self.ammo].name.."!")
-		end,
+		runtime = {
+			OnPickup = function(self,being)
+				self.flags[ IF_NODESTROY ] = false
+				ui.blink(LIGHTGREEN,100)
+				player:add_assembly(mod_arrays[self.ammo].id)
+				ui.msg_enter("You suddenly know how to assemble "..mod_arrays[self.ammo].name.."!")
+			end,
+		},
 	}
 
 	register_item "schematic_2"
@@ -1779,12 +1805,14 @@ function drl.register_regular_items()
 		type    = ITEMTYPE_POWER,
 		slevel  = 2,
 
-		OnPickup = function(self,being)
-			self.flags[ IF_NODESTROY ] = false
-			ui.blink(LIGHTGREEN,100)
-			player:add_assembly(mod_arrays[self.ammo].id)
-			ui.msg_enter("You suddenly know how to assemble "..mod_arrays[self.ammo].name.."!")
-		end,
+		runtime = {
+			OnPickup = function(self,being)
+				self.flags[ IF_NODESTROY ] = false
+				ui.blink(LIGHTGREEN,100)
+				player:add_assembly(mod_arrays[self.ammo].id)
+				ui.msg_enter("You suddenly know how to assemble "..mod_arrays[self.ammo].name.."!")
+			end,
+		},
 	}
 
 
