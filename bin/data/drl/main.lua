@@ -70,6 +70,7 @@ function drl.OnLoad()
 		plasma  = "plasma",
 		bfg     = "BFG",
 	}
+	core.register_callback( "OnFirstPickup", "perk" )
 	drl.register_sprites()
 	drl.register_difficulties()
 	drl.register_base_data()
@@ -276,9 +277,9 @@ function drl.register_base_data()
 					self:add_history( 'On @1 he found the '..i.name..'!' )
 					ui.blink( LIGHTGREEN, 50 )
 				end
-				if items[ i.id ].OnFirstPickup then
-					items[ i.id ].OnFirstPickup( i, self )
-				end
+				local firstmsg = i.__proto.firstmsg
+				if firstmsg then ui.msg( "\""..firstmsg.."\"" ) end
+				core.callback( i, "OnFirstPickup", self )
 				self:add_found_item( i.id )
 			end
 		end,

@@ -66,19 +66,20 @@ function drl.register_exotic_items()
 		type        = ITEMTYPE_MELEE,
 		damage      = "4d6",
 		damagetype  = DAMAGE_MELEE,
-
-		OnFirstPickup = function(self,being)
-			if not being:is_player() then return end
-			ui.blink(LIGHTRED,100)
-			-- XXX Should this be given on first pick-up ALWAYS or only when in chain court?
-			being:add_perk( "berserk",200*diff[DIFFICULTY].powerfactor)
-			if not being.flags[ BF_NOHEAL ] and being.hp < being.hpmax then
-				being.hp = being.hpmax
+		runtime = {
+			OnFirstPickup = function(self,being)
+				if not being:is_player() then return end
+				ui.blink(LIGHTRED,100)
+				-- XXX Should this be given on first pick-up ALWAYS or only when in chain court?
+				being:add_perk( "berserk",200*diff[DIFFICULTY].powerfactor)
+				if not being.flags[ BF_NOHEAL ] and being.hp < being.hpmax then
+					being.hp = being.hpmax
+				end
+				being:remove_perk( "tired" )
+				being:quick_weapon("chainsaw")
+				ui.msg("BLOOD! BLOOD FOR ARMOK, GOD OF BLOOD!")
 			end
-			being:remove_perk( "tired" )
-			being:quick_weapon("chainsaw")
-			ui.msg("BLOOD! BLOOD FOR ARMOK, GOD OF BLOOD!")
-		end
+		},
 	}
 
 	register_item "bfg9000"
@@ -116,16 +117,17 @@ function drl.register_exotic_items()
 			knockback = 16,
 		},
 
-		perks = { "perk_altreload_overcharge" },
-
-		OnFirstPickup = function(self,being)
-			if not being:is_player() then return end
-			being:quick_weapon("bfg9000")
-			ui.blink(LIGHTBLUE,100)
-			ui.blink(WHITE,100,100)
-			ui.blink(LIGHTBLUE,100,200)
-			ui.msg("HELL, NOW YOU'LL GET LOOSE!")
-		end,
+		perks   = { "perk_altreload_overcharge" },
+		runtime = {
+			OnFirstPickup = function(self,being)
+				if not being:is_player() then return end
+				being:quick_weapon("bfg9000")
+				ui.blink(LIGHTBLUE,100)
+				ui.blink(WHITE,100,100)
+				ui.blink(LIGHTBLUE,100,200)
+				ui.msg("HELL, NOW YOU'LL GET LOOSE!")
+			end,
+		},
 	}
 
 	-- rest of the exotic weapons

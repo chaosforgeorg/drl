@@ -511,8 +511,6 @@ register_item          = core.register_storage( "items", "item", function( ip )
 			ip.explosion.content = cells[ip.explosion.content].nid
 		end
 
-		if ip.firstmsg then ip.OnFirstPickup = function () ui.msg("\""..ip.firstmsg.."\"") end end
-
 		if core.options.auto_glow_items then
 			if not ip.glow then
 				if ip.flags[ IF_EXOTIC ] then 
