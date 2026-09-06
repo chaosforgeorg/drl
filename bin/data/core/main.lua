@@ -465,6 +465,13 @@ register_being         = core.register_storage( "beings", "being", function( bp 
 )
 
 register_item          = core.register_storage( "items", "item", function( ip )
+		local runtime_id
+		if ip.runtime and next( ip.runtime ) then
+			runtime_id = "perk_item_"..ip.id
+			register_perk( runtime_id )( ip.runtime )
+			ip.runtime = runtime_id
+		end
+
 		local set = ip.set
 		if set then
 			ip.flags[ IF_SETITEM ] = true
@@ -533,6 +540,7 @@ register_item          = core.register_storage( "items", "item", function( ip )
 			-- Explicit parent constructors must not reapply defaults or perks.
 			if self.__proto == ip then
 				add_properties( self, ip.properties )
+				if runtime_id then self:add_perk( runtime_id ) end
 				add_perks( self, ip.perks )
 			end
 		end

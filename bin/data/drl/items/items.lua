@@ -1230,16 +1230,20 @@ function drl.register_regular_items()
 		type       = ITEMTYPE_FEATURE,
 		weight     = 0,
 
-		OnAct = function( self, c, being )
-			local source = being.position
-			local push   = c + (c - source)
-			level:push_feature( being, self, c, push, false, true ) 
-		end,
-
-		OnDestroy = function(self,c)
-			if level:is_visible(c) then ui.msg('The barrel explodes!') end
-			level:explosion(c, { range = 4, delay = 40, damage = "5d5", color = RED, sound_id = "barrel.explode" }, "barrel" )
-		end
+		properties = { WARN_HAZARD = true },
+		perks      = { "perk_pushable" },
+		runtime    = {
+			OnDestroy = function( self, c )
+				if level:is_visible( c ) then ui.msg( "The barrel explodes!" ) end
+				level:explosion( c, {
+					range    = 4,
+					delay    = 40,
+					damage   = "5d5",
+					color    = RED,
+					sound_id = "barrel.explode",
+				}, "barrel" )
+			end,
+		},
 	}
 
 	register_item "barrela"
@@ -1256,17 +1260,24 @@ function drl.register_regular_items()
 		type       = ITEMTYPE_FEATURE,
 		weight     = 0,
 
-		OnAct = function( self, c, being )
-			local source = being.position
-			local push   = c + (c - source)
-			level:push_feature( being, self, c, push, false, true ) 
-		end,
-
-		OnDestroy = function(self,c)
-			if level:is_visible(c) then ui.msg('The barrel explodes!') end
-			level:destroy_to( c, "acid" )
-			level:explosion(c, { range = 3, delay = 40, damage = "6d6", color = GREEN, damage_type = DAMAGE_ACID, sound_id = "barrel.explode", flags = { EFRANDOMCONTENT }, content = "acid" }, "barrel" )
-		end
+		properties = { WARN_HAZARD = true },
+		perks      = { "perk_pushable" },
+		runtime    = {
+			OnDestroy = function( self, c )
+				if level:is_visible( c ) then ui.msg( "The barrel explodes!" ) end
+				level:destroy_to( c, "acid" )
+				level:explosion( c, {
+					range       = 3,
+					delay       = 40,
+					damage      = "6d6",
+					color       = GREEN,
+					damage_type = DAMAGE_ACID,
+					sound_id    = "barrel.explode",
+					flags       = { EFRANDOMCONTENT },
+					content     = "acid",
+				}, "barrel" )
+			end,
+		},
 	}
 
 	register_item "barreln"
@@ -1283,17 +1294,23 @@ function drl.register_regular_items()
 		type       = ITEMTYPE_FEATURE,
 		weight     = 0,
 
-		OnAct = function( self, c, being )
-			local source = being.position
-			local push   = c + (c - source)
-			level:push_feature( being, self, c, push, false, true ) 
-		end,
-
-		OnDestroy = function(self,c)
-			if level:is_visible(c) then ui.msg('The barrel explodes!') end
-			level:destroy_to( c, "lava" )
-			level:explosion(c, { range = 2, delay = 40, damage = "7d7", color = RED, sound_id = "barrel.explode", damage_type = DAMAGE_FIRE, content = "lava" }, "barrel")
-		end
+		properties = { WARN_HAZARD = true },
+		perks      = { "perk_pushable" },
+		runtime    = {
+			OnDestroy = function( self, c )
+				if level:is_visible( c ) then ui.msg( "The barrel explodes!" ) end
+				level:destroy_to( c, "lava" )
+				level:explosion( c, {
+					range       = 2,
+					delay       = 40,
+					damage      = "7d7",
+					color       = RED,
+					sound_id    = "barrel.explode",
+					damage_type = DAMAGE_FIRE,
+					content     = "lava",
+				}, "barrel" )
+			end,
+		},
 	}
 
 	-- features --

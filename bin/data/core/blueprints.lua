@@ -200,6 +200,7 @@ core.register_blueprint "perk"
 	OnDrop         = { false, core.TFUNC },
 	OnFirstPickup  = { false, core.TFUNC },
 	OnAct          = { false, core.TFUNC },
+	OnDestroy      = { false, core.TFUNC },
 	OnPickupCheck  = { false, core.TFUNC },
 	OnUse          = { false, core.TFUNC },
 	OnUseCheck     = { false, core.TFUNC },
@@ -427,7 +428,6 @@ core.register_blueprint "item"
 	flags          = { false, core.TFLAGS, {} },
 	firstmsg       = { false, core.TSTRING },
 	properties     = { false, core.TTABLE },
-	perks          = { false, core.TARRAY( core.TSTRING ) },
 	resist         = { false, core.TTABLE },
 	tags           = { false, core.TTABLE, {} },
 	max            = { false, core.TNUMBER, 1 },
@@ -626,6 +626,9 @@ core.register_blueprint "item"
 			OnAct     = { false, core.TFUNC },
 		},
 	}},
+
+	perks          = { false, core.TARRAY( core.TSTRING ) },
+	runtime        = { false, core.TTABLE },
 
 	OnCreate       = { false, core.TFUNC },
 	OnPickup       = { false, core.TFUNC },
