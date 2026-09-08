@@ -462,7 +462,6 @@ core.register_blueprint "item"
 			dis_exotic = { false, core.TBOOLEAN, false },
 			dis_unique = { false, core.TBOOLEAN, false },
 			dis_other  = { false, core.TBOOLEAN, false },
-			OnUse      = { false, core.TFUNC },
 
 			OnModDescribe = { false, core.TFUNC },
 		},
@@ -630,8 +629,6 @@ core.register_blueprint "item"
 
 	OnCreate       = { false, core.TFUNC },
 	OnPickup       = { false, core.TFUNC },
-	OnUse          = { false, core.TFUNC },
-	OnUseCheck     = { false, core.TFUNC },
 	OnEquip        = { false, core.TFUNC },
 	OnUnequip      = { false, core.TFUNC },
 }

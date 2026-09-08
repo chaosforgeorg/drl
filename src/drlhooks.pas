@@ -17,8 +17,8 @@ const
   Hook_OnDieCheck      = 5;   // Being, Perk
   Hook_OnPickup        = 6;   // Being, Item, Perk
   Hook_OnPickupCheck   = 7;   // Item, Perk
-  Hook_OnUse           = 8;   // Item, Perk
-  Hook_OnUseCheck      = 9;  // Item, Perk
+  Hook_OnUse           = 8;   // Perk (item)
+  Hook_OnUseCheck      = 9;   // Perk (item)
   Hook_OnAltFire       = 10;  // Perk (item)
   Hook_OnAltReload     = 11;  // Perk (item)
   Hook_OnEquip         = 12;  // Item, Perk
@@ -166,7 +166,7 @@ BeingHooks   := [ Hook_OnCreate, Hook_OnAction, Hook_OnAttacked, Hook_OnUseActiv
 FullInvHooks := [ Hook_OnPreAction, Hook_OnPostAction, Hook_OnTick ];
 NoInventoryHooks := [ Hook_OnPickup ];
 ItemHooks    := [ Hook_OnCreate, Hook_OnPickup,
-  Hook_OnUse, Hook_OnUseCheck, Hook_OnEquip, Hook_OnUnequip,
+  Hook_OnEquip, Hook_OnUnequip,
   Hook_OnEnter, Hook_OnAct, Hook_OnDestroy, Hook_OnDescribe, Hook_OnPickupCheck,
   Hook_OnUnequipCheck ];
 GlobalHooks  := [ Hook_OnCreate, Hook_OnEnterLevel, Hook_OnExitLevel, Hook_OnTick,

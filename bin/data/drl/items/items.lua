@@ -1002,13 +1002,35 @@ function drl.register_regular_items()
 
 		type       = ITEMTYPE_PACK,
 		mod_letter = "P",
+		runtime = {
+			OnUseCheck = function(self,being)
+				local item, result = being:pick_item_to_mod( self )
+				if not result then return false end
+				if item ~= nil then self:add_property("chosen_item", item) end
+				return true
+			end,
 
-		OnUseCheck = function(self,being)
-			local item, result = being:pick_item_to_mod( self )
-			if not result then return false end
-			if item ~= nil then self:add_property("chosen_item", item) end
-			return true
-		end,
+			OnUse = function(self,being)
+				if not self:has_property("chosen_item") then return true end
+				local item = self.chosen_item
+				self:remove_property("chosen_item")
+				if item.itype == ITEMTYPE_MELEE then
+					item.damage_sides = item.damage_sides + 1
+				elseif item.itype == ITEMTYPE_RANGED then
+					if item.damage_sides >= item.damage_dice then
+						item.damage_sides = item.damage_sides + 1
+					else
+						item.damage_dice = item.damage_dice + 1
+					end
+				elseif item.itype == ITEMTYPE_ARMOR then
+					item.armor = item.armor + 2
+				elseif item.itype == ITEMTYPE_BOOTS then
+					item.armor = item.armor * 2
+				end
+				item:add_mod( 'P', being.TECH_BONUS )
+				return true
+			end,
+		},
 
 		OnModDescribe = function( self, item )
 			local function dmgsmtr( bd,bs )
@@ -1032,26 +1054,6 @@ function drl.register_regular_items()
 			return "unknown"
 		end,
 
-		OnUse = function(self,being)
-			if not self:has_property("chosen_item") then return true end
-			local item = self.chosen_item
-			self:remove_property("chosen_item")
-			if item.itype == ITEMTYPE_MELEE then
-				item.damage_sides = item.damage_sides + 1
-			elseif item.itype == ITEMTYPE_RANGED then
-				if item.damage_sides >= item.damage_dice then
-					item.damage_sides = item.damage_sides + 1
-				else
-					item.damage_dice = item.damage_dice + 1
-				end
-			elseif item.itype == ITEMTYPE_ARMOR then
-				item.armor = item.armor + 2
-			elseif item.itype == ITEMTYPE_BOOTS then
-				item.armor = item.armor * 2
-			end
-			item:add_mod( 'P', being.TECH_BONUS )
-			return true
-		end,
 	}
 
 	register_item "mod_tech"
@@ -1068,13 +1070,32 @@ function drl.register_regular_items()
 
 		type       = ITEMTYPE_PACK,
 		mod_letter = "T",
+		runtime = {
+			OnUseCheck = function(self,being)
+				local item, result = being:pick_item_to_mod( self )
+				if not result then return false end
+				if item ~= nil then self:add_property("chosen_item", item) end
+				return true
+			end,
 
-		OnUseCheck = function(self,being)
-			local item, result = being:pick_item_to_mod( self )
-			if not result then return false end
-			if item ~= nil then self:add_property("chosen_item", item) end
-			return true
-		end,
+			OnUse = function(self,being)
+				if not self:has_property("chosen_item") then return true end
+				local item = self.chosen_item
+				self:remove_property("chosen_item")
+				if (item.itype == ITEMTYPE_RANGED) or (item.itype == ITEMTYPE_MELEE) then
+					item.usetime = item.usetime * 0.85
+				elseif item.itype == ITEMTYPE_ARMOR or item.itype == ITEMTYPE_BOOTS then
+					item.resist.bullet   = (item.resist.bullet or 0)   + 20
+					item.resist.melee    = (item.resist.melee or 0)    + 20
+					item.resist.shrapnel = (item.resist.shrapnel or 0) + 20
+					item.resist.acid     = (item.resist.acid or 0)     + 10
+					item.resist.fire     = (item.resist.fire or 0)     + 10
+					item.resist.plasma   = (item.resist.plasma or 0)   + 10
+				end
+				item:add_mod( 'T', being.TECH_BONUS )
+				return true
+			end,
+		},
 
 		OnModDescribe = function( self, item )
 			if (item.itype == ITEMTYPE_RANGED) or (item.itype == ITEMTYPE_MELEE) then
@@ -1091,23 +1112,6 @@ function drl.register_regular_items()
 			return "unknown"
 		end,
 
-		OnUse = function(self,being)
-			if not self:has_property("chosen_item") then return true end
-			local item = self.chosen_item
-			self:remove_property("chosen_item")
-			if (item.itype == ITEMTYPE_RANGED) or (item.itype == ITEMTYPE_MELEE) then
-				item.usetime = item.usetime * 0.85
-			elseif item.itype == ITEMTYPE_ARMOR or item.itype == ITEMTYPE_BOOTS then
-				item.resist.bullet   = (item.resist.bullet or 0)   + 20
-				item.resist.melee    = (item.resist.melee or 0)    + 20
-				item.resist.shrapnel = (item.resist.shrapnel or 0) + 20
-				item.resist.acid     = (item.resist.acid or 0)     + 10
-				item.resist.fire     = (item.resist.fire or 0)     + 10
-				item.resist.plasma   = (item.resist.plasma or 0)   + 10
-			end
-			item:add_mod( 'T', being.TECH_BONUS )
-			return true
-		end,
 	}
 
 	register_item "mod_agility"
@@ -1124,13 +1128,33 @@ function drl.register_regular_items()
 
 		type       = ITEMTYPE_PACK,
 		mod_letter = "A",
+		runtime = {
+			OnUseCheck = function(self,being)
+				local item, result = being:pick_item_to_mod( self )
+				if not result then return false end
+				if item ~= nil then self:add_property("chosen_item", item) end
+				return true
+			end,
 
-		OnUseCheck = function(self,being)
-			local item, result = being:pick_item_to_mod( self )
-			if not result then return false end
-			if item ~= nil then self:add_property("chosen_item", item) end
-			return true
-		end,
+			OnUse = function(self,being)
+				if not self:has_property("chosen_item") then return true end
+				local item = self.chosen_item
+				self:remove_property("chosen_item")
+				if item.itype == ITEMTYPE_MELEE or item.itype == ITEMTYPE_RANGED then
+					item.acc = item.acc + 1
+				elseif item.itype == ITEMTYPE_ARMOR then
+					item.movemod = item.movemod + 15
+				elseif item.itype == ITEMTYPE_BOOTS then
+					item.movemod = item.movemod + 10
+				end
+				item:add_mod( 'A', being.TECH_BONUS )
+				-- A little easter egg for applying A-mod on shotgun
+				if item.group == "shotgun" then
+					ui.msg( "You suddenly feel a little silly." )
+				end
+				return true
+			end,
+		},
 
 		OnModDescribe = function( self, item )
 			local function accstr( bd )
@@ -1154,24 +1178,6 @@ function drl.register_regular_items()
 			return "unknown"
 		end,
 
-		OnUse = function(self,being)
-			if not self:has_property("chosen_item") then return true end
-			local item = self.chosen_item
-			self:remove_property("chosen_item")
-			if item.itype == ITEMTYPE_MELEE or item.itype == ITEMTYPE_RANGED then
-				item.acc = item.acc + 1
-			elseif item.itype == ITEMTYPE_ARMOR then
-				item.movemod = item.movemod + 15
-			elseif item.itype == ITEMTYPE_BOOTS then
-				item.movemod = item.movemod + 10
-			end
-			item:add_mod( 'A', being.TECH_BONUS )
-			-- A little easter egg for applying A-mod on shotgun
-			if item.group == "shotgun" then
-				ui.msg( "You suddenly feel a little silly." )
-			end
-			return true
-		end,
 	}
 
 	register_item "mod_bulk"
@@ -1188,13 +1194,35 @@ function drl.register_regular_items()
 
 		type       = ITEMTYPE_PACK,
 		mod_letter = "B",
+		runtime = {
+			OnUseCheck = function(self,being)
+				local item, result = being:pick_item_to_mod( self )
+				if not result then return false end
+				if item ~= nil then self:add_property("chosen_item", item) end
+				return true
+			end,
 
-		OnUseCheck = function(self,being)
-			local item, result = being:pick_item_to_mod( self )
-			if not result then return false end
-			if item ~= nil then self:add_property("chosen_item", item) end
-			return true
-		end,
+			OnUse = function(self,being)
+				if not self:has_property("chosen_item") then return true end
+				local item = self.chosen_item
+				self:remove_property("chosen_item")
+				if item.itype == ITEMTYPE_MELEE then
+					item.damage_dice = item.damage_dice + 1
+				elseif item.itype == ITEMTYPE_RANGED then
+					if item.ammomax < 3 then
+						item.reloadtime = item.reloadtime * 0.75
+					else
+						item.ammomax = math.floor(item.ammomax * 1.3 + 0.5)
+					end
+				elseif item.itype == ITEMTYPE_ARMOR or item.itype == ITEMTYPE_BOOTS then
+					item.durability    = item.durability + 100
+					item.maxdurability = item.maxdurability + 100
+					item.movemod = item.movemod - 10
+				end
+				item:add_mod( 'B', being.TECH_BONUS )
+				return true
+			end,
+		},
 
 		OnModDescribe = function( self, item )
 			local function dmgsmtr( bd,bs )
@@ -1221,26 +1249,6 @@ function drl.register_regular_items()
 			return "unknown"
 		end,
 
-		OnUse = function(self,being)
-			if not self:has_property("chosen_item") then return true end
-			local item = self.chosen_item
-			self:remove_property("chosen_item")
-			if item.itype == ITEMTYPE_MELEE then
-				item.damage_dice = item.damage_dice + 1
-			elseif item.itype == ITEMTYPE_RANGED then
-				if item.ammomax < 3 then
-					item.reloadtime = item.reloadtime * 0.75
-				else
-					item.ammomax = math.floor(item.ammomax * 1.3 + 0.5)
-				end
-			elseif item.itype == ITEMTYPE_ARMOR or item.itype == ITEMTYPE_BOOTS then
-				item.durability    = item.durability + 100
-				item.maxdurability = item.maxdurability + 100
-				item.movemod = item.movemod - 10
-			end
-			item:add_mod( 'B', being.TECH_BONUS )
-			return true
-		end,
 	}
 
 	-- barrels --

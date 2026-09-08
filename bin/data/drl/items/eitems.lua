@@ -948,23 +948,38 @@ function drl.register_exotic_items()
 
 		type       = ITEMTYPE_PACK,
 		mod_letter = "F",
-
-		OnUseCheck = function(self,being)
-			local function filter( item )
-				if item.itype ~= ITEMTYPE_RANGED then return false end
-				if item.group ~= "shotgun" and ( item.shots >= 3 ) and ( not item.flags[ IF_SPREAD ]) then
-					return true
-				elseif ( item.radius >= 3 ) or ( item.flags[ IF_SPREAD ] and ( item.radius >= 2 ) ) then
-					return true
-				else
-					return false
+		runtime = {
+			OnUseCheck = function(self,being)
+				local function filter( item )
+					if item.itype ~= ITEMTYPE_RANGED then return false end
+					if item.group ~= "shotgun" and ( item.shots >= 3 ) and ( not item.flags[ IF_SPREAD ]) then
+						return true
+					elseif ( item.radius >= 3 ) or ( item.flags[ IF_SPREAD ] and ( item.radius >= 2 ) ) then
+						return true
+					else
+						return false
+					end
 				end
-			end
-			local item, result = being:pick_item_to_mod( self, filter )
-			if not result then return false end
-			if item ~= nil then self:add_property("chosen_item", item) end
-			return true
-		end,
+				local item, result = being:pick_item_to_mod( self, filter )
+				if not result then return false end
+				if item ~= nil then self:add_property("chosen_item", item) end
+				return true
+			end,
+
+			OnUse = function(self,being)
+				if not self:has_property( "chosen_item" ) then return true end
+				local item = self.chosen_item
+				self:remove_property("chosen_item")
+				if item.group ~= "shotgun" and ( item.shots >= 3 ) and ( not item.flags[ IF_SPREAD ]) then
+					item.shots = item.shots + 2
+				elseif ( item.radius >= 3 ) or ( item.flags[ IF_SPREAD ] and ( item.radius >= 2 ) ) then
+					item.radius = item.radius + 2
+				end
+				ui.msg( "You upgrade your weapon!" )
+				item:add_mod( 'F', being.TECH_BONUS )
+				return true
+			end,
+		},
 
 		OnModDescribe = function( self, item )
 			if item.group ~= "shotgun" and ( item.shots >= 3 ) and ( not item.flags[ IF_SPREAD ]) then
@@ -975,19 +990,6 @@ function drl.register_exotic_items()
 			return "unknown"
 		end,
 
-		OnUse = function(self,being)
-			if not self:has_property( "chosen_item" ) then return true end
-			local item = self.chosen_item
-			self:remove_property("chosen_item")
-			if item.group ~= "shotgun" and ( item.shots >= 3 ) and ( not item.flags[ IF_SPREAD ]) then
-				item.shots = item.shots + 2
-			elseif ( item.radius >= 3 ) or ( item.flags[ IF_SPREAD ] and ( item.radius >= 2 ) ) then
-				item.radius = item.radius + 2
-			end
-			ui.msg( "You upgrade your weapon!" )
-			item:add_mod( 'F', being.TECH_BONUS )
-			return true
-		end,
 	}
 
 	register_item "umod_sniper"
@@ -1005,16 +1007,36 @@ function drl.register_exotic_items()
 
 		type       = ITEMTYPE_PACK,
 		mod_letter = "S",
+		runtime = {
+			OnUseCheck = function(self,being)
+				local function filter( item )
+					return item.itype == ITEMTYPE_RANGED
+				end
+				local item, result = being:pick_item_to_mod( self, filter )
+				if not result then return false end
+				if item ~= nil then self:add_property("chosen_item", item) end
+				return true
+			end,
 
-		OnUseCheck = function(self,being)
-			local function filter( item )
-				return item.itype == ITEMTYPE_RANGED
-			end
-			local item, result = being:pick_item_to_mod( self, filter )
-			if not result then return false end
-			if item ~= nil then self:add_property("chosen_item", item) end
-			return true
-		end,
+			OnUse = function(self,being)
+				if not self:has_property( "chosen_item" ) then return true end
+				local item = self.chosen_item
+				self:remove_property("chosen_item")
+				-- A little easter egg for applying S-mod on shotgun/melee
+				if item.group == "shotgun" or item.itype ~= ITEMTYPE_RANGED then
+					ui.msg( "You suddenly feel a little silly." )
+				else
+					ui.msg( "You upgrade your weapon!" )
+				end
+				if item.flags[IF_FARHIT] == true then
+					item.flags[IF_UNSEENHIT] = true
+				else
+					item.flags[IF_FARHIT] = true
+				end
+				item:add_mod( 'S', being.TECH_BONUS )
+				return true
+			end,
+		},
 
 		OnModDescribe = function( self, item )
 			if item.flags[IF_FARHIT] == true then
@@ -1025,24 +1047,6 @@ function drl.register_exotic_items()
 			return "unknown"
 		end,
 
-		OnUse = function(self,being)
-			if not self:has_property( "chosen_item" ) then return true end
-			local item = self.chosen_item
-			self:remove_property("chosen_item")
-			-- A little easter egg for applying S-mod on shotgun/melee
-			if item.group == "shotgun" or item.itype ~= ITEMTYPE_RANGED then
-				ui.msg( "You suddenly feel a little silly." )
-			else
-				ui.msg( "You upgrade your weapon!" )
-			end
-			if item.flags[IF_FARHIT] == true then
-				item.flags[IF_UNSEENHIT] = true
-			else
-				item.flags[IF_FARHIT] = true
-			end
-			item:add_mod( 'S', being.TECH_BONUS )
-			return true
-		end,
 	}
 
 	register_item "umod_nano"
@@ -1060,21 +1064,58 @@ function drl.register_exotic_items()
 
 		type       = ITEMTYPE_PACK,
 		mod_letter = "N",
+		runtime = {
+			OnUseCheck = function(self,being)
+				local function filter( item )
+					if item.itype == ITEMTYPE_MELEE then return false end
+					if item:has_property("pp_recharge") then
+						local r = item.pp_recharge
+						if r.delay == 0 and r.amount >= item.ammomax then return false end
+					end
+					return true
+				end
+				local item, result = being:pick_item_to_mod( self, filter )
+				if not result then return false end
+				if item ~= nil then self:add_property("chosen_item", item) end
+				return true
+			end,
 
-		OnUseCheck = function(self,being)
-			local function filter( item )
-				if item.itype == ITEMTYPE_MELEE then return false end
+			OnUse = function(self,being)
+				if not self:has_property( "chosen_item" ) then return true end
+				local item = self.chosen_item
+				self:remove_property("chosen_item")
+				ui.msg( "You upgrade your gear!" )
+				item:add_mod( 'N', being.TECH_BONUS )
 				if item:has_property("pp_recharge") then
 					local r = item.pp_recharge
-					if r.delay == 0 and r.amount >= item.ammomax then return false end
+					if r.delay == 0 then
+						if r.tick == 10 then
+							r.tick = 5
+						elseif r.tick == 5 then
+							r.tick = 3
+						elseif r.tick == 3 then
+							r.tick = 1
+						else
+							r.amount = r.amount + 1
+						end
+					else
+						r.delay = math.max(0, r.delay - 50)
+					end
+				else
+					if item.itype == ITEMTYPE_ARMOR or item.itype == ITEMTYPE_BOOTS then
+						item:add_perk( "perk_armor_recharge" )
+						item.pp_recharge.delay  = 50
+						item.pp_recharge.amount = 1
+						item.pp_recharge.tick   = 5
+					elseif item.itype == ITEMTYPE_RANGED then
+						item:add_perk( "perk_weapon_recharge" )
+						item.pp_recharge.delay  = 50
+						item.pp_recharge.amount = 1
+					end
 				end
 				return true
-			end
-			local item, result = being:pick_item_to_mod( self, filter )
-			if not result then return false end
-			if item ~= nil then self:add_property("chosen_item", item) end
-			return true
-		end,
+			end,
+		},
 
 		OnModDescribe = function( self, item )
 			if item:has_property("pp_recharge") then
@@ -1104,41 +1145,6 @@ function drl.register_exotic_items()
 			return "unknown"
 		end,
 
-		OnUse = function(self,being)
-			if not self:has_property( "chosen_item" ) then return true end
-			local item = self.chosen_item
-			self:remove_property("chosen_item")
-			ui.msg( "You upgrade your gear!" )
-			item:add_mod( 'N', being.TECH_BONUS )
-			if item:has_property("pp_recharge") then
-				local r = item.pp_recharge
-				if r.delay == 0 then
-					if r.tick == 10 then
-						r.tick = 5
-					elseif r.tick == 5 then
-						r.tick = 3
-					elseif r.tick == 3 then
-						r.tick = 1
-					else
-						r.amount = r.amount + 1
-					end
-				else
-					r.delay = math.max(0, r.delay - 50)
-				end
-			else
-				if item.itype == ITEMTYPE_ARMOR or item.itype == ITEMTYPE_BOOTS then
-					item:add_perk( "perk_armor_recharge" )
-					item.pp_recharge.delay  = 50
-					item.pp_recharge.amount = 1
-					item.pp_recharge.tick   = 5
-				elseif item.itype == ITEMTYPE_RANGED then
-					item:add_perk( "perk_weapon_recharge" )
-					item.pp_recharge.delay  = 50
-					item.pp_recharge.amount = 1
-				end
-			end
-			return true
-		end,
 	}
 
 	register_item "umod_onyx"
@@ -1156,31 +1162,33 @@ function drl.register_exotic_items()
 
 		type       = ITEMTYPE_PACK,
 		mod_letter = "O",
+		runtime = {
+			OnUseCheck = function(self,being)
+				local function filter( item )
+					return ( item.itype == ITEMTYPE_ARMOR or item.itype == ITEMTYPE_BOOTS )
+				end
+				local item, result = being:pick_item_to_mod( self, filter )
+				if not result then return false end
+				if item ~= nil then self:add_property( "chosen_item", item ) end
+				return true
+			end,
 
-		OnUseCheck = function(self,being)
-			local function filter( item )
-				return ( item.itype == ITEMTYPE_ARMOR or item.itype == ITEMTYPE_BOOTS )
-			end
-			local item, result = being:pick_item_to_mod( self, filter )
-			if not result then return false end
-			if item ~= nil then self:add_property( "chosen_item", item ) end
-			return true
-		end,
+			OnUse = function(self,being)
+				if not self:has_property( "chosen_item" ) then return true end
+				local item = self.chosen_item
+				self:remove_property("chosen_item")
+				ui.msg( "You upgrade your gear!" )
+				item.durability = 100
+				item.flags[ IF_NODURABILITY ] = true
+				item:add_mod( 'O', being.TECH_BONUS )
+				return true
+			end,
+		},
 
 		OnModDescribe = function( self, item )
 			return "make indestructible"
 		end,
 
-		OnUse = function(self,being)
-			if not self:has_property( "chosen_item" ) then return true end
-			local item = self.chosen_item
-			self:remove_property("chosen_item")
-			ui.msg( "You upgrade your gear!" )
-			item.durability = 100
-			item.flags[ IF_NODURABILITY ] = true
-			item:add_mod( 'O', being.TECH_BONUS )
-			return true
-		end,
 	}
 
 	register_item "uswpack"
