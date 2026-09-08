@@ -199,15 +199,4 @@ function item:reset_resistances()
 	end		
 end
 
-function item:get_lever_description( full, good )
-	full = full or self.__proto.desc
-	good = good or self.__proto.good
-	if player:has_property( "LEVER_SENSE" ) then
-		local sense = player.LEVER_SENSE
-		if sense > 1 then return "lever ("..full..")" end
-		return "lever ("..good..")"
-	end
-	return "lever"
-end
-
 setmetatable(item,getmetatable(thing))

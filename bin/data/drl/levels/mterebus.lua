@@ -94,6 +94,7 @@ register_level "mt_erebus"
 			desc = "raises the mountain",
 
 			color_id = false,
+			perks   = { "perk_lever_description" },
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1
@@ -113,8 +114,6 @@ register_level "mt_erebus"
 					return true
 				end,
 			},
-
-			OnDescribe = item.get_lever_description,
 		}
 	end,
 

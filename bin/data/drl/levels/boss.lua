@@ -271,6 +271,7 @@ register_level "dis"
 
 			good = "dangerous",
 			desc = "woah!",
+			perks   = { "perk_lever_description" },
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1
@@ -278,8 +279,6 @@ register_level "dis"
 					return true
 				end,
 			},
-
-			OnDescribe = item.get_lever_description,
 		}
 
 	end,

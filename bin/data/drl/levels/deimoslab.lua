@@ -81,6 +81,7 @@ register_level "deimos_lab"
 
 			color_id = false,
 			sound_id = "lever",
+			perks   = { "perk_lever_description" },
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1
@@ -103,8 +104,6 @@ register_level "deimos_lab"
 					return true
 				end,
 			},
-
-			OnDescribe = item.get_lever_description,
 		}
 	end,
 

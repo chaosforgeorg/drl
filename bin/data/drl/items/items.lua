@@ -1385,6 +1385,7 @@ function drl.register_regular_items()
 		flags  = { IF_FEATURENAME },
 
 		properties = { TARGET_AREA = area.FULL_SHRINKED },
+		perks      = { "perk_lever_description" },
 		runtime    = {
 			OnUse = function(self,being)
 				statistics.levers_pulled = statistics.levers_pulled + 1
@@ -1393,8 +1394,6 @@ function drl.register_regular_items()
 				return true
 			end,
 		},
-
-		OnDescribe = item.get_lever_description,
 	}
 		
 
@@ -1415,6 +1414,7 @@ function drl.register_regular_items()
 		flags  = { IF_FEATURENAME },
 
 		properties = { TARGET_AREA = area.FULL_SHRINKED },
+		perks      = { "perk_lever_description" },
 		runtime    = {
 			OnUse = function(self,being)
 				statistics.levers_pulled = statistics.levers_pulled + 1
@@ -1429,8 +1429,6 @@ function drl.register_regular_items()
 				return true
 			end,
 		},
-
-		OnDescribe = item.get_lever_description,
 	}
 
 	register_item "lever_flood_lava"
@@ -1450,6 +1448,7 @@ function drl.register_regular_items()
 		flags  = { IF_FEATURENAME },
 
 		properties = { TARGET_AREA = area.FULL_SHRINKED },
+		perks      = { "perk_lever_description" },
 		runtime    = {
 			OnUse = function(self,being)
 				statistics.levers_pulled = statistics.levers_pulled + 1
@@ -1463,8 +1462,6 @@ function drl.register_regular_items()
 				return true
 			end,
 		},
-
-		OnDescribe = item.get_lever_description,
 	}
 
 	register_item "lever_kill"
@@ -1484,6 +1481,7 @@ function drl.register_regular_items()
 		flags  = { IF_FEATURENAME },
 
 		properties = { TARGET_AREA = area.FULL_SHRINKED },
+		perks      = { "perk_lever_description" },
 		runtime    = {
 			OnUse = function(self,being)
 				statistics.levers_pulled = statistics.levers_pulled + 1
@@ -1497,8 +1495,6 @@ function drl.register_regular_items()
 				return true
 			end,
 		},
-
-		OnDescribe = item.get_lever_description,
 	}
 
 	register_item "lever_explode"
@@ -1517,6 +1513,7 @@ function drl.register_regular_items()
 		flags  = { IF_FEATURENAME },
 
 		properties = { TARGET_AREA = area.FULL_SHRINKED },
+		perks      = { "perk_lever_description" },
 		runtime    = {
 			OnUse = function(self,being)
 				statistics.levers_pulled = statistics.levers_pulled + 1
@@ -1530,8 +1527,6 @@ function drl.register_regular_items()
 				return true
 			end,
 		},
-
-		OnDescribe = item.get_lever_description,
 	}
 
 	register_item "lever_walls"
@@ -1551,6 +1546,7 @@ function drl.register_regular_items()
 		flags  = { IF_FEATURENAME },
 
 		properties = { TARGET_AREA = area.FULL_SHRINKED },
+		perks      = { "perk_lever_description" },
 		runtime    = {
 			OnUse = function(self,being)
 				statistics.levers_pulled = statistics.levers_pulled + 1
@@ -1569,8 +1565,6 @@ function drl.register_regular_items()
 				return true
 			end,
 		},
-
-		OnDescribe = item.get_lever_description,
 	}
 
 	register_item "lever_summon"
@@ -1588,6 +1582,7 @@ function drl.register_regular_items()
 		flags  = { IF_FEATURENAME },
 
 		properties = { TARGET_AREA = area.FULL_SHRINKED },
+		perks      = { "perk_lever_description" },
 		runtime    = {
 			OnUseCheck = function( self )
 				if self.CHARGES == 0 then
@@ -1612,8 +1607,6 @@ function drl.register_regular_items()
 		OnCreate = function(self)
 			self:add_property( "CHARGES", math.random(3) )
 		end,
-
-		OnDescribe = item.get_lever_description,
 	}
 
 	register_item "lever_repair"
@@ -1629,6 +1622,7 @@ function drl.register_regular_items()
 		desc       = "Armor depot",
 
 		flags  = { IF_FEATURENAME },
+		perks   = { "perk_lever_description" },
 		runtime = {
 			OnUseCheck = function(self,being)
 				ui.msg("Armor depot. Proceeding with repair of equipped armor...")
@@ -1676,8 +1670,6 @@ function drl.register_regular_items()
 		OnCreate = function(self)
 			self:add_property( "CHARGES", math.random(3) )
 		end,
-
-		OnDescribe = item.get_lever_description,
 	}
 
 	register_item "lever_medical"
@@ -1693,6 +1685,7 @@ function drl.register_regular_items()
 		desc       = "MediTech depot",
 
 		flags  = { IF_FEATURENAME },
+		perks   = { "perk_lever_description" },
 		runtime = {
 			OnUseCheck = function(self,being)
 				if being.flags[ BF_NOHEAL] then
@@ -1722,8 +1715,6 @@ function drl.register_regular_items()
 		OnCreate = function( self )
 			self:add_property( "CHARGES", math.random(3) )
 		end,
-
-		OnDescribe = item.get_lever_description,
 	}
 
 	register_item "lever_ammo"
@@ -1739,6 +1730,7 @@ function drl.register_regular_items()
 		desc       = "ammo dispenser",
 
 		flags  = { IF_FEATURENAME },
+		perks   = { "perk_lever_description" },
 		runtime = {
 			OnUseCheck = function(self,being)
 				if not being.eq.weapon then
@@ -1766,8 +1758,6 @@ function drl.register_regular_items()
 		OnCreate = function( self )
 			self:add_property( "CHARGES", math.random(3) + 1 )
 		end,
-
-		OnDescribe = item.get_lever_description,
 	}
 
 	register_item "schematic_0"

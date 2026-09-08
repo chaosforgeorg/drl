@@ -603,8 +603,6 @@ core.register_blueprint "item"
 			desc       = { true,  core.TSTRING },
 			warning    = { false, core.TSTRING },
 			fullchance = { false, core.TNUMBER },
-
-			OnDescribe = { false, core.TFUNC },
 		},
 		[ITEMTYPE_TELE] = {
 			ascii   = { false, core.TSTRING, "*" },

@@ -103,6 +103,7 @@ register_level "the_chained_court"
 			desc = "opens cage",
 
 			color_id = false,
+			perks   = { "perk_lever_description" },
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1
@@ -116,8 +117,6 @@ register_level "the_chained_court"
 					return true
 				end,
 			},
-
-			OnDescribe = item.get_lever_description,
 		}
 
 		register_item "lever_chain2"
@@ -133,6 +132,7 @@ register_level "the_chained_court"
 			desc = "opens cage",
 
 			color_id = false,
+			perks   = { "perk_lever_description" },
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1
@@ -146,8 +146,6 @@ register_level "the_chained_court"
 					return true
 				end,
 			},
-
-			OnDescribe = item.get_lever_description,
 		}
 
 		register_item "lever_chain3"
@@ -164,6 +162,7 @@ register_level "the_chained_court"
 			desc = "opens cage",
 
 			color_id = false,
+			perks   = { "perk_lever_description" },
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1
@@ -177,8 +176,6 @@ register_level "the_chained_court"
 					return true
 				end,
 			},
-
-			OnDescribe = item.get_lever_description,
 		}
 
 		register_being "arenamaster"

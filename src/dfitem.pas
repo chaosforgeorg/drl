@@ -277,7 +277,7 @@ begin
   if aOnFloor and ( FProps.IType = ITEMTYPE_AMMO ) then
     FAmount := Round( FAmount * Double(LuaSystem.Get([ 'diff', DRL.Difficulty, 'ammofactor' ])) );
 
-  CallHook( Hook_OnCreate, [] );
+  LuaSystem.ProtectedRunHook( Self, 'OnCreate', [] );
   DRL.CallHook( Hook_OnCreate, [Self] );
 end;
 
@@ -521,12 +521,20 @@ begin
 end;
 
 function TItem.GetExtName( aLyingHere : Boolean ) : Ansistring;
-var iName : AnsiString;
+var iName  : AnsiString;
+    iPerks : TPerkList;
+    i      : Integer;
 begin
   iName := '';
-  if Hook_OnDescribe in FHooks then
+  if ( FPerks <> nil ) and ( Hook_OnDescribe in FPerks.Hooks ) then
   begin
-    iName := LuaSystem.ProtectedRunHook( Self, HookNames[Hook_OnDescribe], [] );
+    iPerks := FPerks.List;
+    for i := 0 to iPerks.Size - 1 do
+      if Hook_OnDescribe in PerkData[ iPerks[i].ID ].Hooks then
+      begin
+        iName := LuaSystem.ProtectedCall( [ 'perks', iPerks[i].ID, HookNames[Hook_OnDescribe] ], [ Self ] );
+        Break;
+      end;
   end;
   if iName = '' then iName := GetName( False );
 

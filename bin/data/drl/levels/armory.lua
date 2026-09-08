@@ -90,6 +90,7 @@ register_level "hells_armory"
 			desc = "opens the lab",
 
 			color_id = false,
+			perks   = { "perk_lever_description" },
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1
@@ -109,8 +110,6 @@ register_level "hells_armory"
 					return true
 				end,
 			},
-
-			OnDescribe = item.get_lever_description,
 		}
 	end,
 

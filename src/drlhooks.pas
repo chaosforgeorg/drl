@@ -30,7 +30,7 @@ const
   Hook_OnKillAll       = 18;  // Perk (level)
   Hook_OnHitBeing      = 19;  // Perk (item)
   Hook_OnReload        = 20;  // Perk (item)
-  Hook_OnDescribe      = 21;  // Item, Perk
+  Hook_OnDescribe      = 21;  // Perk
   Hook_OnEquipCheck    = 22;  // Perk (item)
   Hook_OnAct           = 23;  // Being, Perk
   Hook_OnDestroy       = 24;  // Perk (item)
@@ -86,7 +86,6 @@ const
 const AllHooks      : TFlags = [ 0..HookAmount-1 ];
 
 var   BeingHooks       : TFlags;
-      ItemHooks        : TFlags;
       FullInvHooks     : TFlags;
       NoInventoryHooks : TFlags;
       GlobalHooks      : TFlags;
@@ -165,7 +164,6 @@ BeingHooks   := [ Hook_OnCreate, Hook_OnAction, Hook_OnAttacked, Hook_OnUseActiv
   Hook_OnAct, Hook_OnCanAct ];
 FullInvHooks := [ Hook_OnPreAction, Hook_OnPostAction, Hook_OnTick ];
 NoInventoryHooks := [ Hook_OnPickup ];
-ItemHooks    := [ Hook_OnCreate, Hook_OnDescribe ];
 GlobalHooks  := [ Hook_OnCreate, Hook_OnEnterLevel, Hook_OnExitLevel, Hook_OnTick,
   Hook_OnLoad, Hook_OnLoaded, Hook_OnUnLoad, Hook_OnCreatePlayer, Hook_OnLevelUp,
   Hook_OnPreLevelUp, Hook_OnWinGame, Hook_OnCreateEpisode,
