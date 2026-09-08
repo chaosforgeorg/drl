@@ -473,9 +473,6 @@ core.register_blueprint "item"
 			ascii         = { false, core.TSTRING, "^" },
 			desc          = { false, core.TSTRING },
 			perk_id       = { false, core.TIDIN("perks") },
-			OnPickup      = { false, core.TFUNC },
-			OnPickupCheck = { false, core.TFUNC },
-			OnUnequipCheck= { false, core.TFUNC },
 		},
 		[ITEMTYPE_AMMO]   = {
 			ascii   = { false, core.TSTRING, "|" },
@@ -616,8 +613,6 @@ core.register_blueprint "item"
 			ascii     = { false, core.TSTRING, "*" },
 			armor     = { false, core.TNUMBER },
 			hp        = { false, core.TNUMBER },
-			OnDestroy = { false, core.TFUNC },
-			OnAct     = { false, core.TFUNC },
 		},
 	}},
 
@@ -625,7 +620,6 @@ core.register_blueprint "item"
 	runtime        = { false, core.TTABLE },
 
 	OnCreate       = { false, core.TFUNC },
-	OnPickup       = { false, core.TFUNC },
 	OnEquip        = { false, core.TFUNC },
 	OnUnequip      = { false, core.TFUNC },
 }

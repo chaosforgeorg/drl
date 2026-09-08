@@ -15,8 +15,8 @@ const
   Hook_OnUseActive     = 3;   // Trait, Being
   Hook_OnDie           = 4;   // Being, Perk
   Hook_OnDieCheck      = 5;   // Being, Perk
-  Hook_OnPickup        = 6;   // Being, Item, Perk
-  Hook_OnPickupCheck   = 7;   // Item, Perk
+  Hook_OnPickup        = 6;  // Being, Perk
+  Hook_OnPickupCheck   = 7;  // Perk (item)
   Hook_OnUse           = 8;   // Perk (item)
   Hook_OnUseCheck      = 9;   // Perk (item)
   Hook_OnAltFire       = 10;  // Perk (item)
@@ -32,8 +32,8 @@ const
   Hook_OnReload        = 20;  // Perk (item)
   Hook_OnDescribe      = 21;  // Item, Perk
   Hook_OnEquipCheck    = 22;  // Perk (item)
-  Hook_OnAct           = 23;  // Item, Being (hack)
-  Hook_OnDestroy       = 24;  // Item
+  Hook_OnAct           = 23;  // Being, Perk
+  Hook_OnDestroy       = 24;  // Perk (item)
   Hook_OnEnter         = 25;  // Perk (item; separate from cell OnEnter)
   Hook_OnEnterLevel    = 26;  // Trait, Perk, Module, Challenge
   Hook_OnFire          = 27;  // Trait, Perk
@@ -76,7 +76,7 @@ const
   Hook_getAmmoCostMul  = 61; // Trait, Perk
   Hook_getReloadCostMul= 62; // Trait, Perk
   Hook_getGibMul       = 63; // Trait, Perk
-  Hook_OnUnequipCheck  = 64; // Item, Perk
+  Hook_OnUnequipCheck  = 64;  // Perk (item)
   Hook_OnDrop          = 65; // Perk (item)
   Hook_OnCanAct        = 66; // Being
   Hook_OnShort         = 67; // Perk
@@ -165,10 +165,7 @@ BeingHooks   := [ Hook_OnCreate, Hook_OnAction, Hook_OnAttacked, Hook_OnUseActiv
   Hook_OnAct, Hook_OnCanAct ];
 FullInvHooks := [ Hook_OnPreAction, Hook_OnPostAction, Hook_OnTick ];
 NoInventoryHooks := [ Hook_OnPickup ];
-ItemHooks    := [ Hook_OnCreate, Hook_OnPickup,
-  Hook_OnEquip, Hook_OnUnequip,
-  Hook_OnAct, Hook_OnDestroy, Hook_OnDescribe, Hook_OnPickupCheck,
-  Hook_OnUnequipCheck ];
+ItemHooks    := [ Hook_OnCreate, Hook_OnEquip, Hook_OnUnequip, Hook_OnDescribe ];
 GlobalHooks  := [ Hook_OnCreate, Hook_OnEnterLevel, Hook_OnExitLevel, Hook_OnTick,
   Hook_OnLoad, Hook_OnLoaded, Hook_OnUnLoad, Hook_OnCreatePlayer, Hook_OnLevelUp,
   Hook_OnPreLevelUp, Hook_OnWinGame, Hook_OnCreateEpisode,
