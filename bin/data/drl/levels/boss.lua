@@ -270,12 +270,13 @@ register_level "dis"
 
 			good = "dangerous",
 			desc = "woah!",
-
-			OnUse = function(self,being)
-				statistics.levers_pulled = statistics.levers_pulled + 1
-				level:transmute( "wall", "floor" )
-				return true
-			end,
+			runtime = {
+				OnUse = function(self,being)
+					statistics.levers_pulled = statistics.levers_pulled + 1
+					level:transmute( "wall", "floor" )
+					return true
+				end,
+			},
 
 			OnDescribe = item.get_lever_description,
 		}

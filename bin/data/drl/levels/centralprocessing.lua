@@ -88,19 +88,20 @@ register_level "central_processing"
 
 			color_id = false,
 			sound_id = "lever",
+			runtime = {
+				OnUse = function(self,being)
+					statistics.levers_pulled = statistics.levers_pulled + 1
+					level:transmute( "ldoor", "floor", level.data.door1 )
+					level:transmute( "wall", "floor", level.data.trap11 )
+					level:transmute( "wall", "floor", level.data.trap12 )
+					level:transmute( "wall", "floor", level.data.trap13 )
+					level:transmute( "wall", "floor", level.data.trap14 )
+					level:play_sound( "door.open", level.data.door1_coord )
 
-			OnUse = function(self,being)
-				statistics.levers_pulled = statistics.levers_pulled + 1
-				level:transmute( "ldoor", "floor", level.data.door1 )
-				level:transmute( "wall", "floor", level.data.trap11 )
-				level:transmute( "wall", "floor", level.data.trap12 )
-				level:transmute( "wall", "floor", level.data.trap13 )
-				level:transmute( "wall", "floor", level.data.trap14 )
-				level:play_sound( "door.open", level.data.door1_coord )
-
-				ui.msg("North door unlocked.")
-				return true
-			end,
+					ui.msg("North door unlocked.")
+					return true
+				end,
+			},
 		}
 
 		register_item "lever_centralprocessing2"
@@ -117,14 +118,15 @@ register_level "central_processing"
 
 			color_id = false,
 			sound_id = "lever",
-
-			OnUse = function(self,being)
-				statistics.levers_pulled = statistics.levers_pulled + 1
-				level:transmute( "ldoor", "floor", level.data.door2 )
-				level:play_sound( "door.open", level.data.door2_coord )
-				ui.msg("Central area unlocked.")
-				return true
-			end,
+			runtime = {
+				OnUse = function(self,being)
+					statistics.levers_pulled = statistics.levers_pulled + 1
+					level:transmute( "ldoor", "floor", level.data.door2 )
+					level:play_sound( "door.open", level.data.door2_coord )
+					ui.msg("Central area unlocked.")
+					return true
+				end,
+			},
 		}
 
 		register_item "lever_centralprocessing3"
@@ -141,17 +143,18 @@ register_level "central_processing"
 
 			color_id = false,
 			sound_id = "lever",
-
-			OnUse = function(self,being)
-				statistics.levers_pulled = statistics.levers_pulled + 1
-				level:transmute( "ldoor", "floor", level.data.door3 )
-				level:transmute( "wall", "floor", level.data.trap31 )
-				level:transmute( "wall", "floor", level.data.trap32 )
-				level:transmute( "wall", "floor", level.data.wall22 )
-				level:play_sound( "door.open", level.data.door3_coord )
-				ui.msg("Processing area unlocked.")
-				return true
-			end,
+			runtime = {
+				OnUse = function(self,being)
+					statistics.levers_pulled = statistics.levers_pulled + 1
+					level:transmute( "ldoor", "floor", level.data.door3 )
+					level:transmute( "wall", "floor", level.data.trap31 )
+					level:transmute( "wall", "floor", level.data.trap32 )
+					level:transmute( "wall", "floor", level.data.wall22 )
+					level:play_sound( "door.open", level.data.door3_coord )
+					ui.msg("Processing area unlocked.")
+					return true
+				end,
+			},
 		}
 	
 		register_item "lever_centralprocessing4"
@@ -168,14 +171,15 @@ register_level "central_processing"
 
 			color_id = false,
 			sound_id = "lever",
-
-			OnUse = function(self,being)
-				statistics.levers_pulled = statistics.levers_pulled + 1
-				level:transmute( "ldoor", "floor", level.data.door4 )
-				level:play_sound( "door.open", level.data.door4_coord )
-				ui.msg("East door unlocked.")
-				return true
-			end,
+			runtime = {
+				OnUse = function(self,being)
+					statistics.levers_pulled = statistics.levers_pulled + 1
+					level:transmute( "ldoor", "floor", level.data.door4 )
+					level:play_sound( "door.open", level.data.door4_coord )
+					ui.msg("East door unlocked.")
+					return true
+				end,
+			},
 		}
 	
 		register_item "lever_centralprocessing5"
@@ -192,13 +196,14 @@ register_level "central_processing"
 
 			color_id = false,
 			sound_id = "lever",
-
-			OnUse = function(self,being)
-				statistics.levers_pulled = statistics.levers_pulled + 1
-				level:transmute( "ldoor", "door", level.data.door5 )
-				ui.msg("Exit unlocked.")
-				return true
-			end,
+			runtime = {
+				OnUse = function(self,being)
+					statistics.levers_pulled = statistics.levers_pulled + 1
+					level:transmute( "ldoor", "door", level.data.door5 )
+					ui.msg("Exit unlocked.")
+					return true
+				end,
+			},
 		}
 	end,
 

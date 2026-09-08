@@ -46,47 +46,48 @@ register_level "the_chained_court"
 			desc  = "You wonder what this is used for...",
 			flags = { IF_UNIQUE },
 			ascii = "?",
-
-			OnUse = function(self,being)
-				if not being:is_player() then return false end
-				if being:is_perk( "tired" ) then
-					ui.msg("You're too tired to use the staff now.")
-					return false
-				end
-				being:add_perk( "tired" )
-				ui.msg("You raise your arms!")
-				if level.id == "the_vaults" and level.status < 2 then
-					ui.msg("With a sudden inspiration you yell \"OPEN SESAME!\"!")
-					player:play_sound( "lever.use" )
-					for c in level:each( "rwall", area.FULL_SHRINKED ) do
-						if level:get_light_flag( c, LFBLOOD ) then
-							level:set_light_flag( c, LFPERMANENT, false )
-							level.map[ c ] = "floor"
-						end
+			runtime = {
+				OnUse = function(self,being)
+					if not being:is_player() then return false end
+					if being:is_perk( "tired" ) then
+						ui.msg("You're too tired to use the staff now.")
+						return false
 					end
-					level.status = 3
-					ui.msg("You hear a loud rumble!")
-					being.scount = being.scount - 1000
-					return true
-				elseif level.id == "house_of_pain" then
-					ui.msg("You brandish the staff. The voice echoes: \"So, it seems that ")
-					ui.msg("you have bested one of my offspring. Very well, you are allowed ")
-					ui.msg("full access to my domain as you traverse through it.\"")
-					level:transmute( "ldoor", "odoor" )
-					level:play_sound( "door.open", player.position)
-					being.scount = being.scount - 1000
-					return true
-				else
-					for b in level:beings() do
-						if not b:is_player() and b:is_visible() then
-							level:explosion( b.position, { range = 1, delay = 50, color = YELLOW, sound_id = "arch.fire", damage_type = DAMAGE_FIRE }, self )
-							b:apply_damage( 15, TARGET_INTERNAL, DAMAGE_FIRE, nil )
+					being:add_perk( "tired" )
+					ui.msg("You raise your arms!")
+					if level.id == "the_vaults" and level.status < 2 then
+						ui.msg("With a sudden inspiration you yell \"OPEN SESAME!\"!")
+						player:play_sound( "lever.use" )
+						for c in level:each( "rwall", area.FULL_SHRINKED ) do
+							if level:get_light_flag( c, LFBLOOD ) then
+								level:set_light_flag( c, LFPERMANENT, false )
+								level.map[ c ] = "floor"
+							end
 						end
+						level.status = 3
+						ui.msg("You hear a loud rumble!")
+						being.scount = being.scount - 1000
+						return true
+					elseif level.id == "house_of_pain" then
+						ui.msg("You brandish the staff. The voice echoes: \"So, it seems that ")
+						ui.msg("you have bested one of my offspring. Very well, you are allowed ")
+						ui.msg("full access to my domain as you traverse through it.\"")
+						level:transmute( "ldoor", "odoor" )
+						level:play_sound( "door.open", player.position)
+						being.scount = being.scount - 1000
+						return true
+					else
+						for b in level:beings() do
+							if not b:is_player() and b:is_visible() then
+								level:explosion( b.position, { range = 1, delay = 50, color = YELLOW, sound_id = "arch.fire", damage_type = DAMAGE_FIRE }, self )
+								b:apply_damage( 15, TARGET_INTERNAL, DAMAGE_FIRE, nil )
+							end
+						end
+						being.scount = being.scount - 1000
+						return false
 					end
-					being.scount = being.scount - 1000
-					return false
-				end
-			end,
+				end,
+			},
 		}
 
 		register_item "lever_chain1"
@@ -102,18 +103,19 @@ register_level "the_chained_court"
 			desc = "opens cage",
 
 			color_id = false,
-
-			OnUse = function(self,being)
-				statistics.levers_pulled = statistics.levers_pulled + 1
-				level:transmute( "wall", "floor", level.data.cage1 )
-				ui.msg("The cage rises!")
-				level.status = level.status + 1
-				if level.status == 4 then
-					level:transmute( "wall", "floor", level.data.prize1 )
-					level:transmute( "wall", "floor", level.data.prize2 )
-				end
-				return true
-			end,
+			runtime = {
+				OnUse = function(self,being)
+					statistics.levers_pulled = statistics.levers_pulled + 1
+					level:transmute( "wall", "floor", level.data.cage1 )
+					ui.msg("The cage rises!")
+					level.status = level.status + 1
+					if level.status == 4 then
+						level:transmute( "wall", "floor", level.data.prize1 )
+						level:transmute( "wall", "floor", level.data.prize2 )
+					end
+					return true
+				end,
+			},
 
 			OnDescribe = item.get_lever_description,
 		}
@@ -131,18 +133,19 @@ register_level "the_chained_court"
 			desc = "opens cage",
 
 			color_id = false,
-
-			OnUse = function(self,being)
-				statistics.levers_pulled = statistics.levers_pulled + 1
-				level:transmute( "wall", "floor", level.data.cage2 )
-				ui.msg("The cage rises!")
-				level.status = level.status + 1
-				if level.status == 4 then
-					level:transmute( "wall", "floor", level.data.prize1 )
-					level:transmute( "wall", "floor", level.data.prize2 )
-				end
-				return true
-			end,
+			runtime = {
+				OnUse = function(self,being)
+					statistics.levers_pulled = statistics.levers_pulled + 1
+					level:transmute( "wall", "floor", level.data.cage2 )
+					ui.msg("The cage rises!")
+					level.status = level.status + 1
+					if level.status == 4 then
+						level:transmute( "wall", "floor", level.data.prize1 )
+						level:transmute( "wall", "floor", level.data.prize2 )
+					end
+					return true
+				end,
+			},
 
 			OnDescribe = item.get_lever_description,
 		}
@@ -161,18 +164,19 @@ register_level "the_chained_court"
 			desc = "opens cage",
 
 			color_id = false,
-
-			OnUse = function(self,being)
-				statistics.levers_pulled = statistics.levers_pulled + 1
-				level:transmute( "wall", "floor", level.data.cage3 )
-				ui.msg("The cage rises!")
-				level.status = level.status + 1
-				if level.status == 4 then
-					level:transmute( "wall", "floor", level.data.prize1 )
-					level:transmute( "wall", "floor", level.data.prize2 )
-				end
-				return true
-			end,
+			runtime = {
+				OnUse = function(self,being)
+					statistics.levers_pulled = statistics.levers_pulled + 1
+					level:transmute( "wall", "floor", level.data.cage3 )
+					ui.msg("The cage rises!")
+					level.status = level.status + 1
+					if level.status == 4 then
+						level:transmute( "wall", "floor", level.data.prize1 )
+						level:transmute( "wall", "floor", level.data.prize2 )
+					end
+					return true
+				end,
+			},
 
 			OnDescribe = item.get_lever_description,
 		}

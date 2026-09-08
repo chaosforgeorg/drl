@@ -789,27 +789,28 @@ function drl.register_regular_items()
 		flags    = { IF_AIHEALPACK },
 
 		type       = ITEMTYPE_PACK,
-
-		OnUse = function(self,being)
-			local isPlayer = being:is_player()
-			if being.flags[ BF_NOHEAL ] then
-				being:msg("Nothing happens.")
-			else
-				if isPlayer then 
-					being:remove_perk( "tired" )
-				end
-				local overheal = being:has_property("MEDKIT_OVERHEAL")
-				if being.hp >= being.hpmax * 2 or ( not overheal and being.hp >= being.hpmax ) then
+		runtime = {
+			OnUse = function(self,being)
+				local isPlayer = being:is_player()
+				if being.flags[ BF_NOHEAL ] then
 					being:msg("Nothing happens.")
-					return true
+				else
+					if isPlayer then
+						being:remove_perk( "tired" )
+					end
+					local overheal = being:has_property("MEDKIT_OVERHEAL")
+					if being.hp >= being.hpmax * 2 or ( not overheal and being.hp >= being.hpmax ) then
+						being:msg("Nothing happens.")
+						return true
+					end
+					local amount = math.floor( ( (being.hpmax * diff[DIFFICULTY].powerfactor) / 4 + 2 ) * being:get_property( "MEDKIT_BONUS", 1 ) )
+					being.hp = math.min( being.hp + amount, being.hpmax * 2 )
+					if not overheal then being.hp = math.min( being.hp, being.hpmax ) end
+					being:msg("You feel healed.",being:get_name(true,true).." looks healthier!")
 				end
-				local amount = math.floor( ( (being.hpmax * diff[DIFFICULTY].powerfactor) / 4 + 2 ) * being:get_property( "MEDKIT_BONUS", 1 ) )
-				being.hp = math.min( being.hp + amount, being.hpmax * 2 )
-				if not overheal then being.hp = math.min( being.hp, being.hpmax ) end
-				being:msg("You feel healed.",being:get_name(true,true).." looks healthier!")
-			end
-			return true
-		end,
+				return true
+			end,
+		},
 	}
 
 	register_item "lmed"
@@ -824,27 +825,28 @@ function drl.register_regular_items()
 		flags    = { IF_AIHEALPACK },
 
 		type       = ITEMTYPE_PACK,
-
-		OnUse = function(self,being)
-			local isPlayer = being:is_player()
-			if being.flags[ BF_NOHEAL ] then
-				being:msg("Nothing happens.")
-			else
-				if isPlayer then 
-					being:remove_perk( "tired" )
-				end
-				local overheal = being:has_property("MEDKIT_OVERHEAL")
-				if being.hp >= being.hpmax * 2 or ( (not overheal) and being.hp >= being.hpmax ) then
+		runtime = {
+			OnUse = function(self,being)
+				local isPlayer = being:is_player()
+				if being.flags[ BF_NOHEAL ] then
 					being:msg("Nothing happens.")
-					return true
+				else
+					if isPlayer then
+						being:remove_perk( "tired" )
+					end
+					local overheal = being:has_property("MEDKIT_OVERHEAL")
+					if being.hp >= being.hpmax * 2 or ( (not overheal) and being.hp >= being.hpmax ) then
+						being:msg("Nothing happens.")
+						return true
+					end
+					being.hp = math.min( being.hp + (being.hpmax * diff[DIFFICULTY].powerfactor) / 2 + 2, being.hpmax * 2)
+					being.hp = math.max( being.hp, being.hpmax )
+					if not overheal then being.hp = math.min( being.hp, being.hpmax ) end
+					being:msg("You feel fully healed.",being:get_name(true,true).." looks a lot healthier!")
 				end
-				being.hp = math.min( being.hp + (being.hpmax * diff[DIFFICULTY].powerfactor) / 2 + 2, being.hpmax * 2)
-				being.hp = math.max( being.hp, being.hpmax )
-				if not overheal then being.hp = math.min( being.hp, being.hpmax ) end
-				being:msg("You feel fully healed.",being:get_name(true,true).." looks a lot healthier!")
-			end
-			return true
-		end,
+				return true
+			end,
+		},
 	}
 
 	register_item "phase"
@@ -861,16 +863,17 @@ function drl.register_regular_items()
 		flags    = { IF_AIHEALPACK },
 
 		type       = ITEMTYPE_PACK,
-
-		OnUse = function(self,being)
-			being:play_sound("phasing")
-			being:msg("You feel yanked in a non-existing direction!","Suddenly "..being:get_name(true,false).." blinks away!")
-			level:explosion( being.position, { range = 2, delay = 50, color = LIGHTBLUE } )
-			being:phase()
-			level:explosion( being.position, { range = 1, delay = 50, color = LIGHTBLUE } )
-			being:msg(nil,"Suddenly "..being:get_name(false,false).." appears out of nowhere!")
-			return true
-		end,
+		runtime = {
+			OnUse = function(self,being)
+				being:play_sound("phasing")
+				being:msg("You feel yanked in a non-existing direction!","Suddenly "..being:get_name(true,false).." blinks away!")
+				level:explosion( being.position, { range = 2, delay = 50, color = LIGHTBLUE } )
+				being:phase()
+				level:explosion( being.position, { range = 1, delay = 50, color = LIGHTBLUE } )
+				being:msg(nil,"Suddenly "..being:get_name(false,false).." appears out of nowhere!")
+				return true
+			end,
+		},
 	}
 
 	register_item "hphase"
@@ -887,20 +890,21 @@ function drl.register_regular_items()
 		flags    = { IF_AIHEALPACK },
 
 		type       = ITEMTYPE_PACK,
-
-		OnUse = function(self,being)
-			being:play_sound("phasing")
-			being:msg("You feel yanked in a non-existing direction!","Suddenly "..being:get_name(true,false).." blinks away!")
-			level:explosion( being.position, { range = 2, delay = 50, color = GREEN } )
-			if level.flags[ LF_NOHOMING ] then
-				being:phase()
-			else
-				being:phase( "stairs" )
-			end
-			level:explosion( being.position, { range = 1, delay = 50, color = GREEN } )
-			being:msg(nil,"Suddenly "..being:get_name(false,false).." appears out of nowhere!")
-			return true
-		end,
+		runtime = {
+			OnUse = function(self,being)
+				being:play_sound("phasing")
+				being:msg("You feel yanked in a non-existing direction!","Suddenly "..being:get_name(true,false).." blinks away!")
+				level:explosion( being.position, { range = 2, delay = 50, color = GREEN } )
+				if level.flags[ LF_NOHOMING ] then
+					being:phase()
+				else
+					being:phase( "stairs" )
+				end
+				level:explosion( being.position, { range = 1, delay = 50, color = GREEN } )
+				being:msg(nil,"Suddenly "..being:get_name(false,false).." appears out of nowhere!")
+				return true
+			end,
+		},
 	}
 
 	register_item "epack"
@@ -914,13 +918,14 @@ function drl.register_regular_items()
 		desc     = "Planning a lava bath? You'll definitely need this.",
 
 		type = ITEMTYPE_PACK,
-
-		OnUse = function(self,being)
-			if being:is_player() then
-				being:apply_powerup_perk( "enviro", 700 )
-			end
-			return true
-		end,
+		runtime = {
+			OnUse = function(self,being)
+				if being:is_player() then
+					being:apply_powerup_perk( "enviro", 700 )
+				end
+				return true
+			end,
+		},
 	}
 
 	register_item "nuke"
@@ -936,48 +941,49 @@ function drl.register_regular_items()
 		flags    = {},
 
 		type       = ITEMTYPE_PACK,
-
-		OnUse = function(self,being)
-			if being:is_player() then
-				if level.flags[ LF_NONUKE ] then
-					ui.msg('You arm the thermonuclear bomb and step aside... but nothing happens!');
-					return true
+		runtime = {
+			OnUse = function(self,being)
+				if being:is_player() then
+					if level.flags[ LF_NONUKE ] then
+						ui.msg('You arm the thermonuclear bomb and step aside... but nothing happens!');
+						return true
+					end
+					if being.flags[ BF_IMPATIENT ] then
+						ui.msg("They told you so many times that patience is a virtue..")
+					end
+					local floor = level.map[ being.position ]
+					if floor == "acid" or floor == "lava" then
+						-- Added to make it sound less idiotic when invulnerable
+						if not being:is_perk("inv") then
+							ui.msg('Somehow, in an instant, you feel like an idiot...');
+						end
+						being:nuke(1)
+						return true
+					end
+					ui.msg("Warning! Explosion in 10 seconds!")
+					being:nuke(100)
 				end
-				if being.flags[ BF_IMPATIENT ] then
-					ui.msg("They told you so many times that patience is a virtue..")
+				return true
+			end,
+
+			OnUseCheck = function(self,being)
+				if being.nuketime > 0 then
+					ui.msg('ARE YOU OUT OF YOUR MIND???');
+					return false
 				end
 				local floor = level.map[ being.position ]
-				if floor == "acid" or floor == "lava" then
-					-- Added to make it sound less idiotic when invulnerable
-					if not being:is_perk("inv") then
-						ui.msg('Somehow, in an instant, you feel like an idiot...');
-					end
-					being:nuke(1)
-					return true
+				if floor == "stairs" or floor == "ystairs" or floor == "rstairs" then
+					ui.msg('This thing is huge, better not block the stairs with it...');
+					return false
 				end
-				ui.msg("Warning! Explosion in 10 seconds!")
-				being:nuke(100)
-			end
-			return true
-		end,
-
-		OnUseCheck = function(self,being)
-			if being.nuketime > 0 then
-				ui.msg('ARE YOU OUT OF YOUR MIND???');
-				return false
-			end
-			local floor = level.map[ being.position ]
-			if floor == "stairs" or floor == "ystairs" or floor == "rstairs" then
-				ui.msg('This thing is huge, better not block the stairs with it...');
-				return false
-			end
-			if not ui.confirm('Are you sure you want activate the thermonuclear bomb?') then
-				ui.msg('Ufff... I knew you were a reasonable person.');
-				return false
-			end
-			being:add_history('He nuked @1!')
-			return true
-		end,
+				if not ui.confirm('Are you sure you want activate the thermonuclear bomb?') then
+					ui.msg('Ufff... I knew you were a reasonable person.');
+					return false
+				end
+				being:add_history('He nuked @1!')
+				return true
+			end,
+		},
 	}
 
 	-- Mods --
@@ -1371,13 +1377,14 @@ function drl.register_regular_items()
 		flags  = { IF_FEATURENAME },
 
 		properties = { TARGET_AREA = area.FULL_SHRINKED },
-
-		OnUse = function(self,being)
-			statistics.levers_pulled = statistics.levers_pulled + 1
-			ui.msg("Suddenly water starts gushing from the ground!")
-			level:flood( "water", self.TARGET_AREA )
-			return true
-		end,
+		runtime    = {
+			OnUse = function(self,being)
+				statistics.levers_pulled = statistics.levers_pulled + 1
+				ui.msg("Suddenly water starts gushing from the ground!")
+				level:flood( "water", self.TARGET_AREA )
+				return true
+			end,
+		},
 
 		OnDescribe = item.get_lever_description,
 	}
@@ -1400,19 +1407,20 @@ function drl.register_regular_items()
 		flags  = { IF_FEATURENAME },
 
 		properties = { TARGET_AREA = area.FULL_SHRINKED },
-
-		OnUse = function(self,being)
-			statistics.levers_pulled = statistics.levers_pulled + 1
-			if self.TARGET_AREA:size() >= area.FULL_SHRINKED:size() then
-				-- Really?  Censoring "f***" when the plot has it?
-				ui.msg("WTF?! Acid splashes everywhere!")
-				being:add_history("He flooded the entire @1 with acid!")
-			else
-				ui.msg("Green acid covers the floor!")
-			end
-			level:flood( "acid", self.TARGET_AREA )
-			return true
-		end,
+		runtime    = {
+			OnUse = function(self,being)
+				statistics.levers_pulled = statistics.levers_pulled + 1
+				if self.TARGET_AREA:size() >= area.FULL_SHRINKED:size() then
+					-- Really?  Censoring "f***" when the plot has it?
+					ui.msg("WTF?! Acid splashes everywhere!")
+					being:add_history("He flooded the entire @1 with acid!")
+				else
+					ui.msg("Green acid covers the floor!")
+				end
+				level:flood( "acid", self.TARGET_AREA )
+				return true
+			end,
+		},
 
 		OnDescribe = item.get_lever_description,
 	}
@@ -1434,18 +1442,19 @@ function drl.register_regular_items()
 		flags  = { IF_FEATURENAME },
 
 		properties = { TARGET_AREA = area.FULL_SHRINKED },
-
-		OnUse = function(self,being)
-			statistics.levers_pulled = statistics.levers_pulled + 1
-			if self.TARGET_AREA:size() >= area.FULL_SHRINKED:size() then
-				ui.msg("Oh shit... oh shit... OH SHIT!!!!")
-				being:add_history("He flooded the entire @1 with lava!")
-			else
-				ui.msg("The ground explodes in flames!")
-			end
-			level:flood( "lava", self.TARGET_AREA )
-			return true
-		end,
+		runtime    = {
+			OnUse = function(self,being)
+				statistics.levers_pulled = statistics.levers_pulled + 1
+				if self.TARGET_AREA:size() >= area.FULL_SHRINKED:size() then
+					ui.msg("Oh shit... oh shit... OH SHIT!!!!")
+					being:add_history("He flooded the entire @1 with lava!")
+				else
+					ui.msg("The ground explodes in flames!")
+				end
+				level:flood( "lava", self.TARGET_AREA )
+				return true
+			end,
+		},
 
 		OnDescribe = item.get_lever_description,
 	}
@@ -1467,18 +1476,19 @@ function drl.register_regular_items()
 		flags  = { IF_FEATURENAME },
 
 		properties = { TARGET_AREA = area.FULL_SHRINKED },
-
-		OnUse = function(self,being)
-			statistics.levers_pulled = statistics.levers_pulled + 1
-			for c in self.TARGET_AREA() do
-				local target = level:get_being(c)
-				if target and not target:is_player() then
-					target:apply_damage( 20, TARGET_INTERNAL, DAMAGE_FIRE, nil )
+		runtime    = {
+			OnUse = function(self,being)
+				statistics.levers_pulled = statistics.levers_pulled + 1
+				for c in self.TARGET_AREA() do
+					local target = level:get_being(c)
+					if target and not target:is_player() then
+						target:apply_damage( 20, TARGET_INTERNAL, DAMAGE_FIRE, nil )
+					end
 				end
-			end
-			ui.msg("The smell of blood surrounds you!")
-			return true
-		end,
+				ui.msg("The smell of blood surrounds you!")
+				return true
+			end,
+		},
 
 		OnDescribe = item.get_lever_description,
 	}
@@ -1499,18 +1509,19 @@ function drl.register_regular_items()
 		flags  = { IF_FEATURENAME },
 
 		properties = { TARGET_AREA = area.FULL_SHRINKED },
-
-		OnUse = function(self,being)
-			statistics.levers_pulled = statistics.levers_pulled + 1
-			local position = self.position
-			for c in self.TARGET_AREA() do
-				local item = level:get_item( c )
-				if item and item.hp > 0 then
-					level:damage_tile( c, 1000, DAMAGE_PLASMA )
+		runtime    = {
+			OnUse = function(self,being)
+				statistics.levers_pulled = statistics.levers_pulled + 1
+				local position = self.position
+				for c in self.TARGET_AREA() do
+					local item = level:get_item( c )
+					if item and item.hp > 0 then
+						level:damage_tile( c, 1000, DAMAGE_PLASMA )
+					end
 				end
-			end
-			return true
-		end,
+				return true
+			end,
+		},
 
 		OnDescribe = item.get_lever_description,
 	}
@@ -1532,23 +1543,24 @@ function drl.register_regular_items()
 		flags  = { IF_FEATURENAME },
 
 		properties = { TARGET_AREA = area.FULL_SHRINKED },
-
-		OnUse = function(self,being)
-			statistics.levers_pulled = statistics.levers_pulled + 1
-			local room = self.TARGET_AREA:clamped( area.FULL_SHRINKED )
-			level:play_sound( "barrel.explode", being.position )
-			for c in room() do
-				local tile = cells[level.map[c]]
-				if tile.set == CELLSET_WALLS or tile.set == CELLSET_DOORS then
-					if math.random(10) == 1 then
-						level:play_sound( "barrel.explode", c, math.random(500) + 500 )
+		runtime    = {
+			OnUse = function(self,being)
+				statistics.levers_pulled = statistics.levers_pulled + 1
+				local room = self.TARGET_AREA:clamped( area.FULL_SHRINKED )
+				level:play_sound( "barrel.explode", being.position )
+				for c in room() do
+					local tile = cells[level.map[c]]
+					if tile.set == CELLSET_WALLS or tile.set == CELLSET_DOORS then
+						if math.random(10) == 1 then
+							level:play_sound( "barrel.explode", c, math.random(500) + 500 )
+						end
+						generator.destroy_cell( c )
 					end
-					generator.destroy_cell( c )
 				end
-			end
-			ui.msg("The walls explode!")
-			return true
-		end,
+				ui.msg("The walls explode!")
+				return true
+			end,
+		},
 
 		OnDescribe = item.get_lever_description,
 	}
@@ -1568,28 +1580,29 @@ function drl.register_regular_items()
 		flags  = { IF_FEATURENAME },
 
 		properties = { TARGET_AREA = area.FULL_SHRINKED },
+		runtime    = {
+			OnUseCheck = function( self )
+				if self.CHARGES == 0 then
+					ui.msg("Nothing happens.")
+					return false
+				end
+				return true
+			end,
+
+			OnUse = function(self,being)
+				statistics.levers_pulled = statistics.levers_pulled + 1
+				local amount = math.random(4)+1
+				local list   = level:get_being_table( level.danger_level, nil, { is_group = false } )
+				for c = 1,amount do
+					being:spawn( list:roll().id )
+				end
+				self.CHARGES = self.CHARGES - 1
+				return self.CHARGES == 0
+			end,
+		},
 
 		OnCreate = function(self)
 			self:add_property( "CHARGES", math.random(3) )
-		end,
-
-		OnUseCheck = function( self )
-			if self.CHARGES == 0 then
-				ui.msg("Nothing happens.")
-				return false
-			end
-			return true
-		end,
-
-		OnUse = function(self,being)
-			statistics.levers_pulled = statistics.levers_pulled + 1
-			local amount = math.random(4)+1
-			local list   = level:get_being_table( level.danger_level, nil, { is_group = false } )
-			for c = 1,amount do
-				being:spawn( list:roll().id )
-			end
-			self.CHARGES = self.CHARGES - 1
-			return self.CHARGES == 0
 		end,
 
 		OnDescribe = item.get_lever_description,
@@ -1608,51 +1621,52 @@ function drl.register_regular_items()
 		desc       = "Armor depot",
 
 		flags  = { IF_FEATURENAME },
+		runtime = {
+			OnUseCheck = function(self,being)
+				ui.msg("Armor depot. Proceeding with repair of equipped armor...")
+				local armor = being.eq.armor
+				local boots = being.eq.boots
+				if not armor and not boots then
+					ui.msg( "You have no armor to fix! Nothing happens." )
+					return false
+				end
+				local damaged_armor = armor and armor:is_damaged()
+				local damaged_boots = boots and boots:is_damaged()
+				if not damaged_armor and not damaged_boots then
+					ui.msg( "You have no armor that needs fixing! Nothing happens." )
+					return false
+				end
+				return true
+			end,
+
+			OnUse = function(self,being)
+				statistics.levers_pulled = statistics.levers_pulled + 1
+				local armor = being.eq.armor
+				local boots = being.eq.boots
+				local damaged_armor = armor and armor:is_damaged()
+				local damaged_boots = boots and boots:is_damaged()
+				self.CHARGES = self.CHARGES - 1
+				ui.blink( YELLOW, 50 )
+				if damaged_armor then
+					if armor:fix(25) then
+						ui.msg( "Your armor looks like new!" )
+					else
+						ui.msg( "Your armor looks better!" )
+					end
+				end
+				if damaged_boots then
+					if boots:fix(25) then
+						ui.msg( "Your boots look like new!" )
+					else
+						ui.msg( "Your boots look better!" )
+					end
+				end
+				return self.CHARGES == 0
+			end,
+		},
 
 		OnCreate = function(self)
 			self:add_property( "CHARGES", math.random(3) )
-		end,
-
-		OnUseCheck = function(self,being)
-			ui.msg("Armor depot. Proceeding with repair of equipped armor...")
-			local armor = being.eq.armor
-			local boots = being.eq.boots
-			if not armor and not boots then
-				ui.msg( "You have no armor to fix! Nothing happens." )
-				return false
-			end
-			local damaged_armor = armor and armor:is_damaged()
-			local damaged_boots = boots and boots:is_damaged()
-			if not damaged_armor and not damaged_boots then
-				ui.msg( "You have no armor that needs fixing! Nothing happens." )
-				return false
-			end
-			return true
-		end,
-
-		OnUse = function(self,being)
-			statistics.levers_pulled = statistics.levers_pulled + 1
-			local armor = being.eq.armor
-			local boots = being.eq.boots
-			local damaged_armor = armor and armor:is_damaged()
-			local damaged_boots = boots and boots:is_damaged()
-			self.CHARGES = self.CHARGES - 1
-			ui.blink( YELLOW, 50 )
-			if damaged_armor then
-				if armor:fix(25) then
-					ui.msg( "Your armor looks like new!" )
-				else
-					ui.msg( "Your armor looks better!" )
-				end
-			end
-			if damaged_boots then
-				if boots:fix(25) then
-					ui.msg( "Your boots look like new!" )
-				else
-					ui.msg( "Your boots look better!" )
-				end
-			end
-			return self.CHARGES == 0
 		end,
 
 		OnDescribe = item.get_lever_description,
@@ -1671,33 +1685,34 @@ function drl.register_regular_items()
 		desc       = "MediTech depot",
 
 		flags  = { IF_FEATURENAME },
+		runtime = {
+			OnUseCheck = function(self,being)
+				if being.flags[ BF_NOHEAL] then
+					ui.msg("Nothing happens.")
+					return false
+				end
+				if being.hp >= being.hpmax then
+					ui.msg("MediTech depot. Proceeding with treatment...")
+					ui.msg("You are at full health. Nothing happens.")
+					return false
+				end
+				return true
+			end,
+
+			OnUse = function(self,being)
+				statistics.levers_pulled = statistics.levers_pulled + 1
+				ui.msg("MediTech depot. Proceeding with treatment...")
+				being:remove_perk( "tired" )
+				self.CHARGES = self.CHARGES - 1
+				local heal = (being.hpmax * diff[DIFFICULTY].powerfactor) / 4 + 2
+				being.hp = math.min( being.hp + heal,being.hpmax )
+				ui.msg("You feel healed.")
+				return self.CHARGES == 0
+			end,
+		},
 
 		OnCreate = function( self )
 			self:add_property( "CHARGES", math.random(3) )
-		end,
-
-		OnUseCheck = function(self,being)
-			if being.flags[ BF_NOHEAL] then
-				ui.msg("Nothing happens.")
-				return false
-			end
-			if being.hp >= being.hpmax then
-				ui.msg("MediTech depot. Proceeding with treatment...")
-				ui.msg("You are at full health. Nothing happens.")
-				return false
-			end
-			return true
-		end,
-
-		OnUse = function(self,being)
-			statistics.levers_pulled = statistics.levers_pulled + 1
-			ui.msg("MediTech depot. Proceeding with treatment...")
-			being:remove_perk( "tired" )
-			self.CHARGES = self.CHARGES - 1
-			local heal = (being.hpmax * diff[DIFFICULTY].powerfactor) / 4 + 2
-			being.hp = math.min( being.hp + heal,being.hpmax )
-			ui.msg("You feel healed.")
-			return self.CHARGES == 0
 		end,
 
 		OnDescribe = item.get_lever_description,
@@ -1716,31 +1731,32 @@ function drl.register_regular_items()
 		desc       = "ammo dispenser",
 
 		flags  = { IF_FEATURENAME },
+		runtime = {
+			OnUseCheck = function(self,being)
+				if not being.eq.weapon then
+					ui.msg("Nothing happens.")
+					return false
+				end
+				local weapon = being.eq.weapon
+				if weapon.ammoid == 0 then
+					ui.msg("Nothing happens.")
+					return false
+				end
+				return true
+			end,
+
+			OnUse = function(self,being)
+				statistics.levers_pulled = statistics.levers_pulled + 1
+				ui.msg("Ammo dispenser. Dispensing requested ammo...")
+				self.CHARGES = self.CHARGES - 1
+				local ammo_id = items[being.eq.weapon.ammoid].id
+				level:drop_item( ammo_id, being.position, true, true, true )
+				return self.CHARGES == 0
+			end,
+		},
 
 		OnCreate = function( self )
 			self:add_property( "CHARGES", math.random(3) + 1 )
-		end,
-
-		OnUseCheck = function(self,being)
-			if not being.eq.weapon then
-				ui.msg("Nothing happens.")
-				return false
-			end
-			local weapon = being.eq.weapon
-			if weapon.ammoid == 0 then
-				ui.msg("Nothing happens.")
-				return false
-			end
-			return true
-		end,
-
-		OnUse = function(self,being)
-			statistics.levers_pulled = statistics.levers_pulled + 1
-			ui.msg("Ammo dispenser. Dispensing requested ammo...")
-			self.CHARGES = self.CHARGES - 1
-			local ammo_id = items[being.eq.weapon.ammoid].id
-			level:drop_item( ammo_id, being.position, true, true, true )
-			return self.CHARGES == 0
 		end,
 
 		OnDescribe = item.get_lever_description,
@@ -1828,13 +1844,14 @@ function drl.register_regular_items()
 		ascii  = "+",
 		flags  = { IF_NODESTROY },
 		desc   = "A strange ball of shimmering light.",
-
-		OnUse = function(self,being)
-			if being:is_player() then
-				being:play_sound( "phasing" )
-				being:apply_powerup_perk( "inv", 90 )
-			end
-			return true
-		end,
+		runtime = {
+			OnUse = function(self,being)
+				if being:is_player() then
+					being:play_sound( "phasing" )
+					being:apply_powerup_perk( "inv", 90 )
+				end
+				return true
+			end,
+		},
 	}
 end

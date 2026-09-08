@@ -1197,12 +1197,13 @@ function drl.register_exotic_items()
 		flags    = { IF_EXOTIC },
 
 		type       = ITEMTYPE_PACK,
-
-		OnUse = function(self,being)
-			ui.blink(LIGHTRED,50)
-			level:explosion( being.position , { range = 6, delay = 50, damage = "10d10", color = RED, sound_id = "barrel.explode", flags = { EFSELFSAFE } }, self )
-			return true
-		end,
+		runtime = {
+			OnUse = function(self,being)
+				ui.blink(LIGHTRED,50)
+				level:explosion( being.position , { range = 6, delay = 50, damage = "10d10", color = RED, sound_id = "barrel.explode", flags = { EFSELFSAFE } }, self )
+				return true
+			end,
+		},
 	}
 
 	register_item "ubskull"
@@ -1219,20 +1220,21 @@ function drl.register_exotic_items()
 		flags    = { IF_EXOTIC },
 
 		type       = ITEMTYPE_PACK,
-
-		OnUse = function(self,being)
-			ui.blink(LIGHTRED,50)
-			local p = being.position
-			for c in area.around( p, 8 ):clamped( area.FULL ):coords() do
-				if coord.distance( c, p ) <= 8 and level:is_corpse( c ) then
-					level.map[ c ] = "bloodpool"
-					being:play_sound( "gib" )
-					being.hp = math.min( being.hp + 10, being.hpmax * 2 )
-					being:remove_perk( "tired" )
+		runtime = {
+			OnUse = function(self,being)
+				ui.blink(LIGHTRED,50)
+				local p = being.position
+				for c in area.around( p, 8 ):clamped( area.FULL ):coords() do
+					if coord.distance( c, p ) <= 8 and level:is_corpse( c ) then
+						level.map[ c ] = "bloodpool"
+						being:play_sound( "gib" )
+						being.hp = math.min( being.hp + 10, being.hpmax * 2 )
+						being:remove_perk( "tired" )
+					end
 				end
-			end
-			return true
-		end,
+				return true
+			end,
+		},
 	}
 
 	register_item "ufskull"
@@ -1249,19 +1251,20 @@ function drl.register_exotic_items()
 		flags    = { IF_EXOTIC },
 
 		type       = ITEMTYPE_PACK,
-
-		OnUse = function(self,being)
-			ui.blink(YELLOW,50)
-			local p = being.position
-			for c in area.around( p, 8 ):clamped( area.FULL ):coords() do
-				if coord.distance( c, p ) <= 8 and level:is_corpse( c ) then
-					level.map[ c ] = "bloodpool"
-					being:play_sound( "gib" )
-					level:explosion( c , { range = 3, delay = 50, damage = "7d7", color = RED, sound_id = "barrel.explode", flags = { EFSELFSAFE } }, self )
+		runtime = {
+			OnUse = function(self,being)
+				ui.blink(YELLOW,50)
+				local p = being.position
+				for c in area.around( p, 8 ):clamped( area.FULL ):coords() do
+					if coord.distance( c, p ) <= 8 and level:is_corpse( c ) then
+						level.map[ c ] = "bloodpool"
+						being:play_sound( "gib" )
+						level:explosion( c , { range = 3, delay = 50, damage = "7d7", color = RED, sound_id = "barrel.explode", flags = { EFSELFSAFE } }, self )
+					end
 				end
-			end
-			return true
-		end,
+				return true
+			end,
+		},
 	}
 
 	register_item "uhskull"
@@ -1278,24 +1281,25 @@ function drl.register_exotic_items()
 		flags    = { IF_EXOTIC },
 
 		type       = ITEMTYPE_PACK,
-
-		OnUse = function(self,being)
-			ui.blink(LIGHTRED,50)
-			local p = being.position
-			local count = 0
-			for c in area.around( p, 8 ):clamped( area.FULL ):coords() do
-				if coord.distance( c, p ) <= 8 and level:is_corpse( c ) then
-					level.map[ c ] = "bloodpool"
-					being:play_sound( "gib" )
-					count = count + 1
+		runtime = {
+			OnUse = function(self,being)
+				ui.blink(LIGHTRED,50)
+				local p = being.position
+				local count = 0
+				for c in area.around( p, 8 ):clamped( area.FULL ):coords() do
+					if coord.distance( c, p ) <= 8 and level:is_corpse( c ) then
+						level.map[ c ] = "bloodpool"
+						being:play_sound( "gib" )
+						count = count + 1
+					end
 				end
-			end
-			if count > 0 then
-				being:remove_perk( "tired" )
-				being:add_perk( "berserk", count * 30 )
-			end
-			return true
-		end,
+				if count > 0 then
+					being:remove_perk( "tired" )
+					being:add_perk( "berserk", count * 30 )
+				end
+				return true
+			end,
+		},
 	}
 
 end

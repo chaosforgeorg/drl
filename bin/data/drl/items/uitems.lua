@@ -120,20 +120,21 @@ function drl.register_unique_items()
 		flags    = { IF_UNIQUE },
 
 		type       = ITEMTYPE_PACK,
-
-		OnUse = function(self,being)
-			if not being:is_player() then return false end
-			if being:is_perk( "tired" ) then
-				ui.msg("You're too tired to use it now.")
+		runtime = {
+			OnUse = function(self,being)
+				if not being:is_player() then return false end
+				if being:is_perk( "tired" ) then
+					ui.msg("You're too tired to use it now.")
+					return false
+				end;
+				being:add_perk( "tired" )
+				being:play_sound("phasing")
+				ui.msg("You feel yanked in a non-existing direction!")
+				being:phase()
+				being.scount = being.scount - 1000
 				return false
-			end;
-			being:add_perk( "tired" )
-			being:play_sound("phasing")
-			ui.msg("You feel yanked in a non-existing direction!")
-			being:phase()
-			being.scount = being.scount - 1000
-			return false
-		end,
+			end,
+		},
 	}
 
 	register_perk "perk_ubutcher_kill"
@@ -1031,14 +1032,15 @@ function drl.register_unique_items()
 		flags    = { IF_UNIQUE },
 
 		type       = ITEMTYPE_PACK,
-
-		OnUse = function(self,being)
-			ui.blink(LIGHTRED,50)
-			ui.blink(RED,50,50)
-			ui.blink(LIGHTRED,50,100)
-			level:explosion( being.position , { range = 15, delay = 80, damage = "20d10", color = RED, sound_id = "barrel.explode", damage_type = DAMAGE_FIRE, flags = { EFSELFSAFE } }, self )
-			return true
-		end,
+		runtime = {
+			OnUse = function(self,being)
+				ui.blink(LIGHTRED,50)
+				ui.blink(RED,50,50)
+				ui.blink(LIGHTRED,50,100)
+				level:explosion( being.position , { range = 15, delay = 80, damage = "20d10", color = RED, sound_id = "barrel.explode", damage_type = DAMAGE_FIRE, flags = { EFSELFSAFE } }, self )
+				return true
+			end,
+		},
 	}
 
 	register_item "aarmor"

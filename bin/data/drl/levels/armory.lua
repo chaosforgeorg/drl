@@ -90,24 +90,25 @@ register_level "hells_armory"
 			desc = "opens the lab",
 
 			color_id = false,
-
-			OnUse = function(self,being)
-				statistics.levers_pulled = statistics.levers_pulled + 1
-				if level.status > 0 then return true end
-				for x = 6,7 do
-					for y = 9,11 do
-						level.map[ coord(x,y) ] = "floor"
-						level:set_light_flag( coord(x,y), LFBLOOD, true )
+			runtime = {
+				OnUse = function(self,being)
+					statistics.levers_pulled = statistics.levers_pulled + 1
+					if level.status > 0 then return true end
+					for x = 6,7 do
+						for y = 9,11 do
+							level.map[ coord(x,y) ] = "floor"
+							level:set_light_flag( coord(x,y), LFBLOOD, true )
+						end
 					end
-				end
-				local b = level:drop_being("shambler",coord(6,10))
-				level.status = 1
-				if b then
-					b:play_sound("act")
-				end
-				ui.msg("You hear a loud wail!")
-				return true
-			end,
+					local b = level:drop_being("shambler",coord(6,10))
+					level.status = 1
+					if b then
+						b:play_sound("act")
+					end
+					ui.msg("You hear a loud wail!")
+					return true
+				end,
+			},
 
 			OnDescribe = item.get_lever_description,
 		}
