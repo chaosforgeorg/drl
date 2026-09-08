@@ -468,7 +468,6 @@ core.register_blueprint "item"
 		[ITEMTYPE_POWER]   = {
 			ascii    = { false, core.TSTRING, "^" },
 			slevel   = { false, core.TNUMBER },
-			OnEnter  = { false, core.TFUNC },
 		},
 		[ITEMTYPE_RELIC]   = {
 			ascii         = { false, core.TSTRING, "^" },
@@ -477,7 +476,6 @@ core.register_blueprint "item"
 			OnPickup      = { false, core.TFUNC },
 			OnPickupCheck = { false, core.TFUNC },
 			OnUnequipCheck= { false, core.TFUNC },
-			OnEnter       = { false, core.TFUNC },
 		},
 		[ITEMTYPE_AMMO]   = {
 			ascii   = { false, core.TSTRING, "|" },
@@ -613,7 +611,6 @@ core.register_blueprint "item"
 		},
 		[ITEMTYPE_TELE] = {
 			ascii   = { false, core.TSTRING, "*" },
-			OnEnter = { true, core.TFUNC },
 		},
 		[ITEMTYPE_FEATURE] = {
 			ascii     = { false, core.TSTRING, "*" },

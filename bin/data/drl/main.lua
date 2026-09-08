@@ -163,18 +163,6 @@ function drl.register_base_data()
 		sprite = SPRITE_CORPSE,
 	}
 
-	register_item "stubitem"
-	{
-		name     = "stubitem",
-		color    = RED,
-		sprite   = SPRITE_TELEPORT,
-		weight   = 0,
-
-		type = ITEMTYPE_TELE,
-
-		OnEnter = function() end,
-	}
-
 	register_item "teleport"
 	{
 		name     = "teleport",
@@ -185,39 +173,37 @@ function drl.register_base_data()
 		flags    = { IF_NODESTROY, IF_NUKERESIST },
 
 		type = ITEMTYPE_TELE,
-
-		OnCreate = function( self )
-			self:add_property( "target", false )
-		end,
-
-		OnEnter = function( self, being )
-			if not self.target then
-				self.target = level:random_empty_coord{ EF_NOBEINGS, EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN }
-			end
-			-- Explosions can have sounds, but by the time the sound plays, the player has already moved
-			level:play_sound( "teleport.use", being.position )
-			level:explosion( being.position, { range = 4, delay = 50, color = GREEN } )
-			being:msg( "You feel yanked away!", being:get_name(true,true).." suddenly disappears!" )
-			local target = self.target
-			local empty = { EF_NOBEINGS, EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN }
-			if cells[ level.map[ target ] ].flags[ CF_BLOCKMOVE ] then
-				being:msg("You feel out of place!")
-				being:apply_damage(15, TARGET_INTERNAL, DAMAGE_FIRE, "phase" )
-				target = level:random_empty_coord( empty )
-			end
-			if level:get_being( target ) then
-				local tgt = level:get_being( target )
-				being:msg("Suddenly you feel weird!")
-				tgt:msg("Argh! You feel like someone is trying to implode you!")
-				tgt:apply_damage(15, TARGET_INTERNAL, DAMAGE_FIRE, "phase" )
-				target = level:random_empty_coord( empty )
-			end
-			if being.__ptr then
-				being:relocate( target )
-				being:msg(nil,"Suddenly "..being:get_name(false,false).." appears out of nowhere!")
-				being.scount = being.scount - 1000
-			end
-		end,
+		properties = { TARGET = false },
+		runtime    = {
+			OnEnter = function( self, being )
+				if not self.TARGET then
+					self.TARGET = level:random_empty_coord{ EF_NOBEINGS, EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN }
+				end
+				-- Explosions can have sounds, but by the time the sound plays, the player has already moved
+				level:play_sound( "teleport.use", being.position )
+				level:explosion( being.position, { range = 4, delay = 50, color = GREEN } )
+				being:msg( "You feel yanked away!", being:get_name(true,true).." suddenly disappears!" )
+				local target = self.TARGET
+				local empty = { EF_NOBEINGS, EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN }
+				if cells[ level.map[ target ] ].flags[ CF_BLOCKMOVE ] then
+					being:msg("You feel out of place!")
+					being:apply_damage(15, TARGET_INTERNAL, DAMAGE_FIRE, "phase" )
+					target = level:random_empty_coord( empty )
+				end
+				if level:get_being( target ) then
+					local tgt = level:get_being( target )
+					being:msg("Suddenly you feel weird!")
+					tgt:msg("Argh! You feel like someone is trying to implode you!")
+					tgt:apply_damage(15, TARGET_INTERNAL, DAMAGE_FIRE, "phase" )
+					target = level:random_empty_coord( empty )
+				end
+				if being.__ptr then
+					being:relocate( target )
+					being:msg(nil,"Suddenly "..being:get_name(false,false).." appears out of nowhere!")
+					being.scount = being.scount - 1000
+				end
+			end,
+		},
 	}
 
 	register_being "soldier"

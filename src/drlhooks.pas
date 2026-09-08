@@ -34,7 +34,7 @@ const
   Hook_OnEquipCheck    = 22;  // Perk (item)
   Hook_OnAct           = 23;  // Item, Being (hack)
   Hook_OnDestroy       = 24;  // Item
-  Hook_OnEnter         = 25;  // Item (separate)
+  Hook_OnEnter         = 25;  // Perk (item; separate from cell OnEnter)
   Hook_OnEnterLevel    = 26;  // Trait, Perk, Module, Challenge
   Hook_OnFire          = 27;  // Trait, Perk
   Hook_OnFired         = 28;  // Trait, Perk
@@ -167,7 +167,7 @@ FullInvHooks := [ Hook_OnPreAction, Hook_OnPostAction, Hook_OnTick ];
 NoInventoryHooks := [ Hook_OnPickup ];
 ItemHooks    := [ Hook_OnCreate, Hook_OnPickup,
   Hook_OnEquip, Hook_OnUnequip,
-  Hook_OnEnter, Hook_OnAct, Hook_OnDestroy, Hook_OnDescribe, Hook_OnPickupCheck,
+  Hook_OnAct, Hook_OnDestroy, Hook_OnDescribe, Hook_OnPickupCheck,
   Hook_OnUnequipCheck ];
 GlobalHooks  := [ Hook_OnCreate, Hook_OnEnterLevel, Hook_OnExitLevel, Hook_OnTick,
   Hook_OnLoad, Hook_OnLoaded, Hook_OnUnLoad, Hook_OnCreatePlayer, Hook_OnLevelUp,

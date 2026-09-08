@@ -1561,7 +1561,7 @@ begin
   BloodFloor;
   iLevel := TLevel( Parent );
   if iLevel.Item[ FPosition ] <> nil then
-    if iLevel.Item[ FPosition ].Hooks[ Hook_OnEnter ] then
+    if iLevel.Item[ FPosition ].HasHook( Hook_OnEnter ) then
       iLevel.Item[ FPosition ].CallHook( Hook_OnEnter, [ Self ] );
 end;
 
