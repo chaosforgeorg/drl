@@ -620,8 +620,6 @@ core.register_blueprint "item"
 	runtime        = { false, core.TTABLE },
 
 	OnCreate       = { false, core.TFUNC },
-	OnEquip        = { false, core.TFUNC },
-	OnUnequip      = { false, core.TFUNC },
 }
 
 core.register_blueprint "itemset"

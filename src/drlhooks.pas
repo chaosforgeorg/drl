@@ -21,8 +21,8 @@ const
   Hook_OnUseCheck      = 9;   // Perk (item)
   Hook_OnAltFire       = 10;  // Perk (item)
   Hook_OnAltReload     = 11;  // Perk (item)
-  Hook_OnEquip         = 12;  // Item, Perk
-  Hook_OnUnequip       = 13;  // Item, Perk
+  Hook_OnEquip         = 12;  // Perk (item)
+  Hook_OnUnequip       = 13;  // Perk (item)
   Hook_OnAdd           = 14;  // Perk
   Hook_OnRemove        = 15;  // Perk
   Hook_OnTick10        = 16;  // Perk
@@ -165,7 +165,7 @@ BeingHooks   := [ Hook_OnCreate, Hook_OnAction, Hook_OnAttacked, Hook_OnUseActiv
   Hook_OnAct, Hook_OnCanAct ];
 FullInvHooks := [ Hook_OnPreAction, Hook_OnPostAction, Hook_OnTick ];
 NoInventoryHooks := [ Hook_OnPickup ];
-ItemHooks    := [ Hook_OnCreate, Hook_OnEquip, Hook_OnUnequip, Hook_OnDescribe ];
+ItemHooks    := [ Hook_OnCreate, Hook_OnDescribe ];
 GlobalHooks  := [ Hook_OnCreate, Hook_OnEnterLevel, Hook_OnExitLevel, Hook_OnTick,
   Hook_OnLoad, Hook_OnLoaded, Hook_OnUnLoad, Hook_OnCreatePlayer, Hook_OnLevelUp,
   Hook_OnPreLevelUp, Hook_OnWinGame, Hook_OnCreateEpisode,

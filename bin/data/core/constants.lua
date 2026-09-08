@@ -140,7 +140,6 @@ IF_NOUNLOAD       = 42;
 IF_NUKERESIST     = 43;
 IF_NODROP         = 44;
 IF_AUTOHIT        = 45;
-IF_SETITEM        = 46;
 IF_NODURABILITY   = 47;
 IF_NODESTROY      = 48;
 IF_NONMODABLE     = 49;

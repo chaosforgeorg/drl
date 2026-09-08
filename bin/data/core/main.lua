@@ -464,6 +464,23 @@ register_being         = core.register_storage( "beings", "being", function( bp 
 	end
 )
 
+register_perk "perk_itemset"
+{
+	OnEquip = function( self, being )
+		local set = self.__proto.set
+		if being:set_items( set ) == (itemsets[ set ].trigger - 1) then
+			itemsets[ set ].OnEquip( self, being )
+		end
+	end,
+
+	OnUnequip = function( self, being )
+		local set = self.__proto.set
+		if being:set_items( set ) == itemsets[ set ].trigger then
+			itemsets[ set ].OnUnequip( self, being )
+		end
+	end,
+}
+
 register_item          = core.register_storage( "items", "item", function( ip )
 		local runtime_id
 		if ip.runtime and next( ip.runtime ) then
@@ -473,24 +490,6 @@ register_item          = core.register_storage( "items", "item", function( ip )
 		end
 
 		local set = ip.set
-		if set then
-			ip.flags[ IF_SETITEM ] = true
-
-			local OnEquip = function (self,being)
-				if being:set_items( set ) == (itemsets[ set ].trigger - 1) then
-					itemsets[ set ].OnEquip(self,being)
-				end
-			end
-
-			local OnUnequip = function (self,being)
-				if being:set_items( set ) == itemsets[ set ].trigger then
-					itemsets[ set ].OnUnequip(self,being)
-				end
-			end
-
-			ip.OnUnequip = core.create_seq_function( OnUnequip, ip.OnUnequip )
-			ip.OnEquip  = core.create_seq_function( OnEquip, ip.OnEquip )
-		end
 
 		ip.tags        = table.toset( ip.tags )
 		ip.flags[ ip.type ] = true
@@ -538,6 +537,8 @@ register_item          = core.register_storage( "items", "item", function( ip )
 			-- Explicit parent constructors must not reapply defaults or perks.
 			if self.__proto == ip then
 				add_properties( self, ip.properties )
+				-- Set effects preceded item runtime hooks in the prototype wrappers.
+				if set then self:add_perk( "perk_itemset" ) end
 				if runtime_id then self:add_perk( runtime_id ) end
 				add_perks( self, ip.perks )
 			end
