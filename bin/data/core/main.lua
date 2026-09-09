@@ -87,29 +87,53 @@ register_perk       = core.register_storage( "perks", "perk", function (a)
 	a.tags = table.toset( a.tags )
 	core.register_perk( a.nid ) 
 end )
-register_trait      = core.register_storage( "traits", "trait" )
-register_ai         = core.register_storage( "ais", "ai" )
-register_challenge  = core.register_storage( "chal", "challenge", function( challenge )
-	if not challenge.runtime then return end
-
-	local runtime_source = challenge.runtime
-	local runtime_id = "perk_"..challenge.id
-
-	local function register_runtime()
-		register_perk( runtime_id )( runtime_source )
+-- Preserve declaration order; IDs resolve when the owner is initialized.
+local function add_perks( self, perks )
+	if not perks then return end
+	for _, id in ipairs( perks ) do
+		self:add_perk( id )
 	end
+end
 
-	local function attach_runtime()
-		player:add_perk( runtime_id )
+register_trait = core.register_storage( "traits", "trait", function( trait )
+	if trait.perks and #trait.perks > 0 then
+		local function OnPick( self, rank )
+			if rank == 1 then add_perks( self, trait.perks ) end
+		end
+		trait.OnPick = core.create_seq_function( OnPick, trait.OnPick )
 	end
+end )
+register_ai = core.register_storage( "ais", "ai", function( ai )
+	if ai.perks and #ai.perks > 0 then
+		local function OnCreate( self )
+			add_perks( self, ai.perks )
+		end
+		ai.OnCreate = core.create_seq_function( OnCreate, ai.OnCreate )
+	end
+end )
+register_challenge = core.register_storage( "chal", "challenge", function( challenge )
+	if challenge.runtime or (challenge.perks and #challenge.perks > 0) then
+		local runtime_id
+		if challenge.runtime then
+			local runtime_source = challenge.runtime
+			runtime_id = "perk_"..challenge.id
+			local function register_runtime()
+				register_perk( runtime_id )( runtime_source )
+			end
 
-	challenge.runtime = runtime_id
-	challenge.OnCreatePlayer = core.create_seq_function( attach_runtime, challenge.OnCreatePlayer )
+			challenge.runtime = runtime_id
+			if BASE_MODULE_LOADING then
+				register_runtime()
+			else
+				challenge.OnRegister = core.create_seq_function( register_runtime, challenge.OnRegister )
+			end
+		end
 
-	if BASE_MODULE_LOADING then
-		register_runtime()
-	else
-		challenge.OnRegister = core.create_seq_function( register_runtime, challenge.OnRegister )
+		local function OnCreatePlayer()
+			if runtime_id then player:add_perk( runtime_id ) end
+			add_perks( player, challenge.perks )
+		end
+		challenge.OnCreatePlayer = core.create_seq_function( OnCreatePlayer, challenge.OnCreatePlayer )
 	end
 end )
 register_itemset    = core.register_storage( "itemsets", "itemset" )
@@ -149,6 +173,12 @@ register_klass      = core.register_storage( "klasses", "klass", function(k)
 					t.blocks[ii] = traits[v].nid
 				end
 			end
+		end
+		if k.perks and #k.perks > 0 then
+			local function OnPick( self )
+				add_perks( self, k.perks )
+			end
+			k.OnPick = core.create_seq_function( OnPick, k.OnPick )
 		end
 	end
 )
@@ -289,20 +319,21 @@ function register_master_badge( id )
 	end
 end
 
-register_level   = core.register_storage( "levels", "level", function( level_def )
-	if not level_def.runtime then return end
+register_level = core.register_storage( "levels", "level", function( level_def )
+	if level_def.runtime or (level_def.perks and #level_def.perks > 0) then
+		local runtime_id
+		if level_def.runtime then
+			runtime_id = "perk_level_"..level_def.id
+			register_perk( runtime_id )( level_def.runtime )
+			level_def.runtime = runtime_id
+		end
 
-	local runtime_source = level_def.runtime
-	local runtime_id = "perk_level_"..level_def.id
-
-	register_perk( runtime_id )( runtime_source )
-
-	local function attach_runtime()
-		level:add_perk( runtime_id )
+		local function Create()
+			if runtime_id then level:add_perk( runtime_id ) end
+			add_perks( level, level_def.perks )
+		end
+		level_def.Create = core.create_seq_function( Create, level_def.Create )
 	end
-
-	level_def.runtime = runtime_id
-	level_def.Create = core.create_seq_function( attach_runtime, level_def.Create )
 end )
 levels.default = {}
 
@@ -328,6 +359,18 @@ register_being_group   = core.register_array_storage( "being_groups", "being_gro
 	bgp.tags = table.toset( bgp.tags )
 end
 )
+
+local function add_properties( self, properties )
+	if not properties then return end
+	for key, value in pairs( properties ) do
+		if type( value ) == "userdata" then
+			value = value:clone()
+		else
+			value = table.copy( value )
+		end
+		self:add_property( key, value )
+	end
+end
 
 register_being         = core.register_storage( "beings", "being", function( bp )
 		bp.name_plural = bp.name_plural or bp.name.."s"
@@ -411,31 +454,53 @@ register_being         = core.register_storage( "beings", "being", function( bp 
 					self.resist[ k ] = v
 				end
 			end
+			-- Explicit parent constructors must not reapply defaults or perks.
+			if self.__proto == bp then
+				add_properties( self, bp.properties )
+				add_perks( self, bp.perks )
+			end
 		end
 		bp.OnCreate = core.create_seq_function( OnCreate, bp.OnCreate )
 	end
 )
 
-register_item          = core.register_storage( "items", "item", function( ip )
-		local set = ip.set
-		if set then
-			ip.flags[ IF_SETITEM ] = true
-
-			local OnEquip = function (self,being)
-				if being:set_items( set ) == (itemsets[ set ].trigger - 1) then
-					itemsets[ set ].OnEquip(self,being)
-				end
-			end
-
-			local OnUnequip = function (self,being)
-				if being:set_items( set ) == itemsets[ set ].trigger then
-					itemsets[ set ].OnUnequip(self,being)
-				end
-			end
-
-			ip.OnUnequip = core.create_seq_function( OnUnequip, ip.OnUnequip )
-			ip.OnEquip  = core.create_seq_function( OnEquip, ip.OnEquip )
+register_perk "perk_lever_description"
+{
+	OnDescribe = function( self )
+		if player:has_property( "LEVER_SENSE" ) then
+			if player.LEVER_SENSE > 1 then return "lever ("..self.__proto.desc..")" end
+			return "lever ("..self.__proto.good..")"
 		end
+		return "lever"
+	end,
+}
+
+register_perk "perk_itemset"
+{
+	OnEquip = function( self, being )
+		local set = self.__proto.set
+		if being:set_items( set ) == (itemsets[ set ].trigger - 1) then
+			itemsets[ set ].OnEquip( self, being )
+		end
+	end,
+
+	OnUnequip = function( self, being )
+		local set = self.__proto.set
+		if being:set_items( set ) == itemsets[ set ].trigger then
+			itemsets[ set ].OnUnequip( self, being )
+		end
+	end,
+}
+
+register_item          = core.register_storage( "items", "item", function( ip )
+		local runtime_id
+		if ip.runtime and next( ip.runtime ) then
+			runtime_id = "perk_item_"..ip.id
+			register_perk( runtime_id )( ip.runtime )
+			ip.runtime = runtime_id
+		end
+
+		local set = ip.set
 
 		ip.tags        = table.toset( ip.tags )
 		ip.flags[ ip.type ] = true
@@ -455,8 +520,6 @@ register_item          = core.register_storage( "items", "item", function( ip )
 		if ip.explosion and ip.explosion.content then
 			ip.explosion.content = cells[ip.explosion.content].nid
 		end
-
-		if ip.firstmsg then ip.OnFirstPickup = function () ui.msg("\""..ip.firstmsg.."\"") end end
 
 		if core.options.auto_glow_items then
 			if not ip.glow then
@@ -481,6 +544,14 @@ register_item          = core.register_storage( "items", "item", function( ip )
 			self:add_property( "group", ip.group or "" )
 			if ip.group == "shotgun" then
 				self.flags[ IF_SHOTGUN ] = true
+			end
+			-- Explicit parent constructors must not reapply defaults or perks.
+			if self.__proto == ip then
+				add_properties( self, ip.properties )
+				-- Set effects preceded item runtime hooks in the prototype wrappers.
+				if set then self:add_perk( "perk_itemset" ) end
+				if runtime_id then self:add_perk( runtime_id ) end
+				add_perks( self, ip.perks )
 			end
 		end
 		ip.OnCreate = core.create_seq_function( OnCreate, ip.OnCreate )

@@ -93,14 +93,15 @@ register_level "hellgate"
 			flags    = { IF_NODESTROY, IF_NUKERESIST },
 
 			type = ITEMTYPE_TELE,
-
-			OnEnter = function( self, being )
-				if not being:is_player() then return end
-				level:explosion( being.position, { range = 4, delay = 50, color = GREEN, sound_id = "hellportal.use" } )
-				ui.msg_enter("You feel yanked in a non-existing direction!")
-				player:exit( nil, 1.0 )
-				drl.plot_outro_1()
-			end,
+			runtime = {
+				OnEnter = function( self, being )
+					if not being:is_player() then return end
+					level:explosion( being.position, { range = 4, delay = 50, color = GREEN, sound_id = "hellportal.use" } )
+					ui.msg_enter("You feel yanked in a non-existing direction!")
+					player:exit( nil, 1.0 )
+					drl.plot_outro_1()
+				end,
+			},
 		}
 		
 	end,
@@ -184,7 +185,7 @@ register_level "tower_of_babel"
 	runtime = {
 		OnEnterLevel = function ( self )
 			local boss = self:summon("cyberdemon")
-			boss.is_boss = true
+			boss.IS_BOSS = true
 		end,
 
 		OnKillAll = function ( self )
@@ -235,7 +236,7 @@ register_level "dis"
 	runtime = {
 		OnEnterLevel = function ( self )
 			local boss = self:drop_being("mastermind",coord(39,19))
-			boss.is_boss = true
+			boss.IS_BOSS = true
 		end,
 
 		OnNuked = function ( self )
@@ -270,14 +271,14 @@ register_level "dis"
 
 			good = "dangerous",
 			desc = "woah!",
-
-			OnUse = function(self,being)
-				statistics.levers_pulled = statistics.levers_pulled + 1
-				level:transmute( "wall", "floor" )
-				return true
-			end,
-
-			OnDescribe = item.get_lever_description,
+			perks   = { "perk_lever_description" },
+			runtime = {
+				OnUse = function(self,being)
+					statistics.levers_pulled = statistics.levers_pulled + 1
+					level:transmute( "wall", "floor" )
+					return true
+				end,
+			},
 		}
 
 	end,
@@ -381,7 +382,7 @@ register_level "hell_fortress"
 		else
 			boss = level:drop_being("jc",coord(76,11))
 		end
-		boss.is_boss = true
+		boss.IS_BOSS = true
 		player:add_history( "He defeated the Mastermind and found the TRUE EVIL!" )
 	end,
 

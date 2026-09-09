@@ -64,7 +64,7 @@ function being:acquire( what, count )
 	local function add( it )
 		local drop = false
 		if self.flags[ BF_IMPATIENT ] then
-			if ( it.itype == ITEMTYPE_PACK and it.__proto.OnUse ) or it.itype == ITEMTYPE_URANGED then
+			if it:is_usable() then
 				drop = true
 			end
 		end
@@ -340,7 +340,7 @@ function being:pick_item_to_mod( mod, filter )
 
 	local proto     = mod.__proto
 	local modletter = proto.mod_letter
-	local techbonus = self.techbonus
+	local techbonus = self.TECH_BONUS
 
 	local choice = {
 		title = "Choose an item to mod",
@@ -412,9 +412,7 @@ function being:pick_item_to_mod( mod, filter )
 			if core.options.assembly_apply_last_mod then
 				-- Apply mod effect first, then assembly transformation
 				mod:add_property("chosen_item", item)
-				if mod.__proto.OnUse then
-					mod.__proto.OnUse( mod, player )
-				end
+				core.callback( mod, "OnUse", self )
 			end
 			ui.msg("You assemble the "..ma.name..".")
 			item:apply_mod_array( ma )

@@ -94,26 +94,26 @@ register_level "mt_erebus"
 			desc = "raises the mountain",
 
 			color_id = false,
-
-			OnUse = function(self,being)
-				statistics.levers_pulled = statistics.levers_pulled + 1
-				--Levers will always trigger the next status.
-				--So if someone relocates to a mountain phase 2 square, the next lever will open phase 3.
-				--The player does not need to activate all levers, repaying them for the risk they took.
-				if level.status > 2 then return true end
-				player:play_sound("lever.use")
-				local raise = LFMARKER1
-				if level.status == 1 then
-					raise = LFMARKER2
-				elseif level.status == 2 then
-					raise = LFMARKER3
-				end
-				level:transmute_by_flag( "cwall", "floor", raise, level.data.mountain)
-				level.status = level.status + 1
-				return true
-			end,
-
-			OnDescribe = item.get_lever_description,
+			perks   = { "perk_lever_description" },
+			runtime = {
+				OnUse = function(self,being)
+					statistics.levers_pulled = statistics.levers_pulled + 1
+					--Levers will always trigger the next status.
+					--So if someone relocates to a mountain phase 2 square, the next lever will open phase 3.
+					--The player does not need to activate all levers, repaying them for the risk they took.
+					if level.status > 2 then return true end
+					player:play_sound("lever.use")
+					local raise = LFMARKER1
+					if level.status == 1 then
+						raise = LFMARKER2
+					elseif level.status == 2 then
+						raise = LFMARKER3
+					end
+					level:transmute_by_flag( "cwall", "floor", raise, level.data.mountain)
+					level.status = level.status + 1
+					return true
+				end,
+			},
 		}
 	end,
 

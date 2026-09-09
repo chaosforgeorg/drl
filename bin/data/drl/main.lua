@@ -70,6 +70,7 @@ function drl.OnLoad()
 		plasma  = "plasma",
 		bfg     = "BFG",
 	}
+	core.register_callback( "OnFirstPickup", "perk" )
 	drl.register_sprites()
 	drl.register_difficulties()
 	drl.register_base_data()
@@ -162,18 +163,6 @@ function drl.register_base_data()
 		sprite = SPRITE_CORPSE,
 	}
 
-	register_item "stubitem"
-	{
-		name     = "stubitem",
-		color    = RED,
-		sprite   = SPRITE_TELEPORT,
-		weight   = 0,
-
-		type = ITEMTYPE_TELE,
-
-		OnEnter = function() end,
-	}
-
 	register_item "teleport"
 	{
 		name     = "teleport",
@@ -184,39 +173,37 @@ function drl.register_base_data()
 		flags    = { IF_NODESTROY, IF_NUKERESIST },
 
 		type = ITEMTYPE_TELE,
-
-		OnCreate = function( self )
-			self:add_property( "target", false )
-		end,
-
-		OnEnter = function( self, being )
-			if not self.target then
-				self.target = level:random_empty_coord{ EF_NOBEINGS, EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN }
-			end
-			-- Explosions can have sounds, but by the time the sound plays, the player has already moved
-			level:play_sound( "teleport.use", being.position )
-			level:explosion( being.position, { range = 4, delay = 50, color = GREEN } )
-			being:msg( "You feel yanked away!", being:get_name(true,true).." suddenly disappears!" )
-			local target = self.target
-			local empty = { EF_NOBEINGS, EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN }
-			if cells[ level.map[ target ] ].flags[ CF_BLOCKMOVE ] then
-				being:msg("You feel out of place!")
-				being:apply_damage(15, TARGET_INTERNAL, DAMAGE_FIRE, "phase" )
-				target = level:random_empty_coord( empty )
-			end
-			if level:get_being( target ) then
-				local tgt = level:get_being( target )
-				being:msg("Suddenly you feel weird!")
-				tgt:msg("Argh! You feel like someone is trying to implode you!")
-				tgt:apply_damage(15, TARGET_INTERNAL, DAMAGE_FIRE, "phase" )
-				target = level:random_empty_coord( empty )
-			end
-			if being.__ptr then
-				being:relocate( target )
-				being:msg(nil,"Suddenly "..being:get_name(false,false).." appears out of nowhere!")
-				being.scount = being.scount - 1000
-			end
-		end,
+		properties = { TARGET = false },
+		runtime    = {
+			OnEnter = function( self, being )
+				if not self.TARGET then
+					self.TARGET = level:random_empty_coord{ EF_NOBEINGS, EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN }
+				end
+				-- Explosions can have sounds, but by the time the sound plays, the player has already moved
+				level:play_sound( "teleport.use", being.position )
+				level:explosion( being.position, { range = 4, delay = 50, color = GREEN } )
+				being:msg( "You feel yanked away!", being:get_name(true,true).." suddenly disappears!" )
+				local target = self.TARGET
+				local empty = { EF_NOBEINGS, EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN }
+				if cells[ level.map[ target ] ].flags[ CF_BLOCKMOVE ] then
+					being:msg("You feel out of place!")
+					being:apply_damage(15, TARGET_INTERNAL, DAMAGE_FIRE, "phase" )
+					target = level:random_empty_coord( empty )
+				end
+				if level:get_being( target ) then
+					local tgt = level:get_being( target )
+					being:msg("Suddenly you feel weird!")
+					tgt:msg("Argh! You feel like someone is trying to implode you!")
+					tgt:apply_damage(15, TARGET_INTERNAL, DAMAGE_FIRE, "phase" )
+					target = level:random_empty_coord( empty )
+				end
+				if being.__ptr then
+					being:relocate( target )
+					being:msg(nil,"Suddenly "..being:get_name(false,false).." appears out of nowhere!")
+					being.scount = being.scount - 1000
+				end
+			end,
+		},
 	}
 
 	register_being "soldier"
@@ -237,17 +224,21 @@ function drl.register_base_data()
 		ai_type      = "",
 		ai_group     = "player",
 
-		OnCreate = function(self)
-			self:add_property( "medals", {} )
-			self:add_property( "badges", {} )
-			self:add_property( "awards", {} )
-			self:add_property( "assemblies", {} )
-			self:add_property( "items_found", {} )
-			self:add_property( "history", {} )
-			self:add_property( "episode", {} )
-			self:add_property( "level_data", {} )
-			self:add_property( "crash_index", 0 )
+		properties = {
+			medals       = {},
+			badges       = {},
+			awards       = {},
+			assemblies   = {},
+			items_found  = {},
+			history      = {},
+			episode      = {},
+			level_data   = {},
+			crash_index  = 0,
+			RUNNING_TIME = 30,
+			TECH_BONUS   = 0,
+		},
 
+		OnCreate = function(self)
 			if rawget(_G,"DIFFICULTY") then
 				self.hp    = 50
 				self.hpmax = self.hp
@@ -256,8 +247,6 @@ function drl.register_base_data()
 				self.expfactor = diff[DIFFICULTY].expfactor
 			end
 
-			self:add_property( "runningtime", 30 )
-			self:add_property( "techbonus", 0 )
 			self:set_coscolor{ 0.8, 0.7, 0.7, 1.0 }
 		end,
 
@@ -274,9 +263,9 @@ function drl.register_base_data()
 					self:add_history( 'On @1 he found the '..i.name..'!' )
 					ui.blink( LIGHTGREEN, 50 )
 				end
-				if items[ i.id ].OnFirstPickup then
-					items[ i.id ].OnFirstPickup( i, self )
-				end
+				local firstmsg = i.__proto.firstmsg
+				if firstmsg then ui.msg( "\""..firstmsg.."\"" ) end
+				core.callback( i, "OnFirstPickup", self )
 				self:add_found_item( i.id )
 			end
 		end,
@@ -294,7 +283,7 @@ function drl.register_base_data()
 				self:remove_perk( "running", false )
 				return false
 			else
-				self:add_perk( "running", self.runningtime * 10 )
+				self:add_perk( "running", self.RUNNING_TIME * 10 )
 				self.scount = self.scount - 100
 				return true
 			end
@@ -648,7 +637,7 @@ function drl.OnCreateEpisode()
 		if (not level_proto.canGenerate) or level_proto.canGenerate() then
 			local index = core.resolve_range(level_proto.level)
 			local from  = player.episode[index]
-			table.insert( player.episode, { 
+			table.insert( player.episode, {
 				script = level_proto.id,
 				style  = from.style,
 				danger = from.danger,

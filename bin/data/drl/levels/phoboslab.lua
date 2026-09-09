@@ -61,16 +61,16 @@ register_level "phobos_lab"
 
 			color_id = false,
 			sound_id = "lever",
-
-			OnUse = function(self,being)
-				statistics.levers_pulled = statistics.levers_pulled + 1
-				level:transmute( "ldoor", "floor", level.data.door1 )
-				level:transmute( "floor", "door",  level.data.door1 )
-				ui.msg("Green access granted, west doors unlocked.")
-				return true
-			end,
-
-			OnDescribe = item.get_lever_description,
+			perks   = { "perk_lever_description" },
+			runtime = {
+				OnUse = function(self,being)
+					statistics.levers_pulled = statistics.levers_pulled + 1
+					level:transmute( "ldoor", "floor", level.data.door1 )
+					level:transmute( "floor", "door",  level.data.door1 )
+					ui.msg("Green access granted, west doors unlocked.")
+					return true
+				end,
+			},
 		}
 
 		register_item "lever_phoboslab2"
@@ -87,20 +87,20 @@ register_level "phobos_lab"
 
 			color_id = false,
 			sound_id = "lever",
-
-			OnUse = function(self,being)
-				statistics.levers_pulled = statistics.levers_pulled + 1
-				level:transmute( "ldoor", "floor", level.data.door1 )
-				level:transmute( "floor", "door",  level.data.door1 )
-				level:transmute( "ldoor", "floor", level.data.door2 )
-				level:transmute( "floor", "door",  level.data.door2 )
-				level:transmute( "acid",  "bridge",level.data.bridge )
-				ui.msg("Blue access granted, east doors unlocked.")
-				level.status = 1
-				return true
-			end,
-
-			OnDescribe = item.get_lever_description,
+			perks   = { "perk_lever_description" },
+			runtime = {
+				OnUse = function(self,being)
+					statistics.levers_pulled = statistics.levers_pulled + 1
+					level:transmute( "ldoor", "floor", level.data.door1 )
+					level:transmute( "floor", "door",  level.data.door1 )
+					level:transmute( "ldoor", "floor", level.data.door2 )
+					level:transmute( "floor", "door",  level.data.door2 )
+					level:transmute( "acid",  "bridge",level.data.bridge )
+					ui.msg("Blue access granted, east doors unlocked.")
+					level.status = 1
+					return true
+				end,
+			},
 		}
 	end,	
 

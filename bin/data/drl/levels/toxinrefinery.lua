@@ -76,18 +76,19 @@ register_level "toxin_refinery"
 
 			color_id = false,
 			sound_id = "lever",
-
-			OnUse = function(self,being)
-				statistics.levers_pulled = statistics.levers_pulled + 1
-				level:transmute( "ldoor", "floor", level.data.door1 )
-				level:transmute( "wall", "floor", level.data.trap1 )
-				level.data.darkness_end_time = core.game_time() + 150
-				level.data.old_darkness = player.flags[ BF_DARKNESS ]
-				player.flags[ BF_DARKNESS ]   = true
-				player.vision = player.vision - level.data.vision_reduction
-				ui.msg("Eastern door unlocked.")
-				return true
-			end,
+			runtime = {
+				OnUse = function(self,being)
+					statistics.levers_pulled = statistics.levers_pulled + 1
+					level:transmute( "ldoor", "floor", level.data.door1 )
+					level:transmute( "wall", "floor", level.data.trap1 )
+					level.data.darkness_end_time = core.game_time() + 150
+					level.data.old_darkness = player.flags[ BF_DARKNESS ]
+					player.flags[ BF_DARKNESS ]   = true
+					player.vision = player.vision - level.data.vision_reduction
+					ui.msg("Eastern door unlocked.")
+					return true
+				end,
+			},
 		}
 
 		register_item "lever_toxinrefinery2"
@@ -104,13 +105,14 @@ register_level "toxin_refinery"
 
 			color_id = false,
 			sound_id = "lever",
-
-			OnUse = function(self,being)
-				statistics.levers_pulled = statistics.levers_pulled + 1
-				level:transmute( "ldoor", "floor", level.data.door2 )
-				ui.msg("Smoking area unlocked.")
-				return true
-			end,
+			runtime = {
+				OnUse = function(self,being)
+					statistics.levers_pulled = statistics.levers_pulled + 1
+					level:transmute( "ldoor", "floor", level.data.door2 )
+					ui.msg("Smoking area unlocked.")
+					return true
+				end,
+			},
 		}
 
 		register_item "lever_toxinrefinery3"
@@ -127,14 +129,15 @@ register_level "toxin_refinery"
 
 			color_id = false,
 			sound_id = "lever",
-
-			OnUse = function(self,being)
-				statistics.levers_pulled = statistics.levers_pulled + 1
-				level:transmute( "wall", "floor", level.data.door3 )
-				level:transmute( "acid", "bridge", level.data.bridge )
-				ui.msg("Shortcut unlocked.")
-				return true
-			end,
+			runtime = {
+				OnUse = function(self,being)
+					statistics.levers_pulled = statistics.levers_pulled + 1
+					level:transmute( "wall", "floor", level.data.door3 )
+					level:transmute( "acid", "bridge", level.data.bridge )
+					ui.msg("Shortcut unlocked.")
+					return true
+				end,
+			},
 		}
 	end,
 	

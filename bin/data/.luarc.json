@@ -124,7 +124,6 @@
         "IF_THROWDROP",
         "IF_UNIQUE",
         "IF_EXOTIC",
-        "IF_SETITEM",
         "IF_PLURALNAME",
         "IF_SINGLERELOAD",
         "IF_DUALSHOTGUN",

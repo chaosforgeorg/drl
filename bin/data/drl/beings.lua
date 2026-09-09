@@ -558,9 +558,7 @@ function drl.register_beings()
 			},
 		},
 
-		OnCreate = function (self)
-			self:add_property( "master", true )
-		end,
+		properties = { MASTER = true },
 	}
 
 	-- elite formers ------------------------------------------------------
@@ -1128,9 +1126,7 @@ function drl.register_beings()
 			},
 		},
 
-		OnCreate = function (self)
-			self:add_property( "master", true )
-		end,
+		properties = { MASTER = true },
 	}
 
 	-- special enemies ----------------------------------------------------
@@ -1379,11 +1375,11 @@ function drl.register_beings()
 		desc            = "Why doesn't a BFG work when you really need it? As if from a half-forgotten nightmare, you encounter the harbinger of death...",
 		kill_desc_melee = "was ripped apart by the Angel of Death",
 
+		properties = { MASTER = true },
+
 		OnCreate = function (self)
 			self.hpmax = self.hpmax + DIFFICULTY * DIFFICULTY * 10
 			self.hp = self.hpmax
-
-			self:add_property( "master", true )
 		end,
 	}
 
@@ -1419,6 +1415,11 @@ function drl.register_beings()
 		kill_desc       = "was splattered by a Cyberdemon",
 		kill_desc_melee = "was ripped apart by a Cyberdemon",
 
+		properties = {
+			MASTER  = true,
+			IS_BOSS = false,
+		},
+
 		OnCreate = function (self)
 			self.eq.weapon = "bazooka"
 			for i=1,4 do
@@ -1426,13 +1427,10 @@ function drl.register_beings()
 			end
 			self.hpmax = self.hpmax + DIFFICULTY * DIFFICULTY * 10
 			self.hp = self.hpmax
-
-			self:add_property( "master", true )
-			self:add_property( "is_boss", false )
 		end,
 
 		OnDie = function (self)
-			if self.is_boss then
+			if self.IS_BOSS then
 				level:explosion( self.position, { range = 17, delay = 40, color = RED, sound_id = "barrel.explode", flags = {EFALWAYSVISIBLE} } )
 				ui.msg_enter("The Cyberdemon is dead!")
 				if not level.flags[ LF_NUKED ] and statistics.damage_on_level == 0 then
@@ -1488,16 +1486,18 @@ function drl.register_beings()
 			hitsprite  = SPRITE_BLAST,
 		},
 
+		properties = {
+			MASTER  = true,
+			IS_BOSS = false,
+		},
+
 		OnCreate = function (self)
 			self.hpmax = self.hpmax + DIFFICULTY * DIFFICULTY * 10
 			self.hp = self.hpmax
-
-			self:add_property( "master", true )
-			self:add_property( "is_boss", false )
 		end,
 
 		OnDie = function (self)
-			if self.is_boss then
+			if self.IS_BOSS then
 				level:explosion( self.position, { range = 17, delay = 40, color = RED, sound_id = "barrel.explode", flags = {EFALWAYSVISIBLE} } )
 				self.expvalue = 0
 				if not level.flags[ LF_NUKED ] and statistics.damage_on_level == 0 then
@@ -1533,6 +1533,11 @@ function drl.register_beings()
 		desc            = "You knew it. This is the true EVIL behind the invasion! This is the true mastermind of Hell! Kill him for he knows not the meaning of mercy! Kill him!! Kill him NOW!!!",
 		kill_desc       = "was pwned by John Carmack",
 
+		properties = {
+			MASTER  = true,
+			IS_BOSS = false,
+		},
+
 		OnCreate = function (self)
 			self.eq.weapon = "bazooka"
 			for i=1,3 do
@@ -1541,13 +1546,10 @@ function drl.register_beings()
 
 			self.hpmax = self.hpmax + DIFFICULTY * DIFFICULTY * 10
 			self.hp = self.hpmax
-
-			self:add_property( "master",  true )
-			self:add_property( "is_boss", false )
 		end,
 
 		OnDie = function (self)
-			if self.is_boss then
+			if self.IS_BOSS then
 				level:explosion( self.position, { range = 17, delay = 40, color = BLUE, sound_id = "barrel.explode", flags = {EFALWAYSVISIBLE} } )
 				for b in level:beings() do
 					if not ( b:is_player() ) and b.id ~= "jc" then
@@ -1615,10 +1617,13 @@ function drl.register_beings()
 			},
 		},
 
+		properties = {
+			MASTER  = true,
+			IS_BOSS = false,
+		},
+
 		OnCreate = function (self)
 			level.flags[ LF_NONUKE ] = true
-			self:add_property( "master", true )
-			self:add_property( "is_boss", false )
 		end,
 
 		OnAction = function (self)
@@ -1641,7 +1646,7 @@ function drl.register_beings()
 			player:add_medal("dragonslayer2")
 			if CHALLENGE == "challenge_a100" then
 				level.map[ self.position ] = "stairs"
-			elseif self.is_boss then
+			elseif self.IS_BOSS then
 				level:explosion( self.position, { range = 17, delay = 40, color = RED, sound_id = "barrel.explode", flags = {EFALWAYSVISIBLE} } )
 				for b in level:beings() do
 					if not ( b:is_player() ) and b.id ~= "apostle" then

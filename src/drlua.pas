@@ -676,7 +676,6 @@ begin
 
   LuaSystem.GetClassInfo( TBeing ).RegisterHooks( BeingHooks, HookNames );
   LuaSystem.GetClassInfo( TPlayer ).RegisterHooks( BeingHooks, HookNames );
-  LuaSystem.GetClassInfo( TItem ).RegisterHooks( ItemHooks, HookNames );
 
   ReadWAD;
 

@@ -760,9 +760,9 @@ begin
   iEntry.QSlot := 0;
 
   iEntry.Desc  := LuaSystem.Get(['items',aItem.ID,'desc'], '');
-  if aItem.Flags[ IF_SETITEM ] then
+  iSet := LuaSystem.Get( ['items',aItem.ID,'set'], '' );
+  if iSet <> '' then
   begin
-    iSet        := LuaSystem.Get(['items',aItem.ID,'set']);
     iEntry.Desc := Format('{!%s} (1/%d)', [
       AnsiString( LuaSystem.Get(['itemsets',iSet,'name']) ),
       Byte( LuaSystem.Get(['itemsets',iSet,'trigger']) ) ])

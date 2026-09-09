@@ -65,7 +65,7 @@ function drl.register_unique_items()
 		OnHitBeing = function(self,being,target)
 			target:play_sound("phasing")
 			being:msg("Suddenly "..target:get_name(true,false).." crashes!")
-			if target:has_property("is_boss") and target.is_boss then
+			if target:has_property("IS_BOSS") and target.IS_BOSS then
 				target.scount = math.max( target.scount - 1000, 1000 )
 			else
 				target.scount = math.max( target.scount - 2000, 1000 )
@@ -105,9 +105,7 @@ function drl.register_unique_items()
 		missprite     = SPRITE_PLASMASHOT,
 		hitsprite     = SPRITE_BLAST,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_unullpointer_hit" )
-		end,
+		perks = { "perk_unullpointer_hit" },
 	}
 
 	register_item "umodstaff"
@@ -122,20 +120,21 @@ function drl.register_unique_items()
 		flags    = { IF_UNIQUE },
 
 		type       = ITEMTYPE_PACK,
-
-		OnUse = function(self,being)
-			if not being:is_player() then return false end
-			if being:is_perk( "tired" ) then
-				ui.msg("You're too tired to use it now.")
+		runtime = {
+			OnUse = function(self,being)
+				if not being:is_player() then return false end
+				if being:is_perk( "tired" ) then
+					ui.msg("You're too tired to use it now.")
+					return false
+				end;
+				being:add_perk( "tired" )
+				being:play_sound("phasing")
+				ui.msg("You feel yanked in a non-existing direction!")
+				being:phase()
+				being.scount = being.scount - 1000
 				return false
-			end;
-			being:add_perk( "tired" )
-			being:play_sound("phasing")
-			ui.msg("You feel yanked in a non-existing direction!")
-			being:phase()
-			being.scount = being.scount - 1000
-			return false
-		end,
+			end,
+		},
 	}
 
 	register_perk "perk_ubutcher_kill"
@@ -169,10 +168,8 @@ function drl.register_unique_items()
 		damagetype  = DAMAGE_MELEE,
 		group       = "melee",
 
-		OnCreate = function(self)
-			self:add_property( "BLADE", true )
-			self:add_perk( "perk_ubutcher_kill" )
-		end,
+		properties = { BLADE = true },
+		perks      = { "perk_ubutcher_kill" },
 	}
 
 	register_item "umjoll"
@@ -201,8 +198,9 @@ function drl.register_unique_items()
 		missprite  = SPRITE_CLEAVER,
 		hitsprite  = SPRITE_BLAST,
 
+		perks = { "perk_altfire_throw" },
+
 		OnCreate = function(self)
-			self:add_perk( "perk_altfire_throw" )
 			self.flags[ IF_THROWDROP ] = false
 		end,
 	}
@@ -254,10 +252,8 @@ function drl.register_unique_items()
 		damagetype  = DAMAGE_SPLASMA,
 		group       = "melee",
 
-		OnCreate = function(self)
-			self:add_perk( "perk_usubtle_altfire" )
-			self:add_property( "BLADE", true )
-		end,
+		properties = { BLADE = true },
+		perks      = { "perk_usubtle_altfire" },
 	}
 
 	register_perk "perk_uni_trigun_altreload"
@@ -312,10 +308,10 @@ function drl.register_unique_items()
 		missprite     = SPRITE_SHOT,
 		hitsprite     = SPRITE_BLAST,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_altfire_aimed" )
-			self:add_perk( "perk_uni_trigun_altreload" )
-		end,
+		perks = {
+			"perk_altfire_aimed",
+			"perk_uni_trigun_altreload",
+		},
 	}
 
 	register_item "ujackal"
@@ -351,9 +347,7 @@ function drl.register_unique_items()
 			color = RED,
 		},
 
-		OnCreate = function(self)
-			self:add_perk( "perk_altfire_aimed" )
-		end,
+		perks = { "perk_altfire_aimed" },
 	}
 
 	register_perk "perk_umega_kill"
@@ -463,9 +457,7 @@ function drl.register_unique_items()
 		missprite     = SPRITE_SHOT,
 		hitsprite     = SPRITE_BLAST,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_umega_kill" )
-		end,
+		perks = { "perk_umega_kill" },
 	}
 
 	register_medal "cleric"
@@ -534,16 +526,16 @@ function drl.register_unique_items()
 		missprite     = SPRITE_SHOT,
 		hitsprite     = SPRITE_BLAST,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_uberetta_altreload" )
-			self:add_perk( "perk_uberetta_kill" )
-		end,
+		perks = {
+			"perk_uberetta_altreload",
+			"perk_uberetta_kill",
+		},
 	}
 
 	register_perk "perk_uberetta_kill"
 	{
 		OnKill = function (self,being,target)
-			if target.id == "mastermind" and target.is_boss then
+			if target.id == "mastermind" and target.IS_BOSS then
 				being:add_medal("cleric")
 			end
 		end,
@@ -596,9 +588,7 @@ function drl.register_unique_items()
 		falloff       = 5,
 		knockback     = 8,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_usjack_altreload" )
-		end,
+		perks = { "perk_usjack_altreload" },
 	}
 
 	register_item "ufshotgun"
@@ -721,8 +711,9 @@ function drl.register_unique_items()
 			content = "acid",
 		},
 
+		perks = { "perk_uacid" },
+
 		OnCreate = function( self )
-			self:add_perk( "perk_uacid" )
 			self.ammo = 0
 		end,
 	}
@@ -764,10 +755,10 @@ function drl.register_unique_items()
 			knockback = 16,
 		},
 
-		OnCreate = function(self)
-			self:add_perk( "perk_altfire_spool" )
-			self:add_perk( "perk_spool" )
-		end,
+		perks = {
+			"perk_altfire_spool",
+			"perk_spool",
+		},
 	}
 
 	register_item "urailgun"
@@ -824,8 +815,9 @@ function drl.register_unique_items()
 		armor      = 3,
 		movemod    = 20,
 
+		perks = { "perk_armor_recharge" },
+
 		OnCreate = function(self)
-			self:add_perk( "perk_armor_recharge" )
 			self.pp_recharge.delay  = 50
 			self.pp_recharge.amount = 1
 			self.pp_recharge.tick   = 5
@@ -851,9 +843,7 @@ function drl.register_unique_items()
 
 		resist = { shrapnel = 20, melee = 20, bullet = 20, acid = 20, fire = 20, plasma = 20  },
 
-		OnCreate = function(self)
-			self:add_perk( "perk_cursed" )
-		end,
+		perks = { "perk_cursed" },
 	}
 
 	register_item "unarmor"
@@ -873,9 +863,7 @@ function drl.register_unique_items()
 		movemod    = 10,
 		knockmod   = -20,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_necrocharge" )
-		end,
+		perks = { "perk_necrocharge" },
 	}
 
 	register_perk "perk_umedparmor"
@@ -917,9 +905,7 @@ function drl.register_unique_items()
 		armor      = 6,
 		movemod    = -15,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_umedparmor" )
-		end,
+		perks = { "perk_umedparmor" },
 	}
 
 	register_perk "perk_ulavaarmor"
@@ -962,9 +948,7 @@ function drl.register_unique_items()
 		movemod    = -15,
 		knockmod   = -20,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_ulavaarmor" )
-		end,
+		perks = { "perk_ulavaarmor" },
 	}
 
 	register_item "uenviroboots"
@@ -1004,8 +988,9 @@ function drl.register_unique_items()
 		armor      = 6,
 		movemod    = 20,
 
+		perks = { "perk_armor_recharge" },
+
 		OnCreate = function(self)
-			self:add_perk( "perk_armor_recharge" )
 			self.pp_recharge.delay  = 50
 			self.pp_recharge.amount = 1
 			self.pp_recharge.tick   = 5
@@ -1047,14 +1032,15 @@ function drl.register_unique_items()
 		flags    = { IF_UNIQUE },
 
 		type       = ITEMTYPE_PACK,
-
-		OnUse = function(self,being)
-			ui.blink(LIGHTRED,50)
-			ui.blink(RED,50,50)
-			ui.blink(LIGHTRED,50,100)
-			level:explosion( being.position , { range = 15, delay = 80, damage = "20d10", color = RED, sound_id = "barrel.explode", damage_type = DAMAGE_FIRE, flags = { EFSELFSAFE } }, self )
-			return true
-		end,
+		runtime = {
+			OnUse = function(self,being)
+				ui.blink(LIGHTRED,50)
+				ui.blink(RED,50,50)
+				ui.blink(LIGHTRED,50,100)
+				level:explosion( being.position , { range = 15, delay = 80, damage = "20d10", color = RED, sound_id = "barrel.explode", damage_type = DAMAGE_FIRE, flags = { EFSELFSAFE } }, self )
+				return true
+			end,
+		},
 	}
 
 	register_item "aarmor"
@@ -1126,10 +1112,10 @@ function drl.register_unique_items()
 
 		resist = { shrapnel = 50, melee = 50, bullet = 50 },
 
-		OnCreate = function(self)
-			self:add_perk( "perk_cursed" )
-			self:add_perk( "perk_uberarmor" )
-		end,
+		perks = {
+			"perk_cursed",
+			"perk_uberarmor",
+		},
 	}
 
 	register_medal "dragonslayer"
@@ -1154,7 +1140,7 @@ function drl.register_unique_items()
 	register_perk "perk_udragon"
 	{
 		OnKill = function (self,being,target)
-			if target.id == "mastermind" and target.is_boss then
+			if target.id == "mastermind" and target.IS_BOSS then
 				being:add_medal("dragonslayer")
 			end
 		end,
@@ -1235,11 +1221,11 @@ function drl.register_unique_items()
 		damage      = "9d9",
 		damagetype  = DAMAGE_MELEE,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_cursed" )
-			self:add_perk( "perk_udragon_altfire" )
-			self:add_property( "BLADE", true )
-			self:add_perk( "perk_udragon" )
-		end,
+		properties = { BLADE = true },
+		perks      = {
+			"perk_cursed",
+			"perk_udragon_altfire",
+			"perk_udragon",
+		},
 	}
 end

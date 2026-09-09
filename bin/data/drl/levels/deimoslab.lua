@@ -81,29 +81,29 @@ register_level "deimos_lab"
 
 			color_id = false,
 			sound_id = "lever",
-
-			OnUse = function(self,being)
-				statistics.levers_pulled = statistics.levers_pulled + 1
-				if level.status > 5 then return true end
-				level.status = level.status + 1
-				if level.status == 2 then
-					ui.msg("The walls rise!")
-					level:transmute( "rwall", "acid" )
-					level:transmute( "acid", "bridge", level.data.bridge )
-					level:recalc_fluids()
-				elseif level.status == 6 then
-					ui.msg("The vault opens!")
-					level:play_sound( "shambler.act", player.position, 100 )
-					ui.msg("You hear a loud wail!")
-					level:transmute( "gwall", "floor", level.data.vault1 )
-					level:drop_being("shambler",coord(39,10))
-					level:drop_being("shambler",coord(40,11))
-					level:recalc_fluids()
-				end
-				return true
-			end,
-
-			OnDescribe = item.get_lever_description,
+			perks   = { "perk_lever_description" },
+			runtime = {
+				OnUse = function(self,being)
+					statistics.levers_pulled = statistics.levers_pulled + 1
+					if level.status > 5 then return true end
+					level.status = level.status + 1
+					if level.status == 2 then
+						ui.msg("The walls rise!")
+						level:transmute( "rwall", "acid" )
+						level:transmute( "acid", "bridge", level.data.bridge )
+						level:recalc_fluids()
+					elseif level.status == 6 then
+						ui.msg("The vault opens!")
+						level:play_sound( "shambler.act", player.position, 100 )
+						ui.msg("You hear a loud wail!")
+						level:transmute( "gwall", "floor", level.data.vault1 )
+						level:drop_being("shambler",coord(39,10))
+						level:drop_being("shambler",coord(40,11))
+						level:recalc_fluids()
+					end
+					return true
+				end,
+			},
 		}
 	end,
 

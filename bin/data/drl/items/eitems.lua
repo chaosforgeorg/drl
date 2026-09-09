@@ -66,19 +66,20 @@ function drl.register_exotic_items()
 		type        = ITEMTYPE_MELEE,
 		damage      = "4d6",
 		damagetype  = DAMAGE_MELEE,
-
-		OnFirstPickup = function(self,being)
-			if not being:is_player() then return end
-			ui.blink(LIGHTRED,100)
-			-- XXX Should this be given on first pick-up ALWAYS or only when in chain court?
-			being:add_perk( "berserk",200*diff[DIFFICULTY].powerfactor)
-			if not being.flags[ BF_NOHEAL ] and being.hp < being.hpmax then
-				being.hp = being.hpmax
+		runtime = {
+			OnFirstPickup = function(self,being)
+				if not being:is_player() then return end
+				ui.blink(LIGHTRED,100)
+				-- XXX Should this be given on first pick-up ALWAYS or only when in chain court?
+				being:add_perk( "berserk",200*diff[DIFFICULTY].powerfactor)
+				if not being.flags[ BF_NOHEAL ] and being.hp < being.hpmax then
+					being.hp = being.hpmax
+				end
+				being:remove_perk( "tired" )
+				being:quick_weapon("chainsaw")
+				ui.msg("BLOOD! BLOOD FOR ARMOK, GOD OF BLOOD!")
 			end
-			being:remove_perk( "tired" )
-			being:quick_weapon("chainsaw")
-			ui.msg("BLOOD! BLOOD FOR ARMOK, GOD OF BLOOD!")
-		end
+		},
 	}
 
 	register_item "bfg9000"
@@ -116,18 +117,17 @@ function drl.register_exotic_items()
 			knockback = 16,
 		},
 
-		OnCreate = function(self)
-			self:add_perk( "perk_altreload_overcharge" )
-		end,
-
-		OnFirstPickup = function(self,being)
-			if not being:is_player() then return end
-			being:quick_weapon("bfg9000")
-			ui.blink(LIGHTBLUE,100)
-			ui.blink(WHITE,100,100)
-			ui.blink(LIGHTBLUE,100,200)
-			ui.msg("HELL, NOW YOU'LL GET LOOSE!")
-		end,
+		perks   = { "perk_altreload_overcharge" },
+		runtime = {
+			OnFirstPickup = function(self,being)
+				if not being:is_player() then return end
+				being:quick_weapon("bfg9000")
+				ui.blink(LIGHTBLUE,100)
+				ui.blink(WHITE,100,100)
+				ui.blink(LIGHTBLUE,100,200)
+				ui.msg("HELL, NOW YOU'LL GET LOOSE!")
+			end,
+		},
 	}
 
 	-- rest of the exotic weapons
@@ -160,9 +160,12 @@ function drl.register_exotic_items()
 		missprite     = SPRITE_SHOT,
 		hitsprite     = SPRITE_BLAST,
 
+		perks = {
+			"perk_altfire_aimed",
+			"perk_weapon_recharge",
+		},
+
 		OnCreate = function(self)
-			self:add_perk( "perk_altfire_aimed" )
-			self:add_perk( "perk_weapon_recharge" )
 			self.pp_recharge.delay  = 30
 			self.pp_recharge.amount = 1
 		end,
@@ -196,9 +199,7 @@ function drl.register_exotic_items()
 		missprite     = SPRITE_SHOT,
 		hitsprite     = SPRITE_BLAST,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_altfire_aimed" )
-		end,
+		perks = { "perk_altfire_aimed" },
 	}
 
 	register_item "uashotgun"
@@ -225,9 +226,7 @@ function drl.register_exotic_items()
 		range         = 15,
 		hitsprite     = SPRITE_BLAST,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_altreload_full" )
-		end,
+		perks = { "perk_altreload_full" },
 	}
 
 	register_item "upshotgun"
@@ -318,10 +317,10 @@ function drl.register_exotic_items()
 		},
 		hitsprite     = SPRITE_BLAST,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_altfire_spool" )
-			self:add_perk( "perk_spool" )
-		end,
+		perks = {
+			"perk_altfire_spool",
+			"perk_spool",
+		},
 	}
 
 	register_item "utristar"
@@ -390,10 +389,10 @@ function drl.register_exotic_items()
 		missprite     = SPRITE_SHOT,
 		hitsprite     = SPRITE_BLAST,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_altfire_spool" )
-			self:add_perk( "perk_spool" )
-		end,
+		perks = {
+			"perk_altfire_spool",
+			"perk_spool",
+		},
 	}
 
 	register_item "umbazooka"
@@ -429,10 +428,10 @@ function drl.register_exotic_items()
 			color 	= RED,
 		},
 
-		OnCreate = function(self)
-			self:add_perk( "perk_altfire_rocketjump" )
-			self:add_perk( "perk_altreload_full" )
-		end,
+		perks = {
+			"perk_altfire_rocketjump",
+			"perk_altreload_full",
+		},
 	}
 
 	register_item "unplasma"
@@ -464,11 +463,14 @@ function drl.register_exotic_items()
 		missprite     = SPRITE_PLASMASHOT,
 		hitsprite     = SPRITE_BLAST,
 
+		perks = {
+			"perk_altfire_spool",
+			"perk_spool",
+			"perk_altreload_nuke",
+			"perk_weapon_recharge",
+		},
+
 		OnCreate = function(self)
-			self:add_perk( "perk_altfire_spool" )
-			self:add_perk( "perk_spool" )
-			self:add_perk( "perk_altreload_nuke" )
-			self:add_perk( "perk_weapon_recharge" )
 			self.pp_recharge.delay  = 40
 			self.pp_recharge.tick   = 2
 		end,
@@ -511,9 +513,12 @@ function drl.register_exotic_items()
 			knockback = 16,
 		},
 
+		perks = {
+			"perk_altreload_nuke",
+			"perk_weapon_recharge",
+		},
+
 		OnCreate = function(self)
-			self:add_perk( "perk_altreload_nuke" )
-			self:add_perk( "perk_weapon_recharge" )
 			self.pp_recharge.delay  = 0
 			self.pp_recharge.tick   = 5
 			self.pp_recharge.amount = 1
@@ -583,10 +588,10 @@ function drl.register_exotic_items()
 		missprite     = SPRITE_PLASMASHOT,
 		hitsprite     = SPRITE_BLAST,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_utrans_altfire" )
-			self:add_perk( "perk_utrans_hit" )
-		end,
+		perks = {
+			"perk_utrans_altfire",
+			"perk_utrans_hit",
+		},
 	}
 
 	register_item "unapalm"
@@ -761,9 +766,7 @@ function drl.register_exotic_items()
 		armor      = 2,
 		movemod    = -15,
 
-		OnCreate = function(self)
-			self:add_perk( "perk_umedarmor" )
-		end,
+		perks = { "perk_umedarmor" },
 	}
 
 	register_item "uduelarmor"
@@ -945,23 +948,38 @@ function drl.register_exotic_items()
 
 		type       = ITEMTYPE_PACK,
 		mod_letter = "F",
-
-		OnUseCheck = function(self,being)
-			local function filter( item )
-				if item.itype ~= ITEMTYPE_RANGED then return false end
-				if item.group ~= "shotgun" and ( item.shots >= 3 ) and ( not item.flags[ IF_SPREAD ]) then
-					return true
-				elseif ( item.radius >= 3 ) or ( item.flags[ IF_SPREAD ] and ( item.radius >= 2 ) ) then
-					return true
-				else
-					return false
+		runtime = {
+			OnUseCheck = function(self,being)
+				local function filter( item )
+					if item.itype ~= ITEMTYPE_RANGED then return false end
+					if item.group ~= "shotgun" and ( item.shots >= 3 ) and ( not item.flags[ IF_SPREAD ]) then
+						return true
+					elseif ( item.radius >= 3 ) or ( item.flags[ IF_SPREAD ] and ( item.radius >= 2 ) ) then
+						return true
+					else
+						return false
+					end
 				end
-			end
-			local item, result = being:pick_item_to_mod( self, filter )
-			if not result then return false end
-			if item ~= nil then self:add_property("chosen_item", item) end
-			return true
-		end,
+				local item, result = being:pick_item_to_mod( self, filter )
+				if not result then return false end
+				if item ~= nil then self:add_property("chosen_item", item) end
+				return true
+			end,
+
+			OnUse = function(self,being)
+				if not self:has_property( "chosen_item" ) then return true end
+				local item = self.chosen_item
+				self:remove_property("chosen_item")
+				if item.group ~= "shotgun" and ( item.shots >= 3 ) and ( not item.flags[ IF_SPREAD ]) then
+					item.shots = item.shots + 2
+				elseif ( item.radius >= 3 ) or ( item.flags[ IF_SPREAD ] and ( item.radius >= 2 ) ) then
+					item.radius = item.radius + 2
+				end
+				ui.msg( "You upgrade your weapon!" )
+				item:add_mod( 'F', being.TECH_BONUS )
+				return true
+			end,
+		},
 
 		OnModDescribe = function( self, item )
 			if item.group ~= "shotgun" and ( item.shots >= 3 ) and ( not item.flags[ IF_SPREAD ]) then
@@ -972,19 +990,6 @@ function drl.register_exotic_items()
 			return "unknown"
 		end,
 
-		OnUse = function(self,being)
-			if not self:has_property( "chosen_item" ) then return true end
-			local item = self.chosen_item
-			self:remove_property("chosen_item")
-			if item.group ~= "shotgun" and ( item.shots >= 3 ) and ( not item.flags[ IF_SPREAD ]) then
-				item.shots = item.shots + 2
-			elseif ( item.radius >= 3 ) or ( item.flags[ IF_SPREAD ] and ( item.radius >= 2 ) ) then
-				item.radius = item.radius + 2
-			end
-			ui.msg( "You upgrade your weapon!" )
-			item:add_mod( 'F', being.techbonus )
-			return true
-		end,
 	}
 
 	register_item "umod_sniper"
@@ -1002,16 +1007,36 @@ function drl.register_exotic_items()
 
 		type       = ITEMTYPE_PACK,
 		mod_letter = "S",
+		runtime = {
+			OnUseCheck = function(self,being)
+				local function filter( item )
+					return item.itype == ITEMTYPE_RANGED
+				end
+				local item, result = being:pick_item_to_mod( self, filter )
+				if not result then return false end
+				if item ~= nil then self:add_property("chosen_item", item) end
+				return true
+			end,
 
-		OnUseCheck = function(self,being)
-			local function filter( item )
-				return item.itype == ITEMTYPE_RANGED
-			end
-			local item, result = being:pick_item_to_mod( self, filter )
-			if not result then return false end
-			if item ~= nil then self:add_property("chosen_item", item) end
-			return true
-		end,
+			OnUse = function(self,being)
+				if not self:has_property( "chosen_item" ) then return true end
+				local item = self.chosen_item
+				self:remove_property("chosen_item")
+				-- A little easter egg for applying S-mod on shotgun/melee
+				if item.group == "shotgun" or item.itype ~= ITEMTYPE_RANGED then
+					ui.msg( "You suddenly feel a little silly." )
+				else
+					ui.msg( "You upgrade your weapon!" )
+				end
+				if item.flags[IF_FARHIT] == true then
+					item.flags[IF_UNSEENHIT] = true
+				else
+					item.flags[IF_FARHIT] = true
+				end
+				item:add_mod( 'S', being.TECH_BONUS )
+				return true
+			end,
+		},
 
 		OnModDescribe = function( self, item )
 			if item.flags[IF_FARHIT] == true then
@@ -1022,24 +1047,6 @@ function drl.register_exotic_items()
 			return "unknown"
 		end,
 
-		OnUse = function(self,being)
-			if not self:has_property( "chosen_item" ) then return true end
-			local item = self.chosen_item
-			self:remove_property("chosen_item")
-			-- A little easter egg for applying S-mod on shotgun/melee
-			if item.group == "shotgun" or item.itype ~= ITEMTYPE_RANGED then
-				ui.msg( "You suddenly feel a little silly." )
-			else
-				ui.msg( "You upgrade your weapon!" )
-			end
-			if item.flags[IF_FARHIT] == true then
-				item.flags[IF_UNSEENHIT] = true
-			else
-				item.flags[IF_FARHIT] = true
-			end
-			item:add_mod( 'S', being.techbonus )
-			return true
-		end,
 	}
 
 	register_item "umod_nano"
@@ -1057,21 +1064,58 @@ function drl.register_exotic_items()
 
 		type       = ITEMTYPE_PACK,
 		mod_letter = "N",
+		runtime = {
+			OnUseCheck = function(self,being)
+				local function filter( item )
+					if item.itype == ITEMTYPE_MELEE then return false end
+					if item:has_property("pp_recharge") then
+						local r = item.pp_recharge
+						if r.delay == 0 and r.amount >= item.ammomax then return false end
+					end
+					return true
+				end
+				local item, result = being:pick_item_to_mod( self, filter )
+				if not result then return false end
+				if item ~= nil then self:add_property("chosen_item", item) end
+				return true
+			end,
 
-		OnUseCheck = function(self,being)
-			local function filter( item )
-				if item.itype == ITEMTYPE_MELEE then return false end
+			OnUse = function(self,being)
+				if not self:has_property( "chosen_item" ) then return true end
+				local item = self.chosen_item
+				self:remove_property("chosen_item")
+				ui.msg( "You upgrade your gear!" )
+				item:add_mod( 'N', being.TECH_BONUS )
 				if item:has_property("pp_recharge") then
 					local r = item.pp_recharge
-					if r.delay == 0 and r.amount >= item.ammomax then return false end
+					if r.delay == 0 then
+						if r.tick == 10 then
+							r.tick = 5
+						elseif r.tick == 5 then
+							r.tick = 3
+						elseif r.tick == 3 then
+							r.tick = 1
+						else
+							r.amount = r.amount + 1
+						end
+					else
+						r.delay = math.max(0, r.delay - 50)
+					end
+				else
+					if item.itype == ITEMTYPE_ARMOR or item.itype == ITEMTYPE_BOOTS then
+						item:add_perk( "perk_armor_recharge" )
+						item.pp_recharge.delay  = 50
+						item.pp_recharge.amount = 1
+						item.pp_recharge.tick   = 5
+					elseif item.itype == ITEMTYPE_RANGED then
+						item:add_perk( "perk_weapon_recharge" )
+						item.pp_recharge.delay  = 50
+						item.pp_recharge.amount = 1
+					end
 				end
 				return true
-			end
-			local item, result = being:pick_item_to_mod( self, filter )
-			if not result then return false end
-			if item ~= nil then self:add_property("chosen_item", item) end
-			return true
-		end,
+			end,
+		},
 
 		OnModDescribe = function( self, item )
 			if item:has_property("pp_recharge") then
@@ -1101,41 +1145,6 @@ function drl.register_exotic_items()
 			return "unknown"
 		end,
 
-		OnUse = function(self,being)
-			if not self:has_property( "chosen_item" ) then return true end
-			local item = self.chosen_item
-			self:remove_property("chosen_item")
-			ui.msg( "You upgrade your gear!" )
-			item:add_mod( 'N', being.techbonus )
-			if item:has_property("pp_recharge") then
-				local r = item.pp_recharge
-				if r.delay == 0 then
-					if r.tick == 10 then
-						r.tick = 5
-					elseif r.tick == 5 then
-						r.tick = 3
-					elseif r.tick == 3 then
-						r.tick = 1
-					else
-						r.amount = r.amount + 1
-					end
-				else
-					r.delay = math.max(0, r.delay - 50)
-				end
-			else
-				if item.itype == ITEMTYPE_ARMOR or item.itype == ITEMTYPE_BOOTS then
-					item:add_perk( "perk_armor_recharge" )
-					item.pp_recharge.delay  = 50
-					item.pp_recharge.amount = 1
-					item.pp_recharge.tick   = 5
-				elseif item.itype == ITEMTYPE_RANGED then
-					item:add_perk( "perk_weapon_recharge" )
-					item.pp_recharge.delay  = 50
-					item.pp_recharge.amount = 1
-				end
-			end
-			return true
-		end,
 	}
 
 	register_item "umod_onyx"
@@ -1153,31 +1162,33 @@ function drl.register_exotic_items()
 
 		type       = ITEMTYPE_PACK,
 		mod_letter = "O",
+		runtime = {
+			OnUseCheck = function(self,being)
+				local function filter( item )
+					return ( item.itype == ITEMTYPE_ARMOR or item.itype == ITEMTYPE_BOOTS )
+				end
+				local item, result = being:pick_item_to_mod( self, filter )
+				if not result then return false end
+				if item ~= nil then self:add_property( "chosen_item", item ) end
+				return true
+			end,
 
-		OnUseCheck = function(self,being)
-			local function filter( item )
-				return ( item.itype == ITEMTYPE_ARMOR or item.itype == ITEMTYPE_BOOTS )
-			end
-			local item, result = being:pick_item_to_mod( self, filter )
-			if not result then return false end
-			if item ~= nil then self:add_property( "chosen_item", item ) end
-			return true
-		end,
+			OnUse = function(self,being)
+				if not self:has_property( "chosen_item" ) then return true end
+				local item = self.chosen_item
+				self:remove_property("chosen_item")
+				ui.msg( "You upgrade your gear!" )
+				item.durability = 100
+				item.flags[ IF_NODURABILITY ] = true
+				item:add_mod( 'O', being.TECH_BONUS )
+				return true
+			end,
+		},
 
 		OnModDescribe = function( self, item )
 			return "make indestructible"
 		end,
 
-		OnUse = function(self,being)
-			if not self:has_property( "chosen_item" ) then return true end
-			local item = self.chosen_item
-			self:remove_property("chosen_item")
-			ui.msg( "You upgrade your gear!" )
-			item.durability = 100
-			item.flags[ IF_NODURABILITY ] = true
-			item:add_mod( 'O', being.techbonus )
-			return true
-		end,
 	}
 
 	register_item "uswpack"
@@ -1194,12 +1205,13 @@ function drl.register_exotic_items()
 		flags    = { IF_EXOTIC },
 
 		type       = ITEMTYPE_PACK,
-
-		OnUse = function(self,being)
-			ui.blink(LIGHTRED,50)
-			level:explosion( being.position , { range = 6, delay = 50, damage = "10d10", color = RED, sound_id = "barrel.explode", flags = { EFSELFSAFE } }, self )
-			return true
-		end,
+		runtime = {
+			OnUse = function(self,being)
+				ui.blink(LIGHTRED,50)
+				level:explosion( being.position , { range = 6, delay = 50, damage = "10d10", color = RED, sound_id = "barrel.explode", flags = { EFSELFSAFE } }, self )
+				return true
+			end,
+		},
 	}
 
 	register_item "ubskull"
@@ -1216,20 +1228,21 @@ function drl.register_exotic_items()
 		flags    = { IF_EXOTIC },
 
 		type       = ITEMTYPE_PACK,
-
-		OnUse = function(self,being)
-			ui.blink(LIGHTRED,50)
-			local p = being.position
-			for c in area.around( p, 8 ):clamped( area.FULL ):coords() do
-				if coord.distance( c, p ) <= 8 and level:is_corpse( c ) then
-					level.map[ c ] = "bloodpool"
-					being:play_sound( "gib" )
-					being.hp = math.min( being.hp + 10, being.hpmax * 2 )
-					being:remove_perk( "tired" )
+		runtime = {
+			OnUse = function(self,being)
+				ui.blink(LIGHTRED,50)
+				local p = being.position
+				for c in area.around( p, 8 ):clamped( area.FULL ):coords() do
+					if coord.distance( c, p ) <= 8 and level:is_corpse( c ) then
+						level.map[ c ] = "bloodpool"
+						being:play_sound( "gib" )
+						being.hp = math.min( being.hp + 10, being.hpmax * 2 )
+						being:remove_perk( "tired" )
+					end
 				end
-			end
-			return true
-		end,
+				return true
+			end,
+		},
 	}
 
 	register_item "ufskull"
@@ -1246,19 +1259,20 @@ function drl.register_exotic_items()
 		flags    = { IF_EXOTIC },
 
 		type       = ITEMTYPE_PACK,
-
-		OnUse = function(self,being)
-			ui.blink(YELLOW,50)
-			local p = being.position
-			for c in area.around( p, 8 ):clamped( area.FULL ):coords() do
-				if coord.distance( c, p ) <= 8 and level:is_corpse( c ) then
-					level.map[ c ] = "bloodpool"
-					being:play_sound( "gib" )
-					level:explosion( c , { range = 3, delay = 50, damage = "7d7", color = RED, sound_id = "barrel.explode", flags = { EFSELFSAFE } }, self )
+		runtime = {
+			OnUse = function(self,being)
+				ui.blink(YELLOW,50)
+				local p = being.position
+				for c in area.around( p, 8 ):clamped( area.FULL ):coords() do
+					if coord.distance( c, p ) <= 8 and level:is_corpse( c ) then
+						level.map[ c ] = "bloodpool"
+						being:play_sound( "gib" )
+						level:explosion( c , { range = 3, delay = 50, damage = "7d7", color = RED, sound_id = "barrel.explode", flags = { EFSELFSAFE } }, self )
+					end
 				end
-			end
-			return true
-		end,
+				return true
+			end,
+		},
 	}
 
 	register_item "uhskull"
@@ -1275,24 +1289,25 @@ function drl.register_exotic_items()
 		flags    = { IF_EXOTIC },
 
 		type       = ITEMTYPE_PACK,
-
-		OnUse = function(self,being)
-			ui.blink(LIGHTRED,50)
-			local p = being.position
-			local count = 0
-			for c in area.around( p, 8 ):clamped( area.FULL ):coords() do
-				if coord.distance( c, p ) <= 8 and level:is_corpse( c ) then
-					level.map[ c ] = "bloodpool"
-					being:play_sound( "gib" )
-					count = count + 1
+		runtime = {
+			OnUse = function(self,being)
+				ui.blink(LIGHTRED,50)
+				local p = being.position
+				local count = 0
+				for c in area.around( p, 8 ):clamped( area.FULL ):coords() do
+					if coord.distance( c, p ) <= 8 and level:is_corpse( c ) then
+						level.map[ c ] = "bloodpool"
+						being:play_sound( "gib" )
+						count = count + 1
+					end
 				end
-			end
-			if count > 0 then
-				being:remove_perk( "tired" )
-				being:add_perk( "berserk", count * 30 )
-			end
-			return true
-		end,
+				if count > 0 then
+					being:remove_perk( "tired" )
+					being:add_perk( "berserk", count * 30 )
+				end
+				return true
+			end,
+		},
 	}
 
 end

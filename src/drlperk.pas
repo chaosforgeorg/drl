@@ -112,36 +112,43 @@ begin
 end;
 
 function TPerks.CallHook( aHook : Byte; const aParams : array of Const ) : Boolean;
-var i : Integer;
+var i    : Integer;
+    iUID : TUID;
 begin
   CallHook := False;
   if aHook in FHooks then
   begin
+    iUID := FOwner.UID;
     BeginIteration;
     for i := 0 to FList.Size-1 do
       if aHook in PerkData[FList[i].ID].Hooks then
         begin
           CallHook := True;
           LuaSystem.ProtectedCall( [ 'perks',FList[i].ID, Lua.HookName(aHook) ], ConcatConstArray( [FOwner], aParams ) );
+          // A callback may consume the owner and free this perk list.
+          if UIDs.Get( iUID ) = nil then Exit;
         end;
     EndIteration;
   end;
 end;
 
-function  TPerks.CallHookCheck( aHook : Byte; const aParams : array of Const ) : Boolean;
-var i : Integer;
+function TPerks.CallHookCheck( aHook : Byte; const aParams : array of Const ) : Boolean;
+var i    : Integer;
+    iUID : TUID;
 begin
   Result := True;
   if aHook in FHooks then
   begin
+    iUID := FOwner.UID;
     BeginIteration;
     for i := 0 to FList.Size-1 do
       if aHook in PerkData[FList[i].ID].Hooks then
-        if not LuaSystem.ProtectedCall( [ 'perks',FList[i].ID, HookNames[aHook] ], ConcatConstArray( [FOwner], aParams ) ) then
-        begin
-          Result := False;
-          Break;
-        end;
+      begin
+        Result := LuaSystem.ProtectedCall( [ 'perks',FList[i].ID, HookNames[aHook] ], ConcatConstArray( [FOwner], aParams ) );
+        // A check may destroy its owner; stop before touching the freed list.
+        if UIDs.Get( iUID ) = nil then Exit( False );
+        if not Result then Break;
+      end;
     EndIteration;
   end;
 end;

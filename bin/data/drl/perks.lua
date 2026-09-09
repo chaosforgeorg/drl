@@ -1,5 +1,13 @@
 function drl.register_perks()
 
+	register_perk "perk_pushable"
+	{
+		OnAct = function( self, c, being )
+			local push = c + (c - being.position)
+			level:push_feature( being, self, c, push, false, self:get_property( "WARN_HAZARD", false ) )
+		end,
+	}
+
 	-- Cursed item perk
 	register_perk "perk_cursed"
 	{

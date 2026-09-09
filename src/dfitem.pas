@@ -277,7 +277,7 @@ begin
   if aOnFloor and ( FProps.IType = ITEMTYPE_AMMO ) then
     FAmount := Round( FAmount * Double(LuaSystem.Get([ 'diff', DRL.Difficulty, 'ammofactor' ])) );
 
-  CallHook( Hook_OnCreate, [] );
+  LuaSystem.ProtectedRunHook( Self, 'OnCreate', [] );
   DRL.CallHook( Hook_OnCreate, [Self] );
 end;
 
@@ -521,12 +521,20 @@ begin
 end;
 
 function TItem.GetExtName( aLyingHere : Boolean ) : Ansistring;
-var iName : AnsiString;
+var iName  : AnsiString;
+    iPerks : TPerkList;
+    i      : Integer;
 begin
   iName := '';
-  if Hook_OnDescribe in FHooks then
+  if ( FPerks <> nil ) and ( Hook_OnDescribe in FPerks.Hooks ) then
   begin
-    iName := LuaSystem.ProtectedRunHook( Self, HookNames[Hook_OnDescribe], [] );
+    iPerks := FPerks.List;
+    for i := 0 to iPerks.Size - 1 do
+      if Hook_OnDescribe in PerkData[ iPerks[i].ID ].Hooks then
+      begin
+        iName := LuaSystem.ProtectedCall( [ 'perks', iPerks[i].ID, HookNames[Hook_OnDescribe] ], [ Self ] );
+        Break;
+      end;
   end;
   if iName = '' then iName := GetName( False );
 
@@ -602,7 +610,7 @@ end;
 function TItem.isUsable : boolean;
 begin
   Exit((FProps.IType = ITEMTYPE_URANGED) or
-    ((FProps.IType = ITEMTYPE_PACK) and (Hook_OnUse in FHooks)));
+    ((FProps.IType = ITEMTYPE_PACK) and HasHook( Hook_OnUse )));
 end;
 
 function TItem.isAmmoPack : boolean;
@@ -741,8 +749,20 @@ begin
   Result := 0;
 end;
 
-const lua_item_lib : array[0..6] of luaL_Reg = (
+function lua_item_is_usable( L : Plua_State ) : Integer; cdecl;
+var iState : TDRLLuaState;
+    iItem  : TItem;
+begin
+  iState.Init( L );
+  iItem := iState.ToObject( 1 ) as TItem;
+  if iItem = nil then Exit( 0 );
+  iState.Push( iItem.isUsable );
+  Result := 1;
+end;
+
+const lua_item_lib : array[0..7] of luaL_Reg = (
       ( name : 'new';           func : @lua_item_new),
+      ( name : 'is_usable';     func : @lua_item_is_usable),
       ( name : 'get_mod';       func : @lua_item_get_mod),
       ( name : 'set_mod';       func : @lua_item_set_mod),
       ( name : 'set_sprite';    func : @lua_item_set_sprite),

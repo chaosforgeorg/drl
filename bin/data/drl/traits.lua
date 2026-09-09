@@ -305,7 +305,7 @@ function drl.register_traits()
 		abbr   = "WK",
 
 		OnPick = function (being)
-			being.techbonus = being.techbonus + 1
+			being.TECH_BONUS = being.TECH_BONUS + 1
 		end,
 	}
 
@@ -693,7 +693,7 @@ function drl.register_traits()
 		master = true,
 
 		OnPick = function (being)
-			being.runningtime = being.runningtime * 2
+			being.RUNNING_TIME = being.RUNNING_TIME * 2
 			being:add_property( "NO_RUN_PENALTY" )
 		end,
 	}
@@ -707,7 +707,7 @@ function drl.register_traits()
 		master = true,
 
 		OnPick = function (being)
-			being.runningtime = math.floor( being.runningtime * 1.5 )
+			being.RUNNING_TIME = math.floor( being.RUNNING_TIME * 1.5 )
 		end,
 
 		OnPostMove = function( being )

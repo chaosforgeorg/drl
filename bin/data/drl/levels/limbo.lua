@@ -80,16 +80,16 @@ register_level "limbo"
 
 			color_id = false,
 			sound_id = "lever",
-
-			OnUse = function(self,being)
-				statistics.levers_pulled = statistics.levers_pulled + 1
-				level:transmute_by_flag( "blood", "bridge", LFMARKER1, area.FULL)
-				ui.msg("The west bridges rise!")
-				level:recalc_fluids()
-				return true
-			end,
-
-			OnDescribe = item.get_lever_description,
+			perks   = { "perk_lever_description" },
+			runtime = {
+				OnUse = function(self,being)
+					statistics.levers_pulled = statistics.levers_pulled + 1
+					level:transmute_by_flag( "blood", "bridge", LFMARKER1, area.FULL)
+					ui.msg("The west bridges rise!")
+					level:recalc_fluids()
+					return true
+				end,
+			},
 		}
 
 		register_item "lever_limboe"
@@ -106,16 +106,16 @@ register_level "limbo"
 
 			color_id = false,
 			sound_id = "lever",
-
-			OnUse = function(self,being)
-				statistics.levers_pulled = statistics.levers_pulled + 1
-				level:transmute_by_flag( "blood", "bridge", LFMARKER2, area.FULL)
-				ui.msg("The east bridges rise!")
-				level:recalc_fluids()
-				return true
-			end,
-
-			OnDescribe = item.get_lever_description,
+			perks   = { "perk_lever_description" },
+			runtime = {
+				OnUse = function(self,being)
+					statistics.levers_pulled = statistics.levers_pulled + 1
+					level:transmute_by_flag( "blood", "bridge", LFMARKER2, area.FULL)
+					ui.msg("The east bridges rise!")
+					level:recalc_fluids()
+					return true
+				end,
+			},
 		}
 	end,
 
