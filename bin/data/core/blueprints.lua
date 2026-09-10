@@ -429,6 +429,7 @@ core.register_blueprint "item"
 	properties     = { false, core.TTABLE },
 	resist         = { false, core.TTABLE },
 	tags           = { false, core.TTABLE, {} },
+	req_tag        = { false, core.TSTRING },
 	max            = { false, core.TNUMBER, 1 },
     amount         = { false, core.TNUMBER, 1 },
 	movemod        = { false, core.TNUMBER, 0 },
