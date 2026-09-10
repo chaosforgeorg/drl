@@ -1785,7 +1785,7 @@ begin
 
   if DRL.State = DSPlaying then
   begin
-    iLevel.CallHook( Hook_OnKill,[ Self, aKiller, aWeapon, iMeleeKill ] );
+    iLevel.CallHook( Hook_OnKill,[ Self, aKiller, aWeapon, iMeleeKill, aOverkill ] );
   end;
 
   if not aOverkill and not ( CF_BLOCKMOVE in Cells[ iLevel.Floor[ FPosition ] ].Flags ) then
