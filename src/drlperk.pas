@@ -126,7 +126,8 @@ begin
           CallHook := True;
           LuaSystem.ProtectedCall( [ 'perks',FList[i].ID, Lua.HookName(aHook) ], ConcatConstArray( [FOwner], aParams ) );
           // A callback may consume the owner and free this perk list.
-          if UIDs.Get( iUID ) = nil then Exit;
+          // Session-owned levels created before the UID store have UID 0.
+          if ( iUID <> 0 ) and ( UIDs.Get( iUID ) = nil ) then Exit;
         end;
     EndIteration;
   end;
@@ -146,7 +147,7 @@ begin
       begin
         Result := LuaSystem.ProtectedCall( [ 'perks',FList[i].ID, HookNames[aHook] ], ConcatConstArray( [FOwner], aParams ) );
         // A check may destroy its owner; stop before touching the freed list.
-        if UIDs.Get( iUID ) = nil then Exit( False );
+        if ( iUID <> 0 ) and ( UIDs.Get( iUID ) = nil ) then Exit( False );
         if not Result then Break;
       end;
     EndIteration;

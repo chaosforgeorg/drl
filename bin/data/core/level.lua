@@ -18,10 +18,13 @@ function level:flood( tile, flood_area )
 end
 
 
-function level:destroy_to( c, cell_id )
+function level:destroy_to( c, cell_id, opt_style )
 	local cell = cells[ level.map[ c ] ]
 	if not cell.flags[ CF_NOCHANGE ] then
 		level.map[ c ] = cell_id
+		if opt_style and opt_style > 0 then
+			level:set_raw_style( c, opt_style - 1 )
+		end
 		return true
 	end
 	return false

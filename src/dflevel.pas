@@ -1767,6 +1767,16 @@ begin
   Result := 1;
 end;
 
+function lua_level_respawn( L : Plua_State ) : Integer; cdecl;
+var iState : TDRLLuaState;
+    iLevel : TLevel;
+begin
+  iState.Init( L );
+  iLevel := iState.ToObject( 1 ) as TLevel;
+  iState.Push( iLevel.Respawn( iState.ToCoord( 2 ) ) );
+  Result := 1;
+end;
+
 function lua_level_drop_item(L: Plua_State): Integer; cdecl;
 var State : TDRLLuaState;
     iItem : TItem;
@@ -2150,9 +2160,10 @@ begin
   Result := 1;
 end;
 
-const lua_level_lib : array[0..25] of luaL_Reg = (
+const lua_level_lib : array[0..26] of luaL_Reg = (
       ( name : 'drop_item';  func : @lua_level_drop_item),
       ( name : 'drop_being'; func : @lua_level_drop_being),
+      ( name : 'respawn';    func : @lua_level_respawn),
       ( name : 'play_sound'; func : @lua_level_play_sound),
       ( name : 'nuke';       func : @lua_level_nuke),
       ( name : 'explosion';  func : @lua_level_explosion),
