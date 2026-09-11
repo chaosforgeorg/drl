@@ -169,6 +169,10 @@ function generator.place_dungen_tile( code, tile_object, tile_pos )
 		local tile_entry = code[ char ]
 		if type(tile_entry) ~= "number" then
 			local p = tile_pos + c - coord.UNIT
+			if tile_entry.precell then
+				level:set_cell( p, tile_entry.precell )
+				level:set_cell( p, tile_entry[1] )
+			end
 			if type(tile_entry) == "table" and #tile_entry > 1 then
 				level:set_cell( p, table.random_pick( tile_entry ) )
 			end
@@ -276,6 +280,49 @@ function generator.scatter_put(scatter_area,code,tile,good,count)
 		end
 		tries = tries - 1
 	until count == 0 or tries == 0
+end
+
+function generator.scatter_tiles( settings, amount )
+	assert( settings and #settings > 0, "no tiles for scatter_tiles!" )
+	amount = core.resolve_range( amount or settings.amount or 1 )
+	if amount <= 0 then return end
+	local style = generator.styles[ level.style ]
+	local floor_cell = settings.floor_cell or style.floor
+	local translation = {
+		["X"] = 0,
+		["#"] = style.wall,
+		["."] = style.floor,
+		["+"] = style.door,
+	}
+	for k,v in pairs( settings.trans or {} ) do translation[k] = v end
+	local pure_translation = generator.create_translation( translation )
+
+	local tiles = {}
+	for _,block in ipairs( settings ) do
+		tiles[ #tiles + 1 ] = generator.tile_new( level, block, pure_translation, true )
+	end
+
+	while amount > 0 and #tiles > 0 do
+		local index = math.random( #tiles )
+		local tile = tiles[ index ]
+		if not settings.no_flip then
+			tile:flip_random()
+		end
+		local tile_size = tile:get_size_coord()
+		local placed = false
+		for i = 1, 100 do
+			local c = area.FULL_SHRINKED:random_coord()
+			if level:scan( area( c, c + tile_size - coord.UNIT ), floor_cell ) then
+				generator.place_dungen_tile( translation, tile, c )
+				amount = amount - 1
+				placed = true
+				break
+			end
+		end
+		if not placed then
+			table.remove( tiles, index )
+		end
+	end
 end
 
 function generator.safe_empty_coord( a )
