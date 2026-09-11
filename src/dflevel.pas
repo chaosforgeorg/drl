@@ -1597,6 +1597,29 @@ procedure TLevel.UpdateAutoTarget( aAutoTarget : TAutoTarget; aBeing : TBeing; a
 var iCoord    : TCoord2D;
     iBeing    : TBeing;
     iLongMode : Boolean;
+
+  // This is only needed for iLongMode
+  function HasShotPath( aTarget : TCoord2D ) : Boolean;
+  var iRay   : TAssistedRay;
+      iCoord : TCoord2D;
+      iCover : TItem;
+  begin
+    iRay.Init( Self, aBeing.Position, aTarget, Distance( aBeing.Position, aTarget ), aBeing.Vision, aBeing.GetVisionMap );
+    repeat
+      iRay.Next;
+      iCoord := iRay.Current;
+      if not isProperCoord( iCoord ) then Exit( False );
+      if not isShotPassable( iCoord ) then
+      begin
+        if ( iCoord = aTarget ) or cellFlagSet( iCoord, CF_BLOCKSHOT ) then Exit( False );
+        iCover := GetItem( iCoord );
+        if ( iCover <> nil ) and iCover.Flags[ IF_BLOCKSHOT ] then Exit( False );
+      end;
+      if iCoord = aTarget then Exit( True );
+    until iRay.Done;
+    Exit( False );
+  end;
+
 begin
   iLongMode := (aBeing = Player) and (LF_BEINGSVISIBLE in FFlags) and ( not Player.Flags[ BF_DARKNESS ] );
   aAutoTarget.Clear( aBeing.Position );
@@ -1621,7 +1644,7 @@ begin
           if iLongMode then
           begin
             if ( Distance( aBeing.Position, iCoord ) > aRange ) or
-              ( not isEyeContact( aBeing.Position, iCoord ) ) then Continue;
+              ( not HasShotPath( iCoord ) ) then Continue;
           end
           else
             Continue;
