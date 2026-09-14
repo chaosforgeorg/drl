@@ -604,7 +604,7 @@ begin
 
     (IO as TDRLGFXIO).UpdateMinimap;
     RecalcFluids;
-    SpriteMap.NewShift := SpriteMap.ShiftValue( Player.Position );
+    (IO as TDRLGFXIO).ResetCamera( Player.Position );
   end;
 
   CallHook( Hook_OnEnterLevel,[FIndex,FID] );

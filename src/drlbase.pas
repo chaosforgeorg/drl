@@ -1410,6 +1410,8 @@ begin
       FLevel.Leave;
     end;
 
+    // Animation destructors may still access the outgoing level and its entities.
+    IO.ClearAnimations;
     if State <> DSSaving then
     begin
       Player.Score := Player.Score + 1000;

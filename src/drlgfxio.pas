@@ -59,6 +59,7 @@ type
     procedure SetTarget( aTarget : TCoord2D; aColor : Byte; aRange : Byte ); override;
     procedure SetAutoTarget( aTarget : TCoord2D ); override;
     procedure Focus( aCoord : TCoord2D ); override;
+    procedure ResetCamera( aCoord : TCoord2D );
     procedure FinishTargeting; override;
 
     // Gamepad
@@ -680,6 +681,14 @@ begin
       SpriteMap.NewShift := SpriteMap.ShiftValue( Player.Position + iDiff );
     end;
   end;
+end;
+
+procedure TDRLGFXIO.ResetCamera( aCoord : TCoord2D );
+begin
+  FMouseLock := True;
+  FGPRight.Init;
+  FGPCamera := 0.0;
+  SpriteMap.NewShift := SpriteMap.ShiftValue( aCoord );
 end;
 
 procedure TDRLGFXIO.FinishTargeting;
