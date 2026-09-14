@@ -261,19 +261,19 @@ begin
           begin
             LuaSystem.ProtectedCall( [ 'perks', ID, 'OnTick10' ], [ FOwner, iTime div 10 ] );
             // Perk owners include levels and items nested in inventories.
-            if UIDs.Get( iUID ) = nil then Exit;
+            if ( iUID <> 0 ) and UIDs.Get( iUID ) = nil then Exit;
           end;
     end;
   EndIteration;
   // Flushing deferred removals can destroy the owner and this perk list.
-  if UIDs.Get( iUID ) = nil then Exit;
+  if ( iUID <> 0 ) and UIDs.Get( iUID ) = nil then Exit;
   i := 0;
   while i < FList.Size do
     if FList[i].Time = 0
       then
       begin
         Expire( i, False );
-        if UIDs.Get( iUID ) = nil then Exit;
+        if ( iUID <> 0 ) and UIDs.Get( iUID ) = nil then Exit;
       end
       else Inc(i);
 end;
