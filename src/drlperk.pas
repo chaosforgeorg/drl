@@ -260,14 +260,21 @@ begin
           if Hook_OnTick10 in PerkData[ID].Hooks then
           begin
             LuaSystem.ProtectedCall( [ 'perks', ID, 'OnTick10' ], [ FOwner, iTime div 10 ] );
-            if not DRL.Level.isAlive( iUID ) then Exit;
+            // Perk owners include levels and items nested in inventories.
+            if UIDs.Get( iUID ) = nil then Exit;
           end;
     end;
   EndIteration;
+  // Flushing deferred removals can destroy the owner and this perk list.
+  if UIDs.Get( iUID ) = nil then Exit;
   i := 0;
   while i < FList.Size do
     if FList[i].Time = 0
-      then Expire( i, False )
+      then
+      begin
+        Expire( i, False );
+        if UIDs.Get( iUID ) = nil then Exit;
+      end
       else Inc(i);
 end;
 
@@ -322,7 +329,9 @@ var i       : Integer;
     iIdx    : Integer;
     iPerk   : Integer;
     iSilent : Boolean;
+    iUID    : TUID;
 begin
+  iUID := FOwner.UID;
   while Length( FExpireQueue ) > 0 do
   begin
     iPerk   := FExpireQueue[0].ID;
@@ -341,7 +350,10 @@ begin
       end;
 
     if iIdx >= 0 then
+    begin
       ExpireNow( iIdx, iSilent );
+      if UIDs.Get( iUID ) = nil then Exit;
+    end;
   end;
 end;
 
@@ -363,15 +375,21 @@ begin
 end;
 
 procedure TPerks.Clear;
-var i : Integer;
+var i    : Integer;
+    iUID : TUID;
 begin
+  iUID := FOwner.UID;
   if FList.Size > 0 then
   begin
     BeginIteration;
     for i := 0 to FList.Size - 1 do
       if Hook_OnRemove in PerkData[FList[i].ID].Hooks then
+      begin
         LuaSystem.ProtectedCall( [ 'perks', FList[i].ID, 'OnRemove' ], [FOwner, True] );
+        if UIDs.Get( iUID ) = nil then Exit;
+      end;
     EndIteration;
+    if UIDs.Get( iUID ) = nil then Exit;
     FList.Clear;
   end;
   FHooks := [];
