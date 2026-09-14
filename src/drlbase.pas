@@ -93,7 +93,7 @@ type TDRLSession = class(TVObject)
        FPlayerView      : TIOLayer;
        FPadMoveActive   : Boolean;
        FPadMoveNext     : QWord;
-       FLastFrameTime   : QWord;
+       FLastFrameTime   : DWord;
        FStore           : TStoreInterface;
        FPadMoved        : Boolean;
        FModules         : TDRLModules;
@@ -1373,17 +1373,18 @@ begin
           Continue;
         end;
         IO.FullUpdate;
-        FLastFrameTime := IO.Time;
+        FLastFrameTime := IO.Driver.GetMs;
         IO.Driver.Sleep(10);
       end;
       if State <> DSPlaying then Break;
 
       // Guarantee a render slice even when events arrive faster than we can drain them
       // (e.g. a drifting gamepad stick spamming VEVENT_PADAXIS keeps EventPending true).
-      if IO.Time - FLastFrameTime >= 16 then
+      // IO.Time only advances during updates; use the driver clock to avoid starvation.
+      if DWord( IO.Driver.GetMs - FLastFrameTime ) >= 16 then
       begin
         IO.FullUpdate;
-        FLastFrameTime := IO.Time;
+        FLastFrameTime := IO.Driver.GetMs;
       end;
 
       if not IO.Driver.PollEvent( iEvent ) then continue;
