@@ -352,7 +352,7 @@ begin
     if iIdx >= 0 then
     begin
       ExpireNow( iIdx, iSilent );
-      if UIDs.Get( iUID ) = nil then Exit;
+      if ( iUID <> 0 ) and ( UIDs.Get( iUID ) = nil ) then Exit;
     end;
   end;
 end;
@@ -386,10 +386,10 @@ begin
       if Hook_OnRemove in PerkData[FList[i].ID].Hooks then
       begin
         LuaSystem.ProtectedCall( [ 'perks', FList[i].ID, 'OnRemove' ], [FOwner, True] );
-        if UIDs.Get( iUID ) = nil then Exit;
+        if ( iUID <> 0 ) and ( UIDs.Get( iUID ) = nil ) then Exit;
       end;
     EndIteration;
-    if UIDs.Get( iUID ) = nil then Exit;
+    if ( iUID <> 0 ) and ( UIDs.Get( iUID ) = nil ) then Exit;
     FList.Clear;
   end;
   FHooks := [];
