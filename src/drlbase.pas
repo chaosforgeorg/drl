@@ -942,10 +942,17 @@ begin
 end;
 
 function TDRLSession.HandlePadMovement( aPressed : Boolean ) : Boolean;
-var iTarget : TCoord2D;
-    iCell   : Integer;
+var iTarget      : TCoord2D;
+    iCell        : Integer;
+    iRepeatDelay : DWord;
 begin
   Result := False;
+  if ( State <> DSPlaying ) or IO.IsModal
+    or ( not IO.ControllerActionHeld( CONTROLLER_MOVE ) ) then
+  begin
+    FPadMoveActive := False;
+    Exit( False );
+  end;
 
   if IO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT ) then
   begin // Move target mode
@@ -963,6 +970,12 @@ begin
     Exit( False );
   end;
 
+  // Match movement animation pacing, including movement cost and player speed.
+  iRepeatDelay := Player.VisualTime( Player.getMoveCost, AnimationSpeedMove );
+  if iRepeatDelay < PAD_REPEAT then iRepeatDelay := PAD_REPEAT;
+  if aPressed and ( iRepeatDelay < PAD_REPEAT_START ) then
+    iRepeatDelay := PAD_REPEAT_START;
+
   if aPressed then // normal mode
   begin
     if IO.GetPadLDir.NotZero
@@ -974,7 +987,6 @@ begin
         );
       end
       else Result := HandleCommand( TCommand.Create( COMMAND_WAIT ) );
-    FPadMoveNext := IO.Time + PAD_REPEAT_START;
   end
   else // repeat mode
   begin
@@ -991,9 +1003,12 @@ begin
           );
       end;
     end;
-    FPadMoveNext := IO.Time + PAD_REPEAT;
   end;
+  FPadMoveNext := IO.Time + iRepeatDelay;
+  // A nested prompt may have consumed the release while handling the command.
   FPadMoveActive := ( State = DSPlaying )
+    and ( not IO.IsModal )
+    and IO.ControllerActionHeld( CONTROLLER_MOVE )
     and ( Player.EnemiesInVision = 0 )
     and ( aPressed or (not FDamagedLastTurn) );
   Exit( Result );

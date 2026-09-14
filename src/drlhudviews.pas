@@ -268,6 +268,7 @@ end;
 
 constructor TMoreLayer.Create( aMore : Boolean = True );
 begin
+  VTIG_EventClear;
   if aMore
     then FPrompt := '[more] press <{L{$input_ok}}>...'
     else FPrompt := 'Press <{L{$input_ok}}>...';
@@ -277,7 +278,7 @@ end;
 procedure TMoreLayer.Update( aDTime : Integer; aActive : Boolean );
 begin
   VTIG_FreeLabel( FPrompt, Point( 3, 2 ), Yellow );
-  if VTIG_EventConfirm or VTIG_EventCancel then FFinished := True;
+  if aActive and ( VTIG_EventConfirm or VTIG_EventCancel ) then FFinished := True;
 end;
 
 function TMoreLayer.IsModal : Boolean;
