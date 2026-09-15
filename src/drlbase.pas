@@ -142,7 +142,7 @@ var DRL : TDRLSession;
 implementation
 
 uses {$IFDEF WINDOWS}windows,{$ELSE}unix,{$ENDIF} classes, sysutils, zstream,
-     vbindings, vdebug, vluastate, vstream,
+     vbindings, vdebug, vstream,
      dfmap, dfbeing, drlio, drlgfxio, drltextio, drlspritemap { remove }, drlplayerview, drlingamemenuview, drlhelpview, drlassemblyview, drlpagedview, drlrankupview, drlmainmenuview, drlhudviews, drlmessagesview, drlapplication, drlcontrollerbindings, dfplayer;
 
 const PAD_REPEAT_START = 400;
@@ -267,7 +267,6 @@ begin
   FStore := aStore;
   FPaths := aPaths;
   FGameSeed := 0;
-  LuaRNG := GameRNG;
   FParticles := TParticleStore.Create;
   FTargeting := TTargeting.Create(Self);
   Reset;
