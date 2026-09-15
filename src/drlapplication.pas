@@ -9,7 +9,7 @@ unit drlapplication;
 interface
 
 uses
-  SysUtils, vapp, viorl, vluasystem, vrlapp, vstoreinterface, vutil,
+  SysUtils, vapp, viorl, vluasystem, vrlapp, vstoreinterface, vutil, vioevent,
   drlbase, drlmodule;
 
 type
@@ -175,7 +175,7 @@ end;
 
 function TDRLRuntime.CreateLua : TLuaSystem;
 begin
-  Result := TDRLLua.Create(FModules, Paths.DataPath);
+  Result := TDRLLua.Create( FModules, Paths.DataPath );
 end;
 
 procedure TDRLRuntime.CreateSession( aInitializeData : Boolean );
@@ -255,7 +255,6 @@ begin
   FModuleHooks := [];
   Cells := TCells.Create;
   Help := THelp.Create;
-  LuaRNG := GameRNG;
 end;
 
 // Phase order: publish Lua; load hooks and module data; then prepare
@@ -263,7 +262,8 @@ end;
 procedure TDRLRuntime.InitializeGameData;
 var i : Integer;
 begin
-  LuaSystem.CallDefaultResult := True;
+  if GodMode then RegisterDebugConsole( VKEY_F1 );
+  Lua.CallDefaultResult := True;
   FModuleHooks := LoadHooks([CoreModuleID], GlobalHooks);
   SafeCallModuleHook(Hook_OnLoad, []);
   ApplyConfiguration;
@@ -382,11 +382,11 @@ begin
   for iModule in FModules.ActiveModules do
     if aHook in iModule.Hooks then
     try
-      LuaSystem.SetValue( 'BASE_MODULE_LOADING', iModule.IsBaseLoading );
+      Lua.SetValue( 'BASE_MODULE_LOADING', iModule.IsBaseLoading );
       try
-        LuaSystem.ProtectedCall( [iModule.ID, HookNames[aHook]], aParams );
+        Lua.ProtectedCall( [iModule.ID, HookNames[aHook]], aParams );
       finally
-        LuaSystem.SetValue( 'BASE_MODULE_LOADING', False );
+        Lua.SetValue( 'BASE_MODULE_LOADING', False );
       end;
     except
       on E : Exception do

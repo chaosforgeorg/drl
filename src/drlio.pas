@@ -743,8 +743,6 @@ begin
   inherited Configure( aConfig );
   // TODO : configurable
 
-  if GodMode then
-    RegisterDebugConsole( VKEY_F1 );
   FIODriver.RegisterInterrupt( VKEY_F9, @ScreenShotCallback );
   FIODriver.RegisterInterrupt( VKEY_F10, @BBScreenShotCallback );
 

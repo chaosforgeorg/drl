@@ -309,14 +309,14 @@ var iProgBase    : DWord;
   end;
   procedure SetupBase;
   begin
-    VersionEngine         := LuaSystem.Get( 'VERSION_ENGINE' );
-    VersionEngineSave     := LuaSystem.Get( 'VERSION_ENGINE_SAVE' );
-    VersionEngineExpected := LuaSystem.Get( 'VERSION_ENGINE_EXPECTED' );
-    VersionModule         := LuaSystem.Get( 'VERSION_MODULE' );
-    VersionModuleSave     := LuaSystem.Get( 'VERSION_MODULE_SAVE' );
+    VersionEngine         := Get( 'VERSION_ENGINE' );
+    VersionEngineSave     := Get( 'VERSION_ENGINE_SAVE' );
+    VersionEngineExpected := Get( 'VERSION_ENGINE_EXPECTED' );
+    VersionModule         := Get( 'VERSION_MODULE' );
+    VersionModuleSave     := Get( 'VERSION_MODULE_SAVE' );
     DemoVersion           := False;
-    if LuaSystem.RawDefined( 'DEMO' ) then
-      DemoVersion := LuaSystem.Get( 'DEMO' );
+    if RawDefined( 'DEMO' ) then
+      DemoVersion := Get( 'DEMO' );
 
     Log( LOGINFO, 'ENGINE VERSION: '+VersionEngine );
     Log( LOGINFO, 'EXPECTED ENGINE VERSION: '+VersionEngineExpected );
@@ -358,11 +358,11 @@ begin
           if DemoVersion then Halt(0);
           ModdedGame := True;
         end;
-        LuaSystem.SetValue( 'BASE_MODULE_LOADING', iModule.IsBaseLoading );
+        SetValue( 'BASE_MODULE_LOADING', iModule.IsBaseLoading );
         try
           LoadStream( iData,'','main.lua' );
         finally
-          LuaSystem.SetValue( 'BASE_MODULE_LOADING', False );
+          SetValue( 'BASE_MODULE_LOADING', False );
         end;
       end;
       iData.RegisterLoader( FILETYPE_RAW, @Help.StreamLoader );
@@ -388,11 +388,11 @@ begin
             ModdedGame := True;
           end;
           RegisterModule( iModule.ID, iModule.Path );
-          LuaSystem.SetValue( 'BASE_MODULE_LOADING', iModule.IsBaseLoading );
+          SetValue( 'BASE_MODULE_LOADING', iModule.IsBaseLoading );
           try
             LoadFile( iModule.Path + 'main.lua' );
           finally
-            LuaSystem.SetValue( 'BASE_MODULE_LOADING', False );
+            SetValue( 'BASE_MODULE_LOADING', False );
           end;
         end;
         LoadFiles( iModule.Path + 'help', @Help.StreamLoader, '*.hlp' );
@@ -416,7 +416,7 @@ begin
       end;
 
     end;
-    if LuaSystem.RawDefined( iModule.ID ) then
+    if RawDefined( iModule.ID ) then
       iModule.Hooks := LoadHooks( [ iModule.ID ], ModuleHooks );
     if iModule.IsBase then
       SetupBase;
@@ -425,14 +425,14 @@ begin
   IO.LoadProgress(iProgBase + 50);
   IO.Audio.Load;
 
-  ModuleOption_KlassAchievements    := LuaSystem.Get( ['core','options','klass_achievements'], False );
-  ModuleOption_NewMenu              := LuaSystem.Get( ['core','options','new_menu'], False );
-  ModuleOption_MeleeMoveOnKill      := LuaSystem.Get( ['core','options','melee_move_on_kill'], False );
-  ModuleOption_FullBeingDescription := LuaSystem.Get( ['core','options','full_being_description'], False );
-  ModuleOption_PercentHealth        := LuaSystem.Get( ['core','options','percent_health'], False );
-  ModuleOption_RelicSlot            := LuaSystem.Get( ['core','options','relic_slot'], False );
-  ModuleOption_NewFloorLayout       := LuaSystem.Get( ['core','options','new_floor_layout'], False );
-  ModuleOption_ResistCap            := LuaSystem.Get( ['core','options','resist_cap'], 95 );
+  ModuleOption_KlassAchievements    := Get( ['core','options','klass_achievements'], False );
+  ModuleOption_NewMenu              := Get( ['core','options','new_menu'], False );
+  ModuleOption_MeleeMoveOnKill      := Get( ['core','options','melee_move_on_kill'], False );
+  ModuleOption_FullBeingDescription := Get( ['core','options','full_being_description'], False );
+  ModuleOption_PercentHealth        := Get( ['core','options','percent_health'], False );
+  ModuleOption_RelicSlot            := Get( ['core','options','relic_slot'], False );
+  ModuleOption_NewFloorLayout       := Get( ['core','options','new_floor_layout'], False );
+  ModuleOption_ResistCap            := Get( ['core','options','resist_cap'], 95 );
 
   if ModdedGame then Log( LOGINFO, 'Game is modded.');
 end;
@@ -465,7 +465,7 @@ end;
 
 procedure TDRLLua.RegisterPlayer(Thing: TThing);
 begin
-  LuaSystem.SetValue('player',Thing);
+  SetValue('player',Thing);
   RegisterKillsClass( Raw, (Thing as TPlayer).FKills );
 end;
 
@@ -659,7 +659,7 @@ begin
   TBeing.RegisterLuaAPI();
   TLevel.RegisterLuaAPI();
   TPlayer.RegisterLuaAPI();
-  RegisterDungenClass( LuaSystem.Raw, 'generator' );
+  RegisterDungenClass( Raw, 'generator' );
 
   drlbase.Lua := Self;
 
@@ -674,8 +674,8 @@ begin
   RegisterType( TItem,   'item',  'items'  );
   RegisterType( TLevel,  'level', 'levels' );
 
-  LuaSystem.GetClassInfo( TBeing ).RegisterHooks( BeingHooks, HookNames );
-  LuaSystem.GetClassInfo( TPlayer ).RegisterHooks( BeingHooks, HookNames );
+  GetClassInfo( TBeing ).RegisterHooks( BeingHooks, HookNames );
+  GetClassInfo( TPlayer ).RegisterHooks( BeingHooks, HookNames );
 
   ReadWAD;
 
