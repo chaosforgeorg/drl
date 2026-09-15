@@ -359,7 +359,7 @@ begin
   RecalculateScaling( True );
 
   CalculateConsoleParams;
-  iRenderer := TGLConsoleRenderer.Create( iFont, FConsoleSizeX, FConsoleSizeY, FLineSpace, [VIO_CON_CURSOR, VIO_CON_BGCOLOR, VIO_CON_EXTCOLOR ] );
+  iRenderer := TGLConsoleRenderer.Create( FIODriver, iFont, FConsoleSizeX, FConsoleSizeY, FLineSpace, [VIO_CON_CURSOR, VIO_CON_BGCOLOR, VIO_CON_EXTCOLOR ] );
   TGLConsoleRenderer( iRenderer ).GlyphStretch := True;
 
   TGLConsoleRenderer( iRenderer ).SetPositionScale(
@@ -1026,7 +1026,7 @@ begin
             )
             , SpriteMap.MinShift, SpriteMap.MaxShift );
 
-          //SDL_WarpMouseInWindow( SDLIO.NativeWindow,
+          //SDL_WarpMouseInWindow( TSDLIODriver( FIODriver ).NativeWindow,
           //  iEvent.MouseMove.Pos.X - iEvent.MouseMove.RelPos.X,
           //  iEvent.MouseMove.Pos.Y - iEvent.MouseMove.RelPos.Y
           //);
@@ -1206,7 +1206,7 @@ begin
   FFontSizeX    := 10;
   CalculateConsoleParams;
   iTIGStyle := VTIGDefaultStyle;
-  iRenderer := TGLConsoleRenderer.Create( ReadDefaultFont, 80, 25, 0, [VIO_CON_CURSOR, VIO_CON_BGCOLOR, VIO_CON_EXTCOLOR ] );
+  iRenderer := TGLConsoleRenderer.Create( FIODriver, ReadDefaultFont, 80, 25, 0, [VIO_CON_CURSOR, VIO_CON_BGCOLOR, VIO_CON_EXTCOLOR ] );
   iRenderer.SetPositionScale( (FIODriver.GetSizeX - 80*10*FFontMult) div 2, 0, FLineSpace, FFontMult );
   iRenderer.GlyphStretch := True;
   TSDLIODriver(FIODriver).GamePadSupport := Store.IsSteamDeck or Configuration.GetBoolean( 'enable_gamepad' );
