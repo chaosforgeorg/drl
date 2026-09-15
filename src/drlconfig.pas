@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlconfig;
 interface
 
-uses Classes, SysUtils, vluaconfig;
+uses classes, sysutils, vluaconfig;
 
 type
 
@@ -107,7 +107,7 @@ begin
       else GraphicsVersion := False;
   end;
 
-  TDRLIO.RegisterLuaAPI( State );
+  TDRLIO.RegisterLuaAPI( FStack );
 end;
 
 end.

@@ -1,7 +1,7 @@
 {$INCLUDE drl.inc}
 unit drlparticles;
 interface
-uses vlua, Classes, SysUtils, vvector, vnode, vcolor, vutil, vrltools, vparticleengine, vlualibrary;
+uses classes, sysutils, vlua, vvector, vnode, vcolor, vutil, vrltools, vparticleengine, vlualibrary;
 
 type
   TEmitterBinding = record
@@ -55,8 +55,7 @@ type
 
 implementation
 
-uses Math, vluatable, vluaentitynode, vuid,
-     dfdata, dfthing, dflevel, drldecals, drlbase, drlio, drlspritemap;
+uses math, vluatable, vluaentitynode, vuid, dfdata, dfthing, dflevel, drldecals, drlbase, drlio, drlspritemap;
 
 function FlagsToParticleFlags( const aFlags : TFlags ) : TParticleFlags;
 var i : Byte;

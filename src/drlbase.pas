@@ -7,10 +7,8 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlbase;
 interface
 
-uses vapp, vnode, vutil, vuid, viotypes, vrltools, vlua, vioevent, vstoreinterface,
-     vrandom, vrlapp,
-     dflevel, dfdata, dfhof, dfitem,
-     drlhooks, drllua, drlcommand, drlkeybindings, drlmodule, drlparticles;
+uses vapp, vnode, vutil, vuid, viotypes, vrltools, vlua, vioevent, vstoreinterface, vrandom, vrlapp,
+     dflevel, dfdata, dfhof, dfitem, drlhooks, drllua, drlcommand, drlkeybindings, drlmodule, drlparticles;
 
 type TDRLSession = class;
 
@@ -143,15 +141,9 @@ var DRL : TDRLSession;
 
 implementation
 
-uses  {$IFDEF WINDOWS}Windows,{$ELSE}Unix,{$ENDIF}
-     Classes, SysUtils,
+uses {$IFDEF WINDOWS}windows,{$ELSE}unix,{$ENDIF} classes, sysutils, zstream,
      vbindings, vdebug, vluastate, vstream,
-     dfmap, dfbeing,
-     drlio, drlgfxio, drltextio, zstream,
-     drlspritemap, // remove
-     drlplayerview, drlingamemenuview, drlhelpview, drlassemblyview,
-     drlpagedview, drlrankupview, drlmainmenuview, drlhudviews, drlmessagesview,
-     drlapplication, drlcontrollerbindings, dfplayer;
+     dfmap, dfbeing, drlio, drlgfxio, drltextio, drlspritemap { remove }, drlplayerview, drlingamemenuview, drlhelpview, drlassemblyview, drlpagedview, drlrankupview, drlmainmenuview, drlhudviews, drlmessagesview, drlapplication, drlcontrollerbindings, dfplayer;
 
 const PAD_REPEAT_START = 400;
       PAD_REPEAT       = 100;

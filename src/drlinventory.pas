@@ -6,10 +6,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlinventory;
 interface
-uses SysUtils,
-     vnode,
-     dfitem, dfthing, dfdata,
-     drlhooks;
+uses sysutils, vnode, dfitem, dfthing, dfdata, drlhooks;
 
 type
   TItemList      = array[TItemSlot] of TItem;

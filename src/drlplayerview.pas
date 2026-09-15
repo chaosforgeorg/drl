@@ -7,8 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlplayerview;
 interface
 uses vioevent, viotypes, vgenerics, vtigstyle,
-     dfitem, dfdata, drlhooks,
-     drlio, drluibindings, drltraits, drlconfirmview;
+     dfitem, dfdata, drlhooks, drlio, drluibindings, drltraits, drlconfirmview;
 
 type TPlayerViewState = (
   PLAYERVIEW_INVENTORY,
@@ -117,10 +116,7 @@ end;
 
 implementation
 
-uses sysutils, math, variants,
-     vutil, vtig, vtigio, vlua,
-     dfplayer,
-     drlcommand, drlbase, drlinventory, drlperk;
+uses sysutils, math, variants, vutil, vtig, vtigio, vlua, dfplayer, drlcommand, drlbase, drlinventory, drlperk;
 
 constructor TPlayerView.Create( aInitialState : TPlayerViewState = PLAYERVIEW_INVENTORY );
 begin

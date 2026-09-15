@@ -6,7 +6,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit dfhof;
 interface
-uses vlua, Classes, DOM, vapp, vnode, vxml, vxmldata, dfdata;
+uses classes, dom, vlua, vapp, vnode, vxml, vxmldata, dfdata;
 
 const MaxHofEntries = 500;
       MaxID         = 1023;
@@ -69,9 +69,7 @@ var HOF : THOF;
 
 implementation
 
-uses math, sysutils, strutils, variants,
-     vluatable, vdebug, vtig, vutil, vrltools,
-     drlbase, dfplayer;
+uses math, sysutils, strutils, variants, vluatable, vdebug, vtig, vutil, vrltools, drlbase, dfplayer;
 
 const HOFOpen : Boolean = False;
 

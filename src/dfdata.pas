@@ -7,8 +7,8 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit dfdata;
 interface
-uses vlua, Classes, SysUtils, idea,
-     vgenerics, vcolor, vutil, vrltools, vtigstyle, vluatable, vioevent, vvector,
+uses classes, sysutils, idea,
+     vlua, vgenerics, vcolor, vutil, vrltools, vtigstyle, vluatable, vioevent, vvector,
      drlconfig, drlkeybindings;
 
 const CoreModuleID          : AnsiString = '';

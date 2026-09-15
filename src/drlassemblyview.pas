@@ -22,7 +22,7 @@ end;
 
 implementation
 
-uses sysutils, vlua, drlio, drlbase, vtig, dfhof;
+uses sysutils, vlua, vtig, drlio, drlbase, dfhof;
 
 constructor TAssemblyView.Create;
 begin

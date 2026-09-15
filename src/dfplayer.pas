@@ -6,10 +6,9 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit dfplayer;
 interface
-uses vluagamestack, classes, sysutils,
-     vpath, vutil, vrltools, vvision, viotypes,
-     dfbeing, dfhof, dfdata, dfitem,
-     drltraits, drlkeybindings, drlstatistics, drlmultimove, vlua;
+uses classes, sysutils,
+     vluagamestack, vpath, vutil, vrltools, vvision, viotypes, vlua,
+     dfbeing, dfhof, dfdata, dfitem, drltraits, drlkeybindings, drlstatistics, drlmultimove;
 
 
 type TQuickSlotInfo = record
@@ -105,11 +104,9 @@ var Player     : TPlayer;
 
 implementation
 
-uses math, vuid, variants, vioevent, vgenerics,
-     vnode, vcolor, vdebug, vtig,
-     dfmap, dflevel,
-     drlhooks, drlio, drlspritemap, drlbase, drlperk,
-     drllua, drlinventory, drlplayerview, drlhudviews;
+uses math, variants,
+     vuid, vioevent, vgenerics, vnode, vcolor, vdebug, vtig,
+     dfmap, dflevel, drlhooks, drlio, drlspritemap, drlbase, drlperk, drllua, drlinventory, drlplayerview, drlhudviews;
 
 constructor TPlayer.Create;
 begin

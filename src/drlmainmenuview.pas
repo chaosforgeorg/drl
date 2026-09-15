@@ -89,8 +89,7 @@ implementation
 
 uses math, sysutils,
      vutil, vtig, vtigio, vgltypes, vlua, vluavalue,
-     dfhof,
-     drlbase, drlgfxio, drlplayerview, drlhelpview, drlsettingsview, drlpagedview;
+     dfhof, drlbase, drlgfxio, drlplayerview, drlhelpview, drlsettingsview, drlpagedview;
 
 var ChallengeType : array[1..4] of TMainMenuEntry =
 ((

@@ -7,8 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit dfthing;
 interface
-uses vluagamestack, SysUtils, Classes, vluaentitynode, vrltools, vluatable,
-     vvector, dfdata, drlhooks, drlperk, vlua;
+uses sysutils, classes, vluagamestack, vluaentitynode, vrltools, vluatable, vvector, vlua, dfdata, drlhooks, drlperk;
 
 type String16 = string[16];
 
@@ -60,9 +59,7 @@ end;
 
 implementation
 
-uses typinfo, variants,
-     vdebug, vtig,
-     drlbase, drlio, drllua, drlspritemap;
+uses typinfo, variants, vdebug, vtig, drlbase, drlio, drllua, drlspritemap;
 
 constructor TThing.Create( const aID : AnsiString );
 begin

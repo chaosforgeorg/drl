@@ -7,10 +7,9 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit dfbeing;
 interface
-uses vluagamestack, Classes, SysUtils,
-     vluatable, vnode, vpath, vmath, vutil, vrltools, vvision,
-     dfdata, dfthing, dfitem,
-     drlinventory, drlcommand, vlua;
+uses classes, sysutils,
+     vluagamestack, vluatable, vnode, vpath, vmath, vutil, vrltools, vvision, vlua,
+     dfdata, dfthing, dfitem, drlinventory, drlcommand;
 
 type TMoveResult = ( MoveOk, MoveBlock, MoveDoor, MoveBeing );
 
@@ -213,9 +212,9 @@ TBeing = class(TThing,IPathQuery)
 
 implementation
 
-uses math, vlualibrary, vluaentitynode, vuid, vdebug, vluatools, vcolor, vvector,
-     dfplayer, dflevel, dfmap, drlhooks,
-     drllua, drlbase, drlio;
+uses math,
+     vlualibrary, vluaentitynode, vuid, vdebug, vluatools, vcolor, vvector,
+     dfplayer, dflevel, dfmap, drlhooks, drlbase, drlio;
 
 const PAIN_DURATION = 500;
 

@@ -6,7 +6,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drltraits;
 interface
-uses vlua, classes, sysutils, vutil, vnode, dfdata, drlhooks;
+uses classes, sysutils, vlua, vutil, vnode, dfdata, drlhooks;
 
 const   MAXTRAITS  = 80;
         MAXKLASS   = 10;

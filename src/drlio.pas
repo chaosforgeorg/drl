@@ -6,11 +6,9 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlio;
 interface
-uses vluagamestack, {$IFDEF WINDOWS}Windows,{$ENDIF} Classes, SysUtils,
-     vio, vbindings, viorl, vrltools, vluaconfig, vglquadrenderer, vstoreinterface, vtextures, vtigstyle,
-     vluastack, viotypes, vioevent, vioconsole, vgenerics, vutil,
-     dfdata, dfthing, dfbeing, drlspritemap, drlaudio, drlkeybindings,
-     drlbase, drlcontrollerbindings, drlloadingview, drlmodule;
+uses {$IFDEF WINDOWS}windows,{$ENDIF} classes, sysutils,
+     vluagamestack, vio, vbindings, viorl, vrltools, vluaconfig, vglquadrenderer, vstoreinterface, vtextures, vtigstyle, vluastack, viotypes, vioevent, vioconsole, vgenerics, vutil,
+     dfdata, dfthing, dfbeing, drlspritemap, drlaudio, drlkeybindings, drlbase, drlcontrollerbindings, drlloadingview, drlmodule;
 
 const TIG_EV_NONE      = 0;
       TIG_EV_INVENTORY = 2;
@@ -189,11 +187,8 @@ procedure EmitCrashInfo( const aInfo : AnsiString; aInGame : Boolean  );
 implementation
 
 uses math, video, dateutils, variants,
-     vsound, vlua, vuid, vlog, vdebug, vmath,
-     vsdlio, vglconsole, vtig, vtigio, vvector,
-     dflevel, dfplayer, dfitem, dfhof,
-     drlconfiguration, drluibindings, drlmoreview, drlchoiceview, drllua, drlmodulechoiceview,
-     drlhudviews, drlplotview;
+     vsound, vlua, vuid, vlog, vdebug, vmath, vsdlio, vglconsole, vtig, vtigio, vvector,
+     dflevel, dfplayer, dfitem, dfhof, drlconfiguration, drluibindings, drlmoreview, drlchoiceview, drlmodulechoiceview, drlhudviews, drlplotview;
 
 function TIGSubCallback( const aID : Ansistring ) : Ansistring;
 begin

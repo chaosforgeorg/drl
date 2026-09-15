@@ -7,8 +7,9 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drllua;
 interface
 
-uses SysUtils, Classes, vluagamestack, vlua, vlualibrary, vrltools, vutil,
-     vdf, viotypes, dfitem, dfbeing, dfthing, dfdata, drlmodule;
+uses sysutils, classes,
+     vluagamestack, vlua, vlualibrary, vrltools, vutil, vdf, viotypes,
+     dfitem, dfbeing, dfthing, dfdata, drlmodule;
 
 type
 
@@ -35,10 +36,8 @@ TDRLLua = class(TLua)
 implementation
 
 uses typinfo, variants,
-     vnode, vdebug, vluastate, vluatools, vluadungen, vluaentitynode, vluatype, vmath,
-     vtextures, vtigstyle,
-     dfplayer, dflevel, dfmap, drlhooks, drlhelp, dfhof, drlbase, drlio, drlperk,
-     drlgfxio, drlspritemap, vparticleengine;
+     vnode, vdebug, vluastate, vluatools, vluadungen, vluaentitynode, vluatype, vmath, vtextures, vtigstyle, vparticleengine,
+     dfplayer, dflevel, dfmap, drlhooks, drlhelp, dfhof, drlbase, drlio, drlperk, drlgfxio, drlspritemap;
 
 var SpriteSheetCounter : Integer = -1;
 

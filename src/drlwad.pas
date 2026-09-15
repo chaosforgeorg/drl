@@ -18,8 +18,7 @@ program drlwad;
 // Source masks are resolved relative to the manifest. Output WAD paths and
 // dkey.inc are resolved relative to the process working directory.
 
-uses classes, sysutils, strutils, custapp, idea,
-     vluastate, vluatable, vpkg, vdf;
+uses classes, sysutils, strutils, custapp, idea, vluastate, vluatable, vpkg, vdf;
 
 type
   { TDRLWadApplication }

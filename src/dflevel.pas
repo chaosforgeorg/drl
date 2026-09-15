@@ -7,12 +7,9 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit dflevel;
 interface
-uses vluagamestack, SysUtils, Classes,
-     vluaentitynode, vutil, vvision, viotypes, vrltools, vnode,
-     vluamapnode, vtextmap,
-     dfdata, dfmap, dfthing, dfbeing, dfitem,
-     drlhooks, drlperk,
-     drlmarkers, drldecals, vlua;
+uses sysutils, classes,
+     vluagamestack, vluaentitynode, vutil, vvision, viotypes, vrltools, vnode, vluamapnode, vtextmap, vlua,
+     dfdata, dfmap, dfthing, dfbeing, dfitem, drlhooks, drlperk, drlmarkers, drldecals;
 
 const CellWalls   : TCellSet = [];
       CellFloors  : TCellSet = [];
@@ -203,8 +200,7 @@ TLevel = class(TLuaMapNode, ITextMap)
 
 implementation
 
-uses math, typinfo, vgenerics, vluatools, vdebug, vuid, dfplayer, drllua, drlbase, drlio, drlgfxio,
-     drlspritemap, drlhudviews;
+uses math, typinfo, vgenerics, vluatools, vdebug, vuid, dfplayer, drlbase, drlio, drlgfxio, drlspritemap, drlhudviews;
 
 type TProcessedUIDList = specialize TGArray<TUID>;
 

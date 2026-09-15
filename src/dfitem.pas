@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit dfitem;
 interface
-uses vluagamestack, Classes, SysUtils, dfthing, dfdata, vrltools, vluatable, vcolor, math, vlua;
+uses classes, sysutils, math, vluagamestack, vrltools, vluatable, vcolor, vlua, dfthing, dfdata;
 
 type
 
@@ -114,8 +114,7 @@ procedure SwapItem(var a, b: TItem);
 
 implementation
 
-uses vnode, drllua, vluaentitynode, vutil, vdebug, dfbeing, drlbase,
-     vmath, drlhooks, drlperk;
+uses vnode, vluaentitynode, vutil, vdebug, vmath, dfbeing, drlbase, drlhooks, drlperk;
 
 procedure SwapItem(var a, b: TItem);
 var c : TItem;

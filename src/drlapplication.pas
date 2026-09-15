@@ -8,9 +8,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlapplication;
 interface
 
-uses
-  SysUtils, vapp, viorl, vlua, vrlapp, vstoreinterface, vutil, vioevent,
-  drlbase, drlmodule;
+uses sysutils, vapp, viorl, vlua, vrlapp, vstoreinterface, vutil, vioevent, drlbase, drlmodule;
 
 type
   TDRLApplication = class;
@@ -73,11 +71,9 @@ type TDRLApplication = class( TRLApplication )
 
 implementation
 
-uses
-  {$IFDEF WINDOWS}Windows, vos,{$ENDIF}
-  vdebug, vlog, vluastate,
-  dfdata, dfhof, dfmap, drlconfig, drlconfiguration, drlgfxio, drlhelp, drlhooks,
-  drlio, drllua, drltextio, drlworkshop;
+uses {$IFDEF WINDOWS}windows,{$ENDIF}
+     {$IFDEF WINDOWS}vos,{$ENDIF} vdebug, vlog, vluastate,
+     dfdata, dfhof, dfmap, drlconfig, drlconfiguration, drlgfxio, drlhelp, drlhooks, drlio, drllua, drltextio, drlworkshop;
 
 type TDRLConfigurationState = class( TDRLConfiguration )
   private
