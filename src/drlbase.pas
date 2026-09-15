@@ -1515,10 +1515,11 @@ var iTraitID : AnsiString;
 begin
   FreeAndNil( Player );
   FContext.BindUIDs( nil );
+  FContext.Lua.Context.BindUIDs( nil );
   FreeAndNil( FUIDStore );
   FUIDStore := TUIDStore.Create;
   FContext.BindUIDs( FUIDStore );
-  vuid.UIDs := FUIDStore;
+  FContext.Lua.Context.BindUIDs( FUIDStore );
   Player := TPlayer.Create;
   FLevel.Place( Player, NewCoord2D(4,4) );
   Player.Klass := aResult.Klass;
@@ -1576,10 +1577,11 @@ begin
 
       FreeAndNil( Player );
       FContext.BindUIDs( nil );
+      FContext.Lua.Context.BindUIDs( nil );
       FreeAndNil( FUIDStore );
       FUIDStore        := TUIDStore.CreateFromStream( iStream );
       FContext.BindUIDs( FUIDStore );
-      vuid.UIDs := FUIDStore;
+      FContext.Lua.Context.BindUIDs( FUIDStore );
       FGameWon         := iStream.ReadByte <> 0;
       FDifficulty      := iStream.ReadByte;
       FChallenge       := iStream.ReadAnsiString;
@@ -1713,6 +1715,8 @@ begin
   FreeAndNil( Player );
   FreeAndNil( FTargeting );
   FreeAndNil( FParticles );
+  // The initial Session shell can be destroyed before Lua has been created.
+  if FContext.Lua <> nil then FContext.Lua.Context.BindUIDs( nil );
   FreeAndNil( FUIDStore );
   FreeAndNil( FContext );
   Log('DRL destroyed.');
