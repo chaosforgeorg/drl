@@ -335,7 +335,7 @@ var iThisUID    : DWord;
 begin
   iThisUID := UID;
   TLevel(Parent).CallHook( FPosition, Self, CellHook_OnEnter );
-  if UIDs[ iThisUID ] = nil then Exit( False );
+  if DRL.UIDs[ iThisUID ] = nil then Exit( False );
 
   MasterDodge := False;
   if DRL.State <> DSPlaying then Exit( False );

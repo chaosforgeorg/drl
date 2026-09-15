@@ -127,7 +127,7 @@ begin
           LuaSystem.ProtectedCall( [ 'perks',FList[i].ID, Lua.HookName(aHook) ], ConcatConstArray( [FOwner], aParams ) );
           // A callback may consume the owner and free this perk list.
           // Session-owned levels created before the UID store have UID 0.
-          if ( iUID <> 0 ) and ( UIDs.Get( iUID ) = nil ) then Exit;
+          if ( iUID <> 0 ) and ( DRL.UIDs.Get( iUID ) = nil ) then Exit;
         end;
     EndIteration;
   end;
@@ -147,7 +147,7 @@ begin
       begin
         Result := LuaSystem.ProtectedCall( [ 'perks',FList[i].ID, HookNames[aHook] ], ConcatConstArray( [FOwner], aParams ) );
         // A check may destroy its owner; stop before touching the freed list.
-        if ( iUID <> 0 ) and ( UIDs.Get( iUID ) = nil ) then Exit( False );
+        if ( iUID <> 0 ) and ( DRL.UIDs.Get( iUID ) = nil ) then Exit( False );
         if not Result then Break;
       end;
     EndIteration;
@@ -261,19 +261,19 @@ begin
           begin
             LuaSystem.ProtectedCall( [ 'perks', ID, 'OnTick10' ], [ FOwner, iTime div 10 ] );
             // Perk owners include levels and items nested in inventories.
-            if ( iUID <> 0 ) and ( UIDs.Get( iUID ) = nil ) then Exit;
+            if ( iUID <> 0 ) and ( DRL.UIDs.Get( iUID ) = nil ) then Exit;
           end;
     end;
   EndIteration;
   // Flushing deferred removals can destroy the owner and this perk list.
-  if ( iUID <> 0 ) and ( UIDs.Get( iUID ) = nil ) then Exit;
+  if ( iUID <> 0 ) and ( DRL.UIDs.Get( iUID ) = nil ) then Exit;
   i := 0;
   while i < FList.Size do
     if FList[i].Time = 0
       then
       begin
         Expire( i, False );
-        if ( iUID <> 0 ) and ( UIDs.Get( iUID ) = nil ) then Exit;
+        if ( iUID <> 0 ) and ( DRL.UIDs.Get( iUID ) = nil ) then Exit;
       end
       else Inc(i);
 end;
@@ -352,7 +352,7 @@ begin
     if iIdx >= 0 then
     begin
       ExpireNow( iIdx, iSilent );
-      if ( iUID <> 0 ) and ( UIDs.Get( iUID ) = nil ) then Exit;
+      if ( iUID <> 0 ) and ( DRL.UIDs.Get( iUID ) = nil ) then Exit;
     end;
   end;
 end;
@@ -386,10 +386,10 @@ begin
       if Hook_OnRemove in PerkData[FList[i].ID].Hooks then
       begin
         LuaSystem.ProtectedCall( [ 'perks', FList[i].ID, 'OnRemove' ], [FOwner, True] );
-        if ( iUID <> 0 ) and ( UIDs.Get( iUID ) = nil ) then Exit;
+        if ( iUID <> 0 ) and ( DRL.UIDs.Get( iUID ) = nil ) then Exit;
       end;
     EndIteration;
-    if ( iUID <> 0 ) and ( UIDs.Get( iUID ) = nil ) then Exit;
+    if ( iUID <> 0 ) and ( DRL.UIDs.Get( iUID ) = nil ) then Exit;
     FList.Clear;
   end;
   FHooks := [];

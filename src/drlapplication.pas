@@ -158,6 +158,8 @@ end;
 
 procedure TDRLRuntime.ReleaseSession;
 begin
+  // A failed run can leave animations referring to the outgoing Session.
+  if FSession <> nil then TDRLIO(IO).ClearAnimations;
   if TDRLIO(IO).Session = FSession then
     TDRLIO(IO).Session := nil;
   if drlbase.DRL = FSession then

@@ -1040,7 +1040,7 @@ begin
             iProcessed.Push( iBeingUID );
             if efChain in aData.Flags then
               Explosion( iPointDelay, iC, iChain, nil, NewDirection(0) );
-            if UIDs[ iBeingUID ] <> nil then
+            if DRL.UIDs[ iBeingUID ] <> nil then
             begin
               iKnockback := aData.Knockback;
               if (efSelfKnockback in aData.Flags) and iBeing.isActive then iKnockback := 2;
@@ -1052,13 +1052,13 @@ begin
                 iBeing.Knockback( iDir, iDamage / iKnockback );
               end;
             end;
-            if UIDs[ iBeingUID ] <> nil then
+            if DRL.UIDs[ iBeingUID ] <> nil then
             begin
               if (iBeing.Flags[BF_SPLASHIMMUNE]) and (aCoord <> iC) then Continue;
               if (efSelfHalf in aData.Flags) and iBeing.isActive then iDamage := iDamage div 2;
-              if ( aItem <> nil ) and ( UIDs[ iItemUID ] = nil ) then aItem := nil;
+              if ( aItem <> nil ) and ( DRL.UIDs[ iItemUID ] = nil ) then aItem := nil;
               iBeing.ApplyDamage( iDamage, Target_Torso, aData.DamageType, aItem, iPointDelay );
-              if ( aItem <> nil ) and ( UIDs[ iItemUID ] = nil ) then aItem := nil;
+              if ( aItem <> nil ) and ( DRL.UIDs[ iItemUID ] = nil ) then aItem := nil;
             end;
           end;
           if ( iDamage > 10 ) and ( Item[iC] <> nil ) and (not Item[iC].isFeature) then
@@ -1157,11 +1157,11 @@ begin
             iBeing.Knockback( iDir, iDmg / iKnock );
           end;
           // knockback can run Lua hooks that destroy iBeing
-          if UIDs[ iBeingUID ] <> nil then
+          if DRL.UIDs[ iBeingUID ] <> nil then
           begin
-            if ( aItem <> nil ) and ( UIDs[ iItemUID ] = nil ) then aItem := nil;
+            if ( aItem <> nil ) and ( DRL.UIDs[ iItemUID ] = nil ) then aItem := nil;
             iBeing.ApplyDamage( iDmg, Target_Torso, aDamageType, aItem, 0 );
-            if ( aItem <> nil ) and ( UIDs[ iItemUID ] = nil ) then aItem := nil;
+            if ( aItem <> nil ) and ( DRL.UIDs[ iItemUID ] = nil ) then aItem := nil;
           end;
         end;
         

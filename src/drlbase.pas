@@ -87,6 +87,7 @@ type TDRLSession = class(TVObject)
      private
        FState           : TDRLState;
        FLevel           : TLevel;
+       FUIDStore        : TUIDStore;
        FLastInputTime   : QWord;
        FTargeting       : TTargeting;
        FDamagedLastTurn : Boolean;
@@ -120,6 +121,7 @@ type TDRLSession = class(TVObject)
        property Challenge  : Ansistring read FChallenge;
        property SChallenge : Ansistring read FSChallenge;
 
+       property UIDs : TUIDStore read FUIDStore;
        property Store : TStoreInterface read FStore;
        property Modules : TDRLModules read FModules;
        property Level : TLevel read FLevel;
@@ -1508,8 +1510,9 @@ procedure TDRLSession.CreatePlayer ( aResult : TMenuResult ) ;
 var iTraitID : AnsiString;
     iTrait   : Byte;
 begin
-  FreeAndNil( UIDs );
-  UIDs := TUIDStore.Create;
+  FreeAndNil( FUIDStore );
+  FUIDStore := TUIDStore.Create;
+  vuid.UIDs := FUIDStore;
   Player := TPlayer.Create;
   FLevel.Place( Player, NewCoord2D(4,4) );
   Player.Klass := aResult.Klass;
@@ -1565,8 +1568,9 @@ begin
       SaveVersionModule := '';
       SaveModString     := '';
 
-      FreeAndNil( UIDs );
-      UIDs             := TUIDStore.CreateFromStream( iStream );
+      FreeAndNil( FUIDStore );
+      FUIDStore        := TUIDStore.CreateFromStream( iStream );
+      vuid.UIDs := FUIDStore;
       FGameWon         := iStream.ReadByte <> 0;
       FDifficulty      := iStream.ReadByte;
       FChallenge       := iStream.ReadAnsiString;
@@ -1660,7 +1664,7 @@ begin
   Stream.WriteAnsiString( VersionEngineSave );
   Stream.WriteAnsiString( VersionModuleSave );
   Stream.WriteAnsiString( FModules.ModString );
-  UIDs.WriteToStream( Stream );
+  FUIDStore.WriteToStream( Stream );
   if FGameWon   then Stream.WriteByte( 1 ) else Stream.WriteByte( 0 );
   Stream.WriteByte( FDifficulty );
   Stream.WriteAnsiString( FChallenge );
@@ -1699,7 +1703,7 @@ begin
   FreeAndNil( FLevel );
   FreeAndNil( FTargeting );
   FreeAndNil( FParticles );
-  FreeAndNil( UIDs );
+  FreeAndNil( FUIDStore );
   Log('DRL destroyed.');
   inherited Destroy;
 end;

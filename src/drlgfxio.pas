@@ -1091,7 +1091,7 @@ begin
       iItem := nil;
       with Player.FQuickSlots[ i ] do
       begin
-             if UID <> 0 then iItem := UIDs[ UID ] as TItem
+             if UID <> 0 then iItem := Session.UIDs[ UID ] as TItem
         else if ID <> '' then iItem := Player.Inv.Find( ID );
       end;
       if iItem <> nil then

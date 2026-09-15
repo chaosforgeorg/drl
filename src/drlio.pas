@@ -972,7 +972,7 @@ begin
 
   if ( FSession.Level <> nil ) and ( FSession.Level.Boss <> 0 ) then
   begin
-    iBoss := UIDs.Get( FSession.Level.Boss ) as TBeing;
+    iBoss := FSession.UIDs.Get( FSession.Level.Boss ) as TBeing;
     if iBoss <> nil then
     begin
       VTIG_FreeLabel( iBoss.Name, Point( 40 - Ceil(Length( iBoss.Name ) / 2), 3 ), iCBold );

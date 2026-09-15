@@ -395,7 +395,7 @@ begin
     end
     else
     begin
-      iTarget := UIDs[ iMark.Target ] as TBeing;
+      iTarget := DRL.UIDs[ iMark.Target ] as TBeing;
       if ( iTarget <> nil ) and ( not iTarget.Dead ) and DRL.Level.isVisible( iTarget.Position ) then
       begin
         iPosition := Vec2i( iTarget.Position.X-1, iTarget.Position.Y-1 ) * FSpriteEngine.Grid;

@@ -367,7 +367,7 @@ begin
       RemoveBinding( i );
       Continue;
     end;
-    iNode := UIDs.Get( FBindings[i].UID );
+    iNode := DRL.UIDs.Get( FBindings[i].UID );
     if iNode = nil then
     begin
       if FBindings[i].PoolIndex >= 0 then
