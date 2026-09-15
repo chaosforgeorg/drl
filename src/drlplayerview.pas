@@ -118,7 +118,7 @@ end;
 implementation
 
 uses sysutils, math, variants,
-     vutil, vtig, vtigio, vluasystem,
+     vutil, vtig, vtigio, vlua,
      dfplayer,
      drlcommand, drlbase, drlinventory, drlperk;
 

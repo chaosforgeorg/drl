@@ -6,7 +6,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit dfhof;
 interface
-uses vluasystem, Classes, DOM, vapp, vnode, vxml, vxmldata, dfdata;
+uses vlua, Classes, DOM, vapp, vnode, vxml, vxmldata, dfdata;
 
 const MaxHofEntries = 500;
       MaxID         = 1023;
@@ -19,7 +19,7 @@ const PlayerFile = 'player.wad';
 { THOF }
 
 type THOF = object
-  procedure Init( aLuaSystem : TLuaSystem; const aPaths : TGamePaths );
+  procedure Init( aLua : TLua; const aPaths : TGamePaths );
   procedure Add( const Name : AnsiString; aScore : LongInt; const aKillerID : AnsiString; Level, DLev : Word; nChal, nAbbr : AnsiString );
   function RankCheck( out aResult : THOFRank ) : Boolean;
   function GetPagedPlayerReport : TPagedReport;
@@ -33,7 +33,7 @@ type THOF = object
   function GetCounted( const aRootID, aLeafID, aElementID : AnsiString ) : DWord;
   function GetRank( const aRankName : Ansistring ) : Integer;
 private
-  FLua        : TLuaSystem;
+  FLua        : TLua;
   FScore      : TScoreFile;
   FPlayerInfo : TVXMLDataFile;
 
@@ -727,10 +727,10 @@ begin
   FreeAndNil( iChals );
 end;
 
-procedure THOF.Init( aLuaSystem : TLuaSystem; const aPaths : TGamePaths );
+procedure THOF.Init( aLua : TLua; const aPaths : TGamePaths );
 var iScorePath : Ansistring;
 begin
-  FLua := aLuaSystem;
+  FLua := aLua;
   iScorePath := aPaths.ScorePath;
   if iScorePath = '' then iScorePath := aPaths.ModuleUserPath;
   FScore := TScoreFile.Create( iScorePath + ScoreFile, MaxHOFEntries );

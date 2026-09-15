@@ -9,7 +9,7 @@ unit drlapplication;
 interface
 
 uses
-  SysUtils, vapp, viorl, vluasystem, vrlapp, vstoreinterface, vutil, vioevent,
+  SysUtils, vapp, viorl, vlua, vrlapp, vstoreinterface, vutil, vioevent,
   drlbase, drlmodule;
 
 type
@@ -34,7 +34,7 @@ type TDRLRuntime = class( TRLRuntime )
     procedure UnloadGameData;
   protected
     function CreateIO : TIORL; override;
-    function CreateLua : TLuaSystem; override;
+    function CreateLua : TLua; override;
     procedure PrepareGameData; override;
     procedure InitializeGameData; override;
     function RunGame : TVRunResult; override;
@@ -75,9 +75,9 @@ implementation
 
 uses
   {$IFDEF WINDOWS}Windows, vos,{$ENDIF}
-  vdebug, vlog, vlua,
+  vdebug, vlog, vluastate,
   dfdata, dfhof, dfmap, drlconfig, drlconfiguration, drlgfxio, drlhelp, drlhooks,
-  drlio, drlua, drltextio, drlworkshop;
+  drlio, drllua, drltextio, drlworkshop;
 
 type TDRLConfigurationState = class( TDRLConfiguration )
   private
@@ -172,7 +172,7 @@ begin
     Result := TDRLTextIO.Create;
 end;
 
-function TDRLRuntime.CreateLua : TLuaSystem;
+function TDRLRuntime.CreateLua : TLua;
 begin
   Result := TDRLLua.Create( FModules, Paths.DataPath );
 end;

@@ -7,8 +7,8 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit dfthing;
 interface
-uses SysUtils, Classes, vluaentitynode, vrltools, vluatable,
-     vvector, dfdata, drlhooks, drlperk, vluasystem;
+uses vluagamestack, SysUtils, Classes, vluaentitynode, vrltools, vluatable,
+     vvector, dfdata, drlhooks, drlperk, vlua;
 
 type String16 = string[16];
 
@@ -32,7 +32,7 @@ type TThing = class( TLuaEntityNode )
   procedure Tick; virtual;
   procedure WriteToStream( aStream : TStream ); override;
   destructor Destroy; override;
-  class procedure RegisterLuaAPI( aLuaSystem : TLuaSystem );
+  class procedure RegisterLuaAPI( aLua : TLua );
 protected
   procedure LuaLoad( aTable : TLuaTable ); virtual;
 protected
@@ -62,7 +62,7 @@ implementation
 
 uses typinfo, variants,
      vdebug, vtig,
-     drlbase, drlio, drlua, drlspritemap;
+     drlbase, drlio, drllua, drlspritemap;
 
 constructor TThing.Create( const aID : AnsiString );
 begin
@@ -265,7 +265,7 @@ begin
 end;
 
 function lua_thing_add_perk(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iThing : TThing;
 begin
   iState.Init(L);
@@ -277,7 +277,7 @@ begin
 end;
 
 function lua_thing_get_perk_time(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iThing : TThing;
 begin
   iState.Init(L);
@@ -289,7 +289,7 @@ begin
 end;
 
 function lua_thing_remove_perk(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iThing : TThing;
 begin
   iState.Init(L);
@@ -301,7 +301,7 @@ begin
 end;
 
 function lua_thing_is_perk(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iThing : TThing;
 begin
   iState.Init(L);
@@ -311,7 +311,7 @@ begin
 end;
 
 function lua_thing_play_sound(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iThing : TThing;
 begin
   iState.Init(L);
@@ -323,7 +323,7 @@ begin
 end;
 
 function lua_thing_add_emitter(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iThing : TThing;
 begin
   iState.Init(L);
@@ -334,7 +334,7 @@ begin
 end;
 
 function lua_thing_remove_emitter(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iThing : TThing;
 begin
   iState.Init(L);
@@ -354,9 +354,9 @@ const lua_thing_lib : array[0..7] of luaL_Reg = (
   ( name : nil;               func : nil; )
 );
 
-class procedure TThing.RegisterLuaAPI( aLuaSystem : TLuaSystem );
+class procedure TThing.RegisterLuaAPI( aLua : TLua );
 begin
-  aLuaSystem.Register( 'thing', lua_thing_lib );
+  aLua.Register( 'thing', lua_thing_lib );
 end;
 
 end.

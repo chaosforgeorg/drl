@@ -6,10 +6,10 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit dfplayer;
 interface
-uses classes, sysutils,
+uses vluagamestack, classes, sysutils,
      vpath, vutil, vrltools, vvision, viotypes,
      dfbeing, dfhof, dfdata, dfitem,
-     drltraits, drlkeybindings, drlstatistics, drlmultimove, vluasystem;
+     drltraits, drlkeybindings, drlstatistics, drlmultimove, vlua;
 
 
 type TQuickSlotInfo = record
@@ -56,7 +56,7 @@ type TPlayer = class(TBeing)
   destructor Destroy; override;
   procedure Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer ); override;
   procedure AddHistory( const aHistory : Ansistring );
-  class procedure RegisterLuaAPI( aLuaSystem : TLuaSystem );
+  class procedure RegisterLuaAPI( aLua : TLua );
   procedure UpdateVisual;
   function ASCIIMoreCode : AnsiString; override;
   function RunPath( const aCoord : TCoord2D ) : Boolean;
@@ -109,7 +109,7 @@ uses math, vuid, variants, vioevent, vgenerics,
      vnode, vcolor, vdebug, vtig,
      dfmap, dflevel,
      drlhooks, drlio, drlspritemap, drlbase, drlperk,
-     drlua, drlinventory, drlplayerview, drlhudviews;
+     drllua, drlinventory, drlplayerview, drlhudviews;
 
 constructor TPlayer.Create;
 begin
@@ -133,7 +133,7 @@ begin
   FExpFactor := 1.0;
 
   Initialize;
-  FContext.Lua.State.ClearLuaProperties( Self );
+  FContext.Lua.Stack.ClearLuaProperties( Self );
 
   FillChar( FQuickSlots, SizeOf(FQuickSlots), 0 );
   CallHook( Hook_OnCreate, [] );
@@ -722,7 +722,7 @@ begin
 end;
 
 function lua_player_add_exp(L: Plua_State): Integer; cdecl;
-var State   : TDRLLuaState;
+var State   : TLuaGameStack;
     Being   : TBeing;
 begin
   State.Init(L);
@@ -733,7 +733,7 @@ begin
 end;
 
 function lua_player_remove_kill(L: Plua_State): Integer; cdecl;
-var State   : TDRLLuaState;
+var State   : TLuaGameStack;
     Being   : TBeing;
     Target  : TBeing;
 begin
@@ -747,7 +747,7 @@ end;
 
 
 function lua_player_has_won(L: Plua_State): Integer; cdecl;
-var State   : TDRLLuaState;
+var State   : TLuaGameStack;
 begin
   State.Init(L);
   State.Push(DRL.GameWon);
@@ -755,7 +755,7 @@ begin
 end;
 
 function lua_player_resort_stacks(L: Plua_State): Integer; cdecl;
-var State     : TDRLLuaState;
+var State     : TLuaGameStack;
     Being     : TBeing;
     Item      : TItem;
     Node, Temp: TNode;
@@ -792,7 +792,7 @@ begin
 end;
 
 function lua_player_win(L: Plua_State): Integer; cdecl;
-var State   : TDRLLuaState;
+var State   : TLuaGameStack;
     Being   : TBeing;
 begin
   State.Init(L);
@@ -805,7 +805,7 @@ begin
 end;
 
 function lua_player_choose_trait(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iBeing : TBeing;
 begin
   iState.Init(L);
@@ -816,7 +816,7 @@ begin
 end;
 
 function lua_player_level_up(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iBeing : TBeing;
 begin
   iState.Init(L);
@@ -827,7 +827,7 @@ begin
 end;
 
 function lua_player_exit(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iBeing : TBeing;
 begin
   iState.Init(L);
@@ -851,7 +851,7 @@ begin
 end;
 
 function lua_player_quick_weapon(L: Plua_State): Integer; cdecl;
-var State   : TDRLLuaState;
+var State   : TLuaGameStack;
     Being   : TBeing;
 begin
   State.Init(L);
@@ -862,7 +862,7 @@ begin
 end;
 
 function lua_player_set_inv_size(L: Plua_State): Integer; cdecl;
-var State   : TDRLLuaState;
+var State   : TLuaGameStack;
     Being   : TBeing;
     n : byte;
 begin
@@ -878,7 +878,7 @@ end;
 
 
 function lua_player_mortem_print(L: Plua_State): Integer; cdecl;
-var State   : TDRLLuaState;
+var State   : TLuaGameStack;
     Being   : TBeing;
 begin
   State.Init(L);
@@ -890,7 +890,7 @@ begin
 end;
 
 function lua_player_add_trait(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iBeing : TBeing;
     iTrait : DWord;
 begin
@@ -903,7 +903,7 @@ begin
 end;
 
 function lua_player_get_trait(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iBeing : TBeing;
 begin
   iState.Init(L);
@@ -914,7 +914,7 @@ begin
 end;
 
 function lua_player_has_trait(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iBeing : TBeing;
 begin
   iState.Init(L);
@@ -925,7 +925,7 @@ begin
 end;
 
 function lua_player_get_trait_hist(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iBeing : TBeing;
 begin
   iState.Init(L);
@@ -936,7 +936,7 @@ begin
 end;
 
 function lua_player_set_achievement(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iID    : Ansistring;
 begin
   iState.Init(L);
@@ -948,7 +948,7 @@ begin
 end;
 
 function lua_player_store_inc_stat(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iID    : Ansistring;
 begin
   if GodMode then Exit(0);
@@ -961,7 +961,7 @@ begin
 end;
 
 function lua_player_store_mark_stat(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iID    : Ansistring;
 begin
   if GodMode then Exit(0);
@@ -995,9 +995,9 @@ const lua_player_lib : array[0..18] of luaL_Reg = (
       ( name : nil;               func : nil; )
 );
 
-class procedure TPlayer.RegisterLuaAPI( aLuaSystem : TLuaSystem );
+class procedure TPlayer.RegisterLuaAPI( aLua : TLua );
 begin
-  aLuaSystem.Register( 'player', lua_player_lib );
+  aLua.Register( 'player', lua_player_lib );
 end;
 
 end.

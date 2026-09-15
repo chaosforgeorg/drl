@@ -72,7 +72,7 @@ end;
 
 implementation
 
-uses sysutils, vluasystem, vuid, drlhooks, drlbase, drlua, dfplayer;
+uses sysutils, vlua, vuid, drlhooks, drlbase, drllua, dfplayer;
 
 constructor TPerks.Create( aOwner : TNode );
 begin

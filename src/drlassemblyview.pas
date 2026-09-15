@@ -22,7 +22,7 @@ end;
 
 implementation
 
-uses sysutils, vluasystem, drlio, drlbase, vtig, dfhof;
+uses sysutils, vlua, drlio, drlbase, vtig, dfhof;
 
 constructor TAssemblyView.Create;
 begin
@@ -56,7 +56,7 @@ begin
 end;
 
 procedure TAssemblyView.ReadAssemblies;
-var iLua                : TLuaSystem;
+var iLua                : TLua;
     iType, iFound, i    : DWord;
     iString, iID, iDesc : AnsiString;
 const TypeName : array[0..2] of string = ('Basic','Advanced','Master');

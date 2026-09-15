@@ -28,7 +28,7 @@ end;
 
 implementation
 
-uses sysutils, vtig, vluasystem;
+uses sysutils, vtig, vlua;
 
 constructor THelpView.Create;
 var iTable : TLuaTable;

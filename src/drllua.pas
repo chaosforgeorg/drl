@@ -4,17 +4,17 @@
 Copyright (c) 2002-2025 by Kornel Kisielewicz
 ----------------------------------------------------
 }
-unit drlua;
+unit drllua;
 interface
 
-uses SysUtils, Classes, vluagamestate, vluasystem, vlualibrary, vrltools, vutil,
+uses SysUtils, Classes, vluagamestack, vlua, vlualibrary, vrltools, vutil,
      vdf, viotypes, dfitem, dfbeing, dfthing, dfdata, drlmodule;
 
 type
 
 { TDRLLua }
 
-TDRLLua = class(TLuaSystem)
+TDRLLua = class(TLua)
        constructor Create( aModules : TDRLModules; const aDataPath : AnsiString ); reintroduce;
        procedure OnError(const ErrorString : Ansistring); override;
        procedure RegisterPlayer(Thing: TThing);
@@ -30,18 +30,12 @@ TDRLLua = class(TLuaSystem)
        FDataPath : AnsiString;
      end;
 
-type
-
-{ TDRLLuaState }
-
-TDRLLuaState = TLuaGameState;
-
 // published functions
 
 implementation
 
 uses typinfo, variants,
-     vnode, vdebug, vlua, vluatools, vluadungen, vluaentitynode, vluatype, vmath,
+     vnode, vdebug, vluastate, vluatools, vluadungen, vluaentitynode, vluatype, vmath,
      vtextures, vtigstyle,
      dfplayer, dflevel, dfmap, drlhooks, drlhelp, dfhof, drlbase, drlio, drlperk,
      drlgfxio, drlspritemap, vparticleengine;
@@ -49,7 +43,7 @@ uses typinfo, variants,
 var SpriteSheetCounter : Integer = -1;
 
 function lua_core_is_playing(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   State.Push( DRL.State = DSPlaying );
@@ -57,7 +51,7 @@ begin
 end;
 
 function lua_statistics_get(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   Player.Statistics.Update;
@@ -67,7 +61,7 @@ begin
 end;
 
 function lua_statistics_set(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   // Unused parameter #1 is self
@@ -76,7 +70,7 @@ begin
 end;
 
 function lua_statistics_inc(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   Player.Statistics.Increase( State.ToString( 1 ), State.ToInteger( 2 ) );
@@ -84,7 +78,7 @@ begin
 end;
 
 function lua_statistics_get_date(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
     Curr : TSystemTime;
     DOW  : integer;
 begin
@@ -113,11 +107,11 @@ begin
 end;
 
 function lua_core_register_perk(L: Plua_State): Integer; cdecl;
-var iLua   : TLuaSystem;
-    iState : TDRLLuaState;
+var iLua   : TLua;
+    iState : TLuaGameStack;
     iID    : Integer;
 begin
-  iLua := TLuaSystemContext.FromState( L ).Lua;
+  iLua := TLuaContext.FromState( L ).Lua;
   iState.Init(L);
   iID := iState.ToInteger(1);
 
@@ -148,7 +142,7 @@ begin
 end;
 
 function lua_core_add_to_cell_set(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   case State.ToInteger(1) of
@@ -160,7 +154,7 @@ begin
 end;
 
 function lua_core_player_data_count(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   State.Push( LongInt(HOF.GetCount( State.ToString( 1 ) )) );
@@ -168,7 +162,7 @@ begin
 end;
 
 function lua_core_player_data_child_count(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   State.Push( LongInt(HOF.GetChildCount( State.ToString( 1 ) )) );
@@ -176,7 +170,7 @@ begin
 end;
 
 function lua_core_player_data_get_counted(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   State.Push( LongInt(HOF.GetCounted( State.ToString( 1 ), State.ToString( 2 ), State.ToString( 3 ) ) ) );
@@ -184,7 +178,7 @@ begin
 end;
 
 function lua_core_player_data_add_counted(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   State.Push( Boolean(HOF.AddCounted( State.ToString( 1 ), State.ToString( 2 ), State.ToString( 3 ), State.ToInteger( 4,1 ) ) ) );
@@ -192,7 +186,7 @@ begin
 end;
 
 function lua_core_play_music(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   IO.Audio.PlayMusic(State.ToString(1));
@@ -203,7 +197,7 @@ end;
 // ************************************************************************ //
 
 function lua_core_game_time(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   State.Push(Player.Statistics.GameTime);
@@ -211,7 +205,7 @@ begin
 end;
 
 function lua_core_time_ms(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   State.Push( LongInt(IO.Driver.GetMs) );
@@ -224,27 +218,27 @@ begin
 end;
 
 function lua_core_register_cell( L : PLua_State ): Integer; cdecl;
-var iLua : TLuaSystem;
-    iState : TDRLLuaState;
+var iLua : TLua;
+    iState : TLuaGameStack;
 begin
-  iLua := TLuaSystemContext.FromState( L ).Lua;
+  iLua := TLuaContext.FromState( L ).Lua;
   iState.Init(L);
   Cells.RegisterCell( iLua, iState.ToInteger(1) );
   Result := 0;
 end;
 
 function lua_core_register_emitter( L : PLua_State ): Integer; cdecl;
-var iLua : TLuaSystem;
-    iState : TDRLLuaState;
+var iLua : TLua;
+    iState : TLuaGameStack;
 begin
-  iLua := TLuaSystemContext.FromState( L ).Lua;
+  iLua := TLuaContext.FromState( L ).Lua;
   iState.Init(L);
   DRL.Particles.RegisterEmitter( iLua, Word( iState.ToInteger(1) ) );
   Result := 0;
 end;
 
 function lua_core_texture_upload(L: Plua_State): Integer; cdecl;
-var State    : TDRLLuaState;
+var State    : TLuaGameStack;
     iTexture : TTexture;
 begin
   State.Init(L);
@@ -260,7 +254,7 @@ begin
 end;
 
 function lua_core_register_sprite_sheet(L: Plua_State): Integer; cdecl;
-var State     : TDRLLuaState;
+var State     : TLuaGameStack;
     iNormal   : TTexture;
     iCosplay  : TTexture;
     iGlow     : TTexture;
@@ -294,7 +288,7 @@ begin
 end;
 
 function lua_core_set_vision_base_value(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   VisionBaseValue := State.ToInteger(1,8);
@@ -540,7 +534,7 @@ begin
 end;
 
 function lua_core_callback(L: Plua_State): Integer; cdecl;
-var iState  : TDRLLuaState;
+var iState  : TLuaGameStack;
     iObject : TObject;
     iHook   : Integer;
     iTop    : Integer;
@@ -627,7 +621,7 @@ begin
   SetValue( 'BASE_MODULE_LOADING', False );
 
   for Count := 0 to 15 do SetValue(ColorNames[Count],Count);
-  TDRLIO.RegisterLuaAPI( State );
+  TDRLIO.RegisterLuaAPI( FStack );
 
   Register( 'statistics', lua_statistics_lib );
   RegisterMetaTable('statistics',@lua_statistics_get, @lua_statistics_set );
@@ -635,18 +629,18 @@ begin
   Register( 'player_data', @lua_player_data_lib );
   Register( 'core', lua_core_lib );
 
-  State.RegisterEnumValues( TypeInfo(TParticleFlag) );
-  State.RegisterEnumValues( TypeInfo(TItemType) );
-  State.RegisterEnumValues( TypeInfo(TBodyTarget) );
-  State.RegisterEnumValues( TypeInfo(TEqSlot) );
-  State.RegisterEnumValues( TypeInfo(TStatusEffect) );
-  State.RegisterEnumValues( TypeInfo(TDamageType) );
-  State.RegisterEnumValues( TypeInfo(TExplosionFlag) );
-  State.RegisterEnumValues( TypeInfo(TResistance) );
-  State.RegisterEnumValues( TypeInfo(TMoveResult) );
-  State.RegisterEnumValues( TypeInfo(TTIGStyleColorEntry) );
-  State.RegisterEnumValues( TypeInfo(TTIGStyleFrameEntry) );
-  State.RegisterEnumValues( TypeInfo(TTIGStylePaddingEntry) );
+  FStack.RegisterEnumValues( TypeInfo(TParticleFlag) );
+  FStack.RegisterEnumValues( TypeInfo(TItemType) );
+  FStack.RegisterEnumValues( TypeInfo(TBodyTarget) );
+  FStack.RegisterEnumValues( TypeInfo(TEqSlot) );
+  FStack.RegisterEnumValues( TypeInfo(TStatusEffect) );
+  FStack.RegisterEnumValues( TypeInfo(TDamageType) );
+  FStack.RegisterEnumValues( TypeInfo(TExplosionFlag) );
+  FStack.RegisterEnumValues( TypeInfo(TResistance) );
+  FStack.RegisterEnumValues( TypeInfo(TMoveResult) );
+  FStack.RegisterEnumValues( TypeInfo(TTIGStyleColorEntry) );
+  FStack.RegisterEnumValues( TypeInfo(TTIGStyleFrameEntry) );
+  FStack.RegisterEnumValues( TypeInfo(TTIGStylePaddingEntry) );
 
   TNode.RegisterLuaAPI( Self, 'game_object' );
 

@@ -55,7 +55,7 @@
         <IsPartOfProject Value="True"/>
       </Unit0>
       <Unit1>
-        <Filename Value="drlua.pas"/>
+        <Filename Value="drllua.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit1>
       <Unit2>
@@ -301,7 +301,7 @@
         <Name Value="EPlacementException"/>
       </Item1>
       <Item2>
-        <Name Value="ELuaStateException"/>
+        <Name Value="ELuaStackException"/>
       </Item2>
       <Item3>
         <Name Value="EArrayFullException"/>

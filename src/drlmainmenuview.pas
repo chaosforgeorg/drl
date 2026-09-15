@@ -88,7 +88,7 @@ end;
 implementation
 
 uses math, sysutils,
-     vutil, vtig, vtigio, vgltypes, vluasystem, vluavalue,
+     vutil, vtig, vtigio, vgltypes, vlua, vluavalue,
      dfhof,
      drlbase, drlgfxio, drlplayerview, drlhelpview, drlsettingsview, drlpagedview;
 
@@ -138,7 +138,7 @@ const CTYPE_ANGEL  = 1;
       CTYPE_SECOND = 10;
 
 constructor TMainMenuView.Create( aInitial : TMainMenuViewMode = MAINMENU_FIRST; aResult : TMenuResult = nil );
-var iLua : TLuaSystem;
+var iLua : TLua;
 begin
   iLua := IO.Session.Context.Lua;
   FMenuStyle   := TIGStyleFrameless;
@@ -990,7 +990,7 @@ begin
 end;
 
 procedure TMainMenuView.ReloadArrays;
-var iLua : TLuaSystem;
+var iLua : TLua;
     iEntry : TMainMenuEntry;
     iTable : TLuaTable;
     iCount : Word;
@@ -1048,7 +1048,7 @@ begin
 end;
 
 procedure TMainMenuView.ReloadChallenge( aType : Byte );
-var iLua : TLuaSystem;
+var iLua : TLua;
     iChalCount  : DWord;
     iChoices    : DWord;
     iCount      : Integer;

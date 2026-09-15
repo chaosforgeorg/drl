@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit dfdata;
 interface
-uses vluasystem, Classes, SysUtils, idea,
+uses vlua, Classes, SysUtils, idea,
      vgenerics, vcolor, vutil, vrltools, vtigstyle, vluatable, vioevent, vvector,
      drlconfig, drlkeybindings;
 
@@ -376,8 +376,8 @@ function SlotName(slot : TEqSlot) : string;
 function DamageTypeName( aDamageType : TDamageType ) : Ansistring;
 function ReadSprite( aTable : TLuaTable; var aSprite : TSprite ) : Boolean;
 function ReadSprite( aTable : TLuaTable; const aName : Ansistring; var aSprite : TSprite ) : Boolean;
-function ReadExplosion( aLuaSystem : TLuaSystem; aTable : TLuaTable; const aName : Ansistring; var aExplosion : TExplosionData ) : Boolean;
-function ReadExplosion( aLuaSystem : TLuaSystem; aTable : TLuaTable; var aExplosion : TExplosionData ) : Boolean;
+function ReadExplosion( aLua : TLua; aTable : TLuaTable; const aName : Ansistring; var aExplosion : TExplosionData ) : Boolean;
+function ReadExplosion( aLua : TLua; aTable : TLuaTable; var aExplosion : TExplosionData ) : Boolean;
 function ReadFileString( aStream : TStream; aSize : Integer ) : Ansistring;
 function ReadFileString( const aFileName : Ansistring ) : Ansistring;
 function WriteFileString( const aFileName, aText : Ansistring ) : Boolean;
@@ -864,7 +864,7 @@ begin
   end;
 end;
 
-function ReadExplosion( aLuaSystem : TLuaSystem; aTable : TLuaTable; var aExplosion : TExplosionData ) : Boolean;
+function ReadExplosion( aLua : TLua; aTable : TLuaTable; var aExplosion : TExplosionData ) : Boolean;
 begin
   aExplosion.Range      := aTable.getInteger('range',0);
   aExplosion.Delay      := aTable.getInteger('delay',0);
@@ -878,7 +878,7 @@ begin
     aExplosion.ContentID  := aTable.getInteger('content',0)
   else if aTable.IsString('content') then
   begin
-    aExplosion.ContentID := aLuaSystem.Defines[ aTable.getString( 'content' ) ];
+    aExplosion.ContentID := aLua.Defines[ aTable.getString( 'content' ) ];
     if aExplosion.ContentID = 0 then
       Log( LOGERROR, 'unknown define ('+aTable.getString( 'content' ) +')!' );
   end
@@ -890,7 +890,7 @@ begin
     aExplosion.EmitterID := aTable.getInteger('emitter',0)
   else if aTable.IsString('emitter') then
   begin
-    aExplosion.EmitterID := aLuaSystem.Defines[ aTable.getString( 'emitter' ) ];
+    aExplosion.EmitterID := aLua.Defines[ aTable.getString( 'emitter' ) ];
     if aExplosion.EmitterID = 0 then
       Log( LOGERROR, 'unknown emitter define ('+aTable.getString( 'emitter' ) +')!' );
   end
@@ -899,7 +899,7 @@ begin
   ReadExplosion := aExplosion.Color > 0;
 end;
 
-function ReadExplosion( aLuaSystem : TLuaSystem; aTable : TLuaTable; const aName : Ansistring; var aExplosion : TExplosionData ) : Boolean;
+function ReadExplosion( aLua : TLua; aTable : TLuaTable; const aName : Ansistring; var aExplosion : TExplosionData ) : Boolean;
 var iTable : TLuaTable;
 begin
   ReadExplosion                 := False;
@@ -907,7 +907,7 @@ begin
   if aTable.IsTable( aName ) then
   begin
     iTable := aTable.GetTable( aName );
-    Result := ReadExplosion( aLuaSystem, iTable, aExplosion );
+    Result := ReadExplosion( aLua, iTable, aExplosion );
     iTable.Free;
   end;
 end;

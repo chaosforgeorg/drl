@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit dfitem;
 interface
-uses Classes, SysUtils, dfthing, dfdata, vrltools, vluatable, vcolor, math, vluasystem;
+uses vluagamestack, Classes, SysUtils, dfthing, dfdata, vrltools, vluatable, vcolor, math, vlua;
 
 type
 
@@ -56,7 +56,7 @@ TItem  = class( TThing )
     function MenuColor : byte;
     function Preposition( const Item : AnsiString ) : string;
     class function Compare( a, b : TItem ) : Boolean; reintroduce;
-    class procedure RegisterLuaAPI( aLuaSystem : TLuaSystem );
+    class procedure RegisterLuaAPI( aLua : TLua );
     private
     FNID      : Integer;
     FProps    : TItemProperties;
@@ -114,7 +114,7 @@ procedure SwapItem(var a, b: TItem);
 
 implementation
 
-uses vnode, drlua, vluaentitynode, vutil, vdebug, dfbeing, drlbase,
+uses vnode, drllua, vluaentitynode, vutil, vdebug, dfbeing, drlbase,
      vmath, drlhooks, drlperk;
 
 procedure SwapItem(var a, b: TItem);
@@ -654,11 +654,11 @@ begin
 end;
 
 function lua_item_new( L : PLua_State ): Integer; cdecl;
-var iLua : TLuaSystem;
-    iState : TDRLLuaState;
+var iLua : TLua;
+    iState : TLuaGameStack;
     iItem  : TItem;
 begin
-  iLua := TLuaSystemContext.FromState( L ).Lua;
+  iLua := TLuaContext.FromState( L ).Lua;
   iState.Init(L);
   iItem := TItem.Create( iState.ToId( iLua, 1 ), iState.ToBoolean( 2 ) );
   iState.Push(iItem);
@@ -666,7 +666,7 @@ begin
 end;
 
 function lua_item_get_mod(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iItem  : TItem;
 begin
   iState.Init(L);
@@ -676,7 +676,7 @@ begin
 end;
 
 function lua_item_set_mod(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iItem  : TItem;
 begin
   iState.Init(L);
@@ -686,7 +686,7 @@ begin
 end;
 
 function lua_item_set_sprite(L: Plua_State): Integer; cdecl;
-var iState   : TDRLLuaState;
+var iState   : TLuaGameStack;
     iItem    : TItem;
     iType    : Ansistring;
     iPSprite : ^TSprite;
@@ -725,7 +725,7 @@ begin
 end;
 
 function lua_item_set_explosion(L: Plua_State): Integer; cdecl;
-var iState   : TDRLLuaState;
+var iState   : TLuaGameStack;
     iItem    : TItem;
     iTable   : TLuaTable;
 begin
@@ -741,7 +741,7 @@ begin
 end;
 
 function lua_item_set_sound_id(L: Plua_State): Integer; cdecl;
-var iState   : TDRLLuaState;
+var iState   : TLuaGameStack;
     iItem    : TItem;
 begin
   iState.Init(L);
@@ -752,7 +752,7 @@ begin
 end;
 
 function lua_item_is_usable( L : Plua_State ) : Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iItem  : TItem;
 begin
   iState.Init( L );
@@ -773,9 +773,9 @@ const lua_item_lib : array[0..7] of luaL_Reg = (
       ( name : nil;             func : nil; )
 );
 
-class procedure TItem.RegisterLuaAPI( aLuaSystem : TLuaSystem );
+class procedure TItem.RegisterLuaAPI( aLua : TLua );
 begin
-  aLuaSystem.Register( 'item', lua_item_lib );
+  aLua.Register( 'item', lua_item_lib );
 end;
 
 end.

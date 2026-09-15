@@ -6,7 +6,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drltraits;
 interface
-uses vluasystem, classes, sysutils, vutil, vnode, dfdata, drlhooks;
+uses vlua, classes, sysutils, vutil, vnode, dfdata, drlhooks;
 
 const   MAXTRAITS  = 80;
         MAXKLASS   = 10;
@@ -23,7 +23,7 @@ type TTraits = class( TVObject )
   function GetHistory : AnsiString;
   procedure Upgrade ( aKlass : Byte; aTrait : Byte ) ;
   function CanPick( aKlass : Byte; aTrait : Byte; aCharLevel : Byte ): Boolean;
-  class function CanPickInitially( aLuaSystem : TLuaSystem; aTrait : Byte; aKlassID : Byte ) : Boolean; static;
+  class function CanPickInitially( aLua : TLua; aTrait : Byte; aKlassID : Byte ) : Boolean; static;
 protected
   function Get( aTrait : Byte ) : Byte;
 protected
@@ -42,7 +42,7 @@ end;
 
 implementation
 
-uses drlua;
+uses drllua;
 
 function TTraits.CanPick( aKlass : Byte; aTrait : Byte; aCharLevel : Byte ): Boolean;
 var iOther, iValue : DWord;
@@ -139,13 +139,13 @@ begin
   FOrder[ FCount ] := aTrait;
 end;
 
-class function TTraits.CanPickInitially( aLuaSystem : TLuaSystem; aTrait : Byte; aKlassID : Byte ): Boolean;
+class function TTraits.CanPickInitially( aLua : TLua; aTrait : Byte; aKlassID : Byte ): Boolean;
 begin
   CanPickInitially := True;
-  if not aLuaSystem.Defined(['traits',aTrait,'OnPick']) then Exit( False );
+  if not aLua.Defined(['traits',aTrait,'OnPick']) then Exit( False );
 
   // #5 ReqLevel
-  with aLuaSystem.GetTable(['klasses',aKlassID,'trait',aTrait]) do
+  with aLua.GetTable(['klasses',aKlassID,'trait',aTrait]) do
   try
     if IsTable('requires') or (GetInteger('reqlevel',0) > 1) then CanPickInitially := False;
   finally

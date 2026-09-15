@@ -42,7 +42,7 @@ end;
 
 implementation
 
-uses math, sysutils, vluasystem, vtig, dfplayer, drlbase, drlperk;
+uses math, sysutils, vlua, vtig, dfplayer, drlbase, drlperk;
 
 constructor TMoreBeingView.Create( aBeing : TBeing );
 var i : Integer;

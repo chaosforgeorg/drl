@@ -24,7 +24,7 @@ end;
 
 implementation
 
-uses vtig, vutil, vluasystem, dfplayer,
+uses vtig, vutil, vlua, dfplayer,
   drlbase, drlhelpview, drlsettingsview, drlmessagesview, drlassemblyview;
 
 constructor TInGameMenuView.Create;

@@ -7,10 +7,10 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlbase;
 interface
 
-uses vapp, vnode, vutil, vuid, viotypes, vrltools, vluasystem, vioevent, vstoreinterface,
+uses vapp, vnode, vutil, vuid, viotypes, vrltools, vlua, vioevent, vstoreinterface,
      vrandom, vrlapp,
      dflevel, dfdata, dfhof, dfitem,
-     drlhooks, drlua, drlcommand, drlkeybindings, drlmodule, drlparticles;
+     drlhooks, drllua, drlcommand, drlkeybindings, drlmodule, drlparticles;
 
 type TDRLSession = class;
 
@@ -145,7 +145,7 @@ implementation
 
 uses  {$IFDEF WINDOWS}Windows,{$ELSE}Unix,{$ENDIF}
      Classes, SysUtils,
-     vbindings, vdebug, vlua, vstream,
+     vbindings, vdebug, vluastate, vstream,
      dfmap, dfbeing,
      drlio, drlgfxio, drltextio, zstream,
      drlspritemap, // remove

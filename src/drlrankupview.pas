@@ -19,10 +19,10 @@ end;
 
 implementation
 
-uses sysutils, vluasystem, drlio, drlbase, vtig;
+uses sysutils, vlua, drlio, drlbase, vtig;
 
 constructor TRankUpView.Create( aRank : THOFRank );
-var iLua : TLuaSystem;
+var iLua : TLua;
     i, i2 : Integer;
     iSize : Integer;
     iUnl  : Integer;

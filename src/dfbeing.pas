@@ -7,10 +7,10 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit dfbeing;
 interface
-uses Classes, SysUtils,
+uses vluagamestack, Classes, SysUtils,
      vluatable, vnode, vpath, vmath, vutil, vrltools, vvision,
      dfdata, dfthing, dfitem,
-     drlinventory, drlcommand, vluasystem;
+     drlinventory, drlcommand, vlua;
 
 type TMoveResult = ( MoveOk, MoveBlock, MoveDoor, MoveBeing );
 
@@ -127,7 +127,7 @@ TBeing = class(TThing,IPathQuery)
     function passableCoord( const aCoord : TCoord2D ) : boolean;
     function VisualTime( aActionCost : Word = 1000; aBaseTime : Word = 100 ) : Word;
 
-    class procedure RegisterLuaAPI( aLuaSystem : TLuaSystem );
+    class procedure RegisterLuaAPI( aLua : TLua );
 
   protected
     procedure BloodDecal( aFrom : TDirection; aAmount : LongInt );
@@ -215,7 +215,7 @@ implementation
 
 uses math, vlualibrary, vluaentitynode, vuid, vdebug, vluatools, vcolor, vvector,
      dfplayer, dflevel, dfmap, drlhooks,
-     drlua, drlbase, drlio;
+     drllua, drlbase, drlio;
 
 const PAIN_DURATION = 500;
 
@@ -2903,11 +2903,11 @@ begin
 end;
 
 function lua_being_new( L : PLua_State ): Integer; cdecl;
-var iLua : TLuaSystem;
-    iState       : TDRLLuaState;
+var iLua : TLua;
+    iState       : TLuaGameStack;
     iBeing       : TBeing;
 begin
-  iLua := TLuaSystemContext.FromState( L ).Lua;
+  iLua := TLuaContext.FromState( L ).Lua;
   iState.Init( L );
   iBeing := TBeing.Create(iState.ToId( iLua, 1 ));
   iState.Push( iBeing );
@@ -2915,7 +2915,7 @@ begin
 end;
 
 function lua_being_kill(L: Plua_State): Integer; cdecl;
-var State       : TDRLLuaState;
+var State       : TLuaGameStack;
     Being       : TBeing;
 begin
   State.Init(L);
@@ -2925,7 +2925,7 @@ begin
 end;
 
 function lua_being_get_name(L: Plua_State): Integer; cdecl;
-var State       : TDRLLuaState;
+var State       : TLuaGameStack;
     Being       : TBeing;
     Res         : AnsiString;
 begin
@@ -2938,7 +2938,7 @@ begin
 end;
 
 function lua_being_resurrect( L: Plua_State ): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iBeing : TBeing;
 begin
   iState.Init(L);
@@ -2948,7 +2948,7 @@ begin
 end;
 
 function lua_being_apply_damage(L: Plua_State): Integer; cdecl;
-var State             : TDRLLuaState;
+var State             : TLuaGameStack;
     Being             : TBeing;
     iSource           : TItem;
     iKilledBy         : AnsiString;
@@ -2976,7 +2976,7 @@ begin
 end;
 
 function lua_being_get_eq_item(L: Plua_State): Integer; cdecl;
-var State   : TDRLLuaState;
+var State   : TLuaGameStack;
     Being   : TBeing;
 begin
   State.Init(L);
@@ -2986,7 +2986,7 @@ begin
 end;
 
 function lua_being_set_eq_item(L: Plua_State): Integer; cdecl;
-var State   : TDRLLuaState;
+var State   : TLuaGameStack;
     Being   : TBeing;
     slot    : TEqSlot;
     Item    : TItem;
@@ -3008,7 +3008,7 @@ begin
 end;
 
 function lua_being_add_inv_item(L: Plua_State): Integer; cdecl;
-var iState  : TDRLLuaState;
+var iState  : TLuaGameStack;
     iBeing  : TBeing;
     iItem   : TItem;
     iAmount : Integer;
@@ -3042,7 +3042,7 @@ begin
 end;
 
 function lua_being_get_total_resistance(L: Plua_State): Integer; cdecl;
-var State  : TDRLLuaState;
+var State  : TLuaGameStack;
     Being  : TBeing;
 begin
   State.Init(L);
@@ -3052,7 +3052,7 @@ begin
 end;
 
 function lua_being_quick_swap(L: Plua_State): Integer; cdecl;
-var State  : TDRLLuaState;
+var State  : TLuaGameStack;
     Being  : TBeing;
 begin
   State.Init(L);
@@ -3062,7 +3062,7 @@ begin
 end;
 
 function lua_being_drop(L: Plua_State): Integer; cdecl;
-var State  : TDRLLuaState;
+var State  : TLuaGameStack;
     Being  : TBeing;
 begin
   State.Init(L);
@@ -3072,7 +3072,7 @@ begin
 end;
 
 function lua_being_attack(L: Plua_State): Integer; cdecl;
-var State  : TDRLLuaState;
+var State  : TLuaGameStack;
     Being  : TBeing;
 begin
   State.Init(L);
@@ -3088,7 +3088,7 @@ begin
 end;
 
 function lua_being_action_fire(L: Plua_State): Integer; cdecl;
-var iState  : TDRLLuaState;
+var iState  : TLuaGameStack;
     iBeing  : TBeing;
     iWeapon : TItem;
     iTarget : TCoord2D;
@@ -3108,7 +3108,7 @@ begin
 end;
 
 function lua_being_reload(L: Plua_State): Integer; cdecl;
-var iState  : TDRLLuaState;
+var iState  : TLuaGameStack;
     iBeing  : TBeing;
     iWeapon : TItem;
     iItem   : TItem;
@@ -3144,7 +3144,7 @@ begin
 end;
 
 function lua_being_action_reload(L: Plua_State): Integer; cdecl;
-var iState  : TDRLLuaState;
+var iState  : TLuaGameStack;
     iBeing  : TBeing;
 begin
   iState.Init(L);
@@ -3154,7 +3154,7 @@ begin
 end;
 
 function lua_being_action_alt_reload(L: Plua_State): Integer; cdecl;
-var iState  : TDRLLuaState;
+var iState  : TLuaGameStack;
     iBeing  : TBeing;
 begin
   iState.Init(L);
@@ -3164,7 +3164,7 @@ begin
 end;
 
 function lua_being_action_dual_reload(L: Plua_State): Integer; cdecl;
-var iState  : TDRLLuaState;
+var iState  : TLuaGameStack;
     iBeing  : TBeing;
 begin
   iState.Init(L);
@@ -3174,7 +3174,7 @@ begin
 end;
 
 function lua_being_direct_seek(L: Plua_State): Integer; cdecl;
-var State  : TDRLLuaState;
+var State  : TLuaGameStack;
     Being  : TBeing;
 begin
   State.Init(L);
@@ -3186,7 +3186,7 @@ begin
 end;
 
 function lua_being_use(L: Plua_State): Integer; cdecl;
-var State  : TDRLLuaState;
+var State  : TLuaGameStack;
     Being  : TBeing;
 begin
   State.Init(L);
@@ -3196,7 +3196,7 @@ begin
 end;
 
 function lua_being_wear(L: Plua_State): Integer; cdecl;
-var iState  : TDRLLuaState;
+var iState  : TLuaGameStack;
     iBeing  : TBeing;
     iItem   : TItem;
     iLRes   : Boolean;
@@ -3220,7 +3220,7 @@ begin
 end;
 
 function lua_being_pickup(L: Plua_State): Integer; cdecl;
-var iState  : TDRLLuaState;
+var iState  : TLuaGameStack;
     iBeing  : TBeing;
 begin
   iState.Init(L);
@@ -3230,7 +3230,7 @@ begin
 end;
 
 function lua_being_unload(L: Plua_State): Integer; cdecl;
-var iState  : TDRLLuaState;
+var iState  : TLuaGameStack;
     iBeing  : TBeing;
 begin
   iState.Init(L);
@@ -3240,7 +3240,7 @@ begin
 end;
 
 function lua_being_path_find(L: Plua_State): Integer; cdecl;
-var iState  : TDRLLuaState;
+var iState  : TLuaGameStack;
     iBeing  : TBeing;
 begin
   iState.Init(L);
@@ -3259,7 +3259,7 @@ begin
 end;
 
 function lua_being_path_next(L: Plua_State): Integer; cdecl;
-var iState  : TDRLLuaState;
+var iState  : TLuaGameStack;
     iBeing  : TBeing;
     iMoveR  : TMoveResult;
     iSuccess: Boolean;
@@ -3305,7 +3305,7 @@ begin
 end;
 
 function lua_being_inv_items_closure(L: Plua_State): Integer; cdecl;
-var State     : TDRLLuaState;
+var State     : TLuaGameStack;
     Parent    : TBeing;
     Next      : TItem;
     Current   : TItem;
@@ -3333,7 +3333,7 @@ end;
 
 // iterator
 function lua_being_inv_items(L: Plua_State): Integer; cdecl;
-var State   : TDRLLuaState;
+var State   : TLuaGameStack;
     Being   : TBeing;
 begin
   State.Init(L);
@@ -3348,7 +3348,7 @@ begin
 end;
 
 function lua_being_inv_count( L : PLua_State ): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iBeing : TBeing;
     iNID   : Integer;
 begin
@@ -3360,7 +3360,7 @@ begin
 end;
 
 function lua_being_inv_remove( L : PLua_State ): Integer; cdecl;
-var iState  : TDRLLuaState;
+var iState  : TLuaGameStack;
     iBeing  : TBeing;
     iNID    : Integer;
     iAmount : Integer;
@@ -3374,7 +3374,7 @@ begin
 end;
 
 function lua_being_inv_size(L: Plua_State): Integer; cdecl;
-var State   : TDRLLuaState;
+var State   : TLuaGameStack;
     Being   : TBeing;
 begin
   State.Init(L);
@@ -3384,7 +3384,7 @@ begin
 end;
 
 function lua_being_relocate(L: Plua_State): Integer; cdecl;
-var State  : TDRLLuaState;
+var State  : TLuaGameStack;
     Thing  : TThing;
     Target : TCoord2D;
 begin
@@ -3401,7 +3401,7 @@ begin
 end;
 
 function lua_being_set_overlay(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iBeing : TBeing;
 begin
   iState.Init(L);
@@ -3420,7 +3420,7 @@ begin
 end;
 
 function lua_being_set_coscolor(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iBeing : TBeing;
 begin
   iState.Init(L);
@@ -3439,7 +3439,7 @@ begin
 end;
 
 function lua_being_set_glow(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iBeing : TBeing;
 begin
   iState.Init(L);
@@ -3452,7 +3452,7 @@ begin
 end;
 
 function lua_being_set_sprite(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iBeing : TBeing;
     iTable : TLuaTable;
 begin
@@ -3475,7 +3475,7 @@ begin
 end;
 
 function lua_being_get_auto_target(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iBeing : TBeing;
     iAuto  : TAutoTarget;
     iRange : Integer;
@@ -3505,7 +3505,7 @@ begin
 end;
 
 function lua_being_get_tohit(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iBeing : TBeing;
 begin
   iState.Init(L);
@@ -3516,7 +3516,7 @@ begin
 end;
 
 function lua_being_get_todam(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iBeing : TBeing;
 begin
   iState.Init(L);
@@ -3527,7 +3527,7 @@ begin
 end;
 
 function lua_being_wipe_marker( L: Plua_State ): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iBeing : TBeing;
 begin
   iState.Init(L);
@@ -3540,7 +3540,7 @@ begin
 end;
 
 function lua_being_set_marker( L: Plua_State ): Integer; cdecl;
-var iState     : TDRLLuaState;
+var iState     : TLuaGameStack;
     iBeing     : TBeing;
     iTarget    : TBeing;
     iCoord     : TCoord2D;
@@ -3569,7 +3569,7 @@ begin
 end;
 
 function lua_being_animate_bump( L: Plua_State ): Integer; cdecl;
-var iState  : TDRLLuaState;
+var iState  : TLuaGameStack;
     iBeing  : TBeing;
     iCoord  : TCoord2D;
     iAmount : Single;
@@ -3588,7 +3588,7 @@ begin
 end;
 
 function lua_being_send_missile( L: Plua_State ): Integer; cdecl;
-var iState     : TDRLLuaState;
+var iState     : TLuaGameStack;
     iBeing     : TBeing;
     iTarget    : TCoord2D;
     iItem      : TItem;
@@ -3610,7 +3610,7 @@ end;
 
 
 function lua_being_get_last_position(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iBeing : TBeing;
 begin
   iState.Init(L);
@@ -3620,7 +3620,7 @@ begin
 end;
 
 function lua_being_get_target(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iBeing : TBeing;
 begin
   iState.Init(L);
@@ -3680,9 +3680,9 @@ const lua_being_lib : array[0..41] of luaL_Reg = (
       ( name : nil;             func : nil; )
 );
 
-class procedure TBeing.RegisterLuaAPI( aLuaSystem : TLuaSystem );
+class procedure TBeing.RegisterLuaAPI( aLua : TLua );
 begin
-  aLuaSystem.Register( 'being', lua_being_lib );
+  aLua.Register( 'being', lua_being_lib );
 end;
 
 end.

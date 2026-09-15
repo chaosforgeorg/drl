@@ -7,12 +7,12 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit dflevel;
 interface
-uses SysUtils, Classes,
+uses vluagamestack, SysUtils, Classes,
      vluaentitynode, vutil, vvision, viotypes, vrltools, vnode,
      vluamapnode, vtextmap,
      dfdata, dfmap, dfthing, dfbeing, dfitem,
      drlhooks, drlperk,
-     drlmarkers, drldecals, vluasystem;
+     drlmarkers, drldecals, vlua;
 
 const CellWalls   : TCellSet = [];
       CellFloors  : TCellSet = [];
@@ -122,7 +122,7 @@ TLevel = class(TLuaMapNode, ITextMap)
     function SwapBeings( aA, aB : TCoord2D ) : Boolean;
     procedure CalculateRotation( aCoord : TCoord2D ); inline;
 
-    class procedure RegisterLuaAPI( aLuaSystem : TLuaSystem );
+    class procedure RegisterLuaAPI( aLua : TLua );
 
     function HasHook( aHook : Word ) : Boolean; override;
     function GetPerkList : TPerkList;
@@ -203,7 +203,7 @@ TLevel = class(TLuaMapNode, ITextMap)
 
 implementation
 
-uses math, typinfo, vgenerics, vluatools, vdebug, vuid, dfplayer, drlua, drlbase, drlio, drlgfxio,
+uses math, typinfo, vgenerics, vluatools, vdebug, vuid, dfplayer, drllua, drlbase, drlio, drlgfxio,
      drlspritemap, drlhudviews;
 
 type TProcessedUIDList = specialize TGArray<TUID>;
@@ -523,7 +523,7 @@ var x,y         : Integer;
     iFloorStyle : Byte;
 begin
   Player.Detach; // guarantee invariant
-  FContext.Lua.State.ClearLuaProperties( Self );
+  FContext.Lua.Stack.ClearLuaProperties( Self );
   FActiveBeing := nil;
   FNextNode    := nil;
 
@@ -1740,7 +1740,7 @@ begin
 end;
 
 function lua_level_drop_being(L: Plua_State): Integer; cdecl;
-var iState   : TDRLLuaState;
+var iState   : TLuaGameStack;
     iBeing   : TBeing;
     iLevel   : TLevel;
     iRespawn : Boolean;
@@ -1767,7 +1767,7 @@ begin
 end;
 
 function lua_level_respawn( L : Plua_State ) : Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iLevel : TLevel;
 begin
   iState.Init( L );
@@ -1777,7 +1777,7 @@ begin
 end;
 
 function lua_level_drop_item( L : PLua_State ): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iItem : TItem;
     iLevel : TLevel;
 begin
@@ -1801,7 +1801,7 @@ begin
 end;
 
 function lua_level_play_sound(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iLevel : TLevel;
 begin
   iState.Init(L);
@@ -1813,7 +1813,7 @@ begin
 end;
 
 function lua_level_nuke(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iLevel : TLevel;
 begin
   iState.Init(L);
@@ -1824,7 +1824,7 @@ end;
 
 
 function lua_level_explosion(L: Plua_State): Integer; cdecl;
-var iState            : TDRLLuaState;
+var iState            : TLuaGameStack;
     iLevel            : TLevel;
     iData             : TExplosionData;
     iTable            : TLuaTable;
@@ -1883,7 +1883,7 @@ begin
 end;
 
 function lua_level_recalc_fluids(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
     Level : TLevel;
 begin
   State.Init(L);
@@ -1894,7 +1894,7 @@ begin
 end;
 
 function lua_level_animate_cell(L: Plua_State): Integer; cdecl;
-var State   : TDRLLuaState;
+var State   : TLuaGameStack;
     iCoord  : TCoord2D;
     iLevel  : TLevel;
     iValue  : Integer;
@@ -1914,7 +1914,7 @@ begin
 end;
 
 function lua_level_animate_item(L: Plua_State): Integer; cdecl;
-var State   : TDRLLuaState;
+var State   : TLuaGameStack;
     iItem   : TItem;
     iLevel  : TLevel;
     iValue  : Integer;
@@ -1930,7 +1930,7 @@ begin
 end;
 
 function lua_level_set_generator_style( L : PLua_State ) : Integer; cdecl;
-var iState   : TDRLLuaState;
+var iState   : TLuaGameStack;
     iCoord  : TCoord2D;
     iLevel  : TLevel;
     iFloor  : Integer;
@@ -1952,7 +1952,7 @@ begin
 end;
 
 function lua_level_set_raw_style(L: Plua_State): Integer; cdecl;
-var iState  : TDRLLuaState;
+var iState  : TLuaGameStack;
     iCoord  : TCoord2D;
     iArea   : TArea;
     iLevel  : TLevel;
@@ -1977,7 +1977,7 @@ begin
 end;
 
 function lua_level_get_raw_style(L: Plua_State): Integer; cdecl;
-var State   : TDRLLuaState;
+var State   : TLuaGameStack;
     iCoord  : TCoord2D;
     iLevel  : TLevel;
 begin
@@ -1990,7 +1990,7 @@ begin
 end;
 
 function lua_level_fix_rotation(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iLevel : TLevel;
     iCoord : TCoord2D;
 begin
@@ -2002,7 +2002,7 @@ begin
 end;
 
 function lua_level_copy_lflags(L: Plua_State): Integer; cdecl;
-var iState   : TDRLLuaState;
+var iState   : TLuaGameStack;
     iLevel   : TLevel;
     iCF, iCT : TCoord2D;
 begin
@@ -2016,7 +2016,7 @@ begin
 end;
 
 function lua_level_set_raw_deco(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iCoord : TCoord2D;
     iArea  : TArea;
     iLevel : TLevel;
@@ -2041,7 +2041,7 @@ begin
 end;
 
 function lua_level_get_raw_deco(L: Plua_State): Integer; cdecl;
-var State   : TDRLLuaState;
+var State   : TLuaGameStack;
     iCoord  : TCoord2D;
     iLevel  : TLevel;
 begin
@@ -2054,7 +2054,7 @@ begin
 end;
 
 function lua_level_damage_tile(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
     Level : TLevel;
 begin
   State.Init(L);
@@ -2064,7 +2064,7 @@ begin
 end;
 
 function lua_level_push_item(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
     Level : TLevel;
 begin
   State.Init(L);
@@ -2074,7 +2074,7 @@ begin
 end;
 
 function lua_level_reset(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
     Level : TLevel;
 begin
   State.Init(L);
@@ -2085,7 +2085,7 @@ begin
 end;
 
 function lua_level_post_generate(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
     Level : TLevel;
 begin
   State.Init(L);
@@ -2099,7 +2099,7 @@ begin
 end;
 
 function lua_level_get_enemies_left(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iLevel : TLevel;
 begin
   iState.Init(L);
@@ -2109,7 +2109,7 @@ begin
 end;
 
 function lua_level_is_passable_ext(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iLevel : TLevel;
 begin
   iState.Init(L);
@@ -2119,7 +2119,7 @@ begin
 end;
 
 function lua_level_add_perk(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iLevel : TLevel;
 begin
   iState.Init(L);
@@ -2130,7 +2130,7 @@ begin
 end;
 
 function lua_level_get_perk_time(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iLevel : TLevel;
 begin
   iState.Init(L);
@@ -2140,7 +2140,7 @@ begin
 end;
 
 function lua_level_remove_perk(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iLevel : TLevel;
 begin
   iState.Init(L);
@@ -2150,7 +2150,7 @@ begin
 end;
 
 function lua_level_is_perk(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iLevel : TLevel;
 begin
   iState.Init(L);
@@ -2190,10 +2190,10 @@ const lua_level_lib : array[0..26] of luaL_Reg = (
 );
 
 
-class procedure TLevel.RegisterLuaAPI( aLuaSystem : TLuaSystem );
+class procedure TLevel.RegisterLuaAPI( aLua : TLua );
 begin
-  TLuaMapNode.RegisterLuaAPI( aLuaSystem, 'level' );
-  aLuaSystem.Register( 'level', lua_level_lib );
+  TLuaMapNode.RegisterLuaAPI( aLua, 'level' );
+  aLua.Register( 'level', lua_level_lib );
 end;
 
 function TLevel.CellToID ( const aCell : Byte ) : AnsiString;

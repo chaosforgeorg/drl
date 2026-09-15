@@ -6,9 +6,9 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlio;
 interface
-uses {$IFDEF WINDOWS}Windows,{$ENDIF} Classes, SysUtils,
+uses vluagamestack, {$IFDEF WINDOWS}Windows,{$ENDIF} Classes, SysUtils,
      vio, vbindings, viorl, vrltools, vluaconfig, vglquadrenderer, vstoreinterface, vtextures, vtigstyle,
-     vluastate, viotypes, vioevent, vioconsole, vgenerics, vutil,
+     vluastack, viotypes, vioevent, vioconsole, vgenerics, vutil,
      dfdata, dfthing, dfbeing, drlspritemap, drlaudio, drlkeybindings,
      drlbase, drlcontrollerbindings, drlloadingview, drlmodule;
 
@@ -97,7 +97,7 @@ type TDRLIO = class( TIORL )
   procedure Explosion( aDelay : Integer; aWhere : TCoord2D; aData : TExplosionData ); reintroduce; virtual;
   procedure PulseBlood( aValue : Single ); virtual;
 
-  class procedure RegisterLuaAPI( State : TLuaState ); reintroduce;
+  class procedure RegisterLuaAPI( State : TLuaStack ); reintroduce;
 
   function PushLayer( aLayer : TIOLayer ) : TIOLayer; override;
   procedure PreAction;
@@ -189,10 +189,10 @@ procedure EmitCrashInfo( const aInfo : AnsiString; aInGame : Boolean  );
 implementation
 
 uses math, video, dateutils, variants,
-     vsound, vluasystem, vuid, vlog, vdebug, vmath,
+     vsound, vlua, vuid, vlog, vdebug, vmath,
      vsdlio, vglconsole, vtig, vtigio, vvector,
      dflevel, dfplayer, dfitem, dfhof,
-     drlconfiguration, drluibindings, drlmoreview, drlchoiceview, drlua, drlmodulechoiceview,
+     drlconfiguration, drluibindings, drlmoreview, drlchoiceview, drllua, drlmodulechoiceview,
      drlhudviews, drlplotview;
 
 function TIGSubCallback( const aID : Ansistring ) : Ansistring;
@@ -1219,7 +1219,7 @@ end;
 (**************************** LUA UI *****************************)
 
 function lua_ui_set_hint(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   if not Setting_HideHints then
@@ -1238,7 +1238,7 @@ end;
 {$HINTS ON}
 
 function lua_ui_blink(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   IO.Blink( State.ToInteger(1), State.ToInteger(2), State.ToInteger(3));
@@ -1246,7 +1246,7 @@ begin
 end;
 
 function lua_ui_plot_screen(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
 begin
   iState.Init(L);
   IO.PushLayer( TPlotView.Create( iState.ToString(1), iState.ToIOColor(2), iState.ToString(3,'') ) );
@@ -1255,7 +1255,7 @@ begin
 end;
 
 function lua_ui_msg(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   IO.Msg(State.ToString(1));
@@ -1269,7 +1269,7 @@ begin
 end;
 
 function lua_ui_msg_enter(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   if State.StackSize = 0 then Exit(0);
@@ -1281,7 +1281,7 @@ begin
 end;
 
 function lua_ui_msg_history(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
     Idx   : Integer;
     Msg   : AnsiString;
 begin
@@ -1302,7 +1302,7 @@ begin
 end;
 
 function lua_ui_strip_encoding(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   if State.StackSize = 0 then Exit(0);
@@ -1311,7 +1311,7 @@ begin
 end;
 
 function lua_ui_choice(L: Plua_State): Integer; cdecl;
-var State     : TDRLLuaState;
+var State     : TLuaGameStack;
     iView     : TChoiceView;
     i, iCount : Integer;
     iEntry    : TChoiceViewChoice;
@@ -1359,7 +1359,7 @@ begin
 end;
 
 function lua_ui_set_style_color(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iEntry : TTIGStyleColorEntry;
 begin
   iState.Init(L);
@@ -1370,7 +1370,7 @@ begin
 end;
 
 function lua_ui_set_style_frame(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iEntry : TTIGStyleFrameEntry;
 begin
   iState.Init(L);
@@ -1381,7 +1381,7 @@ begin
 end;
 
 function lua_ui_set_style_padding(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iEntry : TTIGStylePaddingEntry;
 begin
   iState.Init(L);
@@ -1392,7 +1392,7 @@ begin
 end;
 
 function lua_ui_set_narrow_mode(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
 begin
   iState.Init(L);
   IO.FNarrowMode := iState.ToBoolean(1);
@@ -1406,7 +1406,7 @@ begin
 end;
 
 function lua_ui_is_pad(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
 begin
   iState.Init(L);
   iState.Push( IO.IsGamepad );
@@ -1414,7 +1414,7 @@ begin
 end;
 
 function lua_ui_get_rank(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
 begin
   iState.Init(L);
   iState.Push( HOF.GetRank( iState.ToString( 1 ) ) );
@@ -1422,7 +1422,7 @@ begin
 end;
 
 function lua_ui_save_and_quit(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
 begin
   iState.Init(L);
   ForceShop := iState.ToBoolean(1);
@@ -1432,7 +1432,7 @@ begin
 end;
 
 function lua_ui_get_target(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
 begin
   iState.Init(L);
   iState.PushCoord( IO.Session.Targeting.List.Current );
@@ -1440,7 +1440,7 @@ begin
 end;
 
 function lua_ui_reset_auto_target(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
 begin
   iState.Init(L);
   IO.Session.ResetAutoTarget;
@@ -1477,7 +1477,7 @@ begin
   WaitForLayer( True );
 end;
 
-class procedure TDRLIO.RegisterLuaAPI( State : TLuaState );
+class procedure TDRLIO.RegisterLuaAPI( State : TLuaStack );
 begin
   State.Register( 'ui', lua_ui_lib );
 end;
