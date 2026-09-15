@@ -8,7 +8,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit dfthing;
 interface
 uses SysUtils, Classes, vluaentitynode, vrltools, vluatable,
-     vvector, dfdata, drlhooks, drlperk;
+     vvector, dfdata, drlhooks, drlperk, vluasystem;
 
 type String16 = string[16];
 
@@ -32,7 +32,7 @@ type TThing = class( TLuaEntityNode )
   procedure Tick; virtual;
   procedure WriteToStream( aStream : TStream ); override;
   destructor Destroy; override;
-  class procedure RegisterLuaAPI();
+  class procedure RegisterLuaAPI( aLuaSystem : TLuaSystem );
 protected
   procedure LuaLoad( aTable : TLuaTable ); virtual;
 protected
@@ -61,7 +61,7 @@ end;
 implementation
 
 uses typinfo, variants,
-     vluasystem, vdebug, vtig,
+     vdebug, vtig,
      drlbase, drlio, drlua, drlspritemap;
 
 constructor TThing.Create( const aID : AnsiString );
@@ -95,7 +95,7 @@ begin
   if ColorOverrides.Exists(iColorID) then
     FGylph.Color := ColorOverrides[iColorID];
 
-  FHooks += LoadCallbacks( aTable );
+  FHooks += LoadCallbacks( FContext.Lua, aTable );
 end;
 
 function TThing.PlaySound( const aSoundID : string; aDelay : Integer = 0 ) : Boolean;
@@ -124,22 +124,30 @@ end;
 
 function TThing.CallHook ( aHook : Byte; const aParams : array of const ) : Boolean;
 var iState : TDRLState;
+    iLua   : TDRLLua;
 begin
   CallHook := False;
-  if aHook in FHooks         then begin CallHook := True; iState := DRL.State; LuaSystem.ProtectedRunHook(Self, Lua.HookName(aHook), aParams ); if DRL.State <> iState then Exit; end;
+  if aHook in FHooks then
+  begin
+    CallHook := True;
+    iState := DRL.State;
+    iLua := TDRLLua( FContext.Lua );
+    iLua.ProtectedRunHook( Self, iLua.HookName( aHook ), aParams );
+    if DRL.State <> iState then Exit;
+  end;
   if FPerks <> nil then if FPerks.CallHook( aHook, aParams ) then CallHook := True;
 end;
 
 function TThing.CallHookCheck ( aHook : Byte; const aParams : array of const ) : Boolean;
 begin
-  if aHook in FHooks then if not LuaSystem.ProtectedRunHook(Self, HookNames[aHook], aParams ) then Exit( False );
+  if aHook in FHooks then if not FContext.Lua.ProtectedRunHook(Self, HookNames[aHook], aParams ) then Exit( False );
   if FPerks <> nil then if not FPerks.CallHookCheck( aHook, aParams ) then Exit( False );
   Exit( True );
 end;
 
 function TThing.CallHookCan ( aHook : Byte; const aParams : array of const ) : Boolean;
 begin
-  if aHook in FHooks then if LuaSystem.ProtectedRunHook(Self, HookNames[aHook], aParams ) then Exit( True );
+  if aHook in FHooks then if FContext.Lua.ProtectedRunHook(Self, HookNames[aHook], aParams ) then Exit( True );
   if FPerks <> nil   then if FPerks.CallHookCan( aHook, aParams ) then Exit( True );
   Exit( False );
 end;
@@ -195,7 +203,7 @@ begin
     with PerkData[ iPerks[i].ID ] do
     begin
       if Hook_OnDescribe in Hooks then
-        iText := LuaSystem.ProtectedCall( [ 'perks', iPerks[i].ID, HookNames[Hook_OnDescribe] ], [ Self ] )
+        iText := FContext.Lua.ProtectedCall( [ 'perks', iPerks[i].ID, HookNames[Hook_OnDescribe] ], [ Self ] )
       else if aInvMode then iText := Name
       else iText := GetPerkShort( iPerks[i].ID );
       if iText = '' then Continue;
@@ -264,7 +272,7 @@ begin
   iThing := iState.ToObject(1) as TThing;
   if iThing = nil then Exit( 0 );
   if iThing.FPerks = nil then iThing.FPerks := TPerks.Create( iThing );
-  iThing.FPerks.Add( iState.ToId(2), iState.ToInteger(3,-1) );
+  iThing.FPerks.Add( iState.ToId( iThing.Context.Lua, 2 ), iState.ToInteger(3,-1) );
   Result := 0;
 end;
 
@@ -275,7 +283,7 @@ begin
   iState.Init(L);
   iThing := iState.ToObject(1) as TThing;
   if iThing.FPerks <> nil
-    then iState.Push( iThing.FPerks.getTime( iState.ToId(2) ) )
+    then iState.Push( iThing.FPerks.getTime( iState.ToId( iThing.Context.Lua, 2 ) ) )
     else iState.Push( 0 );
   Result := 1;
 end;
@@ -287,7 +295,7 @@ begin
   iState.Init(L);
   iThing := iState.ToObject(1) as TThing;
   if iThing.FPerks <> nil 
-    then iState.Push( iThing.FPerks.Remove( iState.ToId(2), iState.ToBoolean( 3, False ) ) )
+    then iState.Push( iThing.FPerks.Remove( iState.ToId( iThing.Context.Lua, 2 ), iState.ToBoolean( 3, False ) ) )
     else iState.Push( False );
   Result := 1;
 end;
@@ -298,7 +306,7 @@ var iState : TDRLLuaState;
 begin
   iState.Init(L);
   iThing := iState.ToObject(1) as TThing;
-  iState.Push( ( iThing.FPerks <> nil ) and ( iThing.FPerks.IsActive( iState.ToId( 2 ) ) ) );
+  iState.Push( ( iThing.FPerks <> nil ) and ( iThing.FPerks.IsActive( iState.ToId( iThing.Context.Lua, 2 ) ) ) );
   Result := 1;
 end;
 
@@ -320,7 +328,7 @@ var iState : TDRLLuaState;
 begin
   iState.Init(L);
   iThing := iState.ToObject(1) as TThing;
-  iState.Push( DRL.Particles.AddEmitter( iState.ToId(2), iThing.UID,
+  iState.Push( DRL.Particles.AddEmitter( iState.ToId( iThing.Context.Lua, 2 ), iThing.UID,
     Vec3f( ( iThing.Position.X - 1 ) * 32 + 16, ( iThing.Position.Y - 1 ) * 32 + 16, 0 ) ) );
   Result := 1;
 end;
@@ -331,7 +339,7 @@ var iState : TDRLLuaState;
 begin
   iState.Init(L);
   iThing := iState.ToObject(1) as TThing;
-  iState.Push( DRL.Particles.RemoveEmitter( iState.ToId(2), iThing.UID ) );
+  iState.Push( DRL.Particles.RemoveEmitter( iState.ToId( iThing.Context.Lua, 2 ), iThing.UID ) );
   Result := 1;
 end;
 
@@ -346,9 +354,9 @@ const lua_thing_lib : array[0..7] of luaL_Reg = (
   ( name : nil;               func : nil; )
 );
 
-class procedure TThing.RegisterLuaAPI();
+class procedure TThing.RegisterLuaAPI( aLuaSystem : TLuaSystem );
 begin
-  LuaSystem.Register( 'thing', lua_thing_lib );
+  aLuaSystem.Register( 'thing', lua_thing_lib );
 end;
 
 end.

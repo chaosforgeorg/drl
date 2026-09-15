@@ -10,7 +10,7 @@ interface
 uses Classes, SysUtils,
      vluatable, vnode, vpath, vmath, vutil, vrltools, vvision,
      dfdata, dfthing, dfitem,
-     drlinventory, drlcommand;
+     drlinventory, drlcommand, vluasystem;
 
 type TMoveResult = ( MoveOk, MoveBlock, MoveDoor, MoveBeing );
 
@@ -27,8 +27,8 @@ type
 { TBeing }
 
 TBeing = class(TThing,IPathQuery)
-    constructor Create( nid : byte ); overload;
-    constructor Create( const nid : AnsiString ); overload;
+    constructor Create( aNID : Byte ); overload;
+    constructor Create( const aNID : AnsiString ); overload;
     constructor CreateFromStream( Stream: TStream ); override;
     procedure WriteToStream( Stream: TStream ); override;
     procedure Initialize;
@@ -127,7 +127,7 @@ TBeing = class(TThing,IPathQuery)
     function passableCoord( const aCoord : TCoord2D ) : boolean;
     function VisualTime( aActionCost : Word = 1000; aBaseTime : Word = 100 ) : Word;
 
-    class procedure RegisterLuaAPI();
+    class procedure RegisterLuaAPI( aLuaSystem : TLuaSystem );
 
   protected
     procedure BloodDecal( aFrom : TDirection; aAmount : LongInt );
@@ -213,8 +213,7 @@ TBeing = class(TThing,IPathQuery)
 
 implementation
 
-uses math, vlualibrary, vluaentitynode, vuid, vdebug, vluasystem,
-     vluatools, vcolor, vvector,
+uses math, vlualibrary, vluaentitynode, vuid, vdebug, vluatools, vcolor, vvector,
      dfplayer, dflevel, dfmap, drlhooks,
      drlua, drlbase, drlio;
 
@@ -244,24 +243,24 @@ begin
   Exit( Clamp( iMiss, 0, 95 ) );
 end;
 
-constructor TBeing.Create(nid : byte);
-var Table : TLuaTable;
+constructor TBeing.Create( aNID : Byte );
+var iTable : TLuaTable;
 begin
-  inherited Create( LuaSystem.Get( ['beings', nid, 'id'] ) );
+  inherited Create( DRL.Context.Lua.Get( ['beings', aNID, 'id'] ) );
   FEntityID := ENTITY_BEING;
-  Table := LuaSystem.GetTable( ['beings', nid] );
-  LuaLoad( Table );
-  FreeAndNil( Table );
+  iTable := FContext.Lua.GetTable( ['beings', aNID] );
+  LuaLoad( iTable );
+  FreeAndNil( iTable );
 end;
 
-constructor TBeing.Create( const nid: AnsiString );
-var Table : TLuaTable;
+constructor TBeing.Create( const aNID : AnsiString );
+var iTable : TLuaTable;
 begin
-  inherited Create( nid );
+  inherited Create( aNID );
   FEntityID := ENTITY_BEING;
-  Table := LuaSystem.GetTable(['beings', nid]);
-  LuaLoad( Table );
-  FreeAndNil( Table );
+  iTable := FContext.Lua.GetTable(['beings', aNID]);
+  LuaLoad( iTable );
+  FreeAndNil( iTable );
 end;
 
 constructor TBeing.CreateFromStream ( Stream : TStream ) ;
@@ -520,7 +519,7 @@ function TBeing.GetBonus( aHook : Byte; const aParams : array of Const ) : Integ
 begin
   GetBonus := inherited GetBonus( aHook, aParams );
   if aHook in FHooks then
-    GetBonus += LuaSystem.ProtectedRunHook( Self, HookNames[ aHook ], aParams );
+    GetBonus += FContext.Lua.ProtectedRunHook( Self, HookNames[ aHook ], aParams );
   if FInv <> nil then
     GetBonus += FInv.GetBonus( aHook, aParams );
 end;
@@ -529,7 +528,7 @@ function TBeing.GetBonusMul( aHook : Byte; const aParams : array of Const ) : Si
 begin
   GetBonusMul := inherited GetBonusMul( aHook, aParams );
   if aHook in FHooks then
-    GetBonusMul *= LuaSystem.ProtectedRunHook( Self, HookNames[ aHook ], aParams );
+    GetBonusMul *= FContext.Lua.ProtectedRunHook( Self, HookNames[ aHook ], aParams );
   if FInv <> nil then
     GetBonusMul *= FInv.GetBonusMul( aHook, aParams );
 end;
@@ -620,7 +619,7 @@ var iWeapon  : TItem;
     iItem    : TItem;
     iAmmo    : Byte;
 begin
-  if (not LuaSystem.Defines.Exists(aWeaponID)) or (LuaSystem.Defines[aWeaponID] = 0)then Exit( False );
+  if (not FContext.Lua.Defines.Exists(aWeaponID)) or (FContext.Lua.Defines[aWeaponID] = 0)then Exit( False );
 
   if Inv.Slot[ efWeapon ] <> nil then
   begin
@@ -643,7 +642,7 @@ begin
         iAmmo   := iItem.Ammo;
       end;
 
-  if iWeapon = nil then Exit( Fail( 'You don''t have a %s!', [ Ansistring(LuaSystem.Get([ 'items', aWeaponID, 'name' ])) ] ) );
+  if iWeapon = nil then Exit( Fail( 'You don''t have a %s!', [ Ansistring(FContext.Lua.Get([ 'items', aWeaponID, 'name' ])) ] ) );
 
   Inv.Wear( iWeapon );
 
@@ -2274,9 +2273,9 @@ begin
 
   FHP := Max( FHP - aDamage, 0 );
   if Dead and (not IsPlayer) and (not (BF_NODEATHMESSAGE in FFlags)) then
-    if LuaSystem.Defined( [ CoreModuleID, 'GetDeathMessage' ] ) then
+    if FContext.Lua.Defined( [ CoreModuleID, 'GetDeathMessage' ] ) then
     begin
-      iDeathMessage := LuaSystem.ProtectedCall( [ CoreModuleID, 'GetDeathMessage' ], [ Self, isVisible ] );
+      iDeathMessage := FContext.Lua.ProtectedCall( [ CoreModuleID, 'GetDeathMessage' ], [ Self, isVisible ] );
       if iDeathMessage <> '' then IO.Msg( iDeathMessage );
     end;
   if DRL.UIDs[ iActiveUID ] = nil then iActive := nil;
@@ -2516,7 +2515,7 @@ begin
         if iLevel.isVisible( iCoord ) then
             if iBeing.IsPlayer then
             begin
-              iFireDesc := LuaSystem.Get(['items',aItem.NID,'hitdesc'], '');
+              iFireDesc := FContext.Lua.Get(['items',aItem.NID,'hitdesc'], '');
               if iFireDesc = '' then iFireDesc := 'You are hit!';
               IO.Msg( Capitalized( iFireDesc ) );
             end
@@ -2903,13 +2902,15 @@ begin
   Exit( False );
 end;
 
-function lua_being_new(L: Plua_State): Integer; cdecl;
-var State       : TDRLLuaState;
-    Being       : TBeing;
+function lua_being_new( L : PLua_State ): Integer; cdecl;
+var iLua : TLuaSystem;
+    iState       : TDRLLuaState;
+    iBeing       : TBeing;
 begin
-  State.Init( L );
-  Being := TBeing.Create(State.ToId( 1 ));
-  State.Push( Being );
+  iLua := TLuaSystemContext.FromState( L ).Lua;
+  iState.Init( L );
+  iBeing := TBeing.Create(iState.ToId( iLua, 1 ));
+  iState.Push( iBeing );
   Result := 1;
 end;
 
@@ -3346,29 +3347,29 @@ begin
   Exit( 1 );
 end;
 
-function lua_being_inv_count(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
-    Being : TBeing;
-    NID   : Integer;
+function lua_being_inv_count( L : PLua_State ): Integer; cdecl;
+var iState : TDRLLuaState;
+    iBeing : TBeing;
+    iNID   : Integer;
 begin
-  State.Init(L);
-  Being := State.ToObject(1) as TBeing;
-  NID   := State.ToId(2);
-  State.Push( Being.Inv.CountAmount( NID ) );
+  iState.Init(L);
+  iBeing := iState.ToObject(1) as TBeing;
+  iNID   := iState.ToId( iBeing.Context.Lua, 2 );
+  iState.Push( iBeing.Inv.CountAmount( iNID ) );
   Exit( 1 );
 end;
 
-function lua_being_inv_remove(L: Plua_State): Integer; cdecl;
-var State  : TDRLLuaState;
-    Being  : TBeing;
-    NID    : Integer;
-    Amount : Integer;
+function lua_being_inv_remove( L : PLua_State ): Integer; cdecl;
+var iState  : TDRLLuaState;
+    iBeing  : TBeing;
+    iNID    : Integer;
+    iAmount : Integer;
 begin
-  State.Init(L);
-  Being  := State.ToObject(1) as TBeing;
-  NID    := State.ToId(2);
-  Amount := State.ToInteger(3, 1);
-  State.Push( Being.Inv.RemoveAmount( NID, Amount ) );
+  iState.Init(L);
+  iBeing  := iState.ToObject(1) as TBeing;
+  iNID    := iState.ToId( iBeing.Context.Lua, 2 );
+  iAmount := iState.ToInteger(3, 1);
+  iState.Push( iBeing.Inv.RemoveAmount( iNID, iAmount ) );
   Exit( 1 );
 end;
 
@@ -3679,9 +3680,9 @@ const lua_being_lib : array[0..41] of luaL_Reg = (
       ( name : nil;             func : nil; )
 );
 
-class procedure TBeing.RegisterLuaAPI();
+class procedure TBeing.RegisterLuaAPI( aLuaSystem : TLuaSystem );
 begin
-  LuaSystem.Register( 'being', lua_being_lib );
+  aLuaSystem.Register( 'being', lua_being_lib );
 end;
 
 end.

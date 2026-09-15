@@ -174,9 +174,9 @@ var iAmount : Integer;
     iMax    : Integer;
 begin
   if aID <= 0 then Exit( 0 );
-  if LuaSystem.Defined([ CoreModuleID, 'GetItemMax' ])
-    then iMax := LuaSystem.ProtectedCall([ CoreModuleID, 'GetItemMax' ], [aID] )
-    else iMax := LuaSystem.Get(['items',aID,'max']);
+  if FOwner.Context.Lua.Defined([ CoreModuleID, 'GetItemMax' ])
+    then iMax := FOwner.Context.Lua.ProtectedCall([ CoreModuleID, 'GetItemMax' ], [aID] )
+    else iMax := FOwner.Context.Lua.Get(['items',aID,'max']);
   iItem := SeekStack(aID);
 
   if iItem <> nil then

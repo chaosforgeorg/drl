@@ -51,7 +51,7 @@ begin
   VTIG_EventClear;
   FFinished := False;
   FBeing    := aBeing;
-  FDesc     := LuaSystem.Get(['beings',FBeing.ID,'desc']);
+  FDesc     := FBeing.Context.Lua.Get(['beings',FBeing.ID,'desc']);
   FASCII    := '';
   if not ModuleOption_FullBeingDescription then
     if FBeing.ID = 'soldier'
@@ -243,7 +243,7 @@ begin
   VTIG_EventClear;
   FFinished := False;
   FItem     := aItem;
-  FDesc     := LuaSystem.Get(['items',FItem.ID,'desc']);
+  FDesc     := FItem.Context.Lua.Get(['items',FItem.ID,'desc']);
   FSize     := Point( 60, 25 );
   FTitle    := '{'+VTIG_ColorChar( FItem.MenuColor ) + FItem.Description + '}';
   for i := Low( FTexts ) to High( FTexts ) do
@@ -282,14 +282,14 @@ begin
   FTexts[0] := TStringGArray.Create;
   iStatQueue := TStringGArray.Create;
 
-  iGroup := LuaSystem.Get(['items', FItem.ID, 'group'], '');
+  iGroup := FItem.Context.Lua.Get(['items', FItem.ID, 'group'], '');
   if iGroup <> '' then
   begin
-    iGroupName := LuaSystem.Get(['core', 'weapon_group_name', iGroup], iGroup);
+    iGroupName := FItem.Context.Lua.Get(['core', 'weapon_group_name', iGroup], iGroup);
     AddStat( 'Weapon group', iGroupName );
   end;
   if (FItem.AmmoID > 0) and (not FItem.Flags[ IF_NOAMMO ]) then
-    AddStat( 'Ammo type', LuaSystem.Get(['items', FItem.AmmoID, 'name'], '') );
+    AddStat( 'Ammo type', FItem.Context.Lua.Get(['items', FItem.AmmoID, 'name'], '') );
 
   case FItem.IType of
     ITEMTYPE_ARMOR, ITEMTYPE_BOOTS :

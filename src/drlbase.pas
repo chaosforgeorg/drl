@@ -139,7 +139,6 @@ type TDRLSession = class(TVObject)
      end;
 
 var DRL : TDRLSession;
-var Lua : TDRLLua;
 
 
 implementation
@@ -214,16 +213,16 @@ end;
 
 procedure TDRLSession.CallHook( Hook : Byte; const Params : array of const ) ;
 begin
-  if (Hook in FModuleHooks) then LuaSystem.ProtectedCall([CoreModuleID,Lua.HookName(Hook)],Params);
-  if (FChallenge <> '')  and (Hook in FChallengeHooks) then LuaSystem.ProtectedCall(['chal',FChallenge,Lua.HookName(Hook)],Params);
-  if (FSChallenge <> '') and (Hook in FSChallengeHooks) then LuaSystem.ProtectedCall(['chal',FSChallenge,Lua.HookName(Hook)],Params);
+  if (Hook in FModuleHooks) then FContext.Lua.ProtectedCall([CoreModuleID,TDRLLua( FContext.Lua ).HookName(Hook)],Params);
+  if (FChallenge <> '')  and (Hook in FChallengeHooks) then FContext.Lua.ProtectedCall(['chal',FChallenge,TDRLLua( FContext.Lua ).HookName(Hook)],Params);
+  if (FSChallenge <> '') and (Hook in FSChallengeHooks) then FContext.Lua.ProtectedCall(['chal',FSChallenge,TDRLLua( FContext.Lua ).HookName(Hook)],Params);
 end;
 
 function TDRLSession.CallHookCheck ( Hook : Byte; const Params : array of const ) : Boolean;
 begin
-  if (FChallenge <> '') and (Hook in FChallengeHooks) then if not LuaSystem.ProtectedCall(['chal',FChallenge,HookNames[Hook]],Params) then Exit( False );
-  if (FSChallenge <> '') and (Hook in FSChallengeHooks) then if not LuaSystem.ProtectedCall(['chal',FSChallenge,HookNames[Hook]],Params) then Exit( False );
-  if Hook in FModuleHooks then if not LuaSystem.ProtectedCall([CoreModuleID,HookNames[Hook]],Params) then Exit( False );
+  if (FChallenge <> '') and (Hook in FChallengeHooks) then if not FContext.Lua.ProtectedCall(['chal',FChallenge,HookNames[Hook]],Params) then Exit( False );
+  if (FSChallenge <> '') and (Hook in FSChallengeHooks) then if not FContext.Lua.ProtectedCall(['chal',FSChallenge,HookNames[Hook]],Params) then Exit( False );
+  if Hook in FModuleHooks then if not FContext.Lua.ProtectedCall([CoreModuleID,HookNames[Hook]],Params) then Exit( False );
   Exit( True );
 end;
 
@@ -347,29 +346,29 @@ begin
     FSeededGame     := aResult.Seed <> 0;
   end;
 
-  LuaSystem.SetValue('DIFFICULTY', FDifficulty);
-  LuaSystem.SetValue('CHALLENGE',  FChallenge);
-  LuaSystem.SetValue('SCHALLENGE', FSChallenge);
-  LuaSystem.SetValue('ARCHANGEL', FArchAngel);
-  LuaSystem.SetValue('SEEDED_GAME', FSeededGame);
+  FContext.Lua.SetValue('DIFFICULTY', FDifficulty);
+  FContext.Lua.SetValue('CHALLENGE',  FChallenge);
+  FContext.Lua.SetValue('SCHALLENGE', FSChallenge);
+  FContext.Lua.SetValue('ARCHANGEL', FArchAngel);
+  FContext.Lua.SetValue('SEEDED_GAME', FSeededGame);
 
   FChallengeHooks := [];
   FSChallengeHooks := [];
-  if FChallenge  <> '' then FChallengeHooks  := LoadHooks( ['chal',FChallenge], GlobalHooks );
-  if FSChallenge <> '' then FSChallengeHooks := LoadHooks( ['chal',FSChallenge], GlobalHooks );
+  if FChallenge  <> '' then FChallengeHooks  := LoadHooks( FContext.Lua, ['chal',FChallenge], GlobalHooks );
+  if FSChallenge <> '' then FSChallengeHooks := LoadHooks( FContext.Lua, ['chal',FSChallenge], GlobalHooks );
 end;
 
 procedure TDRLSession.RegisterChallengeRuntimes;
 begin
-  if ( FChallenge <> '' ) and LuaSystem.Defined( [ 'chal', FChallenge, 'OnRegister' ] ) then
+  if ( FChallenge <> '' ) and FContext.Lua.Defined( [ 'chal', FChallenge, 'OnRegister' ] ) then
   begin
     FReloadData := True;
-    LuaSystem.Call( [ 'chal', FChallenge, 'OnRegister' ], [] );
+    FContext.Lua.Call( [ 'chal', FChallenge, 'OnRegister' ], [] );
   end;
-  if ( FSChallenge <> '' ) and LuaSystem.Defined( [ 'chal', FSChallenge, 'OnRegister' ] ) then
+  if ( FSChallenge <> '' ) and FContext.Lua.Defined( [ 'chal', FSChallenge, 'OnRegister' ] ) then
   begin
     FReloadData := True;
-    LuaSystem.Call( [ 'chal', FSChallenge, 'OnRegister' ], [] );
+    FContext.Lua.Call( [ 'chal', FSChallenge, 'OnRegister' ], [] );
   end;
 end;
 
@@ -774,7 +773,7 @@ begin
     ((not aItem.isRanged) or (aItem.Ammo = 0) or aItem.Flags[ IF_NOUNLOAD ] or aItem.Flags[ IF_NORELOAD ] or aItem.Flags[ IF_NOAMMO ]) and
     (aItem.Flags[ IF_EXOTIC ] or aItem.Flags[ IF_UNIQUE ] or aItem.Flags[ IF_ASSEMBLED ] or aItem.Flags[ IF_MODIFIED ]) then
   begin
-    iID := LuaSystem.ProtectedCall( [ CoreModuleID,'GetDisassembleId'], [ aItem ] );
+    iID := FContext.Lua.ProtectedCall( [ CoreModuleID,'GetDisassembleId'], [ aItem ] );
     if iID <> '' then
     begin
       IO.PushLayer( TUnloadConfirmView.Create(aItem,iID) );
@@ -1295,9 +1294,9 @@ begin
     CreatePlayer( iResult );
   end;
 
-  LuaSystem.SetValue('GAME_SEED', FGameSeed);
+  FContext.Lua.SetValue('GAME_SEED', FGameSeed);
   IO.SetSeed( FGameSeed );
-  LuaSystem.SetValue('level', Level );
+  FContext.Lua.SetValue('level', Level );
 
   if (not (State in [DSLoading, DSCrashLoading])) then
     CallHookCheck( Hook_OnIntro, [Setting_NoIntro] );
@@ -1327,7 +1326,7 @@ begin
       Player.Statistics.Update;
       Player.NextLevelIndex;
 
-      with LuaSystem.GetTable(['player','episode',Player.Level_Index]) do
+      with FContext.Lua.GetTable(['player','episode',Player.Level_Index]) do
       try
         FLevel.Init(getInteger('style',0),
                    getString('name',''),
@@ -1449,7 +1448,7 @@ begin
     if Option_SaveOnCrash and ((Player.Statistics['crash_count'] = 0) or{thelaptop: Vengeance is MINE} (FDifficulty < DIFF_NIGHTMARE)) then
     begin
       try
-        iCrashIndex := LuaSystem.Get( [ 'player', '__props', 'crash_index' ], 0 );
+        iCrashIndex := FContext.Lua.Get( [ 'player', '__props', 'crash_index' ], 0 );
       except
         iCrashIndex := 0;
       end;
@@ -1494,7 +1493,7 @@ begin
       IO.WaitForLayer( True );
     end;
     iChalAbbr := '';
-    if FChallenge <> '' then iChalAbbr := LuaSystem.Get(['chal',FChallenge,'abbr']);
+    if FChallenge <> '' then iChalAbbr := FContext.Lua.Get(['chal',FChallenge,'abbr']);
     IO.PushLayer( TPagedView.Create( HOF.GetPagedScoreReport, iChalAbbr ) );
     IO.WaitForLayer( True );
   end;
@@ -1528,14 +1527,14 @@ begin
     Player.Name := Option_AlwaysName
   else
     if (Setting_AlwaysRandomName) or (aResult.Name = '')
-      then Player.Name := LuaSystem.ProtectedCall([CoreModuleID,'GetRandomName'],[])
+      then Player.Name := FContext.Lua.ProtectedCall([CoreModuleID,'GetRandomName'],[])
       else Player.Name := aResult.Name;
 
-  LuaSystem.ProtectedCall(['klasses',Player.Klass,'OnPick'], [ Player ] );
-  iTraitID := LuaSystem.Get(['klasses',Player.Klass,'core_trait'],'' );
+  FContext.Lua.ProtectedCall(['klasses',Player.Klass,'OnPick'], [ Player ] );
+  iTraitID := FContext.Lua.Get(['klasses',Player.Klass,'core_trait'],'' );
   if iTraitID <> '' then
   begin
-    iTrait := LuaSystem.Get(['traits',iTraitID,'nid']);
+    iTrait := FContext.Lua.Get(['traits',iTraitID,'nid']);
     Player.Traits.Upgrade( 0, iTrait );
   end;
   CallHook(Hook_OnCreatePlayer,[]);
@@ -1588,10 +1587,10 @@ begin
       FArchAngel       := iStream.ReadByte <> 0;
       FSChallenge      := iStream.ReadAnsiString;
 
-      LuaSystem.SetValue('DIFFICULTY', FDifficulty);
-      LuaSystem.SetValue('CHALLENGE',  FChallenge);
-      LuaSystem.SetValue('SCHALLENGE', FSChallenge);
-      LuaSystem.SetValue('ARCHANGEL', FArchAngel);
+      FContext.Lua.SetValue('DIFFICULTY', FDifficulty);
+      FContext.Lua.SetValue('CHALLENGE',  FChallenge);
+      FContext.Lua.SetValue('SCHALLENGE', FSChallenge);
+      FContext.Lua.SetValue('ARCHANGEL', FArchAngel);
       RegisterChallengeRuntimes;
 
       FGameSeed   := iStream.ReadDWord;
@@ -1608,7 +1607,7 @@ begin
         iRecreate := True;
         FLevel := TLevel.CreateFromStream( iStream );
         FLevel.Place( Player, Player.Position );
-        LuaSystem.SetValue('level', FLevel );
+        FContext.Lua.SetValue('level', FLevel );
         FParticles.ReadFromStream( iStream );
       end;
     finally

@@ -43,8 +43,8 @@ begin
   FList    := THelpArray.Create( False );
   FEntries := TStringGArray.Create;
 
-  if not LuaSystem.Defined([CoreModuleID,'help']) then Exit;
-  with LuaSystem.GetTable([CoreModuleID]) do
+  if not IO.Session.Context.Lua.Defined([CoreModuleID,'help']) then Exit;
+  with IO.Session.Context.Lua.GetTable([CoreModuleID]) do
   try
     for iTable in ITables('help') do
     begin

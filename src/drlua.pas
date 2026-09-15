@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlua;
 interface
 
-uses SysUtils, Classes, vluastate, vluasystem, vlualibrary, vrltools, vutil,
+uses SysUtils, Classes, vluagamestate, vluasystem, vlualibrary, vrltools, vutil,
      vdf, viotypes, dfitem, dfbeing, dfthing, dfdata, drlmodule;
 
 type
@@ -34,12 +34,7 @@ type
 
 { TDRLLuaState }
 
-TDRLLuaState = object(TLuaState)
-  function ToId( aIndex : Integer) : Integer;
-  function ToPosition( aIndex : Integer ) : TCoord2D;
-  function ToPosition( aIndex : Integer; aDefault : TCoord2D ) : TCoord2D;
-  function ToIOColor( aIndex : Integer ) : TIOColor;
-end;
+TDRLLuaState = TLuaGameState;
 
 // published functions
 
@@ -47,7 +42,7 @@ implementation
 
 uses typinfo, variants,
      vnode, vdebug, vlua, vluatools, vluadungen, vluaentitynode, vluatype, vmath,
-     vtextures, vtigstyle, vvector,
+     vtextures, vtigstyle,
      dfplayer, dflevel, dfmap, drlhooks, drlhelp, dfhof, drlbase, drlio, drlperk,
      drlgfxio, drlspritemap, vparticleengine;
 
@@ -118,9 +113,11 @@ begin
 end;
 
 function lua_core_register_perk(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iLua   : TLuaSystem;
+    iState : TDRLLuaState;
     iID    : Integer;
 begin
+  iLua := TLuaSystemContext.FromState( L ).Lua;
   iState.Init(L);
   iID := iState.ToInteger(1);
 
@@ -133,7 +130,7 @@ begin
 
   with PerkData[iID] do
   begin
-    with LuaSystem.GetTable(['perks',iID]) do
+    with iLua.GetTable(['perks',iID]) do
     try
       Name      := getString('name','');
       Short     := getString('short','');
@@ -145,7 +142,7 @@ begin
     finally
       Free;
     end;
-    Hooks := LoadHooks( ['perks',iID] );
+    Hooks := LoadHooks( iLua, ['perks',iID] );
   end;
   Result := 0;
 end;
@@ -226,19 +223,23 @@ begin
   Exit( vlua_rng_random( L, IO.VisualRNG ) );
 end;
 
-function lua_core_register_cell(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+function lua_core_register_cell( L : PLua_State ): Integer; cdecl;
+var iLua : TLuaSystem;
+    iState : TDRLLuaState;
 begin
-  State.Init(L);
-  Cells.RegisterCell(State.ToInteger(1));
+  iLua := TLuaSystemContext.FromState( L ).Lua;
+  iState.Init(L);
+  Cells.RegisterCell( iLua, iState.ToInteger(1) );
   Result := 0;
 end;
 
-function lua_core_register_emitter(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+function lua_core_register_emitter( L : PLua_State ): Integer; cdecl;
+var iLua : TLuaSystem;
+    iState : TDRLLuaState;
 begin
-  State.Init(L);
-  DRL.Particles.RegisterEmitter( Word( State.ToInteger(1) ) );
+  iLua := TLuaSystemContext.FromState( L ).Lua;
+  iState.Init(L);
+  DRL.Particles.RegisterEmitter( iLua, Word( iState.ToInteger(1) ) );
   Result := 0;
 end;
 
@@ -418,7 +419,7 @@ begin
 
     end;
     if RawDefined( iModule.ID ) then
-      iModule.Hooks := LoadHooks( [ iModule.ID ], ModuleHooks );
+      iModule.Hooks := LoadHooks( Self, [ iModule.ID ], ModuleHooks );
     if iModule.IsBase then
       SetupBase;
   end;
@@ -473,8 +474,6 @@ end;
 destructor TDRLLua.Destroy;
 var iData : TVDataFile;
 begin
-  if drlbase.Lua = Self then
-    drlbase.Lua := nil;
   for iData in FOpenData do
     iData.Free;
   FreeAndNil( FOpenData );
@@ -620,8 +619,6 @@ begin
   RegisterAreaFull( Raw, NewArea( NewCoord2D(1,1), NewCoord2D(MaxX,MaxY) ) );
   RegisterWeightTableClass( Raw );
 
-  LuaSystem := Self;
-
   ErrorFunc := @OnError;
   
   SetValue('WINDOWSVERSION', {$IFDEF WINDOWS}1{$ELSE}0{$ENDIF});
@@ -651,18 +648,16 @@ begin
   State.RegisterEnumValues( TypeInfo(TTIGStyleFrameEntry) );
   State.RegisterEnumValues( TypeInfo(TTIGStylePaddingEntry) );
 
-  TNode.RegisterLuaAPI( 'game_object' );
+  TNode.RegisterLuaAPI( Self, 'game_object' );
 
-  TLuaEntityNode.RegisterLuaAPI( 'thing' );
-  TThing.RegisterLuaAPI();
+  TLuaEntityNode.RegisterLuaAPI( Self, 'thing' );
+  TThing.RegisterLuaAPI( Self );
 
-  TItem.RegisterLuaAPI();
-  TBeing.RegisterLuaAPI();
-  TLevel.RegisterLuaAPI();
-  TPlayer.RegisterLuaAPI();
+  TItem.RegisterLuaAPI( Self );
+  TBeing.RegisterLuaAPI( Self );
+  TLevel.RegisterLuaAPI( Self );
+  TPlayer.RegisterLuaAPI( Self );
   RegisterDungenClass( Raw, 'generator' );
-
-  drlbase.Lua := Self;
 
 //  LogProps( TThing );
 //  LogProps( TItem );
@@ -685,49 +680,10 @@ begin
     Exit( HookNames[aHook] )
   else if aHook > 200 then
   begin
-    Exit( LuaSystem.Get( ['core','callbacks', aHook - 200] ) ) 
+    Exit( Get( ['core','callbacks', aHook - 200] ) )
   end
   else
     raise ELuaException.Create('Invalid hook ID: '+IntToStr( aHook ) );
-end;
-
-{ TDRLLuaState }
-
-function TDRLLuaState.ToId( aIndex: Integer ) : Integer;
-begin
-  if IsNumber( aIndex ) then Exit( ToInteger( aIndex ) );
-  ToId := LuaSystem.Defines[ToString( aIndex )];
-  if ToId = 0 then Error( 'unknown define ('+ToString( aIndex ) +')!' );
-end;
-
-function TDRLLuaState.ToPosition( aIndex : Integer ) : TCoord2D;
-begin
-  if IsCoord( aIndex ) then
-     Exit( ToCoord( aIndex ) )
-  else
-     Exit( (ToObject( aIndex ) as TThing).Position );
-end;
-
-function TDRLLuaState.ToPosition( aIndex : Integer; aDefault : TCoord2D ) : TCoord2D;
-begin
-  if IsCoord( aIndex ) then
-     Exit( ToCoord( aIndex ) )
-  else if IsObject( aIndex ) then
-     Exit( (ToObject( aIndex ) as TThing).Position )
-  else Exit( aDefault );
-end;
-
-function TDRLLuaState.ToIOColor( aIndex : Integer ) : TIOColor;
-var iC4b : TVec4b;
-begin
-  Result := 0;
-  if IsNumber( aIndex )
-    then Exit( ToInteger( aIndex ) )
-    else if IsTable( aIndex ) then
-    begin
-      iC4b := ToVec4b( aIndex );
-      Exit( IOColor( iC4b.X, iC4b.Y, iC4b.Z, iC4b.W ) );
-    end;
 end;
 
 end.

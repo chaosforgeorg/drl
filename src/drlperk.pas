@@ -72,7 +72,7 @@ end;
 
 implementation
 
-uses sysutils, vluasystem, vuid, drlhooks, drlbase, dfplayer;
+uses sysutils, vluasystem, vuid, drlhooks, drlbase, drlua, dfplayer;
 
 constructor TPerks.Create( aOwner : TNode );
 begin
@@ -124,7 +124,7 @@ begin
       if aHook in PerkData[FList[i].ID].Hooks then
         begin
           CallHook := True;
-          LuaSystem.ProtectedCall( [ 'perks',FList[i].ID, Lua.HookName(aHook) ], ConcatConstArray( [FOwner], aParams ) );
+          FOwner.Context.Lua.ProtectedCall( [ 'perks',FList[i].ID, TDRLLua( FOwner.Context.Lua ).HookName(aHook) ], ConcatConstArray( [FOwner], aParams ) );
           // A callback may consume the owner and free this perk list.
           // Session-owned levels created before the UID store have UID 0.
           if ( iUID <> 0 ) and ( DRL.UIDs.Get( iUID ) = nil ) then Exit;
@@ -145,7 +145,7 @@ begin
     for i := 0 to FList.Size-1 do
       if aHook in PerkData[FList[i].ID].Hooks then
       begin
-        Result := LuaSystem.ProtectedCall( [ 'perks',FList[i].ID, HookNames[aHook] ], ConcatConstArray( [FOwner], aParams ) );
+        Result := FOwner.Context.Lua.ProtectedCall( [ 'perks',FList[i].ID, HookNames[aHook] ], ConcatConstArray( [FOwner], aParams ) );
         // A check may destroy its owner; stop before touching the freed list.
         if ( iUID <> 0 ) and ( DRL.UIDs.Get( iUID ) = nil ) then Exit( False );
         if not Result then Break;
@@ -163,7 +163,7 @@ begin
     BeginIteration;
     for i := 0 to FList.Size-1 do
       if aHook in PerkData[FList[i].ID].Hooks then
-        if LuaSystem.ProtectedCall( [ 'perks',FList[i].ID, HookNames[ aHook ] ], ConcatConstArray( [FOwner], aParams ) ) then
+        if FOwner.Context.Lua.ProtectedCall( [ 'perks',FList[i].ID, HookNames[ aHook ] ], ConcatConstArray( [FOwner], aParams ) ) then
         begin
           Result := True;
           Break;
@@ -179,7 +179,7 @@ begin
   if aHook in FHooks then
     for i := 0 to FList.Size-1 do
       if aHook in PerkData[FList[i].ID].Hooks then
-        GetBonus += LuaSystem.ProtectedCall( [ 'perks',FList[i].ID, HookNames[ aHook ] ], ConcatConstArray( [FOwner], aParams ) );
+        GetBonus += FOwner.Context.Lua.ProtectedCall( [ 'perks',FList[i].ID, HookNames[ aHook ] ], ConcatConstArray( [FOwner], aParams ) );
 end;
 
 function  TPerks.GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single;
@@ -189,13 +189,13 @@ begin
   if aHook in FHooks then
     for i := 0 to FList.Size-1 do
       if aHook in PerkData[FList[i].ID].Hooks then
-        GetBonusMul *= LuaSystem.ProtectedCall( [ 'perks',FList[i].ID, HookNames[ aHook ] ], ConcatConstArray( [FOwner], aParams ) );
+        GetBonusMul *= FOwner.Context.Lua.ProtectedCall( [ 'perks',FList[i].ID, HookNames[ aHook ] ], ConcatConstArray( [FOwner], aParams ) );
 end;
 
 function TPerks.GetShort( aID : Integer ) : AnsiString;
 begin
   if Hook_OnShort in PerkData[aID].Hooks then
-    Exit( LuaSystem.ProtectedCall( [ 'perks', aID, HookNames[Hook_OnShort] ], [ FOwner ] ) );
+    Exit( FOwner.Context.Lua.ProtectedCall( [ 'perks', aID, HookNames[Hook_OnShort] ], [ FOwner ] ) );
   Exit( PerkData[aID].Short );
 end;
 
@@ -219,7 +219,7 @@ begin
   FList.Push( iPerk );
   UpdateHooks;
   if Hook_OnAdd in PerkData[aPerk].Hooks then
-    LuaSystem.ProtectedCall( [ 'perks', aPerk, 'OnAdd' ], [FOwner] );
+    FOwner.Context.Lua.ProtectedCall( [ 'perks', aPerk, 'OnAdd' ], [FOwner] );
 end;
 
 function  TPerks.Remove( aPerk : Integer; aSilent : Boolean ) : Boolean;
@@ -259,7 +259,7 @@ begin
         if iTime mod 10 = 0 then
           if Hook_OnTick10 in PerkData[ID].Hooks then
           begin
-            LuaSystem.ProtectedCall( [ 'perks', ID, 'OnTick10' ], [ FOwner, iTime div 10 ] );
+            FOwner.Context.Lua.ProtectedCall( [ 'perks', ID, 'OnTick10' ], [ FOwner, iTime div 10 ] );
             // Perk owners include levels and items nested in inventories.
             if ( iUID <> 0 ) and ( DRL.UIDs.Get( iUID ) = nil ) then Exit;
           end;
@@ -364,7 +364,7 @@ begin
   FList.Delete( aIndex );
   UpdateHooks;
   if Hook_OnRemove in PerkData[iPerk].Hooks then
-    LuaSystem.ProtectedCall( [ 'perks', iPerk, 'OnRemove' ], [FOwner, aSilent] );
+    FOwner.Context.Lua.ProtectedCall( [ 'perks', iPerk, 'OnRemove' ], [FOwner, aSilent] );
 end;
 
 procedure TPerks.Expire( aIndex : Integer; aSilent : Boolean );
@@ -385,7 +385,7 @@ begin
     for i := 0 to FList.Size - 1 do
       if Hook_OnRemove in PerkData[FList[i].ID].Hooks then
       begin
-        LuaSystem.ProtectedCall( [ 'perks', FList[i].ID, 'OnRemove' ], [FOwner, True] );
+        FOwner.Context.Lua.ProtectedCall( [ 'perks', FList[i].ID, 'OnRemove' ], [FOwner, True] );
         if ( iUID <> 0 ) and ( DRL.UIDs.Get( iUID ) = nil ) then Exit;
       end;
     EndIteration;

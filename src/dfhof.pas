@@ -6,7 +6,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit dfhof;
 interface
-uses Classes, DOM, vapp, vnode, vxml, vxmldata, dfdata;
+uses vluasystem, Classes, DOM, vapp, vnode, vxml, vxmldata, dfdata;
 
 const MaxHofEntries = 500;
       MaxID         = 1023;
@@ -19,7 +19,7 @@ const PlayerFile = 'player.wad';
 { THOF }
 
 type THOF = object
-  procedure Init( const aPaths : TGamePaths );
+  procedure Init( aLuaSystem : TLuaSystem; const aPaths : TGamePaths );
   procedure Add( const Name : AnsiString; aScore : LongInt; const aKillerID : AnsiString; Level, DLev : Word; nChal, nAbbr : AnsiString );
   function RankCheck( out aResult : THOFRank ) : Boolean;
   function GetPagedPlayerReport : TPagedReport;
@@ -33,6 +33,7 @@ type THOF = object
   function GetCounted( const aRootID, aLeafID, aElementID : AnsiString ) : DWord;
   function GetRank( const aRankName : Ansistring ) : Integer;
 private
+  FLua        : TLuaSystem;
   FScore      : TScoreFile;
   FPlayerInfo : TVXMLDataFile;
 
@@ -69,7 +70,7 @@ var HOF : THOF;
 implementation
 
 uses math, sysutils, strutils, variants,
-     vluasystem, vluatable, vdebug, vtig, vutil, vrltools,
+     vluatable, vdebug, vtig, vutil, vrltools,
      drlbase, dfplayer;
 
 const HOFOpen : Boolean = False;
@@ -80,12 +81,12 @@ var iCount   : DWord;
     iBadges  : LongInt;
 begin
   if aBadgeLevel = 0 then Exit( 0 );
-  iBadges := LuaSystem.Get(['badges','__counter']);
+  iBadges := FLua.Get(['badges','__counter']);
   iCount := 0;
   for iCounter := 1 to iBadges do
   begin
-    if (LuaSystem.Get(['badges',iCounter,'level']) = aBadgeLevel) and
-       (GetCounted( 'badges', 'badge', LuaSystem.Get(['badges',iCounter,'id']) ) > 0) then
+    if (FLua.Get(['badges',iCounter,'level']) = aBadgeLevel) and
+       (GetCounted( 'badges', 'badge', FLua.Get(['badges',iCounter,'id']) ) > 0) then
       Inc( iCount );
   end;
   Exit( iCount );
@@ -143,7 +144,7 @@ var iElement   : TDOMElement;
 begin
   if Chal = 0
     then iElement := FPlayerInfo.XML.GetElement('player/challenges/challenge[@id="unchallenged"]/game[@id="'+aDiffLevel+'"]')
-    else iElement := FPlayerInfo.XML.GetElement('player/challenges/challenge[@id="'+LuaSystem.Get(['chal',Chal,'abbr'])+'"]/game[@id="'+aDiffLevel+'"]');
+    else iElement := FPlayerInfo.XML.GetElement('player/challenges/challenge[@id="'+FLua.Get(['chal',Chal,'abbr'])+'"]/game[@id="'+aDiffLevel+'"]');
   if (iElement = nil) then
     begin
       if aVictoryType = 'partial' then Exit('{lnone}')
@@ -270,9 +271,9 @@ var
       iTotal   : DWord;
       iName    : Ansistring;
   begin
-    if aCurrent+1 < LuaSystem.Get(['ranks', aRankID,'__counter']) then
+    if aCurrent+1 < FLua.Get(['ranks', aRankID,'__counter']) then
     begin
-      iName := '{!'+LuaSystem.Get(['ranks', aRankID, aCurrent+2,'name'])+'}';
+      iName := '{!'+FLua.Get(['ranks', aRankID, aCurrent+2,'name'])+'}';
       iPage.Push('To achieve '+iName+' rank:');
       for iReq := 1 to GetRankReqCount(aRankID,aCurrent+1) do
       begin
@@ -282,13 +283,13 @@ var
           then iPage.Push('   * '+GetRankReqDescription( aRankID,aCurrent+1,iReq )+' ({!'+IntToStr(iCurrent)+'}/{!'+IntToStr(iTotal)+'})' )
           else iPage.Push('   {d* '+VTIG_StripTags( GetRankReqDescription( aRankID,aCurrent+1,iReq ) ) + '}' );
       end;
-      iTotal := LuaSystem.GetTableSize(['ranks', aRankID, aCurrent+2, 'unlocks' ]);
+      iTotal := FLua.GetTableSize(['ranks', aRankID, aCurrent+2, 'unlocks' ]);
       if iTotal > 0 then
       begin
         iPage.Push(iName+' rank unlocks:');
         for i := 1 to iTotal do
         begin
-          iPage.Push('   * '+ LuaSystem.Get(['ranks', aRankID, aCurrent+2, 'unlocks', i ]) );
+          iPage.Push('   * '+ FLua.Get(['ranks', aRankID, aCurrent+2, 'unlocks', i ]) );
         end;
       end;
     end;
@@ -299,21 +300,21 @@ begin
   Result := TPagedReport.Create( 'Player Info', True );
   iDiffCnt := 0;
   iChalCnt := 0;
-  iDiffCnt := LuaSystem.Get([ 'diff', '__counter' ], 0 );
-  iChalCnt := LuaSystem.Get( ['chal','__counter'], 0 );
+  iDiffCnt := FLua.Get([ 'diff', '__counter' ], 0 );
+  iChalCnt := FLua.Get( ['chal','__counter'], 0 );
 
   // ---------------------------------------------------------------------------
 
   iPage := Result.Add( '' );
 
-  with LuaSystem.GetTable(['ranks']) do
+  with FLua.GetTable(['ranks']) do
   try
     for iPair in IndexVariants do
     begin
       iID     := iPair.Value;
       iRank   := GetRank( iID );
-      iString := LuaSystem.Get([ 'ranks', iID, 'name' ], '' );
-      iPage.Push(Padded( iString + ' rank',15)+': {!'+LuaSystem.Get([ 'ranks', iID, iRank+1, 'name' ])+'}' );
+      iString := FLua.Get([ 'ranks', iID, 'name' ], '' );
+      iPage.Push(Padded( iString + ' rank',15)+': {!'+FLua.Get([ 'ranks', iID, iRank+1, 'name' ])+'}' );
     end;
   finally
     Free;
@@ -329,7 +330,7 @@ begin
   iPage.Push('Total game time: {!'+DurationString(GetCount('player/time'))+'}');
   iPage.Push('');
 
-  with LuaSystem.GetTable(['ranks']) do
+  with FLua.GetTable(['ranks']) do
   try
     for iPair in IndexVariants do
     begin
@@ -346,8 +347,8 @@ begin
     iPage.Push('Difficulty level achievements');
     for cn := 1 to iDiffCnt do
     begin
-      iDiffID := LuaSystem.Get([ 'diff', cn, 'id' ]);
-      iPage.Push(' '+Padded(LuaSystem.Get([ 'diff', cn, 'name' ]),21)+': {!'+Padded(GetDiffScore(iDiffID),25)+
+      iDiffID := FLua.Get([ 'diff', cn, 'id' ]);
+      iPage.Push(' '+Padded(FLua.Get([ 'diff', cn, 'name' ]),21)+': {!'+Padded(GetDiffScore(iDiffID),25)+
                   '} Deaths: {!'+Padded(GetDiffDeaths(iDiffID),4)+
                    '} Kills: {!'+Padded(GetDiffKills(iDiffID),6)+'}');
     end;
@@ -358,16 +359,16 @@ begin
             +Padded('Easy',6)+Padded('Med',6)+Padded('Hard',6)+Padded('VHard',6)+Padded('NMare',6)
             +Padded('Melee',6)+Padded('Pist',6)+Padded('Shotg',6)+Padded('Chain',6) );
 
-  for cn := 2 to LuaSystem.Get(['beings','__counter']) do
+  for cn := 2 to FLua.Get(['beings','__counter']) do
   begin
-    iElement := FPlayerInfo.XML.GetElement('player/kills/killbeing[@id="'+LuaSystem.Get(['beings',cn,'id'])+'"]');
+    iElement := FPlayerInfo.XML.GetElement('player/kills/killbeing[@id="'+FLua.Get(['beings',cn,'id'])+'"]');
     if iElement = nil then Continue;
 
-    iString := Padded(LuaSystem.Get(['beings',cn,'name']),16);
+    iString := Padded(FLua.Get(['beings',cn,'name']),16);
     iString += Padded(IsNone(StrToInt(iElement.GetAttribute('count'))),10);
 
-    for cn2 := 1 to LuaSystem.Get([ 'diff', '__counter' ]) do
-      iString += Padded(IsNone(GetCount( 'killtype[@id="'+LuaSystem.Get([ 'diff', cn2, 'id' ])+'"]', iElement)),9);
+    for cn2 := 1 to FLua.Get([ 'diff', '__counter' ]) do
+      iString += Padded(IsNone(GetCount( 'killtype[@id="'+FLua.Get([ 'diff', cn2, 'id' ])+'"]', iElement)),9);
 
     iString += Padded(IsNone(GetCount( 'killtype[@id="weapon-melee"]', iElement)),9);
     iString += Padded(IsNone(GetCount( 'killtype[@id="weapon-pistol"]', iElement)),9);
@@ -388,17 +389,17 @@ begin
           begin
             if cn = 1
               then iString := ' '+Padded('Standard Game',24)
-              else iString := ' '+Padded(LuaSystem.Get(['chal',Floor(cn div 4),'name']),24);
+              else iString := ' '+Padded(FLua.Get(['chal',Floor(cn div 4),'name']),24);
           end
         else iString := Padded('',25);
 
     for cn2 := 2 to iDiffCnt do
     begin
       case ( (cn - 1) mod 4 ) + 1 of
-        1: iDesc := GetChalDesc(Floor((cn-1) div 4),LuaSystem.Get([ 'diff', cn2, 'id' ]),'partial');
-        2: iDesc := GetChalDesc(Floor((cn-1) div 4),LuaSystem.Get([ 'diff', cn2, 'id' ]),'standard');
-        3: iDesc := GetChalDesc(Floor((cn-1) div 4),LuaSystem.Get([ 'diff', cn2, 'id' ]),'full');
-        4: iDesc := GetChalDesc(Floor((cn-1) div 4),LuaSystem.Get([ 'diff', cn2, 'id' ]),'total');
+        1: iDesc := GetChalDesc(Floor((cn-1) div 4),FLua.Get([ 'diff', cn2, 'id' ]),'partial');
+        2: iDesc := GetChalDesc(Floor((cn-1) div 4),FLua.Get([ 'diff', cn2, 'id' ]),'standard');
+        3: iDesc := GetChalDesc(Floor((cn-1) div 4),FLua.Get([ 'diff', cn2, 'id' ]),'full');
+        4: iDesc := GetChalDesc(Floor((cn-1) div 4),FLua.Get([ 'diff', cn2, 'id' ]),'total');
       end;
       iString += iDesc;
       if cn2 < iDiffCnt
@@ -408,32 +409,32 @@ begin
   end;
 
   // ---------------------------------------------------------------------------
-  if LuaSystem.Defined(['medals','__counter']) then
+  if FLua.Defined(['medals','__counter']) then
   begin
     iPage := TStringGArray.Create;
 
-    for cn := 1 to LuaSystem.Get(['medals','__counter']) do
+    for cn := 1 to FLua.Get(['medals','__counter']) do
     begin
-      if LuaSystem.Get(['medals',cn,'hidden']) then Continue;
-      Count := GetCounted('medals','medal',LuaSystem.Get(['medals',cn,'id']));
+      if FLua.Get(['medals',cn,'hidden']) then Continue;
+      Count := GetCounted('medals','medal',FLua.Get(['medals',cn,'id']));
       if Count = 0 then iString := ' {d' else iString := ' {!';
-      iString += LuaSystem.Get(['medals',cn,'name']);
+      iString += FLua.Get(['medals',cn,'name']);
       if Count = 0 then iString += ' ({L-})}' else iString += ' ({L'+IntToStr(Count)+'})}';
 
-      iPage.Push( Padded(iString,40)+'{l'+LuaSystem.Get(['medals',cn,'desc'])+'}');
+      iPage.Push( Padded(iString,40)+'{l'+FLua.Get(['medals',cn,'desc'])+'}');
     end;
     iPage.Push('');
-    for cn := 1 to LuaSystem.Get(['medals','__counter']) do
+    for cn := 1 to FLua.Get(['medals','__counter']) do
     begin
-      if not LuaSystem.Get(['medals',cn,'hidden']) then Continue;
-      Count := GetCounted('medals','medal',LuaSystem.Get(['medals',cn,'id']));
+      if not FLua.Get(['medals',cn,'hidden']) then Continue;
+      Count := GetCounted('medals','medal',FLua.Get(['medals',cn,'id']));
       if Count = 0 then
       begin
         iPage.Push( '   {d----}');
         Continue;
       end;
-      iString := ' {!'+LuaSystem.Get(['medals',cn,'name'])+' ({L'+IntToStr(Count)+'})}';
-      iPage.Push( Padded(iString,40)+'{l'+LuaSystem.Get(['medals',cn,'desc'])+'}');
+      iString := ' {!'+FLua.Get(['medals',cn,'name'])+' ({L'+IntToStr(Count)+'})}';
+      iPage.Push( Padded(iString,40)+'{l'+FLua.Get(['medals',cn,'desc'])+'}');
     end;
 
     cn := 0; cn2 := 0;
@@ -444,7 +445,7 @@ begin
       cn2 := iElement.ChildNodes.Count;
     end;
 
-    Result.Add( iPage, 'Medals', 'Total medals received  : {!'+Padded(IntToStr(cn),7)+'}Total different medals  : {!'+IntToStr(cn2)+'}/{!'+IntToStr(LuaSystem.Get(['medals','__counter']))+'}');
+    Result.Add( iPage, 'Medals', 'Total medals received  : {!'+Padded(IntToStr(cn),7)+'}Total different medals  : {!'+IntToStr(cn2)+'}/{!'+IntToStr(FLua.Get(['medals','__counter']))+'}');
   end;
 
   // ---------------------------------------------------------------------------
@@ -454,8 +455,8 @@ begin
   cn2 := 0;
   iString := '';
 
-  for cn := 1 to LuaSystem.Get(['items','__counter']) do
-  with LuaSystem.getTable(['items',cn]) do
+  for cn := 1 to FLua.Get(['items','__counter']) do
+  with FLua.getTable(['items',cn]) do
   try
     if getBoolean('is_exotic') then
     begin
@@ -476,8 +477,8 @@ begin
   if iString <> '' then begin iPage.Push(iString); iString := ''; end;
   cn2 := 0;
   iPage.Push('');
-  for cn := 1 to LuaSystem.Get(['items','__counter']) do
-  with LuaSystem.getTable(['items',cn]) do
+  for cn := 1 to FLua.Get(['items','__counter']) do
+  with FLua.getTable(['items',cn]) do
   try
     if getBoolean('is_unique') then
     begin
@@ -506,7 +507,7 @@ begin
   Result.Add( iPage, 'Items','Total specials found  : {!'+Padded(IntToStr(cn),7)+'}Total different specials  : {!'+IntToStr(cn2)+'}/{!'+IntToStr(c)+'}');
 
   // ---------------------------------------------------------------------------
-  if LuaSystem.Defined(['mod_arrays','__counter']) then
+  if FLua.Defined(['mod_arrays','__counter']) then
   begin
     iPage := TStringGArray.Create;
 
@@ -521,8 +522,8 @@ begin
         2 : iPage.Push(' {!Master assemblies}');
       end;
       iPage.Push('');
-      for cn := 1 to LuaSystem.Get(['mod_arrays','__counter']) do
-      with LuaSystem.GetTable(['mod_arrays',cn]) do
+      for cn := 1 to FLua.Get(['mod_arrays','__counter']) do
+      with FLua.GetTable(['mod_arrays',cn]) do
       try
         if getInteger('level') = cn2 then
         begin
@@ -557,9 +558,9 @@ begin
 
   // ---------------------------------------------------------------------------
 
-  if LuaSystem.Defined(['badges','__counter']) then
+  if FLua.Defined(['badges','__counter']) then
   begin
-    iBadges := LuaSystem.Get(['badges','__counter']);
+    iBadges := FLua.Get(['badges','__counter']);
     iPages  := 5;
     if (GetBadgeCount(6) >= 1) or (GetBadgeCount(5) >= 1) then iPages := 6;
     for cn2 := 1 to iPages do
@@ -568,7 +569,7 @@ begin
       iTotal := 0;
       iFound := 0;
       for cn := 1 to iBadges do
-      with LuaSystem.GetTable(['badges',cn]) do
+      with FLua.GetTable(['badges',cn]) do
       try
         if getInteger('level') = cn2 then
         begin
@@ -592,15 +593,15 @@ begin
   end;
 
   // ---------------------------------------------------------------------------
-  iBadges := LuaSystem.Get(['awards','__counter'],0);
+  iBadges := FLua.Get(['awards','__counter'],0);
   if iBadges > 0 then
   begin
     iPage := Result.Add('Custom Awards');
     for cn := 1 to iBadges do
     begin
       if cn > 1 then iPage.Push('');
-      iFound  := LuaSystem.GetTableSize(['awards',cn,'levels']);
-      iDiffID := LuaSystem.Get(['awards',cn,'id']);
+      iFound  := FLua.GetTableSize(['awards',cn,'levels']);
+      iDiffID := FLua.Get(['awards',cn,'id']);
       iTotal  := 0;
       for cn2 := iFound downto 1 do
       begin
@@ -612,12 +613,12 @@ begin
       end;
 
       if iTotal > 0
-        then iString := Padded(' {!'+LuaSystem.Get(['awards',cn,'name'])+' ('+LuaSystem.Get(['awards',cn,'levels',iTotal,'name'])+')}',38)
-        else iString := Padded(' {d'+LuaSystem.Get(['awards',cn,'name'])+' (none yet)}',38);
-      iPage.Push( Padded(iString,38)+ ' {dModule: {l'+LuaSystem.Get(['awards',cn,'mname'])+'}}');
+        then iString := Padded(' {!'+FLua.Get(['awards',cn,'name'])+' ('+FLua.Get(['awards',cn,'levels',iTotal,'name'])+')}',38)
+        else iString := Padded(' {d'+FLua.Get(['awards',cn,'name'])+' (none yet)}',38);
+      iPage.Push( Padded(iString,38)+ ' {dModule: {l'+FLua.Get(['awards',cn,'mname'])+'}}');
       if iTotal >= iFound
-        then iPage.Push('   {dMaximum award level reached. Award received for: {l'+LuaSystem.Get(['awards',cn,'levels',iTotal,'name'] )+'}}')
-        else iPage.Push('   {dTo achieve {L'+LuaSystem.Get(['awards',cn,'levels',iTotal+1,'name'])+'} level you need to: {l'+LuaSystem.Get(['awards',cn,'levels',iTotal+1,'desc'] )+'}');
+        then iPage.Push('   {dMaximum award level reached. Award received for: {l'+FLua.Get(['awards',cn,'levels',iTotal,'name'] )+'}}')
+        else iPage.Push('   {dTo achieve {L'+FLua.Get(['awards',cn,'levels',iTotal+1,'name'])+'} level you need to: {l'+FLua.Get(['awards',cn,'levels',iTotal+1,'desc'] )+'}');
     end;
   end;
 end;
@@ -652,11 +653,11 @@ var iChals     : TIntHashMap;
 begin
   FillChar( iPages, Sizeof( iPages ), 0 );
   iChals := TIntHashMap.Create;
-  if LuaSystem.Defined(['chal','__counter']) then
+  if FLua.Defined(['chal','__counter']) then
   begin
-    iCCount := LuaSystem.Get(['chal','__counter']);
+    iCCount := FLua.Get(['chal','__counter']);
     for iCount := 1 to iCCount do
-      iChals[ LuaSystem.Get(['chal',iCount,'abbr']) ] := iCount;
+      iChals[ FLua.Get(['chal',iCount,'abbr']) ] := iCount;
   end;
 
   iAmount := FScore.Entries;
@@ -683,12 +684,12 @@ begin
     else
       iColor := '{!';
 
-    iString := LuaSystem.Get(['diff',iDiff,'code']) + ' ';
+    iString := FLua.Get(['diff',iDiff,'code']) + ' ';
     iString += iColor + Padded(IntToStr(iScore),8);
     iString += Padded(iName,17) + ' ';
 
     iKlassChar := 'C';
-    if iElement.hasAttribute('klass') then iKlassChar := LuaSystem.Get(['klasses',AnsiString(iElement.GetAttribute('klass')),'char']);
+    if iElement.hasAttribute('klass') then iKlassChar := FLua.Get(['klasses',AnsiString(iElement.GetAttribute('klass')),'char']);
 
     iString += iKlassChar + '{L'+Padded(IntToStr(iLevel),3)+'}';
     iString += Padded(iKill,34);
@@ -719,16 +720,17 @@ begin
     else Result.Add( '', iHeader );
   for iCount := 1 to 9 do
     if iPages[iCount] <> nil then
-      Result.Add( iPages[iCount], LuaSystem.Get(['diff',iCount,'code']), iHeader );
+      Result.Add( iPages[iCount], FLua.Get(['diff',iCount,'code']), iHeader );
   for iCount := 10 to 99 do
     if iPages[iCount] <> nil then
-      Result.Add( iPages[iCount], LuaSystem.Get(['chal',iCount - 10,'abbr']), iHeader );
+      Result.Add( iPages[iCount], FLua.Get(['chal',iCount - 10,'abbr']), iHeader );
   FreeAndNil( iChals );
 end;
 
-procedure THOF.Init( const aPaths : TGamePaths );
+procedure THOF.Init( aLuaSystem : TLuaSystem; const aPaths : TGamePaths );
 var iScorePath : Ansistring;
 begin
+  FLua := aLuaSystem;
   iScorePath := aPaths.ScorePath;
   if iScorePath = '' then iScorePath := aPaths.ModuleUserPath;
   FScore := TScoreFile.Create( iScorePath + ScoreFile, MaxHOFEntries );
@@ -834,22 +836,22 @@ var XMLElement : TDOMElement;
   begin
     if aID = 'other' then Exit('other');
     if aID = 'melee' then Exit('weapon-melee');
-    if LuaSystem.Defined( ['items',aID,'group'] ) then
-        Exit( 'weapon-'+LuaSystem.Get( ['items',aID,'group'] ) )
+    if FLua.Defined( ['items',aID,'group'] ) then
+        Exit( 'weapon-'+FLua.Get( ['items',aID,'group'] ) )
     else
         Exit( 'other' );
   end;
 
 begin
-  iGameResultID := LuaSystem.ProtectedCall([CoreModuleID,'GetResultId'],[]);
+  iGameResultID := FLua.ProtectedCall([CoreModuleID,'GetResultId'],[]);
   if not NoPlayerRecord then
   begin
-    iDiffID       := LuaSystem.Get([ 'diff', DRL.Difficulty, 'id' ]);
+    iDiffID       := FLua.Get([ 'diff', DRL.Difficulty, 'id' ]);
     iChalInc      := 0;
     iChalAbbr     := 'unchallenged';
     if nChal <> '' then
     begin
-      iChalAbbr := LuaSystem.Get(['chal',nChal,'abbr']);
+      iChalAbbr := FLua.Get(['chal',nChal,'abbr']);
       iChalInc := 1;
     end;
 
@@ -885,7 +887,7 @@ begin
     IncreaseXMLCount( XMLEntry, 'killtype', iChalAbbr, Player.FKills.Count );
 
     // GAMES
-    iGameResult := LuaSystem.ProtectedCall([CoreModuleID,'GetShortResultId'],[iGameResultID,DLev]);
+    iGameResult := FLua.ProtectedCall([CoreModuleID,'GetShortResultId'],[iGameResultID,DLev]);
     XMLEntry := IncreaseXMLCount( FPlayerInfo.XML.DocumentElement, 'games', 1 );
     if DRL.GameWon then
     begin
@@ -923,7 +925,7 @@ begin
 
   if not NoScoreRecord then
   begin
-    VS := LuaSystem.ProtectedCall([CoreModuleID,'GetResultDescription'],[iGameResultID,true]);
+    VS := FLua.ProtectedCall([CoreModuleID,'GetResultDescription'],[iGameResultID,true]);
 
     FScore.Lock;
     try
@@ -931,17 +933,17 @@ begin
       iScoreEntry := FScore.Add( aScore );
       if iScoreEntry <> nil then
       begin
-        //Score.Add(Name,aScore,Level,DLev,DRL.Difficulty,VS,VSS,LuaSystem.Get(['klasses',Player.Klass,'id']));
+        //Score.Add(Name,aScore,Level,DLev,DRL.Difficulty,VS,VSS,FLua.Get(['klasses',Player.Klass,'id']));
         iScoreEntry.SetAttribute('name', Name );
         iScoreEntry.SetAttribute('level', IntToStr(Level) );
         if nAbbr <> ''
           then iScoreEntry.SetAttribute('depth', nAbbr )
           else iScoreEntry.SetAttribute('depth', IntToStr(DLev) );
-        iScoreEntry.SetAttribute('klass', LuaSystem.Get(['klasses',Player.Klass,'id']) );
+        iScoreEntry.SetAttribute('klass', FLua.Get(['klasses',Player.Klass,'id']) );
         iScoreEntry.SetAttribute('killed', VS );
         iScoreEntry.SetAttribute('difficulty', IntToStr(DRL.Difficulty) );
         if nChal <> '' then
-          iScoreEntry.SetAttribute('challenge', LuaSystem.Get(['chal',nChal,'abbr']) );
+          iScoreEntry.SetAttribute('challenge', FLua.Get(['chal',nChal,'abbr']) );
         FScore.Save;
       end;
     finally
@@ -959,7 +961,7 @@ var iSize   : Integer;
 begin
   if NoPlayerRecord then Exit( False );
 
-  iSize := LuaSystem.GetTableSize( 'ranks' );
+  iSize := FLua.GetTableSize( 'ranks' );
 
   Initialize( aResult );
   Initialize( iValues );
@@ -967,7 +969,7 @@ begin
   SetLength( iValues, iSize );
 
   i := 0;
-  with LuaSystem.GetTable(['ranks']) do
+  with FLua.GetTable(['ranks']) do
   try
     for iPair in IndexVariants do
     begin
@@ -1009,6 +1011,7 @@ begin
   Save;
   FreeAndNil( FScore );
   FreeAndNil( FPlayerInfo );
+  FLua := nil;
   HOFOpen := False;
 end;
 
@@ -1027,7 +1030,7 @@ end;
 
 function THOF.GetRankReqCount(const aRankArray: AnsiString; aRankLevel: DWord ): DWord;
 begin
-  Exit( LuaSystem.GetTableSize( [ 'ranks', aRankArray, aRankLevel+1, 'reqs' ] ) );
+  Exit( FLua.GetTableSize( [ 'ranks', aRankArray, aRankLevel+1, 'reqs' ] ) );
 end;
 
 function THOF.GetRankReqDescription(const aRankArray: AnsiString; aRankLevel: DWord; aRankReq: DWord): AnsiString;
@@ -1036,7 +1039,7 @@ var iAmount : DWord;
     iParam2 : Variant;
     iReq    : AnsiString;
 begin
-  with LuaSystem.GetTable( [ 'ranks', aRankArray, aRankLevel+1, 'reqs', aRankReq ] ) do
+  with FLua.GetTable( [ 'ranks', aRankArray, aRankLevel+1, 'reqs', aRankReq ] ) do
   try
     iParam  := GetField( 'param' );
     if not IsNil( 'param2' ) then
@@ -1046,7 +1049,7 @@ begin
   finally
     Free;
   end;
-  Exit( LuaSystem.ProtectedCall( ['requirements', iReq, 'description'], [iAmount, iParam, iParam2] ) );
+  Exit( FLua.ProtectedCall( ['requirements', iReq, 'description'], [iAmount, iParam, iParam2] ) );
 end;
 
 function THOF.IsRankReqCompleted(const aRankArray: AnsiString; aRankLevel: DWord; aRankReq: DWord): Boolean;
@@ -1055,7 +1058,7 @@ var iAmount : DWord;
     iParam2 : Variant;
     iReq    : AnsiString;
 begin
-  with LuaSystem.GetTable( [ 'ranks', aRankArray, aRankLevel+1, 'reqs', aRankReq ] ) do
+  with FLua.GetTable( [ 'ranks', aRankArray, aRankLevel+1, 'reqs', aRankReq ] ) do
   try
     iParam  := GetField( 'param' );
     if not IsNil( 'param2' ) then
@@ -1065,7 +1068,7 @@ begin
   finally
     Free;
   end;
-  Exit( LuaSystem.ProtectedCall( ['requirements', iReq, 'progress'], [iParam,iParam2] ) >= iAmount );
+  Exit( FLua.ProtectedCall( ['requirements', iReq, 'progress'], [iParam,iParam2] ) >= iAmount );
 end;
 
 function THOF.GetRankReqCurrent(const aRankArray: AnsiString; aRankLevel: DWord; aRankReq: DWord): DWord;
@@ -1073,7 +1076,7 @@ var iParam  : Variant;
     iParam2 : Variant;
     iReq    : AnsiString;
 begin
-  with LuaSystem.GetTable( [ 'ranks', aRankArray, aRankLevel+1, 'reqs', aRankReq ] ) do
+  with FLua.GetTable( [ 'ranks', aRankArray, aRankLevel+1, 'reqs', aRankReq ] ) do
   try
     iParam  := GetField( 'param' );
     if not IsNil( 'param2' ) then
@@ -1082,18 +1085,18 @@ begin
   finally
     Free;
   end;
-  Exit( LuaSystem.ProtectedCall( ['requirements', iReq, 'progress'], [iParam,iParam2] ) );
+  Exit( FLua.ProtectedCall( ['requirements', iReq, 'progress'], [iParam,iParam2] ) );
 end;
 
 function THOF.GetRankReqTotal(const aRankArray: AnsiString; aRankLevel: DWord; aRankReq: DWord): DWord;
 begin
-  Exit( LuaSystem.Get( [ 'ranks', aRankArray, aRankLevel+1, 'reqs', aRankReq, 'amount' ], 1 ) );
+  Exit( FLua.Get( [ 'ranks', aRankArray, aRankLevel+1, 'reqs', aRankReq, 'amount' ], 1 ) );
 end;
 
 function THOF.CheckRank( const aRankArray : Ansistring; aCurrent : Integer ) : boolean;
 var iCount : DWord;
 begin
-  if aCurrent+1 >= LuaSystem.Get(['ranks', aRankArray, '__counter'],0) then Exit( False );
+  if aCurrent+1 >= FLua.Get(['ranks', aRankArray, '__counter'],0) then Exit( False );
   iCount := GetRankReqCount( aRankArray, aCurrent+1 );
   if iCount = 0 then Exit( True );
   for iCount := 1 to iCount do
@@ -1107,7 +1110,7 @@ var i    : Integer;
 begin
   for i := 1 to aRankLevel do
   begin
-    iAch := LuaSystem.Get( [ 'ranks', aRankArray, i+1, 'achievement' ], '' );
+    iAch := FLua.Get( [ 'ranks', aRankArray, i+1, 'achievement' ], '' );
     if iAch <> '' then
         if DRL.Store.SetAchievement( iAch ) then
           Log( LOGINFO, iAch+' awarded!');

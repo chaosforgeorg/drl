@@ -12,7 +12,7 @@ uses SysUtils, Classes,
      vluamapnode, vtextmap,
      dfdata, dfmap, dfthing, dfbeing, dfitem,
      drlhooks, drlperk,
-     drlmarkers, drldecals;
+     drlmarkers, drldecals, vluasystem;
 
 const CellWalls   : TCellSet = [];
       CellFloors  : TCellSet = [];
@@ -122,7 +122,7 @@ TLevel = class(TLuaMapNode, ITextMap)
     function SwapBeings( aA, aB : TCoord2D ) : Boolean;
     procedure CalculateRotation( aCoord : TCoord2D ); inline;
 
-    class procedure RegisterLuaAPI();
+    class procedure RegisterLuaAPI( aLuaSystem : TLuaSystem );
 
     function HasHook( aHook : Word ) : Boolean; override;
     function GetPerkList : TPerkList;
@@ -203,15 +203,14 @@ TLevel = class(TLuaMapNode, ITextMap)
 
 implementation
 
-uses math, typinfo, vgenerics, vluatools, vluasystem,
-     vdebug, vuid, dfplayer, drlua, drlbase, drlio, drlgfxio,
+uses math, typinfo, vgenerics, vluatools, vdebug, vuid, dfplayer, drlua, drlbase, drlio, drlgfxio,
      drlspritemap, drlhudviews;
 
 type TProcessedUIDList = specialize TGArray<TUID>;
 
 procedure TLevel.ScriptLevel(script : string);
 begin
-  with LuaSystem.GetTable( ['levels', script] ) do
+  with FContext.Lua.GetTable( ['levels', script] ) do
   try
     FID := Script;
 
@@ -524,7 +523,7 @@ var x,y         : Integer;
     iFloorStyle : Byte;
 begin
   Player.Detach; // guarantee invariant
-  LuaSystem.State.ClearLuaProperties( Self );
+  FContext.Lua.State.ClearLuaProperties( Self );
   FActiveBeing := nil;
   FNextNode    := nil;
 
@@ -544,8 +543,8 @@ begin
   FFeeling := '';
   FMusicID := '';
  
-  if LuaSystem.Get(['diff',DRL.Difficulty,'respawn']) then Include( FFlags, LF_RESPAWN );
-  FAccuracyBonus := LuaSystem.Get(['diff',DRL.Difficulty,'accuracybonus']);
+  if FContext.Lua.Get(['diff',DRL.Difficulty,'respawn']) then Include( FFlags, LF_RESPAWN );
+  FAccuracyBonus := FContext.Lua.Get(['diff',DRL.Difficulty,'accuracybonus']);
 end;
 
 procedure TLevel.AfterGeneration;
@@ -556,8 +555,8 @@ var iCoord : TCoord2D;
     iWall  : Integer;
     iFloor : Integer;
 begin
-  iFloor := LuaSystem.Defines[ LuaSystem.Get(['generator','styles',FStyle,'floor'] ) ];
-  iWall  := LuaSystem.Defines[ LuaSystem.Get(['generator','styles',FStyle,'wall'] ) ];
+  iFloor := FContext.Lua.Defines[ FContext.Lua.Get(['generator','styles',FStyle,'floor'] ) ];
+  iWall  := FContext.Lua.Defines[ FContext.Lua.Get(['generator','styles',FStyle,'wall'] ) ];
   for iCoord in FArea do
   begin
     iCell   := GetCell(iCoord);
@@ -704,8 +703,8 @@ begin
   iFloorStyle := 0;
   if FStyle > 0 then
   begin
-    iFloorCell     := LuaSystem.Defines[LuaSystem.Get(['generator','styles',FStyle,'floor'])];
-    iFloorStyle    := LuaSystem.Get(['generator','styles',FStyle,'style'],0);
+    iFloorCell     := FContext.Lua.Defines[FContext.Lua.Get(['generator','styles',FStyle,'floor'])];
+    iFloorStyle    := FContext.Lua.Get(['generator','styles',FStyle,'style'],0);
   end;
   with FMap do
   for x := 1 to MaxX do
@@ -783,7 +782,7 @@ end;
 function TLevel.CallHook( aHook: TCellHook; aCellID : Word; aWhat: TThing ) : Variant;
 begin
   if aHook in Cells[ aCellID ].Hooks
-    then CallHook := LuaSystem.ProtectedCall( [ 'cells', aCellID, CellHooks[ aHook ] ], [aWhat] )
+    then CallHook := FContext.Lua.ProtectedCall( [ 'cells', aCellID, CellHooks[ aHook ] ], [aWhat] )
     else CallHook := False;
 end;
 
@@ -795,14 +794,14 @@ end;
 function TLevel.CallHook( coord : TCoord2D; aCellID : Word; Hook: TCellHook ) : Variant;
 begin
   if Hook in Cells[ aCellID ].Hooks
-    then CallHook := LuaSystem.ProtectedCall( [ 'cells', aCellID, CellHooks[ Hook ] ], [LuaCoord(coord)] )
+    then CallHook := FContext.Lua.ProtectedCall( [ 'cells', aCellID, CellHooks[ Hook ] ], [LuaCoord(coord)] )
     else CallHook := False;
 end;
 
 function TLevel.CallHook(coord: TCoord2D; What: TThing; Hook: TCellHook) : Variant;
 begin
   if Hook in Cells[ GetCell(coord) ].Hooks
-    then CallHook := LuaSystem.ProtectedCall( [ 'cells', Cell[ coord ], CellHooks[ Hook ] ], [LuaCoord(coord),What] )
+    then CallHook := FContext.Lua.ProtectedCall( [ 'cells', Cell[ coord ], CellHooks[ Hook ] ], [LuaCoord(coord),What] )
     else CallHook := False;
 end;
 
@@ -872,7 +871,7 @@ begin
         Cell[ aCoord ] := Floor[aCoord];
       end
       else
-        Cell[ aCoord ] := LuaSystem.Defines[ Cells[ iCellID ].destroyto ];
+        Cell[ aCoord ] := FContext.Lua.Defines[ Cells[ iCellID ].destroyto ];
 
       Result := True;
       CallHook( aCoord, iCellID, CellHook_OnDestroy );
@@ -1200,7 +1199,7 @@ begin
     iBeing := TBeing.Create( Cells[ iCellID ].raiseto );
     iBeing.Flags[ BF_RESPAWN ] := True;
     DropBeing( iBeing, aCoord );
-    Cell[ aCoord ] := LuaSystem.Defines[ Cells[ iCellID ].destroyto ];
+    Cell[ aCoord ] := FContext.Lua.Defines[ Cells[ iCellID ].destroyto ];
     iBeing.Flags[ BF_NOEXP   ] := True;
     for iItem in iBeing.Inv do
       iItem.Flags[ IF_NODROP ] := True;
@@ -1265,7 +1264,7 @@ var iCell : DWord;
 begin
   iCell := GetCell(coord);
   if (Cells[ iCell ].bloodto <> '') and (LightFlag[ coord, LFBLOOD ] or (Cells[ iCell ].BloodColor = 0))
-    then Cell[ coord ] := LuaSystem.Defines[ Cells[ iCell ].bloodto ]
+    then Cell[ coord ] := FContext.Lua.Defines[ Cells[ iCell ].bloodto ]
     else LightFlag[ coord, LFBLOOD ] := True;
 end;
 
@@ -1479,7 +1478,7 @@ begin
     Cell[ where ] := Floor[where];
   end
   else
-    Cell[ where ] := LuaSystem.Defines[ Cells[ GetCell(where) ].destroyto ];
+    Cell[ where ] := FContext.Lua.Defines[ Cells[ GetCell(where) ].destroyto ];
   CellBeing := Being[ where ];
   CellItem  := Item [ where ];
 
@@ -1753,7 +1752,7 @@ begin
     iRespawn := iState.ToBoolean( 4, False );
     if iState.IsTable(2)
       then iBeing := iState.ToObject(2) as TBeing
-      else iBeing := TBeing.Create( iState.ToId(2) );
+      else iBeing := TBeing.Create( iState.ToId( iLevel.Context.Lua, 2 ) );
     if iRespawn then iBeing.Flags[ BF_RESPAWN ] := True;
     iLevel.DropBeing( iBeing, iState.ToCoord(3) );
     iState.Push( iBeing );
@@ -1777,25 +1776,25 @@ begin
   Result := 1;
 end;
 
-function lua_level_drop_item(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+function lua_level_drop_item( L : PLua_State ): Integer; cdecl;
+var iState : TDRLLuaState;
     iItem : TItem;
-    Level : TLevel;
+    iLevel : TLevel;
 begin
-  State.Init(L);
-  Level := State.ToObject(1) as TLevel;
-  if State.IsNil(3) then Exit(0);
+  iState.Init(L);
+  iLevel := iState.ToObject(1) as TLevel;
+  if iState.IsNil(3) then Exit(0);
   try
-    if State.IsTable(2)
-      then iItem := State.ToObject(2) as TItem
-      else iItem := TItem.Create( State.ToId(2), State.ToBoolean( 4, False ) );
-    Level.DropItem( iItem, State.ToPosition(3), State.ToBoolean( 5, False ), State.ToBoolean( 6, False ) );
-    State.Push( iItem );
+    if iState.IsTable(2)
+      then iItem := iState.ToObject(2) as TItem
+      else iItem := TItem.Create( iState.ToId( iLevel.Context.Lua, 2 ), iState.ToBoolean( 4, False ) );
+    iLevel.DropItem( iItem, iState.ToPosition(3), iState.ToBoolean( 5, False ), iState.ToBoolean( 6, False ) );
+    iState.Push( iItem );
   except
     on EPlacementException do
     begin
       FreeAndNil( iItem );
-      State.PushNil();
+      iState.PushNil();
     end;
   end;
   Result := 1;
@@ -1862,7 +1861,7 @@ begin
 
   iTable := iState.ToTable( iTableIndex );
   Initialize( iData );
-  ReadExplosion( iTable, iData );
+  ReadExplosion( iLevel.Context.Lua, iTable, iData );
   iTable.Free;
 
   iSource := iState.ToObjectOrNil(iSourceIndex) as TItem;
@@ -1930,19 +1929,19 @@ begin
   Result := 0;
 end;
 
-function lua_level_set_generator_style(L: Plua_State): Integer; cdecl;
-var State   : TDRLLuaState;
+function lua_level_set_generator_style( L : PLua_State ) : Integer; cdecl;
+var iState   : TDRLLuaState;
     iCoord  : TCoord2D;
     iLevel  : TLevel;
     iFloor  : Integer;
     iFStyle : Integer;
 begin
-  State.Init(L);
-  iLevel := State.ToObject(1) as TLevel;
-  if State.IsNil(2) then Exit(0);
-  iLevel.FStyle := State.ToInteger(2);
-  iFloor  := LuaSystem.Defines[LuaSystem.Get(['generator','styles',iLevel.FStyle,'floor'])];
-  iFStyle := LuaSystem.Get(['generator','styles',iLevel.FStyle,'style'], 0);
+  iState.Init(L);
+  iLevel := iState.ToObject(1) as TLevel;
+  if iState.IsNil(2) then Exit(0);
+  iLevel.FStyle := iState.ToInteger(2);
+  iFloor  := iLevel.Context.Lua.Defines[iLevel.Context.Lua.Get(['generator','styles',iLevel.FStyle,'floor'])];
+  iFStyle := iLevel.Context.Lua.Get(['generator','styles',iLevel.FStyle,'style'], 0);
   for iCoord in iLevel.FArea do
   begin
     iLevel.FMap.Style[iCoord.X,iCoord.Y]  := iFStyle;
@@ -2126,7 +2125,7 @@ begin
   iState.Init(L);
   iLevel := iState.ToObject(1) as TLevel;
   if iLevel = nil then Exit( 0 );
-  iLevel.FPerks.Add( iState.ToId(2), iState.ToInteger(3,-1) );
+  iLevel.FPerks.Add( iState.ToId( iLevel.Context.Lua, 2 ), iState.ToInteger(3,-1) );
   Result := 0;
 end;
 
@@ -2136,7 +2135,7 @@ var iState : TDRLLuaState;
 begin
   iState.Init(L);
   iLevel := iState.ToObject(1) as TLevel;
-  iState.Push( iLevel.FPerks.getTime( iState.ToId(2) ) );
+  iState.Push( iLevel.FPerks.getTime( iState.ToId( iLevel.Context.Lua, 2 ) ) );
   Result := 1;
 end;
 
@@ -2146,7 +2145,7 @@ var iState : TDRLLuaState;
 begin
   iState.Init(L);
   iLevel := iState.ToObject(1) as TLevel;
-  iLevel.FPerks.Remove( iState.ToId(2), iState.ToBoolean( 3, False ) );
+  iLevel.FPerks.Remove( iState.ToId( iLevel.Context.Lua, 2 ), iState.ToBoolean( 3, False ) );
   Result := 0;
 end;
 
@@ -2156,7 +2155,7 @@ var iState : TDRLLuaState;
 begin
   iState.Init(L);
   iLevel := iState.ToObject(1) as TLevel;
-  iState.Push( iLevel.FPerks.IsActive( iState.ToId( 2 ) ) );
+  iState.Push( iLevel.FPerks.IsActive( iState.ToId( iLevel.Context.Lua, 2 ) ) );
   Result := 1;
 end;
 
@@ -2191,15 +2190,15 @@ const lua_level_lib : array[0..26] of luaL_Reg = (
 );
 
 
-class procedure TLevel.RegisterLuaAPI();
+class procedure TLevel.RegisterLuaAPI( aLuaSystem : TLuaSystem );
 begin
-  TLuaMapNode.RegisterLuaAPI('level');
-  LuaSystem.Register( 'level', lua_level_lib );
+  TLuaMapNode.RegisterLuaAPI( aLuaSystem, 'level' );
+  aLuaSystem.Register( 'level', lua_level_lib );
 end;
 
 function TLevel.CellToID ( const aCell : Byte ) : AnsiString;
 begin
-  Result:= LuaSystem.Get(['cells',aCell,'id']);
+  Result:= FContext.Lua.Get(['cells',aCell,'id']);
 end;
 
 

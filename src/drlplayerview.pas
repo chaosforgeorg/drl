@@ -542,7 +542,7 @@ begin
     for iCount := 1 to MAXTRAITS do
       if Player.Traits[iCount] > 0 then
       begin
-        iName := LuaSystem.Get(['traits',iCount,'name']);
+        iName := IO.Session.Context.Lua.Get(['traits',iCount,'name']);
         if iName = '' then Continue;
         if iCount < 10 then
         begin
@@ -759,13 +759,13 @@ begin
   iEntry.Color := aItem.MenuColor;
   iEntry.QSlot := 0;
 
-  iEntry.Desc  := LuaSystem.Get(['items',aItem.ID,'desc'], '');
-  iSet := LuaSystem.Get( ['items',aItem.ID,'set'], '' );
+  iEntry.Desc  := aItem.Context.Lua.Get(['items',aItem.ID,'desc'], '');
+  iSet := aItem.Context.Lua.Get( ['items',aItem.ID,'set'], '' );
   if iSet <> '' then
   begin
     iEntry.Desc := Format('{!%s} (1/%d)', [
-      AnsiString( LuaSystem.Get(['itemsets',iSet,'name']) ),
-      Byte( LuaSystem.Get(['itemsets',iSet,'trigger']) ) ])
+      AnsiString( aItem.Context.Lua.Get(['itemsets',iSet,'name']) ),
+      Byte( aItem.Context.Lua.Get(['itemsets',iSet,'trigger']) ) ])
       + #10+ iEntry.Desc;
   end;
   aArray.Push( iEntry );
@@ -856,14 +856,14 @@ begin
   if not FTraitFirst then
     iLevel := Player.ExpLevel;
 
-  iTraits := LuaSystem.Get(['klasses',iKlass,'traitlist']);
+  iTraits := IO.Session.Context.Lua.Get(['klasses',iKlass,'traitlist']);
   for i := VarArrayLowBound(iTraits, 1) to VarArrayHighBound(iTraits, 1) do
   begin
     iTrait := iTraits[ i ];
     iEntry.Value     := Value( iTrait );
-    iEntry.Name      := LuaSystem.Get(['traits',iTrait,'name']);
+    iEntry.Name      := IO.Session.Context.Lua.Get(['traits',iTrait,'name']);
     iEntry.Entry     := Padded(iEntry.Name,16) +' ({!'+IntToStr(iEntry.Value)+'})';
-    with LuaSystem.GetTable(['traits',iTrait]) do
+    with IO.Session.Context.Lua.GetTable(['traits',iTrait]) do
     try
       iEntry.Quote := getString('quote');
       iEntry.Desc  := getString('desc');
@@ -874,14 +874,14 @@ begin
     iReqLen := 0;
     iEntry.Requires := '';
     iEntry.Blocks   := '';
-    with LuaSystem.GetTable(['klasses',iKlass,'trait',iTrait]) do
+    with IO.Session.Context.Lua.GetTable(['klasses',iKlass,'trait',iTrait]) do
     try
       iEntry.Master:= getBoolean( 'master', False );
       if GetTableSize('requires') > 0 then
       for iTable in ITables('requires') do
       begin
         iNID            := iTable.GetValue( 1 );
-        iName           := LuaSystem.Get(['traits',iNID,'name']);
+        iName           := IO.Session.Context.Lua.Get(['traits',iNID,'name']);
         iValue          := iTable.GetValue( 2 );
         AddRequires( '{'+RG[Value(iNID) < iValue]+iName+'} ({!'+IntToStr(iValue)+'}), ' );
       end;
@@ -901,7 +901,7 @@ begin
           for iCount := 1 to iSize do
           begin
             iNID          := GetValue( iCount );
-            iName         := LuaSystem.Get(['traits',iNID,'name']);
+            iName         := IO.Session.Context.Lua.Get(['traits',iNID,'name']);
             iEntry.Blocks += '{'+RL[Value(iNID) > 0]+iName+'}, ';
           end;
         finally
@@ -915,7 +915,7 @@ begin
 
     iEntry.Index     := iTrait;
     if FTraitFirst
-      then iEntry.Available := TTraits.CanPickInitially( iTrait, iKlass )
+      then iEntry.Available := TTraits.CanPickInitially( IO.Session.Context.Lua, iTrait, iKlass )
       else iEntry.Available := Player.Traits.CanPick( iKlass, iTrait, iLevel );
     FTraits.Push( iEntry );
   end;
@@ -938,9 +938,9 @@ begin
   for i := Low( FCharacter ) to High( FCharacter ) do
     FreeAndNil( FCharacter[i] );
 
-  FCTitle := LuaSystem.Get([ 'diff', DRL.Difficulty, 'code' ]);
-  if DRL.Challenge <> ''  then FCTitle += ' / ' + LuaSystem.Get(['chal',DRL.Challenge,'abbr']);
-  if DRL.SChallenge <> '' then FCTitle += ' + ' + LuaSystem.Get(['chal',DRL.SChallenge,'abbr']);
+  FCTitle := Player.Context.Lua.Get([ 'diff', DRL.Difficulty, 'code' ]);
+  if DRL.Challenge <> ''  then FCTitle += ' / ' + Player.Context.Lua.Get(['chal',DRL.Challenge,'abbr']);
+  if DRL.SChallenge <> '' then FCTitle += ' + ' + Player.Context.Lua.Get(['chal',DRL.SChallenge,'abbr']);
   FCTitle := 'Character ( '+FCTitle+' )';
 
   with Player do
@@ -953,7 +953,7 @@ begin
 
     // Section 0: Player
     FCharacter[0] := TStringGArray.Create;
-    FCharacter[0].Push( '{!' + Name + '} - level {!' + IntToStr(ExpLevel) + '} ' + AnsiString(LuaSystem.Get(['klasses',Klass,'name'])) );
+    FCharacter[0].Push( '{!' + Name + '} - level {!' + IntToStr(ExpLevel) + '} ' + AnsiString(Player.Context.Lua.Get(['klasses',Klass,'name'])) );
     if ExpLevel < MaxPlayerLevel - 1
       then FCharacter[0].Push( Format( '  Experience   : {!%d} ({!%d} more needed for level {!%d})', [ Exp, ExpTable[ExpLevel+1] - Exp, ExpLevel+1 ] ) )
       else FCharacter[0].Push( Format( '  Experience   : {!%d} ({!max level reached!})', [ Exp ] ) );

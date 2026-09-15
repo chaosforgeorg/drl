@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit dfmap;
 interface
-uses vutil, vmath, dfdata;
+uses vluasystem, vutil, vmath, dfdata;
 
 type TCellHook  = (CellHook_OnEnter, CellHook_OnExit, CellHook_OnAct, CellHook_OnDescribe, CellHook_OnHazardQuery, CellHook_OnDestroy);
      TCellHooks = set of TCellHook;
@@ -50,7 +50,7 @@ type
 
 TCells = class
          public
-           procedure RegisterCell( aCellNum : Byte );
+           procedure RegisterCell( aLuaSystem : TLuaSystem; aCellNum : Byte );
            destructor Destroy; override;
          private
            FData     : array of TCell;
@@ -65,9 +65,9 @@ var Cells : TCells;
 
 implementation
 
-uses SysUtils, vluasystem, vdebug;
+uses SysUtils, vdebug;
 
-procedure TCells.RegisterCell( aCellNum : byte );
+procedure TCells.RegisterCell( aLuaSystem : TLuaSystem; aCellNum : byte );
 var iColorID : AnsiString;
     iHook    : TCellHook;
     iCell    : TCell;
@@ -85,7 +85,7 @@ begin
   if aCellNum > FMaxCells then FMaxCells := aCellNum;
 
   iCell  := TCell.Create;
-  iTable := LuaSystem.GetTable(['cells',aCellNum]);
+  iTable := aLuaSystem.GetTable(['cells',aCellNum]);
   with iTable do
   try
     iColorID := getString('id');

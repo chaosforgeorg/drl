@@ -1,7 +1,7 @@
 {$INCLUDE drl.inc}
 unit drlparticles;
 interface
-uses Classes, SysUtils, vvector, vnode, vcolor, vutil, vrltools, vparticleengine, vlualibrary;
+uses vluasystem, Classes, SysUtils, vvector, vnode, vcolor, vutil, vrltools, vparticleengine, vlualibrary;
 
 type
   TEmitterBinding = record
@@ -37,7 +37,7 @@ type
     procedure ReadFromStream( aStream : TStream );
 
     // Data registration (called from Lua during module load)
-    procedure RegisterEmitter( aNID : Word );
+    procedure RegisterEmitter( aLuaSystem : TLuaSystem; aNID : Word );
 
   private
     FEngine         : TParticleEngine;
@@ -55,7 +55,7 @@ type
 
 implementation
 
-uses Math, vluasystem, vluatable, vluaentitynode, vuid,
+uses Math, vluatable, vluaentitynode, vuid,
      dfdata, dfthing, dflevel, drldecals, drlbase, drlio, drlspritemap;
 
 function FlagsToParticleFlags( const aFlags : TFlags ) : TParticleFlags;
@@ -126,7 +126,7 @@ end;
 
 // Emitter data loading
 
-procedure TParticleStore.RegisterEmitter( aNID : Word );
+procedure TParticleStore.RegisterEmitter( aLuaSystem : TLuaSystem; aNID : Word );
 var iTable  : TLuaTable;
     iShape  : AnsiString;
     iE      : PParticleEmitterData;
@@ -135,7 +135,7 @@ begin
   if aNID = 0 then Exit;
   if aNID >= Length( FEmitterData ) then
     SetLength( FEmitterData, aNID + 1 );
-  iTable := LuaSystem.GetTable( ['emitters', Integer(aNID)] );
+  iTable := aLuaSystem.GetTable( ['emitters', Integer(aNID)] );
   try
     iE := @FEmitterData[aNID];
     FillChar( iE^, SizeOf( TParticleEmitterData ), 0 );

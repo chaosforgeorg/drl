@@ -146,7 +146,6 @@ destructor TDRLRuntime.Destroy;
 begin
   ReleaseSession;
   UnloadGameData;
-  drlbase.Lua := nil;
   TDRLIO(IO).Modules := nil;
   TDRLIO(IO).Store := nil;
   FreeAndNil(ModErrors);
@@ -261,11 +260,11 @@ end;
 procedure TDRLRuntime.InitializeGameData;
 var i : Integer;
 begin
-  FSession.Context.BindLua( Lua );
-  TDRLLua( Lua ).ReadWAD;
+  FSession.Context.BindLua( FLua );
+  TDRLLua( FLua ).ReadWAD;
   if GodMode then RegisterDebugConsole( VKEY_F1 );
-  Lua.CallDefaultResult := True;
-  FModuleHooks := LoadHooks([CoreModuleID], GlobalHooks);
+  FLua.CallDefaultResult := True;
+  FModuleHooks := LoadHooks( FLua, [CoreModuleID], GlobalHooks );
   SafeCallModuleHook(Hook_OnLoad, []);
   ApplyConfiguration;
   TDRLIO(IO).Reconfigure(Config);
@@ -274,33 +273,33 @@ begin
     (IO as TDRLGFXIO).Textures.Upload;
 
   if GodMode and FileExists(Paths.WritePath + 'god.lua') then
-    drlbase.Lua.LoadFile(Paths.WritePath + 'god.lua');
-  HOF.Init(Paths);
+    FLua.LoadFile(Paths.WritePath + 'god.lua');
+  HOF.Init( FLua, Paths );
   FSession.InitializeLevel;
   if not GraphicsVersion then
     (IO as TDRLTextIO).SetTextMap(FSession.Level);
 
-  HARDSPRITE_HIGHLIGHT    := drlbase.Lua.Get('HARDSPRITE_HIGHLIGHT');
-  HARDSPRITE_EXPL         := drlbase.Lua.Get('HARDSPRITE_EXPL');
-  HARDSPRITE_SELECT       := drlbase.Lua.Get('HARDSPRITE_SELECT');
-  HARDSPRITE_MARK         := drlbase.Lua.Get('HARDSPRITE_MARK');
-  HARDSPRITE_GRID         := drlbase.Lua.Get('HARDSPRITE_GRID');
-  HARDSPRITE_SHIELD       := drlbase.Lua.Get('HARDSPRITE_SHIELD');
-  HARDSPRITE_SHIELD_COUNT := drlbase.Lua.Get('HARDSPRITE_SHIELD_COUNT');
+  HARDSPRITE_HIGHLIGHT    := FLua.Get('HARDSPRITE_HIGHLIGHT');
+  HARDSPRITE_EXPL         := FLua.Get('HARDSPRITE_EXPL');
+  HARDSPRITE_SELECT       := FLua.Get('HARDSPRITE_SELECT');
+  HARDSPRITE_MARK         := FLua.Get('HARDSPRITE_MARK');
+  HARDSPRITE_GRID         := FLua.Get('HARDSPRITE_GRID');
+  HARDSPRITE_SHIELD       := FLua.Get('HARDSPRITE_SHIELD');
+  HARDSPRITE_SHIELD_COUNT := FLua.Get('HARDSPRITE_SHIELD_COUNT');
   HARDEMITTER_BLOOD := 0;
-  if drlbase.Lua.RawDefined('HARDEMITTER_BLOOD') then
-    HARDEMITTER_BLOOD := drlbase.Lua.Get('HARDEMITTER_BLOOD', 0);
+  if FLua.RawDefined('HARDEMITTER_BLOOD') then
+    HARDEMITTER_BLOOD := FLua.Get('HARDEMITTER_BLOOD', 0);
   for i := 0 to 3 do
   begin
     HARDSPRITE_DECAL_BLOOD[i] := 0;
     HARDSPRITE_DECAL_WALL_BLOOD[i] := 0;
   end;
-  if drlbase.Lua.RawDefined('HARDSPRITE_DECAL_BLOOD_1') then
+  if FLua.RawDefined('HARDSPRITE_DECAL_BLOOD_1') then
     for i := 0 to 3 do
-      HARDSPRITE_DECAL_BLOOD[i] := drlbase.Lua.Get('HARDSPRITE_DECAL_BLOOD_'+IntToStr(i+1), 0);
-  if drlbase.Lua.RawDefined('HARDSPRITE_DECAL_WALL_BLOOD_1') then
+      HARDSPRITE_DECAL_BLOOD[i] := FLua.Get('HARDSPRITE_DECAL_BLOOD_'+IntToStr(i+1), 0);
+  if FLua.RawDefined('HARDSPRITE_DECAL_WALL_BLOOD_1') then
     for i := 0 to 3 do
-      HARDSPRITE_DECAL_WALL_BLOOD[i] := drlbase.Lua.Get('HARDSPRITE_DECAL_WALL_BLOOD_'+IntToStr(i+1), 0);
+      HARDSPRITE_DECAL_WALL_BLOOD[i] := FLua.Get('HARDSPRITE_DECAL_WALL_BLOOD_'+IntToStr(i+1), 0);
 
   FSession.SetModuleHooks(FModuleHooks);
   TDRLIO(IO).LoadStop;
@@ -373,11 +372,11 @@ begin
   for iModule in FModules.ActiveModules do
     if aHook in iModule.Hooks then
     try
-      Lua.SetValue( 'BASE_MODULE_LOADING', iModule.IsBaseLoading );
+      FLua.SetValue( 'BASE_MODULE_LOADING', iModule.IsBaseLoading );
       try
-        Lua.ProtectedCall( [iModule.ID, HookNames[aHook]], aParams );
+        FLua.ProtectedCall( [iModule.ID, HookNames[aHook]], aParams );
       finally
-        Lua.SetValue( 'BASE_MODULE_LOADING', False );
+        FLua.SetValue( 'BASE_MODULE_LOADING', False );
       end;
     except
       on E : Exception do
@@ -402,7 +401,6 @@ begin
     TDRLIO(IO).ClearAnimations;
   FDataLoaded := False;
   HOF.Done;
-  drlbase.Lua := nil;
   FreeAndNil(Help);
   FreeAndNil(ColorOverrides);
   FreeAndNil(Cells);

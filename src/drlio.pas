@@ -812,12 +812,12 @@ end;
 procedure TDRLIO.SetSeed( aCardinal : LongInt );
 var iChallengeText : AnsiString;
 begin
-  FSeedHUDText := ' ' + LuaSystem.Get([ 'diff', FSession.Difficulty, 'code' ]);
+  FSeedHUDText := ' ' + FSession.Context.Lua.Get([ 'diff', FSession.Difficulty, 'code' ]);
   iChallengeText := '';
   if FSession.Challenge <> '' then
-    iChallengeText += Copy( LuaSystem.Get([ 'chal', FSession.Challenge, 'abbr' ]), 3, MaxInt );
+    iChallengeText += Copy( FSession.Context.Lua.Get([ 'chal', FSession.Challenge, 'abbr' ]), 3, MaxInt );
   if FSession.SChallenge <> '' then
-    iChallengeText += Copy( LuaSystem.Get([ 'chal', FSession.SChallenge, 'abbr' ]), 3, MaxInt );
+    iChallengeText += Copy( FSession.Context.Lua.Get([ 'chal', FSession.SChallenge, 'abbr' ]), 3, MaxInt );
   if iChallengeText <> '' then FSeedHUDText += '{r' + iChallengeText + '}';
   FSeedHUDText += IntToStr( aCardinal );
   FSeedHUDOffset := -2-VTIG_Length( FSeedHUDText );

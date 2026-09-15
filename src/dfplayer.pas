@@ -9,7 +9,7 @@ interface
 uses classes, sysutils,
      vpath, vutil, vrltools, vvision, viotypes,
      dfbeing, dfhof, dfdata, dfitem,
-     drltraits, drlkeybindings, drlstatistics, drlmultimove;
+     drltraits, drlkeybindings, drlstatistics, drlmultimove, vluasystem;
 
 
 type TQuickSlotInfo = record
@@ -56,7 +56,7 @@ type TPlayer = class(TBeing)
   destructor Destroy; override;
   procedure Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer ); override;
   procedure AddHistory( const aHistory : Ansistring );
-  class procedure RegisterLuaAPI();
+  class procedure RegisterLuaAPI( aLuaSystem : TLuaSystem );
   procedure UpdateVisual;
   function ASCIIMoreCode : AnsiString; override;
   function RunPath( const aCoord : TCoord2D ) : Boolean;
@@ -106,17 +106,16 @@ var Player     : TPlayer;
 implementation
 
 uses math, vuid, variants, vioevent, vgenerics,
-     vnode, vcolor, vdebug, vluasystem, vluastate, vtig,
+     vnode, vcolor, vdebug, vtig,
      dfmap, dflevel,
      drlhooks, drlio, drlspritemap, drlbase, drlperk,
      drlua, drlinventory, drlplayerview, drlhudviews;
 
 constructor TPlayer.Create;
-var iState : TLuaState;
 begin
   inherited Create('soldier');
 
-  FTraits    := TTraits.Create;
+  FTraits    := TTraits.Create( Self );
   FKills     := TKillTable.Create;
   FKillMax   := 0;
   FKillCount := 0;
@@ -134,8 +133,7 @@ begin
   FExpFactor := 1.0;
 
   Initialize;
-  iState.Init( drlbase.Lua.Raw );
-  iState.ClearLuaProperties( Self );
+  FContext.Lua.State.ClearLuaProperties( Self );
 
   FillChar( FQuickSlots, SizeOf(FQuickSlots), 0 );
   CallHook( Hook_OnCreate, [] );
@@ -154,7 +152,7 @@ begin
   MasterDodge     := False;
   FLastTurnDodge  := False;
 
-  drlbase.Lua.RegisterPlayer(Self);
+  TDRLLua( FContext.Lua ).RegisterPlayer( Self );
 end;
 
 procedure TPlayer.SetKilledBy( const aKilledBy : AnsiString; aKilledMelee : Boolean );
@@ -206,7 +204,7 @@ begin
   Stream.Read( FQuickSlots,    SizeOf( FQuickSlots ) );
   Stream.Read( FCSprite,       SizeOf( FCSprite ) );
 
-  FTraits         := TTraits.CreateFromStream( Stream );
+  FTraits         := TTraits.CreateFromStream( Stream, Self );
   FKills          := TKillTable.CreateFromStream( Stream );
   FStatistics     := TStatistics.CreateFromStream( Stream );
 
@@ -588,12 +586,12 @@ begin
   if FScore = -1000 then Exit;
 
   FStatistics.Update;
-  if LuaSystem.Defined([CoreModuleID,'RunAwards']) then
-    LuaSystem.ProtectedCall([CoreModuleID,'RunAwards'],[NoPlayerRecord]);
+  if FContext.Lua.Defined([CoreModuleID,'RunAwards']) then
+    FContext.Lua.ProtectedCall([CoreModuleID,'RunAwards'],[NoPlayerRecord]);
 
-  if LuaSystem.Defined([CoreModuleID,'GetScore']) then
+  if FContext.Lua.Defined([CoreModuleID,'GetScore']) then
   begin
-    FScore := LuaSystem.ProtectedCall([CoreModuleID,'GetScore'],[])
+    FScore := FContext.Lua.ProtectedCall([CoreModuleID,'GetScore'],[])
   end
   else
   begin
@@ -602,7 +600,7 @@ begin
     if DRL.Difficulty = DIFF_NIGHTMARE then FScore -= FStatistics.GameTime div 500;
 
     if DRL.GameWon then FScore += FScore div 4;
-    FScore := Round( FScore * Double(LuaSystem.Get([ 'diff', DRL.Difficulty, 'scorefactor' ])) );
+    FScore := Round( FScore * Double(FContext.Lua.Get([ 'diff', DRL.Difficulty, 'scorefactor' ])) );
     // FScore
     ScoreCRC(FScore);
   end;
@@ -622,7 +620,7 @@ begin
     FreeAndNil( MortemData );
   end;
   MortemData := TIOStringArray.Create;
-  LuaSystem.ProtectedCall([CoreModuleID,'RunPrintMortem'],[]);
+  FContext.Lua.ProtectedCall([CoreModuleID,'RunPrintMortem'],[]);
 
   iMortemPath := IO.Session.Paths.ModuleUserPath + 'mortem.txt';
   iMortemList := TStringList.Create;
@@ -655,7 +653,7 @@ end;
 
 procedure TPlayer.AddHistory( const aHistory : Ansistring );
 begin
-  LuaSystem.ProtectedCall(['player','add_history'],[ Self, aHistory ]);
+  FContext.Lua.ProtectedCall(['player','add_history'],[ Self, aHistory ]);
 end;
 
 procedure TPlayer.UpdateVisual;
@@ -689,10 +687,10 @@ begin
   iWeapon := Inv.Slot[ efWeapon ];
   if iWeapon <> nil then
   begin
-    iPDSprite := LuaSystem.Get( ['items', iWeapon.ID, 'pdsprite'], 0 );
+    iPDSprite := FContext.Lua.Get( ['items', iWeapon.ID, 'pdsprite'], 0 );
     if ( iPDSprite <> 0 ) and ( canDualWield )
       then FCSprite.SpriteID[0] := iPDSprite
-      else FCSprite.SpriteID[0] := LuaSystem.Get( ['items', iWeapon.ID, 'psprite'], 0 );
+      else FCSprite.SpriteID[0] := FContext.Lua.Get( ['items', iWeapon.ID, 'psprite'], 0 );
     if FCSprite.SpriteID[0] <> 0 then
     begin
       FCSprite.SpriteID[0] := FCSprite.SpriteID[0] + iSpMod;
@@ -706,7 +704,7 @@ begin
       if Inv.Slot[ efWeapon ].isMelee then FCSprite.SpriteID[0] := 2 else FCSprite.SpriteID[0] := 11;
   end
   else
-    FCSprite.SpriteID[0] := LuaSystem.Get( ['beings', ID, 'sprite'], 0 ) + iSpMod;
+    FCSprite.SpriteID[0] := FContext.Lua.Get( ['beings', ID, 'sprite'], 0 ) + iSpMod;
 end;
 
 function TPlayer.ASCIIMoreCode : AnsiString;
@@ -899,7 +897,7 @@ begin
   iState.Init(L);
   iBeing := iState.ToObject(1) as TBeing;
   if not (iBeing is TPlayer) then Exit(0);
-  iTrait := iState.ToID(2);
+  iTrait := iState.ToID( iBeing.Context.Lua, 2 );
   Player.Traits.Upgrade( 0, iTrait );
   Result := 0;
 end;
@@ -911,7 +909,7 @@ begin
   iState.Init(L);
   iBeing := iState.ToObject(1) as TBeing;
   if not (iBeing is TPlayer) then Exit(0);
-  iState.Push( Player.Traits[ iState.ToID( 2 ) ] );
+  iState.Push( Player.Traits[ iState.ToID( iBeing.Context.Lua, 2 ) ] );
   Result := 1;
 end;
 
@@ -922,7 +920,7 @@ begin
   iState.Init(L);
   iBeing := iState.ToObject(1) as TBeing;
   if not (iBeing is TPlayer) then Exit(0);
-  iState.Push( Player.Traits[ iState.ToID( 2 ) ] > 0 );
+  iState.Push( Player.Traits[ iState.ToID( iBeing.Context.Lua, 2 ) ] > 0 );
   Result := 1;
 end;
 
@@ -997,9 +995,9 @@ const lua_player_lib : array[0..18] of luaL_Reg = (
       ( name : nil;               func : nil; )
 );
 
-class procedure TPlayer.RegisterLuaAPI();
+class procedure TPlayer.RegisterLuaAPI( aLuaSystem : TLuaSystem );
 begin
-  LuaSystem.Register( 'player', lua_player_lib );
+  aLuaSystem.Register( 'player', lua_player_lib );
 end;
 
 end.

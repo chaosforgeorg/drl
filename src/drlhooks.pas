@@ -113,45 +113,45 @@ const HookNames : array[ 0..HookAmount-1 ] of AnsiString = (
       'OnShort'
       );
 
-function LoadHooks( const aTable : array of Const ) : TFlags;
-function LoadHooks( const aTable : array of Const; aHooks : TFlags ) : TFlags;
-function LoadCallbacks( aTable : TLuaTable ) : TFlags;
+function LoadHooks( aLuaSystem : TLuaSystem; const aTable : array of Const ) : TFlags;
+function LoadHooks( aLuaSystem : TLuaSystem; const aTable : array of Const; aHooks : TFlags ) : TFlags;
+function LoadCallbacks( aLuaSystem : TLuaSystem; aTable : TLuaTable ) : TFlags;
 
 implementation
 
-function LoadHooks ( const aTable : array of Const ) : TFlags;
+function LoadHooks( aLuaSystem : TLuaSystem; const aTable : array of Const ) : TFlags;
 begin
-  Exit( LoadHooks( aTable, AllHooks ) );
+  Exit( LoadHooks( aLuaSystem, aTable, AllHooks ) );
 end;
 
-function LoadHooks ( const aTable : array of Const; aHooks : TFlags ) : TFlags;
+function LoadHooks( aLuaSystem : TLuaSystem; const aTable : array of Const; aHooks : TFlags ) : TFlags;
 var iHook    : Byte;
     i, iSize : DWord;
 begin
-  with LuaSystem.GetTable( aTable ) do
+  with aLuaSystem.GetTable( aTable ) do
   try
     LoadHooks := [];
     for iHook in aHooks do
       if isFunction(HookNames[iHook]) then
         Include(LoadHooks,iHook);
-    iSize := LuaSystem.GetTableSize( ['core','callbacks'] );
+    iSize := aLuaSystem.GetTableSize( ['core','callbacks'] );
     if iSize > 0 then
       for i := 1 to iSize do
-        if isFunction( LuaSystem.Get( ['core','callbacks', i] ) ) then
+        if isFunction( aLuaSystem.Get( ['core','callbacks', i] ) ) then
           Include( LoadHooks, i + 200 );
   finally
     Free;
   end;
 end;
 
-function LoadCallbacks( aTable : TLuaTable ) : TFlags;
+function LoadCallbacks( aLuaSystem : TLuaSystem; aTable : TLuaTable ) : TFlags;
 var i, iSize : DWord;
 begin
-  iSize := LuaSystem.GetTableSize( ['core','callbacks'] );
+  iSize := aLuaSystem.GetTableSize( ['core','callbacks'] );
   if iSize = 0 then Exit( [] );
   LoadCallbacks := [];
   for i := 1 to iSize do
-    if aTable.isFunction( LuaSystem.Get( ['core','callbacks', i] ) ) then
+    if aTable.isFunction( aLuaSystem.Get( ['core','callbacks', i] ) ) then
       Include( LoadCallbacks, i + 200 );
 end;
 
