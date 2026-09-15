@@ -66,7 +66,7 @@ uses typinfo, variants,
 
 constructor TThing.Create( const aID : AnsiString );
 begin
-  inherited Create( aID );
+  inherited Create( aID, DRL.Context );
   FAnimCount    := 0;
   FDrawPosition := Vec2i( 0, 0 );
   FPerks        := nil;
@@ -236,7 +236,7 @@ end;
 
 constructor TThing.CreateFromStream( aStream: TStream );
 begin
-  inherited CreateFromStream( aStream );
+  inherited CreateFromStream( aStream, DRL.Context );
   aStream.Read( FSprite,  SizeOf( FSprite ) );
   aStream.Read( FSoundID, SizeOf( FSoundID ) );
   aStream.Read( FHP,      SizeOf( FHP ) );

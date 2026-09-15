@@ -88,6 +88,7 @@ type TDRLSession = class(TVObject)
        FState           : TDRLState;
        FLevel           : TLevel;
        FUIDStore        : TUIDStore;
+       FContext         : TNodeContext;
        FLastInputTime   : QWord;
        FTargeting       : TTargeting;
        FDamagedLastTurn : Boolean;
@@ -121,6 +122,7 @@ type TDRLSession = class(TVObject)
        property Challenge  : Ansistring read FChallenge;
        property SChallenge : Ansistring read FSChallenge;
 
+       property Context : TNodeContext read FContext;
        property UIDs : TUIDStore read FUIDStore;
        property Store : TStoreInterface read FStore;
        property Modules : TDRLModules read FModules;
@@ -269,6 +271,7 @@ constructor TDRLSession.Create( aRuntime : TRLRuntime; aModules : TDRLModules;
   aStore : TStoreInterface; const aPaths : TGamePaths );
 begin
   FRuntime := aRuntime;
+  FContext := TNodeContext.Create( aRuntime.Lua, nil );
   FModules := aModules;
   FStore := aStore;
   FPaths := aPaths;
@@ -1510,8 +1513,11 @@ procedure TDRLSession.CreatePlayer ( aResult : TMenuResult ) ;
 var iTraitID : AnsiString;
     iTrait   : Byte;
 begin
+  FreeAndNil( Player );
+  FContext.BindUIDs( nil );
   FreeAndNil( FUIDStore );
   FUIDStore := TUIDStore.Create;
+  FContext.BindUIDs( FUIDStore );
   vuid.UIDs := FUIDStore;
   Player := TPlayer.Create;
   FLevel.Place( Player, NewCoord2D(4,4) );
@@ -1568,8 +1574,11 @@ begin
       SaveVersionModule := '';
       SaveModString     := '';
 
+      FreeAndNil( Player );
+      FContext.BindUIDs( nil );
       FreeAndNil( FUIDStore );
       FUIDStore        := TUIDStore.CreateFromStream( iStream );
+      FContext.BindUIDs( FUIDStore );
       vuid.UIDs := FUIDStore;
       FGameWon         := iStream.ReadByte <> 0;
       FDifficulty      := iStream.ReadByte;
@@ -1701,9 +1710,11 @@ destructor TDRLSession.Destroy;
 begin
   FParticles.Initialize( nil );
   FreeAndNil( FLevel );
+  FreeAndNil( Player );
   FreeAndNil( FTargeting );
   FreeAndNil( FParticles );
   FreeAndNil( FUIDStore );
+  FreeAndNil( FContext );
   Log('DRL destroyed.');
   inherited Destroy;
 end;

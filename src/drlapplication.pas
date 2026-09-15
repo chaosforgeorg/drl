@@ -23,7 +23,6 @@ type
 type TDRLRuntime = class( TRLRuntime )
   private
     FSession     : TDRLSession;
-    FGameFailed  : Boolean;
     FModules     : TDRLModules;
     FStore       : TStoreInterface;
     FModuleHooks : TFlags;
@@ -41,7 +40,6 @@ type TDRLRuntime = class( TRLRuntime )
     function RunGame : TVRunResult; override;
     procedure ShutdownGameData; override;
     procedure ResetGameData; override;
-    procedure HandleGameException( aException : Exception ); override;
   public
     constructor Create( const aPaths : TGamePaths; var aConfiguration : TObject;
       const aModulesFile : AnsiString ); reintroduce;
@@ -197,7 +195,6 @@ end;
 procedure TDRLRuntime.PrepareGameData;
 var iModulePath : AnsiString;
 begin
-  FGameFailed := False;
   if ForceRestart <> '' then
   begin
     FModules.ScanModules;
@@ -264,6 +261,8 @@ end;
 procedure TDRLRuntime.InitializeGameData;
 var i : Integer;
 begin
+  FSession.Context.BindLua( Lua );
+  TDRLLua( Lua ).ReadWAD;
   if GodMode then RegisterDebugConsole( VKEY_F1 );
   Lua.CallDefaultResult := True;
   FModuleHooks := LoadHooks([CoreModuleID], GlobalHooks);
@@ -328,25 +327,15 @@ begin
     Result := VRR_QUIT;
 end;
 
-// Normal release only; failed-generation release is deferred to destruction.
 procedure TDRLRuntime.ShutdownGameData;
 begin
-  if not FGameFailed then
-  begin
-    ReleaseSession;
-    UnloadGameData;
-  end;
+  ReleaseSession;
+  UnloadGameData;
 end;
 
 procedure TDRLRuntime.ResetGameData;
 begin
-  FGameFailed := False;
   TDRLIO(IO).Reset;
-end;
-
-procedure TDRLRuntime.HandleGameException( aException : Exception );
-begin
-  FGameFailed := True;
 end;
 
 procedure TDRLRuntime.ApplyConfiguration;

@@ -355,7 +355,7 @@ end;
 
 procedure TParticleStore.UpdateBoundEmitters;
 var i      : Integer;
-    iNode  : TNode;
+    iNode  : TVObject;
     iDraw  : TVec2i;
 begin
   if FEngine = nil then Exit;

@@ -20,8 +20,9 @@ TDRLLua = class(TLuaSystem)
        procedure RegisterPlayer(Thing: TThing);
        function HookName( aHook : Byte ) : AnsiString;
        destructor Destroy; override;
-     private
+       // Load content after Runtime owns Lua and the Session context is bound.
        procedure ReadWad;
+     private
        procedure LoadFiles( const aDirectory : AnsiString; aLoader : TVDFLoader; aWildcard : AnsiString = '*' );
      private
        FOpenData : TVDataFileArray;
@@ -676,9 +677,6 @@ begin
 
   GetClassInfo( TBeing ).RegisterHooks( BeingHooks, HookNames );
   GetClassInfo( TPlayer ).RegisterHooks( BeingHooks, HookNames );
-
-  ReadWAD;
-
 end;
 
 function TDRLLua.HookName( aHook : Byte ) : AnsiString;

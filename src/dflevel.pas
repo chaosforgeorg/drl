@@ -436,7 +436,7 @@ end;
 
 constructor TLevel.CreateFromStream( aStream: TStream );
 begin
-  inherited CreateFromStream( aStream );
+  inherited CreateFromStream( aStream, DRL.Context );
 
   aStream.Read( FMap,   SizeOf( FMap ) );
   aStream.Read( FIndex, SizeOf( FIndex ) );
@@ -506,7 +506,7 @@ end;
 
 constructor TLevel.Create;
 begin
-  inherited Create('default',MaxX, MaxY, 15);
+  inherited Create( 'default', MaxX, MaxY, 15, DRL.Context );
 
   Assert( dfdata.EF_NOBLOCK  = vluamapnode.EF_NOBLOCK );
   Assert( dfdata.EF_NOITEMS  = vluamapnode.EF_NOITEMS );
