@@ -326,11 +326,13 @@ begin
 end;
 
 function TPlayer.PlayerTick : Boolean;
-var iThisUID    : DWord;
+var iUIDs       : TUIDStore;
+    iThisUID    : DWord;
 begin
+  iUIDs := FContext.UIDs;
   iThisUID := UID;
   TLevel(Parent).CallHook( FPosition, Self, CellHook_OnEnter );
-  if DRL.UIDs[ iThisUID ] = nil then Exit( False );
+  if iUIDs[ iThisUID ] = nil then Exit( False );
 
   MasterDodge := False;
   if DRL.State <> DSPlaying then Exit( False );

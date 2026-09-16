@@ -8,7 +8,7 @@ unit drlanimation;
 interface
 uses
   classes, sysutils, math,
-  vnode, vutil, vcolor, vmath, vvector, vrltools, vvision, vanimation,
+  vnode, vuid, vutil, vcolor, vmath, vvector, vrltools, vvision, vanimation,
   dfdata, dflevel;
 
 type TAnimation        = vanimation.TAnimation;
@@ -128,6 +128,7 @@ TGFXMoveAnimation = class(TAnimation)
   procedure OnDraw; override;
   destructor Destroy; override;
 private
+  FUIDs       : TUIDStore;
   FLightStart : Byte;
   FLightEnd   : Byte;
   FSprite     : TSprite;
@@ -171,11 +172,12 @@ private
 end;
 
 TGFXItemAnimation = class(TAnimation)
-  constructor Create( aDuration : DWord; aDelay : DWord; aUID : TUID; aValue : Integer );
+  constructor Create( aUIDs : TUIDStore; aDuration : DWord; aDelay : DWord; aUID : TUID; aValue : Integer );
   procedure OnStart; override;
   procedure OnDraw; override;
   destructor Destroy; override;
 private
+  FUIDs   : TUIDStore;
   FSprite : TSprite;
   FValue  : Integer;
 end;
@@ -218,7 +220,7 @@ end;
 
 implementation
 
-uses viotypes, vuid, vlog, vdebug,
+uses viotypes, vlog, vdebug,
      dfbeing, dfthing,
      drlbase, drlgfxio, drlio, drlspritemap, drlparticles;
 
@@ -478,6 +480,7 @@ var iSize  : Word;
     iBeing : TThing;
 begin
   inherited Create( aDuration, aDelay, 0 );
+  FUIDs       := aLevel.Context.UIDs;
   FUID        := aUID;
   FSprite     := aSprite;
   FBeing      := aBeing;
@@ -489,7 +492,7 @@ begin
     FLightStart := Iif( aLevel.isVisible(aFrom), SpriteMap.VariableLight( aFrom, 30 ), 0 );
     FLightEnd   := Iif( aLevel.isVisible(aTo),   SpriteMap.VariableLight( aTo, 30 ), 0 );
 
-    iBeing := DRL.UIDs.Get( FUID ) as TThing;
+    iBeing := FUIDs.Get( FUID ) as TThing;
 
     if aLevel.Flags[ LF_BEINGSVISIBLE ] or iBeing.Flags[ BF_VISIBLE ] then
     begin
@@ -511,7 +514,7 @@ end;
 procedure TGFXMoveAnimation.OnStart;
 var iThing : TThing;
 begin
-  iThing := DRL.UIDs.Get( FUID ) as TThing;
+  iThing := FUIDs.Get( FUID ) as TThing;
   if iThing <> nil then iThing.AnimCount := iThing.AnimCount + 1;
 end;
 
@@ -524,7 +527,7 @@ begin
   iValue    := Clampf( FTime / FDuration, 0, 1 );
   iLight    := Lerp( FLightStart, FLightEnd, iValue );
   FPosition := Lerp( FSource, FTarget, iValue );
-  iThing := DRL.UIDs.Get( FUID ) as TThing;
+  iThing := FUIDs.Get( FUID ) as TThing;
   if iThing <> nil then iThing.DrawPosition := FPosition;
   if FBeing
     then
@@ -544,7 +547,7 @@ end;
 destructor TGFXMoveAnimation.Destroy;
 var iThing : TThing;
 begin
-  iThing := DRL.UIDs.Get( FUID ) as TThing;
+  iThing := FUIDs.Get( FUID ) as TThing;
   if iThing <> nil then
   begin
     iThing.DrawPosition := Vec2i( 0, 0 );
@@ -641,11 +644,12 @@ begin
   inherited Destroy;
 end;
 
-constructor TGFXItemAnimation.Create( aDuration : DWord; aDelay : DWord; aUID : TUID; aValue : Integer );
+constructor TGFXItemAnimation.Create( aUIDs : TUIDStore; aDuration : DWord; aDelay : DWord; aUID : TUID; aValue : Integer );
 var iThing : TThing;
 begin
   inherited Create( aDuration, aDelay, aUID );
-  iThing  := DRL.UIDs.Get( FUID ) as TThing;
+  FUIDs  := aUIDs;
+  iThing := FUIDs.Get( FUID ) as TThing;
   FValue  := aValue;
   if iThing = nil then Exit;
   FSprite := iThing.Sprite;
@@ -654,7 +658,7 @@ end;
 procedure TGFXItemAnimation.OnStart;
 var iThing : TThing;
 begin
-  iThing := DRL.UIDs.Get( FUID ) as TThing;
+  iThing := FUIDs.Get( FUID ) as TThing;
   if iThing <> nil then iThing.AnimCount := iThing.AnimCount + 1;
 end;
 
@@ -664,7 +668,7 @@ var iThing    : TThing;
     iSegment  : Integer;
     iPosition : TVec2i;
 begin
-  iThing := DRL.UIDs.Get( FUID ) as TThing;
+  iThing := FUIDs.Get( FUID ) as TThing;
   if iThing = nil then Exit;
   iSprite  := FSprite;
   iSegment := ( FTime * FValue ) div FDuration;
@@ -685,7 +689,7 @@ end;
 destructor TGFXItemAnimation.Destroy;
 var iThing : TThing;
 begin
-  iThing := DRL.UIDs.Get( FUID ) as TThing;
+  iThing := FUIDs.Get( FUID ) as TThing;
   if iThing <> nil then iThing.AnimCount := Max( 0, iThing.AnimCount - 1 );
   inherited Destroy;
 end;
@@ -705,7 +709,7 @@ begin
     FDelay := 0;
     FDuration += FLeadDelay;
   end;
-  iBeing   := DRL.UIDs.Get( FUID ) as TBeing;
+  iBeing   := FLevel.Context.UIDs.Get( FUID ) as TBeing;
   if iBeing = nil then Exit;
   FCount      := 2;
   // TODO: remove hack!
@@ -747,7 +751,7 @@ end;
 procedure TGFXKillAnimation.OnStart;
 var iBeing : TBeing;
 begin
-  iBeing := DRL.UIDs.Get( FUID ) as TBeing;
+  iBeing := FLevel.Context.UIDs.Get( FUID ) as TBeing;
   if iBeing <> nil then iBeing.AnimCount := iBeing.AnimCount + 1;
   FLevel.LightFlag[ FCoord, LFCORPSING ] := True;
 end;
@@ -762,7 +766,7 @@ var iBeing    : TBeing;
 begin
   iSprite   := FSprite;
   iPosition := FPosition;
-  iBeing    := DRL.UIDs.Get( FUID ) as TBeing;
+  iBeing    := FLevel.Context.UIDs.Get( FUID ) as TBeing;
   if iBeing <> nil then
     iPosition.Init( (iBeing.Position.X - 1)*SpriteMap.GetGridSize,(iBeing.Position.Y - 1)*SpriteMap.GetGridSize);
   if ( not FReverse ) and ( FLeadDelay > 0 ) then
@@ -788,7 +792,7 @@ begin
   // NOTE : we explicitly don't enable drawing of the dead enemy again
   if FReverse then
   begin
-    iBeing := DRL.UIDs.Get( FUID ) as TBeing;
+    iBeing := FLevel.Context.UIDs.Get( FUID ) as TBeing;
     if iBeing <> nil then iBeing.AnimCount := Max( 0, iBeing.AnimCount - 1 );
   end;
   if FLevel <> nil then

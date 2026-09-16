@@ -503,7 +503,7 @@ end;
 procedure TDRLGFXIO.addItemAnimation( aDuration : DWord; aDelay : DWord; aItem : TThing; aValue : Integer );
 begin
   if Session.State <> DSPlaying then Exit;
-  FAnimations.addAnimation( TGFXItemAnimation.Create( aDuration, aDelay, aItem.UID, aValue ) );
+  FAnimations.addAnimation( TGFXItemAnimation.Create( aItem.Context.UIDs, aDuration, aDelay, aItem.UID, aValue ) );
 end;
 
 procedure TDRLGFXIO.addKillAnimation( aDuration : DWord; aDelay : DWord; aBeing : TThing; aReverse : Boolean = False );

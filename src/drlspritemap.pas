@@ -137,7 +137,7 @@ var SpriteMap : TDRLSpriteMap = nil;
 implementation
 
 uses vmath, viotypes, vvision, vgl3library, vuid,
-     drlio, drlgfxio, drlbase,
+     drlio, drlgfxio,
      dfmap, dfthing, dfitem, dfplayer, drlcontrollerbindings,
      drlmarkers, drldecals;
 
@@ -367,13 +367,15 @@ begin
 end;
 
 procedure TDRLSpriteMap.Update ( aTime : DWord; aProjection : TMatrix44 ) ;
-var iShift    : Single;
+var iUIDs     : TUIDStore;
+    iShift    : Single;
     iPixel    : Integer;
     iIO       : TDRLGFXIO;
     iMark     : TMarker;
     iTarget   : TBeing;
     iPosition : TVec2i;
 begin
+  iUIDs := FLevel.Context.UIDs;
   iIO := IO as TDRLGFXIO;
   FShift := FNewShift;
   {$PUSH}
@@ -403,7 +405,7 @@ begin
     end
     else
     begin
-      iTarget := DRL.UIDs[ iMark.Target ] as TBeing;
+      iTarget := iUIDs[ iMark.Target ] as TBeing;
       if ( iTarget <> nil ) and ( not iTarget.Dead ) and FLevel.isVisible( iTarget.Position ) then
       begin
         iPosition := Vec2i( iTarget.Position.X-1, iTarget.Position.Y-1 ) * FSpriteEngine.Grid;

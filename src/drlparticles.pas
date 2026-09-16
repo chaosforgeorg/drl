@@ -62,7 +62,7 @@ implementation
 
 uses math,
      vluatable, vluaentitynode, vuid,
-     dfdata, dfthing, drldecals, drlbase, drlio, drlspritemap;
+     dfdata, dfthing, drldecals, drlio, drlspritemap;
 
 function FlagsToParticleFlags( const aFlags : TFlags ) : TParticleFlags;
 var i : Byte;
@@ -366,11 +366,13 @@ begin
 end;
 
 procedure TParticleStore.UpdateBoundEmitters;
-var i      : Integer;
+var iUIDs  : TUIDStore;
+    i      : Integer;
     iNode  : TVObject;
     iDraw  : TVec2i;
 begin
-  if FEngine = nil then Exit;
+  if ( FEngine = nil ) or ( FLevel = nil ) then Exit;
+  iUIDs := FLevel.Context.UIDs;
   for i := FBindingCount - 1 downto 0 do
   begin
     // Check if emitter slot was auto-freed (burst/duration expired)
@@ -379,7 +381,7 @@ begin
       RemoveBinding( i );
       Continue;
     end;
-    iNode := DRL.UIDs.Get( FBindings[i].UID );
+    iNode := iUIDs.Get( FBindings[i].UID );
     if iNode = nil then
     begin
       if FBindings[i].PoolIndex >= 0 then
