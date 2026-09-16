@@ -8,7 +8,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit dfitem;
 interface
 uses classes, sysutils, math,
-     vluagamestack, vrltools, vluatable, vcolor, vlua, vrandom,
+     vluagamestack, vrltools, vluatable, vcolor, vlua, vrandom, vnode,
      dfthing, dfdata;
 
 type
@@ -17,9 +17,9 @@ type
 
 TItem  = class( TThing )
 
-    constructor Create( const aID : AnsiString; aOnFloor : Boolean = False ); overload;
-    constructor Create( aNID : Integer; aOnFloor : Boolean = False); overload;
-    constructor CreateFromStream( aStream: TStream ); override;
+    constructor Create( const aID : AnsiString; aContext : TNodeContext; aOnFloor : Boolean = False ); overload;
+    constructor Create( aNID : Integer; aContext : TNodeContext; aOnFloor : Boolean = False ); overload;
+    constructor CreateFromStream( aStream : TStream; aContext : TNodeContext ); override;
     procedure WriteToStream( aStream: TStream ); override;
 
     function    rollDamage( aGameRNG : TRNG ) : Integer;
@@ -116,8 +116,8 @@ procedure SwapItem(var a, b: TItem);
 
 implementation
 
-uses vnode, vluaentitynode, vutil, vdebug, vmath,
-     dfbeing, drlbase, drlhooks, drlperk;
+uses vluaentitynode, vutil, vdebug, vmath,
+     dfbeing, drllua, drlbase, drlhooks, drlperk;
 
 procedure SwapItem(var a, b: TItem);
 var c : TItem;
@@ -150,11 +150,11 @@ begin
   raise EItemException.CreateFmt('eqSlot -- unsupported IType: %d',[ Byte( FProps.Itype ) ]);
 end;
 
-constructor TItem.Create( aNID : Integer; aOnFloor : Boolean );
+constructor TItem.Create( aNID : Integer; aContext : TNodeContext; aOnFloor : Boolean );
 var iTable : TLuaTable;
 begin
   if aNID <= 0 then raise EItemException.Create('Bad item (ID<=0) passed to Create!');
-  inherited Create( DRL.Context.Lua.Get( ['items', aNID, 'id' ] ) );
+  inherited Create( aContext.Lua.Get( ['items', aNID, 'id' ] ), aContext );
   FEntityID := ENTITY_ITEM;
 
   iTable := FContext.Lua.GetTable( ['items', aNID ] );
@@ -162,11 +162,11 @@ begin
   FreeAndNil( iTable );
 end;
 
-constructor TItem.Create( const aID : AnsiString; aOnFloor: Boolean );
+constructor TItem.Create( const aID : AnsiString; aContext : TNodeContext; aOnFloor: Boolean );
 var iTable : TLuaTable;
 begin
   if aID = '' then raise EItemException.Create('Bad item id!');
-  inherited Create( aID );
+  inherited Create( aID, aContext );
   FEntityID := ENTITY_ITEM;
 
   iTable := FContext.Lua.GetTable( ['items', aID ] );
@@ -174,10 +174,10 @@ begin
   FreeAndNil( iTable );
 end;
 
-constructor TItem.CreateFromStream ( aStream : TStream ) ;
+constructor TItem.CreateFromStream( aStream : TStream; aContext : TNodeContext );
 var i, iCount : Word;
 begin
-  inherited CreateFromStream ( aStream ) ;
+  inherited CreateFromStream( aStream, aContext );
 
   aStream.Read( FMods,     SizeOf( FMods ) );
   aStream.Read( FProps,    SizeOf( FProps ) );
@@ -189,7 +189,7 @@ begin
   iCount := aStream.ReadWord();
   if iCount = 0 then Exit;
   for i := 1 to iCount do
-    Add( TItem.CreateFromStream( aStream ) );
+    Add( TItem.CreateFromStream( aStream, FContext ) );
 end;
 
 procedure TItem.WriteToStream ( aStream : TStream ) ;
@@ -656,13 +656,13 @@ begin
 end;
 
 function lua_item_new( L : PLua_State ): Integer; cdecl;
-var iLua : TLua;
-    iState : TLuaGameStack;
+var iState : TLuaGameStack;
+    iLua   : TDRLLua;
     iItem  : TItem;
 begin
-  iLua := TLuaContext.FromState( L ).Lua;
-  iState.Init(L);
-  iItem := TItem.Create( iState.ToId( iLua, 1 ), iState.ToBoolean( 2 ) );
+  iState.Init( L );
+  iLua := TDRLLua( TLuaContext.FromState( L ).Lua );
+  iItem := TItem.Create( iState.ToId( iLua, 1 ), iLua.NodeContext, iState.ToBoolean( 2 ) );
   iState.Push(iItem);
   Result := 1;
 end;

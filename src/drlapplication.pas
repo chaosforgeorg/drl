@@ -183,6 +183,7 @@ begin
   TDRLIO(IO).Session := FSession;
   drlbase.DRL := FSession;
   if not aInitializeData then Exit;
+  TDRLLua( FLua ).BindNodeContext( FSession.Context );
   FSession.InitializeLevel;
   FSession.SetModuleHooks( FModuleHooks );
 end;
@@ -259,6 +260,7 @@ procedure TDRLRuntime.InitializeGameData;
 var i : Integer;
 begin
   FSession.Context.BindLua( FLua );
+  TDRLLua( FLua ).BindNodeContext( FSession.Context );
   TDRLLua( FLua ).ReadWAD;
   if GodMode then RegisterDebugConsole( VKEY_F1 );
   FLua.CallDefaultResult := True;

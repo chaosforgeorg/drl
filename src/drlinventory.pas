@@ -188,7 +188,7 @@ begin
     if isFull then Exit(aCount);
 
     iAmount      := Min(aCount,iMax);
-    iItem        := TItem.Create(aID);
+    iItem        := TItem.Create( aID, FOwner.Context );
     iItem.Amount := iAmount;
     Add(iItem);
     aCount -= iAmount;

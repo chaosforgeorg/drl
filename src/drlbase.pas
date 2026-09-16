@@ -279,7 +279,7 @@ end;
 procedure TDRLSession.InitializeLevel;
 begin
   Assert( FLevel = nil );
-  SetLevel( TLevel.Create( GameRNG ) );
+  SetLevel( TLevel.Create( FContext, GameRNG ) );
 end;
 
 procedure TDRLSession.SetLevel( aLevel : TLevel );
@@ -1530,7 +1530,7 @@ begin
   FUIDStore := TUIDStore.Create;
   FContext.BindUIDs( FUIDStore );
   FContext.Lua.Context.BindUIDs( FUIDStore );
-  Player := TPlayer.Create;
+  Player := TPlayer.Create( FContext, GameRNG );
   FLevel.Place( Player, NewCoord2D(4,4) );
   Player.Klass := aResult.Klass;
 
@@ -1611,14 +1611,14 @@ begin
       FLevel.BindGameRNG( iGameRNG );
       FRuntime.ReplaceGameRNG( iGameRNG );
 
-      Player := TPlayer.CreateFromStream( iStream );
+      Player := TPlayer.CreateFromStream( iStream, FContext );
       FCrashSave := iStream.ReadByte <> 0;
 
       if not FCrashSave then
       begin
         ReleaseLevel;
         iRecreate := True;
-        SetLevel( TLevel.CreateFromStream( iStream, GameRNG ) );
+        SetLevel( TLevel.CreateFromStream( iStream, FContext, GameRNG ) );
         FLevel.Place( Player, Player.Position );
         FContext.Lua.SetValue('level', FLevel );
         FParticles.ReadFromStream( iStream );
@@ -1644,7 +1644,7 @@ begin
       if iRecreate then
       begin
         ReleaseLevel;
-        SetLevel( TLevel.Create( GameRNG ) );
+        SetLevel( TLevel.Create( FContext, GameRNG ) );
       end;
     end;
   end;
@@ -1726,7 +1726,11 @@ begin
   FreeAndNil( FTargeting );
   FreeAndNil( FParticles );
   // The initial Session shell can be destroyed before Lua has been created.
-  if FContext.Lua <> nil then FContext.Lua.Context.BindUIDs( nil );
+  if FContext.Lua <> nil then
+  begin
+    TDRLLua( FContext.Lua ).BindNodeContext( nil );
+    FContext.Lua.Context.BindUIDs( nil );
+  end;
   FreeAndNil( FUIDStore );
   FreeAndNil( FContext );
   Log('DRL destroyed.');

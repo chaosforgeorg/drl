@@ -71,8 +71,6 @@ public
   property ModString     : Ansistring  read FModString;
 end;
 
-var Modules : TDRLModules;
-
 implementation
 
 uses sysutils, variants, vluatable, vdf, vstoreinterface, dfdata;

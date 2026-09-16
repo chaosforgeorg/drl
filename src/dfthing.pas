@@ -7,14 +7,16 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit dfthing;
 interface
-uses sysutils, classes, vluagamestack, vluaentitynode, vrltools, vluatable, vvector, vlua, dfdata, drlhooks, drlperk;
+uses sysutils, classes,
+     vluagamestack, vluaentitynode, vrltools, vluatable, vvector, vlua, vnode,
+     dfdata, drlhooks, drlperk;
 
 type String16 = string[16];
 
 { TThing }
 type TThing = class( TLuaEntityNode )
-  constructor Create( const aID : AnsiString );
-  constructor CreateFromStream( aStream : TStream ); override;
+  constructor Create( const aID : AnsiString; aContext : TNodeContext );
+  constructor CreateFromStream( aStream : TStream; aContext : TNodeContext ); override;
   function PlaySound( const aSoundID : string; aDelay : Integer = 0 ) : Boolean;
   function PlaySound( const aSoundID : string; aPosition : TCoord2D; aDelay : Integer = 0 ) : Boolean;
   function HasHook( aHook : Word ) : Boolean; override;
@@ -61,9 +63,9 @@ implementation
 
 uses typinfo, variants, vdebug, vtig, drlbase, drlio, drllua, drlspritemap;
 
-constructor TThing.Create( const aID : AnsiString );
+constructor TThing.Create( const aID : AnsiString; aContext : TNodeContext );
 begin
-  inherited Create( aID, DRL.Context );
+  inherited Create( aID, aContext );
   FAnimCount    := 0;
   FDrawPosition := Vec2i( 0, 0 );
   FPerks        := nil;
@@ -239,9 +241,9 @@ begin
     aStream.WriteByte( 0 );
 end;
 
-constructor TThing.CreateFromStream( aStream: TStream );
+constructor TThing.CreateFromStream( aStream : TStream; aContext : TNodeContext );
 begin
-  inherited CreateFromStream( aStream, DRL.Context );
+  inherited CreateFromStream( aStream, aContext );
   aStream.Read( FSprite,  SizeOf( FSprite ) );
   aStream.Read( FSoundID, SizeOf( FSoundID ) );
   aStream.Read( FHP,      SizeOf( FHP ) );

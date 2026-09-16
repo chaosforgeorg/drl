@@ -8,7 +8,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit dfbeing;
 interface
 uses classes, sysutils,
-     vluagamestack, vluatable, vnode, vpath, vmath, vutil, vrltools, vvision, vlua,
+     vluagamestack, vluatable, vnode, vpath, vmath, vutil, vrltools, vvision, vlua, vrandom,
      dfdata, dfthing, dfitem, drlinventory, drlcommand;
 
 type TMoveResult = ( MoveOk, MoveBlock, MoveDoor, MoveBeing );
@@ -26,9 +26,9 @@ type
 { TBeing }
 
 TBeing = class(TThing,IPathQuery)
-    constructor Create( aNID : Byte ); overload;
-    constructor Create( const aNID : AnsiString ); overload;
-    constructor CreateFromStream( Stream: TStream ); override;
+    constructor Create( aNID : Byte; aContext : TNodeContext; aGameRNG : TRNG ); overload;
+    constructor Create( const aNID : AnsiString; aContext : TNodeContext; aGameRNG : TRNG ); overload;
+    constructor CreateFromStream( aStream : TStream; aContext : TNodeContext ); override;
     procedure WriteToStream( Stream: TStream ); override;
     procedure Initialize;
     function GetName( known : boolean ) : string;
@@ -132,7 +132,7 @@ TBeing = class(TThing,IPathQuery)
     procedure BloodDecal( aFrom : TDirection; aAmount : LongInt );
     procedure BloodSpray( aFrom : TDirection; aAmount : LongInt; aDelay : Integer;
       aDistanceScale, aSpreadScale : Single );
-    procedure LuaLoad( aTable : TLuaTable ); override;
+    procedure LuaLoad( aTable : TLuaTable; aGameRNG : TRNG ); reintroduce;
     // private
     function FireRanged( aTarget : TCoord2D; aGun : TItem; aAlt : Boolean = False; aDelay : Integer = 0 ) : Boolean;
     function getAmmoItem( Weapon : TItem ) : TItem;
@@ -213,8 +213,8 @@ TBeing = class(TThing,IPathQuery)
 implementation
 
 uses math,
-     vlualibrary, vluaentitynode, vuid, vrandom, vdebug, vluatools, vcolor, vvector,
-     dfplayer, dflevel, dfmap, drlhooks, drlbase, drlio;
+     vlualibrary, vluaentitynode, vuid, vdebug, vluatools, vcolor, vvector,
+     dfplayer, dflevel, dfmap, drlhooks, drlbase, drlio, drllua;
 
 const PAIN_DURATION = 500;
 
@@ -242,57 +242,57 @@ begin
   Exit( Clamp( iMiss, 0, 95 ) );
 end;
 
-constructor TBeing.Create( aNID : Byte );
+constructor TBeing.Create( aNID : Byte; aContext : TNodeContext; aGameRNG : TRNG );
 var iTable : TLuaTable;
 begin
-  inherited Create( DRL.Context.Lua.Get( ['beings', aNID, 'id'] ) );
+  inherited Create( aContext.Lua.Get( ['beings', aNID, 'id'] ), aContext );
   FEntityID := ENTITY_BEING;
   iTable := FContext.Lua.GetTable( ['beings', aNID] );
-  LuaLoad( iTable );
+  LuaLoad( iTable, aGameRNG );
   FreeAndNil( iTable );
 end;
 
-constructor TBeing.Create( const aNID : AnsiString );
+constructor TBeing.Create( const aNID : AnsiString; aContext : TNodeContext; aGameRNG : TRNG );
 var iTable : TLuaTable;
 begin
-  inherited Create( aNID );
+  inherited Create( aNID, aContext );
   FEntityID := ENTITY_BEING;
   iTable := FContext.Lua.GetTable(['beings', aNID]);
-  LuaLoad( iTable );
+  LuaLoad( iTable, aGameRNG );
   FreeAndNil( iTable );
 end;
 
-constructor TBeing.CreateFromStream ( Stream : TStream ) ;
-var Slot   : TEqSlot;
-    Amount : Byte;
-    c      : Byte;
+constructor TBeing.CreateFromStream( aStream : TStream; aContext : TNodeContext );
+var iSlot   : TEqSlot;
+    iAmount : Byte;
+    i       : Byte;
 begin
-  inherited CreateFromStream ( Stream ) ;
+  inherited CreateFromStream( aStream, aContext );
 
   Initialize;
 
-  FHPMax      := Stream.ReadWord();
-  FHPNom      := Stream.ReadWord();
-  FHPDecayMax := Stream.ReadWord();
+  FHPMax      := aStream.ReadWord();
+  FHPNom      := aStream.ReadWord();
+  FHPDecayMax := aStream.ReadWord();
 
-  Stream.Read( FTimes,       SizeOf( FTimes ) );
-  Stream.Read( FLastCommand, SizeOf( FLastCommand ) );
-  Stream.Read( FAccuracy,    SizeOf( FAccuracy ) );
-  Stream.Read( FStrength,    SizeOf( FStrength ) );
-  Stream.Read( FSpriteMod,   SizeOf( FSpriteMod ) );
-  Stream.Read( FTargetSize,  SizeOf( FTargetSize ) );
+  aStream.Read( FTimes,       SizeOf( FTimes ) );
+  aStream.Read( FLastCommand, SizeOf( FLastCommand ) );
+  aStream.Read( FAccuracy,    SizeOf( FAccuracy ) );
+  aStream.Read( FStrength,    SizeOf( FStrength ) );
+  aStream.Read( FSpriteMod,   SizeOf( FSpriteMod ) );
+  aStream.Read( FTargetSize,  SizeOf( FTargetSize ) );
 
-  FVisionRadius := Stream.ReadByte();
-  FSpeedCount   := Stream.ReadWord();
-  FSpeed        := Stream.ReadByte();
-  FExpValue     := Stream.ReadWord();
+  FVisionRadius := aStream.ReadByte();
+  FSpeedCount   := aStream.ReadWord();
+  FSpeed        := aStream.ReadByte();
+  FExpValue     := aStream.ReadWord();
 
-  Amount := Stream.ReadByte;
-  for c := 1 to Amount do
-    FInv.Add( TItem.CreateFromStream( Stream ) );
-  for slot in TEqSlot do
-    if Stream.ReadByte <> 0 then
-      FInv.RawSetSlot(slot,TItem.CreateFromStream( Stream ));
+  iAmount := aStream.ReadByte;
+  for i := 1 to iAmount do
+    FInv.Add( TItem.CreateFromStream( aStream, FContext ) );
+  for iSlot in TEqSlot do
+    if aStream.ReadByte <> 0 then
+      FInv.RawSetSlot( iSlot, TItem.CreateFromStream( aStream, FContext ) );
 end;
 
 procedure TBeing.WriteToStream ( Stream : TStream ) ;
@@ -353,7 +353,7 @@ begin
   FOverlayUntil := 0;
 end;
 
-procedure TBeing.LuaLoad( aTable : TLuaTable );
+procedure TBeing.LuaLoad( aTable : TLuaTable; aGameRNG : TRNG );
 begin
   inherited LuaLoad( aTable );
   Initialize;
@@ -376,7 +376,7 @@ begin
 
   FHPMax := FHP;
   FHPNom := FHP;
-  FSpeedCount := 900 + DRL.GameRNG.RLongInt( 90 );
+  FSpeedCount := 900 + aGameRNG.RLongInt( 90 );
 
   FHPDecayMax   := 100;
 
@@ -688,7 +688,7 @@ var iUnique : Boolean;
     iAmmo := Inv.AddStack(iAmmoID,iAmmo);
     if ( iAmmo > 0 ) then
     try
-       iItem := TItem.Create(iAmmoID);
+       iItem := TItem.Create( iAmmoID, FContext );
        iItem.Amount := iAmmo;
        TLevel(Parent).DropItem( iItem, FPosition, False, True )
     except
@@ -1189,7 +1189,7 @@ begin
   begin
     iName   := aItem.Name;
     FreeAndNil( aItem );
-    aItem := TItem.Create( aDisassembleID );
+    aItem := TItem.Create( aDisassembleID, FContext );
     aItem.PlaySound('reload', FPosition );
     if not Inv.isFull
        then Inv.Add( aItem )
@@ -2939,13 +2939,15 @@ begin
 end;
 
 function lua_being_new( L : PLua_State ): Integer; cdecl;
-var iLua : TLua;
-    iState       : TLuaGameStack;
-    iBeing       : TBeing;
+var iState : TLuaGameStack;
+    iRNG   : TRNG;
+    iLua   : TDRLLua;
+    iBeing : TBeing;
 begin
-  iLua := TLuaContext.FromState( L ).Lua;
   iState.Init( L );
-  iBeing := TBeing.Create(iState.ToId( iLua, 1 ));
+  iLua := TDRLLua( TLuaContext.FromState( L ).Lua );
+  iRNG := iLua.Context.RNG;
+  iBeing := TBeing.Create( iState.ToId( iLua, 1 ), iLua.NodeContext, iRNG );
   iState.Push( iBeing );
   Result := 1;
 end;

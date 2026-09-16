@@ -19,7 +19,7 @@ type
 { TLevel }
 
 TLevel = class(TLuaMapNode, ITextMap)
-    constructor Create( aGameRNG : TRNG ); reintroduce;
+    constructor Create( aContext : TNodeContext; aGameRNG : TRNG ); reintroduce;
     procedure Init( aStyle : byte; aName : Ansistring; aIndex : Integer; aDangerLevel : Word );
     procedure AfterGeneration;
     procedure PreEnter;
@@ -108,7 +108,7 @@ TLevel = class(TLuaMapNode, ITextMap)
     procedure RevealBeings;
     function getGylph( const aCoord : TCoord2D ) : TIOGylph;
     function EntityFromStream( aStream : TStream; aEntityID : Byte ) : TLuaEntityNode; override;
-    constructor CreateFromStream( aStream : TStream; aGameRNG : TRNG ); reintroduce;
+    constructor CreateFromStream( aStream : TStream; aContext : TNodeContext; aGameRNG : TRNG ); override;
     procedure WriteToStream( aStream : TStream ); override;
 
     function EnemiesLeft( aUnique : Boolean = False ) : DWord;
@@ -426,14 +426,14 @@ end;
 function TLevel.EntityFromStream ( aStream : TStream; aEntityID : Byte ) : TLuaEntityNode;
 begin
   case aEntityID of
-    ENTITY_BEING : Exit( TBeing.CreateFromStream(aStream) );
-    ENTITY_ITEM  : Exit( TItem.CreateFromStream(aStream) );
+    ENTITY_BEING : Exit( TBeing.CreateFromStream( aStream, FContext ) );
+    ENTITY_ITEM  : Exit( TItem.CreateFromStream( aStream, FContext ) );
   end;
 end;
 
-constructor TLevel.CreateFromStream( aStream : TStream; aGameRNG : TRNG );
+constructor TLevel.CreateFromStream( aStream : TStream; aContext : TNodeContext; aGameRNG : TRNG );
 begin
-  inherited CreateFromStream( aStream, DRL.Context, aGameRNG );
+  inherited CreateFromStream( aStream, aContext, aGameRNG );
 
   aStream.Read( FMap,   SizeOf( FMap ) );
   aStream.Read( FIndex, SizeOf( FIndex ) );
@@ -501,9 +501,9 @@ begin
   Exit( iEnemies );
 end;
 
-constructor TLevel.Create( aGameRNG : TRNG );
+constructor TLevel.Create( aContext : TNodeContext; aGameRNG : TRNG );
 begin
-  inherited Create( 'default', MaxX, MaxY, 15, DRL.Context, aGameRNG );
+  inherited Create( 'default', MaxX, MaxY, 15, aContext, aGameRNG );
 
   Assert( dfdata.EF_NOBLOCK  = vluamapnode.EF_NOBLOCK );
   Assert( dfdata.EF_NOITEMS  = vluamapnode.EF_NOITEMS );
@@ -1198,7 +1198,7 @@ begin
   iCellID := GetCell( aCoord );
   if Cells[ iCellID ].raiseto = '' then Exit( nil );
   try
-    iBeing := TBeing.Create( Cells[ iCellID ].raiseto );
+    iBeing := TBeing.Create( Cells[ iCellID ].raiseto, FContext, FGameRNG );
     iBeing.Flags[ BF_RESPAWN ] := True;
     DropBeing( iBeing, aCoord );
     Cell[ aCoord ] := FContext.Lua.Defines[ Cells[ iCellID ].destroyto ];
@@ -1754,7 +1754,7 @@ begin
     iRespawn := iState.ToBoolean( 4, False );
     if iState.IsTable(2)
       then iBeing := iState.ToObject(2) as TBeing
-      else iBeing := TBeing.Create( iState.ToId( iLevel.Context.Lua, 2 ) );
+      else iBeing := TBeing.Create( iState.ToId( iLevel.Context.Lua, 2 ), iLevel.Context, iLevel.GameRNG );
     if iRespawn then iBeing.Flags[ BF_RESPAWN ] := True;
     iLevel.DropBeing( iBeing, iState.ToCoord(3) );
     iState.Push( iBeing );
@@ -1789,7 +1789,7 @@ begin
   try
     if iState.IsTable(2)
       then iItem := iState.ToObject(2) as TItem
-      else iItem := TItem.Create( iState.ToId( iLevel.Context.Lua, 2 ), iState.ToBoolean( 4, False ) );
+      else iItem := TItem.Create( iState.ToId( iLevel.Context.Lua, 2 ), iLevel.Context, iState.ToBoolean( 4, False ) );
     iLevel.DropItem( iItem, iState.ToPosition(3), iState.ToBoolean( 5, False ), iState.ToBoolean( 6, False ) );
     iState.Push( iItem );
   except

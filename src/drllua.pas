@@ -8,7 +8,7 @@ unit drllua;
 interface
 
 uses sysutils, classes,
-     vluagamestack, vlua, vlualibrary, vrltools, vutil, vdf, viotypes,
+     vluagamestack, vlua, vlualibrary, vrltools, vutil, vdf, viotypes, vnode,
      dfitem, dfbeing, dfthing, dfdata, drlmodule;
 
 type
@@ -23,12 +23,16 @@ TDRLLua = class(TLua)
        destructor Destroy; override;
        // Load content after Runtime owns Lua and the Session context is bound.
        procedure ReadWad;
+       procedure BindNodeContext( aContext : TNodeContext );
      private
        procedure LoadFiles( const aDirectory : AnsiString; aLoader : TVDFLoader; aWildcard : AnsiString = '*' );
      private
-       FOpenData : TVDataFileArray;
-       FModules  : TDRLModules;
-       FDataPath : AnsiString;
+       FOpenData    : TVDataFileArray;
+       FModules     : TDRLModules;
+       FDataPath    : AnsiString;
+       FNodeContext : TNodeContext; // Borrowed from the active Session for Lua factories.
+     public
+       property NodeContext : TNodeContext read FNodeContext;
      end;
 
 // published functions
@@ -36,7 +40,7 @@ TDRLLua = class(TLua)
 implementation
 
 uses typinfo, variants,
-     vnode, vdebug, vluastate, vluatools, vluadungen, vluaentitynode, vluatype, vmath, vtextures, vtigstyle, vparticleengine,
+     vdebug, vluastate, vluatools, vluadungen, vluaentitynode, vluatype, vmath, vtextures, vtigstyle, vparticleengine,
      dfplayer, dflevel, dfmap, drlhooks, drlhelp, dfhof, drlbase, drlio, drlperk, drlgfxio, drlspritemap;
 
 var SpriteSheetCounter : Integer = -1;
@@ -591,6 +595,11 @@ const lua_core_lib : array[0..13] of luaL_Reg = (
 
     ( name : nil;          func : nil; )
 );
+
+procedure TDRLLua.BindNodeContext( aContext : TNodeContext );
+begin
+  FNodeContext := aContext;
+end;
 
 constructor TDRLLua.Create( aModules : TDRLModules; const aDataPath : AnsiString );
 var Count : Byte;

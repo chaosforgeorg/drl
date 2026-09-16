@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit dfplayer;
 interface
 uses classes, sysutils,
-     vluagamestack, vpath, vutil, vrltools, vvision, viotypes, vlua,
+     vluagamestack, vpath, vutil, vrltools, vvision, viotypes, vlua, vnode, vrandom,
      dfbeing, dfhof, dfdata, dfitem, drltraits, drlkeybindings, drlstatistics, drlmultimove;
 
 
@@ -29,10 +29,10 @@ type TPlayer = class(TBeing)
 
   FQuickSlots     : array[1..9] of TQuickSlotInfo;
 
-  constructor Create; reintroduce;
+  constructor Create( aContext : TNodeContext; aGameRNG : TRNG ); reintroduce;
   procedure Initialize; reintroduce;
   procedure SetKilledBy( const aKilledBy : AnsiString; aKilledMelee : Boolean );
-  constructor CreateFromStream( Stream: TStream ); override;
+  constructor CreateFromStream( aStream : TStream; aContext : TNodeContext ); override;
   procedure WriteToStream( Stream: TStream ); override;
   function CallHook( aHook : Byte; const aParams : array of Const ) : Boolean; override;
   function CallHookCheck( aHook : Byte; const aParams : array of Const ) : Boolean; override;
@@ -105,12 +105,12 @@ var Player     : TPlayer;
 implementation
 
 uses math, variants,
-     vuid, vioevent, vgenerics, vnode, vcolor, vdebug, vtig,
+     vuid, vioevent, vgenerics, vcolor, vdebug, vtig,
      dfmap, dflevel, drlhooks, drlio, drlspritemap, drlbase, drlperk, drllua, drlinventory, drlplayerview, drlhudviews;
 
-constructor TPlayer.Create;
+constructor TPlayer.Create( aContext : TNodeContext; aGameRNG : TRNG );
 begin
-  inherited Create('soldier');
+  inherited Create( 'soldier', aContext, aGameRNG );
 
   FTraits    := TTraits.Create( Self );
   FKills     := TKillTable.Create;
@@ -182,28 +182,28 @@ begin
   FStatistics.WriteToStream( Stream );
 end;
 
-constructor TPlayer.CreateFromStream ( Stream : TStream ) ;
+constructor TPlayer.CreateFromStream( aStream : TStream; aContext : TNodeContext );
 begin
-  inherited CreateFromStream( Stream );
+  inherited CreateFromStream( aStream, aContext );
 
-  Stream.Read( FLevelIndex, SizeOf( FLevelIndex ) );
-  NukeActivated  := Stream.ReadWord();
-  InventorySize  := Stream.ReadByte();
-  FExpLevel      := Stream.ReadByte();
-  FKlass         := Stream.ReadByte();
-  FExp           := Stream.ReadDWord();
-  FScore         := Stream.ReadDWord();
-  FKillMax       := Stream.ReadDWord();
-  FKillCount     := Stream.ReadDWord();
+  aStream.Read( FLevelIndex, SizeOf( FLevelIndex ) );
+  NukeActivated  := aStream.ReadWord();
+  InventorySize  := aStream.ReadByte();
+  FExpLevel      := aStream.ReadByte();
+  FKlass         := aStream.ReadByte();
+  FExp           := aStream.ReadDWord();
+  FScore         := aStream.ReadDWord();
+  FKillMax       := aStream.ReadDWord();
+  FKillCount     := aStream.ReadDWord();
 
-  Stream.Read( FLastTurnDodge, SizeOf( FLastTurnDodge ) );
-  Stream.Read( FExpFactor,     SizeOf( FExpFactor ) );
-  Stream.Read( FQuickSlots,    SizeOf( FQuickSlots ) );
-  Stream.Read( FCSprite,       SizeOf( FCSprite ) );
+  aStream.Read( FLastTurnDodge, SizeOf( FLastTurnDodge ) );
+  aStream.Read( FExpFactor,     SizeOf( FExpFactor ) );
+  aStream.Read( FQuickSlots,    SizeOf( FQuickSlots ) );
+  aStream.Read( FCSprite,       SizeOf( FCSprite ) );
 
-  FTraits         := TTraits.CreateFromStream( Stream, Self );
-  FKills          := TKillTable.CreateFromStream( Stream );
-  FStatistics     := TStatistics.CreateFromStream( Stream );
+  FTraits         := TTraits.CreateFromStream( aStream, Self );
+  FKills          := TKillTable.CreateFromStream( aStream );
+  FStatistics     := TStatistics.CreateFromStream( aStream );
 
   Initialize;
 end;
