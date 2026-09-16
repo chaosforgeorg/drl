@@ -7,7 +7,9 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit dfitem;
 interface
-uses classes, sysutils, math, vluagamestack, vrltools, vluatable, vcolor, vlua, dfthing, dfdata;
+uses classes, sysutils, math,
+     vluagamestack, vrltools, vluatable, vcolor, vlua, vrandom,
+     dfthing, dfdata;
 
 type
 
@@ -20,7 +22,7 @@ TItem  = class( TThing )
     constructor CreateFromStream( aStream: TStream ); override;
     procedure WriteToStream( aStream: TStream ); override;
 
-    function    rollDamage : Integer;
+    function    rollDamage( aGameRNG : TRNG ) : Integer;
     function    maxDamage : Integer;
     function    GetName( aKnown : boolean; aSingle : Boolean = False ) : Ansistring;
     function    GetExtName( aLyingHere : Boolean ) : Ansistring;
@@ -114,7 +116,8 @@ procedure SwapItem(var a, b: TItem);
 
 implementation
 
-uses vnode, vluaentitynode, vutil, vdebug, vmath, dfbeing, drlbase, drlhooks, drlperk;
+uses vnode, vluaentitynode, vutil, vdebug, vmath,
+     dfbeing, drlbase, drlhooks, drlperk;
 
 procedure SwapItem(var a, b: TItem);
 var c : TItem;
@@ -286,9 +289,9 @@ begin
   if Color = white then Exit(LightGray) else Exit(Color);
 end;
 
-function TItem.rollDamage : Integer;
+function TItem.rollDamage( aGameRNG : TRNG ) : Integer;
 begin
-  if isWeapon then Exit( FProps.Damage.Roll( DRL.GameRNG ) );
+  if isWeapon then Exit( FProps.Damage.Roll( aGameRNG ) );
   raise EItemException.CreateFmt('TItem.Damage called for Itype %d!',[ Byte( FProps.Itype ) ] );
 end;
 

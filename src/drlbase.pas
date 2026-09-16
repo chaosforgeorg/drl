@@ -279,7 +279,7 @@ end;
 procedure TDRLSession.InitializeLevel;
 begin
   Assert( FLevel = nil );
-  SetLevel( TLevel.Create );
+  SetLevel( TLevel.Create( GameRNG ) );
 end;
 
 procedure TDRLSession.SetLevel( aLevel : TLevel );
@@ -1608,6 +1608,7 @@ begin
       FGameSeed   := iStream.ReadDWord;
       FSeededGame := iStream.ReadBool;
       iGameRNG := TRNG.CreateFromStream( iStream );
+      FLevel.BindGameRNG( iGameRNG );
       FRuntime.ReplaceGameRNG( iGameRNG );
 
       Player := TPlayer.CreateFromStream( iStream );
@@ -1617,7 +1618,7 @@ begin
       begin
         ReleaseLevel;
         iRecreate := True;
-        SetLevel( TLevel.CreateFromStream( iStream ) );
+        SetLevel( TLevel.CreateFromStream( iStream, GameRNG ) );
         FLevel.Place( Player, Player.Position );
         FContext.Lua.SetValue('level', FLevel );
         FParticles.ReadFromStream( iStream );
@@ -1643,7 +1644,7 @@ begin
       if iRecreate then
       begin
         ReleaseLevel;
-        SetLevel( TLevel.Create );
+        SetLevel( TLevel.Create( GameRNG ) );
       end;
     end;
   end;

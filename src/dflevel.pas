@@ -8,7 +8,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit dflevel;
 interface
 uses sysutils, classes,
-     vluagamestack, vluaentitynode, vutil, vvision, viotypes, vrltools, vnode, vluamapnode, vtextmap, vlua,
+     vluagamestack, vluaentitynode, vutil, vvision, viotypes, vrltools, vnode, vluamapnode, vtextmap, vlua, vrandom,
      dfdata, dfmap, dfthing, dfbeing, dfitem, drlhooks, drlperk, drlmarkers, drldecals;
 
 const CellWalls   : TCellSet = [];
@@ -19,7 +19,7 @@ type
 { TLevel }
 
 TLevel = class(TLuaMapNode, ITextMap)
-    constructor Create; reintroduce;
+    constructor Create( aGameRNG : TRNG ); reintroduce;
     procedure Init( aStyle : byte; aName : Ansistring; aIndex : Integer; aDangerLevel : Word );
     procedure AfterGeneration;
     procedure PreEnter;
@@ -93,7 +93,7 @@ TLevel = class(TLuaMapNode, ITextMap)
 
     procedure ScriptLevel(script : string);
 
-    function RandomCoord( EmptyFlags : TFlags32 ) : TCoord2D; // raises EPlacementException
+    function RandomCoord( aEmptyFlags : TFlags32 ) : TCoord2D; // raises EPlacementException
 
     destructor Destroy; override;
 
@@ -108,7 +108,7 @@ TLevel = class(TLuaMapNode, ITextMap)
     procedure RevealBeings;
     function getGylph( const aCoord : TCoord2D ) : TIOGylph;
     function EntityFromStream( aStream : TStream; aEntityID : Byte ) : TLuaEntityNode; override;
-    constructor CreateFromStream( aStream : TStream ); override;
+    constructor CreateFromStream( aStream : TStream; aGameRNG : TRNG ); reintroduce;
     procedure WriteToStream( aStream : TStream ); override;
 
     function EnemiesLeft( aUnique : Boolean = False ) : DWord;
@@ -200,7 +200,9 @@ TLevel = class(TLuaMapNode, ITextMap)
 
 implementation
 
-uses math, typinfo, vgenerics, vluatools, vdebug, vuid, dfplayer, drlbase, drlio, drlgfxio, drlspritemap, drlhudviews;
+uses math, typinfo,
+     vgenerics, vluatools, vdebug, vuid,
+     dfplayer, drlbase, drlio, drlgfxio, drlspritemap, drlhudviews;
 
 type TProcessedUIDList = specialize TGArray<TUID>;
 
@@ -229,15 +231,15 @@ begin
   AfterGeneration;
 end;
 
-function TLevel.RandomCoord( EmptyFlags: TFlags32 ) : TCoord2D;
+function TLevel.RandomCoord( aEmptyFlags : TFlags32 ) : TCoord2D;
 const LIMES = 10000;
 var iCount : Word;
 begin
   iCount := 0;
   repeat
-    RandomCoord := FArea.RandomInnerCoord( DRL.GameRNG );
+    RandomCoord := FArea.RandomInnerCoord( FGameRNG );
     Inc( iCount );
-  until isEmpty( RandomCoord, EmptyFlags ) or ( iCount > LIMES );
+  until isEmpty( RandomCoord, aEmptyFlags ) or ( iCount > LIMES );
   if ( iCount > LIMES ) then raise EPlacementException.Create('');
 end;
 
@@ -429,9 +431,9 @@ begin
   end;
 end;
 
-constructor TLevel.CreateFromStream( aStream: TStream );
+constructor TLevel.CreateFromStream( aStream : TStream; aGameRNG : TRNG );
 begin
-  inherited CreateFromStream( aStream, DRL.Context );
+  inherited CreateFromStream( aStream, DRL.Context, aGameRNG );
 
   aStream.Read( FMap,   SizeOf( FMap ) );
   aStream.Read( FIndex, SizeOf( FIndex ) );
@@ -499,9 +501,9 @@ begin
   Exit( iEnemies );
 end;
 
-constructor TLevel.Create;
+constructor TLevel.Create( aGameRNG : TRNG );
 begin
-  inherited Create( 'default', MaxX, MaxY, 15, DRL.Context );
+  inherited Create( 'default', MaxX, MaxY, 15, DRL.Context, aGameRNG );
 
   Assert( dfdata.EF_NOBLOCK  = vluamapnode.EF_NOBLOCK );
   Assert( dfdata.EF_NOITEMS  = vluamapnode.EF_NOITEMS );
@@ -905,8 +907,8 @@ begin
   DropItem := true;
   if aItem = nil then Exit;
   if aNoHazard
-    then aCoord := DropCoord( DRL.GameRNG, aCoord, [ EF_NOITEMS,EF_NOBLOCK,EF_NOHARM,EF_NOSTAIRS ], True )
-    else aCoord := DropCoord( DRL.GameRNG, aCoord, [ EF_NOITEMS,EF_NOBLOCK,EF_NOSTAIRS ], True );
+    then aCoord := DropCoord( aCoord, [ EF_NOITEMS,EF_NOBLOCK,EF_NOHARM,EF_NOSTAIRS ], True )
+    else aCoord := DropCoord( aCoord, [ EF_NOITEMS,EF_NOBLOCK,EF_NOSTAIRS ], True );
 
   aItem.CallHook( Hook_OnDrop, [aItem.Parent] );
 
@@ -927,7 +929,7 @@ begin
   if aBeing.Flags[ BF_FLY ]
     then iBlockFlag := EF_NOBLOCKFLY
     else iBlockFlag := EF_NOBLOCK;
-  aCoord := DropCoord( DRL.GameRNG, aCoord, [ EF_NOTELE,EF_NOBEINGS,iBlockFlag,EF_NOSTAIRS ], False );
+  aCoord := DropCoord( aCoord, [ EF_NOTELE,EF_NOBEINGS,iBlockFlag,EF_NOSTAIRS ], False );
   Add( aBeing, aCoord );
   if ( not aBeing.IsPlayer ) and ( not aBeing.Flags[ BF_FRIENDLY ] ) and ( not aBeing.Flags[ BF_ILLUSION ] ) and ( not aBeing.Flags[ BF_NOKILL ] ) then
   begin
@@ -1021,7 +1023,7 @@ begin
       if Distance( iC, aCoord ) <= aData.Range then
         begin
           if not ShotContact( iC ) then Continue;
-          iDamage   := aData.Damage.Roll( DRL.GameRNG );
+          iDamage   := aData.Damage.Roll( FGameRNG );
           iDistance := Distance( iC, aCoord );
           iPointDelay := aDelay + iDistance * aData.Delay;
           if not (efNoDistanceDrop in aData.Flags) then
@@ -1065,7 +1067,7 @@ begin
           end;
           if (aData.ContentID <> 0) and isEmpty( iC, [ EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM ] ) then
           begin
-            if (iDamage > 20) or ((efRandomContent in aData.Flags) and (DRL.GameRNG.RLongInt( 2 ) = 1)) then
+            if (iDamage > 20) or ((efRandomContent in aData.Flags) and (FGameRNG.RLongInt( 2 ) = 1)) then
               Cell[iC] := aData.ContentID;
           end;
         end;
@@ -1133,7 +1135,7 @@ begin
     for iTC in FArea do
       if LightFlag[ iTC, lfDamage ] then
       begin
-        iDmg := Round( aDamage.Roll( DRL.GameRNG ) * (1.0-0.01*iFalloff*Max(0,Distance( aSource, iTC )-1)) );
+        iDmg := Round( aDamage.Roll( FGameRNG ) * (1.0-0.01*iFalloff*Max(0,Distance( aSource, iTC )-1)) );
         iDmg := Math.Floor( iDmg * aDamageMul );
 
         if iDmg < 1 then iDmg := 1;
@@ -1184,7 +1186,7 @@ begin
       if cellFlagSet( iCoord, CF_RAISABLE ) then
         if not isVisible( iCoord ) then
           if isPassable( iCoord ) then
-            if DRL.GameRNG.RLongInt( 100 ) < aChance then
+            if FGameRNG.RLongInt( 100 ) < aChance then
               Respawn( iCoord );
 end;
 
@@ -1350,7 +1352,7 @@ begin
     if LF_RESPAWN in FFlags  then
     begin
       if FLTime mod 100 = 0 then
-        if ((FLTime div 100)+20) > DWord( DRL.GameRNG.RLongInt( 100 ) ) then
+        if ((FLTime div 100)+20) > DWord( FGameRNG.RLongInt( 100 ) ) then
           Respawn( Min( (FLTime div 1000) + 10, 100 ) );
     end;
 

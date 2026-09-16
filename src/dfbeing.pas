@@ -132,7 +132,7 @@ TBeing = class(TThing,IPathQuery)
     procedure BloodDecal( aFrom : TDirection; aAmount : LongInt );
     procedure BloodSpray( aFrom : TDirection; aAmount : LongInt; aDelay : Integer;
       aDistanceScale, aSpreadScale : Single );
-    procedure LuaLoad( Table : TLuaTable ); override;
+    procedure LuaLoad( aTable : TLuaTable ); override;
     // private
     function FireRanged( aTarget : TCoord2D; aGun : TItem; aAlt : Boolean = False; aDelay : Integer = 0 ) : Boolean;
     function getAmmoItem( Weapon : TItem ) : TItem;
@@ -213,7 +213,7 @@ TBeing = class(TThing,IPathQuery)
 implementation
 
 uses math,
-     vlualibrary, vluaentitynode, vuid, vdebug, vluatools, vcolor, vvector,
+     vlualibrary, vluaentitynode, vuid, vrandom, vdebug, vluatools, vcolor, vvector,
      dfplayer, dflevel, dfmap, drlhooks, drlbase, drlio;
 
 const PAIN_DURATION = 500;
@@ -353,24 +353,24 @@ begin
   FOverlayUntil := 0;
 end;
 
-procedure TBeing.LuaLoad( Table : TLuaTable );
+procedure TBeing.LuaLoad( aTable : TLuaTable );
 begin
-  inherited LuaLoad( Table );
+  inherited LuaLoad( aTable );
   Initialize;
 
-  FTimes.Move       := Table.getInteger('movetime',100);
-  FTimes.Fire       := Table.getInteger('firetime',100);
-  FTimes.Reload     := Table.getInteger('reloadtime',100);
-  FTimes.Use        := Table.getInteger('usetime',100);
-  FTimes.Wear       := Table.getInteger('weartime',100);
-  FExpValue         := Table.getInteger('xp');
+  FTimes.Move       := aTable.getInteger('movetime',100);
+  FTimes.Fire       := aTable.getInteger('firetime',100);
+  FTimes.Reload     := aTable.getInteger('reloadtime',100);
+  FTimes.Use        := aTable.getInteger('usetime',100);
+  FTimes.Wear       := aTable.getInteger('weartime',100);
+  FExpValue         := aTable.getInteger('xp');
 
-  FSpeed      := Table.getInteger('speed');
-  FAccuracy   := Table.getInteger('accuracy');
-  FStrength   := Table.getInteger('strength');
-  FTargetSize := Table.getInteger('targetsize',0);
+  FSpeed      := aTable.getInteger('speed');
+  FAccuracy   := aTable.getInteger('accuracy');
+  FStrength   := aTable.getInteger('strength');
+  FTargetSize := aTable.getInteger('targetsize',0);
 
-  FVisionRadius := VisionBaseValue + Table.getInteger('vision');
+  FVisionRadius := VisionBaseValue + aTable.getInteger('vision');
 
   Flags[ BF_WALKSOUND ] := ( IO.Audio.ResolveSoundID( [ FID+'.hoof', FSoundID+'.hoof' ] ) <> 0 );
 
@@ -456,14 +456,18 @@ begin
   SendMissile( aTarget, aGun,aAltFire,0,0 );
 end;
 
-procedure TBeing.HandleShots ( aTarget : TCoord2D; aGun : TItem; aShots : DWord; aAltFire : Boolean; aDelay : Integer );
-var iScatter     : DWord;
-    iCount       : DWord;
-    iSeqBase     : DWord;
-    iMissileRange: SmallInt;
-    iRay         : TAssistedRay;
-    iSteps       : SmallInt;
+procedure TBeing.HandleShots( aTarget : TCoord2D; aGun : TItem; aShots : DWord; aAltFire : Boolean; aDelay : Integer );
+var iLevel        : TLevel;
+    iGameRNG      : TRNG;
+    iScatter      : DWord;
+    iCount        : DWord;
+    iSeqBase      : DWord;
+    iMissileRange : SmallInt;
+    iRay          : TAssistedRay;
+    iSteps        : SmallInt;
 begin
+  iLevel   := TLevel(Parent);
+  iGameRNG := iLevel.GameRNG;
   Assert( aGun <> nil );
   iSeqBase := 0;
   if not isPlayer then iSeqBase := 100;
@@ -473,16 +477,16 @@ begin
   if aGun.Flags[ IF_SCATTER ] then
   begin
     iSteps := 0;
-    iRay.Init(TLevel(Parent), FPosition, aTarget, iMissileRange, Vision, GetVisionMap);
+    iRay.Init(iLevel, FPosition, aTarget, iMissileRange, Vision, GetVisionMap);
     repeat
       iRay.Next;
-      if not TLevel(Parent).isProperCoord(iRay.Current) then begin aTarget:=iRay.Previous; break;end; {**** Stop at edge of map.}
+      if not iLevel.isProperCoord(iRay.Current) then begin aTarget:=iRay.Previous; break;end; {**** Stop at edge of map.}
       Inc(iSteps);
       if iSteps >= iMissileRange then begin aTarget := iRay.Current; break; end; {**** Stop if further than maxrange.}
       if aGun.Flags[ IF_EXACTHIT ] and (iRay.Current = aTarget) then break; {**** Stop at target square for exact missiles.}
       if iRay.Done then
         if iRay.Current = aTarget
-          then iRay.Init(TLevel(Parent), iRay.Current, iRay.Current + (aTarget - FPosition), iMissileRange, Vision, GetVisionMap) {**** Extend target out in same direction for non-exact missiles.}
+          then iRay.Init(iLevel, iRay.Current, iRay.Current + (aTarget - FPosition), iMissileRange, Vision, GetVisionMap) {**** Extend target out in same direction for non-exact missiles.}
           else begin aTarget := iRay.Current; break; end;
     until false;
     iScatter := Max(1,(iSteps div 4)); {**** SCATTER TIME!}
@@ -491,7 +495,7 @@ begin
   begin
     if aGun.Flags[ IF_SCATTER ] then
        begin
-            if not SendMissile( TLevel(Parent).Area.Clamped(aTarget.RandomShifted( DRL.GameRNG, iScatter )), aGun, aAltFire, iSeqBase+(iCount-1)*aGun.MisDelay*3, iCount-1 ) then Exit;
+            if not SendMissile( iLevel.Area.Clamped(aTarget.RandomShifted( iGameRNG, iScatter )), aGun, aAltFire, iSeqBase+(iCount-1)*aGun.MisDelay*3, iCount-1 ) then Exit;
        end
     else
        begin
@@ -1847,8 +1851,13 @@ begin
   iLevel.Kill( Self );
 end;
 
-function TBeing.rollMeleeDamage( aWeapon : TItem = nil; aTarget : TBeing = nil ) : Integer;var iDamage   : Integer;
+function TBeing.rollMeleeDamage( aWeapon : TItem = nil; aTarget : TBeing = nil ) : Integer;
+var iLevel   : TLevel;
+    iGameRNG : TRNG;
+    iDamage  : Integer;
 begin
+  iLevel   := TLevel(Parent);
+  iGameRNG := iLevel.GameRNG;
   if ( aWeapon <> nil ) and ( not aWeapon.isMelee ) then aWeapon := nil;
   iDamage := getToDam( aWeapon, False, True );
   if aWeapon <> nil then
@@ -1856,14 +1865,14 @@ begin
     if BF_MAXDAMAGE in FFlags then
       iDamage += aWeapon.maxDamage
     else
-      iDamage += aWeapon.rollDamage;
+      iDamage += aWeapon.rollDamage( iGameRNG );
   end
   else
   begin
     if BF_MAXDAMAGE in FFlags then
       iDamage += Max( (FStrength + 1) * 3, 1 )
     else
-      iDamage += Max( DRL.GameRNG.Dice( FStrength + 1, 3 ), 1 );
+      iDamage += Max( iGameRNG.Dice( FStrength + 1, 3 ), 1 );
   end;
 
   if aWeapon <> nil 
@@ -1928,26 +1937,28 @@ begin
 end;
 
 function TBeing.Attack( aTarget : TBeing; aSecond : Boolean = False; aWeapon : TItem = nil ) : Boolean;
-var iUIDs          : TUIDStore;
-    iName          : string;
-    iDefenderName  : string;
-    iResult        : string;
-    iLevel         : TLevel;
-    iDamage        : Integer;
-    iWeaponSlot    : TEqSlot;
-    iDamageType    : TDamageType;
-    iToHit         : Integer;
-    iDualAttack    : Boolean;
-    iAttackCost    : DWord;
-    iTargetUID     : TUID;
-    iUID           : TUID;
-    iMissed        : Boolean;
+var iGameRNG      : TRNG;
+    iUIDs         : TUIDStore;
+    iName         : string;
+    iDefenderName : string;
+    iResult       : string;
+    iLevel        : TLevel;
+    iDamage       : Integer;
+    iWeaponSlot   : TEqSlot;
+    iDamageType   : TDamageType;
+    iToHit        : Integer;
+    iDualAttack   : Boolean;
+    iAttackCost   : DWord;
+    iTargetUID    : TUID;
+    iUID          : TUID;
+    iMissed       : Boolean;
 begin
   iUIDs := FContext.UIDs;
   Result := False;
   if BF_NOMELEE in FFlags then Exit;
   if aTarget = nil then Exit;
   iLevel       := TLevel(Parent);
+  iGameRNG     := iLevel.GameRNG;
   FMeleeAttack := True;
   iDualAttack  := False;
   iTargetUID   := aTarget.UID;
@@ -2014,7 +2025,7 @@ begin
 
   if not ( BF_AUTOHIT in FFlags ) then
   if ( aWeapon = nil ) or ( not aWeapon.Flags[ IF_AUTOHIT ] ) then
-    if Roll( DRL.GameRNG, 12 + iToHit ) < 0 then
+    if Roll( iGameRNG, 12 + iToHit ) < 0 then
     begin
       if IsPlayer then iResult := ' miss ' else iResult := ' misses ';
       if isVisible then IO.Msg( Capitalized(iName) + iResult + iDefenderName + '.' );
@@ -2103,7 +2114,9 @@ begin
 end;
 
 procedure TBeing.ApplyDamage( aDamage : LongInt; aTarget : TBodyTarget; aDamageType : TDamageType; aSource : TItem; aDelay : Integer );
-var iUIDs          : TUIDStore;
+var iLevel         : TLevel;
+    iGameRNG       : TRNG;
+    iUIDs          : TUIDStore;
     iDirection     : TDirection;
     iArmor         : TItem;
     iActive        : TBeing;
@@ -2129,7 +2142,9 @@ begin
     if aSource.Flags[ IF_ILLUSION ] then Exit;
   end;
 
-  iActive    := TLevel(Parent).ActiveBeing;
+  iLevel     := TLevel(Parent);
+  iGameRNG   := iLevel.GameRNG;
+  iActive    := iLevel.ActiveBeing;
   iActiveUID := 0;
   if iActive <> nil then
   begin
@@ -2244,7 +2259,7 @@ begin
 
   if aDamageType <> Damage_IgnoreArmor then
   begin
-    if (BF_HARDY in FFlags) and (aDamage <= iArmorValue) and (DRL.GameRNG.RLongInt( 2 ) = 1) then Exit;
+    if (BF_HARDY in FFlags) and (aDamage <= iArmorValue) and (iGameRNG.RLongInt( 2 ) = 1) then Exit;
     aDamage := Max( 1, aDamage - iArmorValue );
   end;
 
@@ -2346,7 +2361,8 @@ begin
 end;
 
 function TBeing.SendMissile( aTarget : TCoord2D; aItem : TItem; aAltFire : Boolean; aSequence : DWord; aShotCount : Integer ) : Boolean;
-var iUIDs       : TUIDStore;
+var iGameRNG    : TRNG;
+    iUIDs       : TUIDStore;
     iDirection  : TDirection;
     iMisslePath : TAssistedRay;
     iOldCoord   : TCoord2D;
@@ -2392,6 +2408,7 @@ begin
   if FHP <= 0 then Exit( False );
 
   iLevel     := TLevel(Parent);
+  iGameRNG   := iLevel.GameRNG;
   iDirectHit := False;
   iThisUID   := FUID;
   iItemUID   := aItem.uid;
@@ -2402,7 +2419,7 @@ begin
     iAimedBeing := iLevel.Being[ aTarget ];
   end;
   if iBeing <> nil then
-    if DRL.GameRNG.RLongInt( 100 ) <= getStrayChance( iBeing, aItem ) then
+    if iGameRNG.RLongInt( 100 ) <= getStrayChance( iBeing, aItem ) then
     begin
       if iBeing.FLastPos.X = 1 then iBeing.FLastPos := iBeing.FPosition;
       aTarget := iBeing.FLastPos;
@@ -2436,7 +2453,7 @@ begin
   if iMaxDamage then
     iDamage := aItem.maxDamage
   else
-    iDamage := aItem.rollDamage;
+    iDamage := aItem.rollDamage( iGameRNG );
 
   iDamageMod := getToDam( aItem, aAltFire, False );
   iDamageMul := GetBonusMul( Hook_getDamageMul, [ aItem, False, aAltFire, iBeing ] )
@@ -2484,7 +2501,7 @@ begin
         end;
       end;
 
-      if ( iCoverValue >= 10 ) or ( DRL.GameRNG.RLongInt( 10 ) < iCoverValue ) then
+      if ( iCoverValue >= 10 ) or ( iGameRNG.RLongInt( 10 ) < iCoverValue ) then
       begin
         if (iAimedBeing = Player) and (iDodged) then IO.Msg('You dodge!');
 
@@ -2511,19 +2528,19 @@ begin
       iToHit -= iBeing.GetBonus( Hook_getDefenceBonus, [False] );
 
       if aItem.Flags[ IF_FARHIT ]
-        then iIsHit := Roll( DRL.GameRNG, 10 + iToHit ) >= 0
-        else iIsHit := Roll( DRL.GameRNG, 10 - (distance(FPosition, iCoord ) div 3 ) + iToHit ) >= 0;
+        then iIsHit := Roll( iGameRNG, 10 + iToHit ) >= 0
+        else iIsHit := Roll( iGameRNG, 10 - (distance(FPosition, iCoord ) div 3 ) + iToHit ) >= 0;
 
       if ( BF_AUTOHIT in FFlags ) or aItem.Flags[ IF_AUTOHIT ] then 
         iIsHit := True;
 
       if iIsHit and ( ( not isEyeContact( iBeing ) ) or ( BF_BLINDFIRE in FFlags ) ) and ( not aItem.Flags[ IF_UNSEENHIT ] ) then
-        iIsHit := (DRL.GameRNG.RLongInt( 10 ) > 4);
+        iIsHit := (iGameRNG.RLongInt( 10 ) > 4);
 
       if iIsHit and ( iBeing <> iAimedBeing ) then
         if ( isPlayer and iBeing.Flags[ BF_FRIENDLY ] ) or
           ( Flags[ BF_FRIENDLY ] and iBeing.IsPlayer ) then
-           if DRL.GameRNG.RLongInt( 3 ) > 0 then
+           if iGameRNG.RLongInt( 3 ) > 0 then
              iIsHit := False;
 
       if iIsHit then
