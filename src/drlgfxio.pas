@@ -545,7 +545,7 @@ begin
   if Session.State <> DSPlaying then Exit;
   if ( aEmitterID = 0 ) or ( aCount = 0 ) then Exit;
   FAnimations.AddAnimation( TGFXParticleBurstAnimation.Create(
-    aDelay, aEmitterID, aPosition, aDirection, aCount, aDistanceScale, aSpreadScale ) );
+    TLevel( FLevel ).Particles, aDelay, aEmitterID, aPosition, aDirection, aCount, aDistanceScale, aSpreadScale ) );
 end;
 
 procedure TDRLGFXIO.addSoundAnimation(aDelay: DWord; aPosition: TCoord2D; aSoundID: DWord);
@@ -863,7 +863,7 @@ begin
     //if not UI.AnimationsRunning then SpriteMap.NewShift := SpriteMap.ShiftValue( Player.Position );
 
     SpriteMap.Update( aMSec, FProjection );
-    Session.Particles.Update( aMSec * 0.001 );
+    TLevel( FLevel ).Particles.Update( aMSec * 0.001 );
     FParticleEngine.Render( SpriteMap.Engine );
     FAnimations.Draw;
     glEnable( GL_DEPTH_TEST );

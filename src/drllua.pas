@@ -230,16 +230,6 @@ begin
   Result := 0;
 end;
 
-function lua_core_register_emitter( L : PLua_State ): Integer; cdecl;
-var iLua : TLua;
-    iState : TLuaGameStack;
-begin
-  iLua := TLuaContext.FromState( L ).Lua;
-  iState.Init(L);
-  DRL.Particles.RegisterEmitter( iLua, Word( iState.ToInteger(1) ) );
-  Result := 0;
-end;
-
 function lua_core_texture_upload(L: Plua_State): Integer; cdecl;
 var State    : TLuaGameStack;
     iTexture : TTexture;
@@ -576,14 +566,13 @@ begin
   Result := 0;
 end;
 
-const lua_core_lib : array[0..13] of luaL_Reg = (
+const lua_core_lib : array[0..12] of luaL_Reg = (
     ( name : 'add_to_cell_set';func : @lua_core_add_to_cell_set),
     ( name : 'game_time';      func : @lua_core_game_time),
     ( name : 'time_ms';        func : @lua_core_time_ms),
     ( name : 'visual_random';  func : @lua_core_visual_random),
     ( name : 'is_playing';func : @lua_core_is_playing),
     ( name : 'register_cell';   func : @lua_core_register_cell),
-    ( name : 'register_emitter'; func : @lua_core_register_emitter),
     ( name : 'register_perk';   func : @lua_core_register_perk),
 
     ( name : 'play_music';func : @lua_core_play_music),

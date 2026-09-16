@@ -326,7 +326,7 @@ begin
   end;
 
   if GraphicsVersion and ( aData.EmitterID > 0 ) then
-    FSession.Particles.AddEmitterDirect( aData.EmitterID,
+    iLevel.Particles.AddEmitterDirect( aData.EmitterID,
       Vec3f( ( aWhere.X - 1 ) * 32 + 16, ( aWhere.Y - 1 ) * 32 + 16, 0 ) );
 
   for iCoord in NewArea( aWhere, aData.Range ).Clamped( iLevel.Area ) do

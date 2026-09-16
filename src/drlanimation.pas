@@ -9,7 +9,7 @@ interface
 uses
   classes, sysutils, math,
   vnode, vuid, vutil, vcolor, vmath, vvector, vrltools, vvision, vanimation,
-  dfdata, dflevel;
+  dfdata, dflevel, drlparticles;
 
 type TAnimation        = vanimation.TAnimation;
      TAnimationManager = vanimation.TAnimations;
@@ -22,16 +22,16 @@ TGFXMissileAnimation = class(TAnimation)
   procedure OnDraw; override;
   destructor Destroy; override;
 private
-  FLevel    : TLevel;
-  FSource   : TVec2i;
-  FTarget   : TVec2i;
-  FPath     : TVisionRay;
-  FHeading  : Float;
-  FRay      : Boolean;
-  FSprite   : TSprite;
-  FStepDelay: DWord;
-  FStep     : Word;
-  FEmitter  : Integer;
+  FLevel     : TLevel;
+  FSource    : TVec2i;
+  FTarget    : TVec2i;
+  FPath      : TVisionRay;
+  FHeading   : Float;
+  FRay       : Boolean;
+  FSprite    : TSprite;
+  FStepDelay : DWord;
+  FStep      : Word;
+  FEmitter   : Integer;
 end;
 
 { TMessageAnimation }
@@ -88,10 +88,11 @@ end;
 { TGFXParticleBurstAnimation }
 
 TGFXParticleBurstAnimation = class(TAnimation)
-  constructor Create( aDelay : DWord; aEmitterID : Word; aPosition : TCoord2D;
+  constructor Create( aParticles : TParticleStore; aDelay : DWord; aEmitterID : Word; aPosition : TCoord2D;
     aDirection : TDirection; aCount : Word; aDistanceScale, aSpreadScale : Single );
   procedure OnStart; override;
 private
+  FParticles     : TParticleStore;
   FEmitterID     : Word;
   FPosition      : TCoord2D;
   FDirection     : TDirection;
@@ -222,7 +223,7 @@ implementation
 
 uses viotypes, vlog, vdebug,
      dfbeing, dfthing,
-     drlbase, drlgfxio, drlio, drlspritemap, drlparticles;
+     drlgfxio, drlio, drlspritemap;
 
 { TGFXMissileAnimation }
 
@@ -247,14 +248,14 @@ begin
   if FHeading < 0 then FHeading := FHeading + 2*PI;
 
   if ( aTrailNID > 0 ) and ( not aRay ) then
-    FEmitter := DRL.Particles.AddEmitterDirect( aTrailNID,
+    FEmitter := FLevel.Particles.AddEmitterDirect( aTrailNID,
       Vec3f( FSource.X / SpriteMap.Engine.Scale, FSource.Y / SpriteMap.Engine.Scale, 0 ) );
 end;
 
 destructor TGFXMissileAnimation.Destroy;
 begin
-  if ( FEmitter >= 0 ) and ( DRL.Particles.Engine <> nil ) then
-    DRL.Particles.Engine.EmitStop( FEmitter );
+  if ( FEmitter >= 0 ) and ( FLevel.Particles.Engine <> nil ) then
+    FLevel.Particles.Engine.EmitStop( FEmitter );
   inherited Destroy;
 end;
 
@@ -285,9 +286,9 @@ begin
 
   if ( not FRay ) and ( FEmitter >= 0 ) then
   begin
-    DRL.Particles.Engine.EmitSetPosition( FEmitter,
+    FLevel.Particles.Engine.EmitSetPosition( FEmitter,
       Vec3f( iPos.X / SpriteMap.Engine.Scale, iPos.Y / SpriteMap.Engine.Scale, 0 ) );
-    DRL.Particles.Engine.EmitSetSpriteRotation( FEmitter, ( FHeading + PI / 2 ) * 180 / PI );
+    FLevel.Particles.Engine.EmitSetSpriteRotation( FEmitter, ( FHeading + PI / 2 ) * 180 / PI );
   end;
 
   if ( not FLevel.isProperCoord( FPath.Current ) ) or (not FLevel.isVisible( FPath.Current ) ) then
@@ -414,11 +415,12 @@ end;
 
 { TGFXParticleBurstAnimation }
 
-constructor TGFXParticleBurstAnimation.Create( aDelay : DWord; aEmitterID : Word;
+constructor TGFXParticleBurstAnimation.Create( aParticles : TParticleStore; aDelay : DWord; aEmitterID : Word;
   aPosition : TCoord2D; aDirection : TDirection; aCount : Word;
   aDistanceScale, aSpreadScale : Single );
 begin
   inherited Create( 1, aDelay, 0 );
+  FParticles     := aParticles;
   FEmitterID     := aEmitterID;
   FPosition      := aPosition;
   FDirection     := aDirection;
@@ -431,9 +433,8 @@ end;
 procedure TGFXParticleBurstAnimation.OnStart;
 var iDirection : TVec2f;
 begin
-  if ( DRL = nil ) or ( DRL.Particles = nil ) then Exit;
   iDirection.Init( FDirection.X, FDirection.Y );
-  DRL.Particles.SpawnBurst( FEmitterID,
+  FParticles.SpawnBurst( FEmitterID,
     Vec3f( ( FPosition.X - 1 ) * 32 + 16, ( FPosition.Y - 1 ) * 32 + 16, 0 ),
     iDirection, FCount, HARDSPRITE_DECAL_BLOOD,
     NewFloatRange( 0.25 * FDistanceScale, FDistanceScale ),

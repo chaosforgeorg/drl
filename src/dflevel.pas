@@ -8,8 +8,8 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit dflevel;
 interface
 uses sysutils, classes,
-     vluagamestack, vluaentitynode, vutil, vvision, viotypes, vrltools, vnode, vluamapnode, vtextmap, vlua, vrandom,
-     dfdata, dfmap, dfthing, dfbeing, dfitem, drlhooks, drlperk, drlmarkers, drldecals;
+     vluagamestack, vluaentitynode, vutil, vvision, viotypes, vrltools, vnode, vluamapnode, vtextmap, vlua, vrandom, vvector, vparticleengine,
+     dfdata, dfmap, dfthing, dfbeing, dfitem, drlhooks, drlperk, drlmarkers, drldecals, drlparticles;
 
 const CellWalls   : TCellSet = [];
       CellFloors  : TCellSet = [];
@@ -21,6 +21,7 @@ type
 TLevel = class(TLuaMapNode, ITextMap)
     constructor Create( aContext : TNodeContext; aGameRNG : TRNG ); reintroduce;
     procedure Init( aStyle : byte; aName : Ansistring; aIndex : Integer; aDangerLevel : Word );
+    procedure InitializeParticles( aEmitters : TEmitterData; aEngine : TParticleEngine );
     procedure AfterGeneration;
     procedure PreEnter;
     procedure RecalcFluids;
@@ -126,6 +127,7 @@ TLevel = class(TLuaMapNode, ITextMap)
     function GetPerkShort( aID : Integer ) : AnsiString;
 
   private
+    procedure AddDecal( const aPosition : TVec3f; aDecalSprite : DWord );
     function CellToID( const aCell : Byte ) : AnsiString; override;
     function  getCell( const aWhere : TCoord2D ) : byte; override;
     procedure putCell( const aWhere : TCoord2D; const aWhat : byte ); override;
@@ -154,6 +156,7 @@ TLevel = class(TLuaMapNode, ITextMap)
 
     FMarkers       : TMarkerStore;
     FDecals        : TDecalStore;
+    FParticles     : TParticleStore;
     FPerks         : TPerks;
   private
     function getCellBottom( Index : TCoord2D ): Byte;
@@ -166,15 +169,16 @@ TLevel = class(TLuaMapNode, ITextMap)
     function getSpriteTop( Index : TCoord2D ): TSprite;
     function getSpriteBottom( Index : TCoord2D ): TSprite;
   public
-    property Markers : TMarkerStore                 read FMarkers;
-    property Decals  : TDecalStore                  read FDecals;
+    property Markers   : TMarkerStore               read FMarkers;
+    property Particles : TParticleStore             read FParticles;
+    property Decals    : TDecalStore                read FDecals;
     property AccuracyBonus : Integer                read FAccuracyBonus;
     property Item     [ Index : TCoord2D ] : TItem  read getItem;
     property Being    [ Index : TCoord2D ] : TBeing read getBeing;
     property CellBottom [ Index : TCoord2D ] : Byte read getCellBottom;
     property CellTop    [ Index : TCoord2D ] : Byte read getCellTop;
     property CStyle   [ Index : TCoord2D ] : Byte   read getStyle;
-    property FlrStyle [ Index : TCoord2D ] : Byte    read getFStyle;
+    property FlrStyle [ Index : TCoord2D ] : Byte   read getFStyle;
     property Deco     [ Index : TCoord2D ] : Byte   read getDeco;
     property Floor    [ Index : TCoord2D ] : Byte   read getFloorCell;
     property Rotation [ Index : TCoord2D ] : Byte   read getRotation;
@@ -452,6 +456,7 @@ begin
 
   FMarkers     := TMarkerStore.CreateFromStream( aStream );
   FDecals      := TDecalStore.CreateFromStream( aStream );
+  FParticles   := TParticleStore.Create( FContext.UIDs );
   FPerks       := TPerks.CreateFromStream( aStream, Self );
 
   FActiveBeing := nil;
@@ -509,10 +514,31 @@ begin
   Assert( dfdata.EF_NOITEMS  = vluamapnode.EF_NOITEMS );
   Assert( dfdata.EF_NOBEINGS = vluamapnode.EF_NOBEINGS );
 
-  FMarkers := TMarkerStore.Create;
-  FDecals  := TDecalStore.Create;
-  FPerks   := TPerks.Create( Self );
-  FIndex   := 0;
+  FMarkers   := TMarkerStore.Create;
+  FDecals    := TDecalStore.Create;
+  FParticles := TParticleStore.Create( FContext.UIDs );
+  FPerks     := TPerks.Create( Self );
+  FIndex     := 0;
+end;
+
+procedure TLevel.InitializeParticles( aEmitters : TEmitterData; aEngine : TParticleEngine );
+begin
+  FParticles.Initialize( aEmitters, aEngine );
+  if aEngine <> nil then aEngine.DecalCallback := @AddDecal;
+end;
+
+procedure TLevel.AddDecal( const aPosition : TVec3f; aDecalSprite : DWord );
+var iPos   : TVec2i;
+    iCoord : TCoord2D;
+begin
+  iCoord := NewCoord2D( ( Round( aPosition.X ) + 16 ) div 32,
+    ( Round( aPosition.Y ) + 16 ) div 32 );
+  if not isProperCoord( iCoord ) then Exit;
+  if cellFlagSet( iCoord, CF_LIQUID ) then Exit;
+  if cellFlagSet( iCoord, CF_BLOCKMOVE ) then Exit;
+  iPos.X := Round( aPosition.X ) + 16;
+  iPos.Y := Round( aPosition.Y ) + 16;
+  FDecals.Add( iPos, aDecalSprite );
 end;
 
 procedure TLevel.Init( aStyle : Byte; aName : Ansistring; aIndex : Integer; aDangerLevel : Word );
@@ -686,6 +712,7 @@ begin
   FMarkers.Clear;
   FDecals.Clear;
   FPerks.Clear;
+  FParticles.Clear;
 end;
 
 procedure TLevel.FullClear;
@@ -895,7 +922,10 @@ end;
 
 destructor TLevel.Destroy;
 begin
+  // Stop effects before entity destruction; no bindings survive level destruction.
+  FParticles.Reset;
   Clear;
+  FreeAndNil( FParticles );
   FreeAndNil( FMarkers );
   FreeAndNil( FDecals );
   FreeAndNil( FPerks );
@@ -903,6 +933,7 @@ begin
 end;
 
 function TLevel.DropItem( aItem : TItem; aCoord : TCoord2D; aNoHazard : Boolean; aDropAnim : Boolean ) : Boolean;
+var iParent : TNode;
 begin
   DropItem := true;
   if aItem = nil then Exit;
@@ -910,10 +941,11 @@ begin
     then aCoord := DropCoord( aCoord, [ EF_NOITEMS,EF_NOBLOCK,EF_NOHARM,EF_NOSTAIRS ], True )
     else aCoord := DropCoord( aCoord, [ EF_NOITEMS,EF_NOBLOCK,EF_NOSTAIRS ], True );
 
-  aItem.CallHook( Hook_OnDrop, [aItem.Parent] );
+  iParent := aItem.Parent;
 
   if aDropAnim and isVisible( aCoord ) then aItem.Appear := 1;
   Add( aItem, aCoord );
+  aItem.CallHook( Hook_OnDrop, [iParent] );
 
   if cellFlagSet(aCoord,CF_HAZARD) then
   begin
@@ -1277,7 +1309,7 @@ begin
     SetBeing( aBeing.Position, nil );
 
   FMarkers.Wipe( aBeing.UID );
-  DRL.Particles.Kill( aBeing.UID );
+  FParticles.Kill( aBeing.UID );
   FreeAndNil(aBeing);
   if DRL.State <> DSPlaying then Exit;
   UpdateKillState;

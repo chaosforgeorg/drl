@@ -8,7 +8,9 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlapplication;
 interface
 
-uses sysutils, vapp, viorl, vlua, vrlapp, vstoreinterface, vutil, vioevent, drlbase, drlmodule;
+uses sysutils,
+     vapp, viorl, vlua, vrlapp, vstoreinterface, vutil, vioevent,
+     drlbase, drlmodule, drlparticles;
 
 type
   TDRLApplication = class;
@@ -23,6 +25,7 @@ type TDRLRuntime = class( TRLRuntime )
     FSession     : TDRLSession;
     FModules     : TDRLModules;
     FStore       : TStoreInterface;
+    FEmitters    : TEmitterData;
     FModuleHooks : TFlags;
     FDataLoaded  : Boolean;
     procedure ApplyConfiguration;
@@ -179,7 +182,7 @@ end;
 
 procedure TDRLRuntime.CreateSession( aInitializeData : Boolean );
 begin
-  FSession := TDRLSession.Create( Self, FModules, FStore, Paths );
+  FSession := TDRLSession.Create( Self, FModules, FStore, FEmitters, Paths );
   TDRLIO(IO).Session := FSession;
   drlbase.DRL := FSession;
   if not aInitializeData then Exit;
@@ -217,6 +220,7 @@ begin
     CreateDir(iModulePath + 'backup');
 
   FModules.ActivateModules(CoreModuleID);
+  FEmitters := TEmitterData.Create;
   CreateSession( False );
   TDRLIO(IO).Initialize;
   TDRLIO(IO).LoadStart;
@@ -275,6 +279,7 @@ begin
   if GodMode and FileExists(Paths.WritePath + 'god.lua') then
     FLua.LoadFile(Paths.WritePath + 'god.lua');
   HOF.Init( FLua, Paths );
+  FEmitters.Load( FLua );
   FSession.InitializeLevel;
 
   HARDSPRITE_HIGHLIGHT    := FLua.Get('HARDSPRITE_HIGHLIGHT');
@@ -394,9 +399,8 @@ end;
 
 procedure TDRLRuntime.UnloadGameData;
 begin
+  FreeAndNil( FEmitters );
   if not FDataLoaded then Exit;
-  if Assigned(IO) then
-    TDRLIO(IO).ClearAnimations;
   FDataLoaded := False;
   HOF.Done;
   FreeAndNil(Help);

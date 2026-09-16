@@ -44,7 +44,7 @@ type TDRLSessionResult = ( DSR_Quit, DSR_Played, DSR_ReloadData );
 // and data-generation policy belongs to TDRLRuntime.
 type TDRLSession = class(TVObject)
        constructor Create( aRuntime : TRLRuntime; aModules : TDRLModules;
-         aStore : TStoreInterface; const aPaths : TGamePaths );
+         aStore : TStoreInterface; aEmitters : TEmitterData; const aPaths : TGamePaths );
        procedure InitializeLevel;
        procedure Reset;
        procedure Reconfigure;
@@ -111,7 +111,7 @@ type TDRLSession = class(TVObject)
        FReloadData      : Boolean;
        FGameWon         : Boolean;
        FCrashSave       : Boolean;
-       FParticles       : TParticleStore;
+       FEmitters        : TEmitterData;
        FGameSeed        : Cardinal;
        FSeededGame      : Boolean;
        FRuntime         : TRLRuntime;
@@ -130,7 +130,6 @@ type TDRLSession = class(TVObject)
        property State : TDRLState read FState;
        property Targeting : TTargeting read FTargeting;
        property DamagedLastTurn : Boolean read FDamagedLastTurn write FDamagedLastTurn;
-       property Particles : TParticleStore read FParticles;
        property GameSeed : Cardinal read FGameSeed;
        property SeededGame : Boolean read FSeededGame;
        property DataReloadRequired : Boolean read FReloadData;
@@ -261,7 +260,7 @@ begin
 end;
 
 constructor TDRLSession.Create( aRuntime : TRLRuntime; aModules : TDRLModules;
-  aStore : TStoreInterface; const aPaths : TGamePaths );
+  aStore : TStoreInterface; aEmitters : TEmitterData; const aPaths : TGamePaths );
 begin
   FRuntime := aRuntime;
   FContext := TNodeContext.Create( aRuntime.Lua, nil );
@@ -269,11 +268,9 @@ begin
   FStore := aStore;
   FPaths := aPaths;
   FGameSeed := 0;
-  FParticles := TParticleStore.Create;
+  FEmitters := aEmitters;
   FTargeting := TTargeting.Create(Self);
   Reset;
-  if GraphicsVersion then
-    FParticles.Initialize( TDRLGFXIO(IO).ParticleEngine );
 end;
 
 procedure TDRLSession.InitializeLevel;
@@ -285,7 +282,10 @@ end;
 procedure TDRLSession.SetLevel( aLevel : TLevel );
 begin
   FLevel := aLevel;
-  FParticles.SetLevel( aLevel );
+  if GraphicsVersion
+    then FLevel.InitializeParticles( FEmitters, TDRLGFXIO(IO).ParticleEngine )
+    else FLevel.InitializeParticles( FEmitters, nil );
+  FContext.Lua.SetValue( 'level', FLevel );
   IO.SetLevel( aLevel );
 end;
 
@@ -294,9 +294,7 @@ begin
   if FLevel = nil then Exit;
   // Animation destructors still need the outgoing level and its bindings.
   IO.ClearAnimations;
-  FParticles.Clear;
   IO.SetLevel( nil );
-  FParticles.SetLevel( nil );
   FreeAndNil( FLevel );
 end;
 
@@ -341,8 +339,6 @@ begin
   FLastInputTime   := 0;
   FPlayerView      := nil;
   FPadMoveActive   := False;
-
-  FParticles.Clear;
 end;
 
 procedure TDRLSession.Apply ( aResult : TMenuResult ) ;
@@ -1307,7 +1303,6 @@ begin
 
   FContext.Lua.SetValue('GAME_SEED', FGameSeed);
   IO.SetSeed( FGameSeed );
-  FContext.Lua.SetValue('level', Level );
 
   if (not (State in [DSLoading, DSCrashLoading])) then
     CallHookCheck( Hook_OnIntro, [Setting_NoIntro] );
@@ -1448,7 +1443,6 @@ begin
       Player.Score := Player.Score + 1000;
       if FGameWon and (State <> DSNextLevel) then Player.WriteMemorial;
       FLevel.Clear;
-      FParticles.ClearParticles;
     end;
     IO.SetHint('');
   until (State <> DSNextLevel);
@@ -1524,10 +1518,12 @@ var iTraitID : AnsiString;
     iTrait   : Byte;
 begin
   FreeAndNil( Player );
+  FLevel.Particles.BindUIDs( nil );
   FContext.BindUIDs( nil );
   FContext.Lua.Context.BindUIDs( nil );
   FreeAndNil( FUIDStore );
   FUIDStore := TUIDStore.Create;
+  FLevel.Particles.BindUIDs( FUIDStore );
   FContext.BindUIDs( FUIDStore );
   FContext.Lua.Context.BindUIDs( FUIDStore );
   Player := TPlayer.Create( FContext, GameRNG );
@@ -1587,10 +1583,12 @@ begin
 
       IO.ClearAnimations;
       FreeAndNil( Player );
+      FLevel.Particles.BindUIDs( nil );
       FContext.BindUIDs( nil );
       FContext.Lua.Context.BindUIDs( nil );
       FreeAndNil( FUIDStore );
       FUIDStore        := TUIDStore.CreateFromStream( iStream );
+      FLevel.Particles.BindUIDs( FUIDStore );
       FContext.BindUIDs( FUIDStore );
       FContext.Lua.Context.BindUIDs( FUIDStore );
       FGameWon         := iStream.ReadByte <> 0;
@@ -1620,8 +1618,7 @@ begin
         iRecreate := True;
         SetLevel( TLevel.CreateFromStream( iStream, FContext, GameRNG ) );
         FLevel.Place( Player, Player.Position );
-        FContext.Lua.SetValue('level', FLevel );
-        FParticles.ReadFromStream( iStream );
+        FLevel.Particles.ReadFromStream( iStream );
       end;
     finally
       FreeAndNil( iGameRNG );
@@ -1704,7 +1701,7 @@ begin
   if not aCrash then
   begin
     FLevel.WriteToStream( Stream );
-    FParticles.WriteToStream( Stream );
+    FLevel.Particles.WriteToStream( Stream );
   end;
 
   FreeAndNil( Stream );
@@ -1721,10 +1718,8 @@ end;
 destructor TDRLSession.Destroy;
 begin
   ReleaseLevel;
-  FParticles.Initialize( nil );
   FreeAndNil( Player );
   FreeAndNil( FTargeting );
-  FreeAndNil( FParticles );
   // The initial Session shell can be destroyed before Lua has been created.
   if FContext.Lua <> nil then
   begin

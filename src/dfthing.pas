@@ -8,7 +8,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit dfthing;
 interface
 uses sysutils, classes,
-     vluagamestack, vluaentitynode, vrltools, vluatable, vvector, vlua, vnode,
+     vluagamestack, vluaentitynode, vluamapnode, vrltools, vluatable, vvector, vlua, vnode,
      dfdata, drlhooks, drlperk;
 
 type String16 = string[16];
@@ -26,6 +26,7 @@ type TThing = class( TLuaEntityNode )
   function GetBonus( aHook : Byte; const aParams : array of Const ) : Integer; virtual;
   function GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single; virtual;
   function GetSprite : TSprite; virtual;
+  function GetLevel : TLuaMapNode;
   function GetDrawPosition : TVec2i;
   function GetPerkList : TPerkList;
   function GetPerkShort( aID : Integer ) : AnsiString;
@@ -61,7 +62,9 @@ end;
 
 implementation
 
-uses typinfo, variants, vdebug, vtig, drlbase, drlio, drllua, drlspritemap;
+uses typinfo, variants,
+     vdebug, vtig,
+     dflevel, drlbase, drlio, drllua, drlspritemap;
 
 constructor TThing.Create( const aID : AnsiString; aContext : TNodeContext );
 begin
@@ -168,6 +171,15 @@ begin
   Exit(FSprite);
 end;
 
+function TThing.GetLevel : TLuaMapNode;
+var iNode : TNode;
+begin
+  iNode := Parent;
+  while ( iNode <> nil ) and ( not ( iNode is TLuaMapNode ) ) do
+    iNode := iNode.Parent;
+  Result := TLuaMapNode( iNode );
+end;
+
 function TThing.GetDrawPosition : TVec2i;
 var iSize : Word;
 begin
@@ -257,8 +269,6 @@ end;
 
 destructor TThing.Destroy;
 begin
-  if Assigned( DRL ) and Assigned( DRL.Particles ) then
-    DRL.Particles.Wipe( UID );
   FreeAndNil( FPerks );
   inherited Destroy;
 end;
@@ -321,24 +331,42 @@ begin
   Result := 0;
 end;
 
-function lua_thing_add_emitter(L: Plua_State): Integer; cdecl;
+function lua_thing_add_emitter( L : PLua_State ) : Integer; cdecl;
 var iState : TLuaGameStack;
     iThing : TThing;
+    iLevel : TLevel;
+    iNID   : Integer;
 begin
-  iState.Init(L);
-  iThing := iState.ToObject(1) as TThing;
-  iState.Push( DRL.Particles.AddEmitter( iState.ToId( iThing.Context.Lua, 2 ), iThing.UID,
+  iState.Init( L );
+  iThing := iState.ToObject( 1 ) as TThing;
+  iNID   := iState.ToId( iThing.Context.Lua, 2 );
+  iLevel := TLevel( iThing.GetLevel );
+  if iLevel = nil then
+  begin
+    iState.Push( False );
+    Exit( 1 );
+  end;
+  iState.Push( iLevel.Particles.AddEmitter( iNID, iThing.UID,
     Vec3f( ( iThing.Position.X - 1 ) * 32 + 16, ( iThing.Position.Y - 1 ) * 32 + 16, 0 ) ) );
   Result := 1;
 end;
 
-function lua_thing_remove_emitter(L: Plua_State): Integer; cdecl;
+function lua_thing_remove_emitter( L : PLua_State ) : Integer; cdecl;
 var iState : TLuaGameStack;
     iThing : TThing;
+    iLevel : TLevel;
+    iNID   : Integer;
 begin
-  iState.Init(L);
-  iThing := iState.ToObject(1) as TThing;
-  iState.Push( DRL.Particles.RemoveEmitter( iState.ToId( iThing.Context.Lua, 2 ), iThing.UID ) );
+  iState.Init( L );
+  iThing := iState.ToObject( 1 ) as TThing;
+  iNID   := iState.ToId( iThing.Context.Lua, 2 );
+  iLevel := TLevel( iThing.GetLevel );
+  if iLevel = nil then
+  begin
+    iState.Push( False );
+    Exit( 1 );
+  end;
+  iState.Push( iLevel.Particles.RemoveEmitter( iNID, iThing.UID ) );
   Result := 1;
 end;
 
