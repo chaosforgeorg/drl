@@ -71,6 +71,8 @@ type TDRLSession = class(TVObject)
        function HandlePickupCommand( aAlt : Boolean ) : Boolean;
        procedure ResetAutoTarget;
      private
+       procedure SetLevel( aLevel : TLevel );
+       procedure ReleaseLevel;
        procedure Apply( aResult : TMenuResult );
        function HandleMouseEvent( aEvent : TIOEvent ) : Boolean;
        function HandleKeyEvent( aEvent : TIOEvent ) : Boolean;
@@ -143,7 +145,7 @@ implementation
 
 uses {$IFDEF WINDOWS}windows,{$ELSE}unix,{$ENDIF} classes, sysutils, zstream,
      vbindings, vdebug, vstream,
-     dfmap, dfbeing, drlio, drlgfxio, drltextio, drlspritemap { remove }, drlplayerview, drlingamemenuview, drlhelpview, drlhelp, drlassemblyview, drlpagedview, drlrankupview, drlmainmenuview, drlhudviews, drlmessagesview, drlapplication, drlcontrollerbindings, dfplayer;
+     dfmap, dfbeing, drlio, drlgfxio, drlspritemap { remove }, drlplayerview, drlingamemenuview, drlhelpview, drlhelp, drlassemblyview, drlpagedview, drlrankupview, drlmainmenuview, drlhudviews, drlmessagesview, drlapplication, drlcontrollerbindings, dfplayer;
 
 const PAD_REPEAT_START = 400;
       PAD_REPEAT       = 100;
@@ -277,7 +279,25 @@ end;
 procedure TDRLSession.InitializeLevel;
 begin
   Assert( FLevel = nil );
-  FLevel := TLevel.Create;
+  SetLevel( TLevel.Create );
+end;
+
+procedure TDRLSession.SetLevel( aLevel : TLevel );
+begin
+  FLevel := aLevel;
+  FParticles.SetLevel( aLevel );
+  IO.SetLevel( aLevel );
+end;
+
+procedure TDRLSession.ReleaseLevel;
+begin
+  if FLevel = nil then Exit;
+  // Animation destructors still need the outgoing level and its bindings.
+  IO.ClearAnimations;
+  FParticles.Clear;
+  IO.SetLevel( nil );
+  FParticles.SetLevel( nil );
+  FreeAndNil( FLevel );
 end;
 
 function TDRLSession.GetGameRNG : TRNG;
@@ -298,7 +318,7 @@ end;
 
 procedure TDRLSession.Reset;
 begin
-  FreeAndNil( FLevel );
+  ReleaseLevel;
 
   SetState( DSStart );
   FTargeting.Clear;
@@ -708,7 +728,7 @@ begin
     if iRange = 0 then iRange := Player.Vision;
     if iRange <> Player.Vision then
       FTargeting.Update( iRange );
-    IO.PushLayer( TTargetModeView.Create( iItem, iCommand, iFireTitle, iRange+1, iLimitRange, FTargeting.List ) );
+    IO.PushLayer( TTargetModeView.Create( FLevel, iItem, iCommand, iFireTitle, iRange+1, iLimitRange, FTargeting.List ) );
     Exit( False );
   end;
 
@@ -735,7 +755,7 @@ begin
   if iRange <> Player.Vision then
     FTargeting.Update( iRange );
   iLimitRange := aItem.Flags[ IF_EXACTHIT ];
-  IO.PushLayer( TTargetModeView.Create( aItem, COMMAND_USE, 'Choose target:', iRange+1, iLimitRange, FTargeting.List ) );
+  IO.PushLayer( TTargetModeView.Create( FLevel, aItem, COMMAND_USE, 'Choose target:', iRange+1, iLimitRange, FTargeting.List ) );
   Exit( False );
 end;
 
@@ -1137,7 +1157,7 @@ begin
       INPUT_ESCAPE     : begin ResetAutoTarget; IO.PushLayer( TInGameMenuView.Create ); Exit; end;
       INPUT_QUIT       : begin IO.PushLayer( TAbandonView.Create ); Exit; end;
       INPUT_HELP       : begin IO.PushLayer( THelpView.Create( IO, FContext.Lua, Help, CoreModuleID ) ); Exit; end;
-      INPUT_LOOKMODE   : begin IO.PushLayer( TLookModeView.Create ); Exit; end;
+      INPUT_LOOKMODE   : begin IO.PushLayer( TLookModeView.Create( FLevel ) ); Exit; end;
       INPUT_PLAYERINFO : begin FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_CHARACTER ) ); Exit; end;
       INPUT_INVENTORY  : begin FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_INVENTORY ) ); Exit; end;
       INPUT_EQUIPMENT  : begin FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_EQUIPMENT ) ); Exit; end;
@@ -1565,6 +1585,7 @@ begin
       SaveVersionModule := '';
       SaveModString     := '';
 
+      IO.ClearAnimations;
       FreeAndNil( Player );
       FContext.BindUIDs( nil );
       FContext.Lua.Context.BindUIDs( nil );
@@ -1594,9 +1615,9 @@ begin
 
       if not FCrashSave then
       begin
-        FreeAndNil( FLevel );
+        ReleaseLevel;
         iRecreate := True;
-        FLevel := TLevel.CreateFromStream( iStream );
+        SetLevel( TLevel.CreateFromStream( iStream ) );
         FLevel.Place( Player, Player.Position );
         FContext.Lua.SetValue('level', FLevel );
         FParticles.ReadFromStream( iStream );
@@ -1621,13 +1642,11 @@ begin
       LoadSaveFile := False;
       if iRecreate then
       begin
-        FreeAndNil( FLevel );
-        FLevel := TLevel.Create;
+        ReleaseLevel;
+        SetLevel( TLevel.Create );
       end;
     end;
   end;
-  if not GraphicsVersion then
-    (IO as TDRLTextIO).SetTextMap( FLevel );
 end;
 
 // TODO: cleanup and remove
@@ -1700,8 +1719,8 @@ end;
 
 destructor TDRLSession.Destroy;
 begin
+  ReleaseLevel;
   FParticles.Initialize( nil );
-  FreeAndNil( FLevel );
   FreeAndNil( Player );
   FreeAndNil( FTargeting );
   FreeAndNil( FParticles );

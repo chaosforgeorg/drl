@@ -7,8 +7,8 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlgfxio;
 interface
 uses vglquadrenderer, vgltypes, vluaconfig, vioevent, viotypes, vimage,
-     vrltools, vutil, vtextures, vvector, vbitmapfont, vio, vparticleengine,
-     drlio, drlspritemap, drlanimation, drlminimap, dfdata, dfthing;
+     vrltools, vutil, vtextures, vvector, vbitmapfont, vio, vparticleengine, vluamapnode,
+     drlio, drlspritemap, drlanimation, drlminimap, dfdata, dfthing, dflevel;
 
 type
 
@@ -20,6 +20,7 @@ type
  TDRLGFXIO = class( TDRLIO )
     constructor Create; reintroduce;
     procedure Reset; override;
+    procedure SetLevel( aLevel : TLuaMapNode ); override;
     procedure Initialize; override;
     procedure Reconfigure( aConfig : TLuaConfig ); override;
     procedure Configure( aConfig : TLuaConfig; aReload : Boolean ); override; overload;
@@ -147,8 +148,7 @@ uses {$IFDEF WINDOWS}windows,{$ENDIF}
      vdebug, vlog, vmath, vdf, vgl3library, vuid, vvision, vrandom,
      vglimage, vsdlio, vcolor, vglconsole, vioconsole,
      vtig, vtigstyle, vtigio,
-     dfplayer, dfitem, dflevel,
-     drlbase, drlconfiguration, drlcontrollerbindings, drlmodule;
+     dfplayer, dfitem, drlbase, drlconfiguration, drlcontrollerbindings, drlmodule;
 
 
 procedure TDRLGFXIO.RecalculateScaling( aInitialize : Boolean );
@@ -384,6 +384,7 @@ begin
   iHeight := Configuration.GetInteger('screen_height');
   iOpacity:= Configuration.GetInteger( 'minimap_opacity' );
   FMinimap.SetOpacity( iOpacity );
+  UpdateMinimap;
 
   if ( ( iWidth > 0 ) and ( iWidth <> FIODriver.GetSizeX ) ) or
      ( ( iHeight > 0 ) and ( iHeight <> FIODriver.GetSizeY ) ) or
@@ -463,14 +464,14 @@ begin
           then Animations.Delete( iCount )
           else Inc( iCount );
       until iCount >= Animations.Size;
-  FAnimations.AddAnimation(TGFXMoveAnimation.Create(aDuration, aDelay, aUID, aFrom, aTo, aSprite, aBeing ));
+  FAnimations.AddAnimation(TGFXMoveAnimation.Create( TLevel( FLevel ), aDuration, aDelay, aUID, aFrom, aTo, aSprite, aBeing ));
 end;
 
 procedure TDRLGFXIO.addBumpAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aAmount : Single );
 begin
   if Session.State <> DSPlaying then Exit;
-  FAnimations.AddAnimation(TGFXBumpAnimation.Create(aDuration, aDelay, aUID, aFrom, aTo, aSprite, True, aAmount ));
-  FAnimations.AddAnimation(TGFXBumpAnimation.Create(aDuration, aDelay, aUID, aTo, aFrom, aSprite, True, -aAmount ));
+  FAnimations.AddAnimation(TGFXBumpAnimation.Create( TLevel( FLevel ), aDuration, aDelay, aUID, aFrom, aTo, aSprite, True, aAmount ));
+  FAnimations.AddAnimation(TGFXBumpAnimation.Create( TLevel( FLevel ), aDuration, aDelay, aUID, aTo, aFrom, aSprite, True, -aAmount ));
 end;
 
 function TDRLGFXIO.getUIDPosition( aUID : TUID; var aPosition : TVec2i ) : Boolean;
@@ -496,7 +497,7 @@ end;
 procedure TDRLGFXIO.addCellAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aValue : Integer );
 begin
   if Session.State <> DSPlaying then Exit;
-  FAnimations.addAnimation( TGFXCellAnimation.Create( aDuration, aDelay, aCoord, aSprite, aValue ) );
+  FAnimations.addAnimation( TGFXCellAnimation.Create( TLevel( FLevel ), aDuration, aDelay, aCoord, aSprite, aValue ) );
 end;
 
 procedure TDRLGFXIO.addItemAnimation( aDuration : DWord; aDelay : DWord; aItem : TThing; aValue : Integer );
@@ -509,7 +510,7 @@ procedure TDRLGFXIO.addKillAnimation( aDuration : DWord; aDelay : DWord; aBeing 
 begin
   if Session.State <> DSPlaying then Exit;
   if SF_PAINANIM in aBeing.Sprite.Flags then
-    FAnimations.addAnimation( TGFXKillAnimation.Create( aDuration, aDelay, aBeing.UID, aReverse ) );
+    FAnimations.addAnimation( TGFXKillAnimation.Create( TLevel( FLevel ), aDuration, aDelay, aBeing.UID, aReverse ) );
 end;
 
 
@@ -519,7 +520,7 @@ procedure TDRLGFXIO.addMissileAnimation(aDuration: DWord; aDelay: DWord; aSource
 begin
   if Session.State <> DSPlaying then Exit;
   FAnimations.addAnimation(
-    TGFXMissileAnimation.Create( aDuration, aDelay, aSource,
+    TGFXMissileAnimation.Create( TLevel( FLevel ), aDuration, aDelay, aSource,
       aTarget, aDrawDelay, aSprite, aRay, aTrailNID ) );
 end;
 
@@ -1114,9 +1115,16 @@ begin
   Result := inherited PushLayer( aLayer );
 end;
 
+procedure TDRLGFXIO.SetLevel( aLevel : TLuaMapNode );
+begin
+  inherited SetLevel( aLevel );
+  SpriteMap.SetLevel( TLevel( aLevel ) );
+end;
+
 procedure TDRLGFXIO.UpdateMinimap;
 begin
-  FMinimap.Redraw;
+  if ( FSession <> nil ) and ( FSession.State = DSPlaying ) then
+    FMinimap.Redraw( TLevel( FLevel ) );
 end;
 
 procedure TDRLGFXIO.SetMinimapScale ( aScale : Byte ) ;
@@ -1126,7 +1134,7 @@ begin
     FIODriver.GetSizeX - aScale*(MAXX+2) - 10,
     FIODriver.GetSizeY - aScale*(MAXY+2) - ( 10 + FFontMult*20*3 )
   ) );
-  FMinimap.Redraw;
+  UpdateMinimap;
 end;
 
 procedure TDRLGFXIO.DeviceChanged;

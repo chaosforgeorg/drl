@@ -7,9 +7,9 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlanimation;
 interface
 uses
-  Classes, SysUtils, math,
+  classes, sysutils, math,
   vnode, vutil, vcolor, vmath, vvector, vrltools, vvision, vanimation,
-  dfdata;
+  dfdata, dflevel;
 
 type TAnimation        = vanimation.TAnimation;
      TAnimationManager = vanimation.TAnimations;
@@ -17,11 +17,12 @@ type TAnimation        = vanimation.TAnimation;
 { TGFXMissileAnimation }
 
 TGFXMissileAnimation = class(TAnimation)
-  constructor Create( aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False; aTrailNID : Word = 0 );
+  constructor Create( aLevel : TLevel; aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False; aTrailNID : Word = 0 );
   procedure OnUpdate( aTime : DWord ); override;
   procedure OnDraw; override;
   destructor Destroy; override;
 private
+  FLevel    : TLevel;
   FSource   : TVec2i;
   FTarget   : TVec2i;
   FPath     : TVisionRay;
@@ -122,7 +123,7 @@ end;
 { TGFXMoveAnimation }
 
 TGFXMoveAnimation = class(TAnimation)
-  constructor Create( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aPartial : Single = 0.0 );
+  constructor Create( aLevel : TLevel; aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aPartial : Single = 0.0 );
   procedure OnStart; override;
   procedure OnDraw; override;
   destructor Destroy; override;
@@ -157,11 +158,12 @@ end;
 
 
 TGFXCellAnimation = class(TAnimation)
-  constructor Create( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aValue : Integer );
+  constructor Create( aLevel : TLevel; aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aValue : Integer );
   procedure OnStart; override;
   procedure OnDraw; override;
   destructor Destroy; override;
 private
+  FLevel    : TLevel;
   FSprite   : TSprite;
   FCoord    : TCoord2D;
   FValue    : Integer;
@@ -179,11 +181,12 @@ private
 end;
 
 TGFXKillAnimation = class(TAnimation)
-  constructor Create( aDuration : DWord; aDelay : DWord; aUID : TUID; aReverse : Boolean = False );
+  constructor Create( aLevel : TLevel; aDuration : DWord; aDelay : DWord; aUID : TUID; aReverse : Boolean = False );
   procedure OnStart; override;
   procedure OnDraw; override;
   destructor Destroy; override;
 private
+  FLevel      : TLevel;
   FSprite     : TSprite;
   FLight      : Byte;
   FPosition   : TVec2i;
@@ -221,12 +224,13 @@ uses viotypes, vuid, vlog, vdebug,
 
 { TGFXMissileAnimation }
 
-constructor TGFXMissileAnimation.Create(aDuration : DWord; aDelay : DWord; aSource, aTarget: TCoord2D; aDrawDelay: Word; aSprite : TSprite;
-  aRay: Boolean; aTrailNID : Word);
+constructor TGFXMissileAnimation.Create( aLevel : TLevel; aDuration : DWord; aDelay : DWord; aSource, aTarget: TCoord2D; aDrawDelay: Word; aSprite : TSprite;
+  aRay : Boolean; aTrailNID : Word );
 var iSize : Word;
 begin
   inherited Create( aDuration, aDelay, 0 );
-  FPath.Init(DRL.Level,aSource,aTarget);
+  FLevel := aLevel;
+  FPath.Init( FLevel, aSource, aTarget );
   FSprite := aSprite;
   FStepDelay := Max( FDuration div Max( ( aSource - aTarget ).LargerLength, 1 ), 1 );
   FRay    := aRay;
@@ -284,7 +288,7 @@ begin
     DRL.Particles.Engine.EmitSetSpriteRotation( FEmitter, ( FHeading + PI / 2 ) * 180 / PI );
   end;
 
-  if ( not DRL.Level.isProperCoord( FPath.Current ) ) or (not DRL.Level.isVisible( FPath.Current ) ) then
+  if ( not FLevel.isProperCoord( FPath.Current ) ) or (not FLevel.isVisible( FPath.Current ) ) then
     Exit;
   if FRay then
   begin
@@ -468,7 +472,7 @@ end;
 
 { TGFXMoveAnimation }
 
-constructor TGFXMoveAnimation.Create ( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D;
+constructor TGFXMoveAnimation.Create ( aLevel : TLevel; aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D;
   aSprite : TSprite; aBeing : Boolean; aPartial : Single ) ;
 var iSize  : Word;
     iBeing : TThing;
@@ -482,12 +486,12 @@ begin
 
   if aBeing then
   begin
-    FLightStart := Iif( DRL.Level.isVisible(aFrom), SpriteMap.VariableLight( aFrom, 30 ), 0 );
-    FLightEnd   := Iif( DRL.Level.isVisible(aTo),   SpriteMap.VariableLight( aTo, 30 ), 0 );
+    FLightStart := Iif( aLevel.isVisible(aFrom), SpriteMap.VariableLight( aFrom, 30 ), 0 );
+    FLightEnd   := Iif( aLevel.isVisible(aTo),   SpriteMap.VariableLight( aTo, 30 ), 0 );
 
     iBeing := DRL.UIDs.Get( FUID ) as TThing;
 
-    if DRL.Level.Flags[ LF_BEINGSVISIBLE ] or iBeing.Flags[ BF_VISIBLE ] then
+    if aLevel.Flags[ LF_BEINGSVISIBLE ] or iBeing.Flags[ BF_VISIBLE ] then
     begin
       FLightStart := Max( FLightStart, 40 );
       FLightEnd   := Max( FLightEnd, 40 );
@@ -589,18 +593,19 @@ begin
   inherited Destroy;
 end;
 
-constructor TGFXCellAnimation.Create( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aValue : Integer );
+constructor TGFXCellAnimation.Create( aLevel : TLevel; aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aValue : Integer );
 begin
   inherited Create( aDuration, aDelay, 0 );
+  FLevel := aLevel;
   FCoord    := aCoord;
   FSprite   := aSprite;
   FValue    := aValue;
-  FRotation := DRL.Level.Rotation[ FCoord ];
+  FRotation := FLevel.Rotation[ FCoord ];
 end;
 
 procedure TGFXCellAnimation.OnStart;
 begin
-  DRL.Level.LightFlag[ FCoord, LFANIMATING ] := True;
+  FLevel.LightFlag[ FCoord, LFANIMATING ] := True;
 end;
 
 procedure TGFXCellAnimation.OnDraw;
@@ -631,8 +636,8 @@ end;
 
 destructor TGFXCellAnimation.Destroy;
 begin
-  if DRL.Level <> nil then
-    DRL.Level.LightFlag[ FCoord, LFANIMATING ] := False;
+  if FLevel <> nil then
+    FLevel.LightFlag[ FCoord, LFANIMATING ] := False;
   inherited Destroy;
 end;
 
@@ -685,12 +690,13 @@ begin
   inherited Destroy;
 end;
 
-constructor TGFXKillAnimation.Create( aDuration : DWord; aDelay : DWord; aUID : TUID; aReverse : Boolean = False );
+constructor TGFXKillAnimation.Create( aLevel : TLevel; aDuration : DWord; aDelay : DWord; aUID : TUID; aReverse : Boolean = False );
 var iBeing      : TBeing;
     iCols       : Integer;
     iPlayerHack : Integer;
 begin
   inherited Create( aDuration, aDelay, aUID );
+  FLevel := aLevel;
   FReverse := aReverse;
   FLeadDelay := 0;
   if not aReverse then
@@ -715,7 +721,7 @@ begin
     if iBeing.SpriteMod > 0 then iPlayerHack := 2;
   end;
   FPosition.Init( (iBeing.Position.X - 1)*SpriteMap.GetGridSize,(iBeing.Position.Y - 1)*SpriteMap.GetGridSize);
-  FLight      := Iif( DRL.Level.isVisible(iBeing.Position), SpriteMap.VariableLight( iBeing.Position, 30 ), 0 );
+  FLight      := Iif( FLevel.isVisible(iBeing.Position), SpriteMap.VariableLight( iBeing.Position, 30 ), 0 );
 
   iCols := DRL_COLS;
   if SF_LARGE in FSprite.Flags then iCols *= 2;
@@ -743,7 +749,7 @@ var iBeing : TBeing;
 begin
   iBeing := DRL.UIDs.Get( FUID ) as TBeing;
   if iBeing <> nil then iBeing.AnimCount := iBeing.AnimCount + 1;
-  DRL.Level.LightFlag[ FCoord, LFCORPSING ] := True;
+  FLevel.LightFlag[ FCoord, LFCORPSING ] := True;
 end;
 
 procedure TGFXKillAnimation.OnDraw;
@@ -785,8 +791,8 @@ begin
     iBeing := DRL.UIDs.Get( FUID ) as TBeing;
     if iBeing <> nil then iBeing.AnimCount := Max( 0, iBeing.AnimCount - 1 );
   end;
-  if DRL.Level <> nil then
-    DRL.Level.LightFlag[ FCoord, LFCORPSING ] := False;
+  if FLevel <> nil then
+    FLevel.LightFlag[ FCoord, LFCORPSING ] := False;
   inherited Destroy;
 end;
 constructor TGFXScreenShakeAnimation.Create( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection );

@@ -151,8 +151,12 @@ end;
 
 procedure TDRLRuntime.ReleaseSession;
 begin
-  // A failed run can leave animations referring to the outgoing Session.
-  if FSession <> nil then TDRLIO(IO).ClearAnimations;
+  // Views and animations must be released while their Session and level exist.
+  if FSession <> nil then
+  begin
+    IO.Clear;
+    TDRLIO(IO).ClearAnimations;
+  end;
   if TDRLIO(IO).Session = FSession then
     TDRLIO(IO).Session := nil;
   if drlbase.DRL = FSession then
@@ -181,8 +185,6 @@ begin
   if not aInitializeData then Exit;
   FSession.InitializeLevel;
   FSession.SetModuleHooks( FModuleHooks );
-  if not GraphicsVersion then
-    (IO as TDRLTextIO).SetTextMap( FSession.Level );
 end;
 
 // Phase order: select module and paths; create an initial session shell;
@@ -272,8 +274,6 @@ begin
     FLua.LoadFile(Paths.WritePath + 'god.lua');
   HOF.Init( FLua, Paths );
   FSession.InitializeLevel;
-  if not GraphicsVersion then
-    (IO as TDRLTextIO).SetTextMap(FSession.Level);
 
   HARDSPRITE_HIGHLIGHT    := FLua.Get('HARDSPRITE_HIGHLIGHT');
   HARDSPRITE_EXPL         := FLua.Get('HARDSPRITE_EXPL');

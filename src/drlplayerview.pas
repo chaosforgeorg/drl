@@ -116,7 +116,9 @@ end;
 
 implementation
 
-uses sysutils, math, variants, vutil, vtig, vtigio, vlua, dfplayer, drlcommand, drlbase, drlinventory, drlperk;
+uses sysutils, math, variants,
+     vutil, vtig, vtigio, vlua,
+     dfplayer, dflevel, drlcommand, drlbase, drlinventory, drlperk;
 
 constructor TPlayerView.Create( aInitialState : TPlayerViewState = PLAYERVIEW_INVENTORY );
 begin
@@ -918,7 +920,8 @@ begin
 end;
 
 procedure TPlayerView.ReadCharacter;
-var iKillRecord   : Integer;
+var iLevel        : TLevel;
+    iKillRecord   : Integer;
     iDodgeBonus   : Integer;
     iKnockMod     : Integer;
     iLeft, iULeft : DWord;
@@ -934,6 +937,7 @@ begin
   for i := Low( FCharacter ) to High( FCharacter ) do
     FreeAndNil( FCharacter[i] );
 
+  iLevel := TLevel( Player.Parent );
   FCTitle := Player.Context.Lua.Get([ 'diff', DRL.Difficulty, 'code' ]);
   if DRL.Challenge <> ''  then FCTitle += ' / ' + Player.Context.Lua.Get(['chal',DRL.Challenge,'abbr']);
   if DRL.SChallenge <> '' then FCTitle += ' + ' + Player.Context.Lua.Get(['chal',DRL.SChallenge,'abbr']);
@@ -1021,17 +1025,17 @@ begin
 
     // Section 1: Level
     FCharacter[1] := TStringGArray.Create;
-    FCharacter[1].Push( Format( '{!%s}', [ DRL.Level.Name ] ) );
-    iLeft  := DRL.Level.EnemiesLeft;
-    iULeft := DRL.Level.EnemiesLeft( True );
+    FCharacter[1].Push( Format( '{!%s}', [ iLevel.Name ] ) );
+    iLeft  := iLevel.EnemiesLeft;
+    iULeft := iLevel.EnemiesLeft( True );
     if iLeft = iULeft
-      then FCharacter[1].Push( Padded( Format( '  Turns taken  : {!%d}', [ DRL.Level.LTime ] ), 32 ) + Format( 'Enemies left : {!%d}', [iLeft] ) )
-      else FCharacter[1].Push( Padded( Format( '  Turns taken  : {!%d}', [ DRL.Level.LTime ] ), 32 ) + Format( 'Enemies left : {!%d} (%d respawned)', [iLeft, iLeft-iULeft] ) );
-    if DRL.Level.Feeling <> '' then
-      FCharacter[1].Push( Format( '  Level feel   : {!%s}', [DRL.Level.Feeling] ) );
+      then FCharacter[1].Push( Padded( Format( '  Turns taken  : {!%d}', [ iLevel.LTime ] ), 32 ) + Format( 'Enemies left : {!%d}', [iLeft] ) )
+      else FCharacter[1].Push( Padded( Format( '  Turns taken  : {!%d}', [ iLevel.LTime ] ), 32 ) + Format( 'Enemies left : {!%d} (%d respawned)', [iLeft, iLeft-iULeft] ) );
+    if iLevel.Feeling <> '' then
+      FCharacter[1].Push( Format( '  Level feel   : {!%s}', [iLevel.Feeling] ) );
 
     // Level perks
-    iPerks := DRL.Level.GetPerkList;
+    iPerks := iLevel.GetPerkList;
     if ( iPerks <> nil ) and ( iPerks.Size > 0 ) then
     begin
       FCharacter[1].Push( '' );
@@ -1040,7 +1044,7 @@ begin
         if ( Desc <> '' ) then
         begin
           iName := Name;
-          if iName = '' then iName := DRL.Level.GetPerkShort( iPerks[i].ID );
+          if iName = '' then iName := iLevel.GetPerkShort( iPerks[i].ID );
           if iPerks[i].Time > 0
             then FCharacter[1].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} ({!' + FloatToStr( iPerks[i].Time / 10 ) + '}s) - ' + Desc )
             else FCharacter[1].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} - ' + Desc );

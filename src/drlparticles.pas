@@ -1,7 +1,9 @@
 {$INCLUDE drl.inc}
 unit drlparticles;
 interface
-uses classes, sysutils, vlua, vvector, vnode, vcolor, vutil, vrltools, vparticleengine, vlualibrary;
+uses classes, sysutils,
+     vlua, vvector, vnode, vcolor, vutil, vrltools, vparticleengine, vlualibrary,
+     dflevel;
 
 type
   TEmitterBinding = record
@@ -15,6 +17,7 @@ type
   TParticleStore = class( TVObject )
     constructor Create;
     procedure Initialize( aEngine : TParticleEngine );
+    procedure SetLevel( aLevel : TLevel );
     procedure Update( aDeltaSec : Single );
     procedure Clear;
     procedure ClearParticles;
@@ -40,6 +43,7 @@ type
     procedure RegisterEmitter( aLua : TLua; aNID : Word );
 
   private
+    FLevel          : TLevel;
     FEngine         : TParticleEngine;
     FEmitterData    : array of TParticleEmitterData;
     FBindings       : array of TEmitterBinding;
@@ -49,13 +53,16 @@ type
     function  FindBinding( aNID : Word; aUID : TUID ) : Integer;
     procedure RemoveBinding( aIndex : Integer );
     procedure UpdateBoundEmitters;
+    procedure AddDecal( const aPosition : TVec3f; aDecalSprite : DWord );
   public
     property Engine : TParticleEngine read FEngine;
   end;
 
 implementation
 
-uses math, vluatable, vluaentitynode, vuid, dfdata, dfthing, dflevel, drldecals, drlbase, drlio, drlspritemap;
+uses math,
+     vluatable, vluaentitynode, vuid,
+     dfdata, dfthing, drldecals, drlbase, drlio, drlspritemap;
 
 function FlagsToParticleFlags( const aFlags : TFlags ) : TParticleFlags;
 var i : Byte;
@@ -66,19 +73,19 @@ begin
       Include( Result, TParticleFlag( i ) );
 end;
 
-procedure DecalCallback( const aPosition : TVec3f; aDecalSprite : DWord );
+procedure TParticleStore.AddDecal( const aPosition : TVec3f; aDecalSprite : DWord );
 var iPos   : TVec2i;
     iCoord : TCoord2D;
 begin
-  if ( SpriteMap = nil ) or ( DRL = nil ) or ( DRL.Level = nil ) then Exit;
+  if FLevel = nil then Exit;
   iCoord := NewCoord2D( ( Round( aPosition.X ) + 16 ) div 32,
     ( Round( aPosition.Y ) + 16 ) div 32 );
-  if not DRL.Level.isProperCoord( iCoord ) then Exit;
-  if DRL.Level.cellFlagSet( iCoord, CF_LIQUID ) then Exit;
-  if DRL.Level.cellFlagSet( iCoord, CF_BLOCKMOVE ) then Exit;
+  if not FLevel.isProperCoord( iCoord ) then Exit;
+  if FLevel.cellFlagSet( iCoord, CF_LIQUID ) then Exit;
+  if FLevel.cellFlagSet( iCoord, CF_BLOCKMOVE ) then Exit;
   iPos.X := Round( aPosition.X ) + 16;
   iPos.Y := Round( aPosition.Y ) + 16;
-  DRL.Level.Decals.Add( iPos, aDecalSprite );
+  FLevel.Decals.Add( iPos, aDecalSprite );
 end;
 
 { TParticleStore }
@@ -92,9 +99,15 @@ end;
 
 procedure TParticleStore.Initialize( aEngine : TParticleEngine );
 begin
+  if FEngine <> nil then FEngine.DecalCallback := nil;
   FEngine := aEngine;
   if FEngine <> nil then
-    FEngine.DecalCallback := @DecalCallback;
+    FEngine.DecalCallback := @AddDecal;
+end;
+
+procedure TParticleStore.SetLevel( aLevel : TLevel );
+begin
+  FLevel := aLevel;
 end;
 
 procedure TParticleStore.Update( aDeltaSec : Single );
@@ -119,7 +132,7 @@ end;
 
 destructor TParticleStore.Destroy;
 begin
-  FEngine := nil;
+  Initialize( nil );
   inherited Destroy;
 end;
 
