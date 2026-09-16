@@ -609,7 +609,7 @@ begin
     if DRL.GameWon then DRL.Store.IncStat( 'drl_wins' );
   end;
 
-  HOF.Add(Name,FScore,FKilledBy,FExpLevel,FLevelIndex,DRL.Challenge,DRL.Level.Abbr);
+  HOF.Add(Name,FScore,FKilledBy,FExpLevel,FLevelIndex,DRL.Challenge,TLevel( Parent ).Abbr);
 
   if Assigned( MortemData ) then
   begin

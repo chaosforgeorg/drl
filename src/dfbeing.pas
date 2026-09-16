@@ -1888,7 +1888,7 @@ begin
     // Attack cost
     iAttackCost := getFireCost( False, True );
 
-    if DRL.Level.AnimationVisible( Position, Self ) then
+    if iLevel.AnimationVisible( Position, Self ) then
     begin
       IO.addBumpAnimation( VisualTime( iAttackCost, AnimationSpeedAttack ), 0, iUID, iPosition, aWhere, Sprite, 0.5 );
       // Melee FX animation - weapon sprite takes priority, fallback to attacker's melsprite
@@ -1967,7 +1967,7 @@ begin
   // Attack cost
   iAttackCost := getFireCost( False, True );
 
-  if DRL.Level.AnimationVisible( FPosition, Self ) then
+  if iLevel.AnimationVisible( FPosition, Self ) then
   begin
     // Bump animation only on first attack
     if not aSecond then
@@ -3528,19 +3528,23 @@ end;
 function lua_being_wipe_marker( L: Plua_State ): Integer; cdecl;
 var iState : TLuaGameStack;
     iBeing : TBeing;
+    iLevel : TLevel;
 begin
   iState.Init(L);
   iBeing := iState.ToObject(1) as TBeing;
   if iBeing = nil then Exit( 0 );
+  iLevel := TLevel( iBeing.Parent );
+  if iLevel = nil then Exit( 0 );
   if iState.IsCoord( 2 )
-    then DRL.Level.Markers.Wipe( iBeing.uid, iState.ToCoord(2) )
-    else DRL.Level.Markers.Wipe( iBeing.uid );
+    then iLevel.Markers.Wipe( iBeing.UID, iState.ToCoord(2) )
+    else iLevel.Markers.Wipe( iBeing.UID );
   Result := 0;
 end;
 
 function lua_being_set_marker( L: Plua_State ): Integer; cdecl;
 var iState     : TLuaGameStack;
     iBeing     : TBeing;
+    iLevel     : TLevel;
     iTarget    : TBeing;
     iCoord     : TCoord2D;
     iSprite    : TSprite;
@@ -3550,6 +3554,8 @@ begin
   iState.Init(L);
   iBeing := iState.ToObject(1) as TBeing;
   if iBeing = nil then Exit( 0 );
+  iLevel := TLevel( iBeing.Parent );
+  if iLevel = nil then Exit( 0 );
   iCoord := iState.ToPosition( 2 );
   iTarget := iState.ToObjectOrNil( 4 ) as TBeing;
   iTargetUID := 0;
@@ -3560,7 +3566,7 @@ begin
   iTable := iState.ToTable( 3 );
   try
     if ReadSprite( iTable, iSprite )
-      then DRL.Level.Markers.Add( iCoord, iSprite, iBeing.UID, iTargetUID )
+      then iLevel.Markers.Add( iCoord, iSprite, iBeing.UID, iTargetUID )
       else iState.Error('bad sprite data passed to being:set_marker');
   finally
     FreeAndNil ( iTable );
@@ -3579,7 +3585,7 @@ begin
   iCoord  := iState.ToPosition( 2 );
   iAmount := iState.ToFloat( 3, 0.5 );
   with iBeing do
-    if DRL.Level.AnimationVisible( Position, iBeing ) then
+    if TLevel( iBeing.Parent ).AnimationVisible( Position, iBeing ) then
     begin
       IO.addBumpAnimation( VisualTime( iState.ToInteger( 4, 1000 ) ) , 0, UID, Position, iCoord, Sprite, iAmount );
       if iBeing.IsPlayer then IO.WaitForAnimation;
