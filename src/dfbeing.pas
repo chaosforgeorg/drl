@@ -1998,7 +1998,7 @@ begin
 
   if not ( BF_AUTOHIT in FFlags ) then
   if ( aWeapon = nil ) or ( not aWeapon.Flags[ IF_AUTOHIT ] ) then
-    if Roll( 12 + iToHit ) < 0 then
+    if Roll( DRL.GameRNG, 12 + iToHit ) < 0 then
     begin
       if IsPlayer then iResult := ' miss ' else iResult := ' misses ';
       if isVisible then IO.Msg( Capitalized(iName) + iResult + iDefenderName + '.' );
@@ -2491,8 +2491,8 @@ begin
       iToHit -= iBeing.GetBonus( Hook_getDefenceBonus, [False] );
 
       if aItem.Flags[ IF_FARHIT ]
-        then iIsHit := Roll( 10 + iToHit) >= 0
-        else iIsHit := Roll( 10 - (distance(FPosition, iCoord ) div 3 ) + iToHit) >= 0;
+        then iIsHit := Roll( DRL.GameRNG, 10 + iToHit ) >= 0
+        else iIsHit := Roll( DRL.GameRNG, 10 - (distance(FPosition, iCoord ) div 3 ) + iToHit ) >= 0;
 
       if ( BF_AUTOHIT in FFlags ) or aItem.Flags[ IF_AUTOHIT ] then 
         iIsHit := True;

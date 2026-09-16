@@ -8,7 +8,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit dfdata;
 interface
 uses classes, sysutils, idea,
-     vlua, vgenerics, vcolor, vutil, vrltools, vtigstyle, vluatable, vioevent, vvector,
+     vlua, vgenerics, vcolor, vutil, vrltools, vtigstyle, vluatable, vioevent, vvector, vrandom,
      drlconfig, drlkeybindings;
 
 const CoreModuleID          : AnsiString = '';
@@ -354,7 +354,7 @@ const ExpTable : array[1..MaxPlayerLevel] of LongInt =
                500000, 600000, 700000,
                900000,10000000);
                
-function Roll(stat : Integer) : Integer;
+function Roll( aRNG : TRNG; aStat : Integer ) : Integer;
 function ApplyMul( aBase, aMul : Integer ) : Integer;
 function InputDirection( aInput : TInputKey ) : TDirection;
 function DirectionToInput(Dir : TDirection) : TInputKey;
@@ -394,7 +394,7 @@ var TIGStyleColored   : TTIGStyle;
     TIGStylePadless   : TTIGStyle;
 
 implementation
-uses typinfo, strutils, math, vmath, vdebug, drlbase;
+uses typinfo, strutils, math, vmath, vdebug;
 
 function ReadFileString( aStream : TStream; aSize : Integer ) : Ansistring;
 begin
@@ -708,17 +708,17 @@ begin
   NewSprite.Frametime   := 0;
 end;
 
-function Roll(stat : Integer) : Integer;
-var DieRoll : byte;
+function Roll( aRNG : TRNG; aStat : Integer ) : Integer;
+var iRoll : Byte;
 begin
-  DieRoll := DRL.GameRNG.Dice( 3, 6 );
-  case DieRoll of
+  iRoll := aRNG.Dice( 3, 6 );
+  case iRoll of
       3 : Exit(30);
       4 : Exit(20);
      17 : Exit(-20);
      18 : Exit(-30);
   end;
-  Roll := stat - DieRoll;
+  Result := aStat - iRoll;
 end;
 
 function ApplyMul( aBase, aMul : Integer ) : Integer;

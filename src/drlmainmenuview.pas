@@ -89,7 +89,7 @@ implementation
 
 uses math, sysutils,
      vutil, vtig, vtigio, vgltypes, vlua, vluavalue,
-     dfhof, drlbase, drlgfxio, drlplayerview, drlhelpview, drlsettingsview, drlpagedview;
+     dfhof, drlbase, drlgfxio, drlplayerview, drlhelpview, drlhelp, drlsettingsview, drlpagedview;
 
 var ChallengeType : array[1..4] of TMainMenuEntry =
 ((
@@ -380,7 +380,7 @@ begin
       end;
     if VTIG_Selectable( TextShowHighscore ) then IO.PushLayer( TPagedView.Create( HOF.GetPagedScoreReport ) );
     if VTIG_Selectable( TextShowPlayer )    then IO.PushLayer( TPagedView.Create( HOF.GetPagedPlayerReport ) );
-    if VTIG_Selectable( TextHelp )          then IO.PushLayer( THelpView.Create );
+    if VTIG_Selectable( TextHelp )          then IO.PushLayer( THelpView.Create( IO, IO.Session.Context.Lua, Help, CoreModuleID ) );
     if VTIG_Selectable( TextSettings )      then IO.PushLayer( TSettingsView.Create );
     if FJHCLink then
     begin

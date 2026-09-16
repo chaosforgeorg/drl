@@ -24,7 +24,7 @@ end;
 
 implementation
 
-uses vtig, vutil, vlua, dfplayer, drlbase, drlhelpview, drlsettingsview, drlmessagesview, drlassemblyview;
+uses vtig, vutil, vlua, dfplayer, drlbase, drlhelpview, drlhelp, drlsettingsview, drlmessagesview, drlassemblyview;
 
 constructor TInGameMenuView.Create;
 begin
@@ -45,7 +45,7 @@ begin
   end;
   if VTIG_Selectable( 'Help' ) then
   begin
-    IO.PushLayer( THelpView.Create );
+    IO.PushLayer( THelpView.Create( IO, IO.Session.Context.Lua, Help, CoreModuleID ) );
     FFinished := True;
   end;
   if VTIG_Selectable( 'Settings' ) then
@@ -55,7 +55,7 @@ begin
   end;
   if VTIG_Selectable( 'Message history' ) then
   begin
-    IO.PushLayer( TMessagesView.Create( IO.MsgGetRecent ) );
+    IO.PushLayer( TMessagesView.Create( IO, IO.MsgGetRecent ) );
     FFinished := True;
   end;
   if VTIG_Selectable( 'Assemblies' ) then

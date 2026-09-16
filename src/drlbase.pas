@@ -143,7 +143,7 @@ implementation
 
 uses {$IFDEF WINDOWS}windows,{$ELSE}unix,{$ENDIF} classes, sysutils, zstream,
      vbindings, vdebug, vstream,
-     dfmap, dfbeing, drlio, drlgfxio, drltextio, drlspritemap { remove }, drlplayerview, drlingamemenuview, drlhelpview, drlassemblyview, drlpagedview, drlrankupview, drlmainmenuview, drlhudviews, drlmessagesview, drlapplication, drlcontrollerbindings, dfplayer;
+     dfmap, dfbeing, drlio, drlgfxio, drltextio, drlspritemap { remove }, drlplayerview, drlingamemenuview, drlhelpview, drlhelp, drlassemblyview, drlpagedview, drlrankupview, drlmainmenuview, drlhudviews, drlmessagesview, drlapplication, drlcontrollerbindings, dfplayer;
 
 const PAD_REPEAT_START = 400;
       PAD_REPEAT       = 100;
@@ -1136,7 +1136,7 @@ begin
       INPUT_TARGETNEXT : begin IO.SetAutoTarget( FTargeting.List.Next ); Exit; end;
       INPUT_ESCAPE     : begin ResetAutoTarget; IO.PushLayer( TInGameMenuView.Create ); Exit; end;
       INPUT_QUIT       : begin IO.PushLayer( TAbandonView.Create ); Exit; end;
-      INPUT_HELP       : begin IO.PushLayer( THelpView.Create ); Exit; end;
+      INPUT_HELP       : begin IO.PushLayer( THelpView.Create( IO, FContext.Lua, Help, CoreModuleID ) ); Exit; end;
       INPUT_LOOKMODE   : begin IO.PushLayer( TLookModeView.Create ); Exit; end;
       INPUT_PLAYERINFO : begin FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_CHARACTER ) ); Exit; end;
       INPUT_INVENTORY  : begin FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_INVENTORY ) ); Exit; end;
@@ -1148,7 +1148,7 @@ begin
       INPUT_LEGACYDROP : begin FPlayerView := IO.PushLayer( TPlayerView.CreateCommand( COMMAND_DROP ) ); Exit; end;
       INPUT_UNLOAD     : begin HandleUnloadCommand( nil ); Exit; end;
 
-      INPUT_MESSAGES   : begin IO.PushLayer( TMessagesView.Create( IO.MsgGetRecent ) ); Exit; end;
+      INPUT_MESSAGES   : begin IO.PushLayer( TMessagesView.Create( IO, IO.MsgGetRecent ) ); Exit; end;
 
       INPUT_HARDQUIT   : begin
         Option_MenuReturn := False;
@@ -1472,7 +1472,7 @@ begin
   begin
     if HOF.RankCheck( iRank ) then
     begin
-      IO.PushLayer( TRankUpView.Create( iRank ) );
+      IO.PushLayer( TRankUpView.Create( FContext.Lua, iRank ) );
       IO.WaitForLayer( True );
     end;
     if Player.Score >= -1000 then
