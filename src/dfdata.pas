@@ -98,7 +98,6 @@ const
   ForcePlayerName : AnsiString = '';
   ModdedGame      : Boolean = False;
   ForceRestart    : Ansistring = '';
-  ModErrors       : TStringGArray = nil;
   VisionBaseValue : Byte = 8;
 
   NoPlayerRecord : Boolean = False;

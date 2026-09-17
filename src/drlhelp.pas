@@ -6,7 +6,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlhelp;
 interface
-uses classes, vnode, dfdata, viotypes, vgenerics;
+uses classes, vnode, viotypes, vgenerics, dfdata;
 
 type THelpEntry = class(TVObject)
   constructor Create;
@@ -36,11 +36,9 @@ public
   property Data[ const aID : Ansistring ] : THelpEntry read Get; default;
 end;
 
-var Help : THelp;
-
 implementation
 
-uses SysUtils, vutil, vtig;
+uses sysutils, vutil, vtig;
 
 constructor THelpEntry.Create;
 begin

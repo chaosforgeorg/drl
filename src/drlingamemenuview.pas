@@ -6,13 +6,15 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlingamemenuview;
 interface
-uses viotypes, drlio, drlconfirmview, dfdata;
+uses viotypes, drlio, drlconfirmview, dfdata, drlhelp;
 
 type TInGameMenuView = class( TIOLayer )
-  constructor Create;
+  constructor Create( aHelp : THelp );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
+private
+  FHelp : THelp;
 end;
 
 type TAbandonView = class( TConfirmView )
@@ -24,10 +26,12 @@ end;
 
 implementation
 
-uses vtig, vutil, vlua, dfplayer, drlbase, drlhelpview, drlhelp, drlsettingsview, drlmessagesview, drlassemblyview;
+uses vtig, vutil, vlua,
+     dfplayer, drlbase, drlhelpview, drlsettingsview, drlmessagesview, drlassemblyview;
 
-constructor TInGameMenuView.Create;
+constructor TInGameMenuView.Create( aHelp : THelp );
 begin
+  FHelp := aHelp;
   VTIG_EventClear;
   VTIG_ResetSelect( 'ingame_menu_abandon' );
   //VTIG_ResetSelect( 'ingame_menu' );
@@ -45,7 +49,7 @@ begin
   end;
   if VTIG_Selectable( 'Help' ) then
   begin
-    IO.PushLayer( THelpView.Create( IO, IO.Session.Context.Lua, Help, CoreModuleID ) );
+    IO.PushLayer( THelpView.Create( IO, IO.Session.Context.Lua, FHelp, CoreModuleID ) );
     FFinished := True;
   end;
   if VTIG_Selectable( 'Settings' ) then

@@ -10,7 +10,7 @@ interface
 
 uses sysutils,
      vapp, viorl, vlua, vrlapp, vstoreinterface, vutil, vioevent,
-     drlbase, drlmodule, drlgamedata;
+     dfdata, drlbase, drlmodule, drlgamedata, drlhelp;
 
 type
   TDRLApplication = class;
@@ -26,6 +26,8 @@ type TDRLRuntime = class( TRLRuntime )
     FModules     : TDRLModules;
     FStore       : TStoreInterface;
     FData        : TGameData;
+    FHelp        : THelp;
+    FModErrors   : TStringGArray;
     FModuleHooks : TFlags;
     FDataLoaded  : Boolean;
     procedure ApplyConfiguration;
@@ -46,10 +48,12 @@ type TDRLRuntime = class( TRLRuntime )
       const aModulesFile : AnsiString ); reintroduce;
     destructor Destroy; override;
     procedure Reconfigure;
-    property Data    : TGameData       read FData;
-    property Modules : TDRLModules     read FModules;
-    property Store   : TStoreInterface read FStore;
-    property Session : TDRLSession     read FSession;
+    property Help      : THelp           read FHelp;
+    property ModErrors : TStringGArray   read FModErrors;
+    property Data      : TGameData       read FData;
+    property Modules   : TDRLModules     read FModules;
+    property Store     : TStoreInterface read FStore;
+    property Session   : TDRLSession     read FSession;
   end;
 
 // TDRLApplication
@@ -77,7 +81,7 @@ implementation
 
 uses {$IFDEF WINDOWS}windows,{$ENDIF}
      {$IFDEF WINDOWS}vos,{$ENDIF} vdebug, vlog, vluastate,
-     dfdata, dfhof, dfmap, drlconfig, drlconfiguration, drlgfxio, drlhelp, drlhooks, drlio, drllua, drltextio, drlworkshop;
+     dfhof, dfmap, drlconfig, drlconfiguration, drlgfxio, drlhooks, drlio, drllua, drltextio, drlworkshop;
 
 type TDRLConfigurationState = class( TDRLConfiguration )
   private
@@ -137,7 +141,7 @@ begin
   FStore := TStoreInterface.Get;
   FModules := TDRLModules.Create(Paths.DataPath, aModulesFile);
   FModules.ScanModules;
-  ModErrors := TStringGArray.Create;
+  FModErrors := TStringGArray.Create;
   TDRLIO(IO).Modules := FModules;
   TDRLIO(IO).Store := FStore;
 end;
@@ -148,7 +152,7 @@ begin
   UnloadGameData;
   TDRLIO(IO).Modules := nil;
   TDRLIO(IO).Store := nil;
-  FreeAndNil(ModErrors);
+  FreeAndNil(FModErrors);
   FreeAndNil(FModules);
   inherited Destroy;
 end;
@@ -255,7 +259,7 @@ begin
   ColorOverrides := TIntHashMap.Create;
   TDRLIO(IO).Configure(Config, True);
   FModuleHooks := [];
-  Help := THelp.Create;
+  FHelp := THelp.Create;
 end;
 
 // Phase order: publish Lua; load hooks and module data; then prepare
@@ -266,7 +270,7 @@ begin
   FSession.Context.BindLua( FLua );
   TDRLLua( FLua ).BindNodeContext( FSession.Context );
   FData.RegisterLuaAPI( FLua );
-  TDRLLua( FLua ).ReadWAD;
+  TDRLLua( FLua ).ReadWad( FHelp, FModErrors );
   if GodMode then RegisterDebugConsole( VKEY_F1 );
   FLua.CallDefaultResult := True;
   FModuleHooks := LoadHooks( FLua, [CoreModuleID], GlobalHooks );
@@ -386,10 +390,10 @@ begin
       begin
         if ModdedGame then
         begin
-          ModErrors.Push('Error : Mod "'+iModule.ID+'" failed to execute '+HookNames[aHook]+'!');
-          ModErrors.Push('Path  : '+iModule.Path);
-          ModErrors.Push(E.Message);
-          ModErrors.Push('');
+          FModErrors.Push('Error : Mod "'+iModule.ID+'" failed to execute '+HookNames[aHook]+'!');
+          FModErrors.Push('Path  : '+iModule.Path);
+          FModErrors.Push(E.Message);
+          FModErrors.Push('');
         end
         else
           raise;
@@ -403,7 +407,7 @@ begin
   if not FDataLoaded then Exit;
   FDataLoaded := False;
   HOF.Done;
-  FreeAndNil(Help);
+  FreeAndNil(FHelp);
   FreeAndNil(ColorOverrides);
 end;
 

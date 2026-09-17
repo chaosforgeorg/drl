@@ -145,7 +145,7 @@ implementation
 
 uses {$IFDEF WINDOWS}windows,{$ELSE}unix,{$ENDIF} classes, sysutils, zstream,
      vbindings, vdebug, vstream,
-     dfmap, dfbeing, drlio, drlgfxio, drlspritemap { remove }, drlplayerview, drlingamemenuview, drlhelpview, drlhelp, drlassemblyview, drlpagedview, drlrankupview, drlmainmenuview, drlhudviews, drlmessagesview, drlapplication, drlcontrollerbindings, dfplayer;
+     dfmap, dfbeing, drlio, drlgfxio, drlspritemap { remove }, drlplayerview, drlingamemenuview, drlhelpview, drlassemblyview, drlpagedview, drlrankupview, drlmainmenuview, drlhudviews, drlmessagesview, drlapplication, drlcontrollerbindings, dfplayer;
 
 const PAD_REPEAT_START = 400;
       PAD_REPEAT       = 100;
@@ -1072,7 +1072,7 @@ begin
     ) ) );
     CONTROLLER_MENU : begin
       ResetAutoTarget;
-      IO.PushLayer( TInGameMenuView.Create );
+      IO.PushLayer( TInGameMenuView.Create( TDRLRuntime( FRuntime ).Help ) );
       Exit( False );
     end;
     CONTROLLER_PLAYER : begin
@@ -1151,9 +1151,9 @@ begin
     case iInput of
 //      INPUT_ESCAPE     : begin if GodMode then SetState( DSQuit ); Exit; end;
       INPUT_TARGETNEXT : begin IO.SetAutoTarget( FTargeting.List.Next ); Exit; end;
-      INPUT_ESCAPE     : begin ResetAutoTarget; IO.PushLayer( TInGameMenuView.Create ); Exit; end;
+      INPUT_ESCAPE     : begin ResetAutoTarget; IO.PushLayer( TInGameMenuView.Create( TDRLRuntime( FRuntime ).Help ) ); Exit; end;
       INPUT_QUIT       : begin IO.PushLayer( TAbandonView.Create ); Exit; end;
-      INPUT_HELP       : begin IO.PushLayer( THelpView.Create( IO, FContext.Lua, Help, CoreModuleID ) ); Exit; end;
+      INPUT_HELP       : begin IO.PushLayer( THelpView.Create( IO, FContext.Lua, TDRLRuntime( FRuntime ).Help, CoreModuleID ) ); Exit; end;
       INPUT_LOOKMODE   : begin IO.PushLayer( TLookModeView.Create( FLevel ) ); Exit; end;
       INPUT_PLAYERINFO : begin FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_CHARACTER ) ); Exit; end;
       INPUT_INVENTORY  : begin FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_INVENTORY ) ); Exit; end;
@@ -1251,7 +1251,8 @@ begin
   iEpisodeSeed := 0;
   if aShowIntro then
   begin
-    IO.PushLayer( TMainMenuView.Create );
+    IO.PushLayer( TMainMenuView.Create(
+      TDRLRuntime( FRuntime ).Help, TDRLRuntime( FRuntime ).ModErrors ) );
     IO.WaitForLayer( True );
   end;
   if FState <> DSQuit then
@@ -1273,7 +1274,8 @@ begin
   SetState( DSMenu );
   iResult.Reset; // TODO : could reuse for same game!
 
-  IO.PushLayer( TMainMenuView.Create( MAINMENU_MENU, iResult ) );
+  IO.PushLayer( TMainMenuView.Create(
+    TDRLRuntime( FRuntime ).Help, TDRLRuntime( FRuntime ).ModErrors, MAINMENU_MENU, iResult ) );
   IO.WaitForLayer( True );
   if iResult.ReloadData then
   begin

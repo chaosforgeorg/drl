@@ -6,7 +6,8 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlmainmenuview;
 interface
-uses vio, viotypes, vgenerics, vtextures, vtigstyle, dfdata, drlio;
+uses vio, viotypes, vgenerics, vtextures, vtigstyle,
+     dfdata, drlio, drlhelp;
 
 type TMainMenuViewMode = (
   MAINMENU_FIRST, MAINMENU_INTRO, MAINMENU_ENGINECOMPAT, MAINMENU_MENU,
@@ -28,7 +29,8 @@ end;
 type TMainMenuEntryArray = specialize TGArray< TMainMenuEntry >;
 
 type TMainMenuView = class( TIOLayer )
-  constructor Create( aInitial : TMainMenuViewMode = MAINMENU_FIRST; aResult : TMenuResult = nil );
+  constructor Create( aHelp : THelp; aModErrors : TStringGArray;
+    aInitial : TMainMenuViewMode = MAINMENU_FIRST; aResult : TMenuResult = nil );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
@@ -58,6 +60,8 @@ protected
   procedure RenderASCIILogo;
   procedure UpdateModErrors;
 protected
+  FHelp        : THelp;
+  FModErrors   : TStringGArray;
   FSize        : TIOPoint;
   FMode        : TMainMenuViewMode;
   FFirst       : Ansistring;
@@ -89,7 +93,7 @@ implementation
 
 uses math, sysutils,
      vutil, vtig, vtigio, vgltypes, vlua, vluavalue,
-     dfhof, drlbase, drlgfxio, drlplayerview, drlhelpview, drlhelp, drlsettingsview, drlpagedview;
+     dfhof, drlbase, drlgfxio, drlplayerview, drlhelpview, drlsettingsview, drlpagedview;
 
 var ChallengeType : array[1..4] of TMainMenuEntry =
 ((
@@ -136,9 +140,12 @@ const CTYPE_ANGEL  = 1;
 
       CTYPE_SECOND = 10;
 
-constructor TMainMenuView.Create( aInitial : TMainMenuViewMode = MAINMENU_FIRST; aResult : TMenuResult = nil );
+constructor TMainMenuView.Create( aHelp : THelp; aModErrors : TStringGArray;
+    aInitial : TMainMenuViewMode = MAINMENU_FIRST; aResult : TMenuResult = nil );
 var iLua : TLua;
 begin
+  FHelp      := aHelp;
+  FModErrors := aModErrors;
   iLua := IO.Session.Context.Lua;
   FMenuStyle   := TIGStyleFrameless;
   FMenuStyle.Padding[ VTIG_WINDOW_PADDING ]   := Point( 5, 1 );
@@ -230,7 +237,7 @@ begin
   end;
   SetSoundCallback;
 
-  if ModErrors.Size > 0 then
+  if FModErrors.Size > 0 then
   begin
     UpdateModErrors;
     Exit;
@@ -380,7 +387,7 @@ begin
       end;
     if VTIG_Selectable( TextShowHighscore ) then IO.PushLayer( TPagedView.Create( HOF.GetPagedScoreReport ) );
     if VTIG_Selectable( TextShowPlayer )    then IO.PushLayer( TPagedView.Create( HOF.GetPagedPlayerReport ) );
-    if VTIG_Selectable( TextHelp )          then IO.PushLayer( THelpView.Create( IO, IO.Session.Context.Lua, Help, CoreModuleID ) );
+    if VTIG_Selectable( TextHelp )          then IO.PushLayer( THelpView.Create( IO, IO.Session.Context.Lua, FHelp, CoreModuleID ) );
     if VTIG_Selectable( TextSettings )      then IO.PushLayer( TSettingsView.Create );
     if FJHCLink then
     begin
@@ -1136,11 +1143,11 @@ begin
   VTIG_BeginWindow('Mod loading errors', Point( 70, -1 ) );
   VTIG_Text('{!There were errors while loading mods - fix, remove or disable!} ');
   VTIG_Text('');
-  iM := Min( ModErrors.Size, 8 );
+  iM := Min( FModErrors.Size, 8 );
   for i := 0 to iM - 1 do
-    VTIG_Text(ModErrors[i], LIGHTRED );
-  if ModErrors.Size > 12
-    then VTIG_Text('... and '+IntToStr( ModErrors.Size - 8 )+' more error line(s).' );
+    VTIG_Text(FModErrors[i], LIGHTRED );
+  if FModErrors.Size > 12
+    then VTIG_Text('... and '+IntToStr( FModErrors.Size - 8 )+' more error line(s).' );
   VTIG_Text('');
   VTIG_Text('You can ignore and proceed the errors are just version compatibility errors, otherwise the game might be unstable.');
   VTIG_Text('If you''re working on a mod, you can edit it and press {!Ctrl}+{!F1} to reload.');
@@ -1149,11 +1156,11 @@ begin
   begin
     ForceRestart := CoreModuleID;
     FMode := MAINMENU_MENU;
-    ModErrors.Clear;
+    FModErrors.Clear;
   end;
 
   if VTIG_EventCancel then
-    ModErrors.Clear;
+    FModErrors.Clear;
 end;
 
 procedure TMainMenuView.RenderASCIILogo;

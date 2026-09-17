@@ -9,7 +9,7 @@ interface
 
 uses sysutils, classes,
      vluagamestack, vlua, vlualibrary, vrltools, vutil, vdf, viotypes, vnode,
-     dfitem, dfbeing, dfthing, dfdata, drlmodule;
+     dfitem, dfbeing, dfthing, dfdata, drlmodule, drlhelp;
 
 type
 
@@ -22,7 +22,7 @@ TDRLLua = class(TLua)
        function HookName( aHook : Byte ) : AnsiString;
        destructor Destroy; override;
        // Load content after Runtime owns Lua and the Session context is bound.
-       procedure ReadWad;
+       procedure ReadWad( aHelp : THelp; aModErrors : TStringGArray );
        procedure BindNodeContext( aContext : TNodeContext );
      private
        procedure LoadFiles( const aDirectory : AnsiString; aLoader : TVDFLoader; aWildcard : AnsiString = '*' );
@@ -41,7 +41,7 @@ implementation
 
 uses typinfo, variants,
      vdebug, vluastate, vluatools, vluadungen, vluaentitynode, vluatype, vtextures, vtigstyle, vparticleengine,
-     dfplayer, dflevel, drlhooks, drlhelp, dfhof, drlbase, drlio, drlgfxio, drlspritemap;
+     dfplayer, dflevel, drlhooks, dfhof, drlbase, drlio, drlgfxio, drlspritemap;
 
 var SpriteSheetCounter : Integer = -1;
 
@@ -243,7 +243,7 @@ begin
   Result := 0;
 end;
 
-procedure TDRLLua.ReadWad;
+procedure TDRLLua.ReadWad( aHelp : THelp; aModErrors : TStringGArray );
 var iProgBase    : DWord;
     iModule      : TDRLModule;
     iData        : TVDataFile;
@@ -285,9 +285,9 @@ begin
     if ( not iModule.IsBase ) and ( iModule.BaseVersion <> '' ) then
       if iModule.BaseVersion <> VersionModuleSave then
       begin
-        ModErrors.Push('Error   : Mod "'+iModule.ID+'" version mismatch!');
-        ModErrors.Push('Expects : '+iModule.BaseVersion);
-        ModErrors.Push('');
+        aModErrors.Push('Error   : Mod "'+iModule.ID+'" version mismatch!');
+        aModErrors.Push('Expects : '+iModule.BaseVersion);
+        aModErrors.Push('');
       end;
 
     if iModule.Path.EndsWith( '.wad' ) then
@@ -309,7 +309,7 @@ begin
           SetValue( 'BASE_MODULE_LOADING', False );
         end;
       end;
-      iData.RegisterLoader( FILETYPE_RAW, @Help.StreamLoader );
+      iData.RegisterLoader( FILETYPE_RAW, @aHelp.StreamLoader );
       iData.Load('help');
       iData.RegisterLoader( FILETYPE_RAW, @IO.ASCIILoader );
       iData.Load('ascii');
@@ -339,7 +339,7 @@ begin
             SetValue( 'BASE_MODULE_LOADING', False );
           end;
         end;
-        LoadFiles( iModule.Path + 'help', @Help.StreamLoader, '*.hlp' );
+        LoadFiles( iModule.Path + 'help', @aHelp.StreamLoader, '*.hlp' );
         LoadFiles( iModule.Path + 'ascii', @IO.ASCIILoader, '*.asc' );
         if GraphicsVersion then
           (IO as TDRLGFXIO).Textures.LoadTextureFolder( iModule.Path + 'graphics' );
@@ -350,10 +350,10 @@ begin
         begin
           if ModdedGame then
           begin
-            ModErrors.Push('Error : Mod "'+iModule.ID+'" failed to load!');
-            ModErrors.Push('Path  : '+iModule.Path);
-            ModErrors.Push( E.Message );
-            ModErrors.Push( '' );
+            aModErrors.Push('Error : Mod "'+iModule.ID+'" failed to load!');
+            aModErrors.Push('Path  : '+iModule.Path);
+            aModErrors.Push( E.Message );
+            aModErrors.Push( '' );
           end
           else raise;
         end;
