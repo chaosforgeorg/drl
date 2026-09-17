@@ -59,6 +59,7 @@ type TDRLSession = class(TVObject)
        function  CallHookCheck( Hook : Byte; const Params : array of Const ) : Boolean;
        procedure SetState( aNewState : TDRLState );
        procedure ClearPlayerView;
+       procedure SetMemorial( aMemorial : TIOStringArray ); // Takes ownership.
        procedure OpenJHCPage;
        function HandleUnloadCommand( aItem : TItem ) : Boolean;
        function HandleCommand( aCommand : TCommand ) : Boolean;
@@ -93,6 +94,7 @@ type TDRLSession = class(TVObject)
        FTargeting       : TTargeting;
        FDamagedLastTurn : Boolean;
        FPlayerView      : TIOLayer;
+       FMemorial        : TPagedReport;
        FPadMoveActive   : Boolean;
        FPadMoveNext     : QWord;
        FLastFrameTime   : DWord;
@@ -231,6 +233,13 @@ begin
   FState := aNewState;
 end;
 
+procedure TDRLSession.SetMemorial( aMemorial : TIOStringArray );
+begin
+  if aMemorial = nil then Exit;
+  FMemorial := TPagedReport.Create( 'Post mortem', False );
+  FMemorial.Add( aMemorial, 'mortem.txt' );
+end;
+
 procedure TDRLSession.ClearPlayerView;
 begin
   FPlayerView := nil;
@@ -317,6 +326,7 @@ end;
 
 procedure TDRLSession.Reset;
 begin
+  FreeAndNil( FMemorial );
   ReleaseLevel;
 
   SetState( DSStart );
@@ -1444,7 +1454,8 @@ begin
     if State <> DSSaving then
     begin
       Player.Score := Player.Score + 1000;
-      if FGameWon and (State <> DSNextLevel) then Player.WriteMemorial;
+      if FGameWon and (State <> DSNextLevel) and (FMemorial = nil) then
+        SetMemorial( Player.GenerateMemorial );
       FLevel.Clear;
     end;
     IO.SetHint('');
@@ -1492,11 +1503,10 @@ begin
       IO.PushLayer( TRankUpView.Create( FContext.Lua, iRank ) );
       IO.WaitForLayer( True );
     end;
-    if Player.Score >= -1000 then
+    if (Player.Score >= -1000) and (FMemorial <> nil) then
     begin
-      iReport := TPagedReport.Create('Post mortem', False );
-      iReport.Add( MortemData, 'mortem.txt' );
-      MortemData := nil; // handled by iReport
+      iReport := FMemorial;
+      FMemorial := nil; // Ownership passes to the view.
       IO.PushLayer( TPagedView.Create( iReport ) );
       IO.WaitForLayer( True );
     end;
@@ -1720,6 +1730,7 @@ end;
 
 destructor TDRLSession.Destroy;
 begin
+  FreeAndNil( FMemorial );
   ReleaseLevel;
   FreeAndNil( Player );
   FreeAndNil( FTargeting );

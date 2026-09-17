@@ -51,7 +51,7 @@ type TPlayer = class(TBeing)
   procedure ApplyDamage( aDamage : LongInt; aTarget : TBodyTarget; aDamageType : TDamageType; aSource : TItem; aDelay : Integer ); override;
   procedure LevelUp;
   procedure AddExp( aAmount : LongInt );
-  procedure WriteMemorial;
+  function GenerateMemorial : TIOStringArray; // Caller owns the returned lines.
   destructor Destroy; override;
   procedure Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer ); override;
   procedure AddHistory( const aHistory : Ansistring );
@@ -99,8 +99,7 @@ published
   property EnemiesInVision : Word       read FEnemiesInVision;
 end;
 
-var Player     : TPlayer;
-    MortemData : TIOStringArray = nil;
+var Player : TPlayer;
 
 implementation
 
@@ -145,7 +144,6 @@ begin
   FEnemiesInVision:= 0;
   FMultiMove      := TMultiMove.Create;
   FPath           := TPathFinder.Create(Self);
-  MemorialWritten := False;
   MasterDodge     := False;
   FLastTurnDodge  := False;
 
@@ -563,15 +561,16 @@ begin
     iLevel.NukeTick;
     IO.WaitForAnimation;
   end;
-  WriteMemorial;
+  DRL.SetMemorial( GenerateMemorial );
 end;
 
-procedure TPlayer.WriteMemorial;
+function TPlayer.GenerateMemorial : TIOStringArray;
 var iMortemPath : AnsiString;
     iString     : AnsiString;
     iMortemList : TStringList;
+    i           : Integer;
 
-procedure ScoreCRC(var aScore : LongInt);
+procedure ScoreCRC( var aScore : LongInt );
 begin
   if aScore < 2000 then Exit;
   while not ((aScore mod 277) = 0) do Inc(aScore);
@@ -580,8 +579,7 @@ begin
 end;
 
 begin
-  if MemorialWritten then Exit;
-  MemorialWritten := True;
+  Result := nil;
   if FScore = -1000 then Exit;
 
   FStatistics.Update;
@@ -613,40 +611,42 @@ begin
 
   HOF.Add(Name,FScore,FKilledBy,FExpLevel,FLevelIndex,DRL.Challenge,TLevel( Parent ).Abbr);
 
-  if Assigned( MortemData ) then
-  begin
-    Log( LOGERROR, 'Mortem data not cleared!');
-    FreeAndNil( MortemData );
-  end;
-  MortemData := TIOStringArray.Create;
-  FContext.Lua.ProtectedCall([CoreModuleID,'RunPrintMortem'],[]);
-
-  iMortemPath := IO.Session.Paths.ModuleUserPath + 'mortem.txt';
-  iMortemList := TStringList.Create;
   try
-    for iString in MortemData do
-      iMortemList.Add( VTIG_StripTags( iString ) );
-    iMortemList.SaveToFile( iMortemPath );
-  finally
-    FreeAndNil( iMortemList );
-  end;
-
-  FScore := -1000;
-
-  if Option_MortemArchive then
-  begin
-    iString := IO.Session.Paths.ModuleUserPath + 'mortem'+PathDelim+ToProperFilename('['+FormatDateTime(Option_TimeStamp,Now)+'] '+Name)+'.txt';
-    Log('Writing mortem...: '+iString);
+    iMortemList := TStringList.Create;
     try
-      iMortemList := TStringList.Create;
-      try
-        iMortemList.LoadFromFile( iMortemPath );
-        iMortemList.SaveToFile( iString );
-      finally
-        FreeAndNil( iMortemList );
+      iMortemList.Text := FContext.Lua.ProtectedCall( [CoreModuleID, 'GenerateMemorial'], [] );
+      Result := TIOStringArray.Create;
+      for i := 0 to iMortemList.Count - 1 do
+      begin
+        Result.Push( iMortemList[i] );
+        iMortemList[i] := VTIG_StripTags( iMortemList[i] );
       end;
-    except
+      iMortemPath := IO.Session.Paths.ModuleUserPath + 'mortem.txt';
+      iMortemList.SaveToFile( iMortemPath );
+    finally
+      FreeAndNil( iMortemList );
     end;
+
+    FScore := -1000;
+
+    if Option_MortemArchive then
+    begin
+      iString := IO.Session.Paths.ModuleUserPath + 'mortem'+PathDelim+ToProperFilename('['+FormatDateTime(Option_TimeStamp,Now)+'] '+Name)+'.txt';
+      Log('Writing mortem...: '+iString);
+      try
+        iMortemList := TStringList.Create;
+        try
+          iMortemList.LoadFromFile( iMortemPath );
+          iMortemList.SaveToFile( iString );
+        finally
+          FreeAndNil( iMortemList );
+        end;
+      except
+      end;
+    end;
+  except
+    FreeAndNil( Result );
+    raise;
   end;
 end;
 
@@ -876,18 +876,6 @@ begin
 end;
 
 
-function lua_player_mortem_print(L: Plua_State): Integer; cdecl;
-var State   : TLuaGameStack;
-    Being   : TBeing;
-begin
-  State.Init(L);
-  Being := State.ToObject(1) as TBeing;
-  if not (Being is TPlayer) then Exit(0);
-  if not Assigned( MortemData ) then raise Exception.Create('player:mortem_print called in wrong place!');
-  MortemData.Push( State.ToString(2) );
-  Result := 0;
-end;
-
 function lua_player_add_trait(L: Plua_State): Integer; cdecl;
 var iState : TLuaGameStack;
     iBeing : TBeing;
@@ -972,7 +960,7 @@ begin
   Result := 0;
 end;
 
-const lua_player_lib : array[0..18] of luaL_Reg = (
+const lua_player_lib : array[0..17] of luaL_Reg = (
       ( name : 'set_achievement'; func : @lua_player_set_achievement),
       ( name : 'store_inc_stat';  func : @lua_player_store_inc_stat),
       ( name : 'store_mark_stat'; func : @lua_player_store_mark_stat),
@@ -990,7 +978,6 @@ const lua_player_lib : array[0..18] of luaL_Reg = (
       ( name : 'exit';            func : @lua_player_exit),
       ( name : 'quick_weapon';    func : @lua_player_quick_weapon),
       ( name : 'set_inv_size';    func : @lua_player_set_inv_size),
-      ( name : 'mortem_print';    func : @lua_player_mortem_print),
       ( name : nil;               func : nil; )
 );
 

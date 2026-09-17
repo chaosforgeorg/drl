@@ -21,8 +21,6 @@ const CoreModuleID          : AnsiString = '';
       SaveVersionModule     : Ansistring = '';
       SaveModString         : Ansistring = '';
 
-var   MemorialWritten : Boolean;
-
 const PlayerSafeZone = 6;
 
 type
