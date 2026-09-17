@@ -323,8 +323,14 @@ procedure TDRLSession.RecordResult( aPlayer : TPlayer );
 var iRuntime : TDRLRuntime;
 begin
   iRuntime := TDRLRuntime( FRuntime );
-  iRuntime.HOF.Add( aPlayer.Name, aPlayer.Score, aPlayer.KilledBy,
-    aPlayer.ExpLevel, aPlayer.Level_Index, FChallenge, TLevel( aPlayer.Parent ).Abbr );
+  if aPlayer.Score > 0 then
+  begin
+    FStore.IncStat( 'drl_kills', aPlayer.FKills.Count );
+    if aPlayer.HP <= 0 then FStore.IncStat( 'drl_deaths' );
+    if FGameWon then FStore.IncStat( 'drl_wins' );
+  end;
+  iRuntime.HOF.Add( aPlayer, FDifficulty, FGameWon,
+    FChallenge, TLevel( aPlayer.Parent ).Abbr );
   iRuntime.SaveProfile;
 end;
 
@@ -1503,7 +1509,7 @@ begin
 
   if State = DSFinished then
   begin
-    if TDRLRuntime( FRuntime ).HOF.RankCheck( iRank ) then
+    if TDRLRuntime( FRuntime ).HOF.RankCheck( FStore, iRank ) then
     begin
       IO.PushLayer( TRankUpView.Create( FContext.Lua, iRank ) );
       IO.WaitForLayer( True );

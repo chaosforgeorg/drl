@@ -7,8 +7,8 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit dfhof;
 interface
 uses classes, dom,
-     vlua, vapp, vnode, vxml, vxmldata,
-     dfdata;
+     vlua, vapp, vnode, vxml, vxmldata, vstoreinterface,
+     dfdata, dfplayer;
 
 const MaxHofEntries = 500;
       MaxID         = 1023;
@@ -22,8 +22,9 @@ const PlayerFile = 'player.wad';
 
 type THOF = class
   constructor Create( aLua : TLua; const aPaths : TGamePaths );
-  procedure Add( const Name : AnsiString; aScore : LongInt; const aKillerID : AnsiString; Level, DLev : Word; nChal, nAbbr : AnsiString );
-  function RankCheck( out aResult : THOFRank ) : Boolean;
+  procedure Add( aPlayer : TPlayer; aDifficulty : Integer; aGameWon : Boolean;
+    const aChallenge, aLevelAbbr : AnsiString );
+  function RankCheck( aStore : TStoreInterface; out aResult : THOFRank ) : Boolean;
   function GetPagedPlayerReport : TPagedReport;
   function GetPagedScoreReport : TPagedReport;
   procedure Save( aElapsedSeconds : DWord );
@@ -64,7 +65,7 @@ private
 
   function GameResultBetter( const ResultOld, ResultNew : String ) : boolean;
   function GameResultAtLeast( const ResultAtLeast, ResultNew : String ) : boolean;
-  procedure HandleAchievements( const aRankArray : Ansistring; aRankLevel : Integer );
+  procedure HandleAchievements( aStore : TStoreInterface; const aRankArray : Ansistring; aRankLevel : Integer );
 end;
 
 var HOF : THOF = nil; // Borrowed from Runtime by the native Lua callbacks.
@@ -72,8 +73,7 @@ var HOF : THOF = nil; // Borrowed from Runtime by the native Lua callbacks.
 implementation
 
 uses math, sysutils, strutils, variants,
-     vluatable, vdebug, vtig, vutil, vrltools,
-     drlbase, dfplayer;
+     vluatable, vdebug, vtig, vutil, vrltools;
 
 function THOF.GetBadgeCount( aBadgeLevel : DWord ): DWord;
 var iCount   : DWord;
@@ -815,19 +815,20 @@ begin
   Exit( iXMLElement );
 end;
 
-procedure THOF.Add( const Name : AnsiString; aScore : LongInt; const aKillerID : AnsiString; Level, DLev : Word; nChal, nAbbr : AnsiString );
-var XMLElement : TDOMElement;
-    XMLSubElement : TDOMElement;
-    XMLEntry   : TDOMElement;
-    iScoreEntry : TScoreEntry;
-    VS : String;
-    iGameResultID : AnsiString;
-    iString : String;
-    iGameResult : String;
-    iKills : DWord;
-    iChalAbbr  : string;
-    iChalInc : Integer;
-    iDiffID : string;
+procedure THOF.Add( aPlayer : TPlayer; aDifficulty : Integer; aGameWon : Boolean;
+    const aChallenge, aLevelAbbr : AnsiString );
+var iXMLElement     : TDOMElement;
+    iXMLSubElement  : TDOMElement;
+    iXMLEntry       : TDOMElement;
+    iScoreEntry     : TScoreEntry;
+    iDescription    : String;
+    iGameResultID   : AnsiString;
+    iString         : String;
+    iGameResult     : String;
+    iKills          : DWord;
+    iChalAbbr       : String;
+    iChalInc        : Integer;
+    iDiffID         : String;
     iWeaponGroup    : AnsiString;
     iKillsEntry     : TKillTableIterator.TPairType;
     iKillTypesEntry : TKillTableEntryIterator.TPairType;
@@ -846,104 +847,103 @@ begin
   iGameResultID := FLua.ProtectedCall([CoreModuleID,'GetResultId'],[]);
   if not NoPlayerRecord then
   begin
-    iDiffID       := FLua.Get([ 'diff', DRL.Difficulty, 'id' ]);
+    iDiffID       := FLua.Get([ 'diff', aDifficulty, 'id' ]);
     iChalInc      := 0;
     iChalAbbr     := 'unchallenged';
-    if nChal <> '' then
+    if aChallenge <> '' then
     begin
-      iChalAbbr := FLua.Get(['chal',nChal,'abbr']);
+      iChalAbbr := FLua.Get(['chal',aChallenge,'abbr']);
       iChalInc := 1;
     end;
 
-    XMLEntry := IncreaseXMLCount( FPlayerInfo.XML.DocumentElement, 'deaths', 1 );
-    IncreaseXMLCount( XMLEntry, 'death', iChalAbbr, 1 );
-    IncreaseXMLCount( XMLEntry, 'death', iGameResultID, 1 );
-    if (aKillerID <> '') and (aKillerID <> Player.ID) then
-      IncreaseXMLCount( XMLEntry, 'death', aKillerID, 1 );
+    iXMLEntry := IncreaseXMLCount( FPlayerInfo.XML.DocumentElement, 'deaths', 1 );
+    IncreaseXMLCount( iXMLEntry, 'death', iChalAbbr, 1 );
+    IncreaseXMLCount( iXMLEntry, 'death', iGameResultID, 1 );
+    if (aPlayer.KilledBy <> '') and (aPlayer.KilledBy <> aPlayer.ID) then
+      IncreaseXMLCount( iXMLEntry, 'death', aPlayer.KilledBy, 1 );
 
     // KILLS
 
-    XMLEntry := IncreaseXMLCount( FPlayerInfo.XML.DocumentElement, 'kills', Player.FKills.Count );
+    iXMLEntry := IncreaseXMLCount( FPlayerInfo.XML.DocumentElement, 'kills', aPlayer.FKills.Count );
 
-    for iKillsEntry in Player.FKills do
+    for iKillsEntry in aPlayer.FKills do
     begin
       iKills := iKillsEntry.Value.Count;
       if iKills = 0 then Continue;
 
-      XMLElement := IncreaseXMLCount( XMLEntry, 'killbeing', iKillsEntry.Key, iKills );
-      IncreaseXMLCount( XMLElement, 'killtype', iDiffID, iKills );
+      iXMLElement := IncreaseXMLCount( iXMLEntry, 'killbeing', iKillsEntry.Key, iKills );
+      IncreaseXMLCount( iXMLElement, 'killtype', iDiffID, iKills );
 
       for iKillTypesEntry in iKillsEntry.Value do
       begin
         iWeaponGroup := WeaponGroup(iKillTypesEntry.Key);
-        IncreaseXMLCount( XMLElement, 'killtype', iWeaponGroup, iKillTypesEntry.Value );
-        IncreaseXMLCount( XMLEntry, 'killtype', iWeaponGroup, iKillTypesEntry.Value );
+        IncreaseXMLCount( iXMLElement, 'killtype', iWeaponGroup, iKillTypesEntry.Value );
+        IncreaseXMLCount( iXMLEntry, 'killtype', iWeaponGroup, iKillTypesEntry.Value );
         if (iKillTypesEntry.Key <> 'melee') and (iKillTypesEntry.Key <> 'other') then
-          IncreaseXMLCount( XMLEntry, 'killtype', iKillTypesEntry.Key, iKillTypesEntry.Value );
+          IncreaseXMLCount( iXMLEntry, 'killtype', iKillTypesEntry.Key, iKillTypesEntry.Value );
       end;
     end;
 
-    IncreaseXMLCount( XMLEntry, 'killtype', iDiffID, Player.FKills.Count );
-    IncreaseXMLCount( XMLEntry, 'killtype', iChalAbbr, Player.FKills.Count );
+    IncreaseXMLCount( iXMLEntry, 'killtype', iDiffID, aPlayer.FKills.Count );
+    IncreaseXMLCount( iXMLEntry, 'killtype', iChalAbbr, aPlayer.FKills.Count );
 
     // GAMES
-    iGameResult := FLua.ProtectedCall([CoreModuleID,'GetShortResultId'],[iGameResultID,DLev]);
-    XMLEntry := IncreaseXMLCount( FPlayerInfo.XML.DocumentElement, 'games', 1 );
-    if DRL.GameWon then
+    iGameResult := FLua.ProtectedCall([CoreModuleID,'GetShortResultId'],[iGameResultID,aPlayer.Level_Index]);
+    iXMLEntry := IncreaseXMLCount( FPlayerInfo.XML.DocumentElement, 'games', 1 );
+    if aGameWon then
     begin
-      IncreaseXMLCount( XMLEntry, 'win', iGameResult, 1 );
-      IncreaseXMLCount( XMLEntry, 'win', 'total', 1 );
+      IncreaseXMLCount( iXMLEntry, 'win', iGameResult, 1 );
+      IncreaseXMLCount( iXMLEntry, 'win', 'total', 1 );
     end;
-    XMLElement := IncreaseXMLCount( XMLEntry, 'game', iDiffID, 1 );
-    iString := XMLElement.GetAttribute('max');
-    if GameResultBetter( iString, iGameResult ) then XMLElement.SetAttribute('max',iGameResult);
-    if DRL.GameWon then
+    iXMLElement := IncreaseXMLCount( iXMLEntry, 'game', iDiffID, 1 );
+    iString := iXMLElement.GetAttribute('max');
+    if GameResultBetter( iString, iGameResult ) then iXMLElement.SetAttribute('max',iGameResult);
+    if aGameWon then
     begin
-      IncreaseXMLCount( XMLElement, 'win', iGameResult, 1 );
-      IncreaseXMLCount( XMLElement, 'win', 'total', 1 );
+      IncreaseXMLCount( iXMLElement, 'win', iGameResult, 1 );
+      IncreaseXMLCount( iXMLElement, 'win', 'total', 1 );
     end;
 
     // CHALLENGES
-    XMLEntry := IncreaseXMLCount( FPlayerInfo.XML.DocumentElement, 'challenges', iChalInc );
-    XMLElement := IncreaseXMLCount( XMLEntry, 'challenge', iChalAbbr, 1 );
-    iString := XMLElement.GetAttribute('max');
-    if GameResultBetter( iGameResult, iString ) then XMLElement.SetAttribute('max',iGameResult);
-    if DRL.GameWon then
+    iXMLEntry := IncreaseXMLCount( FPlayerInfo.XML.DocumentElement, 'challenges', iChalInc );
+    iXMLElement := IncreaseXMLCount( iXMLEntry, 'challenge', iChalAbbr, 1 );
+    iString := iXMLElement.GetAttribute('max');
+    if GameResultBetter( iGameResult, iString ) then iXMLElement.SetAttribute('max',iGameResult);
+    if aGameWon then
     begin
-      IncreaseXMLCount( XMLElement, 'win', iGameResult, 1 );
-      IncreaseXMLCount( XMLElement, 'win', 'total', 1 );
+      IncreaseXMLCount( iXMLElement, 'win', iGameResult, 1 );
+      IncreaseXMLCount( iXMLElement, 'win', 'total', 1 );
     end;
-    XMLSubElement := IncreaseXMLCount( XMLElement, 'game', iDiffID, 1 );
-    iString := XMLSubElement.GetAttribute('max');
-    if GameResultBetter( iString, iGameResult ) then XMLSubElement.SetAttribute('max',iGameResult);
-    if DRL.GameWon then
+    iXMLSubElement := IncreaseXMLCount( iXMLElement, 'game', iDiffID, 1 );
+    iString := iXMLSubElement.GetAttribute('max');
+    if GameResultBetter( iString, iGameResult ) then iXMLSubElement.SetAttribute('max',iGameResult);
+    if aGameWon then
     begin
-      IncreaseXMLCount( XMLSubElement, 'win', iGameResult, 1 );
-      IncreaseXMLCount( XMLSubElement, 'win', 'total', 1 );
+      IncreaseXMLCount( iXMLSubElement, 'win', iGameResult, 1 );
+      IncreaseXMLCount( iXMLSubElement, 'win', 'total', 1 );
     end;
   end;
 
   if not NoScoreRecord then
   begin
-    VS := FLua.ProtectedCall([CoreModuleID,'GetResultDescription'],[iGameResultID,true]);
+    iDescription := FLua.ProtectedCall([CoreModuleID,'GetResultDescription'],[iGameResultID,true]);
 
     FScore.Lock;
     try
       FScore.Load;
-      iScoreEntry := FScore.Add( aScore );
+      iScoreEntry := FScore.Add( aPlayer.Score );
       if iScoreEntry <> nil then
       begin
-        //Score.Add(Name,aScore,Level,DLev,DRL.Difficulty,VS,VSS,FLua.Get(['klasses',Player.Klass,'id']));
-        iScoreEntry.SetAttribute('name', Name );
-        iScoreEntry.SetAttribute('level', IntToStr(Level) );
-        if nAbbr <> ''
-          then iScoreEntry.SetAttribute('depth', nAbbr )
-          else iScoreEntry.SetAttribute('depth', IntToStr(DLev) );
-        iScoreEntry.SetAttribute('klass', FLua.Get(['klasses',Player.Klass,'id']) );
-        iScoreEntry.SetAttribute('killed', VS );
-        iScoreEntry.SetAttribute('difficulty', IntToStr(DRL.Difficulty) );
-        if nChal <> '' then
-          iScoreEntry.SetAttribute('challenge', FLua.Get(['chal',nChal,'abbr']) );
+        iScoreEntry.SetAttribute('name', aPlayer.Name );
+        iScoreEntry.SetAttribute('level', IntToStr(aPlayer.ExpLevel) );
+        if aLevelAbbr <> ''
+          then iScoreEntry.SetAttribute('depth', aLevelAbbr )
+          else iScoreEntry.SetAttribute('depth', IntToStr(aPlayer.Level_Index) );
+        iScoreEntry.SetAttribute('klass', FLua.Get(['klasses',aPlayer.Klass,'id']) );
+        iScoreEntry.SetAttribute('killed', iDescription );
+        iScoreEntry.SetAttribute('difficulty', IntToStr(aDifficulty) );
+        if aChallenge <> '' then
+          iScoreEntry.SetAttribute('challenge', FLua.Get(['chal',aChallenge,'abbr']) );
         FScore.Save;
       end;
     finally
@@ -952,7 +952,7 @@ begin
   end;
 end;
 
-function THOF.RankCheck( out aResult : THOFRank ) : Boolean;
+function THOF.RankCheck( aStore : TStoreInterface; out aResult : THOFRank ) : Boolean;
 var iSize   : Integer;
     iValues : array of Integer;
     i       : Integer;
@@ -997,8 +997,8 @@ begin
       then aResult.Data[i].Value := 0
       else begin
         aResult.Data[i].Value := iValues[i];
-        if DRL.Store.IsInitialized then
-          HandleAchievements( aResult.Data[i].ID, iValues[i] );
+        if aStore.IsInitialized then
+          HandleAchievements( aStore, aResult.Data[i].ID, iValues[i] );
         RankCheck := True;
       end;
     SetRank(aResult.Data[i].ID,iValues[i]);
@@ -1094,7 +1094,7 @@ begin
   Exit( True );
 end;
 
-procedure THOF.HandleAchievements( const aRankArray : Ansistring; aRankLevel : Integer );
+procedure THOF.HandleAchievements( aStore : TStoreInterface; const aRankArray : Ansistring; aRankLevel : Integer );
 var i    : Integer;
     iAch : AnsiString;
 begin
@@ -1102,7 +1102,7 @@ begin
   begin
     iAch := FLua.Get( [ 'ranks', aRankArray, i+1, 'achievement' ], '' );
     if iAch <> '' then
-        if DRL.Store.SetAchievement( iAch ) then
+        if aStore.SetAchievement( iAch ) then
           Log( LOGINFO, iAch+' awarded!');
   end;
 end;
