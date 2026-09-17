@@ -114,7 +114,7 @@ TLevel = class(TLuaMapNode, ITextMap)
 
     function EnemiesLeft( aUnique : Boolean = False ) : DWord;
     function GetLookDescription( aWhere : TCoord2D ) : Ansistring;
-    function GetTargetDescription( aWhere : TCoord2D ) : Ansistring;
+    function GetTargetDescription( aSource : TBeing; aWhere : TCoord2D ) : Ansistring;
     procedure UpdateAutoTarget( aAutoTarget : TAutoTarget; aBeing : TBeing; aRange : Integer );
     function PushItem( aWho : TBeing; aWhat : TItem; aFrom, aTo : TCoord2D ) : Boolean;
     function SwapBeings( aA, aB : TCoord2D ) : Boolean;
@@ -1259,7 +1259,7 @@ end;
 function TLevel.isEyeContact( const a, b : TLuaEntityNode ) : boolean;
 begin
   if a is TPlayer then Exit( b.isVisible );
-  if ( b is TPlayer ) and ( Distance( a.Position, b.Position ) <= Player.Vision ) then 
+  if ( b is TPlayer ) and ( Distance( a.Position, b.Position ) <= TPlayer( b ).Vision ) then
     if not a.isVisible then Exit( False );
   Exit( inherited isEyeContact( a.Position, b.Position ) );
 end;
@@ -1635,6 +1635,7 @@ procedure TLevel.UpdateAutoTarget( aAutoTarget : TAutoTarget; aBeing : TBeing; a
 var iCoord    : TCoord2D;
     iBeing    : TBeing;
     iLongMode : Boolean;
+    iIsPlayer : Boolean;
 
   // This is only needed for iLongMode
   function HasShotPath( aTarget : TCoord2D ) : Boolean;
@@ -1659,13 +1660,14 @@ var iCoord    : TCoord2D;
   end;
 
 begin
-  iLongMode := (aBeing = Player) and (LF_BEINGSVISIBLE in FFlags) and ( not Player.Flags[ BF_DARKNESS ] );
+  iIsPlayer := aBeing.IsPlayer;
+  iLongMode := iIsPlayer and (LF_BEINGSVISIBLE in FFlags) and ( not aBeing.Flags[ BF_DARKNESS ] );
   aAutoTarget.Clear( aBeing.Position );
   if iLongMode then aRange += 2;
 
-  if ( aBeing = Player ) then
-    if ( Player.Inv.Slot[ efWeapon ] <> nil ) then
-      with Player.Inv.Slot[ efWeapon ] do
+  if iIsPlayer then
+    if ( aBeing.Inv.Slot[ efWeapon ] <> nil ) then
+      with aBeing.Inv.Slot[ efWeapon ] do
         if Flags[ IF_EXACTHIT ] and ( Range > 0 ) then
           aRange := Min( aRange, Range );
 
@@ -1674,7 +1676,7 @@ begin
     iBeing := Being[ iCoord ];
     if ( iBeing <> nil ) and ( iBeing <> aBeing ) then
     begin
-      if ( aBeing = Player ) then
+      if iIsPlayer then
       begin
         if iBeing.Flags[ BF_FRIENDLY ] then Continue;
         if not iBeing.isVisible then
@@ -1756,9 +1758,9 @@ begin
   if GodMode then AddInfo( aWhere.ToString );
 end;
 
-function TLevel.GetTargetDescription( aWhere : TCoord2D ) : Ansistring;
-var iBeing : TBeing;
-    iToHit : Integer;
+function TLevel.GetTargetDescription( aSource : TBeing; aWhere : TCoord2D ) : Ansistring;
+var iTarget : TBeing;
+    iToHit  : Integer;
   function THColor : Char;
   begin
     if iToHit >= 100 then Exit( 'G' );
@@ -1769,12 +1771,12 @@ var iBeing : TBeing;
   end;
 
 begin
-  if (aWhere.X * aWhere.Y = 0) or (aWhere = Player.Position) then Exit('');
+  if (aWhere.X * aWhere.Y = 0) or (aWhere = aSource.Position) then Exit('');
   if not isVisible( aWhere ) then Exit( 'out of vision' );
-  iBeing := Being[aWhere];
-  if iBeing = nil then Exit('');
-  Result := iBeing.Name + ' (' + iBeing.WoundStatus + ')';
-  iToHit := Player.calculateToHit( iBeing );
+  iTarget := Being[aWhere];
+  if iTarget = nil then Exit('');
+  Result := iTarget.Name + ' (' + iTarget.WoundStatus + ')';
+  iToHit := aSource.calculateToHit( iTarget );
   if iToHit > 0 then Result += ' {'+THColor+IntToStr( iToHit )+'}%';
 end;
 

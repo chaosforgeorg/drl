@@ -592,7 +592,7 @@ end;
 
 procedure TDRLIO.SetAutoTarget( aTarget : TCoord2D );
 begin
-  FHintTarget := FSession.Level.GetTargetDescription( aTarget );
+  FHintTarget := FSession.Level.GetTargetDescription( FSession.Player, aTarget );
   if FSession.Level.isVisible( aTarget ) and ( FSession.Level.Being[ aTarget ] <> nil )
     then FHintStatus := FSession.Level.Being[ aTarget ].GetTraitString
     else FHintStatus := '';

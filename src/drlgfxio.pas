@@ -1067,7 +1067,7 @@ begin
       if Session.Level.isVisible(iCoord) and ( Session.Level.Being[ iCoord ] <> nil )
         then
         begin
-          FHintOverlay := Session.Level.GetTargetDescription(iCoord);
+          FHintOverlay := FSession.Level.GetTargetDescription( FSession.Player, iCoord );
           FHintStatus  := Session.Level.Being[ iCoord ].GetTraitString;
         end
         else
