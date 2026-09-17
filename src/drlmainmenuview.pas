@@ -227,7 +227,7 @@ begin
     begin
       FResult.Klass := FArrayKlass[0].NID;
       FMode         := MAINMENU_TRAIT;
-      IO.PushLayer( TPlayerView.CreateTrait( True, FResult.Klass ) );
+      IO.PushLayer( TPlayerView.CreateInitialTrait( FResult.Klass ) );
     end;
   end;
   VTIG_Clear;
@@ -802,7 +802,7 @@ begin
       begin
         FResult.Klass := FArrayKlass[i].NID;
         FMode         := MAINMENU_TRAIT;
-        IO.PushLayer( TPlayerView.CreateTrait( True, FResult.Klass ) );
+        IO.PushLayer( TPlayerView.CreateInitialTrait( FResult.Klass ) );
       end;
     iSelected := VTIG_Selected;
     VTIG_PopStyle;

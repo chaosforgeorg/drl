@@ -812,7 +812,7 @@ begin
     aItem := Level.Item[ FPlayer.Position ];
   if ( aItem = nil ) or ( not (aItem.IType in iItemTypes) ) then
   begin
-    FPlayerView := IO.PushLayer( TPlayerView.CreateCommand( COMMAND_UNLOAD, FPlayer.Flags[ BF_SCAVENGER ] ) );
+    FPlayerView := IO.PushLayer( TPlayerView.CreateCommand( FPlayer, COMMAND_UNLOAD, FPlayer.Flags[ BF_SCAVENGER ] ) );
     Exit( True );
   end;
 
@@ -926,7 +926,7 @@ begin
       if IO.MTarget = FPlayer.Position
         then Exit( HandleSwapWeaponCommand )
         else begin
-//          FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_EQUIPMENT ) );
+//          FPlayerView := IO.PushLayer( TPlayerView.Create( FPlayer, PLAYERVIEW_EQUIPMENT ) );
 //          Exit( True );
         end;
 
@@ -936,7 +936,7 @@ begin
       begin
         if iAlt then
         begin
-          FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_INVENTORY ) );
+          FPlayerView := IO.PushLayer( TPlayerView.Create( FPlayer, PLAYERVIEW_INVENTORY ) );
           Exit( True );
         end
         else
@@ -950,7 +950,7 @@ begin
               Exit( HandleCommand( TCommand.Create( COMMAND_PICKUP ) ) )
           else
             begin
-              FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_INVENTORY ) );
+              FPlayerView := IO.PushLayer( TPlayerView.Create( FPlayer, PLAYERVIEW_INVENTORY ) );
               Exit( True );
             end
       end
@@ -1122,8 +1122,8 @@ begin
     end;
     CONTROLLER_PLAYER : begin
       if IO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT )
-        then FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_EQUIPMENT ) )
-        else FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_INVENTORY ) );
+        then FPlayerView := IO.PushLayer( TPlayerView.Create( FPlayer, PLAYERVIEW_EQUIPMENT ) )
+        else FPlayerView := IO.PushLayer( TPlayerView.Create( FPlayer, PLAYERVIEW_INVENTORY ) );
       Exit( False );
     end;
     CONTROLLER_ACTIVE : Exit( HandleCommand( TCommand.Create( COMMAND_ACTIVE ) ) );
@@ -1200,14 +1200,14 @@ begin
       INPUT_QUIT       : begin IO.PushLayer( TAbandonView.Create ); Exit; end;
       INPUT_HELP       : begin IO.PushLayer( THelpView.Create( IO, FContext.Lua, TDRLRuntime( FRuntime ).Help, CoreModuleID ) ); Exit; end;
       INPUT_LOOKMODE   : begin IO.PushLayer( TLookModeView.Create( FLevel ) ); Exit; end;
-      INPUT_PLAYERINFO : begin FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_CHARACTER ) ); Exit; end;
-      INPUT_INVENTORY  : begin FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_INVENTORY ) ); Exit; end;
-      INPUT_EQUIPMENT  : begin FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_EQUIPMENT ) ); Exit; end;
+      INPUT_PLAYERINFO : begin FPlayerView := IO.PushLayer( TPlayerView.Create( FPlayer, PLAYERVIEW_CHARACTER ) ); Exit; end;
+      INPUT_INVENTORY  : begin FPlayerView := IO.PushLayer( TPlayerView.Create( FPlayer, PLAYERVIEW_INVENTORY ) ); Exit; end;
+      INPUT_EQUIPMENT  : begin FPlayerView := IO.PushLayer( TPlayerView.Create( FPlayer, PLAYERVIEW_EQUIPMENT ) ); Exit; end;
       INPUT_ASSEMBLIES : begin IO.PushLayer( TAssemblyView.Create( FContext.Lua, TDRLRuntime( FRuntime ).HOF ) ); Exit; end;
       INPUT_MORE       : begin IO.FullLook( Level.Being[FTargeting.List.Current] ); Exit; end;
       INPUT_MORESELF   : begin IO.FullLook( FPlayer ); Exit; end;
-      INPUT_LEGACYUSE  : begin FPlayerView := IO.PushLayer( TPlayerView.CreateCommand( COMMAND_USE ) ); Exit; end;
-      INPUT_LEGACYDROP : begin FPlayerView := IO.PushLayer( TPlayerView.CreateCommand( COMMAND_DROP ) ); Exit; end;
+      INPUT_LEGACYUSE  : begin FPlayerView := IO.PushLayer( TPlayerView.CreateCommand( FPlayer, COMMAND_USE ) ); Exit; end;
+      INPUT_LEGACYDROP : begin FPlayerView := IO.PushLayer( TPlayerView.CreateCommand( FPlayer, COMMAND_DROP ) ); Exit; end;
       INPUT_UNLOAD     : begin HandleUnloadCommand( nil ); Exit; end;
 
       INPUT_MESSAGES   : begin IO.PushLayer( TMessagesView.Create( IO, IO.MsgGetRecent ) ); Exit; end;
@@ -1220,7 +1220,7 @@ begin
       end;
 
       INPUT_LEGACYSAVE: begin SetState( DSSaving ); Exit; end;
-      INPUT_TRAITS    : begin FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_TRAITS ) ); Exit; end;
+      INPUT_TRAITS    : begin FPlayerView := IO.PushLayer( TPlayerView.Create( FPlayer, PLAYERVIEW_TRAITS ) ); Exit; end;
       INPUT_RUN       : begin
         FPlayer.MultiMove.Stop;
         if FPlayer.EnemiesInVision > 0

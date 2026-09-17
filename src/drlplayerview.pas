@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlplayerview;
 interface
 uses vioevent, viotypes, vgenerics, vtigstyle,
-     dfitem, dfdata, drlhooks, drlio, drluibindings, drltraits, drlconfirmview;
+     dfplayer, dfitem, dfdata, drlhooks, drlio, drluibindings, drltraits, drlconfirmview;
 
 type TPlayerViewState = (
   PLAYERVIEW_INVENTORY,
@@ -47,9 +47,10 @@ end;
 type TTraitViewArray = specialize TGArray< TTraitViewEntry >;
 
 type TPlayerView = class( TIOLayer )
-  constructor Create( aInitialState : TPlayerViewState = PLAYERVIEW_INVENTORY );
-  constructor CreateTrait( aFirstTrait : Boolean; aKlass : Byte = 0 );
-  constructor CreateCommand( aCommand : Byte; aScavenger : Boolean = False );
+  constructor Create( aPlayer : TPlayer; aInitialState : TPlayerViewState = PLAYERVIEW_INVENTORY );
+  constructor CreateTrait( aPlayer : TPlayer );
+  constructor CreateInitialTrait( aKlass : Byte );
+  constructor CreateCommand( aPlayer : TPlayer; aCommand : Byte; aScavenger : Boolean = False );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
@@ -74,6 +75,7 @@ protected
 protected
   procedure Filter( aSet : TItemTypeSet; aUsableOnly : Boolean = False );
 protected
+  FPlayer      : TPlayer; // Borrowed; nil only for initial trait selection.
   FState       : TPlayerViewState;
   FSize        : TIOPoint;
   FInv         : TItemViewArray;
@@ -118,28 +120,36 @@ implementation
 
 uses sysutils, math, variants,
      vutil, vtig, vtigio, vlua,
-     dfplayer, dflevel, drlcommand, drlbase, drlinventory, drlperk;
+     dflevel, drlcommand, drlbase, drlinventory, drlperk;
 
-constructor TPlayerView.Create( aInitialState : TPlayerViewState = PLAYERVIEW_INVENTORY );
+constructor TPlayerView.Create( aPlayer : TPlayer; aInitialState : TPlayerViewState = PLAYERVIEW_INVENTORY );
 begin
+  FPlayer := aPlayer;
   Initialize;
   FState := aInitialState;
 end;
 
-constructor TPlayerView.CreateTrait( aFirstTrait : Boolean; aKlass : Byte = 0 );
+constructor TPlayerView.CreateTrait( aPlayer : TPlayer );
 begin
+  FPlayer := aPlayer;
   Initialize;
   FState     := PLAYERVIEW_TRAITS;
   FTraitMode := True;
-  FTraitFirst:= aFirstTrait;
-
-  if FTraitFirst
-    then ReadTraits( aKlass )
-    else ReadTraits( Player.Klass )
+  ReadTraits( FPlayer.Klass );
 end;
 
-constructor TPlayerView.CreateCommand( aCommand : Byte; aScavenger : Boolean = False );
+constructor TPlayerView.CreateInitialTrait( aKlass : Byte );
 begin
+  Initialize;
+  FState      := PLAYERVIEW_TRAITS;
+  FTraitMode  := True;
+  FTraitFirst := True;
+  ReadTraits( aKlass );
+end;
+
+constructor TPlayerView.CreateCommand( aPlayer : TPlayer; aCommand : Byte; aScavenger : Boolean = False );
+begin
+  FPlayer := aPlayer;
   Initialize;
   FCommandMode := aCommand;
   FScavenger   := aScavenger;
@@ -289,25 +299,25 @@ var i : Integer;
 begin
   if aItem.isWearable and ( not aItem.isRelic ) then
   begin
-    if Player.FQuickSlots[ aValue ].UID = aItem.UID
-      then Player.FQuickSlots[ aValue ].UID := 0
-      else Player.FQuickSlots[ aValue ].UID := aItem.UID;
-    Player.FQuickSlots[ aValue ].ID := '';
+    if FPlayer.FQuickSlots[ aValue ].UID = aItem.UID
+      then FPlayer.FQuickSlots[ aValue ].UID := 0
+      else FPlayer.FQuickSlots[ aValue ].UID := aItem.UID;
+    FPlayer.FQuickSlots[ aValue ].ID := '';
     for i := 1 to 9 do
-      if ( i <> aValue ) and ( Player.FQuickSlots[ i ].UID = aItem.UID ) then
-        Player.FQuickSlots[ i ].UID := 0;
+      if ( i <> aValue ) and ( FPlayer.FQuickSlots[ i ].UID = aItem.UID ) then
+        FPlayer.FQuickSlots[ i ].UID := 0;
     ReadQuickslots;
     Exit( True );
   end;
   if aItem.isUsable then
   begin
-    if Player.FQuickSlots[ aValue ].ID = aItem.ID
-      then Player.FQuickSlots[ aValue ].ID := ''
-      else Player.FQuickSlots[ aValue ].ID := aItem.ID;
-    Player.FQuickSlots[ aValue ].UID := 0;
+    if FPlayer.FQuickSlots[ aValue ].ID = aItem.ID
+      then FPlayer.FQuickSlots[ aValue ].ID := ''
+      else FPlayer.FQuickSlots[ aValue ].ID := aItem.ID;
+    FPlayer.FQuickSlots[ aValue ].UID := 0;
     for i := 1 to 9 do
-      if ( i <> aValue ) and ( Player.FQuickSlots[ i ].ID = aItem.ID ) then
-        Player.FQuickSlots[ i ].ID := '';
+      if ( i <> aValue ) and ( FPlayer.FQuickSlots[ i ].ID = aItem.ID ) then
+        FPlayer.FQuickSlots[ i ].ID := '';
     ReadQuickslots;
     Exit( True );
   end;
@@ -482,7 +492,7 @@ var iEntry            : TItemViewEntry;
     begin
       iSavedState := FState;
       FState := PLAYERVIEW_CLOSING;
-      if not FEq[iSelected].Item.CallHookCheck( Hook_OnUnequipCheck, [ Player, False ] ) then
+      if not FEq[iSelected].Item.CallHookCheck( Hook_OnUnequipCheck, [ FPlayer, False ] ) then
       begin
         FState := PLAYERVIEW_DONE;
         Exit( True );
@@ -538,27 +548,27 @@ begin
     VTIG_FreeLabel( 'Resistances',     Point(iR,iY) );
 
     for iCount := 1 to MAXTRAITS do
-      if Player.Traits[iCount] > 0 then
+      if FPlayer.Traits[iCount] > 0 then
       begin
         iName := IO.Session.Context.Lua.Get(['traits',iCount,'name']);
         if iName = '' then Continue;
         if iCount < 10 then
         begin
           Inc( iB );
-          VTIG_FreeLabel( '{d'+Padded(iName,16) + '({!' + IntToStr(Player.Traits[iCount])+ '})}', Point(0, iY+iB) );
+          VTIG_FreeLabel( '{d'+Padded(iName,16) + '({!' + IntToStr(FPlayer.Traits[iCount])+ '})}', Point(0, iY+iB) );
         end
         else
         begin
           Inc( iA );
-          VTIG_FreeLabel( '{d'+Padded(iName,16) + '({!' + IntToStr(Player.Traits[iCount])+ '})}', Point(20, iY+iA) );
+          VTIG_FreeLabel( '{d'+Padded(iName,16) + '({!' + IntToStr(FPlayer.Traits[iCount])+ '})}', Point(20, iY+iA) );
         end;
       end;
 
     for iRes := Low(TResistance) to High(TResistance) do
     begin
-      iTot  := Player.getTotalResistance(ResIDs[iRes],TARGET_INTERNAL);
-      iTor  := Player.getTotalResistance(ResIDs[iRes],TARGET_TORSO);
-      iFeet := Player.getTotalResistance(ResIDs[iRes],TARGET_FEET);
+      iTot  := FPlayer.getTotalResistance(ResIDs[iRes],TARGET_INTERNAL);
+      iTor  := FPlayer.getTotalResistance(ResIDs[iRes],TARGET_TORSO);
+      iFeet := FPlayer.getTotalResistance(ResIDs[iRes],TARGET_FEET);
       if (iTot <> 0) or (iTor <> 0) or (iFeet <> 0) then
       begin
         Inc( iY );
@@ -598,7 +608,7 @@ begin
     begin
       if Assigned( FEq[iSelected].Item ) then
       begin
-        if ( Player.Inv.isFull ) then
+        if ( FPlayer.Inv.isFull ) then
         begin
           FState := PLAYERVIEW_CLOSING;
           if not Option_InvFullDrop then
@@ -684,7 +694,7 @@ procedure TPlayerView.UpdateTraits( aActive : Boolean );
 var iSelected : Integer;
     iEntry    : TTraitViewEntry;
 begin
-  if FTraits = nil then ReadTraits( Player.Klass );
+  if FTraits = nil then ReadTraits( FPlayer.Klass );
   VTIG_PushStyle( @FTraitsStyle );
   if FTraitMode
     then VTIG_BeginWindow('Select trait to upgrade', 'traits', FSize )
@@ -719,9 +729,9 @@ begin
     if FTraits[iSelected].Master then
     begin
       VTIG_Text( '' );
-      if ( not FTraitFirst ) and ( Player.Traits.Master > 0 ) then
+      if ( not FTraitFirst ) and ( FPlayer.Traits.Master > 0 ) then
       begin
-        if FTraits[iSelected].Index <> Player.Traits.Master then
+        if FTraits[iSelected].Index <> FPlayer.Traits.Master then
           VTIG_Text( '{rYou can pick only one {RMaster} trait.}' );
       end
       else
@@ -740,7 +750,7 @@ begin
       FState := PLAYERVIEW_CLOSING;
       if FTraitFirst
         then FTraitPick := FTraits[iSelected].Index
-        else Player.Traits.Upgrade( Player.Klass, FTraits[iSelected].Index );
+        else FPlayer.Traits.Upgrade( FPlayer.Klass, FTraits[iSelected].Index );
       FState := PLAYERVIEW_DONE;
     end;
 end;
@@ -775,8 +785,8 @@ begin
   if FInv = nil then FInv := TItemViewArray.Create;
   FInv.Clear;
 
-  for iItem in Player.Inv do
-    if (not Player.Inv.Equipped( iItem )) {and (iItem.IType in aFilter) }then
+  for iItem in FPlayer.Inv do
+    if (not FPlayer.Inv.Equipped( iItem )) {and (iItem.IType in aFilter) }then
       PushItem( iItem, FInv );
 
   Sort( FInv );
@@ -793,8 +803,8 @@ begin
   for iSlot := Low(TEqSlot) to High(TEqSlot) do
   begin
     if (iSlot = efRelic) and (not ModuleOption_RelicSlot) then Continue;
-    if Player.Inv.Slot[iSlot] <> nil
-      then PushItem( Player.Inv.Slot[iSlot], FEq )
+    if FPlayer.Inv.Slot[iSlot] <> nil
+      then PushItem( FPlayer.Inv.Slot[iSlot], FEq )
       else
         begin
           iEntry.Item  := nil;
@@ -830,7 +840,7 @@ const MaxReqLength = 38;
   function Value( aTrait : Byte ) : Byte;
   begin
     if FTraitFirst then Exit(0);
-    Exit( Player.Traits[aTrait] );
+    Exit( FPlayer.Traits[aTrait] );
   end;
 
   procedure AddRequires( aStr : Ansistring );
@@ -852,7 +862,7 @@ begin
   iKlass := aKlass;
   iLevel := 0;
   if not FTraitFirst then
-    iLevel := Player.ExpLevel;
+    iLevel := FPlayer.ExpLevel;
 
   iTraits := IO.Session.Context.Lua.Get(['klasses',iKlass,'traitlist']);
   for i := VarArrayLowBound(iTraits, 1) to VarArrayHighBound(iTraits, 1) do
@@ -914,7 +924,7 @@ begin
     iEntry.Index     := iTrait;
     if FTraitFirst
       then iEntry.Available := TTraits.CanPickInitially( IO.Session.Context.Lua, iTrait, iKlass )
-      else iEntry.Available := Player.Traits.CanPick( iKlass, iTrait, iLevel );
+      else iEntry.Available := FPlayer.Traits.CanPick( iKlass, iTrait, iLevel );
     FTraits.Push( iEntry );
   end;
 end;
@@ -937,13 +947,13 @@ begin
   for i := Low( FCharacter ) to High( FCharacter ) do
     FreeAndNil( FCharacter[i] );
 
-  iLevel := TLevel( Player.Parent );
-  FCTitle := Player.Context.Lua.Get([ 'diff', DRL.Difficulty, 'code' ]);
-  if DRL.Challenge <> ''  then FCTitle += ' / ' + Player.Context.Lua.Get(['chal',DRL.Challenge,'abbr']);
-  if DRL.SChallenge <> '' then FCTitle += ' + ' + Player.Context.Lua.Get(['chal',DRL.SChallenge,'abbr']);
+  iLevel := TLevel( FPlayer.Parent );
+  FCTitle := FPlayer.Context.Lua.Get([ 'diff', DRL.Difficulty, 'code' ]);
+  if DRL.Challenge <> ''  then FCTitle += ' / ' + FPlayer.Context.Lua.Get(['chal',DRL.Challenge,'abbr']);
+  if DRL.SChallenge <> '' then FCTitle += ' + ' + FPlayer.Context.Lua.Get(['chal',DRL.SChallenge,'abbr']);
   FCTitle := 'Character ( '+FCTitle+' )';
 
-  with Player do
+  with FPlayer do
   begin
     Statistics.Update();
     iKillRecord := Statistics['kills_non_damage'];
@@ -953,7 +963,7 @@ begin
 
     // Section 0: Player
     FCharacter[0] := TStringGArray.Create;
-    FCharacter[0].Push( '{!' + Name + '} - level {!' + IntToStr(ExpLevel) + '} ' + AnsiString(Player.Context.Lua.Get(['klasses',Klass,'name'])) );
+    FCharacter[0].Push( '{!' + Name + '} - level {!' + IntToStr(ExpLevel) + '} ' + AnsiString(FPlayer.Context.Lua.Get(['klasses',Klass,'name'])) );
     if ExpLevel < MaxPlayerLevel - 1
       then FCharacter[0].Push( Format( '  Experience   : {!%d} ({!%d} more needed for level {!%d})', [ Exp, ExpTable[ExpLevel+1] - Exp, ExpLevel+1 ] ) )
       else FCharacter[0].Push( Format( '  Experience   : {!%d} ({!max level reached!})', [ Exp ] ) );
@@ -1097,18 +1107,18 @@ begin
 
     for s := 1 to 9 do
     begin
-      if Player.FQuickSlots[s].UID <> 0 then
+      if FPlayer.FQuickSlots[s].UID <> 0 then
       begin
         for i := 0 to FInv.Size - 1 do
           if Assigned( FInv.Data^[i].Item ) then
-            if FInv.Data^[i].Item.UID = Player.FQuickSlots[s].UID then
+            if FInv.Data^[i].Item.UID = FPlayer.FQuickSlots[s].UID then
               FInv.Data^[i].QSlot := s;
       end
-      else if Player.FQuickSlots[s].ID <> '' then
+      else if FPlayer.FQuickSlots[s].ID <> '' then
       begin
         for i := 0 to FInv.Size - 1 do
           if Assigned( FInv.Data^[i].Item ) then
-            if FInv.Data^[i].Item.ID = Player.FQuickSlots[s].ID then
+            if FInv.Data^[i].Item.ID = FPlayer.FQuickSlots[s].ID then
               FInv.Data^[i].QSlot := s;
       end;
     end;
@@ -1121,11 +1131,11 @@ begin
 
     for s := 1 to 9 do
     begin
-      if Player.FQuickSlots[s].UID <> 0 then
+      if FPlayer.FQuickSlots[s].UID <> 0 then
       begin
         for i := 0 to FEq.Size - 1 do
           if Assigned( FEq.Data^[i].Item ) then
-            if FEq.Data^[i].Item.UID = Player.FQuickSlots[s].UID then
+            if FEq.Data^[i].Item.UID = FPlayer.FQuickSlots[s].UID then
               FEq.Data^[i].QSlot := s;
       end
     end;

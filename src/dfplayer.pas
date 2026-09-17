@@ -707,7 +707,7 @@ end;
 procedure TPlayer.doUpgradeTrait;
 begin
   if DemoVersion and (ExpLevel > 7) then Exit;
-  IO.PushLayer( TPlayerView.CreateTrait( False ) );
+  IO.PushLayer( TPlayerView.CreateTrait( Self ) );
   IO.WaitForLayer( True );
 end;
 
