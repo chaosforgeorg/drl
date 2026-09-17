@@ -48,7 +48,6 @@ type TDRLSession = class(TVObject)
        procedure InitializeLevel;
        procedure Reset;
        procedure Reconfigure;
-       procedure RecordResult( aPlayer : TPlayer );
        procedure SetModuleHooks( aModuleHooks : TFlags );
        function LoadSaveFile : Boolean;
        procedure WriteSaveFile( aCrash : Boolean );
@@ -60,7 +59,7 @@ type TDRLSession = class(TVObject)
        function  CallHookCheck( Hook : Byte; const Params : array of Const ) : Boolean;
        procedure SetState( aNewState : TDRLState );
        procedure ClearPlayerView;
-       procedure SetMemorial( aMemorial : TIOStringArray ); // Takes ownership.
+       procedure GenerateMemorial( aPlayer : TPlayer );
        procedure OpenJHCPage;
        function HandleUnloadCommand( aItem : TItem ) : Boolean;
        function HandleCommand( aCommand : TCommand ) : Boolean;
@@ -73,6 +72,7 @@ type TDRLSession = class(TVObject)
        function HandlePickupCommand( aAlt : Boolean ) : Boolean;
        procedure ResetAutoTarget;
      private
+       procedure RecordResult( aPlayer : TPlayer );
        procedure SetLevel( aLevel : TLevel );
        procedure ReleaseLevel;
        procedure Apply( aResult : TMenuResult );
@@ -234,11 +234,20 @@ begin
   FState := aNewState;
 end;
 
-procedure TDRLSession.SetMemorial( aMemorial : TIOStringArray );
+procedure TDRLSession.GenerateMemorial( aPlayer : TPlayer );
+var iMemorial : TIOStringArray;
 begin
-  if aMemorial = nil then Exit;
+  if aPlayer.Score = -1000 then Exit;
+
+  aPlayer.Statistics.Update;
+  if FContext.Lua.Defined( [CoreModuleID, 'RunAwards'] ) then
+    FContext.Lua.ProtectedCall( [CoreModuleID, 'RunAwards'], [NoPlayerRecord] );
+  aPlayer.CalculateScore( FDifficulty, FGameWon );
+  RecordResult( aPlayer );
+  iMemorial := aPlayer.GenerateMemorial( FPaths.ModuleUserPath );
+
   FMemorial := TPagedReport.Create( 'Post mortem', False );
-  FMemorial.Add( aMemorial, 'mortem.txt' );
+  FMemorial.Add( iMemorial, 'mortem.txt' );
 end;
 
 procedure TDRLSession.ClearPlayerView;
@@ -1466,7 +1475,7 @@ begin
     begin
       Player.Score := Player.Score + 1000;
       if FGameWon and (State <> DSNextLevel) and (FMemorial = nil) then
-        SetMemorial( Player.GenerateMemorial );
+        GenerateMemorial( Player );
       FLevel.Clear;
     end;
     IO.SetHint('');

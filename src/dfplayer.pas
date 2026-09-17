@@ -51,7 +51,8 @@ type TPlayer = class(TBeing)
   procedure ApplyDamage( aDamage : LongInt; aTarget : TBodyTarget; aDamageType : TDamageType; aSource : TItem; aDelay : Integer ); override;
   procedure LevelUp;
   procedure AddExp( aAmount : LongInt );
-  function GenerateMemorial : TIOStringArray; // Caller owns the returned lines.
+  procedure CalculateScore( aDifficulty : Integer; aGameWon : Boolean );
+  function GenerateMemorial( const aUserPath : AnsiString ) : TIOStringArray; // Caller owns the returned lines.
   destructor Destroy; override;
   procedure Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer ); override;
   procedure AddHistory( const aHistory : Ansistring );
@@ -561,15 +562,10 @@ begin
     iLevel.NukeTick;
     IO.WaitForAnimation;
   end;
-  DRL.SetMemorial( GenerateMemorial );
+  DRL.GenerateMemorial( Self );
 end;
 
-function TPlayer.GenerateMemorial : TIOStringArray;
-var iMortemPath : AnsiString;
-    iString     : AnsiString;
-    iMortemList : TStringList;
-    i           : Integer;
-
+procedure TPlayer.CalculateScore( aDifficulty : Integer; aGameWon : Boolean );
 procedure ScoreCRC( var aScore : LongInt );
 begin
   if aScore < 2000 then Exit;
@@ -579,13 +575,6 @@ begin
 end;
 
 begin
-  Result := nil;
-  if FScore = -1000 then Exit;
-
-  FStatistics.Update;
-  if FContext.Lua.Defined([CoreModuleID,'RunAwards']) then
-    FContext.Lua.ProtectedCall([CoreModuleID,'RunAwards'],[NoPlayerRecord]);
-
   if FContext.Lua.Defined([CoreModuleID,'GetScore']) then
   begin
     FScore := FContext.Lua.ProtectedCall([CoreModuleID,'GetScore'],[])
@@ -594,16 +583,23 @@ begin
   begin
     FScore += Max(FExp + (FLevelIndex * 1000) + Max(FHP,0) * 20,0);
     if FScore < 0 then FScore := 0;
-    if DRL.Difficulty = DIFF_NIGHTMARE then FScore -= FStatistics.GameTime div 500;
+    if aDifficulty = DIFF_NIGHTMARE then FScore -= FStatistics.GameTime div 500;
 
-    if DRL.GameWon then FScore += FScore div 4;
-    FScore := Round( FScore * Double(FContext.Lua.Get([ 'diff', DRL.Difficulty, 'scorefactor' ])) );
+    if aGameWon then FScore += FScore div 4;
+    FScore := Round( FScore * Double(FContext.Lua.Get([ 'diff', aDifficulty, 'scorefactor' ])) );
     // FScore
     ScoreCRC(FScore);
   end;
   if GodMode then FScore := 0;
-  DRL.RecordResult( Self );
+end;
 
+function TPlayer.GenerateMemorial( const aUserPath : AnsiString ) : TIOStringArray;
+var iMortemPath : AnsiString;
+    iString     : AnsiString;
+    iMortemList : TStringList;
+    i           : Integer;
+begin
+  Result := nil;
   try
     iMortemList := TStringList.Create;
     try
@@ -614,7 +610,7 @@ begin
         Result.Push( iMortemList[i] );
         iMortemList[i] := VTIG_StripTags( iMortemList[i] );
       end;
-      iMortemPath := IO.Session.Paths.ModuleUserPath + 'mortem.txt';
+      iMortemPath := aUserPath + 'mortem.txt';
       iMortemList.SaveToFile( iMortemPath );
     finally
       FreeAndNil( iMortemList );
@@ -624,7 +620,7 @@ begin
 
     if Option_MortemArchive then
     begin
-      iString := IO.Session.Paths.ModuleUserPath + 'mortem'+PathDelim+ToProperFilename('['+FormatDateTime(Option_TimeStamp,Now)+'] '+Name)+'.txt';
+      iString := aUserPath + 'mortem'+PathDelim+ToProperFilename('['+FormatDateTime(Option_TimeStamp,Now)+'] '+Name)+'.txt';
       Log('Writing mortem...: '+iString);
       try
         iMortemList := TStringList.Create;
