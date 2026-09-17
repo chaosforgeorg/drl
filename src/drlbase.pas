@@ -1197,13 +1197,8 @@ begin
       INPUT_EXAMINENPC   : begin Player.ExamineNPC; Exit; end;
       INPUT_EXAMINEITEM  : begin Player.ExamineItem; Exit; end;
       INPUT_TOGGLEGRID   : begin if GraphicsVersion then SpriteMap.ToggleGrid; Exit; end;
-      INPUT_SOUNDTOGGLE  : begin SoundOff := not SoundOff; Exit; end;
-      INPUT_MUSICTOGGLE  : begin
-                               MusicOff := not MusicOff;
-                               if MusicOff then IO.Audio.PlayMusic('')
-                                           else IO.Audio.PlayMusic(Iif( FLevel.Music_ID <> '', FLevel.Music_ID, FLevel.ID ));
-                               Exit;
-                             end;
+      INPUT_SOUNDTOGGLE  : begin IO.Audio.ToggleSound; Exit; end;
+      INPUT_MUSICTOGGLE  : begin IO.Audio.ToggleMusic( Iif( FLevel.Music_ID <> '', FLevel.Music_ID, FLevel.ID ) ); Exit; end;
     end;
     Exit( Action( iInput ) );
   end

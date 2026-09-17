@@ -215,12 +215,6 @@ var
   HARDSPRITE_DECAL_WALL_BLOOD : array[0..3] of DWord = ( 0,0,0,0 );
   HARDEMITTER_BLOOD           : DWord = 0;
 
-var
-  SoundOff  : boolean = False;
-  MusicOff  : boolean = False;
-
-  // 0-25 range
-
 const
 {$include ../bin/data/core/commands.lua}
   INPUT_MOVE        = [INPUT_WALKUP,     INPUT_WALKDOWN,

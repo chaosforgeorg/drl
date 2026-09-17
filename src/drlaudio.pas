@@ -46,6 +46,8 @@ type
     FHeartbeatAsset    : TAudioAssetHandle;
     FHeartbeatInstance : TAudioInstanceHandle;
     FHeartbeatEnabled  : Boolean;
+    FSoundMuted        : Boolean;
+    FMusicMuted        : Boolean;
 
     procedure Register( const aID, aFileName : AnsiString; aMusic : Boolean; const aRoot : AnsiString );
     procedure SoundQuery( aKey, aValue : Variant );
@@ -67,6 +69,8 @@ type
     procedure PlaySound( aSoundID : Word; aCoord : TCoord2D; aDelay : DWord = 0 );
     procedure PlayMusic( const aMusicID : AnsiString; aNotFound : Boolean = False );
     procedure PlayMusicOnce( const aMusicID : AnsiString );
+    procedure ToggleSound;
+    procedure ToggleMusic( const aMusicID : AnsiString );
     function ResolveSoundID( const aResolveIDs : array of AnsiString ) : Word;
     function GetSampleID( const aID : AnsiString ) : Word;
     function SampleExists( const aID : AnsiString ) : Boolean;
@@ -90,6 +94,8 @@ end;
 
 constructor TDRLAudio.Create;
 begin
+  FSoundMuted := False;
+  FMusicMuted := False;
   FSoundEvents   := TSoundEventHeap.Create(@EventCompare);
   FSoundCounts   := TSoundCountArray.Create;
   FAudioRegistry := TAudioRegistry.Create;
@@ -340,7 +346,7 @@ procedure TDRLAudio.UpdateHeartbeat;
 var iVolume : Integer;
 begin
   if (DRL.State <> DSPlaying) or (FAudio = nil) or (FHeartbeatAsset = 0) or
-     not FHeartbeatEnabled or (not Option_Sound) or SoundOff or
+     not FHeartbeatEnabled or (not Option_Sound) or FSoundMuted or
      (Setting_SoundVolume = 0) or (Player = nil) or Player.Dead or
      (Player.HP * 2 >= Player.HPMax) then
   begin
@@ -375,7 +381,7 @@ end;
 procedure TDRLAudio.PlaySound( const aSoundID : AnsiString; aVolumePercent : Integer );
 var iAsset : TAudioAssetHandle;
 begin
-  if (FAudio = nil) or not Option_Sound or SoundOff or (Setting_SoundVolume = 0) then Exit;
+  if (FAudio = nil) or not Option_Sound or FSoundMuted or (Setting_SoundVolume = 0) then Exit;
   iAsset := FindAsset(aSoundID);
   if iAsset <> 0 then FAudio.Play(iAsset, aVolumePercent);
 end;
@@ -387,7 +393,7 @@ var iEvent    : TSoundEvent;
     iVolume   : Integer;
     iDelay    : Integer;
 begin
-  if (aSoundID = 0) or (FAudio = nil) or not Option_Sound or SoundOff or (Setting_SoundVolume = 0) then Exit;
+  if (aSoundID = 0) or (FAudio = nil) or not Option_Sound or FSoundMuted or (Setting_SoundVolume = 0) then Exit;
   if aDelay > 0 then
   begin
     iEvent.Coord := aCoord;
@@ -416,7 +422,7 @@ var i      : Integer;
     iAsset : TAudioAssetHandle;
 begin
   Result := 0;
-  if (FAudio = nil) or not Option_Sound or SoundOff then Exit;
+  if (FAudio = nil) or not Option_Sound or FSoundMuted then Exit;
   for i := Low(aResolveIDs) to High(aResolveIDs) do
   begin
     iAsset := FindAsset( aResolveIDs[i] );
@@ -426,7 +432,7 @@ end;
 
 function TDRLAudio.GetSampleID( const aID : AnsiString ) : Word;
 begin
-  if (FAudio = nil) or not Option_Sound or SoundOff then Exit( 0 );
+  if (FAudio = nil) or not Option_Sound or FSoundMuted then Exit( 0 );
   Result := Word( FindAsset(aID) );
 end;
 
@@ -445,16 +451,28 @@ begin
     FAudio.StopMusic;
     Exit;
   end;
-  if MusicOff then Exit;
+  if FMusicMuted then Exit;
   iAsset := FindAsset(aMusicID);
   if iAsset <> 0 then FAudio.PlayMusic(iAsset)
   else if not aNotFound then PlayMusic('level'+IntToStr(IO.VisualRNG.RLongInt(23)+2), True);
 end;
 
+procedure TDRLAudio.ToggleSound;
+begin
+  FSoundMuted := not FSoundMuted;
+end;
+
+procedure TDRLAudio.ToggleMusic( const aMusicID : AnsiString );
+begin
+  FMusicMuted := not FMusicMuted;
+  if FMusicMuted then PlayMusic( '' )
+                 else PlayMusic( aMusicID );
+end;
+
 procedure TDRLAudio.PlayMusicOnce( const aMusicID : AnsiString );
 var iAsset : TAudioAssetHandle;
 begin
-  if (FAudio = nil) or not Option_Music or (Setting_MusicVolume = 0) or MusicOff then Exit;
+  if (FAudio = nil) or not Option_Music or (Setting_MusicVolume = 0) or FMusicMuted then Exit;
   if aMusicID = '' then
   begin
     FAudio.StopMusic;
