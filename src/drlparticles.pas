@@ -7,11 +7,12 @@ uses classes, sysutils,
 type
   // Module data, borrowed by each level's particle store.
   TEmitterData = class( TVObject )
-    procedure Load( aLua : TLua );
+    procedure RegisterEmitter( aLua : TLua; aNID : Word );
+    destructor Destroy; override;
     function GetEmitterData( aNID : Word ) : PParticleEmitterData;
   private
-    FEmitterData : array of TParticleEmitterData;
-    procedure LoadEmitter( aLua : TLua; aNID : Integer );
+    // Individual allocations keep active emitter pointers stable as IDs are added.
+    FEmitterData : array of PParticleEmitterData;
   end;
 
   TEmitterBinding = record
@@ -63,7 +64,8 @@ type
 
 implementation
 
-uses vluatable,
+uses math,
+     vluatable,
      dfdata, dfthing, drlio, drlspritemap;
 
 function FlagsToParticleFlags( const aFlags : TFlags ) : TParticleFlags;
@@ -134,25 +136,24 @@ end;
 
 // Emitter data loading
 
-procedure TEmitterData.Load( aLua : TLua );
-var iCount : Integer;
-    iNID   : Integer;
+destructor TEmitterData.Destroy;
+var iData : PParticleEmitterData;
 begin
-  iCount := aLua.Get( [ 'emitters', '__counter' ], 0 );
-  SetLength( FEmitterData, iCount + 1 );
-  for iNID := 1 to iCount do
-    LoadEmitter( aLua, iNID );
+  for iData in FEmitterData do
+    if iData <> nil then Dispose( iData );
+  inherited Destroy;
 end;
 
-procedure TEmitterData.LoadEmitter( aLua : TLua; aNID : Integer );
+procedure TEmitterData.RegisterEmitter( aLua : TLua; aNID : Word );
 var iTable  : TLuaTable;
     iShape  : AnsiString;
     iE      : PParticleEmitterData;
+    iData   : TParticleEmitterData;
     iWhite  : TColorRange;
 begin
   iTable := aLua.GetTable( [ 'emitters', aNID ] );
   try
-    iE := @FEmitterData[aNID];
+    iE := @iData;
     FillChar( iE^, SizeOf( TParticleEmitterData ), 0 );
 
     // Shape
@@ -215,13 +216,19 @@ begin
   finally
     iTable.Free;
   end;
+
+  // Publish only a fully parsed definition; re-registration preserves its address.
+  if aNID >= Length( FEmitterData ) then
+    SetLength( FEmitterData, Max( aNID + 1, Max( Length( FEmitterData ) * 2, 16 ) ) );
+  if FEmitterData[aNID] = nil then New( FEmitterData[aNID] );
+  FEmitterData[aNID]^ := iData;
 end;
 
 function TEmitterData.GetEmitterData( aNID : Word ) : PParticleEmitterData;
 begin
   if ( aNID = 0 ) or ( aNID >= Length( FEmitterData ) ) then
     Exit( nil );
-  Result := @FEmitterData[aNID];
+  Result := FEmitterData[aNID];
 end;
 
 // Binding management

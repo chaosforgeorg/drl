@@ -8,7 +8,7 @@ unit drlbase;
 interface
 
 uses vapp, vnode, vutil, vuid, viotypes, vrltools, vlua, vioevent, vstoreinterface, vrandom, vrlapp,
-     dflevel, dfdata, dfhof, dfitem, drlhooks, drllua, drlcommand, drlkeybindings, drlmodule, drlparticles;
+     dflevel, dfdata, dfhof, dfitem, drlhooks, drllua, drlcommand, drlkeybindings, drlmodule, drlgamedata;
 
 type TDRLSession = class;
 
@@ -44,7 +44,7 @@ type TDRLSessionResult = ( DSR_Quit, DSR_Played, DSR_ReloadData );
 // and data-generation policy belongs to TDRLRuntime.
 type TDRLSession = class(TVObject)
        constructor Create( aRuntime : TRLRuntime; aModules : TDRLModules;
-         aStore : TStoreInterface; aEmitters : TEmitterData; const aPaths : TGamePaths );
+         aStore : TStoreInterface; aData : TGameData; const aPaths : TGamePaths );
        procedure InitializeLevel;
        procedure Reset;
        procedure Reconfigure;
@@ -111,7 +111,7 @@ type TDRLSession = class(TVObject)
        FReloadData      : Boolean;
        FGameWon         : Boolean;
        FCrashSave       : Boolean;
-       FEmitters        : TEmitterData;
+       FData            : TGameData;
        FGameSeed        : Cardinal;
        FSeededGame      : Boolean;
        FRuntime         : TRLRuntime;
@@ -122,6 +122,7 @@ type TDRLSession = class(TVObject)
        property Challenge  : Ansistring read FChallenge;
        property SChallenge : Ansistring read FSChallenge;
 
+       property Data : TGameData read FData;
        property Context : TNodeContext read FContext;
        property UIDs : TUIDStore read FUIDStore;
        property Store : TStoreInterface read FStore;
@@ -260,7 +261,7 @@ begin
 end;
 
 constructor TDRLSession.Create( aRuntime : TRLRuntime; aModules : TDRLModules;
-  aStore : TStoreInterface; aEmitters : TEmitterData; const aPaths : TGamePaths );
+  aStore : TStoreInterface; aData : TGameData; const aPaths : TGamePaths );
 begin
   FRuntime := aRuntime;
   FContext := TNodeContext.Create( aRuntime.Lua, nil );
@@ -268,7 +269,7 @@ begin
   FStore := aStore;
   FPaths := aPaths;
   FGameSeed := 0;
-  FEmitters := aEmitters;
+  FData := aData;
   FTargeting := TTargeting.Create(Self);
   Reset;
 end;
@@ -276,15 +277,15 @@ end;
 procedure TDRLSession.InitializeLevel;
 begin
   Assert( FLevel = nil );
-  SetLevel( TLevel.Create( FContext, GameRNG ) );
+  SetLevel( TLevel.Create( FContext, GameRNG, FData ) );
 end;
 
 procedure TDRLSession.SetLevel( aLevel : TLevel );
 begin
   FLevel := aLevel;
   if GraphicsVersion
-    then FLevel.InitializeParticles( FEmitters, TDRLGFXIO(IO).ParticleEngine )
-    else FLevel.InitializeParticles( FEmitters, nil );
+    then FLevel.InitializeParticles( TDRLGFXIO(IO).ParticleEngine )
+    else FLevel.InitializeParticles( nil );
   FContext.Lua.SetValue( 'level', FLevel );
   IO.SetLevel( aLevel );
 end;
@@ -1007,7 +1008,7 @@ begin
       if Level.isProperCoord( iTarget ) then
       begin
         iCell := Level.getCell( iTarget );
-        if not ( ( CellHook_OnHazardQuery in Cells[ iCell ].Hooks ) and  Level.CallHook( CellHook_OnHazardQuery, iCell, Player ) ) then
+        if not ( ( CellHook_OnHazardQuery in FData.Cells[ iCell ].Hooks ) and  Level.CallHook( CellHook_OnHazardQuery, iCell, Player ) ) then
           Result := HandleMoveCommand(
             DirectionToInput( NewDirection( IO.GetPadLDir ) ),
             IO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
@@ -1609,14 +1610,14 @@ begin
       FLevel.BindGameRNG( iGameRNG );
       FRuntime.ReplaceGameRNG( iGameRNG );
 
-      Player := TPlayer.CreateFromStream( iStream, FContext );
+      Player := TPlayer.CreateFromStream( iStream, FContext, FData.Perks );
       FCrashSave := iStream.ReadByte <> 0;
 
       if not FCrashSave then
       begin
         ReleaseLevel;
         iRecreate := True;
-        SetLevel( TLevel.CreateFromStream( iStream, FContext, GameRNG ) );
+        SetLevel( TLevel.CreateFromStream( iStream, FContext, GameRNG, FData ) );
         FLevel.Place( Player, Player.Position );
         FLevel.Particles.ReadFromStream( iStream );
       end;
@@ -1641,7 +1642,7 @@ begin
       if iRecreate then
       begin
         ReleaseLevel;
-        SetLevel( TLevel.Create( FContext, GameRNG ) );
+        SetLevel( TLevel.Create( FContext, GameRNG, FData ) );
       end;
     end;
   end;

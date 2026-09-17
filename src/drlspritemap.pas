@@ -1221,9 +1221,9 @@ var iT,iB,iL,iR : Boolean;
   function IsWall( aCoord : TCoord2D ) : Boolean; inline;
   begin
     if not FLevel.isProperCoord( aCoord ) then Exit(True);
-    if ((CF_STICKWALL in Cells[FLevel.CellBottom[ aCoord ]].Flags) or
+    if ((CF_STICKWALL in FLevel.Data.Cells[FLevel.CellBottom[ aCoord ]].Flags) or
       ((FLevel.CellTop[ aCoord ] <> 0) and
-      (CF_STICKWALL in Cells[FLevel.CellTop[ aCoord ]].Flags))) then Exit( True );
+      (CF_STICKWALL in FLevel.Data.Cells[FLevel.CellTop[ aCoord ]].Flags))) then Exit( True );
     Exit( False );
   end;
   function AddIf( aBool : Boolean; aValue : Byte ) : Byte; inline;
@@ -1251,9 +1251,9 @@ function TDRLSpriteMap.GetCellDoorRotation( aCell : TCoord2D ) : Byte;
   function IsWall( aCoord : TCoord2D ) : Boolean; inline;
   begin
     if not FLevel.isProperCoord( aCoord ) then Exit( True );
-    if ((CF_STICKWALL in Cells[FLevel.CellBottom[ aCoord ]].Flags) or
+    if ((CF_STICKWALL in FLevel.Data.Cells[FLevel.CellBottom[ aCoord ]].Flags) or
       ((FLevel.CellTop[ aCoord ] <> 0) and
-      (CF_STICKWALL in Cells[FLevel.CellTop[ aCoord ]].Flags))) then Exit( True );
+      (CF_STICKWALL in FLevel.Data.Cells[FLevel.CellTop[ aCoord ]].Flags))) then Exit( True );
     Exit( False );
   end;
 begin
@@ -1299,17 +1299,17 @@ begin
         iSpr   := GetSprite( iBottom, iStyle );
         iDeco  := FLevel.Deco[iCoord];
         if ( iDeco > 0 ) and ( SF_FULLDECO in iSpr.Flags ) then
-          if Cells[ iBottom ].Deco[ iDeco ].SpriteID[0] <> 0 then
+          if FLevel.Data.Cells[ iBottom ].Deco[ iDeco ].SpriteID[0] <> 0 then
           begin
             if SF_COSPLAY in iSpr.Flags then
             begin
               iColor     := iSpr.Color;
-              iSpr       := Cells[ iBottom ].Deco[ iDeco ];
+              iSpr       := FLevel.Data.Cells[ iBottom ].Deco[ iDeco ];
               iSpr.Color := iColor;
               Include( iSpr.Flags, SF_COSPLAY );
             end
             else
-              iSpr := Cells[ iBottom ].Deco[ iDeco ];
+              iSpr := FLevel.Data.Cells[ iBottom ].Deco[ iDeco ];
             iDeco      := 0;
           end;
         if SF_FLOW in iSpr.Flags
@@ -1342,11 +1342,11 @@ begin
               end;
           end;
         end;
-        if FLevel.LightFlag[ iCoord, LFBLOOD ] and (Cells[iBottom].BloodSprite.SpriteID[0] <> 0) then
-          PushSpriteDoodad( iCoord, Cells[iBottom].BloodSprite );
+        if FLevel.LightFlag[ iCoord, LFBLOOD ] and (FLevel.Data.Cells[iBottom].BloodSprite.SpriteID[0] <> 0) then
+          PushSpriteDoodad( iCoord, FLevel.Data.Cells[iBottom].BloodSprite );
         if iDeco <> 0 then
         begin
-          iCell := Cells[ iBottom ];
+          iCell := FLevel.Data.Cells[ iBottom ];
           if iCell.Deco[ iDeco ].SpriteID[0] <> 0 then
           begin
             if SF_COSPLAY in iSpr.Flags then
@@ -1404,11 +1404,11 @@ begin
       iTop := FLevel.CellTop[iCoord];
       if (iTop <> 0) and FLevel.CellExplored(iCoord) and ( not FLevel.LightFlag[ iCoord, LFANIMATING ] ) then
       begin
-        if CF_STAIRS in Cells[iTop].Flags then
-          PushSpriteDoodad( iCoord, Cells[iTop].Sprite[0], 255 )
+        if CF_STAIRS in FLevel.Data.Cells[iTop].Flags then
+          PushSpriteDoodad( iCoord, FLevel.Data.Cells[iTop].Sprite[0], 255 )
         else
         begin
-          if not ( ( CF_CORPSE in Cells[iTop].Flags ) and ( FLevel.LightFlag[ iCoord, LFCORPSING ] ) ) then
+          if not ( ( CF_CORPSE in FLevel.Data.Cells[iTop].Flags ) and ( FLevel.LightFlag[ iCoord, LFCORPSING ] ) ) then
           begin
             iSprite := GetSprite( iTop, FLevel.CStyle[iCoord] );
             if ( SF_DOORHACK in iSprite.Flags ) and ( FLevel.Rotation[iCoord] > 0 ) then
@@ -1421,7 +1421,7 @@ begin
           iDeco := FLevel.Deco[iCoord];
           if iDeco <> 0 then
           begin
-            iCell := Cells[ iTop ];
+            iCell := FLevel.Data.Cells[ iTop ];
             if iCell.Deco[ iDeco ].SpriteID[0] <> 0 then
               PushSpriteDoodad( iCoord, iCell.Deco[ iDeco ], -1, 1 );
           end;
@@ -1624,7 +1624,7 @@ end;
 function TDRLSpriteMap.GetSprite( aCell, aStyle : Byte ) : TSprite;
 var iCell  : TCell;
 begin
-  iCell   := Cells[ aCell ];
+  iCell   := FLevel.Data.Cells[ aCell ];
   if iCell.Sprite[ aStyle ].SpriteID[0] <> 0 then
     Exit( iCell.Sprite[ aStyle ] );
   Exit( iCell.Sprite[ 0 ] );

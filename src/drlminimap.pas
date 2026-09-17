@@ -119,7 +119,7 @@ begin
     begin
       if not isVisible( aCoord ) then
       begin
-        with Cells[ getCell(aCoord) ] do
+        with aLevel.Data.Cells[ getCell(aCoord) ] do
         if CF_BLOCKMOVE in Flags then
           iColor := DarkGray
         else
@@ -130,7 +130,7 @@ begin
         end;
       end
       else
-        with Cells[ getCell(aCoord) ] do
+        with aLevel.Data.Cells[ getCell(aCoord) ] do
         if CF_LIQUID in Flags then
           iColor := Blue
         else

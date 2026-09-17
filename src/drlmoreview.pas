@@ -122,7 +122,7 @@ begin
   if ( iPerks <> nil ) and ( iPerks.Size > 0 ) then
   begin
     for i := 0 to iPerks.Size - 1 do
-      with PerkData[ iPerks[i].ID ] do
+      with FBeing.Perks.Definitions.Data[ iPerks[i].ID ] do
       if ( Desc <> '' ) and ( ColorExp <> 0 ) then
       begin
         if FTexts[iCount] = nil then
@@ -142,7 +142,7 @@ begin
   if ( iPerks <> nil ) and ( iPerks.Size > 0 ) then
   begin
     for i := 0 to iPerks.Size - 1 do
-      with PerkData[ iPerks[i].ID ] do
+      with FBeing.Perks.Definitions.Data[ iPerks[i].ID ] do
       if ( Desc <> '' ) and ( ColorExp = 0 ) then
       begin
         if FTexts[iCount] = nil then
@@ -373,7 +373,7 @@ begin
     // Alt-fire perk (shown separately with description)
     if FItem.HasHook( Hook_OnAltFire ) then
       for i := 0 to iPerks.Size - 1 do
-        with PerkData[ iPerks[i].ID ] do
+        with FItem.Perks.Definitions.Data[ iPerks[i].ID ] do
           if Hook_OnAltFire in Hooks then
           begin
             FTexts[0].Push( '' );
@@ -385,7 +385,7 @@ begin
     // Alt-reload perk (shown separately with description)
     if FItem.HasHook( Hook_OnAltReload ) then
       for i := 0 to iPerks.Size - 1 do
-        with PerkData[ iPerks[i].ID ] do
+        with FItem.Perks.Definitions.Data[ iPerks[i].ID ] do
           if Hook_OnAltReload in Hooks then
           begin
             if not iHasFire then FTexts[0].Push( '' );
@@ -395,7 +395,7 @@ begin
 
     FTexts[1] := TStringGArray.Create;
     for i := 0 to iPerks.Size - 1 do
-      with PerkData[ iPerks[i].ID ] do
+      with FItem.Perks.Definitions.Data[ iPerks[i].ID ] do
         if ( Name <> '' ) and ( Desc <> '' ) then
           FTexts[1].Push( '{' + VTIG_ColorChar( Color ) + Name + '} - ' + Desc );
   end;

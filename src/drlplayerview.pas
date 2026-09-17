@@ -990,7 +990,7 @@ begin
     if ( iPerks <> nil ) and ( iPerks.Size > 0 ) then
     begin
       for i := 0 to iPerks.Size - 1 do
-        with PerkData[ iPerks[i].ID ] do
+        with Perks.Definitions.Data[ iPerks[i].ID ] do
         if ( Desc <> '' ) and ( ColorExp <> 0 ) then
         begin
           FCharacter[0].Push( '' );
@@ -998,7 +998,7 @@ begin
           break;
         end;
       for i := 0 to iPerks.Size - 1 do
-        with PerkData[ iPerks[i].ID ] do
+        with Perks.Definitions.Data[ iPerks[i].ID ] do
         if ( Desc <> '' ) and ( ColorExp <> 0 ) then
         begin
           iName := Name;
@@ -1010,7 +1010,7 @@ begin
 
       // Player perks: permanents
       for i := 0 to iPerks.Size - 1 do
-        with PerkData[ iPerks[i].ID ] do
+        with Perks.Definitions.Data[ iPerks[i].ID ] do
         if ( Desc <> '' ) and ( ColorExp = 0 ) then
         begin
           FCharacter[0].Push( '' );
@@ -1018,7 +1018,7 @@ begin
           break;
         end;
       for i := 0 to iPerks.Size - 1 do
-        with PerkData[ iPerks[i].ID ] do
+        with Perks.Definitions.Data[ iPerks[i].ID ] do
         if ( Desc <> '' ) and ( ColorExp = 0 ) then
           FCharacter[0].Push( '  {' + VTIG_ColorChar( Color ) + Name + '} - ' + Desc );
     end;
@@ -1040,7 +1040,7 @@ begin
     begin
       FCharacter[1].Push( '' );
       for i := 0 to iPerks.Size - 1 do
-        with PerkData[ iPerks[i].ID ] do
+        with iLevel.Perks.Definitions.Data[ iPerks[i].ID ] do
         if ( Desc <> '' ) then
         begin
           iName := Name;

@@ -9,7 +9,7 @@ unit dflevel;
 interface
 uses sysutils, classes,
      vluagamestack, vluaentitynode, vutil, vvision, viotypes, vrltools, vnode, vluamapnode, vtextmap, vlua, vrandom, vvector, vparticleengine,
-     dfdata, dfmap, dfthing, dfbeing, dfitem, drlhooks, drlperk, drlmarkers, drldecals, drlparticles;
+     dfdata, dfmap, dfthing, dfbeing, dfitem, drlhooks, drlperk, drlmarkers, drldecals, drlparticles, drlgamedata;
 
 const CellWalls   : TCellSet = [];
       CellFloors  : TCellSet = [];
@@ -19,9 +19,9 @@ type
 { TLevel }
 
 TLevel = class(TLuaMapNode, ITextMap)
-    constructor Create( aContext : TNodeContext; aGameRNG : TRNG ); reintroduce;
+    constructor Create( aContext : TNodeContext; aGameRNG : TRNG; aData : TGameData ); reintroduce;
     procedure Init( aStyle : byte; aName : Ansistring; aIndex : Integer; aDangerLevel : Word );
-    procedure InitializeParticles( aEmitters : TEmitterData; aEngine : TParticleEngine );
+    procedure InitializeParticles( aEngine : TParticleEngine );
     procedure AfterGeneration;
     procedure PreEnter;
     procedure RecalcFluids;
@@ -109,7 +109,7 @@ TLevel = class(TLuaMapNode, ITextMap)
     procedure RevealBeings;
     function getGylph( const aCoord : TCoord2D ) : TIOGylph;
     function EntityFromStream( aStream : TStream; aEntityID : Byte ) : TLuaEntityNode; override;
-    constructor CreateFromStream( aStream : TStream; aContext : TNodeContext; aGameRNG : TRNG ); override;
+    constructor CreateFromStream( aStream : TStream; aContext : TNodeContext; aGameRNG : TRNG; aData : TGameData ); reintroduce;
     procedure WriteToStream( aStream : TStream ); override;
 
     function EnemiesLeft( aUnique : Boolean = False ) : DWord;
@@ -134,6 +134,7 @@ TLevel = class(TLuaMapNode, ITextMap)
     function  getBeing( const coord : TCoord2D ) : TBeing; override;
     function  getItem( const coord : TCoord2D ) : TItem; override;
   private
+    FData          : TGameData;
     FMap           : TMap;
     FIndex         : Integer;
     FStatus        : Word; // level result
@@ -169,6 +170,8 @@ TLevel = class(TLuaMapNode, ITextMap)
     function getSpriteTop( Index : TCoord2D ): TSprite;
     function getSpriteBottom( Index : TCoord2D ): TSprite;
   public
+    property Perks     : TPerks                     read FPerks;
+    property Data      : TGameData                  read FData;
     property Markers   : TMarkerStore               read FMarkers;
     property Particles : TParticleStore             read FParticles;
     property Decals    : TDecalStore                read FDecals;
@@ -260,7 +263,7 @@ begin
     if (iItem <> nil) and (iItem.Flags[IF_BLOCKMOVE]) then Exit(False);
   end;
   if EF_NOVISION in aEmptyFlags then if blocksVision(aCoord) then Exit(False);
-  if EF_NOSTAIRS in aEmptyFlags then if CellHook_OnExit in Cells[Cell[aCoord]].Hooks then Exit(False);
+  if EF_NOSTAIRS in aEmptyFlags then if CellHook_OnExit in FData.Cells[Cell[aCoord]].Hooks then Exit(False);
   if EF_NOTELE   in aEmptyFlags then if (iItem <> nil) and (iItem.IType = ITEMTYPE_TELE) then Exit(False);
   if EF_NOHARM   in aEmptyFlags then if cellFlagSet(aCoord,CF_HAZARD) then Exit(False);
   if EF_NOLIQUID in aEmptyFlags then if cellFlagSet(aCoord,CF_LIQUID) then Exit(False);
@@ -271,7 +274,7 @@ end;
 
 function TLevel.cellFlagSet( coord : TCoord2D; Flag : byte) : Boolean;
 begin
-  Exit(Flag in Cells[ GetCell( coord ) ].Flags);
+  Exit(Flag in FData.Cells[ GetCell( coord ) ].Flags);
 end;
 
 procedure TLevel.playSound( const aSoundID: DWord; aCoord : TCoord2D; aDelay : DWord = 0 );
@@ -401,7 +404,7 @@ begin
 
   iColor   := LightGray;
   iChar    := ' ';
-  with Cells[ iCell ] do
+  with FData.Cells[ iCell ] do
   if PicChr <> ' ' then
   begin
     if iVisible or iExplored then
@@ -424,19 +427,20 @@ begin
     else if iExplored then iColor := DarkColor;
   end;
   getGylph.ASCII := iChar;
-  getGylph.Color := GetColor( iColor, aCoord, CF_HIGHLIGHT in Cells[ iCell ].Flags );
+  getGylph.Color := GetColor( iColor, aCoord, CF_HIGHLIGHT in FData.Cells[ iCell ].Flags );
 end;
 
 function TLevel.EntityFromStream ( aStream : TStream; aEntityID : Byte ) : TLuaEntityNode;
 begin
   case aEntityID of
-    ENTITY_BEING : Exit( TBeing.CreateFromStream( aStream, FContext ) );
-    ENTITY_ITEM  : Exit( TItem.CreateFromStream( aStream, FContext ) );
+    ENTITY_BEING : Exit( TBeing.CreateFromStream( aStream, FContext, FData.Perks ) );
+    ENTITY_ITEM  : Exit( TItem.CreateFromStream( aStream, FContext, FData.Perks ) );
   end;
 end;
 
-constructor TLevel.CreateFromStream( aStream : TStream; aContext : TNodeContext; aGameRNG : TRNG );
+constructor TLevel.CreateFromStream( aStream : TStream; aContext : TNodeContext; aGameRNG : TRNG; aData : TGameData );
 begin
+  FData := aData;
   inherited CreateFromStream( aStream, aContext, aGameRNG );
 
   aStream.Read( FMap,   SizeOf( FMap ) );
@@ -457,7 +461,7 @@ begin
   FMarkers     := TMarkerStore.CreateFromStream( aStream );
   FDecals      := TDecalStore.CreateFromStream( aStream );
   FParticles   := TParticleStore.Create( FContext.UIDs );
-  FPerks       := TPerks.CreateFromStream( aStream, Self );
+  FPerks       := TPerks.CreateFromStream( aStream, Self, FData.Perks );
 
   FActiveBeing := nil;
   FNextNode    := nil;
@@ -506,8 +510,9 @@ begin
   Exit( iEnemies );
 end;
 
-constructor TLevel.Create( aContext : TNodeContext; aGameRNG : TRNG );
+constructor TLevel.Create( aContext : TNodeContext; aGameRNG : TRNG; aData : TGameData );
 begin
+  FData := aData;
   inherited Create( 'default', MaxX, MaxY, 15, aContext, aGameRNG );
 
   Assert( dfdata.EF_NOBLOCK  = vluamapnode.EF_NOBLOCK );
@@ -517,13 +522,13 @@ begin
   FMarkers   := TMarkerStore.Create;
   FDecals    := TDecalStore.Create;
   FParticles := TParticleStore.Create( FContext.UIDs );
-  FPerks     := TPerks.Create( Self );
+  FPerks     := TPerks.Create( Self, FData.Perks );
   FIndex     := 0;
 end;
 
-procedure TLevel.InitializeParticles( aEmitters : TEmitterData; aEngine : TParticleEngine );
+procedure TLevel.InitializeParticles( aEngine : TParticleEngine );
 begin
-  FParticles.Initialize( aEmitters, aEngine );
+  FParticles.Initialize( FData.Emitters, aEngine );
   if aEngine <> nil then aEngine.DecalCallback := @AddDecal;
 end;
 
@@ -584,7 +589,7 @@ begin
   for iCoord in FArea do
   begin
     iCell   := GetCell(iCoord);
-    iFlags  := Cells[iCell].Flags;
+    iFlags  := FData.Cells[iCell].Flags;
     if CF_OVERLAY in iFlags then
     begin
       if (CF_STICKWALL in iFlags) and (not (CF_OPENABLE in iFlags)) then
@@ -604,13 +609,13 @@ procedure TLevel.CalculateRotation( aCoord : TCoord2D ); inline;
 var iFlags : TFlags;
     iCell  : Byte;
 begin
-  iFlags := Cells[CellBottom[aCoord]].Sprite[0].Flags;
+  iFlags := FData.Cells[CellBottom[aCoord]].Sprite[0].Flags;
   if SF_MULTI in iFlags    then FMap.Rotation[aCoord.x,aCoord.y] := SpriteMap.GetCellRotationMask(aCoord);
   if SF_DOORHACK in iFlags then FMap.Rotation[aCoord.x,aCoord.y] := SpriteMap.GetCellDoorRotation(aCoord);
   iCell := CellTop[aCoord];
   if iCell <> 0 then
   begin
-    iFlags := Cells[iCell].Sprite[0].Flags;
+    iFlags := FData.Cells[iCell].Sprite[0].Flags;
     if SF_DOORHACK in iFlags then FMap.Rotation[aCoord.x,aCoord.y] := SpriteMap.GetCellDoorRotation(aCoord);
   end;
 end;
@@ -649,7 +654,7 @@ begin
   end;
 
   for iC in FArea do
-    HitPoints[iC] := Cells[GetCell(iC)].HP;
+    HitPoints[iC] := FData.Cells[GetCell(iC)].HP;
 
 end;
 
@@ -661,14 +666,14 @@ var iC                 : TCoord2D;
   function FluidFlag( c : TCoord2D; Value : Byte ) : Byte;
   begin
     if not isProperCoord( c ) then Exit(0);
-    if not (SF_FLUID in Cells[CellBottom[ c ]].Sprite[0].Flags)
+    if not (SF_FLUID in FData.Cells[CellBottom[ c ]].Sprite[0].Flags)
       then Exit( Value )
       else Exit( 0 );
   end;
 begin
   if LF_SHARPFLUID in FFlags then Exit;
   for iC in FArea do
-    if SF_FLUID in Cells[CellBottom[ iC ]].Sprite[0].Flags then
+    if SF_FLUID in FData.Cells[CellBottom[ iC ]].Sprite[0].Flags then
     begin
       iNY := FluidFlag( iC.ifInc( 0,-1), 1 );
       iPY := FluidFlag( iC.ifInc( 0,+1), 2 );
@@ -748,7 +753,7 @@ end;
 function TLevel.CellExplored( coord: TCoord2D ): boolean;
 begin
   if Player.Flags[ BF_DARKNESS ] and not isVisible( coord ) then Exit(False);
-  if Player.Flags[ BF_STAIRSENSE ] and (CF_STAIRSENSE in Cells[ GetCell(coord) ].Flags) then Exit(True);
+  if Player.Flags[ BF_STAIRSENSE ] and (CF_STAIRSENSE in FData.Cells[ GetCell(coord) ].Flags) then Exit(True);
   if Option_BlindMode and not GraphicsVersion then Exit(False);
   Exit(isExplored( coord ));
 end;
@@ -806,7 +811,7 @@ end;
 
 function TLevel.CallHook( aHook: TCellHook; aCellID : Word; aWhat: TThing ) : Variant;
 begin
-  if aHook in Cells[ aCellID ].Hooks
+  if aHook in FData.Cells[ aCellID ].Hooks
     then CallHook := FContext.Lua.ProtectedCall( [ 'cells', aCellID, CellHooks[ aHook ] ], [aWhat] )
     else CallHook := False;
 end;
@@ -818,14 +823,14 @@ end;
 
 function TLevel.CallHook( coord : TCoord2D; aCellID : Word; Hook: TCellHook ) : Variant;
 begin
-  if Hook in Cells[ aCellID ].Hooks
+  if Hook in FData.Cells[ aCellID ].Hooks
     then CallHook := FContext.Lua.ProtectedCall( [ 'cells', aCellID, CellHooks[ Hook ] ], [LuaCoord(coord)] )
     else CallHook := False;
 end;
 
 function TLevel.CallHook(coord: TCoord2D; What: TThing; Hook: TCellHook) : Variant;
 begin
-  if Hook in Cells[ GetCell(coord) ].Hooks
+  if Hook in FData.Cells[ GetCell(coord) ].Hooks
     then CallHook := FContext.Lua.ProtectedCall( [ 'cells', Cell[ coord ], CellHooks[ Hook ] ], [LuaCoord(coord),What] )
     else CallHook := False;
 end;
@@ -870,13 +875,13 @@ begin
   if Assigned( iFeature ) and ( not iFeature.isFeature ) then
     iFeature := nil;
 
-  if ( not aFloor ) and ( CF_CORPSE in Cells[ iCellID ].Flags ) then
+  if ( not aFloor ) and ( CF_CORPSE in FData.Cells[ iCellID ].Flags ) then
     iCellID := 0;
 
-  if ( iCellID > 0 ) and ( Cells[ iCellID ].DR > 0 ) and ( Cells[ iCellID ].DR < aDamage ) and ( iHeavy or ( CF_FRAGILE in Cells[ iCellID ].Flags ) ) then
+  if ( iCellID > 0 ) and ( FData.Cells[ iCellID ].DR > 0 ) and ( FData.Cells[ iCellID ].DR < aDamage ) and ( iHeavy or ( CF_FRAGILE in FData.Cells[ iCellID ].Flags ) ) then
   begin
-    iDamage := aDamage - Cells[ iCellID ].DR;
-    if CF_CORPSE in Cells[ iCellID ].Flags then
+    iDamage := aDamage - FData.Cells[ iCellID ].DR;
+    if CF_CORPSE in FData.Cells[ iCellID ].Flags then
     case aDamageType of
       Damage_Acid    : iDamage := iDamage * 2;
       Damage_SPlasma : iDamage := iDamage * 3;
@@ -887,16 +892,16 @@ begin
     if HitPoints[ aCoord ] = 0 then
     begin
 
-      if CF_CORPSE in Cells[ iCellID ].Flags then
+      if CF_CORPSE in FData.Cells[ iCellID ].Flags then
         playSound( 'gib', aCoord );
 
-      if Cells[ iCellID ].destroyto = '' then
+      if FData.Cells[ iCellID ].destroyto = '' then
       begin
         FMap.Style[aCoord.x,aCoord.y] := FlrStyle[aCoord];
         Cell[ aCoord ] := Floor[aCoord];
       end
       else
-        Cell[ aCoord ] := FContext.Lua.Defines[ Cells[ iCellID ].destroyto ];
+        Cell[ aCoord ] := FContext.Lua.Defines[ FData.Cells[ iCellID ].destroyto ];
 
       Result := True;
       CallHook( aCoord, iCellID, CellHook_OnDestroy );
@@ -1228,12 +1233,12 @@ var iBeing  : TBeing;
     iCellID : Byte;
 begin
   iCellID := GetCell( aCoord );
-  if Cells[ iCellID ].raiseto = '' then Exit( nil );
+  if FData.Cells[ iCellID ].raiseto = '' then Exit( nil );
   try
-    iBeing := TBeing.Create( Cells[ iCellID ].raiseto, FContext, FGameRNG );
+    iBeing := TBeing.Create( FData.Cells[ iCellID ].raiseto, FContext, FGameRNG );
     iBeing.Flags[ BF_RESPAWN ] := True;
     DropBeing( iBeing, aCoord );
-    Cell[ aCoord ] := FContext.Lua.Defines[ Cells[ iCellID ].destroyto ];
+    Cell[ aCoord ] := FContext.Lua.Defines[ FData.Cells[ iCellID ].destroyto ];
     iBeing.Flags[ BF_NOEXP   ] := True;
     for iItem in iBeing.Inv do
       iItem.Flags[ IF_NODROP ] := True;
@@ -1297,8 +1302,8 @@ procedure TLevel.Blood( coord : TCoord2D );
 var iCell : DWord;
 begin
   iCell := GetCell(coord);
-  if (Cells[ iCell ].bloodto <> '') and (LightFlag[ coord, LFBLOOD ] or (Cells[ iCell ].BloodColor = 0))
-    then Cell[ coord ] := FContext.Lua.Defines[ Cells[ iCell ].bloodto ]
+  if (FData.Cells[ iCell ].bloodto <> '') and (LightFlag[ coord, LFBLOOD ] or (FData.Cells[ iCell ].BloodColor = 0))
+    then Cell[ coord ] := FContext.Lua.Defines[ FData.Cells[ iCell ].bloodto ]
     else LightFlag[ coord, LFBLOOD ] := True;
 end;
 
@@ -1506,13 +1511,13 @@ begin
   if cellFlagSet( where, CF_BLOCKMOVE ) and ( ( not MapEdge ) or ( ( MapEdge ) and ( not GetLightFlag( where, LFPERMANENT ) ) ) ) or
     cellFlagSet( where, CF_CORPSE ) or
     cellFlagSet( where, CF_NUKABLE ) then
-  if Cells[ GetCell(where) ].destroyto = '' then
+  if FData.Cells[ GetCell(where) ].destroyto = '' then
   begin
     FMap.Style[where.x,where.y] := FlrStyle[where];
     Cell[ where ] := Floor[where];
   end
   else
-    Cell[ where ] := FContext.Lua.Defines[ Cells[ GetCell(where) ].destroyto ];
+    Cell[ where ] := FContext.Lua.Defines[ FData.Cells[ GetCell(where) ].destroyto ];
   CellBeing := Being[ where ];
   CellItem  := Item [ where ];
 
@@ -1543,7 +1548,7 @@ end;
 procedure TLevel.putCell( const aWhere : TCoord2D; const aWhat : byte );
 var iFlags : TFlags;
 begin
-  iFlags := Cells[ aWhat ].Flags;
+  iFlags := FData.Cells[ aWhat ].Flags;
   if CF_OVERLAY in iFlags
   then
      FMap.Overlay[aWhere.x, aWhere.y] := aWhat
@@ -1608,7 +1613,7 @@ function TLevel.getSpriteTop( Index : TCoord2D ): TSprite;
 var iCell  : TCell;
     iStyle : Byte;
 begin
-  iCell   := Cells[ getCellTop( Index ) ];
+  iCell   := FData.Cells[ getCellTop( Index ) ];
   iStyle  := getStyle( Index );
   if iCell.Sprite[ iStyle ].SpriteID[0] <> 0 then
     Exit( iCell.Sprite[ iStyle ] );
@@ -1619,7 +1624,7 @@ function TLevel.getSpriteBottom( Index : TCoord2D ): TSprite;
 var iCell  : TCell;
     iStyle : Byte;
 begin
-  iCell   := Cells[ getCellBottom( Index ) ];
+  iCell   := FData.Cells[ getCellBottom( Index ) ];
   iStyle  := getStyle( Index );
   if iCell.Sprite[ iStyle ].SpriteID[0] <> 0 then
     Exit( iCell.Sprite[ iStyle ] );
@@ -1737,14 +1742,14 @@ begin
     with Being[ aWhere ] do
       AddInfo( GetName( false ) + ' (' + WoundStatus + ')' );
     if Item[ aWhere ] <> nil then AddInfo( Item[ aWhere ].GetExtName( False ) );
-    if CellHook_OnDescribe in Cells[ Cell[ aWhere ] ].Hooks then
+    if CellHook_OnDescribe in FData.Cells[ Cell[ aWhere ] ].Hooks then
        AddInfo( CallHook( aWhere, CellHook_OnDescribe ) )
     else
     begin
       iCellID := GetCell(aWhere);
-      if LightFlag[ aWhere, LFBLOOD ] and (Cells[ iCellID ].bldesc <> '')
-        then AddInfo( Cells[ GetCell(aWhere) ].bldesc )
-        else AddInfo( Cells[ GetCell(aWhere) ].desc );
+      if LightFlag[ aWhere, LFBLOOD ] and (FData.Cells[ iCellID ].bldesc <> '')
+        then AddInfo( FData.Cells[ GetCell(aWhere) ].bldesc )
+        else AddInfo( FData.Cells[ GetCell(aWhere) ].desc );
     end;
   end
   else Result := 'out of vision';

@@ -10,7 +10,7 @@ interface
 
 uses sysutils,
      vapp, viorl, vlua, vrlapp, vstoreinterface, vutil, vioevent,
-     drlbase, drlmodule, drlparticles;
+     drlbase, drlmodule, drlgamedata;
 
 type
   TDRLApplication = class;
@@ -25,7 +25,7 @@ type TDRLRuntime = class( TRLRuntime )
     FSession     : TDRLSession;
     FModules     : TDRLModules;
     FStore       : TStoreInterface;
-    FEmitters    : TEmitterData;
+    FData        : TGameData;
     FModuleHooks : TFlags;
     FDataLoaded  : Boolean;
     procedure ApplyConfiguration;
@@ -46,9 +46,10 @@ type TDRLRuntime = class( TRLRuntime )
       const aModulesFile : AnsiString ); reintroduce;
     destructor Destroy; override;
     procedure Reconfigure;
-    property Modules : TDRLModules read FModules;
-    property Store : TStoreInterface read FStore;
-    property Session : TDRLSession read FSession;
+    property Data    : TGameData       read FData;
+    property Modules : TDRLModules     read FModules;
+    property Store   : TStoreInterface read FStore;
+    property Session : TDRLSession     read FSession;
   end;
 
 // TDRLApplication
@@ -182,7 +183,7 @@ end;
 
 procedure TDRLRuntime.CreateSession( aInitializeData : Boolean );
 begin
-  FSession := TDRLSession.Create( Self, FModules, FStore, FEmitters, Paths );
+  FSession := TDRLSession.Create( Self, FModules, FStore, FData, Paths );
   TDRLIO(IO).Session := FSession;
   drlbase.DRL := FSession;
   if not aInitializeData then Exit;
@@ -220,7 +221,7 @@ begin
     CreateDir(iModulePath + 'backup');
 
   FModules.ActivateModules(CoreModuleID);
-  FEmitters := TEmitterData.Create;
+  FData := TGameData.Create;
   CreateSession( False );
   TDRLIO(IO).Initialize;
   TDRLIO(IO).LoadStart;
@@ -254,7 +255,6 @@ begin
   ColorOverrides := TIntHashMap.Create;
   TDRLIO(IO).Configure(Config, True);
   FModuleHooks := [];
-  Cells := TCells.Create;
   Help := THelp.Create;
 end;
 
@@ -265,6 +265,7 @@ var i : Integer;
 begin
   FSession.Context.BindLua( FLua );
   TDRLLua( FLua ).BindNodeContext( FSession.Context );
+  FData.RegisterLuaAPI( FLua );
   TDRLLua( FLua ).ReadWAD;
   if GodMode then RegisterDebugConsole( VKEY_F1 );
   FLua.CallDefaultResult := True;
@@ -279,7 +280,6 @@ begin
   if GodMode and FileExists(Paths.WritePath + 'god.lua') then
     FLua.LoadFile(Paths.WritePath + 'god.lua');
   HOF.Init( FLua, Paths );
-  FEmitters.Load( FLua );
   FSession.InitializeLevel;
 
   HARDSPRITE_HIGHLIGHT    := FLua.Get('HARDSPRITE_HIGHLIGHT');
@@ -399,13 +399,13 @@ end;
 
 procedure TDRLRuntime.UnloadGameData;
 begin
-  FreeAndNil( FEmitters );
+  if FLua <> nil then TGameData.UnregisterLuaAPI( FLua );
+  FreeAndNil( FData );
   if not FDataLoaded then Exit;
   FDataLoaded := False;
   HOF.Done;
   FreeAndNil(Help);
   FreeAndNil(ColorOverrides);
-  FreeAndNil(Cells);
 end;
 
 { TDRLApplication }

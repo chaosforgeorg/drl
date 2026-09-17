@@ -9,7 +9,7 @@ unit dfbeing;
 interface
 uses classes, sysutils,
      vluagamestack, vluatable, vnode, vpath, vmath, vutil, vrltools, vvision, vlua, vrandom,
-     dfdata, dfthing, dfitem, drlinventory, drlcommand;
+     drlperk, dfdata, dfthing, dfitem, drlinventory, drlcommand;
 
 type TMoveResult = ( MoveOk, MoveBlock, MoveDoor, MoveBeing );
 
@@ -28,7 +28,7 @@ type
 TBeing = class(TThing,IPathQuery)
     constructor Create( aNID : Byte; aContext : TNodeContext; aGameRNG : TRNG ); overload;
     constructor Create( const aNID : AnsiString; aContext : TNodeContext; aGameRNG : TRNG ); overload;
-    constructor CreateFromStream( aStream : TStream; aContext : TNodeContext ); override;
+    constructor CreateFromStream( aStream : TStream; aContext : TNodeContext; aPerkDefinitions : TPerkDefinitions ); override;
     procedure WriteToStream( Stream: TStream ); override;
     procedure Initialize;
     function GetName( known : boolean ) : string;
@@ -262,12 +262,12 @@ begin
   FreeAndNil( iTable );
 end;
 
-constructor TBeing.CreateFromStream( aStream : TStream; aContext : TNodeContext );
+constructor TBeing.CreateFromStream( aStream : TStream; aContext : TNodeContext; aPerkDefinitions : TPerkDefinitions );
 var iSlot   : TEqSlot;
     iAmount : Byte;
     i       : Byte;
 begin
-  inherited CreateFromStream( aStream, aContext );
+  inherited CreateFromStream( aStream, aContext, aPerkDefinitions );
 
   Initialize;
 
@@ -289,10 +289,10 @@ begin
 
   iAmount := aStream.ReadByte;
   for i := 1 to iAmount do
-    FInv.Add( TItem.CreateFromStream( aStream, FContext ) );
+    FInv.Add( TItem.CreateFromStream( aStream, FContext, aPerkDefinitions ) );
   for iSlot in TEqSlot do
     if aStream.ReadByte <> 0 then
-      FInv.RawSetSlot( iSlot, TItem.CreateFromStream( aStream, FContext ) );
+      FInv.RawSetSlot( iSlot, TItem.CreateFromStream( aStream, FContext, aPerkDefinitions ) );
 end;
 
 procedure TBeing.WriteToStream ( Stream : TStream ) ;
@@ -1719,7 +1719,7 @@ var iCount    : Integer;
   var iCell : TCell;
   begin
     if not iLevel.isProperCoord( aCoord ) then Exit( 0 );
-    iCell := Cells[ iLevel.CellBottom[ aCoord ] ];
+    iCell := iLevel.Data.Cells[ iLevel.CellBottom[ aCoord ] ];
     if CF_LIQUID    in iCell.Flags then Exit( 0 );
     if CF_BLOCKMOVE in iCell.Flags then
     begin
@@ -1727,7 +1727,7 @@ var iCount    : Integer;
       if not ( CF_BLOCKLOS in iCell.Flags ) then Exit( 0 ); // void check
       aCoord.y := aCoord.y + 1;
       if not iLevel.isProperCoord( aCoord ) then Exit( 0 );
-      iCell := Cells[ iLevel.CellBottom[ aCoord ] ];
+      iCell := iLevel.Data.Cells[ iLevel.CellBottom[ aCoord ] ];
       if ( CF_BLOCKMOVE in iCell.Flags ) then Exit( 0 );
       Exit( HARDSPRITE_DECAL_WALL_BLOOD[1 + IO.VisualRNG.RLongInt( 3 )] );
     end;
@@ -1804,7 +1804,7 @@ begin
     iLevel.CallHook( Hook_OnKill,[ Self, aKiller, aWeapon, iMeleeKill, aOverkill ] );
   end;
 
-  if not aOverkill and not ( CF_BLOCKMOVE in Cells[ iLevel.Floor[ FPosition ] ].Flags ) then
+  if not aOverkill and not ( CF_BLOCKMOVE in iLevel.Data.Cells[ iLevel.Floor[ FPosition ] ].Flags ) then
   try
     if Flags[ BF_UNLOADONKILL ] and Assigned( FInv.Slot[ efWeapon ] ) then
     begin
@@ -2745,7 +2745,7 @@ begin
   iMoveBonus := GetBonus( Hook_getMoveBonus, [] );
   if iMoveBonus <> 0 then iModifier *= (100-iMoveBonus)/100.0;
   if not ( BF_FLY in FFlags ) then
-    with Cells[ TLevel(Parent).getCell(FPosition) ] do
+    with TLevel(Parent).Data.Cells[ TLevel(Parent).getCell(FPosition) ] do
       iModifier *= MoveCost;
   getMoveCost := Round( ActionCostMove * iModifier );
 end;
@@ -2883,7 +2883,7 @@ var iDiff     : TCoord2D;
     iStopID   : Byte;
   function isHazard( aID : Byte ) : Boolean;
   begin
-    if isPlayer and ( CellHook_OnHazardQuery in Cells[ aID ].Hooks ) then
+    if isPlayer and ( CellHook_OnHazardQuery in TLevel(Parent).Data.Cells[ aID ].Hooks ) then
     begin
       if aID in FPathHazards then Exit( True );
       if aID in FPathClear   then Exit( False );
@@ -2891,7 +2891,7 @@ var iDiff     : TCoord2D;
         then begin Include( FPathHazards, aID ); Exit( True ); end
         else begin Include( FPathClear, aID );   Exit( False ); end
     end
-    else Exit( CF_HAZARD in Cells[ aID ].Flags );
+    else Exit( CF_HAZARD in TLevel(Parent).Data.Cells[ aID ].Flags );
   end;
 
 begin
@@ -2903,7 +2903,7 @@ begin
   if TLevel(Parent).Being[ Stop ] <> nil then MoveCost := MoveCost * 5;
 
   iStopID   := TLevel(Parent).getCell(Stop);
-  iStopCell := Cells[ iStopID ];
+  iStopCell := TLevel(Parent).Data.Cells[ iStopID ];
   if not ( BF_FLY in FFlags ) then MoveCost := MoveCost * iStopCell.MoveCost;
   if BF_ENVIROSAFE in FFlags then Exit;
   if isHazard( iStopID ) then
@@ -2927,7 +2927,7 @@ begin
   if BF_FLY in FFlags
     then iBlockFlag := CF_BLOCKFLY
     else iBlockFlag := CF_BLOCKMOVE;
-  with Cells[ TLevel(Parent).getCell( aCoord ) ] do
+  with TLevel(Parent).Data.Cells[ TLevel(Parent).getCell( aCoord ) ] do
   begin
     if (not isPlayer) and (CF_HAZARD in Flags) and (not ((BF_ENVIROSAFE in FFlags) or (BF_CHARGE in FFlags))) then Exit( False );
     iItem := TLevel(Parent).Item[ aCoord ];

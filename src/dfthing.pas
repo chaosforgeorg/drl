@@ -16,7 +16,7 @@ type String16 = string[16];
 { TThing }
 type TThing = class( TLuaEntityNode )
   constructor Create( const aID : AnsiString; aContext : TNodeContext );
-  constructor CreateFromStream( aStream : TStream; aContext : TNodeContext ); override;
+  constructor CreateFromStream( aStream : TStream; aContext : TNodeContext; aPerkDefinitions : TPerkDefinitions ); reintroduce; virtual;
   function PlaySound( const aSoundID : string; aDelay : Integer = 0 ) : Boolean;
   function PlaySound( const aSoundID : string; aPosition : TCoord2D; aDelay : Integer = 0 ) : Boolean;
   function HasHook( aHook : Word ) : Boolean; override;
@@ -48,6 +48,7 @@ protected
   FPerks        : TPerks;
   {$TYPEINFO ON}
 public
+  property Perks        : TPerks   read FPerks;
   property SoundID      : String16 read FSoundID          write FSoundID;
   property Sprite       : TSprite  read GetSprite         write FSprite;
   property MelSprite    : TSprite  read FMelSprite        write FMelSprite;
@@ -64,7 +65,7 @@ implementation
 
 uses typinfo, variants,
      vdebug, vtig,
-     dflevel, drlbase, drlio, drllua, drlspritemap;
+     drlgamedata, dflevel, drlbase, drlio, drllua, drlspritemap;
 
 constructor TThing.Create( const aID : AnsiString; aContext : TNodeContext );
 begin
@@ -197,7 +198,7 @@ end;
 
 function TThing.GetPerkShort( aID : Integer ) : AnsiString;
 begin
-  if FPerks = nil then Exit( PerkData[aID].Short );
+  if FPerks = nil then Exit( '' );
   Exit( FPerks.GetShort( aID ) );
 end;
 
@@ -211,7 +212,7 @@ begin
   iPerks := GetPerkList;
   if ( iPerks = nil ) or ( iPerks.Size = 0 ) then Exit;
   for i := 0 to iPerks.Size - 1 do
-    with PerkData[ iPerks[i].ID ] do
+    with FPerks.Definitions.Data[ iPerks[i].ID ] do
     begin
       if Hook_OnDescribe in Hooks then
         iText := FContext.Lua.ProtectedCall( [ 'perks', iPerks[i].ID, HookNames[Hook_OnDescribe] ], [ Self ] )
@@ -253,7 +254,7 @@ begin
     aStream.WriteByte( 0 );
 end;
 
-constructor TThing.CreateFromStream( aStream : TStream; aContext : TNodeContext );
+constructor TThing.CreateFromStream( aStream : TStream; aContext : TNodeContext; aPerkDefinitions : TPerkDefinitions );
 begin
   inherited CreateFromStream( aStream, aContext );
   aStream.Read( FSprite,  SizeOf( FSprite ) );
@@ -263,7 +264,7 @@ begin
 
   FPerks := nil;
   if aStream.ReadByte > 0 then
-    FPerks := TPerks.CreateFromStream( aStream, Self );
+    FPerks           := TPerks.CreateFromStream( aStream, Self, aPerkDefinitions );
   FAnimCount := 0;
 end;
 
@@ -278,9 +279,10 @@ var iState : TLuaGameStack;
     iThing : TThing;
 begin
   iState.Init(L);
-  iThing := iState.ToObject(1) as TThing;
+  iThing := iState.ToObject( 1 ) as TThing;
   if iThing = nil then Exit( 0 );
-  if iThing.FPerks = nil then iThing.FPerks := TPerks.Create( iThing );
+  if iThing.FPerks = nil then
+    iThing.FPerks := TPerks.Create( iThing, TGameData.FromState( L ).Perks );
   iThing.FPerks.Add( iState.ToId( iThing.Context.Lua, 2 ), iState.ToInteger(3,-1) );
   Result := 0;
 end;
@@ -290,7 +292,7 @@ var iState : TLuaGameStack;
     iThing : TThing;
 begin
   iState.Init(L);
-  iThing := iState.ToObject(1) as TThing;
+  iThing := iState.ToObject( 1 ) as TThing;
   if iThing.FPerks <> nil
     then iState.Push( iThing.FPerks.getTime( iState.ToId( iThing.Context.Lua, 2 ) ) )
     else iState.Push( 0 );
@@ -302,7 +304,7 @@ var iState : TLuaGameStack;
     iThing : TThing;
 begin
   iState.Init(L);
-  iThing := iState.ToObject(1) as TThing;
+  iThing := iState.ToObject( 1 ) as TThing;
   if iThing.FPerks <> nil 
     then iState.Push( iThing.FPerks.Remove( iState.ToId( iThing.Context.Lua, 2 ), iState.ToBoolean( 3, False ) ) )
     else iState.Push( False );
@@ -314,7 +316,7 @@ var iState : TLuaGameStack;
     iThing : TThing;
 begin
   iState.Init(L);
-  iThing := iState.ToObject(1) as TThing;
+  iThing := iState.ToObject( 1 ) as TThing;
   iState.Push( ( iThing.FPerks <> nil ) and ( iThing.FPerks.IsActive( iState.ToId( iThing.Context.Lua, 2 ) ) ) );
   Result := 1;
 end;
@@ -324,7 +326,7 @@ var iState : TLuaGameStack;
     iThing : TThing;
 begin
   iState.Init(L);
-  iThing := iState.ToObject(1) as TThing;
+  iThing := iState.ToObject( 1 ) as TThing;
   if iState.IsCoord(3)
     then iThing.PlaySound( iState.ToString(2), iState.ToPosition(3), iState.ToInteger(4,0) )
     else iThing.PlaySound( iState.ToString(2), iState.ToInteger(3,0) );

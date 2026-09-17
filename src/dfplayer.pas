@@ -8,7 +8,7 @@ unit dfplayer;
 interface
 uses classes, sysutils,
      vluagamestack, vpath, vutil, vrltools, vvision, viotypes, vlua, vnode, vrandom,
-     dfbeing, dfhof, dfdata, dfitem, drltraits, drlkeybindings, drlstatistics, drlmultimove;
+     drlperk, dfbeing, dfhof, dfdata, dfitem, drltraits, drlkeybindings, drlstatistics, drlmultimove;
 
 
 type TQuickSlotInfo = record
@@ -32,7 +32,7 @@ type TPlayer = class(TBeing)
   constructor Create( aContext : TNodeContext; aGameRNG : TRNG ); reintroduce;
   procedure Initialize; reintroduce;
   procedure SetKilledBy( const aKilledBy : AnsiString; aKilledMelee : Boolean );
-  constructor CreateFromStream( aStream : TStream; aContext : TNodeContext ); override;
+  constructor CreateFromStream( aStream : TStream; aContext : TNodeContext; aPerkDefinitions : TPerkDefinitions ); override;
   procedure WriteToStream( Stream: TStream ); override;
   function CallHook( aHook : Byte; const aParams : array of Const ) : Boolean; override;
   function CallHookCheck( aHook : Byte; const aParams : array of Const ) : Boolean; override;
@@ -106,7 +106,7 @@ implementation
 
 uses math, variants,
      vuid, vioevent, vgenerics, vcolor, vdebug, vtig,
-     dfmap, dflevel, drlhooks, drlio, drlspritemap, drlbase, drlperk, drllua, drlinventory, drlplayerview, drlhudviews;
+     dfmap, dflevel, drlhooks, drlio, drlspritemap, drlbase, drllua, drlinventory, drlplayerview, drlhudviews;
 
 constructor TPlayer.Create( aContext : TNodeContext; aGameRNG : TRNG );
 begin
@@ -182,9 +182,9 @@ begin
   FStatistics.WriteToStream( Stream );
 end;
 
-constructor TPlayer.CreateFromStream( aStream : TStream; aContext : TNodeContext );
+constructor TPlayer.CreateFromStream( aStream : TStream; aContext : TNodeContext; aPerkDefinitions : TPerkDefinitions );
 begin
-  inherited CreateFromStream( aStream, aContext );
+  inherited CreateFromStream( aStream, aContext, aPerkDefinitions );
 
   aStream.Read( FLevelIndex, SizeOf( FLevelIndex ) );
   NukeActivated  := aStream.ReadWord();
@@ -491,7 +491,7 @@ begin
   if ( FPerks = nil ) or ( FPerks.List.Size = 0 ) then Exit;
   iStrength     := 0;
   for iCount := 0 to FPerks.List.Size - 1 do
-    with PerkData[FPerks.List[iCount].ID] do
+    with FPerks.Definitions.Data[FPerks.List[iCount].ID] do
       if StatusStr > iStrength then
       begin
         GetPerkEffect := StatusEff;

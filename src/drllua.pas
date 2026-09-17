@@ -40,8 +40,8 @@ TDRLLua = class(TLua)
 implementation
 
 uses typinfo, variants,
-     vdebug, vluastate, vluatools, vluadungen, vluaentitynode, vluatype, vmath, vtextures, vtigstyle, vparticleengine,
-     dfplayer, dflevel, dfmap, drlhooks, drlhelp, dfhof, drlbase, drlio, drlperk, drlgfxio, drlspritemap;
+     vdebug, vluastate, vluatools, vluadungen, vluaentitynode, vluatype, vtextures, vtigstyle, vparticleengine,
+     dfplayer, dflevel, drlhooks, drlhelp, dfhof, drlbase, drlio, drlgfxio, drlspritemap;
 
 var SpriteSheetCounter : Integer = -1;
 
@@ -107,41 +107,6 @@ begin
   lua_pushnumber(L, Curr.Year);
   lua_setfield(L, -2, 'year');
   Exit(1);
-end;
-
-function lua_core_register_perk(L: Plua_State): Integer; cdecl;
-var iLua   : TLua;
-    iState : TLuaGameStack;
-    iID    : Integer;
-begin
-  iLua := TLuaContext.FromState( L ).Lua;
-  iState.Init(L);
-  iID := iState.ToInteger(1);
-
-  if iID >= High( PerkData ) then
-  begin
-    SetLength( PerkData, Max( High( PerkData ) * 2, 100 ) );
-    PerkDataMax := iID;
-  end;
-  if iID > PerkDataMax then PerkDataMax := iID;
-
-  with PerkData[iID] do
-  begin
-    with iLua.GetTable(['perks',iID]) do
-    try
-      Name      := getString('name','');
-      Short     := getString('short','');
-      Desc      := getString('desc','');
-      Color     := getInteger('color',0);
-      ColorExp  := getInteger('color_expire',0);
-      StatusEff := TStatusEffect( getInteger('status_effect',0) );
-      StatusStr := getInteger('status_strength',0);
-    finally
-      Free;
-    end;
-    Hooks := LoadHooks( iLua, ['perks',iID] );
-  end;
-  Result := 0;
 end;
 
 function lua_core_add_to_cell_set(L: Plua_State): Integer; cdecl;
@@ -218,16 +183,6 @@ end;
 function lua_core_visual_random(L: Plua_State): Integer; cdecl;
 begin
   Exit( vlua_rng_random( L, IO.VisualRNG ) );
-end;
-
-function lua_core_register_cell( L : PLua_State ): Integer; cdecl;
-var iLua : TLua;
-    iState : TLuaGameStack;
-begin
-  iLua := TLuaContext.FromState( L ).Lua;
-  iState.Init(L);
-  Cells.RegisterCell( iLua, iState.ToInteger(1) );
-  Result := 0;
 end;
 
 function lua_core_texture_upload(L: Plua_State): Integer; cdecl;
@@ -566,14 +521,12 @@ begin
   Result := 0;
 end;
 
-const lua_core_lib : array[0..12] of luaL_Reg = (
+const lua_core_lib : array[0..10] of luaL_Reg = (
     ( name : 'add_to_cell_set';func : @lua_core_add_to_cell_set),
     ( name : 'game_time';      func : @lua_core_game_time),
     ( name : 'time_ms';        func : @lua_core_time_ms),
     ( name : 'visual_random';  func : @lua_core_visual_random),
     ( name : 'is_playing';func : @lua_core_is_playing),
-    ( name : 'register_cell';   func : @lua_core_register_cell),
-    ( name : 'register_perk';   func : @lua_core_register_perk),
 
     ( name : 'play_music';func : @lua_core_play_music),
 

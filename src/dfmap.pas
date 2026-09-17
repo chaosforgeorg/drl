@@ -55,13 +55,11 @@ TCells = class
          private
            FData     : array of TCell;
            FMaxCells : Byte;
-           function getCell( aIndex : Byte ) : TCell;
+           function getCell( aIndex : Byte ) : TCell; inline;
          public
            property Cells[ aIndex : Byte ] : TCell read getCell; default;
            property Max : Byte read FMaxCells;
          end;
-
-var Cells : TCells;
 
 implementation
 

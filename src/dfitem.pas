@@ -9,7 +9,7 @@ unit dfitem;
 interface
 uses classes, sysutils, math,
      vluagamestack, vrltools, vluatable, vcolor, vlua, vrandom, vnode,
-     dfthing, dfdata;
+     drlperk, dfthing, dfdata;
 
 type
 
@@ -19,7 +19,7 @@ TItem  = class( TThing )
 
     constructor Create( const aID : AnsiString; aContext : TNodeContext; aOnFloor : Boolean = False ); overload;
     constructor Create( aNID : Integer; aContext : TNodeContext; aOnFloor : Boolean = False ); overload;
-    constructor CreateFromStream( aStream : TStream; aContext : TNodeContext ); override;
+    constructor CreateFromStream( aStream : TStream; aContext : TNodeContext; aPerkDefinitions : TPerkDefinitions ); override;
     procedure WriteToStream( aStream: TStream ); override;
 
     function    rollDamage( aGameRNG : TRNG ) : Integer;
@@ -117,7 +117,7 @@ procedure SwapItem(var a, b: TItem);
 implementation
 
 uses vluaentitynode, vutil, vdebug, vmath,
-     dfbeing, drllua, drlbase, drlhooks, drlperk;
+     dfbeing, drllua, drlbase, drlhooks;
 
 procedure SwapItem(var a, b: TItem);
 var c : TItem;
@@ -174,10 +174,10 @@ begin
   FreeAndNil( iTable );
 end;
 
-constructor TItem.CreateFromStream( aStream : TStream; aContext : TNodeContext );
+constructor TItem.CreateFromStream( aStream : TStream; aContext : TNodeContext; aPerkDefinitions : TPerkDefinitions );
 var i, iCount : Word;
 begin
-  inherited CreateFromStream( aStream, aContext );
+  inherited CreateFromStream( aStream, aContext, aPerkDefinitions );
 
   aStream.Read( FMods,     SizeOf( FMods ) );
   aStream.Read( FProps,    SizeOf( FProps ) );
@@ -189,7 +189,7 @@ begin
   iCount := aStream.ReadWord();
   if iCount = 0 then Exit;
   for i := 1 to iCount do
-    Add( TItem.CreateFromStream( aStream, FContext ) );
+    Add( TItem.CreateFromStream( aStream, FContext, aPerkDefinitions ) );
 end;
 
 procedure TItem.WriteToStream ( aStream : TStream ) ;
@@ -405,8 +405,8 @@ begin
   begin
     iPerks := FPerks.List;
     for i := 0 to iPerks.Size - 1 do
-      if Hook_OnAltFire in PerkData[ iPerks[i].ID ].Hooks then
-        Exit( PerkData[ iPerks[i].ID ].Short );
+      if Hook_OnAltFire in FPerks.Definitions.Data[ iPerks[i].ID ].Hooks then
+        Exit( FPerks.Definitions.Data[ iPerks[i].ID ].Short );
   end;
 end;
 
@@ -419,8 +419,8 @@ begin
   begin
     iPerks := FPerks.List;
     for i := 0 to iPerks.Size - 1 do
-      if Hook_OnAltReload in PerkData[ iPerks[i].ID ].Hooks then
-        Exit( PerkData[ iPerks[i].ID ].Short );
+      if Hook_OnAltReload in FPerks.Definitions.Data[ iPerks[i].ID ].Hooks then
+        Exit( FPerks.Definitions.Data[ iPerks[i].ID ].Short );
   end;
 end;
 
@@ -433,7 +433,7 @@ begin
   begin
     iPerks := FPerks.List;
     if iPerks.Size = 0 then Exit('');
-    Exit( PerkData[ iPerks[0].ID ].Desc );
+    Exit( FPerks.Definitions.Data[ iPerks[0].ID ].Desc );
   end;
 end;
 
@@ -532,7 +532,7 @@ begin
   begin
     iPerks := FPerks.List;
     for i := 0 to iPerks.Size - 1 do
-      if Hook_OnDescribe in PerkData[ iPerks[i].ID ].Hooks then
+      if Hook_OnDescribe in FPerks.Definitions.Data[ iPerks[i].ID ].Hooks then
       begin
         iName := FContext.Lua.ProtectedCall( [ 'perks', iPerks[i].ID, HookNames[Hook_OnDescribe] ], [ Self ] );
         Break;
