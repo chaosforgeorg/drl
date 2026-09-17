@@ -551,7 +551,6 @@ var x,y         : Integer;
     iFloorCell  : Integer;
     iFloorStyle : Byte;
 begin
-  Player.Detach; // guarantee invariant
   FContext.Lua.Stack.ClearLuaProperties( Self );
   FActiveBeing := nil;
   FNextNode    := nil;
@@ -711,7 +710,6 @@ end;
 procedure TLevel.Clear;
 begin
   FHooks := [];
-  if Player <> nil then Player.Detach;
   DestroyChildren;
   ClearEntities;
   FMarkers.Clear;
@@ -2114,14 +2112,17 @@ begin
   Exit( 0 );
 end;
 
-function lua_level_reset(L: Plua_State): Integer; cdecl;
-var State : TLuaGameStack;
-    Level : TLevel;
+function lua_level_reset( L : Plua_State ) : Integer; cdecl;
+var iState  : TLuaGameStack;
+    iLevel  : TLevel;
+    iPlayer : TPlayer;
 begin
-  State.Init(L);
-  Level := State.ToObject(1) as TLevel;
-  Level.Clear;
-  Level.FullClear;
+  iState.Init( L );
+  iLevel := iState.ToObject( 1 ) as TLevel;
+  iPlayer := DRL.Player;
+  if iPlayer <> nil then iPlayer.Detach;
+  iLevel.Clear;
+  iLevel.FullClear;
   Exit( 0 );
 end;
 

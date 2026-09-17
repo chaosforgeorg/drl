@@ -318,6 +318,7 @@ begin
   // Animation destructors still need the outgoing level and its bindings.
   IO.ClearAnimations;
   IO.SetLevel( nil );
+  if FPlayer <> nil then FPlayer.Detach;
   FreeAndNil( FLevel );
 end;
 
@@ -1376,6 +1377,7 @@ begin
 
       with FContext.Lua.GetTable(['player','episode',FPlayer.Level_Index]) do
       try
+        FPlayer.Detach;
         FLevel.Init(getInteger('style',0),
                    getString('name',''),
                    FPlayer.Level_Index,
@@ -1485,6 +1487,7 @@ begin
       FPlayer.Score := FPlayer.Score + 1000;
       if FGameWon and (State <> DSNextLevel) and (FMemorial = nil) then
         GenerateMemorial( FPlayer );
+      FPlayer.Detach;
       FLevel.Clear;
     end;
     IO.SetHint('');
