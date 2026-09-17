@@ -10,7 +10,7 @@ interface
 
 uses sysutils,
      vapp, viorl, vlua, vrlapp, vstoreinterface, vutil, vioevent,
-     dfdata, drlbase, drlmodule, drlgamedata, drlhelp;
+     dfdata, dfhof, drlbase, drlmodule, drlgamedata, drlhelp;
 
 type
   TDRLApplication = class;
@@ -22,14 +22,16 @@ type
 // session. Per-playthrough state belongs in TDRLSession.
 type TDRLRuntime = class( TRLRuntime )
   private
-    FSession     : TDRLSession;
-    FModules     : TDRLModules;
-    FStore       : TStoreInterface;
-    FData        : TGameData;
-    FHelp        : THelp;
-    FModErrors   : TStringGArray;
-    FModuleHooks : TFlags;
-    FDataLoaded  : Boolean;
+    FSession          : TDRLSession;
+    FModules          : TDRLModules;
+    FStore            : TStoreInterface;
+    FData             : TGameData;
+    FHelp             : THelp;
+    FModErrors        : TStringGArray;
+    FModuleHooks      : TFlags;
+    FDataLoaded       : Boolean;
+    FHOF              : THOF;
+    FProfileTimeStart : Comp;
     procedure ApplyConfiguration;
     procedure CreateSession( aInitializeData : Boolean );
     procedure ReleaseSession;
@@ -48,6 +50,8 @@ type TDRLRuntime = class( TRLRuntime )
       const aModulesFile : AnsiString ); reintroduce;
     destructor Destroy; override;
     procedure Reconfigure;
+    procedure SaveProfile;
+    property HOF       : THOF            read FHOF;
     property Help      : THelp           read FHelp;
     property ModErrors : TStringGArray   read FModErrors;
     property Data      : TGameData       read FData;
@@ -81,7 +85,7 @@ implementation
 
 uses {$IFDEF WINDOWS}windows,{$ENDIF}
      {$IFDEF WINDOWS}vos,{$ENDIF} vdebug, vlog, vluastate,
-     dfhof, dfmap, drlconfig, drlconfiguration, drlgfxio, drlhooks, drlio, drllua, drltextio, drlworkshop;
+     dfmap, drlconfig, drlconfiguration, drlgfxio, drlhooks, drlio, drllua, drltextio, drlworkshop;
 
 type TDRLConfigurationState = class( TDRLConfiguration )
   private
@@ -229,7 +233,7 @@ begin
   CreateSession( False );
   TDRLIO(IO).Initialize;
   TDRLIO(IO).LoadStart;
-  ProgramRealTime := MSecNow();
+  FProfileTimeStart := MSecNow();
   TDRLIO(IO).Configure(Config);
   TDRLIO(IO).Reconfigure(Config);
 
@@ -282,7 +286,8 @@ begin
 
   if GodMode and FileExists(Paths.WritePath + 'god.lua') then
     FLua.LoadFile(Paths.WritePath + 'god.lua');
-  HOF.Init( FLua, Paths );
+  FHOF := THOF.Create( FLua, Paths );
+  dfhof.HOF := FHOF;
   FSession.InitializeLevel;
 
   HARDSPRITE_HIGHLIGHT    := FLua.Get('HARDSPRITE_HIGHLIGHT');
@@ -365,6 +370,14 @@ begin
   Setting_Fade := drlconfiguration.Configuration.GetBoolean('fade_fx');
 end;
 
+procedure TDRLRuntime.SaveProfile;
+var iSeconds : DWord;
+begin
+  iSeconds := Round( (MSecNow() - FProfileTimeStart) / 1000 );
+  FProfileTimeStart := MSecNow();
+  FHOF.Save( iSeconds );
+end;
+
 procedure TDRLRuntime.Reconfigure;
 begin
   ApplyConfiguration;
@@ -405,8 +418,14 @@ begin
   FreeAndNil( FData );
   if not FDataLoaded then Exit;
   FDataLoaded := False;
-  HOF.Done;
-  FreeAndNil(FHelp);
+  try
+    if FHOF <> nil then
+      SaveProfile;
+  finally
+    dfhof.HOF := nil;
+    FreeAndNil( FHOF );
+    FreeAndNil( FHelp );
+  end;
 end;
 
 { TDRLApplication }

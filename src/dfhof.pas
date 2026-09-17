@@ -6,7 +6,9 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit dfhof;
 interface
-uses classes, dom, vlua, vapp, vnode, vxml, vxmldata, dfdata;
+uses classes, dom,
+     vlua, vapp, vnode, vxml, vxmldata,
+     dfdata;
 
 const MaxHofEntries = 500;
       MaxID         = 1023;
@@ -18,13 +20,14 @@ const PlayerFile = 'player.wad';
 
 { THOF }
 
-type THOF = object
-  procedure Init( aLua : TLua; const aPaths : TGamePaths );
+type THOF = class
+  constructor Create( aLua : TLua; const aPaths : TGamePaths );
   procedure Add( const Name : AnsiString; aScore : LongInt; const aKillerID : AnsiString; Level, DLev : Word; nChal, nAbbr : AnsiString );
   function RankCheck( out aResult : THOFRank ) : Boolean;
   function GetPagedPlayerReport : TPagedReport;
   function GetPagedScoreReport : TPagedReport;
-  procedure Done;
+  procedure Save( aElapsedSeconds : DWord );
+  destructor Destroy; override;
 
   function GetCount( aXPathQuery : string; aContext : TDOMNode = nil ) : DWord;
   function GetChildCount( aXPathQuery : string; aContext : TDOMNode = nil ) : DWord;
@@ -38,7 +41,6 @@ private
   FPlayerInfo : TVXMLDataFile;
 
   procedure SetRank( const aRankName: Ansistring; aValue : Integer );
-  procedure Save; overload;
   // TODO : remove
   function GetBadgeCount( aBadgeLevel : DWord ) : DWord;
 
@@ -65,13 +67,13 @@ private
   procedure HandleAchievements( const aRankArray : Ansistring; aRankLevel : Integer );
 end;
 
-var HOF : THOF;
+var HOF : THOF = nil; // Borrowed from Runtime by the native Lua callbacks.
 
 implementation
 
-uses math, sysutils, strutils, variants, vluatable, vdebug, vtig, vutil, vrltools, drlbase, dfplayer;
-
-const HOFOpen : Boolean = False;
+uses math, sysutils, strutils, variants,
+     vluatable, vdebug, vtig, vutil, vrltools,
+     drlbase, dfplayer;
 
 function THOF.GetBadgeCount( aBadgeLevel : DWord ): DWord;
 var iCount   : DWord;
@@ -725,9 +727,10 @@ begin
   FreeAndNil( iChals );
 end;
 
-procedure THOF.Init( aLua : TLua; const aPaths : TGamePaths );
+constructor THOF.Create( aLua : TLua; const aPaths : TGamePaths );
 var iScorePath : Ansistring;
 begin
+  inherited Create;
   FLua := aLua;
   iScorePath := aPaths.ScorePath;
   if iScorePath = '' then iScorePath := aPaths.ModuleUserPath;
@@ -746,7 +749,6 @@ begin
   FPlayerInfo.SetBackup(  aPaths.ModuleUserPath + 'backup'+PathDelim, Option_PlayerBackups );
   FPlayerInfo.Load;
 
-  HOFOpen := True;
 end;
 
 function THOF.GameResultBetter( const ResultOld, ResultNew : String ) : boolean;
@@ -948,7 +950,6 @@ begin
       FScore.Unlock;
     end;
   end;
-  Save;
 end;
 
 function THOF.RankCheck( out aResult : THOFRank ) : Boolean;
@@ -1004,25 +1005,16 @@ begin
   end;
 end;
 
-procedure THOF.Done;
+destructor THOF.Destroy;
 begin
-  Save;
   FreeAndNil( FScore );
   FreeAndNil( FPlayerInfo );
-  FLua := nil;
-  HOFOpen := False;
+  inherited Destroy;
 end;
 
-
-procedure THOF.Save;
-var iSeconds : DWord;
+procedure THOF.Save( aElapsedSeconds : DWord );
 begin
-  if not HOFOpen then Exit;
-
-  iSeconds := Round( (MSecNow() - ProgramRealTime) / 1000 );
-  ProgramRealTime := MSecNow();
-  IncreaseXMLCount( FPlayerInfo.XML.DocumentElement, 'time', iSeconds );
-
+  IncreaseXMLCount( FPlayerInfo.XML.DocumentElement, 'time', aElapsedSeconds );
   FPlayerInfo.Save;
 end;
 

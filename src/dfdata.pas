@@ -103,9 +103,6 @@ const
 
   GodMode      : Boolean = False;
 
-  GameRealTime    : Comp = 0;
-  ProgramRealTime : Comp = 0;
-
   Config       : TDRLConfig = nil;
 
 const

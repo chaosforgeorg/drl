@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlmainmenuview;
 interface
 uses vio, viotypes, vgenerics, vtextures, vtigstyle,
-     dfdata, drlio, drlhelp;
+     dfdata, dfhof, drlio, drlhelp;
 
 type TMainMenuViewMode = (
   MAINMENU_FIRST, MAINMENU_INTRO, MAINMENU_ENGINECOMPAT, MAINMENU_MENU,
@@ -29,7 +29,7 @@ end;
 type TMainMenuEntryArray = specialize TGArray< TMainMenuEntry >;
 
 type TMainMenuView = class( TIOLayer )
-  constructor Create( aHelp : THelp; aModErrors : TStringGArray;
+  constructor Create( aHOF : THOF; aHelp : THelp; aModErrors : TStringGArray;
     aInitial : TMainMenuViewMode = MAINMENU_FIRST; aResult : TMenuResult = nil );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
@@ -60,6 +60,7 @@ protected
   procedure RenderASCIILogo;
   procedure UpdateModErrors;
 protected
+  FHOF         : THOF;
   FHelp        : THelp;
   FModErrors   : TStringGArray;
   FSize        : TIOPoint;
@@ -93,7 +94,7 @@ implementation
 
 uses math, sysutils,
      vutil, vtig, vtigio, vgltypes, vlua, vluavalue,
-     dfhof, drlbase, drlgfxio, drlplayerview, drlhelpview, drlsettingsview, drlpagedview;
+     drlbase, drlgfxio, drlplayerview, drlhelpview, drlsettingsview, drlpagedview;
 
 var ChallengeType : array[1..4] of TMainMenuEntry =
 ((
@@ -140,10 +141,11 @@ const CTYPE_ANGEL  = 1;
 
       CTYPE_SECOND = 10;
 
-constructor TMainMenuView.Create( aHelp : THelp; aModErrors : TStringGArray;
+constructor TMainMenuView.Create( aHOF : THOF; aHelp : THelp; aModErrors : TStringGArray;
     aInitial : TMainMenuViewMode = MAINMENU_FIRST; aResult : TMenuResult = nil );
 var iLua : TLua;
 begin
+  FHOF       := aHOF;
   FHelp      := aHelp;
   FModErrors := aModErrors;
   iLua := IO.Session.Context.Lua;
@@ -385,8 +387,8 @@ begin
         VTIG_ResetSelect( 'mainmenu_newgame' );
         FMode := MAINMENU_NEWGAME;
       end;
-    if VTIG_Selectable( TextShowHighscore ) then IO.PushLayer( TPagedView.Create( HOF.GetPagedScoreReport ) );
-    if VTIG_Selectable( TextShowPlayer )    then IO.PushLayer( TPagedView.Create( HOF.GetPagedPlayerReport ) );
+    if VTIG_Selectable( TextShowHighscore ) then IO.PushLayer( TPagedView.Create( FHOF.GetPagedScoreReport ) );
+    if VTIG_Selectable( TextShowPlayer )    then IO.PushLayer( TPagedView.Create( FHOF.GetPagedPlayerReport ) );
     if VTIG_Selectable( TextHelp )          then IO.PushLayer( THelpView.Create( IO, IO.Session.Context.Lua, FHelp, CoreModuleID ) );
     if VTIG_Selectable( TextSettings )      then IO.PushLayer( TSettingsView.Create );
     if FJHCLink then
@@ -1010,7 +1012,7 @@ begin
   FArrayDiff.Clear;
   FArrayKlass.Clear;
 
-  iSkill := HOF.GetRank('skill');
+  iSkill := FHOF.GetRank('skill');
 
   ChallengeType[1].Allow := (iSkill > 0) or (GodMode) or (Setting_UnlockAll);
   ChallengeType[2].Allow := (iSkill > 3) or (GodMode) or (Setting_UnlockAll);
@@ -1130,7 +1132,7 @@ begin
       iEntry.ID    := GetString('id');
       iEntry.NID   := iChallenges[iCount];
       iEntry.Req   := GetInteger(iPrefix+'rank',0);
-      iEntry.Allow := (HOF.GetRank('skill') >= iEntry.Req) or (GodMode) or (Setting_UnlockAll);
+      iEntry.Allow := (FHOF.GetRank('skill') >= iEntry.Req) or (GodMode) or (Setting_UnlockAll);
       FArrayChal.Push( iEntry );
     finally
       Free;

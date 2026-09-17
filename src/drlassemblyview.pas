@@ -6,26 +6,30 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlassemblyview;
 interface
-uses vutil, viotypes, dfdata;
+uses vutil, viotypes, vlua, dfdata, dfhof;
 
 type TAssemblyView = class( TIOLayer )
-  constructor Create;
+  constructor Create( aLua : TLua; aHOF : THOF );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsModal : Boolean; override;
   destructor Destroy; override;
 protected
   procedure ReadAssemblies;
 protected
+  FLua      : TLua;
+  FHOF      : THOF;
   FSize     : TPoint;
   FContent  : TStringGArray;
 end;
 
 implementation
 
-uses sysutils, vlua, vtig, drlio, drlbase, dfhof;
+uses sysutils, vtig;
 
-constructor TAssemblyView.Create;
+constructor TAssemblyView.Create( aLua : TLua; aHOF : THOF );
 begin
+  FLua := aLua;
+  FHOF := aHOF;
   VTIG_EventClear;
   FSize      := Point( 80, 25 );
 end;
@@ -56,34 +60,32 @@ begin
 end;
 
 procedure TAssemblyView.ReadAssemblies;
-var iLua                : TLua;
-    iType, iFound, i    : DWord;
+var iType, iFound, i    : DWord;
     iString, iID, iDesc : AnsiString;
 const TypeName : array[0..2] of string = ('Basic','Advanced','Master');
 begin
-  iLua := IO.Session.Context.Lua;
   if FContent = nil then FContent := TStringGArray.Create;
   FContent.Clear;
-  if iLua.Defined(['mod_arrays','__counter']) then
+  if FLua.Defined(['mod_arrays','__counter']) then
     for iType := 0 to 2 do
     begin
       FContent.Push('{y'+TypeName[iType]+' assemblies}');
       FContent.Push('');
-      for i := 1 to iLua.Get(['mod_arrays','__counter']) do
-      if iLua.Get(['mod_arrays',i,'level']) = iType then
+      for i := 1 to FLua.Get(['mod_arrays','__counter']) do
+      if FLua.Get(['mod_arrays',i,'level']) = iType then
       begin
-        iID    := iLua.Get(['mod_arrays',i,'id']);
-        iFound := HOF.GetCounted( 'assemblies','assembly', iID );
-        if iLua.Get( [ 'player','__props', 'assemblies', iID ], 0 ) > 0 then Inc( iFound );
+        iID    := FLua.Get(['mod_arrays',i,'id']);
+        iFound := FHOF.GetCounted( 'assemblies','assembly', iID );
+        if FLua.Get( [ 'player','__props', 'assemblies', iID ], 0 ) > 0 then Inc( iFound );
         if iFound = 0
           then if iType = 0
-            then iString := '  {d'+iLua.Get(['mod_arrays',i,'name'])+' ({L-})}'
+            then iString := '  {d'+FLua.Get(['mod_arrays',i,'name'])+' ({L-})}'
             else iString := '  {d  -- ? -- ({L-})}'
           else 
           begin 
-            iString := '  {y'+iLua.Get(['mod_arrays',i,'name'])+' ({L'+IntToStr(iFound)+'})}'
-                       + ' - {l' + iLua.Get(['mod_arrays',i,'request_desc'],'')+'}';
-            iDesc := iLua.Get(['mod_arrays',i,'desc'],'');
+            iString := '  {y'+FLua.Get(['mod_arrays',i,'name'])+' ({L'+IntToStr(iFound)+'})}'
+                       + ' - {l' + FLua.Get(['mod_arrays',i,'request_desc'],'')+'}';
+            iDesc := FLua.Get(['mod_arrays',i,'desc'],'');
             if iDesc <> '' then
               iString += #10'   {!*} '+iDesc;
           end;

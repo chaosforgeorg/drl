@@ -8,7 +8,7 @@ unit dfplayer;
 interface
 uses classes, sysutils,
      vluagamestack, vpath, vutil, vrltools, vvision, viotypes, vlua, vnode, vrandom,
-     drlperk, dfbeing, dfhof, dfdata, dfitem, drltraits, drlkeybindings, drlstatistics, drlmultimove;
+     drlperk, dfbeing, dfdata, dfitem, drltraits, drlkeybindings, drlstatistics, drlmultimove;
 
 
 type TQuickSlotInfo = record
@@ -609,7 +609,7 @@ begin
     if DRL.GameWon then DRL.Store.IncStat( 'drl_wins' );
   end;
 
-  HOF.Add(Name,FScore,FKilledBy,FExpLevel,FLevelIndex,DRL.Challenge,TLevel( Parent ).Abbr);
+  DRL.RecordResult( Self );
 
   try
     iMortemList := TStringList.Create;

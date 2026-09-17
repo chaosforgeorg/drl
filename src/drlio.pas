@@ -1400,10 +1400,10 @@ begin
   Result := 1;
 end;
 
-function lua_ui_get_rank(L: Plua_State): Integer; cdecl;
+function lua_ui_get_rank( L : PLua_State ) : Integer; cdecl;
 var iState : TLuaGameStack;
 begin
-  iState.Init(L);
+  iState.Init( L );
   iState.Push( HOF.GetRank( iState.ToString( 1 ) ) );
   Result := 1;
 end;

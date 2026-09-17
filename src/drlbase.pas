@@ -8,7 +8,7 @@ unit drlbase;
 interface
 
 uses vapp, vnode, vutil, vuid, viotypes, vrltools, vlua, vioevent, vstoreinterface, vrandom, vrlapp,
-     dflevel, dfdata, dfhof, dfitem, drlhooks, drllua, drlcommand, drlkeybindings, drlmodule, drlgamedata;
+     dflevel, dfdata, dfhof, dfplayer, dfitem, drlhooks, drllua, drlcommand, drlkeybindings, drlmodule, drlgamedata;
 
 type TDRLSession = class;
 
@@ -48,6 +48,7 @@ type TDRLSession = class(TVObject)
        procedure InitializeLevel;
        procedure Reset;
        procedure Reconfigure;
+       procedure RecordResult( aPlayer : TPlayer );
        procedure SetModuleHooks( aModuleHooks : TFlags );
        function LoadSaveFile : Boolean;
        procedure WriteSaveFile( aCrash : Boolean );
@@ -147,7 +148,7 @@ implementation
 
 uses {$IFDEF WINDOWS}windows,{$ELSE}unix,{$ENDIF} classes, sysutils, zstream,
      vbindings, vdebug, vstream,
-     dfmap, dfbeing, drlio, drlgfxio, drlspritemap { remove }, drlplayerview, drlingamemenuview, drlhelpview, drlassemblyview, drlpagedview, drlrankupview, drlmainmenuview, drlhudviews, drlmessagesview, drlapplication, drlcontrollerbindings, dfplayer;
+     dfmap, dfbeing, drlio, drlgfxio, drlspritemap { remove }, drlplayerview, drlingamemenuview, drlhelpview, drlassemblyview, drlpagedview, drlrankupview, drlmainmenuview, drlhudviews, drlmessagesview, drlapplication, drlcontrollerbindings;
 
 const PAD_REPEAT_START = 400;
       PAD_REPEAT       = 100;
@@ -316,6 +317,15 @@ end;
 procedure TDRLSession.SetModuleHooks( aModuleHooks : TFlags );
 begin
   FModuleHooks := aModuleHooks;
+end;
+
+procedure TDRLSession.RecordResult( aPlayer : TPlayer );
+var iRuntime : TDRLRuntime;
+begin
+  iRuntime := TDRLRuntime( FRuntime );
+  iRuntime.HOF.Add( aPlayer.Name, aPlayer.Score, aPlayer.KilledBy,
+    aPlayer.ExpLevel, aPlayer.Level_Index, FChallenge, TLevel( aPlayer.Parent ).Abbr );
+  iRuntime.SaveProfile;
 end;
 
 procedure TDRLSession.Reconfigure;
@@ -1082,7 +1092,7 @@ begin
     ) ) );
     CONTROLLER_MENU : begin
       ResetAutoTarget;
-      IO.PushLayer( TInGameMenuView.Create( TDRLRuntime( FRuntime ).Help ) );
+      IO.PushLayer( TInGameMenuView.Create( TDRLRuntime( FRuntime ).HOF, TDRLRuntime( FRuntime ).Help ) );
       Exit( False );
     end;
     CONTROLLER_PLAYER : begin
@@ -1161,14 +1171,14 @@ begin
     case iInput of
 //      INPUT_ESCAPE     : begin if GodMode then SetState( DSQuit ); Exit; end;
       INPUT_TARGETNEXT : begin IO.SetAutoTarget( FTargeting.List.Next ); Exit; end;
-      INPUT_ESCAPE     : begin ResetAutoTarget; IO.PushLayer( TInGameMenuView.Create( TDRLRuntime( FRuntime ).Help ) ); Exit; end;
+      INPUT_ESCAPE     : begin ResetAutoTarget; IO.PushLayer( TInGameMenuView.Create( TDRLRuntime( FRuntime ).HOF, TDRLRuntime( FRuntime ).Help ) ); Exit; end;
       INPUT_QUIT       : begin IO.PushLayer( TAbandonView.Create ); Exit; end;
       INPUT_HELP       : begin IO.PushLayer( THelpView.Create( IO, FContext.Lua, TDRLRuntime( FRuntime ).Help, CoreModuleID ) ); Exit; end;
       INPUT_LOOKMODE   : begin IO.PushLayer( TLookModeView.Create( FLevel ) ); Exit; end;
       INPUT_PLAYERINFO : begin FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_CHARACTER ) ); Exit; end;
       INPUT_INVENTORY  : begin FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_INVENTORY ) ); Exit; end;
       INPUT_EQUIPMENT  : begin FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_EQUIPMENT ) ); Exit; end;
-      INPUT_ASSEMBLIES : begin IO.PushLayer( TAssemblyView.Create ); Exit; end;
+      INPUT_ASSEMBLIES : begin IO.PushLayer( TAssemblyView.Create( FContext.Lua, TDRLRuntime( FRuntime ).HOF ) ); Exit; end;
       INPUT_MORE       : begin IO.FullLook( Level.Being[FTargeting.List.Current] ); Exit; end;
       INPUT_MORESELF   : begin IO.FullLook( Player ); Exit; end;
       INPUT_LEGACYUSE  : begin FPlayerView := IO.PushLayer( TPlayerView.CreateCommand( COMMAND_USE ) ); Exit; end;
@@ -1257,7 +1267,7 @@ begin
   if aShowIntro then
   begin
     IO.PushLayer( TMainMenuView.Create(
-      TDRLRuntime( FRuntime ).Help, TDRLRuntime( FRuntime ).ModErrors ) );
+      TDRLRuntime( FRuntime ).HOF, TDRLRuntime( FRuntime ).Help, TDRLRuntime( FRuntime ).ModErrors ) );
     IO.WaitForLayer( True );
   end;
   if FState <> DSQuit then
@@ -1280,7 +1290,7 @@ begin
   iResult.Reset; // TODO : could reuse for same game!
 
   IO.PushLayer( TMainMenuView.Create(
-    TDRLRuntime( FRuntime ).Help, TDRLRuntime( FRuntime ).ModErrors, MAINMENU_MENU, iResult ) );
+    TDRLRuntime( FRuntime ).HOF, TDRLRuntime( FRuntime ).Help, TDRLRuntime( FRuntime ).ModErrors, MAINMENU_MENU, iResult ) );
   IO.WaitForLayer( True );
   if iResult.ReloadData then
   begin
@@ -1322,7 +1332,7 @@ begin
   end;
   CallHook( Hook_OnLoaded, [(State in [DSLoading, DSCrashLoading])] );
 
-  GameRealTime := MSecNow();
+  Player.Statistics.StartTimer;
   try
   repeat
     iEnterNuke := False;
@@ -1493,7 +1503,7 @@ begin
 
   if State = DSFinished then
   begin
-    if HOF.RankCheck( iRank ) then
+    if TDRLRuntime( FRuntime ).HOF.RankCheck( iRank ) then
     begin
       IO.PushLayer( TRankUpView.Create( FContext.Lua, iRank ) );
       IO.WaitForLayer( True );
@@ -1507,7 +1517,7 @@ begin
     end;
     iChalAbbr := '';
     if FChallenge <> '' then iChalAbbr := FContext.Lua.Get(['chal',FChallenge,'abbr']);
-    IO.PushLayer( TPagedView.Create( HOF.GetPagedScoreReport, iChalAbbr ) );
+    IO.PushLayer( TPagedView.Create( TDRLRuntime( FRuntime ).HOF.GetPagedScoreReport, iChalAbbr ) );
     IO.WaitForLayer( True );
   end;
   CallHook(Hook_OnUnLoad,[]);

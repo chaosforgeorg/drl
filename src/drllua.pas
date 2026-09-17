@@ -121,35 +121,35 @@ begin
   Result := 0;
 end;
 
-function lua_core_player_data_count(L: Plua_State): Integer; cdecl;
-var State : TLuaGameStack;
+function lua_core_player_data_count( L : PLua_State ) : Integer; cdecl;
+var iState : TLuaGameStack;
 begin
-  State.Init(L);
-  State.Push( LongInt(HOF.GetCount( State.ToString( 1 ) )) );
+  iState.Init( L );
+  iState.Push( LongInt(HOF.GetCount( iState.ToString( 1 ) )) );
   Result := 1;
 end;
 
-function lua_core_player_data_child_count(L: Plua_State): Integer; cdecl;
-var State : TLuaGameStack;
+function lua_core_player_data_child_count( L : PLua_State ) : Integer; cdecl;
+var iState : TLuaGameStack;
 begin
-  State.Init(L);
-  State.Push( LongInt(HOF.GetChildCount( State.ToString( 1 ) )) );
+  iState.Init( L );
+  iState.Push( LongInt(HOF.GetChildCount( iState.ToString( 1 ) )) );
   Result := 1;
 end;
 
-function lua_core_player_data_get_counted(L: Plua_State): Integer; cdecl;
-var State : TLuaGameStack;
+function lua_core_player_data_get_counted( L : PLua_State ) : Integer; cdecl;
+var iState : TLuaGameStack;
 begin
-  State.Init(L);
-  State.Push( LongInt(HOF.GetCounted( State.ToString( 1 ), State.ToString( 2 ), State.ToString( 3 ) ) ) );
+  iState.Init( L );
+  iState.Push( LongInt(HOF.GetCounted( iState.ToString( 1 ), iState.ToString( 2 ), iState.ToString( 3 ) ) ) );
   Result := 1;
 end;
 
-function lua_core_player_data_add_counted(L: Plua_State): Integer; cdecl;
-var State : TLuaGameStack;
+function lua_core_player_data_add_counted( L : PLua_State ) : Integer; cdecl;
+var iState : TLuaGameStack;
 begin
-  State.Init(L);
-  State.Push( Boolean(HOF.AddCounted( State.ToString( 1 ), State.ToString( 2 ), State.ToString( 3 ), State.ToInteger( 4,1 ) ) ) );
+  iState.Init( L );
+  iState.Push( Boolean(HOF.AddCounted( iState.ToString( 1 ), iState.ToString( 2 ), iState.ToString( 3 ), iState.ToInteger( 4,1 ) ) ) );
   Result := 1;
 end;
 
@@ -451,7 +451,6 @@ const lua_player_data_lib : array[0..4] of luaL_Reg = (
     ( name : 'add_counted'; func : @lua_core_player_data_add_counted),
     ( name : nil;           func : nil; )
 );
-
 
 function lua_core_resolve_callback( L: Plua_State; aIndex : Integer ) : Integer;
 var iName : AnsiString;

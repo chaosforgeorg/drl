@@ -6,14 +6,16 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlingamemenuview;
 interface
-uses viotypes, drlio, drlconfirmview, dfdata, drlhelp;
+uses viotypes,
+     dfhof, drlio, drlconfirmview, dfdata, drlhelp;
 
 type TInGameMenuView = class( TIOLayer )
-  constructor Create( aHelp : THelp );
+  constructor Create( aHOF : THOF; aHelp : THelp );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
 private
+  FHOF  : THOF;
   FHelp : THelp;
 end;
 
@@ -29,8 +31,9 @@ implementation
 uses vtig, vutil, vlua,
      dfplayer, drlbase, drlhelpview, drlsettingsview, drlmessagesview, drlassemblyview;
 
-constructor TInGameMenuView.Create( aHelp : THelp );
+constructor TInGameMenuView.Create( aHOF : THOF; aHelp : THelp );
 begin
+  FHOF  := aHOF;
   FHelp := aHelp;
   VTIG_EventClear;
   VTIG_ResetSelect( 'ingame_menu_abandon' );
@@ -64,7 +67,7 @@ begin
   end;
   if VTIG_Selectable( 'Assemblies' ) then
   begin
-    IO.PushLayer( TAssemblyView.Create );
+    IO.PushLayer( TAssemblyView.Create( IO.Session.Context.Lua, FHOF ) );
     FFinished := True;
   end;
   if VTIG_Selectable( 'Abandon Run' ) then
