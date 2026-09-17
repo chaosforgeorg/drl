@@ -193,10 +193,8 @@ begin
 
   if (not Option_HighASCII) then iCell.PicChr := iCell.PicLow;
 
-  if ColorOverrides.Exists(iColorID+'_light') then
-    iCell.LightColor[0] := ColorOverrides[iColorID+'_light'];
-  if ColorOverrides.Exists(iColorID+'_dark') then
-    iCell.DarkColor:= ColorOverrides[iColorID+'_dark'];
+  iCell.LightColor[0] := Config.ColorOverrides.Get( iColorID + '_light', iCell.LightColor[0] );
+  iCell.DarkColor := Config.ColorOverrides.Get( iColorID + '_dark', iCell.DarkColor );
 
   FData[aCellNum] := iCell;
 end;

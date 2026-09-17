@@ -382,8 +382,6 @@ function ReadLineFromStream( aStream : TStream; aSize : Integer = -1 ) : AnsiStr
 function AxisToDirection( aAxis : TVec2f ) : TCoord2D;
 function SmoothFade( aElapsed, aDuration : Single; aFadeIn : Boolean ) : Single;
 
-var ColorOverrides : TIntHashMap;
-
 function GetPropValueFixed(Instance: TObject; const PropName: Ansistring; PreferStrings: Boolean = True): Variant;
 
 var TIGStyleColored   : TTIGStyle;

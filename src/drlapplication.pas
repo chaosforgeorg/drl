@@ -256,7 +256,6 @@ begin
   );
   TDRLIO(IO).LoadStart;
   FDataLoaded := True;
-  ColorOverrides := TIntHashMap.Create;
   TDRLIO(IO).Configure(Config, True);
   FModuleHooks := [];
   FHelp := THelp.Create;
@@ -408,7 +407,6 @@ begin
   FDataLoaded := False;
   HOF.Done;
   FreeAndNil(FHelp);
-  FreeAndNil(ColorOverrides);
 end;
 
 { TDRLApplication }

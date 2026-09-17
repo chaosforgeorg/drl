@@ -95,8 +95,7 @@ begin
   iColorID := FID;
   if aTable.IsString('color_id') then iColorID := aTable.getString('color_id');
 
-  if ColorOverrides.Exists(iColorID) then
-    FGylph.Color := ColorOverrides[iColorID];
+  FGylph.Color := Config.ColorOverrides.Get( iColorID, FGylph.Color );
 
   FHooks += LoadCallbacks( FContext.Lua, aTable );
 end;

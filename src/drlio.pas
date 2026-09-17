@@ -127,7 +127,6 @@ protected
   procedure UpdateStyles;
   procedure ExplosionMark( aCoord : TCoord2D; aColor : Byte; aDuration : DWord; aDelay : DWord ); virtual; abstract;
   procedure DrawHud; virtual;
-  procedure ColorQuery(nkey,nvalue : Variant);
   function ScreenShotCallback( aEvent : TIOEvent ) : Boolean;
   function BBScreenShotCallback( aEvent : TIOEvent ) : Boolean;
 protected
@@ -186,7 +185,7 @@ procedure EmitCrashInfo( const aInfo : AnsiString; aInGame : Boolean  );
 
 implementation
 
-uses math, video, dateutils, variants,
+uses math, video, dateutils,
      vsound, vlua, vuid, vlog, vdebug, vmath, vsdlio, vglconsole, vtig, vtigio, vvector,
      dflevel, dfplayer, dfitem, dfhof, drlconfiguration, drluibindings, drlmoreview, drlchoiceview, drlmodulechoiceview, drlhudviews, drlplotview;
 
@@ -744,8 +743,6 @@ begin
   if Option_MessageBuffer < 20 then Option_MessageBuffer := 20;
   FAudio.Configure( aConfig, aReload );
 
-  if aReload then
-    aConfig.EntryFeed('Colors', @ColorQuery );
   if Option_MessageColoring then
     aConfig.EntryFeed( 'Messages', @FMessages.AddHighlightCallback );
 end;
@@ -994,11 +991,6 @@ end;
 procedure TDRLIO.SetHint ( const aText : AnsiString ) ;
 begin
   FHint       := aText;
-end;
-
-procedure TDRLIO.ColorQuery(nkey,nvalue : Variant);
-begin
-    ColorOverrides[nkey] := nvalue;
 end;
 
 function TDRLIO.ScreenShotCallback ( aEvent : TIOEvent ) : Boolean;
