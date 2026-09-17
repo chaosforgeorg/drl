@@ -399,7 +399,6 @@ end;
 
 procedure TDRLRuntime.UnloadGameData;
 begin
-  if FLua <> nil then TGameData.UnregisterLuaAPI( FLua );
   FreeAndNil( FData );
   if not FDataLoaded then Exit;
   FDataLoaded := False;

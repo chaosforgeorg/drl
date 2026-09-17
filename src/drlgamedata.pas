@@ -10,7 +10,6 @@ type TGameData = class
     constructor Create;
     destructor Destroy; override;
     procedure RegisterLuaAPI( aLua : TLua );
-    class procedure UnregisterLuaAPI( aLua : TLua ); static;
     class function FromState( L : PLua_State ) : TGameData; static;
   private
     FCells    : TCells;
@@ -100,15 +99,6 @@ begin
   lua_pushlightuserdata( aLua.Raw, Self );
   lua_rawset( aLua.Raw, LUA_REGISTRYINDEX );
   aLua.Register( 'core', lua_data_lib );
-end;
-
-class procedure TGameData.UnregisterLuaAPI( aLua : TLua );
-begin
-  // Definitions are freed before Lua; god mode also keeps the interpreter alive.
-  // Revoke its borrowed pointer so retained callbacks cannot access freed data.
-  lua_pushlightuserdata( aLua.Raw, @GameDataKey );
-  lua_pushnil( aLua.Raw );
-  lua_rawset( aLua.Raw, LUA_REGISTRYINDEX );
 end;
 
 end.
