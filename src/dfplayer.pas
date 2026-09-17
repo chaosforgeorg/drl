@@ -82,6 +82,7 @@ private
   FStatistics     : TStatistics;
   FMultiMove      : TMultiMove;
   FCSprite        : TSprite;
+  procedure ResortStacks;
 public
   property MultiMove       : TMultiMove  read FMultiMove;
   property Statistics      : TStatistics read FStatistics;
@@ -709,27 +710,56 @@ begin
   IO.WaitForLayer( True );
 end;
 
-function lua_player_add_exp(L: Plua_State): Integer; cdecl;
-var State   : TLuaGameStack;
-    Being   : TBeing;
+procedure TPlayer.ResortStacks;
+var iItem  : TItem;
+    iNode  : TNode;
+    iTemp  : TNode;
+    iList  : TItemList;
+    iCount : Byte;
 begin
-  State.Init(L);
-  Being := State.ToObject(1) as TBeing;
-  if not (Being is TPlayer) then Exit(0);
-  Player.addExp(State.ToInteger(2));
+  for iCount in TItemSlot do
+    iList[ iCount ] := nil;
+
+  iCount := 0;
+  for iNode in Self do
+    if iNode is TItem then
+      if (iNode as TItem).isStackable then
+      begin
+        Inc( iCount );
+        iList[ iCount ] := iNode as TItem;
+      end;
+
+  iTemp := TNode.Create;
+  for iItem in iList do
+    if iItem <> nil then
+      iTemp.Add( iItem );
+
+  for iNode in iTemp do
+    with iNode as TItem do
+      FInv.AddStack( NID, Amount );
+
+  FreeAndNil( iTemp );
+end;
+
+function lua_player_add_exp( L : PLua_State ) : Integer; cdecl;
+var iState  : TLuaGameStack;
+    iPlayer : TPlayer;
+begin
+  iState.Init( L );
+  iPlayer := iState.ToObject( 1 ) as TPlayer;
+  iPlayer.addExp(iState.ToInteger(2));
   Result := 0;
 end;
 
-function lua_player_remove_kill(L: Plua_State): Integer; cdecl;
-var State   : TLuaGameStack;
-    Being   : TBeing;
-    Target  : TBeing;
+function lua_player_remove_kill( L : PLua_State ) : Integer; cdecl;
+var iState  : TLuaGameStack;
+    iPlayer : TPlayer;
+    iTarget : TBeing;
 begin
-  State.Init(L);
-  Being := State.ToObject(1) as TBeing;
-  if not (Being is TPlayer) then Exit(0);
-  Target := State.ToObject(2) as TBeing;
-  Player.RemoveKill( Target );
+  iState.Init( L );
+  iPlayer := iState.ToObject( 1 ) as TPlayer;
+  iTarget := iState.ToObject( 2 ) as TBeing;
+  iPlayer.RemoveKill( iTarget );
   Result := 0;
 end;
 
@@ -742,40 +772,13 @@ begin
   Result := 1;
 end;
 
-function lua_player_resort_stacks(L: Plua_State): Integer; cdecl;
-var State     : TLuaGameStack;
-    Being     : TBeing;
-    Item      : TItem;
-    Node, Temp: TNode;
-var List : TItemList;
-    Cnt  : Byte;
+function lua_player_resort_stacks( L : PLua_State ) : Integer; cdecl;
+var iState  : TLuaGameStack;
+    iPlayer : TPlayer;
 begin
-  State.Init(L);
-  Being := State.ToObject(1) as TBeing;
-  if not (Being is TPlayer) then Exit(0);
-
-  for Cnt in TItemSlot do
-    List[ Cnt ] := nil;
-
-  Cnt := 0;
-  for Node in Player do
-    if Node is TItem then
-      if (Node as TItem).isStackable then
-      begin
-        Inc( Cnt );
-        List[ Cnt ] := Node as TItem;
-      end;
-
-  Temp := TNode.Create;
-  for Item in List do
-    if Item <> nil then
-      Temp.Add( Item );
-
-  for Node in Temp do
-    with Node as TItem do
-      Player.Inv.AddStack( NID, Amount );
-
-  FreeAndNil( Temp );
+  iState.Init( L );
+  iPlayer := iState.ToObject( 1 ) as TPlayer;
+  iPlayer.ResortStacks;
   Result := 0;
 end;
 
@@ -792,122 +795,113 @@ begin
   Result := 0;
 end;
 
-function lua_player_choose_trait(L: Plua_State): Integer; cdecl;
-var iState : TLuaGameStack;
-    iBeing : TBeing;
+function lua_player_choose_trait( L : PLua_State ) : Integer; cdecl;
+var iState  : TLuaGameStack;
+    iPlayer : TPlayer;
 begin
-  iState.Init(L);
-  iBeing := iState.ToObject(1) as TBeing;
-  if not (iBeing is TPlayer) then Exit(0);
-  Player.doUpgradeTrait();
+  iState.Init( L );
+  iPlayer := iState.ToObject( 1 ) as TPlayer;
+  iPlayer.doUpgradeTrait();
   Result := 0;
 end;
 
-function lua_player_level_up(L: Plua_State): Integer; cdecl;
-var iState : TLuaGameStack;
-    iBeing : TBeing;
+function lua_player_level_up( L : PLua_State ) : Integer; cdecl;
+var iState  : TLuaGameStack;
+    iPlayer : TPlayer;
 begin
-  iState.Init(L);
-  iBeing := iState.ToObject(1) as TBeing;
-  if not (iBeing is TPlayer) then Exit(0);
-  Player.LevelUp();
+  iState.Init( L );
+  iPlayer := iState.ToObject( 1 ) as TPlayer;
+  iPlayer.LevelUp();
   Result := 0;
 end;
 
-function lua_player_exit(L: Plua_State): Integer; cdecl;
-var iState : TLuaGameStack;
-    iBeing : TBeing;
+function lua_player_exit( L : PLua_State ) : Integer; cdecl;
+var iState  : TLuaGameStack;
+    iPlayer : TPlayer;
 begin
-  iState.Init(L);
-  iBeing := iState.ToObject(1) as TBeing;
-  if not (iBeing is TPlayer) then Exit(0);
+  iState.Init( L );
+  iPlayer := iState.ToObject( 1 ) as TPlayer;
   if DRL.State <> DSSaving then
   begin
     if iState.IsNumber(3) then
       IO.FadeOut( iState.ToFloat(3) );
     DRL.SetState( DSNextLevel );
   end;
-  Player.FSpeedCount := 4000;
+  iPlayer.FSpeedCount := 4000;
   if iState.IsNil(2) then Exit( 0 );
   if iState.IsNumber(2) then
   begin
-    Player.FLevelIndex := iState.ToInteger(2)-1;
-    Exit(0);
+    iPlayer.FLevelIndex := iState.ToInteger(2)-1;
+    Exit( 0 );
   end;
   iState.Error('Player.exit - bad parameters!');
   Result := 0;
 end;
 
-function lua_player_quick_weapon(L: Plua_State): Integer; cdecl;
-var State   : TLuaGameStack;
-    Being   : TBeing;
+function lua_player_quick_weapon( L : PLua_State ) : Integer; cdecl;
+var iState  : TLuaGameStack;
+    iPlayer : TPlayer;
 begin
-  State.Init(L);
-  Being := State.ToObject(1) as TBeing;
-  if not (Being is TPlayer) then Exit(0);
-  Player.ActionQuickWeapon(State.ToString(2));
+  iState.Init( L );
+  iPlayer := iState.ToObject( 1 ) as TPlayer;
+  iPlayer.ActionQuickWeapon(iState.ToString(2));
   Result := 0;
 end;
 
-function lua_player_set_inv_size(L: Plua_State): Integer; cdecl;
-var State   : TLuaGameStack;
-    Being   : TBeing;
-    n : byte;
+function lua_player_set_inv_size( L : PLua_State ) : Integer; cdecl;
+var iState  : TLuaGameStack;
+    iPlayer : TPlayer;
+    iSize   : byte;
 begin
-  State.Init(L);
-  Being := State.ToObject(1) as TBeing;
-  if not (Being is TPlayer) then Exit(0);
-  n := State.ToInteger(2);
-  if (n = 0) or (n > High(TItemSlot)) then
-    State.Error( 'Inventory size must be in the 1..'+IntToStr(High(TItemSlot))+' range!' );
-  Player.InventorySize := n;
+  iState.Init( L );
+  iPlayer := iState.ToObject( 1 ) as TPlayer;
+  iSize := iState.ToInteger(2);
+  if (iSize = 0) or (iSize > High(TItemSlot)) then
+    iState.Error( 'Inventory size must be in the 1..'+IntToStr(High(TItemSlot))+' range!' );
+  iPlayer.InventorySize := iSize;
   Result := 0;
 end;
 
 
-function lua_player_add_trait(L: Plua_State): Integer; cdecl;
-var iState : TLuaGameStack;
-    iBeing : TBeing;
-    iTrait : DWord;
+function lua_player_add_trait( L : PLua_State ) : Integer; cdecl;
+var iState  : TLuaGameStack;
+    iPlayer : TPlayer;
+    iTrait  : DWord;
 begin
-  iState.Init(L);
-  iBeing := iState.ToObject(1) as TBeing;
-  if not (iBeing is TPlayer) then Exit(0);
-  iTrait := iState.ToID( iBeing.Context.Lua, 2 );
-  Player.Traits.Upgrade( 0, iTrait );
+  iState.Init( L );
+  iPlayer := iState.ToObject( 1 ) as TPlayer;
+  iTrait := iState.ToID( iPlayer.Context.Lua, 2 );
+  iPlayer.Traits.Upgrade( 0, iTrait );
   Result := 0;
 end;
 
-function lua_player_get_trait(L: Plua_State): Integer; cdecl;
-var iState : TLuaGameStack;
-    iBeing : TBeing;
+function lua_player_get_trait( L : PLua_State ) : Integer; cdecl;
+var iState  : TLuaGameStack;
+    iPlayer : TPlayer;
 begin
-  iState.Init(L);
-  iBeing := iState.ToObject(1) as TBeing;
-  if not (iBeing is TPlayer) then Exit(0);
-  iState.Push( Player.Traits[ iState.ToID( iBeing.Context.Lua, 2 ) ] );
+  iState.Init( L );
+  iPlayer := iState.ToObject( 1 ) as TPlayer;
+  iState.Push( iPlayer.Traits[ iState.ToID( iPlayer.Context.Lua, 2 ) ] );
   Result := 1;
 end;
 
-function lua_player_has_trait(L: Plua_State): Integer; cdecl;
-var iState : TLuaGameStack;
-    iBeing : TBeing;
+function lua_player_has_trait( L : PLua_State ) : Integer; cdecl;
+var iState  : TLuaGameStack;
+    iPlayer : TPlayer;
 begin
-  iState.Init(L);
-  iBeing := iState.ToObject(1) as TBeing;
-  if not (iBeing is TPlayer) then Exit(0);
-  iState.Push( Player.Traits[ iState.ToID( iBeing.Context.Lua, 2 ) ] > 0 );
+  iState.Init( L );
+  iPlayer := iState.ToObject( 1 ) as TPlayer;
+  iState.Push( iPlayer.Traits[ iState.ToID( iPlayer.Context.Lua, 2 ) ] > 0 );
   Result := 1;
 end;
 
-function lua_player_get_trait_hist(L: Plua_State): Integer; cdecl;
-var iState : TLuaGameStack;
-    iBeing : TBeing;
+function lua_player_get_trait_hist( L : PLua_State ) : Integer; cdecl;
+var iState  : TLuaGameStack;
+    iPlayer : TPlayer;
 begin
-  iState.Init(L);
-  iBeing := iState.ToObject(1) as TBeing;
-  if not (iBeing is TPlayer) then Exit(0);
-  iState.Push( Player.Traits.GetHistory );
+  iState.Init( L );
+  iPlayer := iState.ToObject( 1 ) as TPlayer;
+  iState.Push( iPlayer.Traits.GetHistory );
   Result := 1;
 end;
 
