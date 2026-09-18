@@ -269,7 +269,7 @@ end;
 
 function TPlayerView.IsFinished : Boolean;
 begin
-  Exit( FState = PLAYERVIEW_DONE );
+  Exit( inherited IsFinished or ( FState = PLAYERVIEW_DONE ) );
 end;
 
 procedure TPlayerView.Retain;

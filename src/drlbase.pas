@@ -830,7 +830,7 @@ begin
     if iID <> '' then
     begin
       IO.PushLayer( TUnloadConfirmView.Create(aItem,iID) );
-      Exit;
+      Exit( True );
     end;
   end;
 

@@ -66,7 +66,7 @@ end;
 
 function THelpView.IsFinished : Boolean;
 begin
-  Exit( FMode = HELPVIEW_DONE );
+  Exit( inherited IsFinished or ( FMode = HELPVIEW_DONE ) );
 end;
 
 function THelpView.IsModal : Boolean;

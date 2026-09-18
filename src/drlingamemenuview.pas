@@ -42,7 +42,9 @@ begin
 end;
 
 procedure TInGameMenuView.Update( aDTime : Integer; aActive : Boolean );
+var iSaveQuit : Boolean;
 begin
+  iSaveQuit := False; 
   if IsFinished or (DRL.State <> DSPlaying) then Exit;
 
   VTIG_Begin('ingame_menu', Point( 30, 11 ) );
@@ -77,13 +79,17 @@ begin
   end;
   if VTIG_Selectable( 'Save & Quit' ) then
   begin
+    iSaveQuit := True;
     FFinished := True;
-    IO.FadeOut(0.5);
-    DRL.SetState( DSSaving );
   end;
   VTIG_End;
 
   if VTIG_EventCancel then FFinished := True;
+  if iSaveQuit then
+  begin
+    IO.FadeOut( 0.5 );
+    DRL.SetState( DSSaving );
+  end;
 end;
 
 function TInGameMenuView.IsFinished : Boolean;

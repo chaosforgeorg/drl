@@ -989,7 +989,7 @@ end;
 
 function TMainMenuView.IsFinished : Boolean;
 begin
-  Exit( FMode = MAINMENU_DONE );
+  Exit( inherited IsFinished or ( FMode = MAINMENU_DONE ) );
 end;
 
 function TMainMenuView.IsModal : Boolean;
