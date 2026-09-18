@@ -8,7 +8,7 @@ unit dfplayer;
 interface
 uses classes, sysutils,
      vluagamestack, vpath, vutil, vrltools, vvision, viotypes, vlua, vnode, vrandom,
-     drlperk, dfbeing, dfdata, dfitem, drltraits, drlkeybindings, drlstatistics, drlmultimove;
+     drlperk, dfbeing, dfdata, dfitem, drltraits, drlkeybindings, drlcommand, drlstatistics, drlmultimove;
 
 
 type TQuickSlotInfo = record
@@ -39,6 +39,7 @@ type TPlayer = class(TBeing)
   function CallHookCan( aHook : Byte; const aParams : array of Const ) : Boolean; override;
   function GetBonus( aHook : Byte; const aParams : array of Const ) : Integer; override;
   function GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single; override;
+  function HandleCommand( aCommand : TCommand ) : Boolean; override;
   function PlayerTick : Boolean;
   procedure HandlePostMove; override;
   procedure PreAction;
@@ -82,6 +83,7 @@ private
   FStatistics     : TStatistics;
   FMultiMove      : TMultiMove;
   FCSprite        : TSprite;
+  function ActionQuickKey( aIndex : Byte; aTarget : TCoord2D ) : Boolean;
   procedure ResortStacks;
 public
   property MultiMove       : TMultiMove  read FMultiMove;
@@ -151,6 +153,57 @@ begin
   FLastTurnDodge  := False;
 
   TDRLLua( FContext.Lua ).RegisterPlayer( Self );
+end;
+
+function TPlayer.HandleCommand( aCommand : TCommand ) : Boolean;
+begin
+  if aCommand.Command <> COMMAND_QUICKKEY then
+    Exit( inherited HandleCommand( aCommand ) );
+
+  Result := ActionQuickKey( Ord( aCommand.ID[1] ) - Ord( '0' ), aCommand.Target );
+  if Result then FLastCommand := aCommand;
+end;
+
+function TPlayer.ActionQuickKey( aIndex : Byte; aTarget : TCoord2D ) : Boolean;
+var iUID  : TUID;
+    iID   : string[32];
+    iItem : TItem;
+begin
+  if ( aIndex < 1 ) or ( aIndex > 9 ) then Exit( False );
+  with FQuickSlots[ aIndex ] do
+  begin
+    iUID := UID;
+    iID  := ID;
+  end;
+  if iUID <> 0 then
+  begin
+    iItem := FContext.UIDs[ iUID ] as TItem;
+    if iItem <> nil then
+    begin
+      if FInv.Equipped( iItem )     then
+      begin
+         if iItem.isEqWeapon and ( FInv.Slot[ efWeapon2 ] = iItem )
+           then Exit( ActionSwapWeapon )
+           else Exit( Fail( 'You''re already using it!', [] ) );
+      end;
+      if not FInv.Contains( iItem ) then Exit( Fail( 'You no longer have it!', [] ) );
+      Exit( ActionWear( iItem ) );
+    end;
+  end
+  else
+  if iID <> '' then
+  begin
+    for iItem in FInv do
+      if iItem.isUsable then
+        if iItem.id = iID then
+        begin
+          if iItem.isPack or ( aTarget <> FPosition )
+            then Exit( ActionUse( iItem, aTarget ) )
+            else Exit( Fail( 'No valid target!', [] ) );
+        end;
+    Exit( Fail( 'You no longer have any item like that!', [] ) );
+  end;
+  Exit( Fail( 'Quickslot %d is unassigned!', [aIndex] ) );
 end;
 
 procedure TPlayer.SetKilledBy( const aKilledBy : AnsiString; aKilledMelee : Boolean );

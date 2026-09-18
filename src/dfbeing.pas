@@ -36,7 +36,7 @@ TBeing = class(TThing,IPathQuery)
     procedure Action; virtual;
     procedure HandlePostMove; virtual;
     procedure HandlePostDisplace;
-    function HandleCommand( aCommand : TCommand ) : Boolean;
+    function HandleCommand( aCommand : TCommand ) : Boolean; virtual;
     function  TryMove( aWhere : TCoord2D ) : TMoveResult;
     function  MoveTowards( aWhere : TCoord2D; aVisualMultiplier : Single = 1.0 ) : TMoveResult;
     procedure Reload( aAmmoItem : TItem; aSingle : Boolean; aWeapon : TItem = nil ); 
@@ -85,7 +85,6 @@ TBeing = class(TThing,IPathQuery)
     // All actions return True/False depending on success.
     // On success they do eat up action cost!
     function ActionSwapWeapon : boolean;
-    function ActionQuickKey( aIndex : Byte ) : Boolean;
     function ActionQuickWeapon( const aWeaponID : Ansistring ) : Boolean;
     function ActionDrop( aItem : TItem; aUnload : Boolean ) : boolean;
     function ActionWear( aItem : TItem ) : boolean;
@@ -575,48 +574,6 @@ begin
   iArmor := FInv.Slot[ efTorso ];
   if ( iArmor <> nil ) and iArmor.Flags[ IF_OVERLAY ] then Exit( iArmor );
   Exit( nil );
-end;
-
-function TBeing.ActionQuickKey( aIndex : Byte ) : Boolean;
-var iUID  : TUID;
-    iID   : string[32];
-    iItem : TItem;
-begin
-  if ( aIndex < 1 ) or ( aIndex > 9 ) then Exit( False );
-  with Player.FQuickSlots[ aIndex ] do
-  begin
-    iUID := UID;
-    iID  := ID;
-  end;
-  if iUID <> 0 then
-  begin
-    iItem := FContext.UIDs[ iUID ] as TItem;
-    if iItem <> nil then
-    begin
-      if FInv.Equipped( iItem )     then
-      begin
-         if iItem.isEqWeapon and ( FInv.Slot[ efWeapon2 ] = iItem )
-           then Exit( ActionSwapWeapon )
-           else Exit( Fail( 'You''re already using it!', [] ) );
-      end;
-      if not FInv.Contains( iItem ) then Exit( Fail( 'You no longer have it!', [] ) );
-      Exit( ActionWear( iItem ) );
-    end;
-  end
-  else
-  if iID <> '' then
-  begin
-    for iItem in Inv do
-      if iItem.isUsable then
-        if iItem.id = iID then
-        begin
-          if iItem.isPack or ( DRL.Targeting.List.Current <> FPosition )
-            then Exit( ActionUse( iItem, DRL.Targeting.List.Current ) )
-            else Exit( Fail( 'No valid target!', [] ) );
-        end;
-    Exit( Fail( 'You no longer have any item like that!', [] ) );
-  end;
-  Exit( Fail( 'Quickslot %d is unassigned!', [aIndex] ) );
 end;
 
 function TBeing.ActionQuickWeapon( const aWeaponID : Ansistring ) : Boolean;
@@ -1601,7 +1558,6 @@ begin
     COMMAND_PICKUP       : Result := ActionPickup;
     COMMAND_UNLOAD       : Result := ActionUnLoad( aCommand.Item, aCommand.ID );
     COMMAND_SWAPWEAPON   : Result := ActionSwapWeapon;
-    COMMAND_QUICKKEY     : Result := ActionQuickKey( Ord( aCommand.ID[1] ) - Ord( '0' ) );
     COMMAND_ACTIVE       : Result := ActionActive;
     COMMAND_SWAPPOSITION : Result := ActionSwapPosition( aCommand.Target );
   else Exit( False );
