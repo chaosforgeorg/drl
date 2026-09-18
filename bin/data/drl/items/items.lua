@@ -1517,10 +1517,10 @@ function drl.register_regular_items()
 		runtime    = {
 			OnUse = function(self,being)
 				statistics.levers_pulled = statistics.levers_pulled + 1
-				local position = self.position
+				ui.msg("You hear an ominous tick...")
 				for c in self.TARGET_AREA() do
 					local item = level:get_item( c )
-					if item and item.hp > 0 then
+					if item and item.hp > 0 and item:get_property( "WARN_HAZARD", false ) then
 						level:damage_tile( c, 1000, DAMAGE_PLASMA )
 					end
 				end
