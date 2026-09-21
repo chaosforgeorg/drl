@@ -57,7 +57,7 @@ function lua_statistics_get(L: Plua_State): Integer; cdecl;
 var State : TLuaGameStack;
 begin
   State.Init(L);
-  Player.Statistics.Update;
+  Player.Statistics.Update( Player );
   // Unused parameter #1 is self
   State.Push( Player.Statistics[ State.ToString( 2 ) ] );
   Result := 1;

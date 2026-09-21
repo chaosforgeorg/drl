@@ -242,7 +242,7 @@ var iMemorial : TIOStringArray;
 begin
   if aPlayer.Score = -1000 then Exit;
 
-  aPlayer.Statistics.Update;
+  aPlayer.Statistics.Update( aPlayer );
   if FContext.Lua.Defined( [CoreModuleID, 'RunAwards'] ) then
     FContext.Lua.ProtectedCall( [CoreModuleID, 'RunAwards'], [NoPlayerRecord] );
   aPlayer.CalculateScore( FDifficulty, FGameWon );
@@ -1371,7 +1371,7 @@ begin
         iEnterNuke := True;
       end;
 
-      FPlayer.Statistics.Update;
+      FPlayer.Statistics.Update( FPlayer );
       FPlayer.NextLevelIndex;
 
       with FContext.Lua.GetTable(['player','episode',FPlayer.Level_Index]) do

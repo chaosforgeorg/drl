@@ -218,7 +218,8 @@ uses math,
 const PAIN_DURATION = 500;
 
 function TBeing.getStrayChance( aDefender : TBeing; aWeapon : TItem ) : Byte;
-var iMiss : Integer;
+var iMiss   : Integer;
+    iPlayer : TPlayer;
 begin
   if IsPlayer        then Exit(0);
   if aDefender = nil then Exit(0);
@@ -230,9 +231,10 @@ begin
 
   if aDefender.IsPlayer then
   begin
-    if (Player.Flags[ BF_MASTERDODGE ]) and (not Player.MasterDodge) then
+    iPlayer := TPlayer( aDefender );
+    if iPlayer.Flags[ BF_MASTERDODGE ] and ( not iPlayer.MasterDodge ) then
     begin
-      Player.MasterDodge := true;
+      iPlayer.MasterDodge := True;
       Exit(100);
     end;
   end;
@@ -2249,7 +2251,7 @@ begin
 
   if IsPlayer then
   begin
-    Player.Statistics.OnDamage( aDamage );
+    TPlayer( Self ).Statistics.OnDamage( Self, aDamage );
     if ( aTarget = Target_Feet )
       then IO.PulseBlood( 1.0 )
       else
@@ -2369,17 +2371,16 @@ begin
   iThisUID   := FUID;
   iItemUID   := aItem.uid;
   iDodged    := False;
+  iBeing := nil;
   if iLevel.isProperCoord( aTarget ) then
-  begin
-    iBeing      := iLevel.Being[ aTarget ];
-    iAimedBeing := iLevel.Being[ aTarget ];
-  end;
+    iBeing := iLevel.Being[ aTarget ];
+  iAimedBeing := iBeing;
   if iBeing <> nil then
     if iGameRNG.RLongInt( 100 ) <= getStrayChance( iBeing, aItem ) then
     begin
       if iBeing.FLastPos.X = 1 then iBeing.FLastPos := iBeing.FPosition;
       aTarget := iBeing.FLastPos;
-      iDodged := True;
+      iDodged := iBeing.IsPlayer;
     end;
       
   case aItem.MisColor of
@@ -2459,7 +2460,7 @@ begin
 
       if ( iCoverValue >= 10 ) or ( iGameRNG.RLongInt( 10 ) < iCoverValue ) then
       begin
-        if (iAimedBeing = Player) and (iDodged) then IO.Msg('You dodge!');
+        if iDodged then IO.Msg('You dodge!');
 
         if aItem.Flags[ IF_DESTRUCTIVE ]
           then iLevel.DamageTile( iCoord, iDamage * 2, aItem.DamageType )
@@ -2501,9 +2502,9 @@ begin
 
       if iIsHit then
       begin
-        if iLevel.Being[ iCoord ] = Player
+        if iLevel.Being[ iCoord ] is TPlayer
           then iDirectHit := True
-          else if (iAimedBeing = Player) and (iDodged) then IO.Msg('You dodge!');
+          else if iDodged then IO.Msg('You dodge!');
         if iLevel.isVisible( iCoord ) then
             if iBeing.IsPlayer then
             begin
@@ -2552,7 +2553,7 @@ begin
 
     if ( iSteps >= iMaxRange ) or aItem.Flags[ IF_INSTANTHIT ] then
     begin
-      if (iAimedBeing = Player) and (iDodged) then IO.Msg('You dodge!');
+      if iDodged then IO.Msg('You dodge!');
       break;
     end;
 
@@ -2623,7 +2624,7 @@ begin
     iDirection.CreateSmooth( FPosition, iCoord );
     iLevel.Explosion( iDelay*(iSteps+(aShotCount*2)), iCoord, iExplosion, aItem, iDirection, iDirectHit, iDamageMul );
   end;
-  if (iAimedBeing = Player) and (iDodged) then Player.LastTurnDodge := True;
+  if iDodged then TPlayer( iAimedBeing ).LastTurnDodge := True;
   Exit( iUIDs[ iThisUID ] <> nil );
 end;
 

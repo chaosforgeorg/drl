@@ -219,7 +219,7 @@ function TInventory.isFull: boolean;
 var iSize : Integer;
 begin
   iSize := Size;
-  if FOwner = Player then Exit( iSize >= Player.InventorySize );
+  if FOwner is TPlayer then Exit( iSize >= TPlayer( FOwner ).InventorySize );
   Exit(iSize >= High(TItemSlot));
 end;
 

@@ -6,7 +6,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlstatistics;
 interface
-uses classes, vutil, vnode, dfdata;
+uses classes, vutil, vnode, dfdata, dfbeing;
 
 type TStatistics = class(TVObject)
   constructor Create;
@@ -15,8 +15,8 @@ type TStatistics = class(TVObject)
   procedure Increase( const aStatisticID: AnsiString; aAmount : Integer = 1 );
   procedure Assign( const aStatisticID: AnsiString; aValue : Integer );
   procedure StartTimer;
-  procedure Update;
-  procedure OnDamage( aAmount : Integer );
+  procedure Update( aPlayer : TBeing );
+  procedure OnDamage( aPlayer : TBeing; aAmount : Integer );
   procedure OnLevelEnter;
   procedure OnSaveFile;
   procedure OnTick;
@@ -78,28 +78,34 @@ begin
   FRealTimeStart := MSecNow();
 end;
 
-procedure TStatistics.Update;
+procedure TStatistics.Update( aPlayer : TBeing );
 var iRealTime : Comp;
 begin
   iRealTime := FRealTime + MSecNow() - FRealTimeStart;
   FMap['real_time']       := Round(iRealTime / 1000);
   FMap['real_time_ms']    := Round(iRealTime);
   FMap['game_time']       := FGameTime;
-  FMap['kills']           := Player.FKills.Count;
-  FMap['max_kills']       := Player.FKills.MaxCount;
-  FMap['unique_kills']    := Player.FKillCount;
-  FMap['max_unique_kills']:= Player.FKillMax;
-  FMap['kills_non_damage']:= Max( FMap['kills_non_damage'], Player.FKills.NoDamageSequence );
+  with aPlayer as TPlayer do
+  begin
+    FMap['kills']           := FKills.Count;
+    FMap['max_kills']       := FKills.MaxCount;
+    FMap['unique_kills']    := FKillCount;
+    FMap['max_unique_kills']:= FKillMax;
+    FMap['kills_non_damage']:= Max( FMap['kills_non_damage'], FKills.NoDamageSequence );
+  end;
 end;
 
-procedure TStatistics.OnDamage( aAmount : Integer );
+procedure TStatistics.OnDamage( aPlayer : TBeing; aAmount : Integer );
 begin
   if aAmount < 0 then Exit;
   aAmount := Min( aAmount, 200 );
-  FMap['damage_taken']     := FMap['damage_taken']    + aAmount;
-  FMap['damage_on_level']  := FMap['damage_on_level'] + aAmount;
-  FMap['min_health']       := Min( FMap['min_health'], Max( Player.HP - aAmount, 0 ) );
-  FMap['kills_non_damage'] := Max( FMap['kills_non_damage'], Player.FKills.BestNoDamageSequence );
+  with aPlayer as TPlayer do
+  begin
+    FMap['damage_taken']     := FMap['damage_taken']    + aAmount;
+    FMap['damage_on_level']  := FMap['damage_on_level'] + aAmount;
+    FMap['min_health']       := Min( FMap['min_health'], Max( HP - aAmount, 0 ) );
+    FMap['kills_non_damage'] := Max( FMap['kills_non_damage'], FKills.BestNoDamageSequence );
+  end;
 end;
 
 procedure TStatistics.OnLevelEnter;

@@ -955,7 +955,7 @@ begin
 
   with FPlayer do
   begin
-    Statistics.Update();
+    Statistics.Update( FPlayer );
     iKillRecord := Statistics['kills_non_damage'];
     if FKills.NoDamageSequence > iKillRecord then iKillRecord := FKills.NoDamageSequence;
     iDodgeBonus := getDodgeMod;
