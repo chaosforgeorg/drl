@@ -80,8 +80,8 @@ var iTot, iTor : Integer;
   begin
     if aItem = nil then Exit;
     FTexts[iCount] := TStringGArray.Create;
-    FTexts[iCount].Push( '{!'+aItem.Description+'}' );
-    iBox := aItem.DescriptionBox( True );
+    FTexts[iCount].Push( '{!'+aItem.GetInvName+'}' );
+    iBox := aItem.GetInvStatsList( False );
     iPos := 1;
     if Length( iBox ) > 0 then
     begin
@@ -250,7 +250,7 @@ begin
   FItem     := aItem;
   FDesc     := FItem.Context.Lua.Get(['items',FItem.ID,'desc']);
   FSize     := Point( 60, 25 );
-  FTitle    := '{'+VTIG_ColorChar( FItem.MenuColor ) + FItem.Description + '}';
+  FTitle    := '{'+VTIG_ColorChar( FItem.MenuColor ) + FItem.GetInvName + '}';
   for i := Low( FTexts ) to High( FTexts ) do
     FTexts[i] := nil;
   ReadTexts;
@@ -463,4 +463,3 @@ begin
 end;
 
 end.
-

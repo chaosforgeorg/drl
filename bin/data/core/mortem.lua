@@ -179,7 +179,7 @@ function mortem.append_traits( lines )
 end
 
 function mortem.item_desc( item )
-	return item.desc
+	return item.inv_name
 end
 
 function mortem.append_equipment( lines, item_desc )

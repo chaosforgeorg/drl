@@ -28,10 +28,9 @@ TItem  = class( TThing )
     function    GetGroundDesc( aLyingHere : Boolean ) : Ansistring;
     function    GetProtection : Integer;
     function    GetResistance( const aResistance : AnsiString ) : Integer;
-    function    Description( aSingle : Boolean ) : Ansistring; overload;
-    function    Description : Ansistring; overload;
-    function    DescriptionBox( aShort : Boolean = False ) : Ansistring;
-    function    ResistDescriptionShort : AnsiString;
+    function    GetInvName( aSingle : Boolean ) : Ansistring; overload;
+    function    GetInvName : Ansistring; overload;
+    function    GetInvStatsList( aIncludeAltActions : Boolean = True ) : Ansistring;
     function    GetAltFireName : AnsiString;
     function    GetAltReloadName : AnsiString;
     function    GetFirstPerkDescription : AnsiString;
@@ -109,7 +108,7 @@ TItem  = class( TThing )
     property MisColor       : Byte        read FProps.MisColor       write FProps.MisColor;
     property MisDelay       : Byte        read FProps.MisDelay       write FProps.MisDelay;
     property Appear         : Integer     read FAppear               write FAppear;
-    property Desc           : AnsiString  read Description;
+    property Inv_Name       : AnsiString  read GetInvName;
   end;
 
 procedure SwapItem(var a, b: TItem);
@@ -332,68 +331,65 @@ begin
   else Exit(iResist);
 end;
 
-function TItem.Description : Ansistring;
+function TItem.GetInvName : Ansistring;
 begin
-  Exit( Description( False ) );
+  Exit( GetInvName( False ) );
 end;
 
-function TItem.Description( aSingle : Boolean ) : Ansistring;
+function TItem.GetInvName( aSingle : Boolean ) : Ansistring;
 var FlagStr : string[10];
     Count   : Byte;
 begin
-  Description := Name;
+  GetInvName := Name;
   case FProps.IType of
     ITEMTYPE_LEVER,
     ITEMTYPE_TELE,
-    ITEMTYPE_FEATURE  : Exit(Description);
-    ITEMTYPE_AMMOPACK : Description += ' (x'+IntToStr(FProps.Ammo)+')';
+    ITEMTYPE_FEATURE  : Exit(GetInvName);
+    ITEMTYPE_AMMOPACK : GetInvName += ' (x'+IntToStr(FProps.Ammo)+')';
     ITEMTYPE_MELEE :
     begin
-      Description += ' ('+FProps.Damage.toString+')';
+      GetInvName += ' ('+FProps.Damage.toString+')';
       FlagStr := '';
       if IF_MODIFIED in FFlags then
       for Count := Ord('A') to Ord('Z') do
           if FMods[Count] > 0 then
             FlagStr += Chr(Count) + Iif( FMods[Count] > 1, IntToStr(FMods[Count]), '' );
-      if FArmor <> 0 then Description += ' ['+IntToStr(FArmor)+']';
-      if FlagStr <> '' then Description += ' ('+FlagStr+')';
-      Description += ResistDescriptionShort;
+      if FArmor <> 0 then GetInvName += ' ['+IntToStr(FArmor)+']';
+      if FlagStr <> '' then GetInvName += ' ('+FlagStr+')';
     end;
     ITEMTYPE_ARMOR, ITEMTYPE_BOOTS :
       begin
         if IF_NODURABILITY in FFlags then
-          Description += ' ['+IntToStr(GetProtection)+']'
+          GetInvName += ' ['+IntToStr(GetProtection)+']'
         else
-          Description += ' ['+IntToStr(GetProtection)+'/'+IntToStr(FArmor)+'] ('+IntToStr(FProps.Durability)+'%)';
+          GetInvName += ' ['+IntToStr(GetProtection)+'/'+IntToStr(FArmor)+'] ('+IntToStr(FProps.Durability)+'%)';
         FlagStr := '';
         if IF_MODIFIED in FFlags then
         for Count := Ord('A') to Ord('Z') do
           if FMods[Count] > 0 then
             FlagStr += Chr(Count) + Iif( FMods[Count] > 1, IntToStr(FMods[Count]), '' );
-        if FlagStr <> '' then Description += ' ('+FlagStr+')';
-        //Description += ResistDescriptionShort;
+        if FlagStr <> '' then GetInvName += ' ('+FlagStr+')';
       end;
     ITEMTYPE_RANGED, ITEMTYPE_NRANGED : begin
-            Description += ' ('+FProps.Damage.toString+')';
-            if FProps.Shots <> 0 then Description += 'x' +IntToStr(FProps.Shots);
-            if not ( IF_NOAMMO in FFlags ) then Description += ' ['+IntToStr(FProps.Ammo)+'/'+IntToStr(FProps.AmmoMax)+']';
-            if FArmor <> 0 then Description += ' ['+IntToStr(FArmor)+']';
+            GetInvName += ' ('+FProps.Damage.toString+')';
+            if FProps.Shots <> 0 then GetInvName += 'x' +IntToStr(FProps.Shots);
+            if not ( IF_NOAMMO in FFlags ) then GetInvName += ' ['+IntToStr(FProps.Ammo)+'/'+IntToStr(FProps.AmmoMax)+']';
+            if FArmor <> 0 then GetInvName += ' ['+IntToStr(FArmor)+']';
             if IF_MODIFIED in FFlags then
             begin
               FlagStr := '';
               for Count := Ord('A') to Ord('Z') do
               if FMods[Count] > 0 then
                 FlagStr += Chr(Count) + Iif( FMods[Count] > 1, IntToStr(FMods[Count]), '' );
-              if FlagStr <> '' then Description += ' ('+FlagStr+')';
+              if FlagStr <> '' then GetInvName += ' ('+FlagStr+')';
             end;
-            Description += ResistDescriptionShort;
           end;
     ITEMTYPE_URANGED: begin
         if FProps.Damage.max > 0 then
-          Description += ' ('+FProps.Damage.toString+')';
+          GetInvName += ' ('+FProps.Damage.toString+')';
       end;
   end;
-  if ( FMax > 1 ) and ( not aSingle ) then Description += ' (x'+IntToStr(FAmount)+')';
+  if ( FMax > 1 ) and ( not aSingle ) then GetInvName += ' (x'+IntToStr(FAmount)+')';
 end;
 
 function TItem.GetAltFireName : AnsiString;
@@ -437,18 +433,18 @@ begin
   end;
 end;
 
-function TItem.DescriptionBox( aShort : Boolean = False ): Ansistring;
+function TItem.GetInvStatsList( aIncludeAltActions : Boolean = True ): Ansistring;
 begin
-  DescriptionBox := '';
+  GetInvStatsList := '';
   if FProps.IType = ITEMTYPE_RELIC then Exit( GetFirstPerkDescription );
   case FProps.IType of
-    ITEMTYPE_ARMOR, ITEMTYPE_BOOTS : DescriptionBox :=
+    ITEMTYPE_ARMOR, ITEMTYPE_BOOTS : GetInvStatsList :=
       'Durability  : {!'+IntToStr(FProps.MaxDurability)+'}'#10+
       IIf(FProps.SwapTime  <> 10, 'Swap time   : {!'+Seconds(FProps.SwapTime)+'}'#10);
-    ITEMTYPE_URANGED : DescriptionBox :=
+    ITEMTYPE_URANGED : GetInvStatsList :=
       'Damage type : {!'+DamageTypeName(FProps.DamageType)+'}'#10+
       IIf(FProps.Radius <> 0,'Expl.radius : {!'+IntToStr(FProps.Radius)+'}'#10);
-    ITEMTYPE_RANGED, ITEMTYPE_NRANGED : DescriptionBox :=
+    ITEMTYPE_RANGED, ITEMTYPE_NRANGED : GetInvStatsList :=
       IIf(FProps.UseTime  <> 10, 'Fire time   : {!'+Seconds(FProps.UseTime)+'}'#10)+
       IIf(FProps.ReloadTime > 0, 'Reload time : {!'+Seconds(FProps.ReloadTime)+'}'#10)+
       IIf(FProps.SwapTime <> 10, 'Swap time   : {!'+Seconds(FProps.SwapTime)+'}'#10)+
@@ -460,21 +456,21 @@ begin
       IIf(FProps.Falloff  <> 0,'Dmg. falloff: {!'+IntToStr(FProps.Falloff)+'%}'#10)+
       IIf(FProps.Spread   <> 0,'Cone size   : {!'+IntToStr(FProps.Spread)+'}'#10)+
       IIf(FProps.Range    <> 0,'Max range   : {!'+IntToStr(FProps.Range)+'}'#10)+
-      IIf((not aShort) and HasHook( Hook_OnAltFire ),  'Alt. fire   : {!'+GetAltFireName+'}'#10)+
-      IIf((not aShort) and HasHook( Hook_OnAltReload ),'Alt. reload : {!'+GetAltReloadName+'}'#10);
-    ITEMTYPE_MELEE : DescriptionBox :=
+      IIf(aIncludeAltActions and HasHook( Hook_OnAltFire ),  'Alt. fire   : {!'+GetAltFireName+'}'#10)+
+      IIf(aIncludeAltActions and HasHook( Hook_OnAltReload ),'Alt. reload : {!'+GetAltReloadName+'}'#10);
+    ITEMTYPE_MELEE : GetInvStatsList :=
       IIf(FProps.UseTime <> 10, 'Attack time : {!'+Seconds(FProps.UseTime)+'}'#10)+
       IIf(FProps.SwapTime<> 10, 'Swap time   : {!'+Seconds(FProps.SwapTime)+'}'#10)+
       IIf(FProps.Acc     <> 0,  'Accuracy    : {!' + BonusStr(FProps.Acc)+'}'#10)+
       'Damage type : {!'+DamageTypeName(FProps.DamageType)+'}'#10+
-      IIf((not aShort) and HasHook( Hook_OnAltFire ),  'Alt. fire   : {!'+GetAltFireName+'}'#10);
+      IIf(aIncludeAltActions and HasHook( Hook_OnAltFire ),  'Alt. fire   : {!'+GetAltFireName+'}'#10);
   end;
-  DescriptionBox +=
+  GetInvStatsList +=
     IIf(FProps.MoveMod  <> 0,'Move speed  : {!'+Percent(FProps.MoveMod)+'}'#10)+
     IIf(FProps.KnockMod <> 0,'Knockback   : {!'+Percent(FProps.KnockMod)+'}'#10)+
     IIf(FProps.DodgeMod <> 0,'Dodge rate  : {!'+Percent(FProps.DodgeMod)+'}'#10);
 
-  DescriptionBox +=
+  GetInvStatsList +=
       IIf(GetResistance('bullet')   <> 0,'Bullet res. : {!' + BonusStr(GetResistance('bullet'))+'}'#10)+
       IIf(GetResistance('melee')    <> 0,'Melee res.  : {!' + BonusStr(GetResistance('melee'))+'}'#10)+
       IIf(GetResistance('shrapnel') <> 0,'Shrapnel res: {!' + BonusStr(GetResistance('shrapnel'))+'}'#10)+
@@ -484,25 +480,6 @@ begin
       IIf(GetResistance('cold')     <> 0,'Cold res.   : {!' + BonusStr(GetResistance('cold'))+'}'#10)+
       IIf(GetResistance('poison')   <> 0,'Poison res. : {!' + BonusStr(GetResistance('poison'))+'}'#10)+
       IIf(GetResistance('pierce')   <> 0,'Pierce res. : {!' + BonusStr(GetResistance('pierce'))+'}'#10);
-end;
-
-function TItem.ResistDescriptionShort: AnsiString;
-const ResLetter : array[Low(TResistance)..High(TResistance)] of Char = ( 'b','m','s','a','f','p','c','o','i' );
-const ResID   : array[Low(TResistance)..High(TResistance)] of AnsiString =
-   ( 'bullet', 'melee', 'shrapnel', 'acid', 'fire', 'plasma', 'cold', 'poison', 'pierce' );
-var Resistance : TResistance;
-    iValue : LongInt;
-begin
-  ResistDescriptionShort := '';
-  for Resistance := Low( TResistance ) to High( TResistance ) do
-  begin
-    iValue := GetResistance( ResID[ Resistance ] );
-    if iValue > 0 then
-      ResistDescriptionShort += ResLetter[ Resistance ]
-    else if iValue < 0 then
-      ResistDescriptionShort += '-'+ResLetter[ Resistance ];
-  end;
-  if ResistDescriptionShort = '' then Exit('') else Exit(' {'+ResistDescriptionShort+'}')
 end;
 
 function TItem.Preposition( const Item : AnsiString ) : string;
@@ -516,10 +493,10 @@ end;
 
 function    TItem.GetName( aKnown : boolean; aSingle : Boolean = False ) : Ansistring;
 begin
-  if FAmount > 1 then Exit( Description( aSingle ) );
-  if Flags[ IF_UNIQUENAME ] then Exit( Description( aSingle ) );
-  if aKnown then Exit('the '+Description( aSingle ))
-            else Exit(Preposition(Description( aSingle ))+Description( aSingle ));
+  if FAmount > 1 then Exit( GetInvName( aSingle ) );
+  if Flags[ IF_UNIQUENAME ] then Exit( GetInvName( aSingle ) );
+  if aKnown then Exit('the '+GetInvName( aSingle ))
+            else Exit(Preposition(GetInvName( aSingle ))+GetInvName( aSingle ));
 end;
 
 function TItem.GetGroundDesc( aLyingHere : Boolean ) : Ansistring;

@@ -1068,7 +1068,7 @@ begin
         then
         begin
           FHintOverlay := FSession.Level.GetTargetDescription( FSession.Player, iCoord );
-          FHintStatus  := Session.Level.Being[ iCoord ].GetTraitString;
+          FHintStatus  := Session.Level.Being[ iCoord ].GetPerkSummary;
         end
         else
         begin

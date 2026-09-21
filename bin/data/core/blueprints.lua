@@ -466,7 +466,7 @@ core.register_blueprint "item"
 			dis_unique = { false, core.TBOOLEAN, false },
 			dis_other  = { false, core.TBOOLEAN, false },
 
-			OnModDescribe = { false, core.TFUNC },
+			getModDescription = { false, core.TFUNC },
 		},
 		[ITEMTYPE_POWER]   = {
 			ascii    = { false, core.TSTRING, "^" },

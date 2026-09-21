@@ -760,10 +760,10 @@ var iEntry : TItemViewEntry;
     iSet   : AnsiString;
 begin
   iEntry.Item  := aItem;
-  iEntry.Name  := aItem.Description;
+  iEntry.Name  := aItem.GetInvName;
   if Length( iEntry.Name ) > 47 then iEntry.Name := Copy(iEntry.Name, 1, 47 );
-  iEntry.Stats := aItem.DescriptionBox;
-  iEntry.Perks := aItem.GetTraitString( True );
+  iEntry.Stats := aItem.GetInvStatsList;
+  iEntry.Perks := aItem.GetPerkSummary( True );
   iEntry.Color := aItem.MenuColor;
   iEntry.QSlot := 0;
 

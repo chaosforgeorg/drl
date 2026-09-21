@@ -981,7 +981,7 @@ function drl.register_exotic_items()
 			end,
 		},
 
-		OnModDescribe = function( self, item )
+		getModDescription = function( self, item )
 			if item.group ~= "shotgun" and ( item.shots >= 3 ) and ( not item.flags[ IF_SPREAD ]) then
 				return "shots {!"..item.shots.."} -> {!"..(item.shots+2).."}"
 			elseif ( item.radius >= 3 ) or ( item.flags[ IF_SPREAD ] and ( item.radius >= 2 ) ) then
@@ -1038,7 +1038,7 @@ function drl.register_exotic_items()
 			end,
 		},
 
-		OnModDescribe = function( self, item )
+		getModDescription = function( self, item )
 			if item.flags[IF_FARHIT] == true then
 				return "remove unseen enemy to-hit penalty"
 			else
@@ -1117,7 +1117,7 @@ function drl.register_exotic_items()
 			end,
 		},
 
-		OnModDescribe = function( self, item )
+		getModDescription = function( self, item )
 			if item:has_property("pp_recharge") then
 				local r = item.pp_recharge
 				if r.delay == 0 then
@@ -1185,7 +1185,7 @@ function drl.register_exotic_items()
 			end,
 		},
 
-		OnModDescribe = function( self, item )
+		getModDescription = function( self, item )
 			return "make indestructible"
 		end,
 

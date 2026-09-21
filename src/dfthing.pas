@@ -31,7 +31,7 @@ type TThing = class( TLuaEntityNode )
   function GetPerkList : TPerkList;
   function GetPerkLabel( aID : Integer ) : AnsiString;
   function GetPerkDescription( aID : Integer ) : AnsiString;
-  function GetTraitString( aInvMode : Boolean = False ) : AnsiString;
+  function GetPerkSummary( aInvMode : Boolean = False ) : AnsiString;
   procedure Tick; virtual;
   procedure WriteToStream( aStream : TStream ); override;
   destructor Destroy; override;
@@ -208,7 +208,7 @@ begin
   Exit( FPerks.GetDescription( aID ) );
 end;
 
-function TThing.GetTraitString( aInvMode : Boolean = False ) : AnsiString;
+function TThing.GetPerkSummary( aInvMode : Boolean = False ) : AnsiString;
 var iPerks : TPerkList;
     i      : Integer;
     iColor : Byte;
