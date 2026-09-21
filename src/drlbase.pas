@@ -427,7 +427,7 @@ end;
 
 procedure TDRLSession.PreAction;
 begin
-  FLevel.CalculateVision( FPlayer.Position );
+  FLevel.CalculateVision( FPlayer.Position, FPlayer.Vision );
   StatusEffect := FPlayer.GetPerkEffect;
   IO.PreAction;
   IO.Focus( FPlayer.Position );
@@ -891,7 +891,7 @@ end;
   FDamagedLastTurn := False;
   while (FPlayer.SCount < 5000) and (State = DSPlaying) do
   begin
-    FLevel.CalculateVision( FPlayer.Position );
+    FLevel.CalculateVision( FPlayer.Position, FPlayer.Vision );
     FLevel.Tick;
     if FPlayer.MultiMove.Active then
       IO.WaitForAnimation;
@@ -1402,7 +1402,7 @@ begin
     end;
     iFullLoad := State = DSLoading;
 
-    FLevel.CalculateVision( FPlayer.Position );
+    FLevel.CalculateVision( FPlayer.Position, FPlayer.Vision );
     SetState( DSPlaying );
     IO.BloodSlideDown(20);
     IO.FadeIn( True );

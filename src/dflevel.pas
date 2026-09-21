@@ -103,7 +103,7 @@ TLevel = class(TLuaMapNode, ITextMap)
     procedure Kill( aBeing : TBeing );
     procedure UpdateKillState;
     function ActiveBeing : TBeing;
-    procedure CalculateVision( coord : TCoord2D );
+    procedure CalculateVision( aCoord : TCoord2D; aVisionRange : Byte );
 
     procedure Place( aThing : TThing; aCoord : TCoord2D );
     procedure RevealBeings;
@@ -1353,20 +1353,20 @@ begin
   Exit( FActiveBeing );
 end;
 
-procedure TLevel.CalculateVision(coord: TCoord2D);
+procedure TLevel.CalculateVision( aCoord : TCoord2D; aVisionRange : Byte );
 {$IFDEF CORNERMAP}
-var c : TCoord2D;
+var iCoord : TCoord2D;
 {$ENDIF CORNERMAP}
 begin
   ClearLightMapBits( [ lfFresh ] );
-  RunVision( Coord, Player.Vision );
+  RunVision( aCoord, aVisionRange );
   {$IFDEF CORNERMAP}
   begin
     ClearLightMapBits( [ lfCorner ] );
-    for c in FArea do
-      if isVisible(c) then
-        if not isEyeContact(c,coord) then
-          LightFlag[ c, lfCorner ] := True;
+    for iCoord in FArea do
+      if isVisible( iCoord ) then
+        if not isEyeContact( iCoord, aCoord ) then
+          LightFlag[ iCoord, lfCorner ] := True;
   end;
   {$ENDIF CORNERMAP}
 end;
@@ -2135,7 +2135,7 @@ begin
   Level := State.ToObject(1) as TLevel;
   Level.AfterGeneration;
   Level.PreEnter;
-  Level.CalculateVision( Player.Position );
+  Level.CalculateVision( Player.Position, Player.Vision );
   Player.PreAction;
   Exit( 0 );
 end;
