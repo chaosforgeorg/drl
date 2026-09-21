@@ -760,10 +760,10 @@ var iEntry : TItemViewEntry;
     iSet   : AnsiString;
 begin
   iEntry.Item  := aItem;
-  iEntry.Name  := aItem.Description;
+  iEntry.Name  := aItem.GetInvName;
   if Length( iEntry.Name ) > 47 then iEntry.Name := Copy(iEntry.Name, 1, 47 );
-  iEntry.Stats := aItem.DescriptionBox;
-  iEntry.Perks := aItem.GetTraitString( True );
+  iEntry.Stats := aItem.GetInvStatsList;
+  iEntry.Perks := aItem.GetPerkSummary( True );
   iEntry.Color := aItem.MenuColor;
   iEntry.QSlot := 0;
 
@@ -938,6 +938,8 @@ var iLevel        : TLevel;
     i             : Integer;
     iPerks        : TPerkList;
     iName         : Ansistring;
+    iDesc         : Ansistring;
+    iHasSection   : Boolean;
     iMelee        : Boolean;
   function Percent( aCurrent, aMax : Integer ) : Integer;
   begin
@@ -999,38 +1001,42 @@ begin
     iPerks := GetPerkList;
     if ( iPerks <> nil ) and ( iPerks.Size > 0 ) then
     begin
+      iHasSection := False;
       for i := 0 to iPerks.Size - 1 do
         with Perks.Definitions.Data[ iPerks[i].ID ] do
-        if ( Desc <> '' ) and ( ColorExp <> 0 ) then
+        if ColorExp <> 0 then
         begin
-          FCharacter[0].Push( '' );
-          FCharacter[0].Push( '{!Status effects}' );
-          break;
-        end;
-      for i := 0 to iPerks.Size - 1 do
-        with Perks.Definitions.Data[ iPerks[i].ID ] do
-        if ( Desc <> '' ) and ( ColorExp <> 0 ) then
-        begin
+          iDesc := GetPerkDescription( iPerks[i].ID );
+          if iDesc = '' then Continue;
+          if not iHasSection then
+          begin
+            FCharacter[0].Push( '' );
+            FCharacter[0].Push( '{!Status effects}' );
+            iHasSection := True;
+          end;
           iName := Name;
-          if iName = '' then iName := GetPerkShort( iPerks[i].ID );
+          if iName = '' then iName := GetPerkLabel( iPerks[i].ID );
           if iPerks[i].Time > 0
-            then FCharacter[0].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} ({!' + FloatToStr( iPerks[i].Time / 10 ) + '}s) - ' + Desc )
-            else FCharacter[0].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} - ' + Desc );
+            then FCharacter[0].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} ({!' + FloatToStr( iPerks[i].Time / 10 ) + '}s) - ' + iDesc )
+            else FCharacter[0].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} - ' + iDesc );
         end;
 
       // Player perks: permanents
+      iHasSection := False;
       for i := 0 to iPerks.Size - 1 do
         with Perks.Definitions.Data[ iPerks[i].ID ] do
-        if ( Desc <> '' ) and ( ColorExp = 0 ) then
+        if ColorExp = 0 then
         begin
-          FCharacter[0].Push( '' );
-          FCharacter[0].Push( '{!Permanents}' );
-          break;
+          iDesc := GetPerkDescription( iPerks[i].ID );
+          if iDesc = '' then Continue;
+          if not iHasSection then
+          begin
+            FCharacter[0].Push( '' );
+            FCharacter[0].Push( '{!Permanents}' );
+            iHasSection := True;
+          end;
+          FCharacter[0].Push( '  {' + VTIG_ColorChar( Color ) + Name + '} - ' + iDesc );
         end;
-      for i := 0 to iPerks.Size - 1 do
-        with Perks.Definitions.Data[ iPerks[i].ID ] do
-        if ( Desc <> '' ) and ( ColorExp = 0 ) then
-          FCharacter[0].Push( '  {' + VTIG_ColorChar( Color ) + Name + '} - ' + Desc );
     end;
 
     // Section 1: Level
@@ -1051,13 +1057,14 @@ begin
       FCharacter[1].Push( '' );
       for i := 0 to iPerks.Size - 1 do
         with iLevel.Perks.Definitions.Data[ iPerks[i].ID ] do
-        if ( Desc <> '' ) then
         begin
+          iDesc := iLevel.GetPerkDescription( iPerks[i].ID );
+          if iDesc = '' then Continue;
           iName := Name;
-          if iName = '' then iName := iLevel.GetPerkShort( iPerks[i].ID );
+          if iName = '' then iName := iLevel.GetPerkLabel( iPerks[i].ID );
           if iPerks[i].Time > 0
-            then FCharacter[1].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} ({!' + FloatToStr( iPerks[i].Time / 10 ) + '}s) - ' + Desc )
-            else FCharacter[1].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} - ' + Desc );
+            then FCharacter[1].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} ({!' + FloatToStr( iPerks[i].Time / 10 ) + '}s) - ' + iDesc )
+            else FCharacter[1].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} - ' + iDesc );
         end;
     end;
   end;

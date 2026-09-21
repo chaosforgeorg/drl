@@ -557,7 +557,7 @@ end;
 procedure TScrollSwapLayer.Update( aDTime : Integer; aActive : Boolean );
 begin
   VTIG_FreeLabel( 'Scroll, <{!LMB}> wield, <{!RMB}> cancel:', Point( 0, 2 ), Yellow );
-  IO.HintOverlay := FArray[ FIndex ].Description;
+  IO.HintOverlay := FArray[ FIndex ].GetInvName;
 end;
 
 function TScrollSwapLayer.IsModal : Boolean;

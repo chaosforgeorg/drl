@@ -12,7 +12,7 @@ uses classes,
 
 type TPerkData = record
   Name       : Ansistring;
-  Short      : Ansistring;
+  LabelText  : Ansistring;
   Desc       : Ansistring;
   Hooks      : TFlags;
   Color      : Byte;
@@ -53,7 +53,8 @@ type TPerks = class( TVObject )
   function  CallHookCan( aHook : Byte; const aParams : array of Const ) : Boolean;
   function  GetBonus( aHook : Byte; const aParams : array of Const ) : Integer;
   function  GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single;
-  function  GetShort( aID : Integer ) : AnsiString;
+  function  GetLabel( aID : Integer ) : AnsiString;
+  function  GetDescription( aID : Integer ) : AnsiString;
   procedure Add( aPerk : Integer; aDuration : LongInt = -1 );
   function  Remove( aPerk : Integer; aSilent : Boolean = False ) : Boolean;
   procedure OnTick;
@@ -97,7 +98,7 @@ begin
     with aLua.GetTable(['perks',aID]) do
     try
       Name      := getString('name','');
-      Short     := getString('short','');
+      LabelText := getString('label','');
       Desc      := getString('desc','');
       Color     := getInteger('color',0);
       ColorExp  := getInteger('color_expire',0);
@@ -234,11 +235,18 @@ begin
         GetBonusMul *= FOwner.Context.Lua.ProtectedCall( [ 'perks',FList[i].ID, HookNames[ aHook ] ], ConcatConstArray( [FOwner], aParams ) );
 end;
 
-function TPerks.GetShort( aID : Integer ) : AnsiString;
+function TPerks.GetDescription( aID : Integer ) : AnsiString;
 begin
-  if Hook_OnShort in FDefinitions.Data[aID].Hooks then
-    Exit( FOwner.Context.Lua.ProtectedCall( [ 'perks', aID, HookNames[Hook_OnShort] ], [ FOwner ] ) );
-  Exit( FDefinitions.Data[aID].Short );
+  if Hook_getDescription in FDefinitions.Data[aID].Hooks then
+    Exit( FOwner.Context.Lua.ProtectedCall( [ 'perks', aID, HookNames[Hook_getDescription] ], [ FOwner ] ) );
+  Exit( FDefinitions.Data[aID].Desc );
+end;
+
+function TPerks.GetLabel( aID : Integer ) : AnsiString;
+begin
+  if Hook_getLabel in FDefinitions.Data[aID].Hooks then
+    Exit( FOwner.Context.Lua.ProtectedCall( [ 'perks', aID, HookNames[Hook_getLabel] ], [ FOwner ] ) );
+  Exit( FDefinitions.Data[aID].LabelText );
 end;
 
 procedure TPerks.Add( aPerk : Integer; aDuration : LongInt );

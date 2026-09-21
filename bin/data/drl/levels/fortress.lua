@@ -46,7 +46,7 @@ register_level "unholy_cathedral"
 
 		register_perk "perk_spear_altfire"
 		{
-			short = "holy flame",
+			label = "holy flame",
 			desc  = "explosion around self",
 			color = LIGHTBLUE,
 			tags  = { "altfire" },
@@ -96,7 +96,7 @@ register_level "unholy_cathedral"
 
 		register_perk "perk_uscythe_altfire"
 		{
-			short = "whisper of death",
+			label = "whisper of death",
 			desc  = "damage all enemies, at the cost of max health",
 			color = LIGHTBLUE,
 			tags  = { "altfire" },

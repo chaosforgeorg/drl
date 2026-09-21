@@ -208,7 +208,7 @@ function drl.register_unique_items()
 	register_perk "perk_usubtle_altfire"
 	{
 		name  = "",
-		short = "invoke",
+		label = "invoke",
 		desc  = "damage all visible enemies, at the costs health and tired",
 		color = LIGHTBLUE,
 		tags  = { "altfire" },
@@ -258,7 +258,7 @@ function drl.register_unique_items()
 
 	register_perk "perk_uni_trigun_altreload"
 	{
-		short = "Angel Arm",
+		label = "Angel Arm",
 		desc  = "It will probably kill you",
 		color = LIGHTBLUE,
 		tags  = { "altreload" },
@@ -469,7 +469,7 @@ function drl.register_unique_items()
 
 	register_perk "perk_uberetta_altreload"
 	{
-		short = "fire mode",
+		label = "fire mode",
 		desc  = "switch between single/burst/auto fire modes",
 		color = LIGHTBLUE,
 		tags  = { "altreload" },
@@ -543,7 +543,7 @@ function drl.register_unique_items()
 
 	register_perk "perk_usjack_altreload"
 	{
-		short = "trigger",
+		label = "trigger",
 		desc  = "switch between single/burst fire modes",
 		color = LIGHTBLUE,
 		tags  = { "altreload" },
@@ -1176,7 +1176,7 @@ function drl.register_unique_items()
 
 	register_perk "perk_udragon_altfire"
 	{
-		short = "whirlwind",
+		label = "whirlwind",
 		desc  = "attack all adjacent enemies",
 		color = LIGHTBLUE,
 		tags  = { "altfire" },

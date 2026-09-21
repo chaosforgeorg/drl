@@ -437,7 +437,7 @@ begin
   if iLevel.Item[ FPosition ] <> nil then
   begin
     if not FMultiMove.IsPath then
-      IO.Msg( iLevel.Item[ FPosition ].GetExtName( True ) );
+      IO.Msg( iLevel.Item[ FPosition ].GetGroundDesc( True ) );
   end;
 
   FEnemiesInVision := iLevel.GetEnemiesVisible;

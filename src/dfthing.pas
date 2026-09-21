@@ -29,8 +29,9 @@ type TThing = class( TLuaEntityNode )
   function GetLevel : TLuaMapNode;
   function GetDrawPosition : TVec2i;
   function GetPerkList : TPerkList;
-  function GetPerkShort( aID : Integer ) : AnsiString;
-  function GetTraitString( aInvMode : Boolean = False ) : AnsiString;
+  function GetPerkLabel( aID : Integer ) : AnsiString;
+  function GetPerkDescription( aID : Integer ) : AnsiString;
+  function GetPerkSummary( aInvMode : Boolean = False ) : AnsiString;
   procedure Tick; virtual;
   procedure WriteToStream( aStream : TStream ); override;
   destructor Destroy; override;
@@ -195,13 +196,19 @@ begin
   Exit( FPerks.List );
 end;
 
-function TThing.GetPerkShort( aID : Integer ) : AnsiString;
+function TThing.GetPerkLabel( aID : Integer ) : AnsiString;
 begin
   if FPerks = nil then Exit( '' );
-  Exit( FPerks.GetShort( aID ) );
+  Exit( FPerks.GetLabel( aID ) );
 end;
 
-function TThing.GetTraitString( aInvMode : Boolean = False ) : AnsiString;
+function TThing.GetPerkDescription( aID : Integer ) : AnsiString;
+begin
+  if FPerks = nil then Exit( '' );
+  Exit( FPerks.GetDescription( aID ) );
+end;
+
+function TThing.GetPerkSummary( aInvMode : Boolean = False ) : AnsiString;
 var iPerks : TPerkList;
     i      : Integer;
     iColor : Byte;
@@ -213,10 +220,8 @@ begin
   for i := 0 to iPerks.Size - 1 do
     with FPerks.Definitions.Data[ iPerks[i].ID ] do
     begin
-      if Hook_OnDescribe in Hooks then
-        iText := FContext.Lua.ProtectedCall( [ 'perks', iPerks[i].ID, HookNames[Hook_OnDescribe] ], [ Self ] )
-      else if aInvMode then iText := Name
-      else iText := GetPerkShort( iPerks[i].ID );
+      if aInvMode then iText := Name
+      else iText := GetPerkLabel( iPerks[i].ID );
       if iText = '' then Continue;
       if ( iPerks[i].Time > 0 ) and ( iPerks[i].Time <= 50 )
         then iColor := ColorExp

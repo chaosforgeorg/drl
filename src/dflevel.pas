@@ -124,7 +124,8 @@ TLevel = class(TLuaMapNode, ITextMap)
 
     function HasHook( aHook : Word ) : Boolean; override;
     function GetPerkList : TPerkList;
-    function GetPerkShort( aID : Integer ) : AnsiString;
+    function GetPerkLabel( aID : Integer ) : AnsiString;
+    function GetPerkDescription( aID : Integer ) : AnsiString;
 
   private
     procedure AddDecal( const aPosition : TVec3f; aDecalSprite : DWord );
@@ -845,9 +846,14 @@ begin
   Exit( FPerks.List );
 end;
 
-function TLevel.GetPerkShort( aID : Integer ) : AnsiString;
+function TLevel.GetPerkLabel( aID : Integer ) : AnsiString;
 begin
-  Exit( FPerks.GetShort( aID ) );
+  Exit( FPerks.GetLabel( aID ) );
+end;
+
+function TLevel.GetPerkDescription( aID : Integer ) : AnsiString;
+begin
+  Exit( FPerks.GetDescription( aID ) );
 end;
 
 procedure TLevel.CallHook( aHook : Byte; const aParams : array of const ) ;
@@ -1741,9 +1747,9 @@ begin
     if Being[ aWhere ] <> nil then
     with Being[ aWhere ] do
       AddInfo( GetName( false ) + ' (' + WoundStatus + ')' );
-    if Item[ aWhere ] <> nil then AddInfo( Item[ aWhere ].GetExtName( False ) );
-    if CellHook_OnDescribe in FData.Cells[ Cell[ aWhere ] ].Hooks then
-       AddInfo( CallHook( aWhere, CellHook_OnDescribe ) )
+    if Item[ aWhere ] <> nil then AddInfo( Item[ aWhere ].GetGroundDesc( False ) );
+    if CellHook_getGroundDesc in FData.Cells[ Cell[ aWhere ] ].Hooks then
+       AddInfo( CallHook( aWhere, CellHook_getGroundDesc ) )
     else
     begin
       iCellID := GetCell(aWhere);

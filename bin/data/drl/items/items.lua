@@ -1032,7 +1032,7 @@ function drl.register_regular_items()
 			end,
 		},
 
-		OnModDescribe = function( self, item )
+		getModDescription = function( self, item )
 			local function dmgsmtr( bd,bs )
 				local bd = item.damage_dice + (bd or 0)
 				local bs = item.damage_sides + (bs or 0)
@@ -1097,7 +1097,7 @@ function drl.register_regular_items()
 			end,
 		},
 
-		OnModDescribe = function( self, item )
+		getModDescription = function( self, item )
 			if (item.itype == ITEMTYPE_RANGED) or (item.itype == ITEMTYPE_MELEE) then
 				return "use/fire time {!"..(item.usetime/10).."s} -> {!"..(math.floor(item.usetime * 0.85 + 0.49)/10).."s}"
 			elseif item.itype == ITEMTYPE_ARMOR or item.itype == ITEMTYPE_BOOTS then
@@ -1156,7 +1156,7 @@ function drl.register_regular_items()
 			end,
 		},
 
-		OnModDescribe = function( self, item )
+		getModDescription = function( self, item )
 			local function accstr( bd )
 				local bd = item.acc + (bd or 0)
 				if bd < 0 then return "{!"..bd.."}" end
@@ -1224,7 +1224,7 @@ function drl.register_regular_items()
 			end,
 		},
 
-		OnModDescribe = function( self, item )
+		getModDescription = function( self, item )
 			local function dmgsmtr( bd,bs )
 				local bd = item.damage_dice + (bd or 0)
 				local bs = item.damage_sides + (bs or 0)
@@ -1517,10 +1517,10 @@ function drl.register_regular_items()
 		runtime    = {
 			OnUse = function(self,being)
 				statistics.levers_pulled = statistics.levers_pulled + 1
-				local position = self.position
+				ui.msg("You hear an ominous tick...")
 				for c in self.TARGET_AREA() do
 					local item = level:get_item( c )
-					if item and item.hp > 0 then
+					if item and item.hp > 0 and item:get_property( "WARN_HAZARD", false ) then
 						level:damage_tile( c, 1000, DAMAGE_PLASMA )
 					end
 				end

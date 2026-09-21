@@ -162,7 +162,7 @@ core.register_blueprint "perk"
 {
 	id             = { true,  core.TSTRING },
 	name           = { false, core.TSTRING, "" },
-	short          = { false, core.TSTRING, "" },
+	label          = { false, core.TSTRING, "" },
 	desc 		   = { false, core.TSTRING, "" },
 	color          = { false, core.TNUMBER },
 	color_expire   = { false, core.TNUMBER },
@@ -178,8 +178,9 @@ core.register_blueprint "perk"
 	OnTick         = { false, core.TFUNC },
 	OnTick10       = { false, core.TFUNC },
 	OnRemove       = { false, core.TFUNC },
-	OnDescribe     = { false, core.TFUNC },
-	OnShort        = { false, core.TFUNC },
+	getGroundDesc  = { false, core.TFUNC },
+	getLabel       = { false, core.TFUNC },
+	getDescription = { false, core.TFUNC },
 
 	getDamageBonus   = { false, core.TFUNC },
 	getToHitBonus    = { false, core.TFUNC },
@@ -351,9 +352,10 @@ core.register_blueprint "cell"
 	OnEnter       = { false, core.TFUNC },
 	OnExit        = { false, core.TFUNC },
 	OnAct         = { false, core.TFUNC },
-	OnDescribe    = { false, core.TFUNC },
 	OnDestroy     = { false, core.TFUNC },
 	OnHazardQuery = { false, core.TFUNC },
+	
+	getGroundDesc = { false, core.TFUNC },
 }
 
 core.register_blueprint "challenge"
@@ -464,7 +466,7 @@ core.register_blueprint "item"
 			dis_unique = { false, core.TBOOLEAN, false },
 			dis_other  = { false, core.TBOOLEAN, false },
 
-			OnModDescribe = { false, core.TFUNC },
+			getModDescription = { false, core.TFUNC },
 		},
 		[ITEMTYPE_POWER]   = {
 			ascii    = { false, core.TSTRING, "^" },

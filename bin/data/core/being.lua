@@ -358,15 +358,15 @@ function being:pick_item_to_mod( mod, filter )
 				if (not ma) and ( not cm ) then
 					desc = "Max level of this mod reached!"
 				else
-					if cm and proto.OnModDescribe then
-						desc = "Effect : "..proto.OnModDescribe( mod, it )
+					if cm and proto.getModDescription then
+						desc = "Effect : "..proto.getModDescription( mod, it )
 					end
 					if ma then
 						desc = desc or ""
 						desc = desc.."\nAssembly possible : {!"..ma.name.."}"
 					end
 				end
-				table.insert( choice.entries, { name = it.desc, value = i, desc = desc } )
+				table.insert( choice.entries, { name = it.inv_name, value = i, desc = desc } )
 			end
 		end
 	end
@@ -403,7 +403,7 @@ function being:pick_item_to_mod( mod, filter )
 			ma_choice.header = ma_choice.header ..  " Mod effect will also be applied first."
 		end
 		if ma.desc and ma.desc ~= "" then
-			ma_choice.header = ma_choice.header .. "\n\n" .. "Mod      : "..proto.OnModDescribe( mod, item )
+			ma_choice.header = ma_choice.header .. "\n\n" .. "Mod      : "..proto.getModDescription( mod, item )
 			ma_choice.header = ma_choice.header .. "\n" .. "Assembly : "..ma.desc
 		end
 		local result = ui.choice( ma_choice )

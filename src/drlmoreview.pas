@@ -73,14 +73,15 @@ var iTot, iTor : Integer;
     iCount, i  : Integer;
     iPerks     : TPerkList;
     iName      : Ansistring;
+    iDesc      : Ansistring;
   procedure DescribeItem( aItem : TItem );
   var iBox    : Ansistring;
       iPos, i : Integer;
   begin
     if aItem = nil then Exit;
     FTexts[iCount] := TStringGArray.Create;
-    FTexts[iCount].Push( '{!'+aItem.Description+'}' );
-    iBox := aItem.DescriptionBox( True );
+    FTexts[iCount].Push( '{!'+aItem.GetInvName+'}' );
+    iBox := aItem.GetInvStatsList( False );
     iPos := 1;
     if Length( iBox ) > 0 then
     begin
@@ -123,18 +124,20 @@ begin
   begin
     for i := 0 to iPerks.Size - 1 do
       with FBeing.Perks.Definitions.Data[ iPerks[i].ID ] do
-      if ( Desc <> '' ) and ( ColorExp <> 0 ) then
+      if ColorExp <> 0 then
       begin
+        iDesc := FBeing.GetPerkDescription( iPerks[i].ID );
+        if iDesc = '' then Continue;
         if FTexts[iCount] = nil then
         begin
           FTexts[iCount] :=  TStringGArray.Create;
           FTexts[iCount].Push( '{!Status effects}' );
         end;
         iName := Name;
-        if iName = '' then iName := FBeing.GetPerkShort( iPerks[i].ID );
+        if iName = '' then iName := FBeing.GetPerkLabel( iPerks[i].ID );
         if iPerks[i].Time > 0
-          then FTexts[iCount].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} ({!' + FloatToStr( iPerks[i].Time / 10 ) + '}s) - ' + Desc )
-          else FTexts[iCount].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} - ' + Desc );
+          then FTexts[iCount].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} ({!' + FloatToStr( iPerks[i].Time / 10 ) + '}s) - ' + iDesc )
+          else FTexts[iCount].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} - ' + iDesc );
       end;
     if FTexts[iCount] <> nil then Inc( iCount );
   end;
@@ -143,14 +146,16 @@ begin
   begin
     for i := 0 to iPerks.Size - 1 do
       with FBeing.Perks.Definitions.Data[ iPerks[i].ID ] do
-      if ( Desc <> '' ) and ( ColorExp = 0 ) then
+      if ColorExp = 0 then
       begin
+        iDesc := FBeing.GetPerkDescription( iPerks[i].ID );
+        if iDesc = '' then Continue;
         if FTexts[iCount] = nil then
         begin
           FTexts[iCount] :=  TStringGArray.Create;
           FTexts[iCount].Push( '{!Permanents}' );
         end;
-        FTexts[iCount].Push( '  {' + VTIG_ColorChar( Color ) + Name + '} - ' + Desc );
+        FTexts[iCount].Push( '  {' + VTIG_ColorChar( Color ) + Name + '} - ' + iDesc );
       end;
     if FTexts[iCount] <> nil then Inc( iCount );
   end;
@@ -245,7 +250,7 @@ begin
   FItem     := aItem;
   FDesc     := FItem.Context.Lua.Get(['items',FItem.ID,'desc']);
   FSize     := Point( 60, 25 );
-  FTitle    := '{'+VTIG_ColorChar( FItem.MenuColor ) + FItem.Description + '}';
+  FTitle    := '{'+VTIG_ColorChar( FItem.MenuColor ) + FItem.GetInvName + '}';
   for i := Low( FTexts ) to High( FTexts ) do
     FTexts[i] := nil;
   ReadTexts;
@@ -258,6 +263,7 @@ var iPerks     : TPerkList;
     iStatQueue : TStringGArray;
     iGroup     : AnsiString;
     iGroupName : AnsiString;
+    iDesc      : AnsiString;
   procedure AddStat( const aName : Ansistring; const aValue : Ansistring );
   begin
     iStatQueue.Push( Padded( aName, 13 ) + ': {!' + aValue + '}' );
@@ -376,9 +382,13 @@ begin
         with FItem.Perks.Definitions.Data[ iPerks[i].ID ] do
           if Hook_OnAltFire in Hooks then
           begin
-            FTexts[0].Push( '' );
-            FTexts[0].Push( 'Alt. fire    : {!' + Desc + '}' );
-            iHasFire := True;
+            iDesc := FItem.GetPerkDescription( iPerks[i].ID );
+            if iDesc <> '' then
+            begin
+              FTexts[0].Push( '' );
+              FTexts[0].Push( 'Alt. fire    : {!' + iDesc + '}' );
+              iHasFire := True;
+            end;
             break;
           end;
 
@@ -388,16 +398,24 @@ begin
         with FItem.Perks.Definitions.Data[ iPerks[i].ID ] do
           if Hook_OnAltReload in Hooks then
           begin
-            if not iHasFire then FTexts[0].Push( '' );
-            FTexts[0].Push( 'Alt. reload  : {!' + Desc + '}' );
+            iDesc := FItem.GetPerkDescription( iPerks[i].ID );
+            if iDesc <> '' then
+            begin
+              if not iHasFire then FTexts[0].Push( '' );
+              FTexts[0].Push( 'Alt. reload  : {!' + iDesc + '}' );
+            end;
             break;
           end;
 
     FTexts[1] := TStringGArray.Create;
     for i := 0 to iPerks.Size - 1 do
       with FItem.Perks.Definitions.Data[ iPerks[i].ID ] do
-        if ( Name <> '' ) and ( Desc <> '' ) then
-          FTexts[1].Push( '{' + VTIG_ColorChar( Color ) + Name + '} - ' + Desc );
+        if Name <> '' then
+        begin
+          iDesc := FItem.GetPerkDescription( iPerks[i].ID );
+          if iDesc <> '' then
+            FTexts[1].Push( '{' + VTIG_ColorChar( Color ) + Name + '} - ' + iDesc );
+        end;
   end;
 end;
 
@@ -445,4 +463,3 @@ begin
 end;
 
 end.
-

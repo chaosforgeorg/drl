@@ -12,7 +12,7 @@ function drl.register_perks()
 	register_perk "perk_cursed"
 	{
 		name   = "",
-		short  = "cursed",
+		label  = "cursed",
 		desc   = "cannot be unequipped",
 		color  = RED,
 		tags   = {},
@@ -30,7 +30,7 @@ function drl.register_perks()
 	register_perk "perk_altfire_throw"
 	{
 		name   = "",
-		short  = "throw",
+		label  = "throw",
 		desc   = "throws the melee weapon at a target",
 		color  = LIGHTBLUE,
 		tags   = { "altfire" },
@@ -57,7 +57,7 @@ function drl.register_perks()
 	register_perk "perk_altfire_rocketjump"
 	{
 		name   = "",
-		short  = "rocketjump",
+		label  = "rocketjump",
 		desc   = "fire at your feet with less damage and more knockback",
 		color  = LIGHTBLUE,
 		tags   = { "altfire" },
@@ -103,7 +103,7 @@ function drl.register_perks()
 	register_perk "perk_altfire_single"
 	{
 		name   = "",
-		short  = "single",
+		label  = "single",
 		desc   = "fires a single shot",
 		color  = LIGHTBLUE,
 		tags   = { "altfire" },
@@ -136,7 +136,7 @@ function drl.register_perks()
 	register_perk "perk_altfire_aimed"
 	{
 		name   = "",
-		short  = "aimed",
+		label  = "aimed",
 		desc   = "fires an aimed shot with +3 to hit, but double time taken",
 		color  = LIGHTBLUE,
 		tags   = { "altfire" },
@@ -226,7 +226,7 @@ function drl.register_perks()
 	register_perk "perk_altfire_spool"
 	{
 		name   = "",
-		short  = "no spool",
+		label  = "no spool",
 		desc   = "fires without spooling up",
 		color  = LIGHTBLUE,
 		tags   = { "altfire" },
@@ -249,7 +249,7 @@ function drl.register_perks()
 	register_perk "perk_altreload_full"
 	{
 		name   = "",
-		short  = "full",
+		label  = "full",
 		desc   = "fully reloads the weapon (max 2.5s)",
 		color  = LIGHTBLUE,
 		tags   = { "altreload" },
@@ -268,7 +268,7 @@ function drl.register_perks()
 	register_perk "perk_altreload_nuke"
 	{
 		name   = "",
-		short  = "overload",
+		label  = "overload",
 		desc   = "overloads the nuclear reactor",
 		color  = LIGHTBLUE,
 		tags   = { "altreload" },
@@ -297,7 +297,7 @@ function drl.register_perks()
 	register_perk "perk_altreload_overcharge"
 	{
 		name   = "",
-		short  = "overcharge",
+		label  = "overcharge",
 		desc   = "boosts the weapon and destroys it after the next shot",
 		color  = LIGHTBLUE,
 		tags   = { "altreload" },

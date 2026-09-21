@@ -594,7 +594,7 @@ procedure TDRLIO.SetAutoTarget( aTarget : TCoord2D );
 begin
   FHintTarget := FSession.Level.GetTargetDescription( FSession.Player, aTarget );
   if FSession.Level.isVisible( aTarget ) and ( FSession.Level.Being[ aTarget ] <> nil )
-    then FHintStatus := FSession.Level.Being[ aTarget ].GetTraitString
+    then FHintStatus := FSession.Level.Being[ aTarget ].GetPerkSummary
     else FHintStatus := '';
 end;
 
@@ -920,18 +920,18 @@ begin
         begin
           if FCachedAmmo = -1 then
             FCachedAmmo := Player.Inv.CountAmount( iWeapon.AmmoID );
-          iDesc := Player.Inv.Slot[efWeapon].Description;
+          iDesc := Player.Inv.Slot[efWeapon].GetInvName;
           if Length( iDesc ) > 42 then iDesc := Copy(iDesc, 1, 42 );
           VTIG_FreeLabel( iDesc, iPos + Point(31,1), WeaponColor(Player.Inv.Slot[efWeapon]) );
           VTIG_FreeLabel( ' ({0})', iPos + Point(31+Length(iDesc),1), [ FCachedAmmo ], iCNormal );
         end
         else
-          VTIG_FreeLabel( Player.Inv.Slot[efWeapon].Description, iPos + Point(31,1), WeaponColor(Player.Inv.Slot[efWeapon]) );
+          VTIG_FreeLabel( Player.Inv.Slot[efWeapon].GetInvName, iPos + Point(31,1), WeaponColor(Player.Inv.Slot[efWeapon]) );
       end;
 
     if Player.Inv.Slot[efTorso] = nil
       then VTIG_FreeLabel( 'none',                                iPos + Point(31,0), iCBold )
-      else VTIG_FreeLabel( Player.Inv.Slot[efTorso].Description,  iPos + Point(31,0), ArmorColor(Player.Inv.Slot[efTorso].Durability) );
+      else VTIG_FreeLabel( Player.Inv.Slot[efTorso].GetInvName,  iPos + Point(31,0), ArmorColor(Player.Inv.Slot[efTorso].Durability) );
 
     iColor := Red;
     if FSession.Level.Empty
@@ -942,7 +942,7 @@ begin
     VTIG_FreeLabel( FSession.Level.Name, Point( -2-Length( FSession.Level.Name), iBottom ), iColor );
     VTIG_FreeLabel( FSeedHUDText, Point( FSeedHUDOffset, iBottom+1 ) );
 
-    iTraitStr := Player.GetTraitString;
+    iTraitStr := Player.GetPerkSummary;
     if iTraitStr <> '' then
       VTIG_FreeLabel( iTraitStr, Point( iPos.X+1, iBottom ) );
   end;
@@ -1177,7 +1177,7 @@ begin
     if isGamepad
       then LookDesc += ' | <{LA}> more'
       else LookDesc += ' | <{Lm}>ore';
-    FHintStatus := FSession.Level.Being[ aWhere ].GetTraitString;
+    FHintStatus := FSession.Level.Being[ aWhere ].GetPerkSummary;
   end
   else
     FHintStatus := '';
