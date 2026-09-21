@@ -351,9 +351,10 @@ core.register_blueprint "cell"
 	OnEnter       = { false, core.TFUNC },
 	OnExit        = { false, core.TFUNC },
 	OnAct         = { false, core.TFUNC },
-	OnDescribe    = { false, core.TFUNC },
 	OnDestroy     = { false, core.TFUNC },
 	OnHazardQuery = { false, core.TFUNC },
+	
+	getGroundDesc = { false, core.TFUNC },
 }
 
 core.register_blueprint "challenge"

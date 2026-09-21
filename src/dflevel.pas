@@ -1742,8 +1742,8 @@ begin
     with Being[ aWhere ] do
       AddInfo( GetName( false ) + ' (' + WoundStatus + ')' );
     if Item[ aWhere ] <> nil then AddInfo( Item[ aWhere ].GetGroundDesc( False ) );
-    if CellHook_OnDescribe in FData.Cells[ Cell[ aWhere ] ].Hooks then
-       AddInfo( CallHook( aWhere, CellHook_OnDescribe ) )
+    if CellHook_getGroundDesc in FData.Cells[ Cell[ aWhere ] ].Hooks then
+       AddInfo( CallHook( aWhere, CellHook_getGroundDesc ) )
     else
     begin
       iCellID := GetCell(aWhere);

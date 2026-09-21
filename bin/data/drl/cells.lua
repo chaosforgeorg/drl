@@ -363,7 +363,7 @@ function drl.register_cells()
 			player:exit( linfo.special, 0.5 )
 		end,
 
-		OnDescribe = function(c)
+		getGroundDesc = function(c)
 			local linfo = player.episode[level.index]
 			return "stairs leading to "..player.episode[linfo.special].name
 		end,

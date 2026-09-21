@@ -9,9 +9,9 @@ unit dfmap;
 interface
 uses vlua, vutil, vmath, dfdata;
 
-type TCellHook  = (CellHook_OnEnter, CellHook_OnExit, CellHook_OnAct, CellHook_OnDescribe, CellHook_OnHazardQuery, CellHook_OnDestroy);
+type TCellHook  = (CellHook_OnEnter, CellHook_OnExit, CellHook_OnAct, CellHook_getGroundDesc, CellHook_OnHazardQuery, CellHook_OnDestroy);
      TCellHooks = set of TCellHook;
-const CellHooks : array[TCellHook] of string = ('OnEnter', 'OnExit', 'OnAct', 'OnDescribe', 'OnHazardQuery', 'OnDestroy');
+const CellHooks : array[TCellHook] of string = ('OnEnter', 'OnExit', 'OnAct', 'getGroundDesc', 'OnHazardQuery', 'OnDestroy');
 
 type TMap = object
        Overlay  : array[ 1..MaxX, 1..MaxY ] of Byte;
