@@ -54,6 +54,7 @@ type TPerks = class( TVObject )
   function  GetBonus( aHook : Byte; const aParams : array of Const ) : Integer;
   function  GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single;
   function  GetLabel( aID : Integer ) : AnsiString;
+  function  GetDescription( aID : Integer ) : AnsiString;
   procedure Add( aPerk : Integer; aDuration : LongInt = -1 );
   function  Remove( aPerk : Integer; aSilent : Boolean = False ) : Boolean;
   procedure OnTick;
@@ -232,6 +233,13 @@ begin
     for i := 0 to FList.Size-1 do
       if aHook in FDefinitions.Data[FList[i].ID].Hooks then
         GetBonusMul *= FOwner.Context.Lua.ProtectedCall( [ 'perks',FList[i].ID, HookNames[ aHook ] ], ConcatConstArray( [FOwner], aParams ) );
+end;
+
+function TPerks.GetDescription( aID : Integer ) : AnsiString;
+begin
+  if Hook_getDescription in FDefinitions.Data[aID].Hooks then
+    Exit( FOwner.Context.Lua.ProtectedCall( [ 'perks', aID, HookNames[Hook_getDescription] ], [ FOwner ] ) );
+  Exit( FDefinitions.Data[aID].Desc );
 end;
 
 function TPerks.GetLabel( aID : Integer ) : AnsiString;

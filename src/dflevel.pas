@@ -125,6 +125,7 @@ TLevel = class(TLuaMapNode, ITextMap)
     function HasHook( aHook : Word ) : Boolean; override;
     function GetPerkList : TPerkList;
     function GetPerkLabel( aID : Integer ) : AnsiString;
+    function GetPerkDescription( aID : Integer ) : AnsiString;
 
   private
     procedure AddDecal( const aPosition : TVec3f; aDecalSprite : DWord );
@@ -848,6 +849,11 @@ end;
 function TLevel.GetPerkLabel( aID : Integer ) : AnsiString;
 begin
   Exit( FPerks.GetLabel( aID ) );
+end;
+
+function TLevel.GetPerkDescription( aID : Integer ) : AnsiString;
+begin
+  Exit( FPerks.GetDescription( aID ) );
 end;
 
 procedure TLevel.CallHook( aHook : Byte; const aParams : array of const ) ;

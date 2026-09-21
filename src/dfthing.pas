@@ -30,6 +30,7 @@ type TThing = class( TLuaEntityNode )
   function GetDrawPosition : TVec2i;
   function GetPerkList : TPerkList;
   function GetPerkLabel( aID : Integer ) : AnsiString;
+  function GetPerkDescription( aID : Integer ) : AnsiString;
   function GetTraitString( aInvMode : Boolean = False ) : AnsiString;
   procedure Tick; virtual;
   procedure WriteToStream( aStream : TStream ); override;
@@ -199,6 +200,12 @@ function TThing.GetPerkLabel( aID : Integer ) : AnsiString;
 begin
   if FPerks = nil then Exit( '' );
   Exit( FPerks.GetLabel( aID ) );
+end;
+
+function TThing.GetPerkDescription( aID : Integer ) : AnsiString;
+begin
+  if FPerks = nil then Exit( '' );
+  Exit( FPerks.GetDescription( aID ) );
 end;
 
 function TThing.GetTraitString( aInvMode : Boolean = False ) : AnsiString;

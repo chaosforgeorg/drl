@@ -180,6 +180,7 @@ core.register_blueprint "perk"
 	OnRemove       = { false, core.TFUNC },
 	getGroundDesc  = { false, core.TFUNC },
 	getLabel       = { false, core.TFUNC },
+	getDescription = { false, core.TFUNC },
 
 	getDamageBonus   = { false, core.TFUNC },
 	getToHitBonus    = { false, core.TFUNC },
