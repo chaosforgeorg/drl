@@ -79,7 +79,7 @@ const
   Hook_OnUnequipCheck  = 64;  // Perk (item)
   Hook_OnDrop          = 65; // Perk (item)
   Hook_OnCanAct        = 66; // Being
-  Hook_OnShort         = 67; // Perk
+  Hook_getLabel        = 67; // Perk
 
   HookAmount           = 68;
 
@@ -110,7 +110,7 @@ const HookNames : array[ 0..HookAmount-1 ] of AnsiString = (
       'getGibMul',
       'OnUnequipCheck',
       'OnDrop', 'OnCanAct',
-      'OnShort'
+      'getLabel'
       );
 
 function LoadHooks( aLua : TLua; const aTable : array of Const ) : TFlags;

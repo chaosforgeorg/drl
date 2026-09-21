@@ -2,7 +2,7 @@ function drl.register_affects()
 	
 	register_perk "tired"
 	{
-		short          = "tired",
+		label          = "tired",
 		color          = DARKGRAY,
 		color_expire   = DARKGRAY,
 		
@@ -15,7 +15,7 @@ function drl.register_affects()
 
 	register_perk "running"
 	{
-		short          = "running",
+		label          = "running",
 		color          = YELLOW,
 		color_expire   = BROWN,
 
@@ -48,7 +48,7 @@ function drl.register_affects()
 
 	register_perk "berserk"
 	{
-		short          = "berserk",
+		label          = "berserk",
 		color          = LIGHTRED,
 		color_expire   = RED,
 		status_effect  = STATUSRED,
@@ -93,7 +93,7 @@ function drl.register_affects()
 
 	register_perk "inv"
 	{
-		short          = "invulnerable",
+		label          = "invulnerable",
 		color          = WHITE,
 		color_expire   = DARKGRAY,
 		status_effect  = STATUSINVERT,
@@ -121,7 +121,7 @@ function drl.register_affects()
 
 	register_perk "enviro"
 	{
-		short          = "enviro",
+		label          = "enviro",
 		color          = LIGHTGREEN,
 		color_expire   = GREEN,
 		status_effect  = STATUSGREEN,
@@ -150,7 +150,7 @@ function drl.register_affects()
 
 	register_perk "light"
 	{
-		short          = "light",
+		label          = "light",
 		color          = YELLOW,
 		color_expire   = BROWN,
 
@@ -175,7 +175,7 @@ function drl.register_affects()
 
 	register_perk "spool_1"
 	{
-		short          = "spool +1",
+		label          = "spool +1",
 		desc           = "rotary weapon spooling up, {!+1} bonus shots",
 		color          = BLUE,
 		color_expire   = BLUE,
@@ -188,7 +188,7 @@ function drl.register_affects()
 
 	register_perk "spool_2"
 	{
-		short          = "spool +2",
+		label          = "spool +2",
 		desc           = "rotary weapon fully spooled, {!+2} bonus shots",
 		color          = LIGHTBLUE,
 		color_expire   = LIGHTBLUE,

@@ -162,7 +162,7 @@ core.register_blueprint "perk"
 {
 	id             = { true,  core.TSTRING },
 	name           = { false, core.TSTRING, "" },
-	short          = { false, core.TSTRING, "" },
+	label          = { false, core.TSTRING, "" },
 	desc 		   = { false, core.TSTRING, "" },
 	color          = { false, core.TNUMBER },
 	color_expire   = { false, core.TNUMBER },
@@ -179,7 +179,7 @@ core.register_blueprint "perk"
 	OnTick10       = { false, core.TFUNC },
 	OnRemove       = { false, core.TFUNC },
 	OnDescribe     = { false, core.TFUNC },
-	OnShort        = { false, core.TFUNC },
+	getLabel       = { false, core.TFUNC },
 
 	getDamageBonus   = { false, core.TFUNC },
 	getToHitBonus    = { false, core.TFUNC },

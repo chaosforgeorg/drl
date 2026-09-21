@@ -1012,7 +1012,7 @@ begin
         if ( Desc <> '' ) and ( ColorExp <> 0 ) then
         begin
           iName := Name;
-          if iName = '' then iName := GetPerkShort( iPerks[i].ID );
+          if iName = '' then iName := GetPerkLabel( iPerks[i].ID );
           if iPerks[i].Time > 0
             then FCharacter[0].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} ({!' + FloatToStr( iPerks[i].Time / 10 ) + '}s) - ' + Desc )
             else FCharacter[0].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} - ' + Desc );
@@ -1054,7 +1054,7 @@ begin
         if ( Desc <> '' ) then
         begin
           iName := Name;
-          if iName = '' then iName := iLevel.GetPerkShort( iPerks[i].ID );
+          if iName = '' then iName := iLevel.GetPerkLabel( iPerks[i].ID );
           if iPerks[i].Time > 0
             then FCharacter[1].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} ({!' + FloatToStr( iPerks[i].Time / 10 ) + '}s) - ' + Desc )
             else FCharacter[1].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} - ' + Desc );

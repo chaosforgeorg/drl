@@ -406,7 +406,7 @@ begin
     iPerks := FPerks.List;
     for i := 0 to iPerks.Size - 1 do
       if Hook_OnAltFire in FPerks.Definitions.Data[ iPerks[i].ID ].Hooks then
-        Exit( FPerks.Definitions.Data[ iPerks[i].ID ].Short );
+        Exit( FPerks.Definitions.Data[ iPerks[i].ID ].LabelText );
   end;
 end;
 
@@ -420,7 +420,7 @@ begin
     iPerks := FPerks.List;
     for i := 0 to iPerks.Size - 1 do
       if Hook_OnAltReload in FPerks.Definitions.Data[ iPerks[i].ID ].Hooks then
-        Exit( FPerks.Definitions.Data[ iPerks[i].ID ].Short );
+        Exit( FPerks.Definitions.Data[ iPerks[i].ID ].LabelText );
   end;
 end;
 

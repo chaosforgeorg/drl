@@ -539,7 +539,7 @@ function drl.register_exotic_items()
 	register_perk "perk_utrans_altfire"
 	{
 		name  = "",
-		short = "self-target",
+		label = "self-target",
 		desc  = "teleport yourself randomly",
 		color = LIGHTBLUE,
 		tags  = { "altfire" },
