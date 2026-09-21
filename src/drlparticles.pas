@@ -1,9 +1,20 @@
 {$INCLUDE drl.inc}
 unit drlparticles;
 interface
-uses Classes, SysUtils, vvector, vnode, vcolor, vutil, vrltools, vparticleengine, vlualibrary;
+uses classes, sysutils,
+     vlua, vvector, vobject, vcolor, vutil, vrltools, vparticleengine, vlualibrary, vuid;
 
 type
+  // Module data, borrowed by each level's particle store.
+  TEmitterData = class( TVObject )
+    procedure RegisterEmitter( aLua : TLua; aNID : Word );
+    destructor Destroy; override;
+    function GetEmitterData( aNID : Word ) : PParticleEmitterData;
+  private
+    // Individual allocations keep active emitter pointers stable as IDs are added.
+    FEmitterData : array of PParticleEmitterData;
+  end;
+
   TEmitterBinding = record
     NID       : Word;
     UID       : TUID;
@@ -13,18 +24,19 @@ type
 { TParticleStore }
 
   TParticleStore = class( TVObject )
-    constructor Create;
-    procedure Initialize( aEngine : TParticleEngine );
+    constructor Create( aUIDs : TUIDStore );
+    procedure BindUIDs( aUIDs : TUIDStore );
+    procedure Initialize( aEmitters : TEmitterData; aEngine : TParticleEngine );
     procedure Update( aDeltaSec : Single );
+    procedure Reset;
+    // Clear floor effects, retaining bindings and emitter timing for surviving entities.
     procedure Clear;
-    procedure ClearParticles;
     destructor Destroy; override;
 
     // Template-based API
     function  AddEmitter( aNID : Word; aUID : TUID; aWorldPos : TVec3f ) : Boolean;
     function  RemoveEmitter( aNID : Word; aUID : TUID ) : Boolean;
     function  Kill( aUID : TUID ) : Boolean;
-    function  Wipe( aUID : TUID ) : Boolean;
 
     // Direct emitter API (no binding, caller manages lifetime)
     function  AddEmitterDirect( aNID : Word; aWorldPos : TVec3f ) : Integer;
@@ -36,27 +48,25 @@ type
     procedure WriteToStream( aStream : TStream );
     procedure ReadFromStream( aStream : TStream );
 
-    // Data registration (called from Lua during module load)
-    procedure RegisterEmitter( aNID : Word );
-
   private
+    FUIDs           : TUIDStore;
     FEngine         : TParticleEngine;
-    FEmitterData    : array of TParticleEmitterData;
+    FEmitters       : TEmitterData;
     FBindings       : array of TEmitterBinding;
     FBindingCount   : Integer;
 
-    function  GetEmitterData( aNID : Word ) : PParticleEmitterData;
     function  FindBinding( aNID : Word; aUID : TUID ) : Integer;
     procedure RemoveBinding( aIndex : Integer );
-    procedure UpdateBoundEmitters;
+    procedure UpdateBindings( aUpdatePositions : Boolean );
   public
     property Engine : TParticleEngine read FEngine;
   end;
 
 implementation
 
-uses Math, vluasystem, vluatable, vluaentitynode, vuid,
-     dfdata, dfthing, dflevel, drldecals, drlbase, drlio, drlspritemap;
+uses math,
+     vluatable,
+     dfdata, dfthing, drlio, drlspritemap;
 
 function FlagsToParticleFlags( const aFlags : TFlags ) : TParticleFlags;
 var i : Byte;
@@ -67,77 +77,83 @@ begin
       Include( Result, TParticleFlag( i ) );
 end;
 
-procedure DecalCallback( const aPosition : TVec3f; aDecalSprite : DWord );
-var iPos   : TVec2i;
-    iCoord : TCoord2D;
-begin
-  if ( SpriteMap = nil ) or ( DRL = nil ) or ( DRL.Level = nil ) then Exit;
-  iCoord := NewCoord2D( ( Round( aPosition.X ) + 16 ) div 32,
-    ( Round( aPosition.Y ) + 16 ) div 32 );
-  if not DRL.Level.isProperCoord( iCoord ) then Exit;
-  if DRL.Level.cellFlagSet( iCoord, CF_LIQUID ) then Exit;
-  if DRL.Level.cellFlagSet( iCoord, CF_BLOCKMOVE ) then Exit;
-  iPos.X := Round( aPosition.X ) + 16;
-  iPos.Y := Round( aPosition.Y ) + 16;
-  DRL.Level.Decals.Add( iPos, aDecalSprite );
-end;
-
 { TParticleStore }
 
-constructor TParticleStore.Create;
+constructor TParticleStore.Create( aUIDs : TUIDStore );
 begin
   inherited Create;
+  FUIDs := aUIDs;
   FEngine := nil;
   FBindingCount := 0;
 end;
 
-procedure TParticleStore.Initialize( aEngine : TParticleEngine );
+procedure TParticleStore.BindUIDs( aUIDs : TUIDStore );
 begin
+  // Bindings belong to the old UID store and cannot be transferred to new IDs.
+  Reset;
+  FUIDs := aUIDs;
+end;
+
+procedure TParticleStore.Initialize( aEmitters : TEmitterData; aEngine : TParticleEngine );
+begin
+  if FEngine <> nil then FEngine.DecalCallback := nil;
+  FEmitters := aEmitters;
   FEngine := aEngine;
-  if FEngine <> nil then
-    FEngine.DecalCallback := @DecalCallback;
 end;
 
 procedure TParticleStore.Update( aDeltaSec : Single );
 begin
   if FEngine = nil then Exit;
-  UpdateBoundEmitters;
+  UpdateBindings( True );
   FEngine.Update( aDeltaSec );
 end;
 
-procedure TParticleStore.Clear;
+procedure TParticleStore.Reset;
 begin
   if FEngine <> nil then
     FEngine.Clear;
   FBindingCount := 0;
 end;
 
-procedure TParticleStore.ClearParticles;
+procedure TParticleStore.Clear;
+var iEmitters : array of Integer;
+    i         : Integer;
 begin
-  if FEngine <> nil then
-    FEngine.ClearParticles;
+  UpdateBindings( False );
+  if FEngine = nil then Exit;
+  SetLength( iEmitters, FBindingCount );
+  for i := 0 to FBindingCount - 1 do
+    iEmitters[i] := FBindings[i].PoolIndex;
+  FEngine.Clear( iEmitters );
 end;
 
 destructor TParticleStore.Destroy;
 begin
-  FEngine := nil;
+  Reset;
+  Initialize( nil, nil );
   inherited Destroy;
 end;
 
 // Emitter data loading
 
-procedure TParticleStore.RegisterEmitter( aNID : Word );
+destructor TEmitterData.Destroy;
+var iData : PParticleEmitterData;
+begin
+  for iData in FEmitterData do
+    if iData <> nil then Dispose( iData );
+  inherited Destroy;
+end;
+
+procedure TEmitterData.RegisterEmitter( aLua : TLua; aNID : Word );
 var iTable  : TLuaTable;
     iShape  : AnsiString;
     iE      : PParticleEmitterData;
+    iData   : TParticleEmitterData;
     iWhite  : TColorRange;
 begin
-  if aNID = 0 then Exit;
-  if aNID >= Length( FEmitterData ) then
-    SetLength( FEmitterData, aNID + 1 );
-  iTable := LuaSystem.GetTable( ['emitters', Integer(aNID)] );
+  iTable := aLua.GetTable( [ 'emitters', aNID ] );
   try
-    iE := @FEmitterData[aNID];
+    iE := @iData;
     FillChar( iE^, SizeOf( TParticleEmitterData ), 0 );
 
     // Shape
@@ -200,13 +216,19 @@ begin
   finally
     iTable.Free;
   end;
+
+  // Publish only a fully parsed definition; re-registration preserves its address.
+  if aNID >= Length( FEmitterData ) then
+    SetLength( FEmitterData, Max( aNID + 1, Max( Length( FEmitterData ) * 2, 16 ) ) );
+  if FEmitterData[aNID] = nil then New( FEmitterData[aNID] );
+  FEmitterData[aNID]^ := iData;
 end;
 
-function TParticleStore.GetEmitterData( aNID : Word ) : PParticleEmitterData;
+function TEmitterData.GetEmitterData( aNID : Word ) : PParticleEmitterData;
 begin
   if ( aNID = 0 ) or ( aNID >= Length( FEmitterData ) ) then
     Exit( nil );
-  Result := @FEmitterData[aNID];
+  Result := FEmitterData[aNID];
 end;
 
 // Binding management
@@ -241,7 +263,7 @@ begin
   FBindings[FBindingCount].UID := aUID;
   if FEngine <> nil then
   begin
-    iData := GetEmitterData( aNID );
+    iData := FEmitters.GetEmitterData( aNID );
     if iData <> nil then
       FBindings[FBindingCount].PoolIndex := FEngine.EmitStart( iData, aWorldPos )
     else
@@ -258,7 +280,7 @@ var iData : PParticleEmitterData;
 begin
   Result := -1;
   if ( aNID = 0 ) or ( FEngine = nil ) then Exit;
-  iData := GetEmitterData( aNID );
+  iData := FEmitters.GetEmitterData( aNID );
   if iData = nil then Exit;
   Result := FEngine.EmitStart( iData, aWorldPos );
 end;
@@ -277,7 +299,7 @@ var iData              : PParticleEmitterData;
     iSpeed             : Single;
 begin
   if ( aNID = 0 ) or ( aCount = 0 ) or ( FEngine = nil ) then Exit;
-  iData := GetEmitterData( aNID );
+  iData := FEmitters.GetEmitterData( aNID );
   if iData = nil then Exit;
 
   iDirection := iData^.Direction;
@@ -339,45 +361,31 @@ begin
     end;
 end;
 
-function TParticleStore.Wipe( aUID : TUID ) : Boolean;
-var i : Integer;
+procedure TParticleStore.UpdateBindings( aUpdatePositions : Boolean );
+var i     : Integer;
+    iNode : TVObject;
+    iDraw : TVec2i;
 begin
-  Result := False;
-  for i := FBindingCount - 1 downto 0 do
-    if FBindings[i].UID = aUID then
-    begin
-      if ( FEngine <> nil ) and ( FBindings[i].PoolIndex >= 0 ) then
-        FEngine.EmitKill( FBindings[i].PoolIndex );
-      RemoveBinding( i );
-      Result := True;
-    end;
-end;
-
-procedure TParticleStore.UpdateBoundEmitters;
-var i      : Integer;
-    iNode  : TNode;
-    iDraw  : TVec2i;
-begin
-  if FEngine = nil then Exit;
   for i := FBindingCount - 1 downto 0 do
   begin
-    // Check if emitter slot was auto-freed (burst/duration expired)
-    if ( FBindings[i].PoolIndex >= 0 ) and ( not FEngine.IsEmitterUsed( FBindings[i].PoolIndex ) ) then
+    if ( FEngine <> nil ) and ( FBindings[i].PoolIndex >= 0 ) and
+      ( not FEngine.IsEmitterUsed( FBindings[i].PoolIndex ) ) then
     begin
       RemoveBinding( i );
       Continue;
     end;
-    iNode := UIDs.Get( FBindings[i].UID );
+    iNode := FUIDs.Get( FBindings[i].UID );
     if iNode = nil then
     begin
-      if FBindings[i].PoolIndex >= 0 then
-        FEngine.EmitStop( FBindings[i].PoolIndex );
+      // Destruction is observed before rendering; things do not know about particles.
+      if ( FEngine <> nil ) and ( FBindings[i].PoolIndex >= 0 ) then
+        FEngine.EmitKill( FBindings[i].PoolIndex );
       RemoveBinding( i );
     end
-    else if ( iNode is TThing ) and ( FBindings[i].PoolIndex >= 0 ) then
+    else if aUpdatePositions and ( iNode is TThing ) and ( FBindings[i].PoolIndex >= 0 ) then
     begin
       FEngine.EmitSetVisible( FBindings[i].PoolIndex, TThing( iNode ).isVisible );
-      iDraw  := TThing( iNode ).GetDrawPosition;
+      iDraw := TThing( iNode ).GetDrawPosition;
       FEngine.EmitSetPosition( FBindings[i].PoolIndex,
         Vec3f( iDraw.X / SpriteMap.Engine.Scale + 16.0, iDraw.Y / SpriteMap.Engine.Scale + 16.0, 0 ) );
     end;
@@ -388,6 +396,7 @@ end;
 
 procedure TParticleStore.WriteToStream( aStream : TStream );
 begin
+  UpdateBindings( False );
   aStream.WriteWord( FBindingCount );
   if FBindingCount > 0 then
     aStream.Write( FBindings[0], FBindingCount * SizeOf( TEmitterBinding ) );
@@ -396,20 +405,24 @@ end;
 procedure TParticleStore.ReadFromStream( aStream : TStream );
 var iCount : Word;
     i      : Integer;
+    iData  : PParticleEmitterData;
 begin
+  Reset;
   iCount := aStream.ReadWord;
   if iCount = 0 then Exit;
-  if iCount > Length( FBindings ) then
-    SetLength( FBindings, iCount );
+  SetLength( FBindings, iCount );
   aStream.Read( FBindings[0], iCount * SizeOf( TEmitterBinding ) );
   FBindingCount := iCount;
-  // Re-create emitters for loaded bindings
-  if FEngine <> nil then
-    for i := 0 to FBindingCount - 1 do
-      if FBindings[i].NID > 0 then
-        FBindings[i].PoolIndex := FEngine.EmitStart( GetEmitterData( FBindings[i].NID ), Vec3f( 0, 0, 0 ) );
+  for i := 0 to FBindingCount - 1 do
+    FBindings[i].PoolIndex := -1;
+  UpdateBindings( False );
+  if FEngine = nil then Exit;
+  for i := 0 to FBindingCount - 1 do
+  begin
+    iData := FEmitters.GetEmitterData( FBindings[i].NID );
+    if iData <> nil then
+      FBindings[i].PoolIndex := FEngine.EmitStart( iData, Vec3f( 0, 0, 0 ) );
+  end;
 end;
-
-
 
 end.

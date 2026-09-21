@@ -7,8 +7,8 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit dfdata;
 interface
-uses Classes, SysUtils, idea,
-     vgenerics, vcolor, vutil, vrltools, vtigstyle, vluatable, vioevent, vvector,
+uses classes, sysutils, idea,
+     vlua, vgenerics, vcolor, vutil, vrltools, vtigstyle, vluatable, vioevent, vvector, vrandom,
      drlconfig, drlkeybindings;
 
 const CoreModuleID          : AnsiString = '';
@@ -20,8 +20,6 @@ const CoreModuleID          : AnsiString = '';
       SaveVersionEngine     : Ansistring = '';
       SaveVersionModule     : Ansistring = '';
       SaveModString         : Ansistring = '';
-
-var   MemorialWritten : Boolean;
 
 const PlayerSafeZone = 6;
 
@@ -98,16 +96,12 @@ const
   ForcePlayerName : AnsiString = '';
   ModdedGame      : Boolean = False;
   ForceRestart    : Ansistring = '';
-  ModErrors       : TStringGArray = nil;
   VisionBaseValue : Byte = 8;
 
   NoPlayerRecord : Boolean = False;
   NoScoreRecord  : Boolean = False;
 
   GodMode      : Boolean = False;
-
-  GameRealTime    : Comp = 0;
-  ProgramRealTime : Comp = 0;
 
   Config       : TDRLConfig = nil;
 
@@ -217,12 +211,6 @@ var
   HARDSPRITE_DECAL_BLOOD      : array[0..3] of DWord = ( 0,0,0,0 );
   HARDSPRITE_DECAL_WALL_BLOOD : array[0..3] of DWord = ( 0,0,0,0 );
   HARDEMITTER_BLOOD           : DWord = 0;
-
-var
-  SoundOff  : boolean = False;
-  MusicOff  : boolean = False;
-
-  // 0-25 range
 
 const
 {$include ../bin/data/core/commands.lua}
@@ -354,7 +342,7 @@ const ExpTable : array[1..MaxPlayerLevel] of LongInt =
                500000, 600000, 700000,
                900000,10000000);
                
-function Roll(stat : Integer) : Integer;
+function Roll( aRNG : TRNG; aStat : Integer ) : Integer;
 function ApplyMul( aBase, aMul : Integer ) : Integer;
 function InputDirection( aInput : TInputKey ) : TDirection;
 function DirectionToInput(Dir : TDirection) : TInputKey;
@@ -376,16 +364,14 @@ function SlotName(slot : TEqSlot) : string;
 function DamageTypeName( aDamageType : TDamageType ) : Ansistring;
 function ReadSprite( aTable : TLuaTable; var aSprite : TSprite ) : Boolean;
 function ReadSprite( aTable : TLuaTable; const aName : Ansistring; var aSprite : TSprite ) : Boolean;
-function ReadExplosion( aTable : TLuaTable; const aName : Ansistring; var aExplosion : TExplosionData ) : Boolean;
-function ReadExplosion( aTable : TLuaTable; var aExplosion : TExplosionData ) : Boolean;
+function ReadExplosion( aLua : TLua; aTable : TLuaTable; const aName : Ansistring; var aExplosion : TExplosionData ) : Boolean;
+function ReadExplosion( aLua : TLua; aTable : TLuaTable; var aExplosion : TExplosionData ) : Boolean;
 function ReadFileString( aStream : TStream; aSize : Integer ) : Ansistring;
 function ReadFileString( const aFileName : Ansistring ) : Ansistring;
 function WriteFileString( const aFileName, aText : Ansistring ) : Boolean;
 function ReadLineFromStream( aStream : TStream; aSize : Integer = -1 ) : AnsiString;
 function AxisToDirection( aAxis : TVec2f ) : TCoord2D;
 function SmoothFade( aElapsed, aDuration : Single; aFadeIn : Boolean ) : Single;
-
-var ColorOverrides : TIntHashMap;
 
 function GetPropValueFixed(Instance: TObject; const PropName: Ansistring; PreferStrings: Boolean = True): Variant;
 
@@ -394,7 +380,7 @@ var TIGStyleColored   : TTIGStyle;
     TIGStylePadless   : TTIGStyle;
 
 implementation
-uses typinfo, strutils, math, vmath, vdebug, vluasystem, drlbase;
+uses typinfo, strutils, math, vmath, vdebug;
 
 function ReadFileString( aStream : TStream; aSize : Integer ) : Ansistring;
 begin
@@ -708,17 +694,17 @@ begin
   NewSprite.Frametime   := 0;
 end;
 
-function Roll(stat : Integer) : Integer;
-var DieRoll : byte;
+function Roll( aRNG : TRNG; aStat : Integer ) : Integer;
+var iRoll : Byte;
 begin
-  DieRoll := DRL.GameRNG.Dice( 3, 6 );
-  case DieRoll of
+  iRoll := aRNG.Dice( 3, 6 );
+  case iRoll of
       3 : Exit(30);
       4 : Exit(20);
      17 : Exit(-20);
      18 : Exit(-30);
   end;
-  Roll := stat - DieRoll;
+  Result := aStat - iRoll;
 end;
 
 function ApplyMul( aBase, aMul : Integer ) : Integer;
@@ -864,7 +850,7 @@ begin
   end;
 end;
 
-function ReadExplosion( aTable : TLuaTable; var aExplosion : TExplosionData ) : Boolean;
+function ReadExplosion( aLua : TLua; aTable : TLuaTable; var aExplosion : TExplosionData ) : Boolean;
 begin
   aExplosion.Range      := aTable.getInteger('range',0);
   aExplosion.Delay      := aTable.getInteger('delay',0);
@@ -878,7 +864,7 @@ begin
     aExplosion.ContentID  := aTable.getInteger('content',0)
   else if aTable.IsString('content') then
   begin
-    aExplosion.ContentID := LuaSystem.Defines[ aTable.getString( 'content' ) ];
+    aExplosion.ContentID := aLua.Defines[ aTable.getString( 'content' ) ];
     if aExplosion.ContentID = 0 then
       Log( LOGERROR, 'unknown define ('+aTable.getString( 'content' ) +')!' );
   end
@@ -890,7 +876,7 @@ begin
     aExplosion.EmitterID := aTable.getInteger('emitter',0)
   else if aTable.IsString('emitter') then
   begin
-    aExplosion.EmitterID := LuaSystem.Defines[ aTable.getString( 'emitter' ) ];
+    aExplosion.EmitterID := aLua.Defines[ aTable.getString( 'emitter' ) ];
     if aExplosion.EmitterID = 0 then
       Log( LOGERROR, 'unknown emitter define ('+aTable.getString( 'emitter' ) +')!' );
   end
@@ -899,7 +885,7 @@ begin
   ReadExplosion := aExplosion.Color > 0;
 end;
 
-function ReadExplosion( aTable : TLuaTable; const aName : Ansistring; var aExplosion : TExplosionData ) : Boolean;
+function ReadExplosion( aLua : TLua; aTable : TLuaTable; const aName : Ansistring; var aExplosion : TExplosionData ) : Boolean;
 var iTable : TLuaTable;
 begin
   ReadExplosion                 := False;
@@ -907,7 +893,7 @@ begin
   if aTable.IsTable( aName ) then
   begin
     iTable := aTable.GetTable( aName );
-    Result := ReadExplosion( iTable, aExplosion );
+    Result := ReadExplosion( aLua, iTable, aExplosion );
     iTable.Free;
   end;
 end;

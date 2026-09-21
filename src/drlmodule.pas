@@ -6,7 +6,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlmodule;
 interface
-uses vlua, vutil, vnode, vgenerics;
+uses vluastate, vutil, vnode, vgenerics;
 
 type TDRLModule = class
     ID           : Ansistring;
@@ -54,15 +54,15 @@ private
   FDataPath      : AnsiString;
   FModulesFile   : AnsiString;
 private
-  function ReadMetaFromModule( aLua : TLua; aOverride : Boolean;
+  function ReadMetaFromModule( aLua : TLuaState; aOverride : Boolean;
     const aExpectedID : AnsiString = '';
     aRequired : Boolean = False ) : TDRLModule;
-  procedure ReadMetaFromWAD( aLua : TLua; const aPath : Ansistring; aOverride : Boolean = True );
-  procedure ReadMetaFromFolder( aLua : TLua; const aPath : Ansistring;
+  procedure ReadMetaFromWAD( aLua : TLuaState; const aPath : Ansistring; aOverride : Boolean = True );
+  procedure ReadMetaFromFolder( aLua : TLuaState; const aPath : Ansistring;
     aOverride : Boolean = True; const aExpectedID : AnsiString = '';
     aRequired : Boolean = False );
-  procedure ReadMetaFromSteamFolder( aLua : TLua; const aPath : Ansistring );
-  procedure ScanExternalModules( aLua : TLua );
+  procedure ReadMetaFromSteamFolder( aLua : TLuaState; const aPath : Ansistring );
+  procedure ScanExternalModules( aLua : TLuaState );
 public
   property ActiveModules : TModuleList read FActiveModules;
   property CoreModules   : TModuleList read FCoreModules;
@@ -70,8 +70,6 @@ public
   property CoreModuleID  : Ansistring  read FCoreModuleID;
   property ModString     : Ansistring  read FModString;
 end;
-
-var Modules : TDRLModules;
 
 implementation
 
@@ -106,7 +104,7 @@ end;
 procedure TDRLModules.ScanModules;
 var iInfo   : TSearchRec;
     iModule : TDRLModule;
-    iLua    : TLua;
+    iLua    : TLuaState;
     iStore  : TStoreInterface;
     iSMods  : TModArray;
     iSMInfo : TModInfo;
@@ -118,7 +116,7 @@ begin
   FCoreModule := nil;
   iLua := nil;
   try
-    iLua := TLua.Create;
+    iLua := TLuaState.Create;
 
     if FindFirst( FDataPath + '*.wad', faAnyFile, iInfo ) = 0 then
     repeat
@@ -211,7 +209,7 @@ begin
   Log( 'mod_string generated "%s"', [ FModString ] );
 end;
 
-function TDRLModules.ReadMetaFromModule( aLua : TLua; aOverride : Boolean;
+function TDRLModules.ReadMetaFromModule( aLua : TLuaState; aOverride : Boolean;
   const aExpectedID : AnsiString = '';
   aRequired : Boolean = False ) : TDRLModule;
 var iModule : TDRLModule;
@@ -274,7 +272,7 @@ begin
   Exit( iModule );
 end;
 
-procedure TDRLModules.ReadMetaFromWAD( aLua : TLua; const aPath : Ansistring; aOverride : Boolean = True );
+procedure TDRLModules.ReadMetaFromWAD( aLua : TLuaState; const aPath : Ansistring; aOverride : Boolean = True );
 var iData   : TVDataFile;
     iModule : TDRLModule;
 begin
@@ -297,7 +295,7 @@ begin
   end;
 end;
 
-procedure TDRLModules.ReadMetaFromFolder( aLua : TLua;
+procedure TDRLModules.ReadMetaFromFolder( aLua : TLuaState;
   const aPath : Ansistring; aOverride : Boolean = True;
   const aExpectedID : AnsiString = ''; aRequired : Boolean = False );
 var iModule : TDRLModule;
@@ -318,7 +316,7 @@ begin
   end;
 end;
 
-procedure TDRLModules.ScanExternalModules( aLua : TLua );
+procedure TDRLModules.ScanExternalModules( aLua : TLuaState );
 var iManifestPath : AnsiString;
     iModuleID     : AnsiString;
     iPath         : AnsiString;
@@ -376,7 +374,7 @@ begin
   end;
 end;
 
-procedure TDRLModules.ReadMetaFromSteamFolder( aLua : TLua; const aPath : Ansistring );
+procedure TDRLModules.ReadMetaFromSteamFolder( aLua : TLuaState; const aPath : Ansistring );
 var iModule : TDRLModule;
 begin
   Log( LOGINFO, 'found Workshop path "%s"...', [aPath] );

@@ -6,10 +6,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlinventory;
 interface
-uses SysUtils,
-     vnode,
-     dfitem, dfthing, dfdata,
-     drlhooks;
+uses sysutils, vnode, dfitem, dfthing, dfdata, drlhooks;
 
 type
   TItemList      = array[TItemSlot] of TItem;
@@ -58,7 +55,7 @@ TInventory = class( TVObject )
 
 implementation
 
-uses vmath, vluasystem, drlio, drlkeybindings, dfplayer;
+uses vmath, vlua, drlio, drlkeybindings, dfplayer;
 
 { TInventoryEnumerator }
 
@@ -174,9 +171,9 @@ var iAmount : Integer;
     iMax    : Integer;
 begin
   if aID <= 0 then Exit( 0 );
-  if LuaSystem.Defined([ CoreModuleID, 'GetItemMax' ])
-    then iMax := LuaSystem.ProtectedCall([ CoreModuleID, 'GetItemMax' ], [aID] )
-    else iMax := LuaSystem.Get(['items',aID,'max']);
+  if FOwner.Context.Lua.Defined([ CoreModuleID, 'GetItemMax' ])
+    then iMax := FOwner.Context.Lua.ProtectedCall([ CoreModuleID, 'GetItemMax' ], [aID] )
+    else iMax := FOwner.Context.Lua.Get(['items',aID,'max']);
   iItem := SeekStack(aID);
 
   if iItem <> nil then
@@ -191,7 +188,7 @@ begin
     if isFull then Exit(aCount);
 
     iAmount      := Min(aCount,iMax);
-    iItem        := TItem.Create(aID);
+    iItem        := TItem.Create( aID, FOwner.Context );
     iItem.Amount := iAmount;
     Add(iItem);
     aCount -= iAmount;

@@ -8,9 +8,9 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlapplication;
 interface
 
-uses
-  SysUtils, vapp, viorl, vluasystem, vrlapp, vstoreinterface, vutil,
-  drlbase, drlmodule;
+uses sysutils,
+     vapp, viorl, vlua, vrlapp, vstoreinterface, vutil, vioevent,
+     dfdata, dfhof, drlbase, drlmodule, drlgamedata, drlhelp;
 
 type
   TDRLApplication = class;
@@ -22,12 +22,16 @@ type
 // session. Per-playthrough state belongs in TDRLSession.
 type TDRLRuntime = class( TRLRuntime )
   private
-    FSession     : TDRLSession;
-    FGameFailed  : Boolean;
-    FModules     : TDRLModules;
-    FStore       : TStoreInterface;
-    FModuleHooks : TFlags;
-    FDataLoaded  : Boolean;
+    FSession          : TDRLSession;
+    FModules          : TDRLModules;
+    FStore            : TStoreInterface;
+    FData             : TGameData;
+    FHelp             : THelp;
+    FModErrors        : TStringGArray;
+    FModuleHooks      : TFlags;
+    FDataLoaded       : Boolean;
+    FHOF              : THOF;
+    FProfileTimeStart : Comp;
     procedure ApplyConfiguration;
     procedure CreateSession( aInitializeData : Boolean );
     procedure ReleaseSession;
@@ -35,21 +39,25 @@ type TDRLRuntime = class( TRLRuntime )
     procedure UnloadGameData;
   protected
     function CreateIO : TIORL; override;
-    function CreateLua : TLuaSystem; override;
+    function CreateLua : TLua; override;
     procedure PrepareGameData; override;
     procedure InitializeGameData; override;
     function RunGame : TVRunResult; override;
     procedure ShutdownGameData; override;
     procedure ResetGameData; override;
-    procedure HandleGameException( aException : Exception ); override;
   public
     constructor Create( const aPaths : TGamePaths; var aConfiguration : TObject;
       const aModulesFile : AnsiString ); reintroduce;
     destructor Destroy; override;
     procedure Reconfigure;
-    property Modules : TDRLModules read FModules;
-    property Store : TStoreInterface read FStore;
-    property Session : TDRLSession read FSession;
+    procedure SaveProfile;
+    property HOF       : THOF            read FHOF;
+    property Help      : THelp           read FHelp;
+    property ModErrors : TStringGArray   read FModErrors;
+    property Data      : TGameData       read FData;
+    property Modules   : TDRLModules     read FModules;
+    property Store     : TStoreInterface read FStore;
+    property Session   : TDRLSession     read FSession;
   end;
 
 // TDRLApplication
@@ -75,11 +83,9 @@ type TDRLApplication = class( TRLApplication )
 
 implementation
 
-uses
-  {$IFDEF WINDOWS}Windows, vos,{$ENDIF}
-  vdebug, vlog, vlua,
-  dfdata, dfhof, dfmap, drlconfig, drlconfiguration, drlgfxio, drlhelp, drlhooks,
-  drlio, drlua, drltextio, drlworkshop;
+uses {$IFDEF WINDOWS}windows,{$ENDIF}
+     {$IFDEF WINDOWS}vos,{$ENDIF} vdebug, vlog, vluastate,
+     dfmap, drlconfig, drlconfiguration, drlgfxio, drlhooks, drlio, drllua, drltextio, drlworkshop;
 
 type TDRLConfigurationState = class( TDRLConfiguration )
   private
@@ -139,7 +145,7 @@ begin
   FStore := TStoreInterface.Get;
   FModules := TDRLModules.Create(Paths.DataPath, aModulesFile);
   FModules.ScanModules;
-  ModErrors := TStringGArray.Create;
+  FModErrors := TStringGArray.Create;
   TDRLIO(IO).Modules := FModules;
   TDRLIO(IO).Store := FStore;
 end;
@@ -148,16 +154,21 @@ destructor TDRLRuntime.Destroy;
 begin
   ReleaseSession;
   UnloadGameData;
-  drlbase.Lua := nil;
   TDRLIO(IO).Modules := nil;
   TDRLIO(IO).Store := nil;
-  FreeAndNil(ModErrors);
+  FreeAndNil(FModErrors);
   FreeAndNil(FModules);
   inherited Destroy;
 end;
 
 procedure TDRLRuntime.ReleaseSession;
 begin
+  // Views and animations must be released while their Session and level exist.
+  if FSession <> nil then
+  begin
+    IO.Clear;
+    TDRLIO(IO).ClearAnimations;
+  end;
   if TDRLIO(IO).Session = FSession then
     TDRLIO(IO).Session := nil;
   if drlbase.DRL = FSession then
@@ -173,21 +184,20 @@ begin
     Result := TDRLTextIO.Create;
 end;
 
-function TDRLRuntime.CreateLua : TLuaSystem;
+function TDRLRuntime.CreateLua : TLua;
 begin
-  Result := TDRLLua.Create(FModules, Paths.DataPath);
+  Result := TDRLLua.Create( FModules, Paths.DataPath );
 end;
 
 procedure TDRLRuntime.CreateSession( aInitializeData : Boolean );
 begin
-  FSession := TDRLSession.Create( Self, FModules, FStore, Paths );
+  FSession := TDRLSession.Create( Self, FModules, FStore, FData, Paths );
   TDRLIO(IO).Session := FSession;
   drlbase.DRL := FSession;
   if not aInitializeData then Exit;
+  TDRLLua( FLua ).BindNodeContext( FSession.Context );
   FSession.InitializeLevel;
   FSession.SetModuleHooks( FModuleHooks );
-  if not GraphicsVersion then
-    (IO as TDRLTextIO).SetTextMap( FSession.Level );
 end;
 
 // Phase order: select module and paths; create an initial session shell;
@@ -195,7 +205,6 @@ end;
 procedure TDRLRuntime.PrepareGameData;
 var iModulePath : AnsiString;
 begin
-  FGameFailed := False;
   if ForceRestart <> '' then
   begin
     FModules.ScanModules;
@@ -220,10 +229,11 @@ begin
     CreateDir(iModulePath + 'backup');
 
   FModules.ActivateModules(CoreModuleID);
+  FData := TGameData.Create;
   CreateSession( False );
   TDRLIO(IO).Initialize;
   TDRLIO(IO).LoadStart;
-  ProgramRealTime := MSecNow();
+  FProfileTimeStart := MSecNow();
   TDRLIO(IO).Configure(Config);
   TDRLIO(IO).Reconfigure(Config);
 
@@ -250,12 +260,9 @@ begin
   );
   TDRLIO(IO).LoadStart;
   FDataLoaded := True;
-  ColorOverrides := TIntHashMap.Create;
   TDRLIO(IO).Configure(Config, True);
   FModuleHooks := [];
-  Cells := TCells.Create;
-  Help := THelp.Create;
-  LuaRNG := GameRNG;
+  FHelp := THelp.Create;
 end;
 
 // Phase order: publish Lua; load hooks and module data; then prepare
@@ -263,8 +270,13 @@ end;
 procedure TDRLRuntime.InitializeGameData;
 var i : Integer;
 begin
-  LuaSystem.CallDefaultResult := True;
-  FModuleHooks := LoadHooks([CoreModuleID], GlobalHooks);
+  FSession.Context.BindLua( FLua );
+  TDRLLua( FLua ).BindNodeContext( FSession.Context );
+  FData.RegisterLuaAPI( FLua );
+  TDRLLua( FLua ).ReadWad( FHelp, FModErrors );
+  if GodMode then RegisterDebugConsole( VKEY_F1 );
+  FLua.CallDefaultResult := True;
+  FModuleHooks := LoadHooks( FLua, [CoreModuleID], GlobalHooks );
   SafeCallModuleHook(Hook_OnLoad, []);
   ApplyConfiguration;
   TDRLIO(IO).Reconfigure(Config);
@@ -273,33 +285,32 @@ begin
     (IO as TDRLGFXIO).Textures.Upload;
 
   if GodMode and FileExists(Paths.WritePath + 'god.lua') then
-    drlbase.Lua.LoadFile(Paths.WritePath + 'god.lua');
-  HOF.Init(Paths);
+    FLua.LoadFile(Paths.WritePath + 'god.lua');
+  FHOF := THOF.Create( FLua, Paths );
+  dfhof.HOF := FHOF;
   FSession.InitializeLevel;
-  if not GraphicsVersion then
-    (IO as TDRLTextIO).SetTextMap(FSession.Level);
 
-  HARDSPRITE_HIGHLIGHT    := drlbase.Lua.Get('HARDSPRITE_HIGHLIGHT');
-  HARDSPRITE_EXPL         := drlbase.Lua.Get('HARDSPRITE_EXPL');
-  HARDSPRITE_SELECT       := drlbase.Lua.Get('HARDSPRITE_SELECT');
-  HARDSPRITE_MARK         := drlbase.Lua.Get('HARDSPRITE_MARK');
-  HARDSPRITE_GRID         := drlbase.Lua.Get('HARDSPRITE_GRID');
-  HARDSPRITE_SHIELD       := drlbase.Lua.Get('HARDSPRITE_SHIELD');
-  HARDSPRITE_SHIELD_COUNT := drlbase.Lua.Get('HARDSPRITE_SHIELD_COUNT');
+  HARDSPRITE_HIGHLIGHT    := FLua.Get('HARDSPRITE_HIGHLIGHT');
+  HARDSPRITE_EXPL         := FLua.Get('HARDSPRITE_EXPL');
+  HARDSPRITE_SELECT       := FLua.Get('HARDSPRITE_SELECT');
+  HARDSPRITE_MARK         := FLua.Get('HARDSPRITE_MARK');
+  HARDSPRITE_GRID         := FLua.Get('HARDSPRITE_GRID');
+  HARDSPRITE_SHIELD       := FLua.Get('HARDSPRITE_SHIELD');
+  HARDSPRITE_SHIELD_COUNT := FLua.Get('HARDSPRITE_SHIELD_COUNT');
   HARDEMITTER_BLOOD := 0;
-  if drlbase.Lua.RawDefined('HARDEMITTER_BLOOD') then
-    HARDEMITTER_BLOOD := drlbase.Lua.Get('HARDEMITTER_BLOOD', 0);
+  if FLua.RawDefined('HARDEMITTER_BLOOD') then
+    HARDEMITTER_BLOOD := FLua.Get('HARDEMITTER_BLOOD', 0);
   for i := 0 to 3 do
   begin
     HARDSPRITE_DECAL_BLOOD[i] := 0;
     HARDSPRITE_DECAL_WALL_BLOOD[i] := 0;
   end;
-  if drlbase.Lua.RawDefined('HARDSPRITE_DECAL_BLOOD_1') then
+  if FLua.RawDefined('HARDSPRITE_DECAL_BLOOD_1') then
     for i := 0 to 3 do
-      HARDSPRITE_DECAL_BLOOD[i] := drlbase.Lua.Get('HARDSPRITE_DECAL_BLOOD_'+IntToStr(i+1), 0);
-  if drlbase.Lua.RawDefined('HARDSPRITE_DECAL_WALL_BLOOD_1') then
+      HARDSPRITE_DECAL_BLOOD[i] := FLua.Get('HARDSPRITE_DECAL_BLOOD_'+IntToStr(i+1), 0);
+  if FLua.RawDefined('HARDSPRITE_DECAL_WALL_BLOOD_1') then
     for i := 0 to 3 do
-      HARDSPRITE_DECAL_WALL_BLOOD[i] := drlbase.Lua.Get('HARDSPRITE_DECAL_WALL_BLOOD_'+IntToStr(i+1), 0);
+      HARDSPRITE_DECAL_WALL_BLOOD[i] := FLua.Get('HARDSPRITE_DECAL_WALL_BLOOD_'+IntToStr(i+1), 0);
 
   FSession.SetModuleHooks(FModuleHooks);
   TDRLIO(IO).LoadStop;
@@ -326,25 +337,15 @@ begin
     Result := VRR_QUIT;
 end;
 
-// Normal release only; failed-generation release is deferred to destruction.
 procedure TDRLRuntime.ShutdownGameData;
 begin
-  if not FGameFailed then
-  begin
-    ReleaseSession;
-    UnloadGameData;
-  end;
+  ReleaseSession;
+  UnloadGameData;
 end;
 
 procedure TDRLRuntime.ResetGameData;
 begin
-  FGameFailed := False;
   TDRLIO(IO).Reset;
-end;
-
-procedure TDRLRuntime.HandleGameException( aException : Exception );
-begin
-  FGameFailed := True;
 end;
 
 procedure TDRLRuntime.ApplyConfiguration;
@@ -369,6 +370,14 @@ begin
   Setting_Fade := drlconfiguration.Configuration.GetBoolean('fade_fx');
 end;
 
+procedure TDRLRuntime.SaveProfile;
+var iSeconds : DWord;
+begin
+  iSeconds := Round( (MSecNow() - FProfileTimeStart) / 1000 );
+  FProfileTimeStart := MSecNow();
+  FHOF.Save( iSeconds );
+end;
+
 procedure TDRLRuntime.Reconfigure;
 begin
   ApplyConfiguration;
@@ -382,21 +391,21 @@ begin
   for iModule in FModules.ActiveModules do
     if aHook in iModule.Hooks then
     try
-      LuaSystem.SetValue( 'BASE_MODULE_LOADING', iModule.IsBaseLoading );
+      FLua.SetValue( 'BASE_MODULE_LOADING', iModule.IsBaseLoading );
       try
-        LuaSystem.ProtectedCall( [iModule.ID, HookNames[aHook]], aParams );
+        FLua.ProtectedCall( [iModule.ID, HookNames[aHook]], aParams );
       finally
-        LuaSystem.SetValue( 'BASE_MODULE_LOADING', False );
+        FLua.SetValue( 'BASE_MODULE_LOADING', False );
       end;
     except
       on E : Exception do
       begin
         if ModdedGame then
         begin
-          ModErrors.Push('Error : Mod "'+iModule.ID+'" failed to execute '+HookNames[aHook]+'!');
-          ModErrors.Push('Path  : '+iModule.Path);
-          ModErrors.Push(E.Message);
-          ModErrors.Push('');
+          FModErrors.Push('Error : Mod "'+iModule.ID+'" failed to execute '+HookNames[aHook]+'!');
+          FModErrors.Push('Path  : '+iModule.Path);
+          FModErrors.Push(E.Message);
+          FModErrors.Push('');
         end
         else
           raise;
@@ -406,15 +415,17 @@ end;
 
 procedure TDRLRuntime.UnloadGameData;
 begin
+  FreeAndNil( FData );
   if not FDataLoaded then Exit;
-  if Assigned(IO) then
-    TDRLIO(IO).ClearAnimations;
   FDataLoaded := False;
-  HOF.Done;
-  drlbase.Lua := nil;
-  FreeAndNil(Help);
-  FreeAndNil(ColorOverrides);
-  FreeAndNil(Cells);
+  try
+    if FHOF <> nil then
+      SaveProfile;
+  finally
+    dfhof.HOF := nil;
+    FreeAndNil( FHOF );
+    FreeAndNil( FHelp );
+  end;
 end;
 
 { TDRLApplication }

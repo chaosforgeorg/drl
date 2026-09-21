@@ -7,14 +7,20 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlconfig;
 interface
 
-uses Classes, SysUtils, vluaconfig;
+uses classes, sysutils, vluaconfig, vgenerics;
 
-type
+type TColorOverrides = specialize TGHashMap< Integer >;
 
 { TDRLConfig }
 
-TDRLConfig = class(TLuaConfig)
-  constructor Create( const FileName : Ansistring; Reload : Boolean );
+type TDRLConfig = class(TLuaConfig)
+  constructor Create( const aFileName : AnsiString; aReload : Boolean );
+  destructor Destroy; override;
+private
+  FColorOverrides : TColorOverrides;
+  procedure ReadColorOverride( aKey, aValue : Variant );
+public
+  property ColorOverrides : TColorOverrides read FColorOverrides;
 end;
 
 
@@ -25,11 +31,12 @@ uses dfdata, drlio;
 
 { TDRLConfig }
 
-constructor TDRLConfig.Create( const FileName : Ansistring; Reload : Boolean );
+constructor TDRLConfig.Create( const aFileName : AnsiString; aReload : Boolean );
 begin
   inherited Create;
+  FColorOverrides := TColorOverrides.Create;
 
-  LoadMain( FileName );
+  LoadMain( aFileName );
 
   Option_Graphics         := Configure('Graphics',Option_Graphics);
   Option_Blending         := Configure('Blending',Option_Blending);
@@ -107,7 +114,19 @@ begin
       else GraphicsVersion := False;
   end;
 
-  TDRLIO.RegisterLuaAPI( State );
+  TDRLIO.RegisterLuaAPI( FStack );
+  if aReload then EntryFeed( 'Colors', @ReadColorOverride );
+end;
+
+procedure TDRLConfig.ReadColorOverride( aKey, aValue : Variant );
+begin
+  FColorOverrides[aKey] := aValue;
+end;
+
+destructor TDRLConfig.Destroy;
+begin
+  FreeAndNil( FColorOverrides );
+  inherited Destroy;
 end;
 
 end.

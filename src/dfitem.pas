@@ -7,7 +7,9 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit dfitem;
 interface
-uses Classes, SysUtils, dfthing, dfdata, vrltools, vluatable, vcolor, math;
+uses classes, sysutils, math,
+     vluagamestack, vrltools, vluatable, vcolor, vlua, vrandom, vnode,
+     drlperk, dfthing, dfdata;
 
 type
 
@@ -15,12 +17,12 @@ type
 
 TItem  = class( TThing )
 
-    constructor Create( const aID : AnsiString; aOnFloor : Boolean = False ); overload;
-    constructor Create( aNID : Integer; aOnFloor : Boolean = False); overload;
-    constructor CreateFromStream( aStream: TStream ); override;
+    constructor Create( const aID : AnsiString; aContext : TNodeContext; aOnFloor : Boolean = False ); overload;
+    constructor Create( aNID : Integer; aContext : TNodeContext; aOnFloor : Boolean = False ); overload;
+    constructor CreateFromStream( aStream : TStream; aContext : TNodeContext; aPerkDefinitions : TPerkDefinitions ); override;
     procedure WriteToStream( aStream: TStream ); override;
 
-    function    rollDamage : Integer;
+    function    rollDamage( aGameRNG : TRNG ) : Integer;
     function    maxDamage : Integer;
     function    GetName( aKnown : boolean; aSingle : Boolean = False ) : Ansistring;
     function    GetExtName( aLyingHere : Boolean ) : Ansistring;
@@ -56,7 +58,7 @@ TItem  = class( TThing )
     function MenuColor : byte;
     function Preposition( const Item : AnsiString ) : string;
     class function Compare( a, b : TItem ) : Boolean; reintroduce;
-    class procedure RegisterLuaAPI();
+    class procedure RegisterLuaAPI( aLua : TLua );
     private
     FNID      : Integer;
     FProps    : TItemProperties;
@@ -114,8 +116,8 @@ procedure SwapItem(var a, b: TItem);
 
 implementation
 
-uses vnode, drlua, vluasystem, vluaentitynode, vutil, vdebug, dfbeing, drlbase, 
-     vmath, drlhooks, drlperk;
+uses vluaentitynode, vutil, vdebug, vmath,
+     dfbeing, drllua, drlbase, drlhooks;
 
 procedure SwapItem(var a, b: TItem);
 var c : TItem;
@@ -148,34 +150,34 @@ begin
   raise EItemException.CreateFmt('eqSlot -- unsupported IType: %d',[ Byte( FProps.Itype ) ]);
 end;
 
-constructor TItem.Create( aNID : Integer; aOnFloor : Boolean );
+constructor TItem.Create( aNID : Integer; aContext : TNodeContext; aOnFloor : Boolean );
 var iTable : TLuaTable;
 begin
   if aNID <= 0 then raise EItemException.Create('Bad item (ID<=0) passed to Create!');
-  inherited Create( LuaSystem.Get( ['items', aNID, 'id' ] ) );
+  inherited Create( aContext.Lua.Get( ['items', aNID, 'id' ] ), aContext );
   FEntityID := ENTITY_ITEM;
 
-  iTable := LuaSystem.GetTable( ['items', aNID ] );
+  iTable := FContext.Lua.GetTable( ['items', aNID ] );
   LuaLoad( iTable, aOnFloor );
   FreeAndNil( iTable );
 end;
 
-constructor TItem.Create( const aID : AnsiString; aOnFloor: Boolean );
+constructor TItem.Create( const aID : AnsiString; aContext : TNodeContext; aOnFloor: Boolean );
 var iTable : TLuaTable;
 begin
   if aID = '' then raise EItemException.Create('Bad item id!');
-  inherited Create( aID );
+  inherited Create( aID, aContext );
   FEntityID := ENTITY_ITEM;
 
-  iTable := LuaSystem.GetTable( ['items', aID ] );
+  iTable := FContext.Lua.GetTable( ['items', aID ] );
   LuaLoad( iTable, aOnFloor );
   FreeAndNil( iTable );
 end;
 
-constructor TItem.CreateFromStream ( aStream : TStream ) ;
+constructor TItem.CreateFromStream( aStream : TStream; aContext : TNodeContext; aPerkDefinitions : TPerkDefinitions );
 var i, iCount : Word;
 begin
-  inherited CreateFromStream ( aStream ) ;
+  inherited CreateFromStream( aStream, aContext, aPerkDefinitions );
 
   aStream.Read( FMods,     SizeOf( FMods ) );
   aStream.Read( FProps,    SizeOf( FProps ) );
@@ -187,7 +189,7 @@ begin
   iCount := aStream.ReadWord();
   if iCount = 0 then Exit;
   for i := 1 to iCount do
-    Add( TItem.CreateFromStream( aStream ) );
+    Add( TItem.CreateFromStream( aStream, FContext, aPerkDefinitions ) );
 end;
 
 procedure TItem.WriteToStream ( aStream : TStream ) ;
@@ -262,7 +264,7 @@ begin
   FProps.MissTrail   := 0;
   iID                := aTable.getString('miss_trail','');
   if iID <> '' then
-    FProps.MissTrail := LuaSystem.Defines[ iID ];
+    FProps.MissTrail := FContext.Lua.Defines[ iID ];
 
   FProps.PCosColor := ColorZero;
   FProps.PGlowColor := ColorZero;
@@ -271,13 +273,13 @@ begin
 
   ReadSprite( aTable, 'missprite', FProps.MisSprite );
   ReadSprite( aTable, 'hitsprite', FProps.HitSprite );
-  ReadExplosion( aTable, 'explosion', FProps.Explosion );
+  ReadExplosion( FContext.Lua, aTable, 'explosion', FProps.Explosion );
 
 
   if aOnFloor and ( FProps.IType = ITEMTYPE_AMMO ) then
-    FAmount := Round( FAmount * Double(LuaSystem.Get([ 'diff', DRL.Difficulty, 'ammofactor' ])) );
+    FAmount := Round( FAmount * Double(FContext.Lua.Get([ 'diff', DRL.Difficulty, 'ammofactor' ])) );
 
-  LuaSystem.ProtectedRunHook( Self, 'OnCreate', [] );
+  FContext.Lua.ProtectedRunHook( Self, 'OnCreate', [] );
   DRL.CallHook( Hook_OnCreate, [Self] );
 end;
 
@@ -287,9 +289,9 @@ begin
   if Color = white then Exit(LightGray) else Exit(Color);
 end;
 
-function TItem.rollDamage : Integer;
+function TItem.rollDamage( aGameRNG : TRNG ) : Integer;
 begin
-  if isWeapon then Exit( FProps.Damage.Roll( DRL.GameRNG ) );
+  if isWeapon then Exit( FProps.Damage.Roll( aGameRNG ) );
   raise EItemException.CreateFmt('TItem.Damage called for Itype %d!',[ Byte( FProps.Itype ) ] );
 end;
 
@@ -403,8 +405,8 @@ begin
   begin
     iPerks := FPerks.List;
     for i := 0 to iPerks.Size - 1 do
-      if Hook_OnAltFire in PerkData[ iPerks[i].ID ].Hooks then
-        Exit( PerkData[ iPerks[i].ID ].Short );
+      if Hook_OnAltFire in FPerks.Definitions.Data[ iPerks[i].ID ].Hooks then
+        Exit( FPerks.Definitions.Data[ iPerks[i].ID ].Short );
   end;
 end;
 
@@ -417,8 +419,8 @@ begin
   begin
     iPerks := FPerks.List;
     for i := 0 to iPerks.Size - 1 do
-      if Hook_OnAltReload in PerkData[ iPerks[i].ID ].Hooks then
-        Exit( PerkData[ iPerks[i].ID ].Short );
+      if Hook_OnAltReload in FPerks.Definitions.Data[ iPerks[i].ID ].Hooks then
+        Exit( FPerks.Definitions.Data[ iPerks[i].ID ].Short );
   end;
 end;
 
@@ -431,7 +433,7 @@ begin
   begin
     iPerks := FPerks.List;
     if iPerks.Size = 0 then Exit('');
-    Exit( PerkData[ iPerks[0].ID ].Desc );
+    Exit( FPerks.Definitions.Data[ iPerks[0].ID ].Desc );
   end;
 end;
 
@@ -530,9 +532,9 @@ begin
   begin
     iPerks := FPerks.List;
     for i := 0 to iPerks.Size - 1 do
-      if Hook_OnDescribe in PerkData[ iPerks[i].ID ].Hooks then
+      if Hook_OnDescribe in FPerks.Definitions.Data[ iPerks[i].ID ].Hooks then
       begin
-        iName := LuaSystem.ProtectedCall( [ 'perks', iPerks[i].ID, HookNames[Hook_OnDescribe] ], [ Self ] );
+        iName := FContext.Lua.ProtectedCall( [ 'perks', iPerks[i].ID, HookNames[Hook_OnDescribe] ], [ Self ] );
         Break;
       end;
   end;
@@ -653,18 +655,20 @@ begin
   Exit( True );
 end;
 
-function lua_item_new(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
-    Item  : TItem;
+function lua_item_new( L : PLua_State ): Integer; cdecl;
+var iState : TLuaGameStack;
+    iLua   : TDRLLua;
+    iItem  : TItem;
 begin
-  State.Init(L);
-  Item := TItem.Create( State.ToId( 1 ), State.ToBoolean( 2 ) );
-  State.Push(Item);
+  iState.Init( L );
+  iLua := TDRLLua( TLuaContext.FromState( L ).Lua );
+  iItem := TItem.Create( iState.ToId( iLua, 1 ), iLua.NodeContext, iState.ToBoolean( 2 ) );
+  iState.Push(iItem);
   Result := 1;
 end;
 
 function lua_item_get_mod(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iItem  : TItem;
 begin
   iState.Init(L);
@@ -674,7 +678,7 @@ begin
 end;
 
 function lua_item_set_mod(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iItem  : TItem;
 begin
   iState.Init(L);
@@ -684,7 +688,7 @@ begin
 end;
 
 function lua_item_set_sprite(L: Plua_State): Integer; cdecl;
-var iState   : TDRLLuaState;
+var iState   : TLuaGameStack;
     iItem    : TItem;
     iType    : Ansistring;
     iPSprite : ^TSprite;
@@ -723,7 +727,7 @@ begin
 end;
 
 function lua_item_set_explosion(L: Plua_State): Integer; cdecl;
-var iState   : TDRLLuaState;
+var iState   : TLuaGameStack;
     iItem    : TItem;
     iTable   : TLuaTable;
 begin
@@ -733,13 +737,13 @@ begin
   iTable := iState.ToTable(2);
   if iTable = nil then Exit( 0 );
   FillChar( iItem.FProps.Explosion, SizeOf( TExplosionData ), 0 );
-  ReadExplosion( iTable, iItem.FProps.Explosion );
+  ReadExplosion( iItem.Context.Lua, iTable, iItem.FProps.Explosion );
   FreeAndNil( iTable );
   Result := 0;
 end;
 
 function lua_item_set_sound_id(L: Plua_State): Integer; cdecl;
-var iState   : TDRLLuaState;
+var iState   : TLuaGameStack;
     iItem    : TItem;
 begin
   iState.Init(L);
@@ -750,7 +754,7 @@ begin
 end;
 
 function lua_item_is_usable( L : Plua_State ) : Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iItem  : TItem;
 begin
   iState.Init( L );
@@ -771,9 +775,9 @@ const lua_item_lib : array[0..7] of luaL_Reg = (
       ( name : nil;             func : nil; )
 );
 
-class procedure TItem.RegisterLuaAPI();
+class procedure TItem.RegisterLuaAPI( aLua : TLua );
 begin
-  LuaSystem.Register( 'item', lua_item_lib );
+  aLua.Register( 'item', lua_item_lib );
 end;
 
 end.

@@ -7,9 +7,8 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit dfplayer;
 interface
 uses classes, sysutils,
-     vpath, vutil, vrltools, vvision, viotypes,
-     dfbeing, dfhof, dfdata, dfitem,
-     drltraits, drlkeybindings, drlstatistics, drlmultimove;
+     vluagamestack, vpath, vutil, vrltools, vvision, viotypes, vlua, vnode, vrandom,
+     drlperk, dfbeing, dfdata, dfitem, drltraits, drlkeybindings, drlcommand, drlstatistics, drlmultimove;
 
 
 type TQuickSlotInfo = record
@@ -30,16 +29,17 @@ type TPlayer = class(TBeing)
 
   FQuickSlots     : array[1..9] of TQuickSlotInfo;
 
-  constructor Create; reintroduce;
+  constructor Create( aContext : TNodeContext; aGameRNG : TRNG ); reintroduce;
   procedure Initialize; reintroduce;
   procedure SetKilledBy( const aKilledBy : AnsiString; aKilledMelee : Boolean );
-  constructor CreateFromStream( Stream: TStream ); override;
+  constructor CreateFromStream( aStream : TStream; aContext : TNodeContext; aPerkDefinitions : TPerkDefinitions ); override;
   procedure WriteToStream( Stream: TStream ); override;
   function CallHook( aHook : Byte; const aParams : array of Const ) : Boolean; override;
   function CallHookCheck( aHook : Byte; const aParams : array of Const ) : Boolean; override;
   function CallHookCan( aHook : Byte; const aParams : array of Const ) : Boolean; override;
   function GetBonus( aHook : Byte; const aParams : array of Const ) : Integer; override;
   function GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single; override;
+  function HandleCommand( aCommand : TCommand ) : Boolean; override;
   function PlayerTick : Boolean;
   procedure HandlePostMove; override;
   procedure PreAction;
@@ -52,11 +52,12 @@ type TPlayer = class(TBeing)
   procedure ApplyDamage( aDamage : LongInt; aTarget : TBodyTarget; aDamageType : TDamageType; aSource : TItem; aDelay : Integer ); override;
   procedure LevelUp;
   procedure AddExp( aAmount : LongInt );
-  procedure WriteMemorial;
+  procedure CalculateScore( aDifficulty : Integer; aGameWon : Boolean );
+  function GenerateMemorial( const aUserPath : AnsiString ) : TIOStringArray; // Caller owns the returned lines.
   destructor Destroy; override;
   procedure Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer ); override;
   procedure AddHistory( const aHistory : Ansistring );
-  class procedure RegisterLuaAPI();
+  class procedure RegisterLuaAPI( aLua : TLua );
   procedure UpdateVisual;
   function ASCIIMoreCode : AnsiString; override;
   function RunPath( const aCoord : TCoord2D ) : Boolean;
@@ -82,6 +83,8 @@ private
   FStatistics     : TStatistics;
   FMultiMove      : TMultiMove;
   FCSprite        : TSprite;
+  function ActionQuickKey( aIndex : Byte; aTarget : TCoord2D ) : Boolean;
+  procedure ResortStacks;
 public
   property MultiMove       : TMultiMove  read FMultiMove;
   property Statistics      : TStatistics read FStatistics;
@@ -100,23 +103,20 @@ published
   property EnemiesInVision : Word       read FEnemiesInVision;
 end;
 
-var Player     : TPlayer;
-    MortemData : TIOStringArray = nil;
+// Borrowed alias of the active session's player.
+var Player : TPlayer;
 
 implementation
 
-uses math, vuid, variants, vioevent, vgenerics,
-     vnode, vcolor, vdebug, vluasystem, vluastate, vtig,
-     dfmap, dflevel,
-     drlhooks, drlio, drlspritemap, drlbase, drlperk,
-     drlua, drlinventory, drlplayerview, drlhudviews;
+uses math, variants,
+     vuid, vioevent, vgenerics, vcolor, vdebug, vtig,
+     dfmap, dflevel, drlhooks, drlio, drlspritemap, drlbase, drllua, drlinventory, drlplayerview, drlhudviews;
 
-constructor TPlayer.Create;
-var iState : TLuaState;
+constructor TPlayer.Create( aContext : TNodeContext; aGameRNG : TRNG );
 begin
-  inherited Create('soldier');
+  inherited Create( 'soldier', aContext, aGameRNG );
 
-  FTraits    := TTraits.Create;
+  FTraits    := TTraits.Create( Self );
   FKills     := TKillTable.Create;
   FKillMax   := 0;
   FKillCount := 0;
@@ -134,8 +134,7 @@ begin
   FExpFactor := 1.0;
 
   Initialize;
-  iState.Init( drlbase.Lua.Raw );
-  iState.ClearLuaProperties( Self );
+  FContext.Lua.Stack.ClearLuaProperties( Self );
 
   FillChar( FQuickSlots, SizeOf(FQuickSlots), 0 );
   CallHook( Hook_OnCreate, [] );
@@ -150,11 +149,61 @@ begin
   FEnemiesInVision:= 0;
   FMultiMove      := TMultiMove.Create;
   FPath           := TPathFinder.Create(Self);
-  MemorialWritten := False;
   MasterDodge     := False;
   FLastTurnDodge  := False;
 
-  drlbase.Lua.RegisterPlayer(Self);
+  TDRLLua( FContext.Lua ).RegisterPlayer( Self );
+end;
+
+function TPlayer.HandleCommand( aCommand : TCommand ) : Boolean;
+begin
+  if aCommand.Command <> COMMAND_QUICKKEY then
+    Exit( inherited HandleCommand( aCommand ) );
+
+  Result := ActionQuickKey( Ord( aCommand.ID[1] ) - Ord( '0' ), aCommand.Target );
+  if Result then FLastCommand := aCommand;
+end;
+
+function TPlayer.ActionQuickKey( aIndex : Byte; aTarget : TCoord2D ) : Boolean;
+var iUID  : TUID;
+    iID   : string[32];
+    iItem : TItem;
+begin
+  if ( aIndex < 1 ) or ( aIndex > 9 ) then Exit( False );
+  with FQuickSlots[ aIndex ] do
+  begin
+    iUID := UID;
+    iID  := ID;
+  end;
+  if iUID <> 0 then
+  begin
+    iItem := FContext.UIDs[ iUID ] as TItem;
+    if iItem <> nil then
+    begin
+      if FInv.Equipped( iItem )     then
+      begin
+         if iItem.isEqWeapon and ( FInv.Slot[ efWeapon2 ] = iItem )
+           then Exit( ActionSwapWeapon )
+           else Exit( Fail( 'You''re already using it!', [] ) );
+      end;
+      if not FInv.Contains( iItem ) then Exit( Fail( 'You no longer have it!', [] ) );
+      Exit( ActionWear( iItem ) );
+    end;
+  end
+  else
+  if iID <> '' then
+  begin
+    for iItem in FInv do
+      if iItem.isUsable then
+        if iItem.id = iID then
+        begin
+          if iItem.isPack or ( aTarget <> FPosition )
+            then Exit( ActionUse( iItem, aTarget ) )
+            else Exit( Fail( 'No valid target!', [] ) );
+        end;
+    Exit( Fail( 'You no longer have any item like that!', [] ) );
+  end;
+  Exit( Fail( 'Quickslot %d is unassigned!', [aIndex] ) );
 end;
 
 procedure TPlayer.SetKilledBy( const aKilledBy : AnsiString; aKilledMelee : Boolean );
@@ -187,28 +236,28 @@ begin
   FStatistics.WriteToStream( Stream );
 end;
 
-constructor TPlayer.CreateFromStream ( Stream : TStream ) ;
+constructor TPlayer.CreateFromStream( aStream : TStream; aContext : TNodeContext; aPerkDefinitions : TPerkDefinitions );
 begin
-  inherited CreateFromStream( Stream );
+  inherited CreateFromStream( aStream, aContext, aPerkDefinitions );
 
-  Stream.Read( FLevelIndex, SizeOf( FLevelIndex ) );
-  NukeActivated  := Stream.ReadWord();
-  InventorySize  := Stream.ReadByte();
-  FExpLevel      := Stream.ReadByte();
-  FKlass         := Stream.ReadByte();
-  FExp           := Stream.ReadDWord();
-  FScore         := Stream.ReadDWord();
-  FKillMax       := Stream.ReadDWord();
-  FKillCount     := Stream.ReadDWord();
+  aStream.Read( FLevelIndex, SizeOf( FLevelIndex ) );
+  NukeActivated  := aStream.ReadWord();
+  InventorySize  := aStream.ReadByte();
+  FExpLevel      := aStream.ReadByte();
+  FKlass         := aStream.ReadByte();
+  FExp           := aStream.ReadDWord();
+  FScore         := aStream.ReadDWord();
+  FKillMax       := aStream.ReadDWord();
+  FKillCount     := aStream.ReadDWord();
 
-  Stream.Read( FLastTurnDodge, SizeOf( FLastTurnDodge ) );
-  Stream.Read( FExpFactor,     SizeOf( FExpFactor ) );
-  Stream.Read( FQuickSlots,    SizeOf( FQuickSlots ) );
-  Stream.Read( FCSprite,       SizeOf( FCSprite ) );
+  aStream.Read( FLastTurnDodge, SizeOf( FLastTurnDodge ) );
+  aStream.Read( FExpFactor,     SizeOf( FExpFactor ) );
+  aStream.Read( FQuickSlots,    SizeOf( FQuickSlots ) );
+  aStream.Read( FCSprite,       SizeOf( FCSprite ) );
 
-  FTraits         := TTraits.CreateFromStream( Stream );
-  FKills          := TKillTable.CreateFromStream( Stream );
-  FStatistics     := TStatistics.CreateFromStream( Stream );
+  FTraits         := TTraits.CreateFromStream( aStream, Self );
+  FKills          := TKillTable.CreateFromStream( aStream );
+  FStatistics     := TStatistics.CreateFromStream( aStream );
 
   Initialize;
 end;
@@ -331,11 +380,13 @@ begin
 end;
 
 function TPlayer.PlayerTick : Boolean;
-var iThisUID    : DWord;
+var iUIDs       : TUIDStore;
+    iThisUID    : DWord;
 begin
+  iUIDs := FContext.UIDs;
   iThisUID := UID;
   TLevel(Parent).CallHook( FPosition, Self, CellHook_OnEnter );
-  if UIDs[ iThisUID ] = nil then Exit( False );
+  if iUIDs[ iThisUID ] = nil then Exit( False );
 
   MasterDodge := False;
   if DRL.State <> DSPlaying then Exit( False );
@@ -494,7 +545,7 @@ begin
   if ( FPerks = nil ) or ( FPerks.List.Size = 0 ) then Exit;
   iStrength     := 0;
   for iCount := 0 to FPerks.List.Size - 1 do
-    with PerkData[FPerks.List[iCount].ID] do
+    with FPerks.Definitions.Data[FPerks.List[iCount].ID] do
       if StatusStr > iStrength then
       begin
         GetPerkEffect := StatusEff;
@@ -566,15 +617,11 @@ begin
     iLevel.NukeTick;
     IO.WaitForAnimation;
   end;
-  WriteMemorial;
+  DRL.GenerateMemorial( Self );
 end;
 
-procedure TPlayer.WriteMemorial;
-var iMortemPath : AnsiString;
-    iString     : AnsiString;
-    iMortemList : TStringList;
-
-procedure ScoreCRC(var aScore : LongInt);
+procedure TPlayer.CalculateScore( aDifficulty : Integer; aGameWon : Boolean );
+procedure ScoreCRC( var aScore : LongInt );
 begin
   if aScore < 2000 then Exit;
   while not ((aScore mod 277) = 0) do Inc(aScore);
@@ -583,79 +630,73 @@ begin
 end;
 
 begin
-  if MemorialWritten then Exit;
-  MemorialWritten := True;
-  if FScore = -1000 then Exit;
-
-  FStatistics.Update;
-  if LuaSystem.Defined([CoreModuleID,'RunAwards']) then
-    LuaSystem.ProtectedCall([CoreModuleID,'RunAwards'],[NoPlayerRecord]);
-
-  if LuaSystem.Defined([CoreModuleID,'GetScore']) then
+  if FContext.Lua.Defined([CoreModuleID,'GetScore']) then
   begin
-    FScore := LuaSystem.ProtectedCall([CoreModuleID,'GetScore'],[])
+    FScore := FContext.Lua.ProtectedCall([CoreModuleID,'GetScore'],[])
   end
   else
   begin
     FScore += Max(FExp + (FLevelIndex * 1000) + Max(FHP,0) * 20,0);
     if FScore < 0 then FScore := 0;
-    if DRL.Difficulty = DIFF_NIGHTMARE then FScore -= FStatistics.GameTime div 500;
+    if aDifficulty = DIFF_NIGHTMARE then FScore -= FStatistics.GameTime div 500;
 
-    if DRL.GameWon then FScore += FScore div 4;
-    FScore := Round( FScore * Double(LuaSystem.Get([ 'diff', DRL.Difficulty, 'scorefactor' ])) );
+    if aGameWon then FScore += FScore div 4;
+    FScore := Round( FScore * Double(FContext.Lua.Get([ 'diff', aDifficulty, 'scorefactor' ])) );
     // FScore
     ScoreCRC(FScore);
   end;
   if GodMode then FScore := 0;
-  if FScore > 0 then
-  begin
-    DRL.Store.IncStat('drl_kills', FKills.Count );
-    if FHP <= 0    then DRL.Store.IncStat( 'drl_deaths' );
-    if DRL.GameWon then DRL.Store.IncStat( 'drl_wins' );
-  end;
+end;
 
-  HOF.Add(Name,FScore,FKilledBy,FExpLevel,FLevelIndex,DRL.Challenge,DRL.Level.Abbr);
-
-  if Assigned( MortemData ) then
-  begin
-    Log( LOGERROR, 'Mortem data not cleared!');
-    FreeAndNil( MortemData );
-  end;
-  MortemData := TIOStringArray.Create;
-  LuaSystem.ProtectedCall([CoreModuleID,'RunPrintMortem'],[]);
-
-  iMortemPath := IO.Session.Paths.ModuleUserPath + 'mortem.txt';
-  iMortemList := TStringList.Create;
+function TPlayer.GenerateMemorial( const aUserPath : AnsiString ) : TIOStringArray;
+var iMortemPath : AnsiString;
+    iString     : AnsiString;
+    iMortemList : TStringList;
+    i           : Integer;
+begin
+  Result := nil;
   try
-    for iString in MortemData do
-      iMortemList.Add( VTIG_StripTags( iString ) );
-    iMortemList.SaveToFile( iMortemPath );
-  finally
-    FreeAndNil( iMortemList );
-  end;
-
-  FScore := -1000;
-
-  if Option_MortemArchive then
-  begin
-    iString := IO.Session.Paths.ModuleUserPath + 'mortem'+PathDelim+ToProperFilename('['+FormatDateTime(Option_TimeStamp,Now)+'] '+Name)+'.txt';
-    Log('Writing mortem...: '+iString);
+    iMortemList := TStringList.Create;
     try
-      iMortemList := TStringList.Create;
-      try
-        iMortemList.LoadFromFile( iMortemPath );
-        iMortemList.SaveToFile( iString );
-      finally
-        FreeAndNil( iMortemList );
+      iMortemList.Text := FContext.Lua.ProtectedCall( [CoreModuleID, 'GenerateMemorial'], [] );
+      Result := TIOStringArray.Create;
+      for i := 0 to iMortemList.Count - 1 do
+      begin
+        Result.Push( iMortemList[i] );
+        iMortemList[i] := VTIG_StripTags( iMortemList[i] );
       end;
-    except
+      iMortemPath := aUserPath + 'mortem.txt';
+      iMortemList.SaveToFile( iMortemPath );
+    finally
+      FreeAndNil( iMortemList );
     end;
+
+    FScore := -1000;
+
+    if Option_MortemArchive then
+    begin
+      iString := aUserPath + 'mortem'+PathDelim+ToProperFilename('['+FormatDateTime(Option_TimeStamp,Now)+'] '+Name)+'.txt';
+      Log('Writing mortem...: '+iString);
+      try
+        iMortemList := TStringList.Create;
+        try
+          iMortemList.LoadFromFile( iMortemPath );
+          iMortemList.SaveToFile( iString );
+        finally
+          FreeAndNil( iMortemList );
+        end;
+      except
+      end;
+    end;
+  except
+    FreeAndNil( Result );
+    raise;
   end;
 end;
 
 procedure TPlayer.AddHistory( const aHistory : Ansistring );
 begin
-  LuaSystem.ProtectedCall(['player','add_history'],[ Self, aHistory ]);
+  FContext.Lua.ProtectedCall(['player','add_history'],[ Self, aHistory ]);
 end;
 
 procedure TPlayer.UpdateVisual;
@@ -689,10 +730,10 @@ begin
   iWeapon := Inv.Slot[ efWeapon ];
   if iWeapon <> nil then
   begin
-    iPDSprite := LuaSystem.Get( ['items', iWeapon.ID, 'pdsprite'], 0 );
+    iPDSprite := FContext.Lua.Get( ['items', iWeapon.ID, 'pdsprite'], 0 );
     if ( iPDSprite <> 0 ) and ( canDualWield )
       then FCSprite.SpriteID[0] := iPDSprite
-      else FCSprite.SpriteID[0] := LuaSystem.Get( ['items', iWeapon.ID, 'psprite'], 0 );
+      else FCSprite.SpriteID[0] := FContext.Lua.Get( ['items', iWeapon.ID, 'psprite'], 0 );
     if FCSprite.SpriteID[0] <> 0 then
     begin
       FCSprite.SpriteID[0] := FCSprite.SpriteID[0] + iSpMod;
@@ -706,7 +747,7 @@ begin
       if Inv.Slot[ efWeapon ].isMelee then FCSprite.SpriteID[0] := 2 else FCSprite.SpriteID[0] := 11;
   end
   else
-    FCSprite.SpriteID[0] := LuaSystem.Get( ['beings', ID, 'sprite'], 0 ) + iSpMod;
+    FCSprite.SpriteID[0] := FContext.Lua.Get( ['beings', ID, 'sprite'], 0 ) + iSpMod;
 end;
 
 function TPlayer.ASCIIMoreCode : AnsiString;
@@ -719,82 +760,84 @@ end;
 procedure TPlayer.doUpgradeTrait;
 begin
   if DemoVersion and (ExpLevel > 7) then Exit;
-  IO.PushLayer( TPlayerView.CreateTrait( False ) );
+  IO.PushLayer( TPlayerView.CreateTrait( Self ) );
   IO.WaitForLayer( True );
 end;
 
-function lua_player_add_exp(L: Plua_State): Integer; cdecl;
-var State   : TDRLLuaState;
-    Being   : TBeing;
+procedure TPlayer.ResortStacks;
+var iItem  : TItem;
+    iNode  : TNode;
+    iTemp  : TNode;
+    iList  : TItemList;
+    iCount : Byte;
 begin
-  State.Init(L);
-  Being := State.ToObject(1) as TBeing;
-  if not (Being is TPlayer) then Exit(0);
-  Player.addExp(State.ToInteger(2));
+  for iCount in TItemSlot do
+    iList[ iCount ] := nil;
+
+  iCount := 0;
+  for iNode in Self do
+    if iNode is TItem then
+      if (iNode as TItem).isStackable then
+      begin
+        Inc( iCount );
+        iList[ iCount ] := iNode as TItem;
+      end;
+
+  iTemp := TNode.Create;
+  for iItem in iList do
+    if iItem <> nil then
+      iTemp.Add( iItem );
+
+  for iNode in iTemp do
+    with iNode as TItem do
+      FInv.AddStack( NID, Amount );
+
+  FreeAndNil( iTemp );
+end;
+
+function lua_player_add_exp( L : PLua_State ) : Integer; cdecl;
+var iState  : TLuaGameStack;
+    iPlayer : TPlayer;
+begin
+  iState.Init( L );
+  iPlayer := iState.ToObject( 1 ) as TPlayer;
+  iPlayer.addExp(iState.ToInteger(2));
   Result := 0;
 end;
 
-function lua_player_remove_kill(L: Plua_State): Integer; cdecl;
-var State   : TDRLLuaState;
-    Being   : TBeing;
-    Target  : TBeing;
+function lua_player_remove_kill( L : PLua_State ) : Integer; cdecl;
+var iState  : TLuaGameStack;
+    iPlayer : TPlayer;
+    iTarget : TBeing;
 begin
-  State.Init(L);
-  Being := State.ToObject(1) as TBeing;
-  if not (Being is TPlayer) then Exit(0);
-  Target := State.ToObject(2) as TBeing;
-  Player.RemoveKill( Target );
+  iState.Init( L );
+  iPlayer := iState.ToObject( 1 ) as TPlayer;
+  iTarget := iState.ToObject( 2 ) as TBeing;
+  iPlayer.RemoveKill( iTarget );
   Result := 0;
 end;
 
 
 function lua_player_has_won(L: Plua_State): Integer; cdecl;
-var State   : TDRLLuaState;
+var State   : TLuaGameStack;
 begin
   State.Init(L);
   State.Push(DRL.GameWon);
   Result := 1;
 end;
 
-function lua_player_resort_stacks(L: Plua_State): Integer; cdecl;
-var State     : TDRLLuaState;
-    Being     : TBeing;
-    Item      : TItem;
-    Node, Temp: TNode;
-var List : TItemList;
-    Cnt  : Byte;
+function lua_player_resort_stacks( L : PLua_State ) : Integer; cdecl;
+var iState  : TLuaGameStack;
+    iPlayer : TPlayer;
 begin
-  State.Init(L);
-  Being := State.ToObject(1) as TBeing;
-  if not (Being is TPlayer) then Exit(0);
-
-  for Cnt in TItemSlot do
-    List[ Cnt ] := nil;
-
-  Cnt := 0;
-  for Node in Player do
-    if Node is TItem then
-      if (Node as TItem).isStackable then
-      begin
-        Inc( Cnt );
-        List[ Cnt ] := Node as TItem;
-      end;
-
-  Temp := TNode.Create;
-  for Item in List do
-    if Item <> nil then
-      Temp.Add( Item );
-
-  for Node in Temp do
-    with Node as TItem do
-      Player.Inv.AddStack( NID, Amount );
-
-  FreeAndNil( Temp );
+  iState.Init( L );
+  iPlayer := iState.ToObject( 1 ) as TPlayer;
+  iPlayer.ResortStacks;
   Result := 0;
 end;
 
 function lua_player_win(L: Plua_State): Integer; cdecl;
-var State   : TDRLLuaState;
+var State   : TLuaGameStack;
     Being   : TBeing;
 begin
   State.Init(L);
@@ -806,139 +849,118 @@ begin
   Result := 0;
 end;
 
-function lua_player_choose_trait(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
-    iBeing : TBeing;
+function lua_player_choose_trait( L : PLua_State ) : Integer; cdecl;
+var iState  : TLuaGameStack;
+    iPlayer : TPlayer;
 begin
-  iState.Init(L);
-  iBeing := iState.ToObject(1) as TBeing;
-  if not (iBeing is TPlayer) then Exit(0);
-  Player.doUpgradeTrait();
+  iState.Init( L );
+  iPlayer := iState.ToObject( 1 ) as TPlayer;
+  iPlayer.doUpgradeTrait();
   Result := 0;
 end;
 
-function lua_player_level_up(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
-    iBeing : TBeing;
+function lua_player_level_up( L : PLua_State ) : Integer; cdecl;
+var iState  : TLuaGameStack;
+    iPlayer : TPlayer;
 begin
-  iState.Init(L);
-  iBeing := iState.ToObject(1) as TBeing;
-  if not (iBeing is TPlayer) then Exit(0);
-  Player.LevelUp();
+  iState.Init( L );
+  iPlayer := iState.ToObject( 1 ) as TPlayer;
+  iPlayer.LevelUp();
   Result := 0;
 end;
 
-function lua_player_exit(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
-    iBeing : TBeing;
+function lua_player_exit( L : PLua_State ) : Integer; cdecl;
+var iState  : TLuaGameStack;
+    iPlayer : TPlayer;
 begin
-  iState.Init(L);
-  iBeing := iState.ToObject(1) as TBeing;
-  if not (iBeing is TPlayer) then Exit(0);
+  iState.Init( L );
+  iPlayer := iState.ToObject( 1 ) as TPlayer;
   if DRL.State <> DSSaving then
   begin
     if iState.IsNumber(3) then
       IO.FadeOut( iState.ToFloat(3) );
     DRL.SetState( DSNextLevel );
   end;
-  Player.FSpeedCount := 4000;
+  iPlayer.FSpeedCount := 4000;
   if iState.IsNil(2) then Exit( 0 );
   if iState.IsNumber(2) then
   begin
-    Player.FLevelIndex := iState.ToInteger(2)-1;
-    Exit(0);
+    iPlayer.FLevelIndex := iState.ToInteger(2)-1;
+    Exit( 0 );
   end;
   iState.Error('Player.exit - bad parameters!');
   Result := 0;
 end;
 
-function lua_player_quick_weapon(L: Plua_State): Integer; cdecl;
-var State   : TDRLLuaState;
-    Being   : TBeing;
+function lua_player_quick_weapon( L : PLua_State ) : Integer; cdecl;
+var iState  : TLuaGameStack;
+    iPlayer : TPlayer;
 begin
-  State.Init(L);
-  Being := State.ToObject(1) as TBeing;
-  if not (Being is TPlayer) then Exit(0);
-  Player.ActionQuickWeapon(State.ToString(2));
+  iState.Init( L );
+  iPlayer := iState.ToObject( 1 ) as TPlayer;
+  iPlayer.ActionQuickWeapon(iState.ToString(2));
   Result := 0;
 end;
 
-function lua_player_set_inv_size(L: Plua_State): Integer; cdecl;
-var State   : TDRLLuaState;
-    Being   : TBeing;
-    n : byte;
+function lua_player_set_inv_size( L : PLua_State ) : Integer; cdecl;
+var iState  : TLuaGameStack;
+    iPlayer : TPlayer;
+    iSize   : byte;
 begin
-  State.Init(L);
-  Being := State.ToObject(1) as TBeing;
-  if not (Being is TPlayer) then Exit(0);
-  n := State.ToInteger(2);
-  if (n = 0) or (n > High(TItemSlot)) then
-    State.Error( 'Inventory size must be in the 1..'+IntToStr(High(TItemSlot))+' range!' );
-  Player.InventorySize := n;
+  iState.Init( L );
+  iPlayer := iState.ToObject( 1 ) as TPlayer;
+  iSize := iState.ToInteger(2);
+  if (iSize = 0) or (iSize > High(TItemSlot)) then
+    iState.Error( 'Inventory size must be in the 1..'+IntToStr(High(TItemSlot))+' range!' );
+  iPlayer.InventorySize := iSize;
   Result := 0;
 end;
 
 
-function lua_player_mortem_print(L: Plua_State): Integer; cdecl;
-var State   : TDRLLuaState;
-    Being   : TBeing;
+function lua_player_add_trait( L : PLua_State ) : Integer; cdecl;
+var iState  : TLuaGameStack;
+    iPlayer : TPlayer;
+    iTrait  : DWord;
 begin
-  State.Init(L);
-  Being := State.ToObject(1) as TBeing;
-  if not (Being is TPlayer) then Exit(0);
-  if not Assigned( MortemData ) then raise Exception.Create('player:mortem_print called in wrong place!');
-  MortemData.Push( State.ToString(2) );
+  iState.Init( L );
+  iPlayer := iState.ToObject( 1 ) as TPlayer;
+  iTrait := iState.ToID( iPlayer.Context.Lua, 2 );
+  iPlayer.Traits.Upgrade( 0, iTrait );
   Result := 0;
 end;
 
-function lua_player_add_trait(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
-    iBeing : TBeing;
-    iTrait : DWord;
+function lua_player_get_trait( L : PLua_State ) : Integer; cdecl;
+var iState  : TLuaGameStack;
+    iPlayer : TPlayer;
 begin
-  iState.Init(L);
-  iBeing := iState.ToObject(1) as TBeing;
-  if not (iBeing is TPlayer) then Exit(0);
-  iTrait := iState.ToID(2);
-  Player.Traits.Upgrade( 0, iTrait );
-  Result := 0;
-end;
-
-function lua_player_get_trait(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
-    iBeing : TBeing;
-begin
-  iState.Init(L);
-  iBeing := iState.ToObject(1) as TBeing;
-  if not (iBeing is TPlayer) then Exit(0);
-  iState.Push( Player.Traits[ iState.ToID( 2 ) ] );
+  iState.Init( L );
+  iPlayer := iState.ToObject( 1 ) as TPlayer;
+  iState.Push( iPlayer.Traits[ iState.ToID( iPlayer.Context.Lua, 2 ) ] );
   Result := 1;
 end;
 
-function lua_player_has_trait(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
-    iBeing : TBeing;
+function lua_player_has_trait( L : PLua_State ) : Integer; cdecl;
+var iState  : TLuaGameStack;
+    iPlayer : TPlayer;
 begin
-  iState.Init(L);
-  iBeing := iState.ToObject(1) as TBeing;
-  if not (iBeing is TPlayer) then Exit(0);
-  iState.Push( Player.Traits[ iState.ToID( 2 ) ] > 0 );
+  iState.Init( L );
+  iPlayer := iState.ToObject( 1 ) as TPlayer;
+  iState.Push( iPlayer.Traits[ iState.ToID( iPlayer.Context.Lua, 2 ) ] > 0 );
   Result := 1;
 end;
 
-function lua_player_get_trait_hist(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
-    iBeing : TBeing;
+function lua_player_get_trait_hist( L : PLua_State ) : Integer; cdecl;
+var iState  : TLuaGameStack;
+    iPlayer : TPlayer;
 begin
-  iState.Init(L);
-  iBeing := iState.ToObject(1) as TBeing;
-  if not (iBeing is TPlayer) then Exit(0);
-  iState.Push( Player.Traits.GetHistory );
+  iState.Init( L );
+  iPlayer := iState.ToObject( 1 ) as TPlayer;
+  iState.Push( iPlayer.Traits.GetHistory );
   Result := 1;
 end;
 
 function lua_player_set_achievement(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iID    : Ansistring;
 begin
   iState.Init(L);
@@ -950,7 +972,7 @@ begin
 end;
 
 function lua_player_store_inc_stat(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iID    : Ansistring;
 begin
   if GodMode then Exit(0);
@@ -963,7 +985,7 @@ begin
 end;
 
 function lua_player_store_mark_stat(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iID    : Ansistring;
 begin
   if GodMode then Exit(0);
@@ -975,7 +997,7 @@ begin
   Result := 0;
 end;
 
-const lua_player_lib : array[0..18] of luaL_Reg = (
+const lua_player_lib : array[0..17] of luaL_Reg = (
       ( name : 'set_achievement'; func : @lua_player_set_achievement),
       ( name : 'store_inc_stat';  func : @lua_player_store_inc_stat),
       ( name : 'store_mark_stat'; func : @lua_player_store_mark_stat),
@@ -993,13 +1015,12 @@ const lua_player_lib : array[0..18] of luaL_Reg = (
       ( name : 'exit';            func : @lua_player_exit),
       ( name : 'quick_weapon';    func : @lua_player_quick_weapon),
       ( name : 'set_inv_size';    func : @lua_player_set_inv_size),
-      ( name : 'mortem_print';    func : @lua_player_mortem_print),
       ( name : nil;               func : nil; )
 );
 
-class procedure TPlayer.RegisterLuaAPI();
+class procedure TPlayer.RegisterLuaAPI( aLua : TLua );
 begin
-  LuaSystem.Register( 'player', lua_player_lib );
+  aLua.Register( 'player', lua_player_lib );
 end;
 
 end.

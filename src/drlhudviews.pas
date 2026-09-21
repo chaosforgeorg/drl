@@ -7,16 +7,17 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlhudviews;
 interface
 uses vutil, viotypes, vgenerics, vcolor, vioevent, vrltools,
-     dfdata, dfitem, drlkeybindings, drlhooks;
+     dfdata, dfitem, dflevel, drlkeybindings, drlhooks;
 
 type TLookModeView = class( TIOLayer )
-  constructor Create;
+  constructor Create( aLevel : TLevel );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsModal : Boolean; override;
   function HandleInput( aInput : Integer ) : Boolean; override;
 protected
   procedure UpdateTarget;
 protected
+  FLevel    : TLevel;
   FFirst    : Boolean;
   FTarget   : TCoord2D;
 end;
@@ -66,7 +67,7 @@ protected
 end;
 
 type TTargetModeView = class( TIOLayer )
-  constructor Create( aItem : TItem; aCommand : Byte;
+  constructor Create( aLevel : TLevel; aItem : TItem; aCommand : Byte;
     aActionName : AnsiString; aRange : Byte; aLimitRange : Boolean;
     aTargets : TAutoTarget );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
@@ -79,6 +80,7 @@ protected
   procedure Finalize;
   procedure UpdateTarget;
 protected
+  FLevel      : TLevel;
   FFirst      : Boolean;
   FLimitRange : Boolean;
   FTarget     : TCoord2D;
@@ -107,11 +109,13 @@ end;
 
 implementation
 
-uses sysutils, vtig, vvision, dfplayer, dflevel, drlbase, drlio, drlcommand,
-     drlcontrollerbindings, drlspritemap;
+uses sysutils,
+     vtig, vvision,
+     dfplayer, drlbase, drlio, drlcommand, drlcontrollerbindings, drlspritemap;
 
-constructor TLookModeView.Create;
+constructor TLookModeView.Create( aLevel : TLevel );
 begin
+  FLevel  := aLevel;
   FFirst  := True;
   FTarget := Player.Position;
   IO.Targeting := True;
@@ -144,7 +148,7 @@ begin
 
   if (iInput = INPUT_TOGGLEGRID) and GraphicsVersion then SpriteMap.ToggleGrid;
   if iInput in [ INPUT_MMOVE, INPUT_MRIGHT, INPUT_MLEFT ] then FTarget := IO.MTarget;
-  iLevel := DRL.Level;
+  iLevel := FLevel;
   if iInput = INPUT_MORESELF then
   begin
     IO.FullLook( Player );
@@ -293,10 +297,11 @@ begin
   Exit( True );
 end;
 
-constructor TTargetModeView.Create( aItem : TItem; aCommand : Byte;
+constructor TTargetModeView.Create( aLevel : TLevel; aItem : TItem; aCommand : Byte;
   aActionName : AnsiString; aRange : Byte; aLimitRange : Boolean;
   aTargets : TAutoTarget );
 begin
+  FLevel        := aLevel;
   FFirst        := True;
   FTargets      := aTargets;
   FTarget       := aTargets.Current;
@@ -349,7 +354,7 @@ begin
     if FLimitRange and ( iDist > FRange - 1 ) then
     begin
       iDist := 0;
-      iTargetLine.Init( DRL.Level, FPosition, FTarget);
+      iTargetLine.Init( FLevel, FPosition, FTarget);
       while iDist < (FRange - 1) do
       begin
         iTargetLine.Next;
@@ -369,7 +374,7 @@ begin
 
   if iInput = INPUT_MORE then
   begin
-    with DRL.Level do
+    with FLevel do
      if Being[FTarget] <> nil then
        IO.FullLook( Being[FTarget] );
     UpdateTarget;
@@ -377,7 +382,7 @@ begin
 
   if iInput = INPUT_MORESELF then
   begin
-    with DRL.Level do
+    with FLevel do
       IO.FullLook( Player );
     UpdateTarget;
   end;
@@ -408,7 +413,7 @@ begin
       if IO.GetPadLDir.NotZero
         then MoveTarget( FTarget + IO.GetPadLDir )
         else begin
-          with DRL.Level do
+          with FLevel do
           begin
             if IO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
               then IO.FullLook( Player )
@@ -467,7 +472,7 @@ end;
 
 function TTargetModeView.MoveTarget( aNew : TCoord2D ) : Boolean;
 begin
-  if DRL.Level.isProperCoord( aNew )
+  if FLevel.isProperCoord( aNew )
     and ((not FLimitRange) or (Distance((aNew), FPosition) <= FRange-1)) then
   begin
     FTarget := aNew;
@@ -490,7 +495,7 @@ var iBlock      : Boolean;
     iTargetLine : TAssistedRay;
     iLevel      : TLevel;
 begin
-  iLevel := DRL.Level;
+  iLevel := FLevel;
   if FTarget <> FPosition then
   begin
     iTargetLine.Init(iLevel, FPosition, FTarget, 0, Player.Vision, Player.GetVisionMap);

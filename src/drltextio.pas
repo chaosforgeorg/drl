@@ -7,7 +7,8 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drltextio;
 interface
 
-uses vrltools, vtextmap, vioevent, drlio, dfdata;
+uses vrltools, vtextmap, vioevent, vluamapnode,
+     drlio, dfdata, dflevel;
 
 // TDRLTextIO
 //
@@ -30,7 +31,7 @@ type TDRLTextIO = class( TDRLIO )
     procedure addSoundAnimation( aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord ); override;
     procedure Explosion( aDelay : Integer; aWhere : TCoord2D; aData : TExplosionData ); override;
 
-    procedure SetTextMap( aMap : ITextMap );
+    procedure SetLevel( aLevel : TLuaMapNode ); override;
     procedure SetTarget( aTarget : TCoord2D; aColor : Byte; aRange : Byte ); override;
     procedure SetAutoTarget( aTarget : TCoord2D ); override;
 
@@ -57,7 +58,7 @@ uses sysutils,
      {$ENDIF}
      vioconsole, vtig, vvision, vutil,
      drlbase, drlanimation,
-     dflevel, dfplayer;
+     dfplayer;
 
 constructor TDRLTextIO.Create;
 begin
@@ -251,9 +252,10 @@ begin
   end;
 end;
 
-procedure TDRLTextIO.SetTextMap( aMap : ITextMap );
+procedure TDRLTextIO.SetLevel( aLevel : TLuaMapNode );
 begin
-  FTextMap.SetMap( aMap );
+  inherited SetLevel( aLevel );
+  FTextMap.SetMap( TLevel( aLevel ) );
 end;
 
 procedure TDRLTextIO.Explosion( aDelay : Integer; aWhere: TCoord2D; aData : TExplosionData );

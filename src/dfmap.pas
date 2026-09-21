@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit dfmap;
 interface
-uses vutil, vmath, dfdata;
+uses vlua, vutil, vmath, dfdata;
 
 type TCellHook  = (CellHook_OnEnter, CellHook_OnExit, CellHook_OnAct, CellHook_OnDescribe, CellHook_OnHazardQuery, CellHook_OnDestroy);
      TCellHooks = set of TCellHook;
@@ -50,24 +50,22 @@ type
 
 TCells = class
          public
-           procedure RegisterCell( aCellNum : Byte );
+           procedure RegisterCell( aLua : TLua; aCellNum : Byte );
            destructor Destroy; override;
          private
            FData     : array of TCell;
            FMaxCells : Byte;
-           function getCell( aIndex : Byte ) : TCell;
+           function getCell( aIndex : Byte ) : TCell; inline;
          public
            property Cells[ aIndex : Byte ] : TCell read getCell; default;
            property Max : Byte read FMaxCells;
          end;
 
-var Cells : TCells;
-
 implementation
 
-uses SysUtils, vluasystem, vdebug;
+uses sysutils, vdebug;
 
-procedure TCells.RegisterCell( aCellNum : byte );
+procedure TCells.RegisterCell( aLua : TLua; aCellNum : byte );
 var iColorID : AnsiString;
     iHook    : TCellHook;
     iCell    : TCell;
@@ -85,7 +83,7 @@ begin
   if aCellNum > FMaxCells then FMaxCells := aCellNum;
 
   iCell  := TCell.Create;
-  iTable := LuaSystem.GetTable(['cells',aCellNum]);
+  iTable := aLua.GetTable(['cells',aCellNum]);
   with iTable do
   try
     iColorID := getString('id');
@@ -195,10 +193,8 @@ begin
 
   if (not Option_HighASCII) then iCell.PicChr := iCell.PicLow;
 
-  if ColorOverrides.Exists(iColorID+'_light') then
-    iCell.LightColor[0] := ColorOverrides[iColorID+'_light'];
-  if ColorOverrides.Exists(iColorID+'_dark') then
-    iCell.DarkColor:= ColorOverrides[iColorID+'_dark'];
+  iCell.LightColor[0] := Config.ColorOverrides.Get( iColorID + '_light', iCell.LightColor[0] );
+  iCell.DarkColor := Config.ColorOverrides.Get( iColorID + '_dark', iCell.DarkColor );
 
   FData[aCellNum] := iCell;
 end;

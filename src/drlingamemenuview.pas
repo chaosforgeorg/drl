@@ -6,13 +6,17 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlingamemenuview;
 interface
-uses viotypes, drlio, drlconfirmview, dfdata;
+uses viotypes,
+     dfhof, drlio, drlconfirmview, dfdata, drlhelp;
 
 type TInGameMenuView = class( TIOLayer )
-  constructor Create;
+  constructor Create( aHOF : THOF; aHelp : THelp );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
+private
+  FHOF  : THOF;
+  FHelp : THelp;
 end;
 
 type TAbandonView = class( TConfirmView )
@@ -24,11 +28,13 @@ end;
 
 implementation
 
-uses vtig, vutil, vluasystem, dfplayer,
-  drlbase, drlhelpview, drlsettingsview, drlmessagesview, drlassemblyview;
+uses vtig, vutil, vlua,
+     dfplayer, drlbase, drlhelpview, drlsettingsview, drlmessagesview, drlassemblyview;
 
-constructor TInGameMenuView.Create;
+constructor TInGameMenuView.Create( aHOF : THOF; aHelp : THelp );
 begin
+  FHOF  := aHOF;
+  FHelp := aHelp;
   VTIG_EventClear;
   VTIG_ResetSelect( 'ingame_menu_abandon' );
   //VTIG_ResetSelect( 'ingame_menu' );
@@ -36,7 +42,9 @@ begin
 end;
 
 procedure TInGameMenuView.Update( aDTime : Integer; aActive : Boolean );
+var iSaveQuit : Boolean;
 begin
+  iSaveQuit := False; 
   if IsFinished or (DRL.State <> DSPlaying) then Exit;
 
   VTIG_Begin('ingame_menu', Point( 30, 11 ) );
@@ -46,7 +54,7 @@ begin
   end;
   if VTIG_Selectable( 'Help' ) then
   begin
-    IO.PushLayer( THelpView.Create );
+    IO.PushLayer( THelpView.Create( IO, IO.Session.Context.Lua, FHelp, CoreModuleID ) );
     FFinished := True;
   end;
   if VTIG_Selectable( 'Settings' ) then
@@ -56,12 +64,12 @@ begin
   end;
   if VTIG_Selectable( 'Message history' ) then
   begin
-    IO.PushLayer( TMessagesView.Create( IO.MsgGetRecent ) );
+    IO.PushLayer( TMessagesView.Create( IO, IO.MsgGetRecent ) );
     FFinished := True;
   end;
   if VTIG_Selectable( 'Assemblies' ) then
   begin
-    IO.PushLayer( TAssemblyView.Create );
+    IO.PushLayer( TAssemblyView.Create( IO.Session.Context.Lua, FHOF ) );
     FFinished := True;
   end;
   if VTIG_Selectable( 'Abandon Run' ) then
@@ -71,13 +79,17 @@ begin
   end;
   if VTIG_Selectable( 'Save & Quit' ) then
   begin
+    iSaveQuit := True;
     FFinished := True;
-    IO.FadeOut(0.5);
-    DRL.SetState( DSSaving );
   end;
   VTIG_End;
 
   if VTIG_EventCancel then FFinished := True;
+  if iSaveQuit then
+  begin
+    IO.FadeOut( 0.5 );
+    DRL.SetState( DSSaving );
+  end;
 end;
 
 function TInGameMenuView.IsFinished : Boolean;
@@ -95,7 +107,7 @@ begin
   inherited Create;
   FCancel  := 'Continue run';
   FConfirm := 'Abandon run';
-  FMessage := LuaSystem.ProtectedCall([CoreModuleID,'GetQuitMessage'],[]) + #10 +
+  FMessage := IO.Session.Context.Lua.ProtectedCall([CoreModuleID,'GetQuitMessage'],[]) + #10 +
     '{yAre you sure you want to abandon this run?}';
   FSize    := Point( 50, 10 );
 end;

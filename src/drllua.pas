@@ -4,56 +4,49 @@
 Copyright (c) 2002-2025 by Kornel Kisielewicz
 ----------------------------------------------------
 }
-unit drlua;
+unit drllua;
 interface
 
-uses SysUtils, Classes, vluastate, vluasystem, vlualibrary, vrltools, vutil,
-     vdf, viotypes, dfitem, dfbeing, dfthing, dfdata, drlmodule;
+uses sysutils, classes,
+     vluagamestack, vlua, vlualibrary, vrltools, vutil, vdf, viotypes, vnode,
+     dfitem, dfbeing, dfthing, dfdata, drlmodule, drlhelp;
 
 type
 
 { TDRLLua }
 
-TDRLLua = class(TLuaSystem)
+TDRLLua = class(TLua)
        constructor Create( aModules : TDRLModules; const aDataPath : AnsiString ); reintroduce;
        procedure OnError(const ErrorString : Ansistring); override;
        procedure RegisterPlayer(Thing: TThing);
        function HookName( aHook : Byte ) : AnsiString;
        destructor Destroy; override;
+       // Load content after Runtime owns Lua and the Session context is bound.
+       procedure ReadWad( aHelp : THelp; aModErrors : TStringGArray );
+       procedure BindNodeContext( aContext : TNodeContext );
      private
-       procedure ReadWad;
        procedure LoadFiles( const aDirectory : AnsiString; aLoader : TVDFLoader; aWildcard : AnsiString = '*' );
      private
-       FOpenData : TVDataFileArray;
-       FModules  : TDRLModules;
-       FDataPath : AnsiString;
+       FOpenData    : TVDataFileArray;
+       FModules     : TDRLModules;
+       FDataPath    : AnsiString;
+       FNodeContext : TNodeContext; // Borrowed from the active Session for Lua factories.
+     public
+       property NodeContext : TNodeContext read FNodeContext;
      end;
-
-type
-
-{ TDRLLuaState }
-
-TDRLLuaState = object(TLuaState)
-  function ToId( aIndex : Integer) : Integer;
-  function ToPosition( aIndex : Integer ) : TCoord2D;
-  function ToPosition( aIndex : Integer; aDefault : TCoord2D ) : TCoord2D;
-  function ToIOColor( aIndex : Integer ) : TIOColor;
-end;
 
 // published functions
 
 implementation
 
 uses typinfo, variants,
-     vnode, vdebug, vlua, vluatools, vluadungen, vluaentitynode, vluatype, vmath,
-     vtextures, vtigstyle, vvector,
-     dfplayer, dflevel, dfmap, drlhooks, drlhelp, dfhof, drlbase, drlio, drlperk,
-     drlgfxio, drlspritemap, vparticleengine;
+     vdebug, vluastate, vluatools, vluadungen, vluaentitynode, vluatype, vtextures, vtigstyle, vparticleengine,
+     dfplayer, dflevel, drlhooks, dfhof, drlbase, drlio, drlgfxio, drlspritemap;
 
 var SpriteSheetCounter : Integer = -1;
 
 function lua_core_is_playing(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   State.Push( DRL.State = DSPlaying );
@@ -61,7 +54,7 @@ begin
 end;
 
 function lua_statistics_get(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   Player.Statistics.Update;
@@ -71,7 +64,7 @@ begin
 end;
 
 function lua_statistics_set(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   // Unused parameter #1 is self
@@ -80,7 +73,7 @@ begin
 end;
 
 function lua_statistics_inc(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   Player.Statistics.Increase( State.ToString( 1 ), State.ToInteger( 2 ) );
@@ -88,7 +81,7 @@ begin
 end;
 
 function lua_statistics_get_date(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
     Curr : TSystemTime;
     DOW  : integer;
 begin
@@ -116,41 +109,8 @@ begin
   Exit(1);
 end;
 
-function lua_core_register_perk(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
-    iID    : Integer;
-begin
-  iState.Init(L);
-  iID := iState.ToInteger(1);
-
-  if iID >= High( PerkData ) then
-  begin
-    SetLength( PerkData, Max( High( PerkData ) * 2, 100 ) );
-    PerkDataMax := iID;
-  end;
-  if iID > PerkDataMax then PerkDataMax := iID;
-
-  with PerkData[iID] do
-  begin
-    with LuaSystem.GetTable(['perks',iID]) do
-    try
-      Name      := getString('name','');
-      Short     := getString('short','');
-      Desc      := getString('desc','');
-      Color     := getInteger('color',0);
-      ColorExp  := getInteger('color_expire',0);
-      StatusEff := TStatusEffect( getInteger('status_effect',0) );
-      StatusStr := getInteger('status_strength',0);
-    finally
-      Free;
-    end;
-    Hooks := LoadHooks( ['perks',iID] );
-  end;
-  Result := 0;
-end;
-
 function lua_core_add_to_cell_set(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   case State.ToInteger(1) of
@@ -161,40 +121,40 @@ begin
   Result := 0;
 end;
 
-function lua_core_player_data_count(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+function lua_core_player_data_count( L : PLua_State ) : Integer; cdecl;
+var iState : TLuaGameStack;
 begin
-  State.Init(L);
-  State.Push( LongInt(HOF.GetCount( State.ToString( 1 ) )) );
+  iState.Init( L );
+  iState.Push( LongInt(HOF.GetCount( iState.ToString( 1 ) )) );
   Result := 1;
 end;
 
-function lua_core_player_data_child_count(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+function lua_core_player_data_child_count( L : PLua_State ) : Integer; cdecl;
+var iState : TLuaGameStack;
 begin
-  State.Init(L);
-  State.Push( LongInt(HOF.GetChildCount( State.ToString( 1 ) )) );
+  iState.Init( L );
+  iState.Push( LongInt(HOF.GetChildCount( iState.ToString( 1 ) )) );
   Result := 1;
 end;
 
-function lua_core_player_data_get_counted(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+function lua_core_player_data_get_counted( L : PLua_State ) : Integer; cdecl;
+var iState : TLuaGameStack;
 begin
-  State.Init(L);
-  State.Push( LongInt(HOF.GetCounted( State.ToString( 1 ), State.ToString( 2 ), State.ToString( 3 ) ) ) );
+  iState.Init( L );
+  iState.Push( LongInt(HOF.GetCounted( iState.ToString( 1 ), iState.ToString( 2 ), iState.ToString( 3 ) ) ) );
   Result := 1;
 end;
 
-function lua_core_player_data_add_counted(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+function lua_core_player_data_add_counted( L : PLua_State ) : Integer; cdecl;
+var iState : TLuaGameStack;
 begin
-  State.Init(L);
-  State.Push( Boolean(HOF.AddCounted( State.ToString( 1 ), State.ToString( 2 ), State.ToString( 3 ), State.ToInteger( 4,1 ) ) ) );
+  iState.Init( L );
+  iState.Push( Boolean(HOF.AddCounted( iState.ToString( 1 ), iState.ToString( 2 ), iState.ToString( 3 ), iState.ToInteger( 4,1 ) ) ) );
   Result := 1;
 end;
 
 function lua_core_play_music(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   IO.Audio.PlayMusic(State.ToString(1));
@@ -205,7 +165,7 @@ end;
 // ************************************************************************ //
 
 function lua_core_game_time(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   State.Push(Player.Statistics.GameTime);
@@ -213,7 +173,7 @@ begin
 end;
 
 function lua_core_time_ms(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   State.Push( LongInt(IO.Driver.GetMs) );
@@ -225,24 +185,8 @@ begin
   Exit( vlua_rng_random( L, IO.VisualRNG ) );
 end;
 
-function lua_core_register_cell(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
-begin
-  State.Init(L);
-  Cells.RegisterCell(State.ToInteger(1));
-  Result := 0;
-end;
-
-function lua_core_register_emitter(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
-begin
-  State.Init(L);
-  DRL.Particles.RegisterEmitter( Word( State.ToInteger(1) ) );
-  Result := 0;
-end;
-
 function lua_core_texture_upload(L: Plua_State): Integer; cdecl;
-var State    : TDRLLuaState;
+var State    : TLuaGameStack;
     iTexture : TTexture;
 begin
   State.Init(L);
@@ -258,7 +202,7 @@ begin
 end;
 
 function lua_core_register_sprite_sheet(L: Plua_State): Integer; cdecl;
-var State     : TDRLLuaState;
+var State     : TLuaGameStack;
     iNormal   : TTexture;
     iCosplay  : TTexture;
     iGlow     : TTexture;
@@ -292,14 +236,14 @@ begin
 end;
 
 function lua_core_set_vision_base_value(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   VisionBaseValue := State.ToInteger(1,8);
   Result := 0;
 end;
 
-procedure TDRLLua.ReadWad;
+procedure TDRLLua.ReadWad( aHelp : THelp; aModErrors : TStringGArray );
 var iProgBase    : DWord;
     iModule      : TDRLModule;
     iData        : TVDataFile;
@@ -309,14 +253,14 @@ var iProgBase    : DWord;
   end;
   procedure SetupBase;
   begin
-    VersionEngine         := LuaSystem.Get( 'VERSION_ENGINE' );
-    VersionEngineSave     := LuaSystem.Get( 'VERSION_ENGINE_SAVE' );
-    VersionEngineExpected := LuaSystem.Get( 'VERSION_ENGINE_EXPECTED' );
-    VersionModule         := LuaSystem.Get( 'VERSION_MODULE' );
-    VersionModuleSave     := LuaSystem.Get( 'VERSION_MODULE_SAVE' );
+    VersionEngine         := Get( 'VERSION_ENGINE' );
+    VersionEngineSave     := Get( 'VERSION_ENGINE_SAVE' );
+    VersionEngineExpected := Get( 'VERSION_ENGINE_EXPECTED' );
+    VersionModule         := Get( 'VERSION_MODULE' );
+    VersionModuleSave     := Get( 'VERSION_MODULE_SAVE' );
     DemoVersion           := False;
-    if LuaSystem.RawDefined( 'DEMO' ) then
-      DemoVersion := LuaSystem.Get( 'DEMO' );
+    if RawDefined( 'DEMO' ) then
+      DemoVersion := Get( 'DEMO' );
 
     Log( LOGINFO, 'ENGINE VERSION: '+VersionEngine );
     Log( LOGINFO, 'EXPECTED ENGINE VERSION: '+VersionEngineExpected );
@@ -341,9 +285,9 @@ begin
     if ( not iModule.IsBase ) and ( iModule.BaseVersion <> '' ) then
       if iModule.BaseVersion <> VersionModuleSave then
       begin
-        ModErrors.Push('Error   : Mod "'+iModule.ID+'" version mismatch!');
-        ModErrors.Push('Expects : '+iModule.BaseVersion);
-        ModErrors.Push('');
+        aModErrors.Push('Error   : Mod "'+iModule.ID+'" version mismatch!');
+        aModErrors.Push('Expects : '+iModule.BaseVersion);
+        aModErrors.Push('');
       end;
 
     if iModule.Path.EndsWith( '.wad' ) then
@@ -358,14 +302,14 @@ begin
           if DemoVersion then Halt(0);
           ModdedGame := True;
         end;
-        LuaSystem.SetValue( 'BASE_MODULE_LOADING', iModule.IsBaseLoading );
+        SetValue( 'BASE_MODULE_LOADING', iModule.IsBaseLoading );
         try
           LoadStream( iData,'','main.lua' );
         finally
-          LuaSystem.SetValue( 'BASE_MODULE_LOADING', False );
+          SetValue( 'BASE_MODULE_LOADING', False );
         end;
       end;
-      iData.RegisterLoader( FILETYPE_RAW, @Help.StreamLoader );
+      iData.RegisterLoader( FILETYPE_RAW, @aHelp.StreamLoader );
       iData.Load('help');
       iData.RegisterLoader( FILETYPE_RAW, @IO.ASCIILoader );
       iData.Load('ascii');
@@ -388,14 +332,14 @@ begin
             ModdedGame := True;
           end;
           RegisterModule( iModule.ID, iModule.Path );
-          LuaSystem.SetValue( 'BASE_MODULE_LOADING', iModule.IsBaseLoading );
+          SetValue( 'BASE_MODULE_LOADING', iModule.IsBaseLoading );
           try
             LoadFile( iModule.Path + 'main.lua' );
           finally
-            LuaSystem.SetValue( 'BASE_MODULE_LOADING', False );
+            SetValue( 'BASE_MODULE_LOADING', False );
           end;
         end;
-        LoadFiles( iModule.Path + 'help', @Help.StreamLoader, '*.hlp' );
+        LoadFiles( iModule.Path + 'help', @aHelp.StreamLoader, '*.hlp' );
         LoadFiles( iModule.Path + 'ascii', @IO.ASCIILoader, '*.asc' );
         if GraphicsVersion then
           (IO as TDRLGFXIO).Textures.LoadTextureFolder( iModule.Path + 'graphics' );
@@ -406,18 +350,18 @@ begin
         begin
           if ModdedGame then
           begin
-            ModErrors.Push('Error : Mod "'+iModule.ID+'" failed to load!');
-            ModErrors.Push('Path  : '+iModule.Path);
-            ModErrors.Push( E.Message );
-            ModErrors.Push( '' );
+            aModErrors.Push('Error : Mod "'+iModule.ID+'" failed to load!');
+            aModErrors.Push('Path  : '+iModule.Path);
+            aModErrors.Push( E.Message );
+            aModErrors.Push( '' );
           end
           else raise;
         end;
       end;
 
     end;
-    if LuaSystem.RawDefined( iModule.ID ) then
-      iModule.Hooks := LoadHooks( [ iModule.ID ], ModuleHooks );
+    if RawDefined( iModule.ID ) then
+      iModule.Hooks := LoadHooks( Self, [ iModule.ID ], ModuleHooks );
     if iModule.IsBase then
       SetupBase;
   end;
@@ -425,14 +369,14 @@ begin
   IO.LoadProgress(iProgBase + 50);
   IO.Audio.Load;
 
-  ModuleOption_KlassAchievements    := LuaSystem.Get( ['core','options','klass_achievements'], False );
-  ModuleOption_NewMenu              := LuaSystem.Get( ['core','options','new_menu'], False );
-  ModuleOption_MeleeMoveOnKill      := LuaSystem.Get( ['core','options','melee_move_on_kill'], False );
-  ModuleOption_FullBeingDescription := LuaSystem.Get( ['core','options','full_being_description'], False );
-  ModuleOption_PercentHealth        := LuaSystem.Get( ['core','options','percent_health'], False );
-  ModuleOption_RelicSlot            := LuaSystem.Get( ['core','options','relic_slot'], False );
-  ModuleOption_NewFloorLayout       := LuaSystem.Get( ['core','options','new_floor_layout'], False );
-  ModuleOption_ResistCap            := LuaSystem.Get( ['core','options','resist_cap'], 95 );
+  ModuleOption_KlassAchievements    := Get( ['core','options','klass_achievements'], False );
+  ModuleOption_NewMenu              := Get( ['core','options','new_menu'], False );
+  ModuleOption_MeleeMoveOnKill      := Get( ['core','options','melee_move_on_kill'], False );
+  ModuleOption_FullBeingDescription := Get( ['core','options','full_being_description'], False );
+  ModuleOption_PercentHealth        := Get( ['core','options','percent_health'], False );
+  ModuleOption_RelicSlot            := Get( ['core','options','relic_slot'], False );
+  ModuleOption_NewFloorLayout       := Get( ['core','options','new_floor_layout'], False );
+  ModuleOption_ResistCap            := Get( ['core','options','resist_cap'], 95 );
 
   if ModdedGame then Log( LOGINFO, 'Game is modded.');
 end;
@@ -465,15 +409,13 @@ end;
 
 procedure TDRLLua.RegisterPlayer(Thing: TThing);
 begin
-  LuaSystem.SetValue('player',Thing);
+  SetValue('player',Thing);
   RegisterKillsClass( Raw, (Thing as TPlayer).FKills );
 end;
 
 destructor TDRLLua.Destroy;
 var iData : TVDataFile;
 begin
-  if drlbase.Lua = Self then
-    drlbase.Lua := nil;
   for iData in FOpenData do
     iData.Free;
   FreeAndNil( FOpenData );
@@ -510,7 +452,6 @@ const lua_player_data_lib : array[0..4] of luaL_Reg = (
     ( name : nil;           func : nil; )
 );
 
-
 function lua_core_resolve_callback( L: Plua_State; aIndex : Integer ) : Integer;
 var iName : AnsiString;
     i, n  : Integer;
@@ -540,7 +481,7 @@ begin
 end;
 
 function lua_core_callback(L: Plua_State): Integer; cdecl;
-var iState  : TDRLLuaState;
+var iState  : TLuaGameStack;
     iObject : TObject;
     iHook   : Integer;
     iTop    : Integer;
@@ -579,15 +520,12 @@ begin
   Result := 0;
 end;
 
-const lua_core_lib : array[0..13] of luaL_Reg = (
+const lua_core_lib : array[0..10] of luaL_Reg = (
     ( name : 'add_to_cell_set';func : @lua_core_add_to_cell_set),
     ( name : 'game_time';      func : @lua_core_game_time),
     ( name : 'time_ms';        func : @lua_core_time_ms),
     ( name : 'visual_random';  func : @lua_core_visual_random),
     ( name : 'is_playing';func : @lua_core_is_playing),
-    ( name : 'register_cell';   func : @lua_core_register_cell),
-    ( name : 'register_emitter'; func : @lua_core_register_emitter),
-    ( name : 'register_perk';   func : @lua_core_register_perk),
 
     ( name : 'play_music';func : @lua_core_play_music),
 
@@ -598,6 +536,11 @@ const lua_core_lib : array[0..13] of luaL_Reg = (
 
     ( name : nil;          func : nil; )
 );
+
+procedure TDRLLua.BindNodeContext( aContext : TNodeContext );
+begin
+  FNodeContext := aContext;
+end;
 
 constructor TDRLLua.Create( aModules : TDRLModules; const aDataPath : AnsiString );
 var Count : Byte;
@@ -619,8 +562,6 @@ begin
   RegisterAreaFull( Raw, NewArea( NewCoord2D(1,1), NewCoord2D(MaxX,MaxY) ) );
   RegisterWeightTableClass( Raw );
 
-  LuaSystem := Self;
-
   ErrorFunc := @OnError;
   
   SetValue('WINDOWSVERSION', {$IFDEF WINDOWS}1{$ELSE}0{$ENDIF});
@@ -629,7 +570,7 @@ begin
   SetValue( 'BASE_MODULE_LOADING', False );
 
   for Count := 0 to 15 do SetValue(ColorNames[Count],Count);
-  TDRLIO.RegisterLuaAPI( State );
+  TDRLIO.RegisterLuaAPI( FStack );
 
   Register( 'statistics', lua_statistics_lib );
   RegisterMetaTable('statistics',@lua_statistics_get, @lua_statistics_set );
@@ -637,31 +578,29 @@ begin
   Register( 'player_data', @lua_player_data_lib );
   Register( 'core', lua_core_lib );
 
-  State.RegisterEnumValues( TypeInfo(TParticleFlag) );
-  State.RegisterEnumValues( TypeInfo(TItemType) );
-  State.RegisterEnumValues( TypeInfo(TBodyTarget) );
-  State.RegisterEnumValues( TypeInfo(TEqSlot) );
-  State.RegisterEnumValues( TypeInfo(TStatusEffect) );
-  State.RegisterEnumValues( TypeInfo(TDamageType) );
-  State.RegisterEnumValues( TypeInfo(TExplosionFlag) );
-  State.RegisterEnumValues( TypeInfo(TResistance) );
-  State.RegisterEnumValues( TypeInfo(TMoveResult) );
-  State.RegisterEnumValues( TypeInfo(TTIGStyleColorEntry) );
-  State.RegisterEnumValues( TypeInfo(TTIGStyleFrameEntry) );
-  State.RegisterEnumValues( TypeInfo(TTIGStylePaddingEntry) );
+  FStack.RegisterEnumValues( TypeInfo(TParticleFlag) );
+  FStack.RegisterEnumValues( TypeInfo(TItemType) );
+  FStack.RegisterEnumValues( TypeInfo(TBodyTarget) );
+  FStack.RegisterEnumValues( TypeInfo(TEqSlot) );
+  FStack.RegisterEnumValues( TypeInfo(TStatusEffect) );
+  FStack.RegisterEnumValues( TypeInfo(TDamageType) );
+  FStack.RegisterEnumValues( TypeInfo(TExplosionFlag) );
+  FStack.RegisterEnumValues( TypeInfo(TResistance) );
+  FStack.RegisterEnumValues( TypeInfo(TMoveResult) );
+  FStack.RegisterEnumValues( TypeInfo(TTIGStyleColorEntry) );
+  FStack.RegisterEnumValues( TypeInfo(TTIGStyleFrameEntry) );
+  FStack.RegisterEnumValues( TypeInfo(TTIGStylePaddingEntry) );
 
-  TNode.RegisterLuaAPI( 'game_object' );
+  TNode.RegisterLuaAPI( Self, 'game_object' );
 
-  TLuaEntityNode.RegisterLuaAPI( 'thing' );
-  TThing.RegisterLuaAPI();
+  TLuaEntityNode.RegisterLuaAPI( Self, 'thing' );
+  TThing.RegisterLuaAPI( Self );
 
-  TItem.RegisterLuaAPI();
-  TBeing.RegisterLuaAPI();
-  TLevel.RegisterLuaAPI();
-  TPlayer.RegisterLuaAPI();
-  RegisterDungenClass( LuaSystem.Raw, 'generator' );
-
-  drlbase.Lua := Self;
+  TItem.RegisterLuaAPI( Self );
+  TBeing.RegisterLuaAPI( Self );
+  TLevel.RegisterLuaAPI( Self );
+  TPlayer.RegisterLuaAPI( Self );
+  RegisterDungenClass( Raw, 'generator' );
 
 //  LogProps( TThing );
 //  LogProps( TItem );
@@ -674,11 +613,8 @@ begin
   RegisterType( TItem,   'item',  'items'  );
   RegisterType( TLevel,  'level', 'levels' );
 
-  LuaSystem.GetClassInfo( TBeing ).RegisterHooks( BeingHooks, HookNames );
-  LuaSystem.GetClassInfo( TPlayer ).RegisterHooks( BeingHooks, HookNames );
-
-  ReadWAD;
-
+  GetClassInfo( TBeing ).RegisterHooks( BeingHooks, HookNames );
+  GetClassInfo( TPlayer ).RegisterHooks( BeingHooks, HookNames );
 end;
 
 function TDRLLua.HookName( aHook : Byte ) : AnsiString;
@@ -687,49 +623,10 @@ begin
     Exit( HookNames[aHook] )
   else if aHook > 200 then
   begin
-    Exit( LuaSystem.Get( ['core','callbacks', aHook - 200] ) ) 
+    Exit( Get( ['core','callbacks', aHook - 200] ) )
   end
   else
     raise ELuaException.Create('Invalid hook ID: '+IntToStr( aHook ) );
-end;
-
-{ TDRLLuaState }
-
-function TDRLLuaState.ToId( aIndex: Integer ) : Integer;
-begin
-  if IsNumber( aIndex ) then Exit( ToInteger( aIndex ) );
-  ToId := LuaSystem.Defines[ToString( aIndex )];
-  if ToId = 0 then Error( 'unknown define ('+ToString( aIndex ) +')!' );
-end;
-
-function TDRLLuaState.ToPosition( aIndex : Integer ) : TCoord2D;
-begin
-  if IsCoord( aIndex ) then
-     Exit( ToCoord( aIndex ) )
-  else
-     Exit( (ToObject( aIndex ) as TThing).Position );
-end;
-
-function TDRLLuaState.ToPosition( aIndex : Integer; aDefault : TCoord2D ) : TCoord2D;
-begin
-  if IsCoord( aIndex ) then
-     Exit( ToCoord( aIndex ) )
-  else if IsObject( aIndex ) then
-     Exit( (ToObject( aIndex ) as TThing).Position )
-  else Exit( aDefault );
-end;
-
-function TDRLLuaState.ToIOColor( aIndex : Integer ) : TIOColor;
-var iC4b : TVec4b;
-begin
-  Result := 0;
-  if IsNumber( aIndex )
-    then Exit( ToInteger( aIndex ) )
-    else if IsTable( aIndex ) then
-    begin
-      iC4b := ToVec4b( aIndex );
-      Exit( IOColor( iC4b.X, iC4b.Y, iC4b.Z, iC4b.W ) );
-    end;
 end;
 
 end.

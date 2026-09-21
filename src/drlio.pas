@@ -6,11 +6,9 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlio;
 interface
-uses {$IFDEF WINDOWS}Windows,{$ENDIF} Classes, SysUtils,
-     vio, vbindings, viorl, vrltools, vluaconfig, vglquadrenderer, vstoreinterface, vtextures, vtigstyle,
-     vluastate, viotypes, vioevent, vioconsole, vgenerics, vutil,
-     dfdata, dfthing, dfbeing, drlspritemap, drlaudio, drlkeybindings,
-     drlbase, drlcontrollerbindings, drlloadingview, drlmodule;
+uses {$IFDEF WINDOWS}windows,{$ENDIF} classes, sysutils,
+     vluagamestack, vio, vbindings, viorl, vrltools, vluaconfig, vglquadrenderer, vstoreinterface, vtextures, vtigstyle, vluastack, viotypes, vioevent, vioconsole, vgenerics, vutil,
+     dfdata, dfthing, dfbeing, drlspritemap, drlaudio, drlkeybindings, drlbase, drlcontrollerbindings, drlloadingview, drlmodule;
 
 const TIG_EV_NONE      = 0;
       TIG_EV_INVENTORY = 2;
@@ -97,7 +95,7 @@ type TDRLIO = class( TIORL )
   procedure Explosion( aDelay : Integer; aWhere : TCoord2D; aData : TExplosionData ); reintroduce; virtual;
   procedure PulseBlood( aValue : Single ); virtual;
 
-  class procedure RegisterLuaAPI( State : TLuaState ); reintroduce;
+  class procedure RegisterLuaAPI( State : TLuaStack ); reintroduce;
 
   function PushLayer( aLayer : TIOLayer ) : TIOLayer; override;
   procedure PreAction;
@@ -129,7 +127,6 @@ protected
   procedure UpdateStyles;
   procedure ExplosionMark( aCoord : TCoord2D; aColor : Byte; aDuration : DWord; aDelay : DWord ); virtual; abstract;
   procedure DrawHud; virtual;
-  procedure ColorQuery(nkey,nvalue : Variant);
   function ScreenShotCallback( aEvent : TIOEvent ) : Boolean;
   function BBScreenShotCallback( aEvent : TIOEvent ) : Boolean;
 protected
@@ -188,12 +185,9 @@ procedure EmitCrashInfo( const aInfo : AnsiString; aInGame : Boolean  );
 
 implementation
 
-uses math, video, dateutils, variants,
-     vsound, vluasystem, vuid, vlog, vdebug, vmath,
-     vsdlio, vglconsole, vtig, vtigio, vvector,
-     dflevel, dfplayer, dfitem, dfhof,
-     drlconfiguration, drluibindings, drlmoreview, drlchoiceview, drlua, drlmodulechoiceview,
-     drlhudviews, drlplotview;
+uses math, video, dateutils,
+     vsound, vlua, vuid, vlog, vdebug, vmath, vsdlio, vglconsole, vtig, vtigio, vvector,
+     dflevel, dfplayer, dfitem, dfhof, drlconfiguration, drluibindings, drlmoreview, drlchoiceview, drlmodulechoiceview, drlhudviews, drlplotview;
 
 function TIGSubCallback( const aID : Ansistring ) : Ansistring;
 begin
@@ -331,7 +325,7 @@ begin
   end;
 
   if GraphicsVersion and ( aData.EmitterID > 0 ) then
-    FSession.Particles.AddEmitterDirect( aData.EmitterID,
+    iLevel.Particles.AddEmitterDirect( aData.EmitterID,
       Vec3f( ( aWhere.X - 1 ) * 32 + 16, ( aWhere.Y - 1 ) * 32 + 16, 0 ) );
 
   for iCoord in NewArea( aWhere, aData.Range ).Clamped( iLevel.Area ) do
@@ -598,7 +592,7 @@ end;
 
 procedure TDRLIO.SetAutoTarget( aTarget : TCoord2D );
 begin
-  FHintTarget := FSession.Level.GetTargetDescription( aTarget );
+  FHintTarget := FSession.Level.GetTargetDescription( FSession.Player, aTarget );
   if FSession.Level.isVisible( aTarget ) and ( FSession.Level.Being[ aTarget ] <> nil )
     then FHintStatus := FSession.Level.Being[ aTarget ].GetTraitString
     else FHintStatus := '';
@@ -743,16 +737,12 @@ begin
   inherited Configure( aConfig );
   // TODO : configurable
 
-  if GodMode then
-    RegisterDebugConsole( VKEY_F1 );
   FIODriver.RegisterInterrupt( VKEY_F9, @ScreenShotCallback );
   FIODriver.RegisterInterrupt( VKEY_F10, @BBScreenShotCallback );
 
   if Option_MessageBuffer < 20 then Option_MessageBuffer := 20;
   FAudio.Configure( aConfig, aReload );
 
-  if aReload then
-    aConfig.EntryFeed('Colors', @ColorQuery );
   if Option_MessageColoring then
     aConfig.EntryFeed( 'Messages', @FMessages.AddHighlightCallback );
 end;
@@ -814,12 +804,12 @@ end;
 procedure TDRLIO.SetSeed( aCardinal : LongInt );
 var iChallengeText : AnsiString;
 begin
-  FSeedHUDText := ' ' + LuaSystem.Get([ 'diff', FSession.Difficulty, 'code' ]);
+  FSeedHUDText := ' ' + FSession.Context.Lua.Get([ 'diff', FSession.Difficulty, 'code' ]);
   iChallengeText := '';
   if FSession.Challenge <> '' then
-    iChallengeText += Copy( LuaSystem.Get([ 'chal', FSession.Challenge, 'abbr' ]), 3, MaxInt );
+    iChallengeText += Copy( FSession.Context.Lua.Get([ 'chal', FSession.Challenge, 'abbr' ]), 3, MaxInt );
   if FSession.SChallenge <> '' then
-    iChallengeText += Copy( LuaSystem.Get([ 'chal', FSession.SChallenge, 'abbr' ]), 3, MaxInt );
+    iChallengeText += Copy( FSession.Context.Lua.Get([ 'chal', FSession.SChallenge, 'abbr' ]), 3, MaxInt );
   if iChallengeText <> '' then FSeedHUDText += '{r' + iChallengeText + '}';
   FSeedHUDText += IntToStr( aCardinal );
   FSeedHUDOffset := -2-VTIG_Length( FSeedHUDText );
@@ -974,7 +964,7 @@ begin
 
   if ( FSession.Level <> nil ) and ( FSession.Level.Boss <> 0 ) then
   begin
-    iBoss := UIDs.Get( FSession.Level.Boss ) as TBeing;
+    iBoss := FSession.UIDs.Get( FSession.Level.Boss ) as TBeing;
     if iBoss <> nil then
     begin
       VTIG_FreeLabel( iBoss.Name, Point( 40 - Ceil(Length( iBoss.Name ) / 2), 3 ), iCBold );
@@ -1001,11 +991,6 @@ end;
 procedure TDRLIO.SetHint ( const aText : AnsiString ) ;
 begin
   FHint       := aText;
-end;
-
-procedure TDRLIO.ColorQuery(nkey,nvalue : Variant);
-begin
-    ColorOverrides[nkey] := nvalue;
 end;
 
 function TDRLIO.ScreenShotCallback ( aEvent : TIOEvent ) : Boolean;
@@ -1221,7 +1206,7 @@ end;
 (**************************** LUA UI *****************************)
 
 function lua_ui_set_hint(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   if not Setting_HideHints then
@@ -1240,7 +1225,7 @@ end;
 {$HINTS ON}
 
 function lua_ui_blink(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   IO.Blink( State.ToInteger(1), State.ToInteger(2), State.ToInteger(3));
@@ -1248,7 +1233,7 @@ begin
 end;
 
 function lua_ui_plot_screen(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
 begin
   iState.Init(L);
   IO.PushLayer( TPlotView.Create( iState.ToString(1), iState.ToIOColor(2), iState.ToString(3,'') ) );
@@ -1257,7 +1242,7 @@ begin
 end;
 
 function lua_ui_msg(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   IO.Msg(State.ToString(1));
@@ -1271,7 +1256,7 @@ begin
 end;
 
 function lua_ui_msg_enter(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   if State.StackSize = 0 then Exit(0);
@@ -1283,7 +1268,7 @@ begin
 end;
 
 function lua_ui_msg_history(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
     Idx   : Integer;
     Msg   : AnsiString;
 begin
@@ -1304,7 +1289,7 @@ begin
 end;
 
 function lua_ui_strip_encoding(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   if State.StackSize = 0 then Exit(0);
@@ -1313,7 +1298,7 @@ begin
 end;
 
 function lua_ui_choice(L: Plua_State): Integer; cdecl;
-var State     : TDRLLuaState;
+var State     : TLuaGameStack;
     iView     : TChoiceView;
     i, iCount : Integer;
     iEntry    : TChoiceViewChoice;
@@ -1361,7 +1346,7 @@ begin
 end;
 
 function lua_ui_set_style_color(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iEntry : TTIGStyleColorEntry;
 begin
   iState.Init(L);
@@ -1372,7 +1357,7 @@ begin
 end;
 
 function lua_ui_set_style_frame(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iEntry : TTIGStyleFrameEntry;
 begin
   iState.Init(L);
@@ -1383,7 +1368,7 @@ begin
 end;
 
 function lua_ui_set_style_padding(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iEntry : TTIGStylePaddingEntry;
 begin
   iState.Init(L);
@@ -1394,7 +1379,7 @@ begin
 end;
 
 function lua_ui_set_narrow_mode(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
 begin
   iState.Init(L);
   IO.FNarrowMode := iState.ToBoolean(1);
@@ -1408,23 +1393,23 @@ begin
 end;
 
 function lua_ui_is_pad(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
 begin
   iState.Init(L);
   iState.Push( IO.IsGamepad );
   Result := 1;
 end;
 
-function lua_ui_get_rank(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+function lua_ui_get_rank( L : PLua_State ) : Integer; cdecl;
+var iState : TLuaGameStack;
 begin
-  iState.Init(L);
+  iState.Init( L );
   iState.Push( HOF.GetRank( iState.ToString( 1 ) ) );
   Result := 1;
 end;
 
 function lua_ui_save_and_quit(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
 begin
   iState.Init(L);
   ForceShop := iState.ToBoolean(1);
@@ -1434,7 +1419,7 @@ begin
 end;
 
 function lua_ui_get_target(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
 begin
   iState.Init(L);
   iState.PushCoord( IO.Session.Targeting.List.Current );
@@ -1442,7 +1427,7 @@ begin
 end;
 
 function lua_ui_reset_auto_target(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
 begin
   iState.Init(L);
   IO.Session.ResetAutoTarget;
@@ -1479,7 +1464,7 @@ begin
   WaitForLayer( True );
 end;
 
-class procedure TDRLIO.RegisterLuaAPI( State : TLuaState );
+class procedure TDRLIO.RegisterLuaAPI( State : TLuaStack );
 begin
   State.Register( 'ui', lua_ui_lib );
 end;

@@ -402,23 +402,23 @@ function drl.GetResultDescription( result, highscore )
 	return killed_by
 end
 
-function drl.RunPrintMortem()
+function drl.GenerateMemorial()
+	local lines = {}
 	local result_id    = drl.GetResultId()
 	local death_reason = drl.GetResultDescription( result_id, false )
 	local game_module    = nil
 
-	player:mortem_print( "{r--------------------------------------------------------------}" )
-	player:mortem_print( " {RDRL} {!"..VERSION_MODULE.."} (Engine {!"..VERSION_ENGINE.."}) roguelike post-mortem dump")
+	table.insert( lines, "{r--------------------------------------------------------------}" )
+	table.insert( lines, " {RDRL} {!"..VERSION_MODULE.."} (Engine {!"..VERSION_ENGINE.."}) roguelike post-mortem dump" )
 --	if game_type ~= GAMESTANDARD then
---		player:mortem_print( " Module : "..module.name.." ("..mortem.version_string(module.version)..")")
+--		table.insert( lines, " Module : "..module.name.." ("..mortem.version_string(module.version)..")" )
 --		game_module = _G[module.id]
 --	end
-	player:mortem_print( "{r--------------------------------------------------------------}" )
-	player:mortem_print()
+	table.insert( lines, "{r--------------------------------------------------------------}" )
+	table.insert( lines, "" )
 
-	if game_module and game_module.RunPrintMortem then
-		game_module.RunPrintMortem()
-		return
+	if game_module and game_module.GenerateMemorial then
+		return table.concat( lines, "\n" ) .. "\n" .. game_module.GenerateMemorial()
 	end
 
 	if not game_module then
@@ -426,111 +426,114 @@ function drl.RunPrintMortem()
 			..ranks.exp[ ui.get_rank("exp") + 1].name.." "..ranks.skill[ui.get_rank("skill") + 1].name
 			.." "..klasses[player.klass].name.."},"
 		if string.len(player.name) <= 12 then
-			player:mortem_print(" {!"..player.name.."}, "..player_description)
+			table.insert( lines, " {!"..player.name.."}, "..player_description )
 		else
-			player:mortem_print(" {!"..player.name.."},")
-			player:mortem_print(" "..player_description)
+			table.insert( lines, " {!"..player.name.."}," )
+			table.insert( lines, " "..player_description )
 		end
 		local epi_name = player.episode[player.level_index].deathname or player.episode[player.level_index].name or "an Unknown Location"
-		player:mortem_print( " "..death_reason.." at {!"..epi_name.."}." )
+		table.insert( lines, " "..death_reason.." at {!"..epi_name.."}." )
 	else
 		if game_module.OnMortemPrint then
-			game_module.OnMortemPrint(death_reason)
+			local text = game_module.OnMortemPrint(death_reason)
+			if text and text ~= "" then
+				table.insert( lines, ( text:gsub( "\n$", "" ) ) )
+			end
 		else
-			player:mortem_print( " {!"..player.name.."}, level {!"..player.explevel.." "
+			table.insert( lines, " {!"..player.name.."}, level {!"..player.explevel.." "
 		.." "..klasses[player.klass].name.."}, "..death_reason )
-			player:mortem_print(" in a custom location...")
+			table.insert( lines, " in a custom location..." )
 		end
 	end
 
-	mortem.print_time_and_kills()
+	mortem.append_time_and_kills( lines )
 	local ratio = statistics.kills / statistics.max_kills
 
 		if statistics.kills == statistics.max_kills then
-			player:mortem_print( " This ass-kicking marine killed all of them!" )
+			table.insert( lines, " This ass-kicking marine killed all of them!" )
 	elseif statistics.kills + 1 == statistics.max_kills then
-			player:mortem_print (" He missed one kill to totally be ass-kicking." )
+			table.insert( lines, " He missed one kill to totally be ass-kicking." )
 	elseif statistics.kills == 0 then
-			player:mortem_print( " Poor pacifist, didn't even get a single kill..." )
+			table.insert( lines, " Poor pacifist, didn't even get a single kill..." )
 	elseif statistics.kills == 1 then
-			player:mortem_print( " Somehow, he managed only *one* kill." )
+			table.insert( lines, " Somehow, he managed only *one* kill." )
 	elseif ratio < 0.1    then
-			player:mortem_print( " My, wasn't he a wimpy chump." )
+			table.insert( lines, " My, wasn't he a wimpy chump." )
 	elseif ratio < 0.3    then
-			player:mortem_print( " Who gave him the ticket to Hell, anyway?" )
+			table.insert( lines, " Who gave him the ticket to Hell, anyway?" )
 	elseif ratio > 0.999  then
-			player:mortem_print( " A natural born killer!" )
+			table.insert( lines, " A natural born killer!" )
 	elseif ratio > 0.99   then
-			player:mortem_print( " He was a real killing machine..." )
+			table.insert( lines, " He was a real killing machine..." )
 	elseif ratio > 0.9    then
-			player:mortem_print( " He held his right to remain violent." )
+			table.insert( lines, " He held his right to remain violent." )
 	end
 
-	mortem.print_challenge()
-	mortem.print_crash_save()
-	player:mortem_print()
-	player:mortem_print("{r-- {ySpecial levels} --------------------------------------------}")
-	player:mortem_print()
-	mortem.print_special_levels()
-	player:mortem_print()
-	player:mortem_print("{r-- {yAwards} ----------------------------------------------------}")
-	player:mortem_print()
-	mortem.print_awards()
-	player:mortem_print()
+	mortem.append_challenge( lines )
+	mortem.append_crash_save( lines )
+	table.insert( lines, "" )
+	table.insert( lines, "{r-- {ySpecial levels} --------------------------------------------}" )
+	table.insert( lines, "" )
+	mortem.append_special_levels( lines )
+	table.insert( lines, "" )
+	table.insert( lines, "{r-- {yAwards} ----------------------------------------------------}" )
+	table.insert( lines, "" )
+	mortem.append_awards( lines )
+	table.insert( lines, "" )
 
-	player:mortem_print( "{r-- {yGraveyard} -------------------------------------------------}")
-	player:mortem_print()
-	mortem.print_graveyard()
-	player:mortem_print()
-	player:mortem_print( "{r-- {yStatistics} ------------------------------------------------}" )
-	player:mortem_print()
-	mortem.print_statistics()
-	mortem.print_damage_and_spree()
-	player:mortem_print()
-	player:mortem_print( "{r-- {yTraits} ----------------------------------------------------}" )
-	player:mortem_print()
-	mortem.print_traits()
-	player:mortem_print()
-	player:mortem_print( "{r-- {yEquipment} -------------------------------------------------}" )
-	player:mortem_print()
-	mortem.print_equipment()
-	player:mortem_print()
-	player:mortem_print( "{r-- {yInventory} -------------------------------------------------}" )
-	player:mortem_print()
-	mortem.print_inventory()
-	player:mortem_print()
-	player:mortem_print( "{r-- {yResistances} -----------------------------------------------}" )
-	player:mortem_print()
-	mortem.print_resistances()
-	player:mortem_print()
-	player:mortem_print( "{r-- {yKills} -----------------------------------------------------}" )
-	player:mortem_print()
-	mortem.print_kills()
-	player:mortem_print()
-	mortem.print_weapon_kills(
+	table.insert( lines, "{r-- {yGraveyard} -------------------------------------------------}" )
+	table.insert( lines, "" )
+	mortem.append_graveyard( lines )
+	table.insert( lines, "" )
+	table.insert( lines, "{r-- {yStatistics} ------------------------------------------------}" )
+	table.insert( lines, "" )
+	mortem.append_statistics( lines )
+	mortem.append_damage_and_spree( lines )
+	table.insert( lines, "" )
+	table.insert( lines, "{r-- {yTraits} ----------------------------------------------------}" )
+	table.insert( lines, "" )
+	mortem.append_traits( lines )
+	table.insert( lines, "" )
+	table.insert( lines, "{r-- {yEquipment} -------------------------------------------------}" )
+	table.insert( lines, "" )
+	mortem.append_equipment( lines )
+	table.insert( lines, "" )
+	table.insert( lines, "{r-- {yInventory} -------------------------------------------------}" )
+	table.insert( lines, "" )
+	mortem.append_inventory( lines )
+	table.insert( lines, "" )
+	table.insert( lines, "{r-- {yResistances} -----------------------------------------------}" )
+	table.insert( lines, "" )
+	mortem.append_resistances( lines )
+	table.insert( lines, "" )
+	table.insert( lines, "{r-- {yKills} -----------------------------------------------------}" )
+	table.insert( lines, "" )
+	mortem.append_kills( lines )
+	table.insert( lines, "" )
+	mortem.append_weapon_kills( lines,
 		{ "melee", "pistol", "shotgun", "chain", "rocket", "plasma", "bfg" },
 		{ "Melee kills    : ", "Pistol kills   : ", "Shotgun kills  : ", "Chaingun kills : ", "Rocket kills   : ", "Plasma kills   : ", "BFG kills      : " }
 	)
-	player:mortem_print()
-	player:mortem_print( "{r-- {yHistory} ---------------------------------------------------}" )
-	player:mortem_print()
-	mortem.print_history()
+	table.insert( lines, "" )
+	table.insert( lines, "{r-- {yHistory} ---------------------------------------------------}" )
+	table.insert( lines, "" )
+	mortem.append_history( lines )
 	if not game_module then
 		if kills.get("jc") > 0 then
-			player:mortem_print( "  Then finally in Hell itself, he killed the final EVIL." )
+			table.insert( lines, "  Then finally in Hell itself, he killed the final EVIL." )
 		else
-			player:mortem_print( "  On level {!"..player.level_index.."} he finally "..death_reason..".")
+			table.insert( lines, "  On level {!"..player.level_index.."} he finally "..death_reason.."." )
 		end
 	end
-	player:mortem_print()
-	player:mortem_print( "{r-- {yMessages} --------------------------------------------------} " )
-	player:mortem_print()
-	mortem.print_messages()
-	player:mortem_print()
+	table.insert( lines, "" )
+	table.insert( lines, "{r-- {yMessages} --------------------------------------------------} " )
+	table.insert( lines, "" )
+	mortem.append_messages( lines )
+	table.insert( lines, "" )
 
 	if not game_module then
-		player:mortem_print( "{r-- {yGeneral} ---------------------------------------------------} " )
-		player:mortem_print()
+		table.insert( lines, "{r-- {yGeneral} ---------------------------------------------------} " )
+		table.insert( lines, "" )
 
 		local deaths = player_data.count('player/deaths')
 		if deaths > 1 then
@@ -542,9 +545,9 @@ function drl.RunPrintMortem()
 				else
 					desc = desc:gsub( "@was", "was" )
 				end
-				player:mortem_print( desc:gsub( "@1", count.."" ) )
+				table.insert( lines, ( desc:gsub( "@1", count.."" ) ) )
 			end
-			player:mortem_print( " "..deaths.." brave souls have ventured into Phobos:" )
+			table.insert( lines, " "..deaths.." brave souls have ventured into Phobos:" )
 			reason( "killed" ," {!@1} of those @was killed.")
 			reason( "unknown"," {!@1} of those @was killed by something unknown." )
 			reason( "nuke"   ," {!@1} didn't read the thermonuclear bomb manual." )
@@ -556,18 +559,19 @@ function drl.RunPrintMortem()
 			local wins      = sacrifice + win + fullwin
 
 			if wins > 0 then
-				player:mortem_print()
-				player:mortem_print(" {!"..wins.."} souls destroyed the Mastermind...")
-				if sacrifice > 0 then player:mortem_print(" {!"..sacrifice.."} sacrificed itself for the good of mankind." ) end
-				if win       > 0 then player:mortem_print(" {!"..win.."} killed the bitch and survived." ) end
-				if fullwin   > 0 then player:mortem_print(" {!"..fullwin.."} showed that it can outsmart Hell itself." ) end
+				table.insert( lines, "" )
+				table.insert( lines, " {!"..wins.."} souls destroyed the Mastermind..." )
+				if sacrifice > 0 then table.insert( lines, " {!"..sacrifice.."} sacrificed itself for the good of mankind." ) end
+				if win       > 0 then table.insert( lines, " {!"..win.."} killed the bitch and survived." ) end
+				if fullwin   > 0 then table.insert( lines, " {!"..fullwin.."} showed that it can outsmart Hell itself." ) end
 			end
 		else
-			player:mortem_print("  He's the {!first} brave soul to have ventured into Hell...")
+			table.insert( lines, "  He's the {!first} brave soul to have ventured into Hell..." )
 		end
-		player:mortem_print()
+		table.insert( lines, "" )
 	end
-	player:mortem_print( "{r--------------------------------------------------------------} " )
+	table.insert( lines, "{r--------------------------------------------------------------} " )
+	return table.concat( lines, "\n" ) .. "\n"
 end
 
 function drl.modify_rewards( rewards, modifications )

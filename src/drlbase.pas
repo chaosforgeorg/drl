@@ -7,10 +7,8 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlbase;
 interface
 
-uses vapp, vnode, vutil, vuid, viotypes, vrltools, vluasystem, vioevent, vstoreinterface,
-     vrandom, vrlapp,
-     dflevel, dfdata, dfhof, dfitem,
-     drlhooks, drlua, drlcommand, drlkeybindings, drlmodule, drlparticles;
+uses vapp, vnode, vutil, vuid, viotypes, vrltools, vlua, vioevent, vstoreinterface, vrandom, vrlapp,
+     dflevel, dfdata, dfhof, dfplayer, dfitem, drlhooks, drllua, drlcommand, drlkeybindings, drlmodule, drlgamedata;
 
 type TDRLSession = class;
 
@@ -46,7 +44,7 @@ type TDRLSessionResult = ( DSR_Quit, DSR_Played, DSR_ReloadData );
 // and data-generation policy belongs to TDRLRuntime.
 type TDRLSession = class(TVObject)
        constructor Create( aRuntime : TRLRuntime; aModules : TDRLModules;
-         aStore : TStoreInterface; const aPaths : TGamePaths );
+         aStore : TStoreInterface; aData : TGameData; const aPaths : TGamePaths );
        procedure InitializeLevel;
        procedure Reset;
        procedure Reconfigure;
@@ -61,6 +59,7 @@ type TDRLSession = class(TVObject)
        function  CallHookCheck( Hook : Byte; const Params : array of Const ) : Boolean;
        procedure SetState( aNewState : TDRLState );
        procedure ClearPlayerView;
+       procedure GenerateMemorial( aPlayer : TPlayer );
        procedure OpenJHCPage;
        function HandleUnloadCommand( aItem : TItem ) : Boolean;
        function HandleCommand( aCommand : TCommand ) : Boolean;
@@ -73,6 +72,10 @@ type TDRLSession = class(TVObject)
        function HandlePickupCommand( aAlt : Boolean ) : Boolean;
        procedure ResetAutoTarget;
      private
+       procedure RecordResult( aPlayer : TPlayer );
+       procedure SetLevel( aLevel : TLevel );
+       procedure ReleaseLevel;
+       procedure ReleasePlayer;
        procedure Apply( aResult : TMenuResult );
        function HandleMouseEvent( aEvent : TIOEvent ) : Boolean;
        function HandleKeyEvent( aEvent : TIOEvent ) : Boolean;
@@ -87,10 +90,14 @@ type TDRLSession = class(TVObject)
      private
        FState           : TDRLState;
        FLevel           : TLevel;
+       FPlayer          : TPlayer;
+       FUIDStore        : TUIDStore;
+       FContext         : TNodeContext;
        FLastInputTime   : QWord;
        FTargeting       : TTargeting;
        FDamagedLastTurn : Boolean;
        FPlayerView      : TIOLayer;
+       FMemorial        : TPagedReport;
        FPadMoveActive   : Boolean;
        FPadMoveNext     : QWord;
        FLastFrameTime   : DWord;
@@ -109,7 +116,7 @@ type TDRLSession = class(TVObject)
        FReloadData      : Boolean;
        FGameWon         : Boolean;
        FCrashSave       : Boolean;
-       FParticles       : TParticleStore;
+       FData            : TGameData;
        FGameSeed        : Cardinal;
        FSeededGame      : Boolean;
        FRuntime         : TRLRuntime;
@@ -120,13 +127,16 @@ type TDRLSession = class(TVObject)
        property Challenge  : Ansistring read FChallenge;
        property SChallenge : Ansistring read FSChallenge;
 
+       property Data : TGameData read FData;
+       property Context : TNodeContext read FContext;
+       property UIDs : TUIDStore read FUIDStore;
        property Store : TStoreInterface read FStore;
        property Modules : TDRLModules read FModules;
        property Level : TLevel read FLevel;
+       property Player : TPlayer read FPlayer;
        property State : TDRLState read FState;
        property Targeting : TTargeting read FTargeting;
        property DamagedLastTurn : Boolean read FDamagedLastTurn write FDamagedLastTurn;
-       property Particles : TParticleStore read FParticles;
        property GameSeed : Cardinal read FGameSeed;
        property SeededGame : Boolean read FSeededGame;
        property DataReloadRequired : Boolean read FReloadData;
@@ -135,20 +145,13 @@ type TDRLSession = class(TVObject)
      end;
 
 var DRL : TDRLSession;
-var Lua : TDRLLua;
 
 
 implementation
 
-uses  {$IFDEF WINDOWS}Windows,{$ELSE}Unix,{$ENDIF}
-     Classes, SysUtils,
-     vbindings, vdebug, vlua, vstream,
-     dfmap, dfbeing,
-     drlio, drlgfxio, drltextio, zstream,
-     drlspritemap, // remove
-     drlplayerview, drlingamemenuview, drlhelpview, drlassemblyview,
-     drlpagedview, drlrankupview, drlmainmenuview, drlhudviews, drlmessagesview,
-     drlapplication, drlcontrollerbindings, dfplayer;
+uses {$IFDEF WINDOWS}windows,{$ELSE}unix,{$ENDIF} classes, sysutils, zstream,
+     vbindings, vdebug, vstream,
+     dfmap, dfbeing, drlio, drlgfxio, drlspritemap { remove }, drlplayerview, drlingamemenuview, drlhelpview, drlassemblyview, drlpagedview, drlrankupview, drlmainmenuview, drlhudviews, drlmessagesview, drlapplication, drlcontrollerbindings;
 
 const PAD_REPEAT_START = 400;
       PAD_REPEAT       = 100;
@@ -174,13 +177,13 @@ end;
 procedure TTargeting.Update( aRange : Integer );
 var iBeing : TBeing;
 begin
-  FSession.Level.UpdateAutoTarget( FList, Player, aRange );
+  FSession.Level.UpdateAutoTarget( FList, FSession.Player, aRange );
   if (FLastUID <> 0) and FSession.Level.isAlive( FLastUID ) then
   begin
     iBeing := FSession.Level.FindChild( FLastUID ) as TBeing;
     if iBeing <> nil then
       if iBeing.isVisible then
-        if Distance( iBeing.Position, Player.Position ) <= aRange then
+        if Distance( iBeing.Position, FSession.Player.Position ) <= aRange then
           FList.PriorityTarget( iBeing.Position );
   end;
 
@@ -210,16 +213,16 @@ end;
 
 procedure TDRLSession.CallHook( Hook : Byte; const Params : array of const ) ;
 begin
-  if (Hook in FModuleHooks) then LuaSystem.ProtectedCall([CoreModuleID,Lua.HookName(Hook)],Params);
-  if (FChallenge <> '')  and (Hook in FChallengeHooks) then LuaSystem.ProtectedCall(['chal',FChallenge,Lua.HookName(Hook)],Params);
-  if (FSChallenge <> '') and (Hook in FSChallengeHooks) then LuaSystem.ProtectedCall(['chal',FSChallenge,Lua.HookName(Hook)],Params);
+  if (Hook in FModuleHooks) then FContext.Lua.ProtectedCall([CoreModuleID,TDRLLua( FContext.Lua ).HookName(Hook)],Params);
+  if (FChallenge <> '')  and (Hook in FChallengeHooks) then FContext.Lua.ProtectedCall(['chal',FChallenge,TDRLLua( FContext.Lua ).HookName(Hook)],Params);
+  if (FSChallenge <> '') and (Hook in FSChallengeHooks) then FContext.Lua.ProtectedCall(['chal',FSChallenge,TDRLLua( FContext.Lua ).HookName(Hook)],Params);
 end;
 
 function TDRLSession.CallHookCheck ( Hook : Byte; const Params : array of const ) : Boolean;
 begin
-  if (FChallenge <> '') and (Hook in FChallengeHooks) then if not LuaSystem.ProtectedCall(['chal',FChallenge,HookNames[Hook]],Params) then Exit( False );
-  if (FSChallenge <> '') and (Hook in FSChallengeHooks) then if not LuaSystem.ProtectedCall(['chal',FSChallenge,HookNames[Hook]],Params) then Exit( False );
-  if Hook in FModuleHooks then if not LuaSystem.ProtectedCall([CoreModuleID,HookNames[Hook]],Params) then Exit( False );
+  if (FChallenge <> '') and (Hook in FChallengeHooks) then if not FContext.Lua.ProtectedCall(['chal',FChallenge,HookNames[Hook]],Params) then Exit( False );
+  if (FSChallenge <> '') and (Hook in FSChallengeHooks) then if not FContext.Lua.ProtectedCall(['chal',FSChallenge,HookNames[Hook]],Params) then Exit( False );
+  if Hook in FModuleHooks then if not FContext.Lua.ProtectedCall([CoreModuleID,HookNames[Hook]],Params) then Exit( False );
   Exit( True );
 end;
 
@@ -232,6 +235,22 @@ begin
     if ( aNewState <> DSQuit) then IO.FadeReset;
   end;
   FState := aNewState;
+end;
+
+procedure TDRLSession.GenerateMemorial( aPlayer : TPlayer );
+var iMemorial : TIOStringArray;
+begin
+  if aPlayer.Score = -1000 then Exit;
+
+  aPlayer.Statistics.Update;
+  if FContext.Lua.Defined( [CoreModuleID, 'RunAwards'] ) then
+    FContext.Lua.ProtectedCall( [CoreModuleID, 'RunAwards'], [NoPlayerRecord] );
+  aPlayer.CalculateScore( FDifficulty, FGameWon );
+  RecordResult( aPlayer );
+  iMemorial := aPlayer.GenerateMemorial( FPaths.ModuleUserPath );
+
+  FMemorial := TPagedReport.Create( 'Post mortem', False );
+  FMemorial.Add( iMemorial, 'mortem.txt' );
 end;
 
 procedure TDRLSession.ClearPlayerView;
@@ -264,25 +283,49 @@ begin
 end;
 
 constructor TDRLSession.Create( aRuntime : TRLRuntime; aModules : TDRLModules;
-  aStore : TStoreInterface; const aPaths : TGamePaths );
+  aStore : TStoreInterface; aData : TGameData; const aPaths : TGamePaths );
 begin
   FRuntime := aRuntime;
+  FContext := TNodeContext.Create( aRuntime.Lua, nil );
   FModules := aModules;
   FStore := aStore;
   FPaths := aPaths;
   FGameSeed := 0;
-  LuaRNG := GameRNG;
-  FParticles := TParticleStore.Create;
+  FData := aData;
   FTargeting := TTargeting.Create(Self);
   Reset;
-  if GraphicsVersion then
-    FParticles.Initialize( TDRLGFXIO(IO).ParticleEngine );
 end;
 
 procedure TDRLSession.InitializeLevel;
 begin
   Assert( FLevel = nil );
-  FLevel := TLevel.Create;
+  SetLevel( TLevel.Create( FContext, GameRNG, FData ) );
+end;
+
+procedure TDRLSession.SetLevel( aLevel : TLevel );
+begin
+  FLevel := aLevel;
+  if GraphicsVersion
+    then FLevel.InitializeParticles( TDRLGFXIO(IO).ParticleEngine )
+    else FLevel.InitializeParticles( nil );
+  FContext.Lua.SetValue( 'level', FLevel );
+  IO.SetLevel( aLevel );
+end;
+
+procedure TDRLSession.ReleaseLevel;
+begin
+  if FLevel = nil then Exit;
+  // Animation destructors still need the outgoing level and its bindings.
+  IO.ClearAnimations;
+  IO.SetLevel( nil );
+  if FPlayer <> nil then FPlayer.Detach;
+  FreeAndNil( FLevel );
+end;
+
+procedure TDRLSession.ReleasePlayer;
+begin
+  dfplayer.Player := nil;
+  FreeAndNil( FPlayer );
 end;
 
 function TDRLSession.GetGameRNG : TRNG;
@@ -295,6 +338,21 @@ begin
   FModuleHooks := aModuleHooks;
 end;
 
+procedure TDRLSession.RecordResult( aPlayer : TPlayer );
+var iRuntime : TDRLRuntime;
+begin
+  iRuntime := TDRLRuntime( FRuntime );
+  if aPlayer.Score > 0 then
+  begin
+    FStore.IncStat( 'drl_kills', aPlayer.FKills.Count );
+    if aPlayer.HP <= 0 then FStore.IncStat( 'drl_deaths' );
+    if FGameWon then FStore.IncStat( 'drl_wins' );
+  end;
+  iRuntime.HOF.Add( aPlayer, FDifficulty, FGameWon,
+    FChallenge, TLevel( aPlayer.Parent ).Abbr );
+  iRuntime.SaveProfile;
+end;
+
 procedure TDRLSession.Reconfigure;
 begin
   TDRLRuntime(FRuntime).Reconfigure;
@@ -303,7 +361,8 @@ end;
 
 procedure TDRLSession.Reset;
 begin
-  FreeAndNil( FLevel );
+  FreeAndNil( FMemorial );
+  ReleaseLevel;
 
   SetState( DSStart );
   FTargeting.Clear;
@@ -326,8 +385,6 @@ begin
   FLastInputTime   := 0;
   FPlayerView      := nil;
   FPadMoveActive   := False;
-
-  FParticles.Clear;
 end;
 
 procedure TDRLSession.Apply ( aResult : TMenuResult ) ;
@@ -342,45 +399,45 @@ begin
     FSeededGame     := aResult.Seed <> 0;
   end;
 
-  LuaSystem.SetValue('DIFFICULTY', FDifficulty);
-  LuaSystem.SetValue('CHALLENGE',  FChallenge);
-  LuaSystem.SetValue('SCHALLENGE', FSChallenge);
-  LuaSystem.SetValue('ARCHANGEL', FArchAngel);
-  LuaSystem.SetValue('SEEDED_GAME', FSeededGame);
+  FContext.Lua.SetValue('DIFFICULTY', FDifficulty);
+  FContext.Lua.SetValue('CHALLENGE',  FChallenge);
+  FContext.Lua.SetValue('SCHALLENGE', FSChallenge);
+  FContext.Lua.SetValue('ARCHANGEL', FArchAngel);
+  FContext.Lua.SetValue('SEEDED_GAME', FSeededGame);
 
   FChallengeHooks := [];
   FSChallengeHooks := [];
-  if FChallenge  <> '' then FChallengeHooks  := LoadHooks( ['chal',FChallenge], GlobalHooks );
-  if FSChallenge <> '' then FSChallengeHooks := LoadHooks( ['chal',FSChallenge], GlobalHooks );
+  if FChallenge  <> '' then FChallengeHooks  := LoadHooks( FContext.Lua, ['chal',FChallenge], GlobalHooks );
+  if FSChallenge <> '' then FSChallengeHooks := LoadHooks( FContext.Lua, ['chal',FSChallenge], GlobalHooks );
 end;
 
 procedure TDRLSession.RegisterChallengeRuntimes;
 begin
-  if ( FChallenge <> '' ) and LuaSystem.Defined( [ 'chal', FChallenge, 'OnRegister' ] ) then
+  if ( FChallenge <> '' ) and FContext.Lua.Defined( [ 'chal', FChallenge, 'OnRegister' ] ) then
   begin
     FReloadData := True;
-    LuaSystem.Call( [ 'chal', FChallenge, 'OnRegister' ], [] );
+    FContext.Lua.Call( [ 'chal', FChallenge, 'OnRegister' ], [] );
   end;
-  if ( FSChallenge <> '' ) and LuaSystem.Defined( [ 'chal', FSChallenge, 'OnRegister' ] ) then
+  if ( FSChallenge <> '' ) and FContext.Lua.Defined( [ 'chal', FSChallenge, 'OnRegister' ] ) then
   begin
     FReloadData := True;
-    LuaSystem.Call( [ 'chal', FSChallenge, 'OnRegister' ], [] );
+    FContext.Lua.Call( [ 'chal', FSChallenge, 'OnRegister' ], [] );
   end;
 end;
 
 procedure TDRLSession.PreAction;
 begin
-  FLevel.CalculateVision( Player.Position );
-  StatusEffect := Player.GetPerkEffect;
+  FLevel.CalculateVision( FPlayer.Position );
+  StatusEffect := FPlayer.GetPerkEffect;
   IO.PreAction;
-  IO.Focus( Player.Position );
-  Player.UpdateVisual;
+  IO.Focus( FPlayer.Position );
+  FPlayer.UpdateVisual;
   if GraphicsVersion then
     (IO as TDRLGFXIO).UpdateMinimap;
-  Player.PreAction;
-  FTargeting.Update( Player.Vision );
+  FPlayer.PreAction;
+  FTargeting.Update( FPlayer.Vision );
   IO.SetAutoTarget( FTargeting.List.Current );
-  if ( FPlayerView <> nil ) and (not FDamagedLastTurn) and (Player.EnemiesInVision < 1) then
+  if ( FPlayerView <> nil ) and (not FDamagedLastTurn) and (FPlayer.EnemiesInVision < 1) then
      (FPlayerView as TPlayerView).Retain;
 end;
 
@@ -389,15 +446,15 @@ var iDir : TDirection;
 begin
   if aInput in [INPUT_RUNWAIT]+INPUT_MULTIMOVE then
   begin
-    Player.MultiMove.Stop;
+    FPlayer.MultiMove.Stop;
     iDir    := InputDirection( aInput );
     if ModuleOption_MeleeMoveOnKill and ( aInput <> INPUT_RUNWAIT ) then
-      if ( Player.TryMove( Player.Position + iDir ) in [ MoveBeing, MoveBlock ] )
+      if ( FPlayer.TryMove( FPlayer.Position + iDir ) in [ MoveBeing, MoveBlock ] )
         then Exit( HandleMoveCommand( aInput, True ) );
 
-    if Player.EnemiesInVision > 0
+    if FPlayer.EnemiesInVision > 0
       then IO.Msg( 'Can''t multi-move, there are enemies present.',[] )
-      else Player.MultiMove.Start( iDir );
+      else FPlayer.MultiMove.Start( iDir );
     Exit;
   end;
 
@@ -412,16 +469,15 @@ begin
     INPUT_ACTION     : Exit( HandleActionCommand( INPUT_ACTION ) );
     INPUT_LEGACYOPEN : Exit( HandleActionCommand( INPUT_LEGACYOPEN ) );
     INPUT_LEGACYCLOSE: Exit( HandleActionCommand( INPUT_LEGACYCLOSE ) );
-//    INPUT_QUICKKEY_0 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, 'chainsaw' ) ) );
-    INPUT_QUICKKEY_1 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '1' ) ) );
-    INPUT_QUICKKEY_2 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '2' ) ) );
-    INPUT_QUICKKEY_3 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '3' ) ) );
-    INPUT_QUICKKEY_4 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '4' ) ) );
-    INPUT_QUICKKEY_5 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '5' ) ) );
-    INPUT_QUICKKEY_6 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '6' ) ) );
-    INPUT_QUICKKEY_7 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '7' ) ) );
-    INPUT_QUICKKEY_8 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '8' ) ) );
-    INPUT_QUICKKEY_9 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '9' ) ) );
+    INPUT_QUICKKEY_1 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, FTargeting.List.Current, '1' ) ) );
+    INPUT_QUICKKEY_2 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, FTargeting.List.Current, '2' ) ) );
+    INPUT_QUICKKEY_3 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, FTargeting.List.Current, '3' ) ) );
+    INPUT_QUICKKEY_4 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, FTargeting.List.Current, '4' ) ) );
+    INPUT_QUICKKEY_5 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, FTargeting.List.Current, '5' ) ) );
+    INPUT_QUICKKEY_6 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, FTargeting.List.Current, '6' ) ) );
+    INPUT_QUICKKEY_7 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, FTargeting.List.Current, '7' ) ) );
+    INPUT_QUICKKEY_8 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, FTargeting.List.Current, '8' ) ) );
+    INPUT_QUICKKEY_9 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, FTargeting.List.Current, '9' ) ) );
 
     INPUT_ACTIVE     : Exit( HandleCommand( TCommand.Create( COMMAND_ACTIVE ) ) );
     INPUT_WAIT       : Exit( HandleCommand( TCommand.Create( COMMAND_WAIT ) ) );
@@ -450,11 +506,11 @@ begin
 
   if aInput = INPUT_ACTION then
   begin
-    if Level.cellFlagSet( Player.Position, CF_STAIRS ) then
+    if Level.cellFlagSet( FPlayer.Position, CF_STAIRS ) then
       Exit( HandleCommand( TCommand.Create( COMMAND_ENTER ) ) )
     else
     begin
-      iItem := Level.Item[ Player.Position ];
+      iItem := Level.Item[ FPlayer.Position ];
       if ( iItem <> nil ) and ( iItem.isLever ) then
         Exit( HandleCommand( TCommand.Create( COMMAND_USE, iItem ) ) );
     end;
@@ -475,15 +531,15 @@ begin
   iCount := 0;
   if iFlag = 0 then
   begin
-    for iScan in NewArea( Player.Position, 1 ).Clamped( Level.Area ) do
-      if ( iScan <> Player.Position ) and ( Level.cellFlagSet(iScan, CF_OPENABLE) or Level.cellFlagSet(iScan, CF_CLOSABLE) ) then
+    for iScan in NewArea( FPlayer.Position, 1 ).Clamped( Level.Area ) do
+      if ( iScan <> FPlayer.Position ) and ( Level.cellFlagSet(iScan, CF_OPENABLE) or Level.cellFlagSet(iScan, CF_CLOSABLE) ) then
       begin
         Inc(iCount);
         iTarget := iScan;
       end;
   end
   else
-    for iScan in NewArea( Player.Position, 1 ).Clamped( Level.Area ) do
+    for iScan in NewArea( FPlayer.Position, 1 ).Clamped( Level.Area ) do
       if Level.cellFlagSet( iScan, iFlag ) and Level.isEmpty( iScan ,[EF_NOITEMS,EF_NOBEINGS] ) then
       begin
         Inc(iCount);
@@ -536,26 +592,26 @@ var iDir        : TDirection;
     iItem       : TItem;
     iBeing      : TBeing;
 begin
-  if Player.Flags[ BF_SESSILE ] then
+  if FPlayer.Flags[ BF_SESSILE ] then
   begin
     IO.Msg( 'You can''t!' );
     Exit( False );
   end;
 
   iDir := InputDirection( aInput );
-  iTarget := Player.Position + iDir;
-  iMoveResult := Player.TryMove( iTarget );
+  iTarget := FPlayer.Position + iDir;
+  iMoveResult := FPlayer.TryMove( iTarget );
   if ( iMoveResult = MoveBlock ) and Level.isProperCoord( iTarget ) and
      ( Level.Being[ iTarget ] <> nil ) then
     iMoveResult := MoveBeing;
 
-  if Player.MultiMove.IsRepeat and (
+  if FPlayer.MultiMove.IsRepeat and (
        ( iMoveResult <> MoveOk ) or
        Level.cellFlagSet( iTarget, CF_NORUN ) or
        (not Level.isEmpty(iTarget,[EF_NOTELE]))
      ) then
   begin
-    Player.MultiMove.Stop;
+    FPlayer.MultiMove.Stop;
     Exit( False );
   end;
 
@@ -573,9 +629,9 @@ begin
        begin
          if not Level.isProperCoord( iTarget ) then Exit( False );
          iBeing := Level.Being[ iTarget ];
-         if Assigned( iBeing ) and iBeing.HasHook( Hook_OnAct ) and iBeing.CallHookCheck( Hook_OnCanAct, [Player] ) and ( not ( aAlt and iBeing.Flags[ BF_FRIENDLY ] ) ) then
+         if Assigned( iBeing ) and iBeing.HasHook( Hook_OnAct ) and iBeing.CallHookCheck( Hook_OnCanAct, [FPlayer] ) and ( not ( aAlt and iBeing.Flags[ BF_FRIENDLY ] ) ) then
          begin
-           Player.MultiMove.Stop;
+           FPlayer.MultiMove.Stop;
            Exit( HandleCommand( TCommand.Create( COMMAND_ACTION, iTarget ) ) );
          end;
          if iBeing.Flags[ BF_FRIENDLY ]
@@ -602,7 +658,7 @@ begin
   iLimitRange := False;
   iFireTitle  := '';
 
-  iItem := Player.Inv.Slot[ efWeapon ];
+  iItem := FPlayer.Inv.Slot[ efWeapon ];
   if (iItem = nil) or (not iItem.isWeapon) then
   begin
     IO.Msg( 'You have no weapon.' );
@@ -629,8 +685,8 @@ begin
       begin
         iTarget := FTargeting.List.Current;
         if IO.GetPadLDir.NotZero then 
-          iTarget := Player.Position + IO.GetPadLDir;
-        if Distance( Player.Position, iTarget ) = 1 then
+          iTarget := FPlayer.Position + IO.GetPadLDir;
+        if Distance( FPlayer.Position, iTarget ) = 1 then
           Exit( HandleCommand( TCommand.Create( COMMAND_MELEE, iTarget, ModuleOption_MeleeMoveOnKill ) ) );
       end;
       IO.Msg( 'You have no ranged weapon.' );
@@ -642,8 +698,8 @@ begin
     if ( not iItem.Flags[ IF_ALTTARGET ] ) then aAuto := False;
     if iItem.Flags[ IF_ALTMANUAL ]         then aAuto := False;
   end;
-  if not Player.CallHookCheck( Hook_OnUseCheck, [ iItem, aAlt ] ) then Exit( False );
-  if not iItem.CallHookCheck( Hook_OnUseCheck, [Player,aAlt] ) then Exit( False );
+  if not FPlayer.CallHookCheck( Hook_OnUseCheck, [ iItem, aAlt ] ) then Exit( False );
+  if not iItem.CallHookCheck( Hook_OnUseCheck, [FPlayer,aAlt] ) then Exit( False );
 
   if aAlt then
   begin
@@ -680,7 +736,7 @@ begin
     end;
 
     iRange := iItem.Range;
-    if iRange = 0 then iRange := Player.Vision;
+    if iRange = 0 then iRange := FPlayer.Vision;
 
     iLimitRange := (not iItem.Flags[ IF_SHOTGUN ]) and iItem.Flags[ IF_EXACTHIT ];
     if aMouse or aAuto then
@@ -690,8 +746,8 @@ begin
         else iTarget := FTargeting.List.Current;
 
       if iLimitRange then
-        if Distance( Player.Position, iTarget ) > iRange then
-          Exit( Player.Fail( 'Out of range!', [] ) );
+        if Distance( FPlayer.Position, iTarget ) > iRange then
+          Exit( FPlayer.Fail( 'Out of range!', [] ) );
     end
     else
     begin
@@ -700,7 +756,7 @@ begin
       begin
         if iItem.Flags[ IF_ALTTARGET ]
           then iFireTitle := 'Fire target ({L'+iItem.GetAltFireName+'}):'
-          else begin iFireTitle := ''; iTarget := Player.Position; end;
+          else begin iFireTitle := ''; iTarget := FPlayer.Position; end;
       end;
     end;
   end;
@@ -710,16 +766,16 @@ begin
 
   if iFireTitle <> '' then
   begin
-    if iRange = 0 then iRange := Player.Vision;
-    if iRange <> Player.Vision then
+    if iRange = 0 then iRange := FPlayer.Vision;
+    if iRange <> FPlayer.Vision then
       FTargeting.Update( iRange );
-    IO.PushLayer( TTargetModeView.Create( iItem, iCommand, iFireTitle, iRange+1, iLimitRange, FTargeting.List ) );
+    IO.PushLayer( TTargetModeView.Create( FLevel, iItem, iCommand, iFireTitle, iRange+1, iLimitRange, FTargeting.List ) );
     Exit( False );
   end;
 
   if aAuto then
   begin
-    if FTargeting.List.Current = Player.Position then
+    if FTargeting.List.Current = FPlayer.Position then
     begin
       IO.Msg( 'No valid target.' );
       ResetAutoTarget;
@@ -736,11 +792,11 @@ var iRange      : Integer;
     iLimitRange : Boolean;
 begin
   iRange := aItem.Range;
-  if iRange = 0 then iRange := Player.Vision;
-  if iRange <> Player.Vision then
+  if iRange = 0 then iRange := FPlayer.Vision;
+  if iRange <> FPlayer.Vision then
     FTargeting.Update( iRange );
   iLimitRange := aItem.Flags[ IF_EXACTHIT ];
-  IO.PushLayer( TTargetModeView.Create( aItem, COMMAND_USE, 'Choose target:', iRange+1, iLimitRange, FTargeting.List ) );
+  IO.PushLayer( TTargetModeView.Create( FLevel, aItem, COMMAND_USE, 'Choose target:', iRange+1, iLimitRange, FTargeting.List ) );
   Exit( False );
 end;
 
@@ -749,13 +805,13 @@ var iID         : AnsiString;
     iItemTypes  : TItemTypeSet;
 begin
   iItemTypes := [ ItemType_Ranged, ItemType_AmmoPack ];
-  if Player.Flags[ BF_SCAVENGER ] then
+  if FPlayer.Flags[ BF_SCAVENGER ] then
     iItemTypes := [ ItemType_Ranged, ItemType_AmmoPack, ItemType_Melee, ItemType_Armor, ItemType_Boots ];
   if ( aItem = nil ) then
-    aItem := Level.Item[ Player.Position ];
+    aItem := Level.Item[ FPlayer.Position ];
   if ( aItem = nil ) or ( not (aItem.IType in iItemTypes) ) then
   begin
-    FPlayerView := IO.PushLayer( TPlayerView.CreateCommand( COMMAND_UNLOAD, Player.Flags[ BF_SCAVENGER ] ) );
+    FPlayerView := IO.PushLayer( TPlayerView.CreateCommand( FPlayer, COMMAND_UNLOAD, FPlayer.Flags[ BF_SCAVENGER ] ) );
     Exit( True );
   end;
 
@@ -765,15 +821,15 @@ begin
     Exit( True );
   end;
 
-  if (not aItem.isAmmoPack) and Player.Flags[ BF_SCAVENGER ] and
+  if (not aItem.isAmmoPack) and FPlayer.Flags[ BF_SCAVENGER ] and
     ((not aItem.isRanged) or (aItem.Ammo = 0) or aItem.Flags[ IF_NOUNLOAD ] or aItem.Flags[ IF_NORELOAD ] or aItem.Flags[ IF_NOAMMO ]) and
     (aItem.Flags[ IF_EXOTIC ] or aItem.Flags[ IF_UNIQUE ] or aItem.Flags[ IF_ASSEMBLED ] or aItem.Flags[ IF_MODIFIED ]) then
   begin
-    iID := LuaSystem.ProtectedCall( [ CoreModuleID,'GetDisassembleId'], [ aItem ] );
+    iID := FContext.Lua.ProtectedCall( [ CoreModuleID,'GetDisassembleId'], [ aItem ] );
     if iID <> '' then
     begin
       IO.PushLayer( TUnloadConfirmView.Create(aItem,iID) );
-      Exit;
+      Exit( True );
     end;
   end;
 
@@ -785,8 +841,8 @@ end;
 
 function TDRLSession.HandleSwapWeaponCommand : Boolean;
 begin
-  if ( Player.Inv.Slot[ efWeapon ] <> nil ) and ( not Player.Inv.Slot[ efWeapon ].CallHookCheck( Hook_OnUnequipCheck, [ Player, False ] ) ) then Exit( False );
-  if ( Player.Inv.Slot[ efWeapon2 ] <> nil ) and ( Player.Inv.Slot[ efWeapon2 ].isAmmoPack )        then begin IO.Msg('Nothing to swap!'); Exit( False ); end;
+  if ( FPlayer.Inv.Slot[ efWeapon ] <> nil ) and ( not FPlayer.Inv.Slot[ efWeapon ].CallHookCheck( Hook_OnUnequipCheck, [ FPlayer, False ] ) ) then Exit( False );
+  if ( FPlayer.Inv.Slot[ efWeapon2 ] <> nil ) and ( FPlayer.Inv.Slot[ efWeapon2 ].isAmmoPack )        then begin IO.Msg('Nothing to swap!'); Exit( False ); end;
   Exit( HandleCommand( TCommand.Create( COMMAND_SWAPWEAPON ) ) );
 end;
 
@@ -794,7 +850,7 @@ function TDRLSession.HandlePickupCommand( aAlt : Boolean ) : Boolean;
 var iItem : TItem;
 begin
   if not aAlt then Exit( HandleCommand( TCommand.Create( COMMAND_PICKUP ) ) );
-  iItem := Level.Item[ Player.Position ];
+  iItem := Level.Item[ FPlayer.Position ];
   if ( iItem = nil ) or (not (iItem.isPickupable or iItem.isUsable or iItem.isWearable) ) then
   begin
     IO.Msg( 'There''s nothing to use on the ground!' );
@@ -816,7 +872,7 @@ begin
     Exit( False );
   IO.MsgUpDate;
 try
-  Player.HandleCommand( aCommand );
+  FPlayer.HandleCommand( aCommand );
 except
   on e : Exception do
   begin
@@ -829,17 +885,17 @@ except
   end;
 end;
   if State <> DSPlaying then Exit( False );
-  Player.PostAction;
+  FPlayer.PostAction;
   if State <> DSPlaying then Exit( False );
-  IO.Focus( Player.Position );
+  IO.Focus( FPlayer.Position );
   FDamagedLastTurn := False;
-  while (Player.SCount < 5000) and (State = DSPlaying) do
+  while (FPlayer.SCount < 5000) and (State = DSPlaying) do
   begin
-    FLevel.CalculateVision( Player.Position );
+    FLevel.CalculateVision( FPlayer.Position );
     FLevel.Tick;
-    if Player.MultiMove.Active then
+    if FPlayer.MultiMove.Active then
       IO.WaitForAnimation;
-    if not Player.PlayerTick then Exit( True );
+    if not FPlayer.PlayerTick then Exit( True );
   end;
   PreAction;
   Exit( True );
@@ -848,7 +904,7 @@ end;
 procedure TDRLSession.ResetAutoTarget;
 begin
   FTargeting.Clear;
-  FTargeting.Update( Player.Vision );
+  FTargeting.Update( FPlayer.Vision );
   IO.SetAutoTarget( FTargeting.List.Current );
 end;
 
@@ -866,43 +922,43 @@ begin
       iAlt := VKMOD_ALT in IO.Driver.GetModKeyState;
 
     if iButton = VMB_BUTTON_MIDDLE then
-      if IO.MTarget = Player.Position
+      if IO.MTarget = FPlayer.Position
         then Exit( HandleSwapWeaponCommand )
         else begin
-//          FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_EQUIPMENT ) );
+//          FPlayerView := IO.PushLayer( TPlayerView.Create( FPlayer, PLAYERVIEW_EQUIPMENT ) );
 //          Exit( True );
         end;
 
     if iButton = VMB_BUTTON_LEFT then
     begin
-      if IO.MTarget = Player.Position then
+      if IO.MTarget = FPlayer.Position then
       begin
         if iAlt then
         begin
-          FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_INVENTORY ) );
+          FPlayerView := IO.PushLayer( TPlayerView.Create( FPlayer, PLAYERVIEW_INVENTORY ) );
           Exit( True );
         end
         else
-        if Level.cellFlagSet( Player.Position, CF_STAIRS ) then
+        if Level.cellFlagSet( FPlayer.Position, CF_STAIRS ) then
           Exit( HandleCommand( TCommand.Create( COMMAND_ENTER ) ) )
         else
-          if Level.Item[ Player.Position ] <> nil then
-            if Level.Item[ Player.Position ].isLever then
-              Exit( HandleCommand( TCommand.Create( COMMAND_USE, Level.Item[ Player.Position ] ) ) )
+          if Level.Item[ FPlayer.Position ] <> nil then
+            if Level.Item[ FPlayer.Position ].isLever then
+              Exit( HandleCommand( TCommand.Create( COMMAND_USE, Level.Item[ FPlayer.Position ] ) ) )
             else
               Exit( HandleCommand( TCommand.Create( COMMAND_PICKUP ) ) )
           else
             begin
-              FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_INVENTORY ) );
+              FPlayerView := IO.PushLayer( TPlayerView.Create( FPlayer, PLAYERVIEW_INVENTORY ) );
               Exit( True );
             end
       end
       else
-      if Distance( Player.Position, IO.MTarget ) = 1
-        then Exit( HandleMoveCommand( DirectionToInput( NewDirection( Player.Position, IO.MTarget ) ), IO.ShiftHeld ) )
+      if Distance( FPlayer.Position, IO.MTarget ) = 1
+        then Exit( HandleMoveCommand( DirectionToInput( NewDirection( FPlayer.Position, IO.MTarget ) ), IO.ShiftHeld ) )
         else if Level.isExplored( IO.MTarget ) then
         begin
-          if not Player.RunPath( IO.MTarget ) then
+          if not FPlayer.RunPath( IO.MTarget ) then
           begin
             IO.Msg('Can''t get there!');
             Exit;
@@ -917,21 +973,21 @@ begin
 
     if iButton = VMB_BUTTON_RIGHT then
     begin
-      if (IO.MTarget = Player.Position) or
-        ((Player.Inv.Slot[ efWeapon ] <> nil) and (Player.Inv.Slot[ efWeapon ].isRanged) and (not (Player.Inv.Slot[efWeapon].GetFlag(IF_NOAMMO))) and (Player.Inv.Slot[ efWeapon ].Ammo < Player.Inv.Slot[ efWeapon ].getShotCost))  then
+      if (IO.MTarget = FPlayer.Position) or
+        ((FPlayer.Inv.Slot[ efWeapon ] <> nil) and (FPlayer.Inv.Slot[ efWeapon ].isRanged) and (not (FPlayer.Inv.Slot[efWeapon].GetFlag(IF_NOAMMO))) and (FPlayer.Inv.Slot[ efWeapon ].Ammo < FPlayer.Inv.Slot[ efWeapon ].getShotCost))  then
       begin
         if iAlt
           then Exit( HandleCommand( TCommand.Create( COMMAND_ALTRELOAD ) ) )
           else Exit( HandleCommand( TCommand.Create( COMMAND_RELOAD ) ) );
       end
-      else if (Player.Inv.Slot[ efWeapon ] <> nil) and (Player.Inv.Slot[ efWeapon ].isRanged) then
+      else if (FPlayer.Inv.Slot[ efWeapon ] <> nil) and (FPlayer.Inv.Slot[ efWeapon ].isRanged) then
       begin
         if iAlt
           then Exit( HandleFireCommand( True, True, False, False ) )
           else Exit( HandleFireCommand( False, True, False, False ) );
       end
       else Exit( HandleCommand( TCommand.Create( COMMAND_MELEE,
-        Player.Position + NewDirectionSmooth( Player.Position, IO.MTarget )
+        FPlayer.Position + NewDirectionSmooth( FPlayer.Position, IO.MTarget )
       ) ) );
     end;
 
@@ -960,18 +1016,18 @@ begin
     if IO.GetPadLDir.NotZero then
       Exit( MoveTargetEvent( FTargeting.List.Current + IO.GetPadLDir ) );
     if ( not IO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN ) )
-      and (FTargeting.List.Current <> Player.Position)
+      and (FTargeting.List.Current <> FPlayer.Position)
       and (Level.Being[FTargeting.List.Current] <> nil) then
     begin
       IO.FullLook( Level.Being[FTargeting.List.Current] );
       Exit( False );
     end;
-    IO.FullLook( Player );
+    IO.FullLook( FPlayer );
     Exit( False );
   end;
 
   // Match movement animation pacing, including movement cost and player speed.
-  iRepeatDelay := Player.VisualTime( Player.getMoveCost, AnimationSpeedMove );
+  iRepeatDelay := FPlayer.VisualTime( FPlayer.getMoveCost, AnimationSpeedMove );
   if iRepeatDelay < PAD_REPEAT then iRepeatDelay := PAD_REPEAT;
   if aPressed and ( iRepeatDelay < PAD_REPEAT_START ) then
     iRepeatDelay := PAD_REPEAT_START;
@@ -992,11 +1048,11 @@ begin
   begin
     if IO.GetPadLDir.NotZero then
     begin
-      iTarget := Player.Position + IO.GetPadLDir;
+      iTarget := FPlayer.Position + IO.GetPadLDir;
       if Level.isProperCoord( iTarget ) then
       begin
         iCell := Level.getCell( iTarget );
-        if not ( ( CellHook_OnHazardQuery in Cells[ iCell ].Hooks ) and  Level.CallHook( CellHook_OnHazardQuery, iCell, Player ) ) then
+        if not ( ( CellHook_OnHazardQuery in FData.Cells[ iCell ].Hooks ) and  Level.CallHook( CellHook_OnHazardQuery, iCell, FPlayer ) ) then
           Result := HandleMoveCommand(
             DirectionToInput( NewDirection( IO.GetPadLDir ) ),
             IO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
@@ -1009,7 +1065,7 @@ begin
   FPadMoveActive := ( State = DSPlaying )
     and ( not IO.IsModal )
     and IO.ControllerActionHeld( CONTROLLER_MOVE )
-    and ( Player.EnemiesInVision = 0 )
+    and ( FPlayer.EnemiesInVision = 0 )
     and ( aPressed or (not FDamagedLastTurn) );
   Exit( Result );
 end;
@@ -1041,11 +1097,11 @@ begin
 
   case iAction of
     CONTROLLER_ACTION : if IO.GetPadLDir.NotZero
-                          then Exit( HandleActionCommand( Player.Position + IO.GetPadLDir, 0 ) )
+                          then Exit( HandleActionCommand( FPlayer.Position + IO.GetPadLDir, 0 ) )
                           else begin
-                            if Level.cellFlagSet( Player.Position, CF_STAIRS ) then
+                            if Level.cellFlagSet( FPlayer.Position, CF_STAIRS ) then
                               Exit( HandleCommand( TCommand.Create( COMMAND_ENTER ) ) );
-                            iItem := Level.Item[ Player.Position ];
+                            iItem := Level.Item[ FPlayer.Position ];
                             if ( iItem <> nil ) and ( iItem.isLever ) then
                               Exit( HandleCommand( TCommand.Create( COMMAND_USE, iItem ) ) );
                             Exit( HandlePickupCommand( IO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT ) ) )
@@ -1060,13 +1116,13 @@ begin
     ) ) );
     CONTROLLER_MENU : begin
       ResetAutoTarget;
-      IO.PushLayer( TInGameMenuView.Create );
+      IO.PushLayer( TInGameMenuView.Create( TDRLRuntime( FRuntime ).HOF, TDRLRuntime( FRuntime ).Help ) );
       Exit( False );
     end;
     CONTROLLER_PLAYER : begin
       if IO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT )
-        then FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_EQUIPMENT ) )
-        else FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_INVENTORY ) );
+        then FPlayerView := IO.PushLayer( TPlayerView.Create( FPlayer, PLAYERVIEW_EQUIPMENT ) )
+        else FPlayerView := IO.PushLayer( TPlayerView.Create( FPlayer, PLAYERVIEW_INVENTORY ) );
       Exit( False );
     end;
     CONTROLLER_ACTIVE : Exit( HandleCommand( TCommand.Create( COMMAND_ACTIVE ) ) );
@@ -1082,16 +1138,16 @@ begin
       Exit( False );
     end;
     CONTROLLER_UP : if IO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
-      then Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '1' ) ) )
+      then Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, FTargeting.List.Current, '1' ) ) )
       else if FPadMoved then Exit( MoveTargetEvent( FTargeting.List.Current + NewCoord2D( 0,-1 ) ) );
     CONTROLLER_DOWN : if IO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
-      then Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '4' ) ) )
+      then Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, FTargeting.List.Current, '4' ) ) )
       else if FPadMoved then Exit( MoveTargetEvent( FTargeting.List.Current + NewCoord2D( 0, 1 ) ) );
     CONTROLLER_LEFT : if IO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
-      then Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '2' ) ) )
+      then Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, FTargeting.List.Current, '2' ) ) )
       else if FPadMoved then Exit( MoveTargetEvent( FTargeting.List.Current + NewCoord2D(-1, 0 ) ) );
     CONTROLLER_RIGHT : if IO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
-      then Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '3' ) ) )
+      then Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, FTargeting.List.Current, '3' ) ) )
       else if FPadMoved then Exit( MoveTargetEvent( FTargeting.List.Current + NewCoord2D( 1, 0 ) ) );
     CONTROLLER_MODIFIER_RUN,
     CONTROLLER_MODIFIER_ALT : ;
@@ -1122,7 +1178,7 @@ begin
   // Handle key-repeat
   if aEvent.Key.Repeated then
     if ( not ( iInput in [ INPUT_WAIT ] + INPUT_MOVE ) ) or
-       ( IO.Time - FLastInputTime < Player.VisualTime( Player.getMoveCost, AnimationSpeedMove - 2 ) ) or (Player.EnemiesInVision > 0) then
+       ( IO.Time - FLastInputTime < FPlayer.VisualTime( FPlayer.getMoveCost, AnimationSpeedMove - 2 ) ) or (FPlayer.EnemiesInVision > 0) then
       Exit( False );
   FLastInputTime := IO.Time;
 
@@ -1139,49 +1195,44 @@ begin
     case iInput of
 //      INPUT_ESCAPE     : begin if GodMode then SetState( DSQuit ); Exit; end;
       INPUT_TARGETNEXT : begin IO.SetAutoTarget( FTargeting.List.Next ); Exit; end;
-      INPUT_ESCAPE     : begin ResetAutoTarget; IO.PushLayer( TInGameMenuView.Create ); Exit; end;
+      INPUT_ESCAPE     : begin ResetAutoTarget; IO.PushLayer( TInGameMenuView.Create( TDRLRuntime( FRuntime ).HOF, TDRLRuntime( FRuntime ).Help ) ); Exit; end;
       INPUT_QUIT       : begin IO.PushLayer( TAbandonView.Create ); Exit; end;
-      INPUT_HELP       : begin IO.PushLayer( THelpView.Create ); Exit; end;
-      INPUT_LOOKMODE   : begin IO.PushLayer( TLookModeView.Create ); Exit; end;
-      INPUT_PLAYERINFO : begin FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_CHARACTER ) ); Exit; end;
-      INPUT_INVENTORY  : begin FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_INVENTORY ) ); Exit; end;
-      INPUT_EQUIPMENT  : begin FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_EQUIPMENT ) ); Exit; end;
-      INPUT_ASSEMBLIES : begin IO.PushLayer( TAssemblyView.Create ); Exit; end;
+      INPUT_HELP       : begin IO.PushLayer( THelpView.Create( IO, FContext.Lua, TDRLRuntime( FRuntime ).Help, CoreModuleID ) ); Exit; end;
+      INPUT_LOOKMODE   : begin IO.PushLayer( TLookModeView.Create( FLevel ) ); Exit; end;
+      INPUT_PLAYERINFO : begin FPlayerView := IO.PushLayer( TPlayerView.Create( FPlayer, PLAYERVIEW_CHARACTER ) ); Exit; end;
+      INPUT_INVENTORY  : begin FPlayerView := IO.PushLayer( TPlayerView.Create( FPlayer, PLAYERVIEW_INVENTORY ) ); Exit; end;
+      INPUT_EQUIPMENT  : begin FPlayerView := IO.PushLayer( TPlayerView.Create( FPlayer, PLAYERVIEW_EQUIPMENT ) ); Exit; end;
+      INPUT_ASSEMBLIES : begin IO.PushLayer( TAssemblyView.Create( FContext.Lua, TDRLRuntime( FRuntime ).HOF ) ); Exit; end;
       INPUT_MORE       : begin IO.FullLook( Level.Being[FTargeting.List.Current] ); Exit; end;
-      INPUT_MORESELF   : begin IO.FullLook( Player ); Exit; end;
-      INPUT_LEGACYUSE  : begin FPlayerView := IO.PushLayer( TPlayerView.CreateCommand( COMMAND_USE ) ); Exit; end;
-      INPUT_LEGACYDROP : begin FPlayerView := IO.PushLayer( TPlayerView.CreateCommand( COMMAND_DROP ) ); Exit; end;
+      INPUT_MORESELF   : begin IO.FullLook( FPlayer ); Exit; end;
+      INPUT_LEGACYUSE  : begin FPlayerView := IO.PushLayer( TPlayerView.CreateCommand( FPlayer, COMMAND_USE ) ); Exit; end;
+      INPUT_LEGACYDROP : begin FPlayerView := IO.PushLayer( TPlayerView.CreateCommand( FPlayer, COMMAND_DROP ) ); Exit; end;
       INPUT_UNLOAD     : begin HandleUnloadCommand( nil ); Exit; end;
 
-      INPUT_MESSAGES   : begin IO.PushLayer( TMessagesView.Create( IO.MsgGetRecent ) ); Exit; end;
+      INPUT_MESSAGES   : begin IO.PushLayer( TMessagesView.Create( IO, IO.MsgGetRecent ) ); Exit; end;
 
       INPUT_HARDQUIT   : begin
         Option_MenuReturn := False;
         SetState( DSQuit );
-        Player.Score := -100000;
+        FPlayer.Score := -100000;
         Exit;
       end;
 
       INPUT_LEGACYSAVE: begin SetState( DSSaving ); Exit; end;
-      INPUT_TRAITS    : begin FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_TRAITS ) ); Exit; end;
+      INPUT_TRAITS    : begin FPlayerView := IO.PushLayer( TPlayerView.Create( FPlayer, PLAYERVIEW_TRAITS ) ); Exit; end;
       INPUT_RUN       : begin
-        Player.MultiMove.Stop;
-        if Player.EnemiesInVision > 0
+        FPlayer.MultiMove.Stop;
+        if FPlayer.EnemiesInVision > 0
           then IO.Msg( 'Can''t multi-move, there are enemies present.',[] )
           else IO.PushLayer( TRunModeView.create );
         Exit;
       end;
 
-      INPUT_EXAMINENPC   : begin Player.ExamineNPC; Exit; end;
-      INPUT_EXAMINEITEM  : begin Player.ExamineItem; Exit; end;
+      INPUT_EXAMINENPC   : begin FPlayer.ExamineNPC; Exit; end;
+      INPUT_EXAMINEITEM  : begin FPlayer.ExamineItem; Exit; end;
       INPUT_TOGGLEGRID   : begin if GraphicsVersion then SpriteMap.ToggleGrid; Exit; end;
-      INPUT_SOUNDTOGGLE  : begin SoundOff := not SoundOff; Exit; end;
-      INPUT_MUSICTOGGLE  : begin
-                               MusicOff := not MusicOff;
-                               if MusicOff then IO.Audio.PlayMusic('')
-                                           else IO.Audio.PlayMusic(Iif( FLevel.Music_ID <> '', FLevel.Music_ID, FLevel.ID ));
-                               Exit;
-                             end;
+      INPUT_SOUNDTOGGLE  : begin IO.Audio.ToggleSound; Exit; end;
+      INPUT_MUSICTOGGLE  : begin IO.Audio.ToggleMusic( Iif( FLevel.Music_ID <> '', FLevel.Music_ID, FLevel.ID ) ); Exit; end;
     end;
     Exit( Action( iInput ) );
   end
@@ -1198,9 +1249,9 @@ function TDRLSession.MoveTargetEvent( aCoord : TCoord2D ) : Boolean;
 begin
   if FLevel.isProperCoord( aCoord ) then
   begin
-    Player.TargetPos := aCoord;
+    FPlayer.TargetPos := aCoord;
     FTargeting.OnTarget( aCoord, True );
-    FTargeting.Update( Player.Vision );
+    FTargeting.Update( FPlayer.Vision );
     IO.SetAutoTarget( FTargeting.List.Current );
     Exit( True );
   end;
@@ -1239,7 +1290,8 @@ begin
   iEpisodeSeed := 0;
   if aShowIntro then
   begin
-    IO.PushLayer( TMainMenuView.Create );
+    IO.PushLayer( TMainMenuView.Create(
+      TDRLRuntime( FRuntime ).HOF, TDRLRuntime( FRuntime ).Help, TDRLRuntime( FRuntime ).ModErrors ) );
     IO.WaitForLayer( True );
   end;
   if FState <> DSQuit then
@@ -1261,7 +1313,8 @@ begin
   SetState( DSMenu );
   iResult.Reset; // TODO : could reuse for same game!
 
-  IO.PushLayer( TMainMenuView.Create( MAINMENU_MENU, iResult ) );
+  IO.PushLayer( TMainMenuView.Create(
+    TDRLRuntime( FRuntime ).HOF, TDRLRuntime( FRuntime ).Help, TDRLRuntime( FRuntime ).ModErrors, MAINMENU_MENU, iResult ) );
   IO.WaitForLayer( True );
   if iResult.ReloadData then
   begin
@@ -1290,9 +1343,8 @@ begin
     CreatePlayer( iResult );
   end;
 
-  LuaSystem.SetValue('GAME_SEED', FGameSeed);
+  FContext.Lua.SetValue('GAME_SEED', FGameSeed);
   IO.SetSeed( FGameSeed );
-  LuaSystem.SetValue('level', Level );
 
   if (not (State in [DSLoading, DSCrashLoading])) then
     CallHookCheck( Hook_OnIntro, [Setting_NoIntro] );
@@ -1304,29 +1356,30 @@ begin
   end;
   CallHook( Hook_OnLoaded, [(State in [DSLoading, DSCrashLoading])] );
 
-  GameRealTime := MSecNow();
+  FPlayer.Statistics.StartTimer;
   try
   repeat
     iEnterNuke := False;
     if State <> DSLoading then
     begin
       iEnterNuke := False;
-      if (Player.NukeActivated > 0) then
+      if (FPlayer.NukeActivated > 0) then
       begin
-        Player.Score := Player.Score + 1000;
-        Player.Statistics.Increase('levels_nuked');
-        Player.NukeActivated := 0;
+        FPlayer.Score := FPlayer.Score + 1000;
+        FPlayer.Statistics.Increase('levels_nuked');
+        FPlayer.NukeActivated := 0;
         iEnterNuke := True;
       end;
 
-      Player.Statistics.Update;
-      Player.NextLevelIndex;
+      FPlayer.Statistics.Update;
+      FPlayer.NextLevelIndex;
 
-      with LuaSystem.GetTable(['player','episode',Player.Level_Index]) do
+      with FContext.Lua.GetTable(['player','episode',FPlayer.Level_Index]) do
       try
+        FPlayer.Detach;
         FLevel.Init(getInteger('style',0),
                    getString('name',''),
-                   Player.Level_Index,
+                   FPlayer.Level_Index,
                    getInteger('danger',0));
         if IsString('sname') then FLevel.SName := getString('sname');
         if IsString('abbr')  then FLevel.Abbr  := getString('abbr');
@@ -1349,7 +1402,7 @@ begin
     end;
     iFullLoad := State = DSLoading;
 
-    FLevel.CalculateVision( Player.Position );
+    FLevel.CalculateVision( FPlayer.Position );
     SetState( DSPlaying );
     IO.BloodSlideDown(20);
     IO.FadeIn( True );
@@ -1372,9 +1425,9 @@ begin
 
     while ( State = DSPlaying ) do
     begin
-      if ( Player.MultiMove.Active ) then
+      if ( FPlayer.MultiMove.Active ) then
       begin
-        iInput := Player.GetMultiMoveInput;
+        iInput := FPlayer.GetMultiMoveInput;
         if iInput <> INPUT_NONE then
           Action( iInput );
         Continue;
@@ -1430,10 +1483,11 @@ begin
     IO.ClearAnimations;
     if State <> DSSaving then
     begin
-      Player.Score := Player.Score + 1000;
-      if FGameWon and (State <> DSNextLevel) then Player.WriteMemorial;
+      FPlayer.Score := FPlayer.Score + 1000;
+      if FGameWon and (State <> DSNextLevel) and (FMemorial = nil) then
+        GenerateMemorial( FPlayer );
+      FPlayer.Detach;
       FLevel.Clear;
-      FParticles.ClearParticles;
     end;
     IO.SetHint('');
   until (State <> DSNextLevel);
@@ -1441,17 +1495,17 @@ begin
   begin
     EmitCrashInfo( e.Message, True );
     EXCEPTEMMITED := True;
-    if Option_SaveOnCrash and ((Player.Statistics['crash_count'] = 0) or{thelaptop: Vengeance is MINE} (FDifficulty < DIFF_NIGHTMARE)) then
+    if Option_SaveOnCrash and ((FPlayer.Statistics['crash_count'] = 0) or{thelaptop: Vengeance is MINE} (FDifficulty < DIFF_NIGHTMARE)) then
     begin
       try
-        iCrashIndex := LuaSystem.Get( [ 'player', '__props', 'crash_index' ], 0 );
+        iCrashIndex := FContext.Lua.Get( [ 'player', '__props', 'crash_index' ], 0 );
       except
         iCrashIndex := 0;
       end;
       if iCrashIndex > 0
-        then Player.Level_Index := iCrashIndex - 1
-        else if Player.Level_Index <> 1 then Player.NextLevelIndex;
-      Player.Statistics.Increase('crash_count');
+        then FPlayer.Level_Index := iCrashIndex - 1
+        else if FPlayer.Level_Index <> 1 then FPlayer.NextLevelIndex;
+      FPlayer.Statistics.Increase('crash_count');
       WriteSaveFile( True );
     end;
     raise;
@@ -1475,28 +1529,27 @@ begin
 
   if State = DSFinished then
   begin
-    if HOF.RankCheck( iRank ) then
+    if TDRLRuntime( FRuntime ).HOF.RankCheck( FStore, iRank ) then
     begin
-      IO.PushLayer( TRankUpView.Create( iRank ) );
+      IO.PushLayer( TRankUpView.Create( FContext.Lua, iRank ) );
       IO.WaitForLayer( True );
     end;
-    if Player.Score >= -1000 then
+    if (FPlayer.Score >= -1000) and (FMemorial <> nil) then
     begin
-      iReport := TPagedReport.Create('Post mortem', False );
-      iReport.Add( MortemData, 'mortem.txt' );
-      MortemData := nil; // handled by iReport
+      iReport := FMemorial;
+      FMemorial := nil; // Ownership passes to the view.
       IO.PushLayer( TPagedView.Create( iReport ) );
       IO.WaitForLayer( True );
     end;
     iChalAbbr := '';
-    if FChallenge <> '' then iChalAbbr := LuaSystem.Get(['chal',FChallenge,'abbr']);
-    IO.PushLayer( TPagedView.Create( HOF.GetPagedScoreReport, iChalAbbr ) );
+    if FChallenge <> '' then iChalAbbr := FContext.Lua.Get(['chal',FChallenge,'abbr']);
+    IO.PushLayer( TPagedView.Create( TDRLRuntime( FRuntime ).HOF.GetPagedScoreReport, iChalAbbr ) );
     IO.WaitForLayer( True );
   end;
   CallHook(Hook_OnUnLoad,[]);
 
   IO.BloodSlideDown(20);
-  FreeAndNil(Player);
+  ReleasePlayer;
 
   if FReloadData and Option_MenuReturn then
     Result := DSR_ReloadData;
@@ -1508,29 +1561,37 @@ procedure TDRLSession.CreatePlayer ( aResult : TMenuResult ) ;
 var iTraitID : AnsiString;
     iTrait   : Byte;
 begin
-  FreeAndNil( UIDs );
-  UIDs := TUIDStore.Create;
-  Player := TPlayer.Create;
-  FLevel.Place( Player, NewCoord2D(4,4) );
-  Player.Klass := aResult.Klass;
+  ReleasePlayer;
+  FLevel.Particles.BindUIDs( nil );
+  FContext.BindUIDs( nil );
+  FContext.Lua.Context.BindUIDs( nil );
+  FreeAndNil( FUIDStore );
+  FUIDStore := TUIDStore.Create;
+  FLevel.Particles.BindUIDs( FUIDStore );
+  FContext.BindUIDs( FUIDStore );
+  FContext.Lua.Context.BindUIDs( FUIDStore );
+  FPlayer := TPlayer.Create( FContext, GameRNG );
+  dfplayer.Player := FPlayer;
+  FLevel.Place( FPlayer, NewCoord2D(4,4) );
+  FPlayer.Klass := aResult.Klass;
 
   if Option_AlwaysName <> '' then
-    Player.Name := Option_AlwaysName
+    FPlayer.Name := Option_AlwaysName
   else
     if (Setting_AlwaysRandomName) or (aResult.Name = '')
-      then Player.Name := LuaSystem.ProtectedCall([CoreModuleID,'GetRandomName'],[])
-      else Player.Name := aResult.Name;
+      then FPlayer.Name := FContext.Lua.ProtectedCall([CoreModuleID,'GetRandomName'],[])
+      else FPlayer.Name := aResult.Name;
 
-  LuaSystem.ProtectedCall(['klasses',Player.Klass,'OnPick'], [ Player ] );
-  iTraitID := LuaSystem.Get(['klasses',Player.Klass,'core_trait'],'' );
+  FContext.Lua.ProtectedCall(['klasses',FPlayer.Klass,'OnPick'], [ FPlayer ] );
+  iTraitID := FContext.Lua.Get(['klasses',FPlayer.Klass,'core_trait'],'' );
   if iTraitID <> '' then
   begin
-    iTrait := LuaSystem.Get(['traits',iTraitID,'nid']);
-    Player.Traits.Upgrade( 0, iTrait );
+    iTrait := FContext.Lua.Get(['traits',iTraitID,'nid']);
+    FPlayer.Traits.Upgrade( 0, iTrait );
   end;
   CallHook(Hook_OnCreatePlayer,[]);
-  Player.Traits.Upgrade( Player.Klass, aResult.Trait );
-  Player.UpdateVisual;
+  FPlayer.Traits.Upgrade( FPlayer.Klass, aResult.Trait );
+  FPlayer.UpdateVisual;
 end;
 
 function TDRLSession.LoadSaveFile: Boolean;
@@ -1565,36 +1626,45 @@ begin
       SaveVersionModule := '';
       SaveModString     := '';
 
-      FreeAndNil( UIDs );
-      UIDs             := TUIDStore.CreateFromStream( iStream );
+      IO.ClearAnimations;
+      ReleasePlayer;
+      FLevel.Particles.BindUIDs( nil );
+      FContext.BindUIDs( nil );
+      FContext.Lua.Context.BindUIDs( nil );
+      FreeAndNil( FUIDStore );
+      FUIDStore        := TUIDStore.CreateFromStream( iStream );
+      FLevel.Particles.BindUIDs( FUIDStore );
+      FContext.BindUIDs( FUIDStore );
+      FContext.Lua.Context.BindUIDs( FUIDStore );
       FGameWon         := iStream.ReadByte <> 0;
       FDifficulty      := iStream.ReadByte;
       FChallenge       := iStream.ReadAnsiString;
       FArchAngel       := iStream.ReadByte <> 0;
       FSChallenge      := iStream.ReadAnsiString;
 
-      LuaSystem.SetValue('DIFFICULTY', FDifficulty);
-      LuaSystem.SetValue('CHALLENGE',  FChallenge);
-      LuaSystem.SetValue('SCHALLENGE', FSChallenge);
-      LuaSystem.SetValue('ARCHANGEL', FArchAngel);
+      FContext.Lua.SetValue('DIFFICULTY', FDifficulty);
+      FContext.Lua.SetValue('CHALLENGE',  FChallenge);
+      FContext.Lua.SetValue('SCHALLENGE', FSChallenge);
+      FContext.Lua.SetValue('ARCHANGEL', FArchAngel);
       RegisterChallengeRuntimes;
 
       FGameSeed   := iStream.ReadDWord;
       FSeededGame := iStream.ReadBool;
       iGameRNG := TRNG.CreateFromStream( iStream );
+      FLevel.BindGameRNG( iGameRNG );
       FRuntime.ReplaceGameRNG( iGameRNG );
 
-      Player := TPlayer.CreateFromStream( iStream );
+      FPlayer := TPlayer.CreateFromStream( iStream, FContext, FData.Perks );
+      dfplayer.Player := FPlayer;
       FCrashSave := iStream.ReadByte <> 0;
 
       if not FCrashSave then
       begin
-        FreeAndNil( FLevel );
+        ReleaseLevel;
         iRecreate := True;
-        FLevel := TLevel.CreateFromStream( iStream );
-        FLevel.Place( Player, Player.Position );
-        LuaSystem.SetValue('level', FLevel );
-        FParticles.ReadFromStream( iStream );
+        SetLevel( TLevel.CreateFromStream( iStream, FContext, GameRNG, FData ) );
+        FLevel.Place( FPlayer, FPlayer.Position );
+        FLevel.Particles.ReadFromStream( iStream );
       end;
     finally
       FreeAndNil( iGameRNG );
@@ -1604,7 +1674,7 @@ begin
 
     IO.Msg('Game loaded.');
 
-    if Player.Dead then
+    if FPlayer.Dead then
       raise EException.Create('Player in save file is dead anyway.');
     LoadSaveFile := True;
     FPadMoved    := True;
@@ -1616,13 +1686,11 @@ begin
       LoadSaveFile := False;
       if iRecreate then
       begin
-        FreeAndNil( FLevel );
-        FLevel := TLevel.Create;
+        ReleaseLevel;
+        SetLevel( TLevel.Create( FContext, GameRNG, FData ) );
       end;
     end;
   end;
-  if not GraphicsVersion then
-    (IO as TDRLTextIO).SetTextMap( FLevel );
 end;
 
 // TODO: cleanup and remove
@@ -1651,7 +1719,7 @@ end;
 procedure TDRLSession.WriteSaveFile( aCrash : Boolean );
 var Stream : TStream;
 begin
-  Player.Statistics.OnSaveFile;
+  FPlayer.Statistics.OnSaveFile;
 
   Stream := TGZFileStream.Create( FPaths.ModuleUserPath + 'save',gzOpenWrite );
   //      Stream := TDebugStream.Create( Stream );
@@ -1660,7 +1728,7 @@ begin
   Stream.WriteAnsiString( VersionEngineSave );
   Stream.WriteAnsiString( VersionModuleSave );
   Stream.WriteAnsiString( FModules.ModString );
-  UIDs.WriteToStream( Stream );
+  FUIDStore.WriteToStream( Stream );
   if FGameWon   then Stream.WriteByte( 1 ) else Stream.WriteByte( 0 );
   Stream.WriteByte( FDifficulty );
   Stream.WriteAnsiString( FChallenge );
@@ -1670,8 +1738,8 @@ begin
   Stream.WriteBool( FSeededGame );
   GameRNG.WriteToStream( Stream );
 
-  Player.WriteToStream(Stream);
-  Player.Detach;
+  FPlayer.WriteToStream(Stream);
+  FPlayer.Detach;
   if aCrash
     then Stream.WriteByte( 1 )
     else Stream.WriteByte( 0 );
@@ -1679,7 +1747,7 @@ begin
   if not aCrash then
   begin
     FLevel.WriteToStream( Stream );
-    FParticles.WriteToStream( Stream );
+    FLevel.Particles.WriteToStream( Stream );
   end;
 
   FreeAndNil( Stream );
@@ -1695,11 +1763,18 @@ end;
 
 destructor TDRLSession.Destroy;
 begin
-  FParticles.Initialize( nil );
-  FreeAndNil( FLevel );
+  FreeAndNil( FMemorial );
+  ReleaseLevel;
+  ReleasePlayer;
   FreeAndNil( FTargeting );
-  FreeAndNil( FParticles );
-  FreeAndNil( UIDs );
+  // The initial Session shell can be destroyed before Lua has been created.
+  if FContext.Lua <> nil then
+  begin
+    TDRLLua( FContext.Lua ).BindNodeContext( nil );
+    FContext.Lua.Context.BindUIDs( nil );
+  end;
+  FreeAndNil( FUIDStore );
+  FreeAndNil( FContext );
   Log('DRL destroyed.');
   inherited Destroy;
 end;

@@ -6,7 +6,8 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlmainmenuview;
 interface
-uses vio, viotypes, vgenerics, vtextures, vtigstyle, dfdata, drlio;
+uses vio, viotypes, vgenerics, vtextures, vtigstyle,
+     dfdata, dfhof, drlio, drlhelp;
 
 type TMainMenuViewMode = (
   MAINMENU_FIRST, MAINMENU_INTRO, MAINMENU_ENGINECOMPAT, MAINMENU_MENU,
@@ -28,7 +29,8 @@ end;
 type TMainMenuEntryArray = specialize TGArray< TMainMenuEntry >;
 
 type TMainMenuView = class( TIOLayer )
-  constructor Create( aInitial : TMainMenuViewMode = MAINMENU_FIRST; aResult : TMenuResult = nil );
+  constructor Create( aHOF : THOF; aHelp : THelp; aModErrors : TStringGArray;
+    aInitial : TMainMenuViewMode = MAINMENU_FIRST; aResult : TMenuResult = nil );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
@@ -58,6 +60,9 @@ protected
   procedure RenderASCIILogo;
   procedure UpdateModErrors;
 protected
+  FHOF         : THOF;
+  FHelp        : THelp;
+  FModErrors   : TStringGArray;
   FSize        : TIOPoint;
   FMode        : TMainMenuViewMode;
   FFirst       : Ansistring;
@@ -88,8 +93,7 @@ end;
 implementation
 
 uses math, sysutils,
-     vutil, vtig, vtigio, vgltypes, vluasystem, vluavalue,
-     dfhof,
+     vutil, vtig, vtigio, vgltypes, vlua, vluavalue,
      drlbase, drlgfxio, drlplayerview, drlhelpview, drlsettingsview, drlpagedview;
 
 var ChallengeType : array[1..4] of TMainMenuEntry =
@@ -137,8 +141,14 @@ const CTYPE_ANGEL  = 1;
 
       CTYPE_SECOND = 10;
 
-constructor TMainMenuView.Create( aInitial : TMainMenuViewMode = MAINMENU_FIRST; aResult : TMenuResult = nil );
+constructor TMainMenuView.Create( aHOF : THOF; aHelp : THelp; aModErrors : TStringGArray;
+    aInitial : TMainMenuViewMode = MAINMENU_FIRST; aResult : TMenuResult = nil );
+var iLua : TLua;
 begin
+  FHOF       := aHOF;
+  FHelp      := aHelp;
+  FModErrors := aModErrors;
+  iLua := IO.Session.Context.Lua;
   FMenuStyle   := TIGStyleFrameless;
   FMenuStyle.Padding[ VTIG_WINDOW_PADDING ]   := Point( 5, 1 );
   FWindowStyle := TIGStyleFrameless;
@@ -159,7 +169,7 @@ begin
   FArrayChal  := nil;
   FTitleChal  := '';
   FSize       := Point( 80, 25 );
-  FChallenges := ( LuaSystem.Get( ['chal','__counter'], 0 ) > 0 ) and (not DemoVersion);
+  FChallenges := ( iLua.Get( ['chal','__counter'], 0 ) > 0 ) and (not DemoVersion);
   FSeed[0]    := #0;
   FSeedInvalid := False;
 
@@ -172,7 +182,7 @@ begin
     begin
       WriteFileString( IO.Session.Paths.WritePath + 'drl.prc', 'DRL was already run.' );
 
-      FFirst := AnsiString( LuaSystem.ProtectedCall( [CoreModuleID,'GetFirstText'], [] ) );
+      FFirst := AnsiString( iLua.ProtectedCall( [CoreModuleID,'GetFirstText'], [] ) );
       if FFirst = '' then FMode := MAINMENU_INTRO;
 
       if not DemoVersion then
@@ -189,18 +199,18 @@ begin
       FMode := MAINMENU_INTRO;
   end;
 
-  FMOTD := AnsiString( LuaSystem.ProtectedCall( [CoreModuleID,'GetMOTD'], [] ) );
+  FMOTD := AnsiString( iLua.ProtectedCall( [CoreModuleID,'GetMOTD'], [] ) );
 
   if FMode in [MAINMENU_FIRST,MAINMENU_INTRO] then
   begin
-    FIntro1 := AnsiString( LuaSystem.ProtectedCall( [CoreModuleID,'GetLogoBox'], [] ) );
-    FIntro2 := AnsiString( LuaSystem.ProtectedCall( [CoreModuleID,'GetLogoText'], [] ) );
+    FIntro1 := AnsiString( iLua.ProtectedCall( [CoreModuleID,'GetLogoBox'], [] ) );
+    FIntro2 := AnsiString( iLua.ProtectedCall( [CoreModuleID,'GetLogoText'], [] ) );
   end;
 
   if GraphicsVersion then
   begin
     FBGTexture   := (IO as TDRLGFXIO).Textures.TextureID['background'];
-    FLogoTexture := (IO as TDRLGFXIO).Textures.TextureID[AnsiString( LuaSystem.ProtectedCall( [CoreModuleID,'GetLogoTexture'], [] ) )];
+    FLogoTexture := (IO as TDRLGFXIO).Textures.TextureID[AnsiString( iLua.ProtectedCall( [CoreModuleID,'GetLogoTexture'], [] ) )];
   end;
 
   if FMode = MAINMENU_MENU then
@@ -217,7 +227,7 @@ begin
     begin
       FResult.Klass := FArrayKlass[0].NID;
       FMode         := MAINMENU_TRAIT;
-      IO.PushLayer( TPlayerView.CreateTrait( True, FResult.Klass ) );
+      IO.PushLayer( TPlayerView.CreateInitialTrait( FResult.Klass ) );
     end;
   end;
   VTIG_Clear;
@@ -229,7 +239,7 @@ begin
   end;
   SetSoundCallback;
 
-  if ModErrors.Size > 0 then
+  if FModErrors.Size > 0 then
   begin
     UpdateModErrors;
     Exit;
@@ -377,9 +387,9 @@ begin
         VTIG_ResetSelect( 'mainmenu_newgame' );
         FMode := MAINMENU_NEWGAME;
       end;
-    if VTIG_Selectable( TextShowHighscore ) then IO.PushLayer( TPagedView.Create( HOF.GetPagedScoreReport ) );
-    if VTIG_Selectable( TextShowPlayer )    then IO.PushLayer( TPagedView.Create( HOF.GetPagedPlayerReport ) );
-    if VTIG_Selectable( TextHelp )          then IO.PushLayer( THelpView.Create );
+    if VTIG_Selectable( TextShowHighscore ) then IO.PushLayer( TPagedView.Create( FHOF.GetPagedScoreReport ) );
+    if VTIG_Selectable( TextShowPlayer )    then IO.PushLayer( TPagedView.Create( FHOF.GetPagedPlayerReport ) );
+    if VTIG_Selectable( TextHelp )          then IO.PushLayer( THelpView.Create( IO, IO.Session.Context.Lua, FHelp, CoreModuleID ) );
     if VTIG_Selectable( TextSettings )      then IO.PushLayer( TSettingsView.Create );
     if FJHCLink then
     begin
@@ -792,7 +802,7 @@ begin
       begin
         FResult.Klass := FArrayKlass[i].NID;
         FMode         := MAINMENU_TRAIT;
-        IO.PushLayer( TPlayerView.CreateTrait( True, FResult.Klass ) );
+        IO.PushLayer( TPlayerView.CreateInitialTrait( FResult.Klass ) );
       end;
     iSelected := VTIG_Selected;
     VTIG_PopStyle;
@@ -874,7 +884,7 @@ begin
           VTIG_Text( 'Rating: {!'+FArrayChal[iSelect].Extra+'}'#10#10+FArrayChal[iSelect].Desc );
           if not FArrayChal[iSelect].Allow then
           begin
-            iRank := LuaSystem.Get( ['ranks','skill',FArrayChal[iSelect].Req+1,'name'] );
+            iRank := IO.Session.Context.Lua.Get( ['ranks','skill',FArrayChal[iSelect].Req+1,'name'] );
             VTIG_Text('');
             VTIG_Text( 'Reach {y'+iRank+'} rank to unlock!' );
           end;
@@ -979,7 +989,7 @@ end;
 
 function TMainMenuView.IsFinished : Boolean;
 begin
-  Exit( FMode = MAINMENU_DONE );
+  Exit( inherited IsFinished or ( FMode = MAINMENU_DONE ) );
 end;
 
 function TMainMenuView.IsModal : Boolean;
@@ -988,11 +998,13 @@ begin
 end;
 
 procedure TMainMenuView.ReloadArrays;
-var iEntry : TMainMenuEntry;
+var iLua : TLua;
+    iEntry : TMainMenuEntry;
     iTable : TLuaTable;
     iCount : Word;
     iSkill : Integer;
 begin
+  iLua := IO.Session.Context.Lua;
   if FArrayCType = nil then FArrayCType := TMainMenuEntryArray.Create;
   if FArrayDiff  = nil then FArrayDiff  := TMainMenuEntryArray.Create;
   if FArrayKlass = nil then FArrayKlass := TMainMenuEntryArray.Create;
@@ -1000,7 +1012,7 @@ begin
   FArrayDiff.Clear;
   FArrayKlass.Clear;
 
-  iSkill := HOF.GetRank('skill');
+  iSkill := FHOF.GetRank('skill');
 
   ChallengeType[1].Allow := (iSkill > 0) or (GodMode) or (Setting_UnlockAll);
   ChallengeType[2].Allow := (iSkill > 3) or (GodMode) or (Setting_UnlockAll);
@@ -1009,7 +1021,7 @@ begin
   FArrayCType.Push( ChallengeType[2] );
   FArrayCType.Push( ChallengeType[3] );
 
-  for iTable in LuaSystem.ITables('diff') do
+  for iTable in iLua.ITables('diff') do
   with iTable do
   begin
     iEntry.Allow := True;
@@ -1024,8 +1036,8 @@ begin
     FArrayDiff.Push( iEntry );
   end;
 
-  for iCount := 1 to LuaSystem.Get(['klasses','__counter']) do
-    with LuaSystem.GetTable([ 'klasses', iCount ]) do
+  for iCount := 1 to iLua.Get(['klasses','__counter']) do
+    with iLua.GetTable([ 'klasses', iCount ]) do
     try
       if not GetBoolean( 'hidden',False ) then
       begin
@@ -1044,7 +1056,8 @@ begin
 end;
 
 procedure TMainMenuView.ReloadChallenge( aType : Byte );
-var iChalCount  : DWord;
+var iLua : TLua;
+    iChalCount  : DWord;
     iChoices    : DWord;
     iCount      : Integer;
     iPrefix     : Ansistring;
@@ -1052,12 +1065,13 @@ var iChalCount  : DWord;
     iEntry      : TMainMenuEntry;
     iValue      : TLuaValue;
 begin
+  iLua := IO.Session.Context.Lua;
   VTIG_EventClear;
   VTIG_ResetSelect( 'challenges_view' );
 
   if FArrayChal = nil then FArrayChal := TMainMenuEntryArray.Create;
   FArrayChal.Clear;
-  iChalCount  := LuaSystem.Get(['chal','__counter']);
+  iChalCount  := iLua.Get(['chal','__counter']);
   iChallenges := nil;
   iChoices    := 0;
   iPrefix     := '';
@@ -1074,7 +1088,7 @@ begin
     CTYPE_DANGEL : begin
       FTitleChal := 'Choose your Primary Challenge';
       for iCount := 1 to iChalCount do
-        if LuaSystem.Defined([ 'chal', iCount, 'secondary' ]) then
+        if iLua.Defined([ 'chal', iCount, 'secondary' ]) then
         begin
           iChallenges[iChoices] := iCount;
           Inc( iChoices );
@@ -1085,7 +1099,7 @@ begin
       FResult.ArchAngel := True;
       iPrefix := 'arch_';
       for iCount := 1 to iChalCount do
-        if LuaSystem.Defined([ 'chal', iCount, 'arch_name' ]) then
+        if iLua.Defined([ 'chal', iCount, 'arch_name' ]) then
         begin
           iChallenges[iChoices] := iCount;
           Inc( iChoices );
@@ -1094,11 +1108,11 @@ begin
 //        CTYPE_CUSTOM = 4;
     CTYPE_SECOND : begin
       FTitleChal := 'Choose your Secondary Challenge';
-      with LuaSystem.GetTable([ 'chal', FResult.Challenge, 'secondary' ]) do
+      with iLua.GetTable([ 'chal', FResult.Challenge, 'secondary' ]) do
       try
         for iValue in Values do
         begin
-          iChallenges[iChoices] := LuaSystem.Get( ['chal','challenge_'+LowerCase(iValue.ToString),'nid'] );
+          iChallenges[iChoices] := iLua.Get( ['chal','challenge_'+LowerCase(iValue.ToString),'nid'] );
           Inc( iChoices );
         end;
       finally
@@ -1109,7 +1123,7 @@ begin
   SetLength( iChallenges, iChoices );
 
   for iCount := 0 to High( iChallenges ) do
-    with LuaSystem.GetTable([ 'chal', iChallenges[iCount] ]) do
+    with iLua.GetTable([ 'chal', iChallenges[iCount] ]) do
     try
       iEntry.Name  := GetString(iPrefix+'name');
       iEntry.Desc  := GetString(iPrefix+'description');
@@ -1118,7 +1132,7 @@ begin
       iEntry.ID    := GetString('id');
       iEntry.NID   := iChallenges[iCount];
       iEntry.Req   := GetInteger(iPrefix+'rank',0);
-      iEntry.Allow := (HOF.GetRank('skill') >= iEntry.Req) or (GodMode) or (Setting_UnlockAll);
+      iEntry.Allow := (FHOF.GetRank('skill') >= iEntry.Req) or (GodMode) or (Setting_UnlockAll);
       FArrayChal.Push( iEntry );
     finally
       Free;
@@ -1131,11 +1145,11 @@ begin
   VTIG_BeginWindow('Mod loading errors', Point( 70, -1 ) );
   VTIG_Text('{!There were errors while loading mods - fix, remove or disable!} ');
   VTIG_Text('');
-  iM := Min( ModErrors.Size, 8 );
+  iM := Min( FModErrors.Size, 8 );
   for i := 0 to iM - 1 do
-    VTIG_Text(ModErrors[i], LIGHTRED );
-  if ModErrors.Size > 12
-    then VTIG_Text('... and '+IntToStr( ModErrors.Size - 8 )+' more error line(s).' );
+    VTIG_Text(FModErrors[i], LIGHTRED );
+  if FModErrors.Size > 12
+    then VTIG_Text('... and '+IntToStr( FModErrors.Size - 8 )+' more error line(s).' );
   VTIG_Text('');
   VTIG_Text('You can ignore and proceed the errors are just version compatibility errors, otherwise the game might be unstable.');
   VTIG_Text('If you''re working on a mod, you can edit it and press {!Ctrl}+{!F1} to reload.');
@@ -1144,11 +1158,11 @@ begin
   begin
     ForceRestart := CoreModuleID;
     FMode := MAINMENU_MENU;
-    ModErrors.Clear;
+    FModErrors.Clear;
   end;
 
   if VTIG_EventCancel then
-    ModErrors.Clear;
+    FModErrors.Clear;
 end;
 
 procedure TMainMenuView.RenderASCIILogo;

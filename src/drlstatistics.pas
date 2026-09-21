@@ -14,6 +14,7 @@ type TStatistics = class(TVObject)
   procedure WriteToStream( aStream : TStream ); override;
   procedure Increase( const aStatisticID: AnsiString; aAmount : Integer = 1 );
   procedure Assign( const aStatisticID: AnsiString; aValue : Integer );
+  procedure StartTimer;
   procedure Update;
   procedure OnDamage( aAmount : Integer );
   procedure OnLevelEnter;
@@ -22,9 +23,10 @@ type TStatistics = class(TVObject)
   function Get( const aKey : AnsiString ) : Integer;
   destructor Destroy; override;
 private
-  FMap      : TIntHashMap;
-  FGameTime : LongInt;
-  FRealTime : Comp;
+  FMap           : TIntHashMap;
+  FGameTime      : LongInt;
+  FRealTime      : Comp;
+  FRealTimeStart : Comp;
 public
   property Items[ const aKey : AnsiString ] : Integer read Get; default;
   property GameTime : LongInt read FGameTime;
@@ -71,10 +73,15 @@ begin
   FMap[ aStatisticID ] := aValue;
 end;
 
+procedure TStatistics.StartTimer;
+begin
+  FRealTimeStart := MSecNow();
+end;
+
 procedure TStatistics.Update;
 var iRealTime : Comp;
 begin
-  iRealTime := FRealTime + MSecNow() - GameRealTime;
+  iRealTime := FRealTime + MSecNow() - FRealTimeStart;
   FMap['real_time']       := Round(iRealTime / 1000);
   FMap['real_time_ms']    := Round(iRealTime);
   FMap['game_time']       := FGameTime;
@@ -103,7 +110,7 @@ end;
 
 procedure TStatistics.OnSaveFile;
 begin
-  FRealTime += MSecNow() - GameRealTime;
+  FRealTime += MSecNow() - FRealTimeStart;
   FMap[ 'save_count' ] := FMap[ 'save_count' ] + 1;
 end;
 

@@ -6,9 +6,10 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlspritemap;
 interface
-uses Classes, SysUtils, math,
+uses classes, sysutils, math,
      vutil, vgltypes, vrltools, vgenerics, vvector, vcolor, vglquadrenderer, vglprogram,
-     vglfullscreentriangle, vnode, vspriteengine, vtextures, vglframebuffer, dfdata, dfbeing;
+     vglfullscreentriangle, vnode, vspriteengine, vtextures, vglframebuffer,
+     dfdata, dfbeing, dflevel;
 
 // TODO : remove
 const SpriteCellRow = 16;
@@ -51,6 +52,7 @@ type
  TDRLSpriteMap = class( TVObject )
   constructor Create( aFramebuffer : TVec2i );
   procedure Reset;
+  procedure SetLevel( aLevel : TLevel );
   procedure Recalculate;
   procedure Update( aTime : DWord; aProjection : TMatrix44 );
   procedure Draw;
@@ -75,6 +77,7 @@ type
   destructor Destroy; override;
   function GetBeingSprite( aBeing : TBeing ) : TSprite;
 private
+  FLevel          : TLevel;
   FGridActive     : Boolean;
   FMaxShift       : TVec2i;
   FMinShift       : TVec2i;
@@ -134,7 +137,7 @@ var SpriteMap : TDRLSpriteMap = nil;
 implementation
 
 uses vmath, viotypes, vvision, vgl3library, vuid,
-     drlio, drlgfxio, drlbase,
+     drlio, drlgfxio,
      dfmap, dfthing, dfitem, dfplayer, drlcontrollerbindings,
      drlmarkers, drldecals;
 
@@ -358,14 +361,21 @@ begin
   glViewport( 0, 0, iIO.Driver.GetSizeX, iIO.Driver.GetSizeY );
 end;
 
+procedure TDRLSpriteMap.SetLevel( aLevel : TLevel );
+begin
+  FLevel := aLevel;
+end;
+
 procedure TDRLSpriteMap.Update ( aTime : DWord; aProjection : TMatrix44 ) ;
-var iShift    : Single;
+var iUIDs     : TUIDStore;
+    iShift    : Single;
     iPixel    : Integer;
     iIO       : TDRLGFXIO;
     iMark     : TMarker;
     iTarget   : TBeing;
     iPosition : TVec2i;
 begin
+  iUIDs := FLevel.Context.UIDs;
   iIO := IO as TDRLGFXIO;
   FShift := FNewShift;
   {$PUSH}
@@ -387,16 +397,16 @@ begin
   PushDecals;
   PushObjects( aTime );
 
-  for iMark in DRL.Level.Markers.Data do
+  for iMark in FLevel.Markers.Data do
     if iMark.Target = 0 then
     begin
-      if DRL.Level.isVisible( iMark.Coord ) then
+      if FLevel.isVisible( iMark.Coord ) then
         PushSpriteFX( iMark.Coord, iMark.Sprite, FTimer, -1 );
     end
     else
     begin
-      iTarget := UIDs[ iMark.Target ] as TBeing;
-      if ( iTarget <> nil ) and ( not iTarget.Dead ) and DRL.Level.isVisible( iTarget.Position ) then
+      iTarget := iUIDs[ iMark.Target ] as TBeing;
+      if ( iTarget <> nil ) and ( not iTarget.Dead ) and FLevel.isVisible( iTarget.Position ) then
       begin
         iPosition := Vec2i( iTarget.Position.X-1, iTarget.Position.Y-1 ) * FSpriteEngine.Grid;
         if iTarget.AnimCount > 0 then
@@ -422,7 +432,7 @@ const MarkerSprite : TSprite = (
 );
 begin
   if ( FMarker.X < 0 ) or ( FMarker.Y < 0 ) then Exit;
-  if not DRL.Level.isProperCoord( FMarker ) then Exit;
+  if not FLevel.isProperCoord( FMarker ) then Exit;
   MarkerSprite.SpriteID[0] := HARDSPRITE_HIGHLIGHT;
   MarkerSprite.Color := ColorBlack;
   MarkerSprite.Color.A := 127;
@@ -434,9 +444,9 @@ begin
   end
   else
   begin
-    if DRL.Level.cellFlagSet( FMarker, CF_BLOCKMOVE ) and ( not DRL.Level.cellFlagSet( FMarker, CF_OPENABLE ) ) then
+    if FLevel.cellFlagSet( FMarker, CF_BLOCKMOVE ) and ( not FLevel.cellFlagSet( FMarker, CF_OPENABLE ) ) then
       MarkerSprite.Color.R := Floor(50*(Sin( FFluidTime*50 )+1)+100)
-    else if (DRL.Level.GetBeing( FMarker ) <> nil) or (not DRL.Level.isPassable( FMarker ) ) then
+    else if (FLevel.GetBeing( FMarker ) <> nil) or (not FLevel.isPassable( FMarker ) ) then
     begin
       MarkerSprite.Color.R := Floor(50*(Sin( FFluidTime*50 )+1)+100);
       MarkerSprite.Color.G := MarkerSprite.Color.R;
@@ -478,10 +488,10 @@ begin
   if iIO.MCursor.Active and iIO.Driver.GetMousePos( iPoint ) then
   begin
     iCoord := DevicePointToCoord( iPoint );
-    if DRL.Level.isProperCoord( iCoord ) then
+    if FLevel.isProperCoord( iCoord ) then
     begin
       TargetSprite.Color := ColorBlack;
-      if DRL.Level.isVisible( iCoord ) then
+      if FLevel.isVisible( iCoord ) then
         TargetSprite.Color.G := Floor(100*(Sin( FFluidTime*50 )+1)+50)
       else
         TargetSprite.Color.R := Floor(100*(Sin( FFluidTime*50 )+1)+50);
@@ -1113,7 +1123,7 @@ begin
   if (Player.Position <> FTarget) and (aDrawPath) then
   begin
     iTargetRange := Distance( Player.Position, FTarget );
-    iTargetLine.Init( DRL.Level, Player.Position, FTarget, iTargetRange, Player.Vision, Player.GetVisionMap );
+    iTargetLine.Init( FLevel, Player.Position, FTarget, iTargetRange, Player.Vision, Player.GetVisionMap );
     repeat
       iTargetLine.Next;
       iCurrent := iTargetLine.Current;
@@ -1123,7 +1133,7 @@ begin
     until (iTargetLine.Done) or (iTargetLine.Steps > 30);
 
     { TVisionRay comparison path, left here for later targeting tests.
-    iTargetLine.Init( DRL.Level, Player.Position, FTarget );
+    iTargetLine.Init( FLevel, Player.Position, FTarget );
     repeat
       iTargetLine.Next;
       iCurrent := iTargetLine.Current;
@@ -1191,7 +1201,7 @@ var Y,X : DWord;
   var c : TCoord2D;
   begin
     c.Create( X, Y );
-    if not DRL.Level.isExplored( c ) then Exit( 0 );
+    if not FLevel.isExplored( c ) then Exit( 0 );
     Exit( VariableLight(c) );
   end;
 
@@ -1210,10 +1220,10 @@ function TDRLSpriteMap.GetCellRotationMask( aCell : TCoord2D): Byte;
 var iT,iB,iL,iR : Boolean;
   function IsWall( aCoord : TCoord2D ) : Boolean; inline;
   begin
-    if not DRL.Level.isProperCoord( aCoord ) then Exit(True);
-    if ((CF_STICKWALL in Cells[DRL.Level.CellBottom[ aCoord ]].Flags) or
-      ((DRL.Level.CellTop[ aCoord ] <> 0) and
-      (CF_STICKWALL in Cells[DRL.Level.CellTop[ aCoord ]].Flags))) then Exit( True );
+    if not FLevel.isProperCoord( aCoord ) then Exit(True);
+    if ((CF_STICKWALL in FLevel.Data.Cells[FLevel.CellBottom[ aCoord ]].Flags) or
+      ((FLevel.CellTop[ aCoord ] <> 0) and
+      (CF_STICKWALL in FLevel.Data.Cells[FLevel.CellTop[ aCoord ]].Flags))) then Exit( True );
     Exit( False );
   end;
   function AddIf( aBool : Boolean; aValue : Byte ) : Byte; inline;
@@ -1240,10 +1250,10 @@ end;
 function TDRLSpriteMap.GetCellDoorRotation( aCell : TCoord2D ) : Byte;
   function IsWall( aCoord : TCoord2D ) : Boolean; inline;
   begin
-    if not DRL.Level.isProperCoord( aCoord ) then Exit( True );
-    if ((CF_STICKWALL in Cells[DRL.Level.CellBottom[ aCoord ]].Flags) or
-      ((DRL.Level.CellTop[ aCoord ] <> 0) and
-      (CF_STICKWALL in Cells[DRL.Level.CellTop[ aCoord ]].Flags))) then Exit( True );
+    if not FLevel.isProperCoord( aCoord ) then Exit( True );
+    if ((CF_STICKWALL in FLevel.Data.Cells[FLevel.CellBottom[ aCoord ]].Flags) or
+      ((FLevel.CellTop[ aCoord ] <> 0) and
+      (CF_STICKWALL in FLevel.Data.Cells[FLevel.CellTop[ aCoord ]].Flags))) then Exit( True );
     Exit( False );
   end;
 begin
@@ -1280,26 +1290,26 @@ begin
     for iX := iDMinX to iDMaxX do
     begin
       iCoord.Create(iX,iY);
-      if not DRL.Level.CellExplored(iCoord) then Continue;
-      iBottom := DRL.Level.CellBottom[iCoord];
+      if not FLevel.CellExplored(iCoord) then Continue;
+      iBottom := FLevel.CellBottom[iCoord];
       if iBottom <> 0 then
       begin
         iZ     := iY * DRL_Z_LINE;
-        iStyle := DRL.Level.CStyle[ iCoord ];
+        iStyle := FLevel.CStyle[ iCoord ];
         iSpr   := GetSprite( iBottom, iStyle );
-        iDeco  := DRL.Level.Deco[iCoord];
+        iDeco  := FLevel.Deco[iCoord];
         if ( iDeco > 0 ) and ( SF_FULLDECO in iSpr.Flags ) then
-          if Cells[ iBottom ].Deco[ iDeco ].SpriteID[0] <> 0 then
+          if FLevel.Data.Cells[ iBottom ].Deco[ iDeco ].SpriteID[0] <> 0 then
           begin
             if SF_COSPLAY in iSpr.Flags then
             begin
               iColor     := iSpr.Color;
-              iSpr       := Cells[ iBottom ].Deco[ iDeco ];
+              iSpr       := FLevel.Data.Cells[ iBottom ].Deco[ iDeco ];
               iSpr.Color := iColor;
               Include( iSpr.Flags, SF_COSPLAY );
             end
             else
-              iSpr := Cells[ iBottom ].Deco[ iDeco ];
+              iSpr := FLevel.Data.Cells[ iBottom ].Deco[ iDeco ];
             iDeco      := 0;
           end;
         if SF_FLOW in iSpr.Flags
@@ -1307,16 +1317,16 @@ begin
           else
           begin
             if SF_MULTI in iSpr.Flags then
-              PushMultiSpriteTerrain( iCoord, iSpr, iZ, DRL.Level.Rotation[ iCoord ] )
+              PushMultiSpriteTerrain( iCoord, iSpr, iZ, FLevel.Rotation[ iCoord ] )
             else
               PushSpriteTerrain( iCoord, iSpr, iZ );
           end;
-        if (SF_FLUID in iSpr.Flags) and (DRL.Level.Rotation[ iCoord ] <> 0) then
+        if (SF_FLUID in iSpr.Flags) and (FLevel.Rotation[ iCoord ] <> 0) then
         begin
-          iFloor := DRL.Level.Floor[ iCoord ];
+          iFloor := FLevel.Floor[ iCoord ];
           if iFloor <> 0 then
           begin
-            iFSpr := GetSprite( iFloor, DRL.Level.FlrStyle[ iCoord ] );
+            iFSpr := GetSprite( iFloor, FLevel.FlrStyle[ iCoord ] );
             if SF_HASALTEDGE in iFSpr.Flags then
               if SF_USEALTEDGE in iSpr.Flags then
                 iFSpr.SpriteID[0] += DRL_COLS;
@@ -1324,19 +1334,19 @@ begin
               if SF_USEALTEDGE2 in iSpr.Flags then
                 iFSpr.SpriteID[0] += 2*DRL_COLS;
             if ModuleOption_NewFloorLayout 
-              then PushFloorTerrainNewLayout( iCoord, iFSpr, iZ + DRL_Z_ENVIRO, DRL.Level.Rotation[iCoord] )
+              then PushFloorTerrainNewLayout( iCoord, iFSpr, iZ + DRL_Z_ENVIRO, FLevel.Rotation[iCoord] )
               else
               begin
-                iFSpr.SpriteID[0] += DRL.Level.Rotation[iCoord];
+                iFSpr.SpriteID[0] += FLevel.Rotation[iCoord];
                 PushSpriteTerrain( iCoord, iFSpr, iZ + DRL_Z_ENVIRO );
               end;
           end;
         end;
-        if DRL.Level.LightFlag[ iCoord, LFBLOOD ] and (Cells[iBottom].BloodSprite.SpriteID[0] <> 0) then
-          PushSpriteDoodad( iCoord, Cells[iBottom].BloodSprite );
+        if FLevel.LightFlag[ iCoord, LFBLOOD ] and (FLevel.Data.Cells[iBottom].BloodSprite.SpriteID[0] <> 0) then
+          PushSpriteDoodad( iCoord, FLevel.Data.Cells[iBottom].BloodSprite );
         if iDeco <> 0 then
         begin
-          iCell := Cells[ iBottom ];
+          iCell := FLevel.Data.Cells[ iBottom ];
           if iCell.Deco[ iDeco ].SpriteID[0] <> 0 then
           begin
             if SF_COSPLAY in iSpr.Flags then
@@ -1353,10 +1363,10 @@ begin
         end;
         if (SF_FLOOR in iSpr.Flags) then
         begin
-          iFloor := DRL.Level.Floor[ iCoord ];
+          iFloor := FLevel.Floor[ iCoord ];
           if iFloor <> 0 then
           begin
-            iSpr := GetSprite( iFloor, DRL.Level.FlrStyle[ iCoord ] );
+            iSpr := GetSprite( iFloor, FLevel.FlrStyle[ iCoord ] );
             PushSpriteTerrain( iCoord, iSpr, iZ - 1 );
           end;
         end;
@@ -1391,27 +1401,27 @@ begin
     begin
       iCoord.Create(iX,iY);
       iZ   := iY * DRL_Z_LINE;
-      iTop := DRL.Level.CellTop[iCoord];
-      if (iTop <> 0) and DRL.Level.CellExplored(iCoord) and ( not DRL.Level.LightFlag[ iCoord, LFANIMATING ] ) then
+      iTop := FLevel.CellTop[iCoord];
+      if (iTop <> 0) and FLevel.CellExplored(iCoord) and ( not FLevel.LightFlag[ iCoord, LFANIMATING ] ) then
       begin
-        if CF_STAIRS in Cells[iTop].Flags then
-          PushSpriteDoodad( iCoord, Cells[iTop].Sprite[0], 255 )
+        if CF_STAIRS in FLevel.Data.Cells[iTop].Flags then
+          PushSpriteDoodad( iCoord, FLevel.Data.Cells[iTop].Sprite[0], 255 )
         else
         begin
-          if not ( ( CF_CORPSE in Cells[iTop].Flags ) and ( DRL.Level.LightFlag[ iCoord, LFCORPSING ] ) ) then
+          if not ( ( CF_CORPSE in FLevel.Data.Cells[iTop].Flags ) and ( FLevel.LightFlag[ iCoord, LFCORPSING ] ) ) then
           begin
-            iSprite := GetSprite( iTop, DRL.Level.CStyle[iCoord] );
-            if ( SF_DOORHACK in iSprite.Flags ) and ( DRL.Level.Rotation[iCoord] > 0 ) then
+            iSprite := GetSprite( iTop, FLevel.CStyle[iCoord] );
+            if ( SF_DOORHACK in iSprite.Flags ) and ( FLevel.Rotation[iCoord] > 0 ) then
             begin
               iSprite.SpriteID[0] := iSprite.SpriteID[ iSprite.SCount div 2 ];
               Include( iSprite.Flags, SF_HIGHSPRITE );
             end;
             PushSpriteDoodad( iCoord, iSprite );
           end;
-          iDeco := DRL.Level.Deco[iCoord];
+          iDeco := FLevel.Deco[iCoord];
           if iDeco <> 0 then
           begin
-            iCell := Cells[ iTop ];
+            iCell := FLevel.Data.Cells[ iTop ];
             if iCell.Deco[ iDeco ].SpriteID[0] <> 0 then
               PushSpriteDoodad( iCoord, iCell.Deco[ iDeco ], -1, 1 );
           end;
@@ -1419,9 +1429,9 @@ begin
         end;
       end;
 
-      iItem    := DRL.Level.Item[ iCoord ];
-      iVisible := DRL.Level.ItemVisible( iCoord, iItem );
-      if iVisible or DRL.Level.ItemExplored(iCoord, iItem) then
+      iItem    := FLevel.Item[ iCoord ];
+      iVisible := FLevel.ItemVisible( iCoord, iItem );
+      if iVisible or FLevel.ItemExplored(iCoord, iItem) then
         if (iItem.AnimCount = 0) then
         begin
           iSprite := GetSprite( iItem.Sprite, iCoord );
@@ -1452,19 +1462,19 @@ begin
     begin
       iCoord.Create(iX,iY);
       iZ     := iY * DRL_Z_LINE;
-      iBeing := DRL.Level.Being[iCoord];
+      iBeing := FLevel.Being[iCoord];
       if (iBeing <> nil) and (iBeing.AnimCount = 0) then
-        if DRL.Level.BeingVisible(iCoord, iBeing) then
+        if FLevel.BeingVisible(iCoord, iBeing) then
         begin
           PushSprite( Vec2i( iX-1, iY-1 ) * FSpriteEngine.Grid, GetBeingSprite( iBeing ), VariableLight( iCoord, 30 ), iZ + DRL_Z_BEINGS );
           PushBeingOverlay( Vec2i( iX-1, iY-1 ) * FSpriteEngine.Grid, iBeing, VariableLight( iCoord, 30 ) );
         end
-        else if DRL.Level.BeingExplored(iCoord, iBeing) then
+        else if FLevel.BeingExplored(iCoord, iBeing) then
         begin
           PushSprite( Vec2i( iX-1, iY-1 ) * FSpriteEngine.Grid, GetBeingSprite( iBeing ), 40, iZ + DRL_Z_BEINGS );
           PushBeingOverlay( Vec2i( iX-1, iY-1 ) * FSpriteEngine.Grid, iBeing, 40 );
         end
-        else if DRL.Level.BeingIntuited(iCoord, iBeing) then
+        else if FLevel.BeingIntuited(iCoord, iBeing) then
         begin
           with FSpriteEngine.Layers[ HARDSPRITE_MARK div 100000 ] do
             Push( HARDSPRITE_MARK mod 100000, iCoord, ColorWhite, NewColor( Magenta ), ColorZero, NewColor( Magenta ), DRL_Z_FX-1 );
@@ -1477,8 +1487,8 @@ begin
       if FTargetList.Size > 0 then
       for iL := 0 to FTargetList.Size-1 do
       begin
-        if (not DRL.Level.isVisible( FTargetList[iL] )) or
-           (not DRL.Level.isShotPassable( FTargetList[iL] )) then
+        if (not FLevel.isVisible( FTargetList[iL] )) or
+           (not FLevel.isShotPassable( FTargetList[iL] )) then
           iColor := NewColor( 128, 0, 0 );
         with FSpriteEngine.Layers[ HARDSPRITE_SELECT div 100000 ] do
           Push( HARDSPRITE_SELECT mod 100000, FTargetList[iL], ColorWhite, iColor, ColorZero, iColor, DRL_Z_FX );
@@ -1488,8 +1498,8 @@ begin
       if FOldTargetList.Size > 0 then
       for iL := 0 to FOldTargetList.Size-1 do
       begin
-        if (not DRL.Level.isVisible( FOldTargetList[iL] )) or
-           (not DRL.Level.isShotPassable( FOldTargetList[iL] )) then
+        if (not FLevel.isVisible( FOldTargetList[iL] )) or
+           (not FLevel.isShotPassable( FOldTargetList[iL] )) then
           iColor := NewColor( 128, 0, 128 );
         with FSpriteEngine.Layers[ HARDSPRITE_MARK div 100000 ] do
           Push( HARDSPRITE_MARK mod 100000, FOldTargetList[iL], ColorWhite, iColor, ColorZero, iColor, DRL_Z_FX+1 );
@@ -1502,7 +1512,7 @@ begin
   else
     if Setting_AutoTarget and ( FAutoTarget.X * FAutoTarget.Y <> 0 ) then
     begin
-      iBeing := DRL.Level.Being[FAutoTarget];
+      iBeing := FLevel.Being[FAutoTarget];
       iV     := Vec2i( FAutoTarget.X-1, FAutoTarget.Y-1 ) * FSpriteEngine.Grid;
       if ( iBeing <> nil ) and ( iBeing.AnimCount > 0 ) then
          (IO as TDRLGFXIO).getUIDPosition( iBeing.UID, iV );
@@ -1541,12 +1551,12 @@ var iData  : TDecalArray;
   end;
 
   begin
-  iData := DRL.Level.Decals.Data;
+  iData := FLevel.Decals.Data;
   iDark := Player.Flags[ BF_DARKNESS ];
   for iDecal in iData do
   begin
     iCoord := NewCoord2D( ( iDecal.Position.X + 16 ) div 32, ( iDecal.Position.Y + 16 ) div 32 );
-    with DRL.Level do
+    with FLevel do
       if ( not isProperCoord( iCoord ) ) or ( iDark and ( not isVisible( iCoord ) ) ) or ( not isExplored( iCoord ) ) then
           Continue;
 
@@ -1569,8 +1579,8 @@ end;
 
 function TDRLSpriteMap.VariableLight( aWhere: TCoord2D; aBonus : ShortInt = 0 ): Byte;
 begin
-  if not DRL.Level.isVisible( aWhere ) then Exit( 70 ); //20
-  Exit( Min( 100+aBonus+DRL.Level.Vision.getLight(aWhere)*20, 255 ) );
+  if not FLevel.isVisible( aWhere ) then Exit( 70 ); //20
+  Exit( Min( 100+aBonus+FLevel.Vision.getLight(aWhere)*20, 255 ) );
 end;
 
 function TDRLSpriteMap.GetBeingSprite( aBeing : TBeing ) : TSprite;
@@ -1614,7 +1624,7 @@ end;
 function TDRLSpriteMap.GetSprite( aCell, aStyle : Byte ) : TSprite;
 var iCell  : TCell;
 begin
-  iCell   := Cells[ aCell ];
+  iCell   := FLevel.Data.Cells[ aCell ];
   if iCell.Sprite[ aStyle ].SpriteID[0] <> 0 then
     Exit( iCell.Sprite[ aStyle ] );
   Exit( iCell.Sprite[ 0 ] );

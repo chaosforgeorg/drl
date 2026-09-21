@@ -472,7 +472,7 @@ end;
 
 function TSettingsView.IsFinished : Boolean;
 begin
-  Exit( FState = SETTINGSVIEW_DONE );
+  Exit( inherited IsFinished or ( FState = SETTINGSVIEW_DONE ) );
 end;
 
 function TSettingsView.IsModal : Boolean;

@@ -6,10 +6,10 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlrankupview;
 interface
-uses vutil, viotypes, dfdata;
+uses vutil, viotypes, vlua, dfdata;
 
 type TRankUpView = class( TIOLayer )
-  constructor Create( aRank : THOFRank );
+  constructor Create( aLua : TLua; aRank : THOFRank );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsModal : Boolean; override;
 protected
@@ -19,9 +19,9 @@ end;
 
 implementation
 
-uses sysutils, vluasystem, vtig;
+uses sysutils, vtig;
 
-constructor TRankUpView.Create( aRank : THOFRank );
+constructor TRankUpView.Create( aLua : TLua; aRank : THOFRank );
 var i, i2 : Integer;
     iSize : Integer;
     iUnl  : Integer;
@@ -35,18 +35,18 @@ begin
   for i := 0 to High( aRank.Data ) do
     if aRank.Data[i].Value <> 0 then
     begin
-      iRank := LuaSystem.Get(['ranks',aRank.Data[i].ID,aRank.Data[i].Value+1,'name'],'');
-      iDesc := LuaSystem.Get(['ranks',aRank.Data[i].ID,'award'],'');
+      iRank := aLua.Get(['ranks',aRank.Data[i].ID,aRank.Data[i].Value+1,'name'],'');
+      iDesc := aLua.Get(['ranks',aRank.Data[i].ID,'award'],'');
       FLines[iSize] := Format( iDesc, [iRank] );
       Inc( iSize );
-      iUnl := LuaSystem.GetTableSize(['ranks',aRank.Data[i].ID,aRank.Data[i].Value+1,'unlocks']);
+      iUnl := aLua.GetTableSize(['ranks',aRank.Data[i].ID,aRank.Data[i].Value+1,'unlocks']);
       if iUnl > 0 then
       begin
         FLines[iSize] := 'This unlocks the following features:';
         Inc( iSize );
         for i2 := 1 to iUnl do
         begin
-          FLines[iSize] := ' * '+LuaSystem.Get(['ranks',aRank.Data[i].ID,aRank.Data[i].Value+1,'unlocks',i2]);
+          FLines[iSize] := ' * '+aLua.Get(['ranks',aRank.Data[i].ID,aRank.Data[i].Value+1,'unlocks',i2]);
           Inc( iSize );
         end;
         FLines[iSize] := '';
