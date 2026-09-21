@@ -30,7 +30,7 @@ const
   Hook_OnKillAll       = 18;  // Perk (level)
   Hook_OnHitBeing      = 19;  // Perk (item)
   Hook_OnReload        = 20;  // Perk (item)
-  Hook_OnDescribe      = 21;  // Perk
+  Hook_getGroundDesc   = 21;  // Perk (item)
   Hook_OnEquipCheck    = 22;  // Perk (item)
   Hook_OnAct           = 23;  // Being, Perk
   Hook_OnDestroy       = 24;  // Perk (item)
@@ -96,7 +96,7 @@ const HookNames : array[ 0..HookAmount-1 ] of AnsiString = (
       'OnCreate', 'OnAction', 'OnAttacked', 'OnUseActive', 'OnDie', 'OnDieCheck',
       'OnPickup','OnPickupCheck','OnUse','OnUseCheck',
       'OnAltFire', 'OnAltReload', 'OnEquip', 'OnUnequip', 'OnAdd', 'OnRemove', 'OnTick10', 'OnKill', 'OnKillAll',
-      'OnHitBeing', 'OnReload', 'OnDescribe', 'OnEquipCheck', 'OnAct', 'OnDestroy', 'OnEnter', 'OnEnterLevel',
+      'OnHitBeing', 'OnReload', 'getGroundDesc', 'OnEquipCheck', 'OnAct', 'OnDestroy', 'OnEnter', 'OnEnterLevel',
       'OnFire', 'OnFired', 'OnExitLevel', 'OnTick', 'OnNuked',
       'OnLoad','OnLoaded','OnUnLoad', 'OnCreatePlayer', 'OnLevelUp','OnPreLevelUp',
       'OnWinGame', 'OnCreateEpisode', 'OnIntro' , 'OnGenerate',

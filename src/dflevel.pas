@@ -1741,7 +1741,7 @@ begin
     if Being[ aWhere ] <> nil then
     with Being[ aWhere ] do
       AddInfo( GetName( false ) + ' (' + WoundStatus + ')' );
-    if Item[ aWhere ] <> nil then AddInfo( Item[ aWhere ].GetExtName( False ) );
+    if Item[ aWhere ] <> nil then AddInfo( Item[ aWhere ].GetGroundDesc( False ) );
     if CellHook_OnDescribe in FData.Cells[ Cell[ aWhere ] ].Hooks then
        AddInfo( CallHook( aWhere, CellHook_OnDescribe ) )
     else

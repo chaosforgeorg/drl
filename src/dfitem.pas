@@ -25,7 +25,7 @@ TItem  = class( TThing )
     function    rollDamage( aGameRNG : TRNG ) : Integer;
     function    maxDamage : Integer;
     function    GetName( aKnown : boolean; aSingle : Boolean = False ) : Ansistring;
-    function    GetExtName( aLyingHere : Boolean ) : Ansistring;
+    function    GetGroundDesc( aLyingHere : Boolean ) : Ansistring;
     function    GetProtection : Integer;
     function    GetResistance( const aResistance : AnsiString ) : Integer;
     function    Description( aSingle : Boolean ) : Ansistring; overload;
@@ -522,19 +522,19 @@ begin
             else Exit(Preposition(Description( aSingle ))+Description( aSingle ));
 end;
 
-function TItem.GetExtName( aLyingHere : Boolean ) : Ansistring;
+function TItem.GetGroundDesc( aLyingHere : Boolean ) : Ansistring;
 var iName  : AnsiString;
     iPerks : TPerkList;
     i      : Integer;
 begin
   iName := '';
-  if ( FPerks <> nil ) and ( Hook_OnDescribe in FPerks.Hooks ) then
+  if ( FPerks <> nil ) and ( Hook_getGroundDesc in FPerks.Hooks ) then
   begin
     iPerks := FPerks.List;
     for i := 0 to iPerks.Size - 1 do
-      if Hook_OnDescribe in FPerks.Definitions.Data[ iPerks[i].ID ].Hooks then
+      if Hook_getGroundDesc in FPerks.Definitions.Data[ iPerks[i].ID ].Hooks then
       begin
-        iName := FContext.Lua.ProtectedCall( [ 'perks', iPerks[i].ID, HookNames[Hook_OnDescribe] ], [ Self ] );
+        iName := FContext.Lua.ProtectedCall( [ 'perks', iPerks[i].ID, HookNames[Hook_getGroundDesc] ], [ Self ] );
         Break;
       end;
   end;

@@ -178,7 +178,7 @@ core.register_blueprint "perk"
 	OnTick         = { false, core.TFUNC },
 	OnTick10       = { false, core.TFUNC },
 	OnRemove       = { false, core.TFUNC },
-	OnDescribe     = { false, core.TFUNC },
+	getGroundDesc  = { false, core.TFUNC },
 	getLabel       = { false, core.TFUNC },
 
 	getDamageBonus   = { false, core.TFUNC },

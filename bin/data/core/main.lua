@@ -466,7 +466,7 @@ register_being         = core.register_storage( "beings", "being", function( bp 
 
 register_perk "perk_lever_description"
 {
-	OnDescribe = function( self )
+	getGroundDesc = function( self )
 		if player:has_property( "LEVER_SENSE" ) then
 			if player.LEVER_SENSE > 1 then return "lever ("..self.__proto.desc..")" end
 			return "lever ("..self.__proto.good..")"
