@@ -282,7 +282,7 @@ const ItemEqFilters : array[TEqSlot] of TItemTypeSet = (
                        [ItemType_Armor],
                        [ItemType_Melee,ItemType_Ranged,ItemType_NRanged],
                        [ItemType_Boots],
-                       [ItemType_Melee,ItemType_Ranged,ItemType_AmmoPack],
+                       [ItemType_Melee,ItemType_Ranged,ItemType_NRanged,ItemType_AmmoPack],
                        [ItemType_Relic]
                       );
 const ItemsAll      : TItemTypeSet = [Low(TItemType)..High(TItemType)];
