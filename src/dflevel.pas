@@ -25,7 +25,6 @@ TLevel = class(TLuaMapNode, ITextMap)
     procedure AfterGeneration;
     procedure PreEnter;
     procedure RecalcFluids;
-    procedure Leave;
     procedure Clear;
     procedure FullClear;
     procedure Tick;
@@ -691,21 +690,6 @@ begin
 
       FMap.Rotation[iC.x,iC.y] := iValue;
   end;
-end;
-
-procedure TLevel.Leave;
-var TimeDiff : LongInt;
-begin
-  CallHook( Hook_OnExitLevel, [FIndex,FID, FStatus] );
-  DRL.CallHook( Hook_OnExitLevel, [FIndex,FID, FStatus] );
-  if ( Player.HP > 0 ) and ( not HasHook( Hook_OnExitLevel ) ) then
-  begin
-    TimeDiff :=  Player.Statistics.GameTime - Player.Statistics['entry_time'];
-    if TimeDiff < 100 then
-      Player.AddHistory('He left @1 as soon as possible.');
-  end;
-
-  IO.MsgReset;
 end;
 
 procedure TLevel.Clear;

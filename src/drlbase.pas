@@ -83,6 +83,7 @@ type TDRLSession = class(TVObject)
        function HandlePadEvent( aEvent : TIOEvent ) : Boolean;
        function MoveTargetEvent( aCoord : TCoord2D ) : Boolean;
        procedure PreAction;
+       procedure LeaveLevel;
        procedure CreatePlayer( aResult : TMenuResult );
        function PrepareGameSeed( aRequestedSeed : Cardinal ) : Cardinal;
        procedure RegisterChallengeRuntimes;
@@ -423,6 +424,21 @@ begin
     FReloadData := True;
     FContext.Lua.Call( [ 'chal', FSChallenge, 'OnRegister' ], [] );
   end;
+end;
+
+procedure TDRLSession.LeaveLevel;
+var iTimeDiff : LongInt;
+begin
+  FLevel.CallHook( Hook_OnExitLevel, [ FLevel.Index, FLevel.ID, FLevel.Status ] );
+  CallHook( Hook_OnExitLevel, [ FLevel.Index, FLevel.ID, FLevel.Status ] );
+  if ( FPlayer.HP > 0 ) and ( not FLevel.HasHook( Hook_OnExitLevel ) ) then
+  begin
+    iTimeDiff := FPlayer.Statistics.GameTime - FPlayer.Statistics['entry_time'];
+    if iTimeDiff < 100 then
+      FPlayer.AddHistory( 'He left @1 as soon as possible.' );
+  end;
+
+  IO.MsgReset;
 end;
 
 procedure TDRLSession.PreAction;
@@ -1476,7 +1492,7 @@ begin
 
     if State = DSNextLevel then
     begin
-      FLevel.Leave;
+      LeaveLevel;
     end;
 
     // Animation destructors may still access the outgoing level and its entities.
