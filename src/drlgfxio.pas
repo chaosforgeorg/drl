@@ -1097,7 +1097,7 @@ begin
       end;
       if iItem <> nil then
       begin
-        VTIG_FreeLabel( '[{!{0}}] {1}', vutil.Point(iPosX,iPosY), [ PadQSlotChar[ i ], iItem.description ], iItem.MenuColor );
+        VTIG_FreeLabel( '[{!{0}}] {1}', vutil.Point(iPosX,iPosY), [ PadQSlotChar[ i ], iItem.GetInvName ], iItem.MenuColor );
         Inc( iPosY );
       end;
     end;
