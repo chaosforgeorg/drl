@@ -178,6 +178,27 @@ function mortem.append_traits( lines )
 	end
 end
 
+function mortem.append_permanents( lines )
+	local has_permanent_effects = false
+	for _, perk in ipairs( perks ) do
+		if ( perk.color_expire or 0 ) == 0 and player:is_perk( perk.id ) then
+			local desc = perk.desc or ""
+			if perk.getDescription then
+				desc = perk.getDescription( player )
+			end
+			if desc ~= "" then
+				if not has_permanent_effects then
+					table.insert( lines, "" )
+					table.insert( lines, "-- {!Permanent effects} -----------------------------------------" )
+					table.insert( lines, "" )
+					has_permanent_effects = true
+				end
+				table.insert( lines, "  {!"..perk.name.."} - "..desc )
+			end
+		end
+	end
+end
+
 function mortem.item_desc( item )
 	return item.inv_name
 end
