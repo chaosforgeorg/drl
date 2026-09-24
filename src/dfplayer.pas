@@ -600,6 +600,7 @@ begin
      then iLevel.playSound( 'gib',FPosition )
      else PlaySound( 'die' );
 
+  IO.ResetAnimationSpeed;
   IO.addKillAnimation( 1000, aDelay, Self );
   IO.WaitForAnimation;
   FAnimCount := 1;
