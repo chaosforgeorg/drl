@@ -21,6 +21,7 @@ type
     constructor Create; reintroduce;
     procedure Reset; override;
     procedure SetLevel( aLevel : TLuaMapNode ); override;
+    procedure EnterLevel( aCoord : TCoord2D ); override;
     procedure Initialize; override;
     procedure Reconfigure( aConfig : TLuaConfig ); override;
     procedure Configure( aConfig : TLuaConfig; aReload : Boolean ); override; overload;
@@ -1119,6 +1120,12 @@ procedure TDRLGFXIO.SetLevel( aLevel : TLuaMapNode );
 begin
   inherited SetLevel( aLevel );
   SpriteMap.SetLevel( TLevel( aLevel ) );
+end;
+
+procedure TDRLGFXIO.EnterLevel( aCoord : TCoord2D );
+begin
+  UpdateMinimap;
+  ResetCamera( aCoord );
 end;
 
 procedure TDRLGFXIO.UpdateMinimap;

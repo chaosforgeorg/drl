@@ -46,6 +46,7 @@ type TDRLSession = class(TVObject)
        constructor Create( aRuntime : TRLRuntime; aModules : TDRLModules;
          aStore : TStoreInterface; aData : TGameData; const aPaths : TGamePaths );
        procedure InitializeLevel;
+       procedure EnterLevel( aLevel : TLevel );
        procedure Reset;
        procedure Reconfigure;
        procedure SetModuleHooks( aModuleHooks : TFlags );
@@ -424,6 +425,21 @@ begin
     FReloadData := True;
     FContext.Lua.Call( [ 'chal', FSChallenge, 'OnRegister' ], [] );
   end;
+end;
+
+procedure TDRLSession.EnterLevel( aLevel : TLevel );
+begin
+  aLevel.Enter;
+  IO.EnterLevel( FPlayer.Position );
+
+  aLevel.CallHook( Hook_OnEnterLevel, [ aLevel.Index, aLevel.ID ] );
+  CallHook( Hook_OnEnterLevel, [ aLevel.Index, aLevel.ID ] );
+  FPlayer.CallHook( Hook_OnEnterLevel, [ aLevel.Index, aLevel.ID ] );
+
+  FPlayer.LevelEnter;
+
+  aLevel.Enter;
+  IO.EnterLevel( FPlayer.Position );
 end;
 
 procedure TDRLSession.LeaveLevel;
@@ -1433,7 +1449,7 @@ begin
 
     if not iFullLoad then
     begin
-      FLevel.PreEnter;
+      EnterLevel( FLevel );
       FLevel.Tick;
     end;
     FTargeting.Clear;

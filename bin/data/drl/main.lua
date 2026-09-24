@@ -297,6 +297,9 @@ function drl.OnEnterLevel()
 	player:add_property( "crash_index", ( linfo and linfo.exit ) or ( level.index + 1 ) )
 	player:remove_perk( "running", true )
 	player:remove_perk( "tired", true )
+	if level:get_property( "unique_item", false ) then
+		ui.msg_feel( "You feel there is something really valuable here!" )
+	end
 end
 
 function drl.GetDisassembleId( it )

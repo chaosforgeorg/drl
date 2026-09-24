@@ -270,8 +270,8 @@ function level:roll_item_list( list )
 	repeat
 		local ip    = list:roll()
 		if ip.is_unique then
-			if not self.flags[ LF_UNIQUEITEM ] then 
-				self.flags[ LF_UNIQUEITEM ] = true
+			if not self:get_property( "unique_item", false ) then
+				self:add_property( "unique_item", true )
 				return ip.id
 			end
 		else

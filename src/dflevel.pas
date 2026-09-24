@@ -23,7 +23,7 @@ TLevel = class(TLuaMapNode, ITextMap)
     procedure Init( aStyle : byte; aName : Ansistring; aIndex : Integer; aDangerLevel : Word );
     procedure InitializeParticles( aEngine : TParticleEngine );
     procedure AfterGeneration;
-    procedure PreEnter;
+    procedure Enter;
     procedure RecalcFluids;
     procedure Clear;
     procedure FullClear;
@@ -127,6 +127,8 @@ TLevel = class(TLuaMapNode, ITextMap)
     function GetPerkDescription( aID : Integer ) : AnsiString;
 
   private
+    function GetCellRotationMask( aCell : TCoord2D ) : Byte;
+    function GetCellDoorRotation( aCell : TCoord2D ) : Byte;
     procedure AddDecal( const aPosition : TVec3f; aDecalSprite : DWord );
     function CellToID( const aCell : Byte ) : AnsiString; override;
     function  getCell( const aWhere : TCoord2D ) : byte; override;
@@ -209,7 +211,7 @@ implementation
 
 uses math, typinfo,
      vgenerics, vluatools, vdebug, vuid,
-     dfplayer, drlbase, drlio, drlgfxio, drlspritemap, drlhudviews;
+     dfplayer, drlbase, drlio, drlhudviews;
 
 type TProcessedUIDList = specialize TGArray<TUID>;
 
@@ -604,57 +606,75 @@ begin
   end;
 end;
 
+procedure TLevel.Enter;
+var iCoord : TCoord2D;
+begin
+  for iCoord in FArea do
+    CalculateRotation( iCoord );
+  RecalcFluids;
+  for iCoord in FArea do
+    HitPoints[iCoord] := FData.Cells[GetCell(iCoord)].HP;
+end;
+
+function TLevel.GetCellRotationMask( aCell : TCoord2D ) : Byte;
+var iT,iB,iL,iR : Boolean;
+  function IsWall( aCoord : TCoord2D ) : Boolean; inline;
+  begin
+    if not isProperCoord( aCoord ) then Exit(True);
+    if ((CF_STICKWALL in FData.Cells[CellBottom[ aCoord ]].Flags) or
+      ((CellTop[ aCoord ] <> 0) and
+      (CF_STICKWALL in FData.Cells[CellTop[ aCoord ]].Flags))) then Exit( True );
+    Exit( False );
+  end;
+  function AddIf( aBool : Boolean; aValue : Byte ) : Byte; inline;
+  begin
+    if aBool then Exit( aValue ) else Exit( 0 );
+  end;
+begin
+  iT := IsWall( aCell.ifInc(  0, -1 ) );
+  iB := IsWall( aCell.ifInc(  0,  1 ) );
+  iL := IsWall( aCell.ifInc( -1,  0 ) );
+  iR := IsWall( aCell.ifInc(  1,  0 ) );
+  GetCellRotationMask :=
+    AddIf( ( iT and iL ) and IsWall( aCell.ifInc( -1,-1) ),  1 ) +
+    AddIf( iT, 2 ) +
+    AddIf( ( iT and iR ) and IsWall( aCell.ifInc(  1,-1) ),  4 ) +
+    AddIf( iL, 8 ) +
+
+    AddIf( iR, 16 ) +
+    AddIf( ( iB and iL ) and IsWall( aCell.ifInc( -1,1) ),  32 ) +
+    AddIf( iB, 64 ) +
+    AddIf( ( iB and iR ) and IsWall( aCell.ifInc(  1,1) ),  128 );
+end;
+
+function TLevel.GetCellDoorRotation( aCell : TCoord2D ) : Byte;
+  function IsWall( aCoord : TCoord2D ) : Boolean; inline;
+  begin
+    if not isProperCoord( aCoord ) then Exit( True );
+    if ((CF_STICKWALL in FData.Cells[CellBottom[ aCoord ]].Flags) or
+      ((CellTop[ aCoord ] <> 0) and
+      (CF_STICKWALL in FData.Cells[CellTop[ aCoord ]].Flags))) then Exit( True );
+    Exit( False );
+  end;
+begin
+  GetCellDoorRotation := 0;
+  if IsWall( aCell.ifInc( 0, -1 ) ) and IsWall( aCell.ifInc( 0, 1 ) ) then
+    GetCellDoorRotation := 1;
+end;
+
 procedure TLevel.CalculateRotation( aCoord : TCoord2D ); inline;
 var iFlags : TFlags;
     iCell  : Byte;
 begin
   iFlags := FData.Cells[CellBottom[aCoord]].Sprite[0].Flags;
-  if SF_MULTI in iFlags    then FMap.Rotation[aCoord.x,aCoord.y] := SpriteMap.GetCellRotationMask(aCoord);
-  if SF_DOORHACK in iFlags then FMap.Rotation[aCoord.x,aCoord.y] := SpriteMap.GetCellDoorRotation(aCoord);
+  if SF_MULTI in iFlags    then FMap.Rotation[aCoord.x,aCoord.y] := GetCellRotationMask( aCoord );
+  if SF_DOORHACK in iFlags then FMap.Rotation[aCoord.x,aCoord.y] := GetCellDoorRotation( aCoord );
   iCell := CellTop[aCoord];
   if iCell <> 0 then
   begin
     iFlags := FData.Cells[iCell].Sprite[0].Flags;
-    if SF_DOORHACK in iFlags then FMap.Rotation[aCoord.x,aCoord.y] := SpriteMap.GetCellDoorRotation(aCoord);
+    if SF_DOORHACK in iFlags then FMap.Rotation[aCoord.x,aCoord.y] := GetCellDoorRotation( aCoord );
   end;
-end;
-
-procedure TLevel.PreEnter;
-var iC     : TCoord2D;
-    iFlags : TFlags;
-    iCell  : Byte;
-begin
-  if GraphicsVersion then
-  begin
-    for iC in FArea do
-      CalculateRotation( iC );
-
-    (IO as TDRLGFXIO).UpdateMinimap;
-    RecalcFluids;
-    (IO as TDRLGFXIO).ResetCamera( Player.Position );
-  end;
-
-  CallHook( Hook_OnEnterLevel,[FIndex,FID] );
-  DRL.CallHook( Hook_OnEnterLevel, [FIndex,FID] );
-  Player.CallHook( Hook_OnEnterLevel,[FIndex,FID] );
-
-  if GraphicsVersion then
-  begin
-    RecalcFluids;
-    SpriteMap.NewShift := SpriteMap.ShiftValue( Player.Position );
-  end;
-
-  Player.LevelEnter;
-
-  if LF_UNIQUEITEM in FFlags then
-  begin
-    IO.Msg('You feel there is something really valuable here!');
-    FFeeling := FFeeling + ' You feel there is something really valuable here!';
-  end;
-
-  for iC in FArea do
-    HitPoints[iC] := FData.Cells[GetCell(iC)].HP;
-
 end;
 
 procedure TLevel.RecalcFluids;
@@ -2116,17 +2136,17 @@ begin
   Exit( 0 );
 end;
 
-function lua_level_post_generate(L: Plua_State): Integer; cdecl;
-var State : TLuaGameStack;
-    Level : TLevel;
+function lua_level_post_generate( L : Plua_State ) : Integer; cdecl;
+var iState : TLuaGameStack;
+    iLevel : TLevel;
 begin
-  State.Init(L);
-  IO.MsgUpDate;
-  Level := State.ToObject(1) as TLevel;
-  Level.AfterGeneration;
-  Level.PreEnter;
-  Level.CalculateVision( Player.Position, Player.Vision );
-  Player.PreAction;
+  iState.Init( L );
+  IO.MsgUpdate;
+  iLevel := iState.ToObject( 1 ) as TLevel;
+  iLevel.AfterGeneration;
+  DRL.EnterLevel( iLevel );
+  iLevel.CalculateVision( DRL.Player.Position, DRL.Player.Vision );
+  DRL.Player.PreAction;
   Exit( 0 );
 end;
 

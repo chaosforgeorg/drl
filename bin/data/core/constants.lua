@@ -172,7 +172,6 @@ IF_SHIELD         = 75;
 IF_OVERLAY        = 76;
 
 LF_NOHOMING       = 1;
-LF_UNIQUEITEM     = 2;
 
 LF_SCRIPT         = 4;
 LF_NORESPAWN      = 5;

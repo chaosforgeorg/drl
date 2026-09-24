@@ -72,8 +72,6 @@ type
   procedure ToggleGrid;
   function VariableLight( aWhere : TCoord2D; aBonus : ShortInt = 0 ) : Byte;
   function GetGridSize : Word;
-  function GetCellRotationMask( aCell : TCoord2D ) : Byte;
-  function GetCellDoorRotation( aCell : TCoord2D ) : Byte;
   destructor Destroy; override;
   function GetBeingSprite( aBeing : TBeing ) : TSprite;
 private
@@ -1214,52 +1212,6 @@ begin
       begin
         FLightMap[X,Y] := ( Get(X,Y) + Get(X,Y+1) + Get(X+1,Y) + Get(X+1,Y+1) ) div 4;
       end;
-end;
-
-function TDRLSpriteMap.GetCellRotationMask( aCell : TCoord2D): Byte;
-var iT,iB,iL,iR : Boolean;
-  function IsWall( aCoord : TCoord2D ) : Boolean; inline;
-  begin
-    if not FLevel.isProperCoord( aCoord ) then Exit(True);
-    if ((CF_STICKWALL in FLevel.Data.Cells[FLevel.CellBottom[ aCoord ]].Flags) or
-      ((FLevel.CellTop[ aCoord ] <> 0) and
-      (CF_STICKWALL in FLevel.Data.Cells[FLevel.CellTop[ aCoord ]].Flags))) then Exit( True );
-    Exit( False );
-  end;
-  function AddIf( aBool : Boolean; aValue : Byte ) : Byte; inline;
-  begin
-    if aBool then Exit( aValue ) else Exit( 0 );
-  end;
-begin
-  iT := IsWall( aCell.ifInc(  0, -1 ) );
-  iB := IsWall( aCell.ifInc(  0,  1 ) );
-  iL := IsWall( aCell.ifInc( -1,  0 ) );
-  iR := IsWall( aCell.ifInc(  1,  0 ) );
-  GetCellRotationMask :=
-    AddIf( ( iT and iL ) and IsWall( aCell.ifInc( -1,-1) ),  1 ) +
-    AddIf( iT, 2 ) +
-    AddIf( ( iT and iR ) and IsWall( aCell.ifInc(  1,-1) ),  4 ) +
-    AddIf( iL, 8 ) +
-
-    AddIf( iR, 16 ) +
-    AddIf( ( iB and iL ) and IsWall( aCell.ifInc( -1,1) ),  32 ) +
-    AddIf( iB, 64 ) +
-    AddIf( ( iB and iR ) and IsWall( aCell.ifInc(  1,1) ),  128 );
-end;
-
-function TDRLSpriteMap.GetCellDoorRotation( aCell : TCoord2D ) : Byte;
-  function IsWall( aCoord : TCoord2D ) : Boolean; inline;
-  begin
-    if not FLevel.isProperCoord( aCoord ) then Exit( True );
-    if ((CF_STICKWALL in FLevel.Data.Cells[FLevel.CellBottom[ aCoord ]].Flags) or
-      ((FLevel.CellTop[ aCoord ] <> 0) and
-      (CF_STICKWALL in FLevel.Data.Cells[FLevel.CellTop[ aCoord ]].Flags))) then Exit( True );
-    Exit( False );
-  end;
-begin
-  GetCellDoorRotation := 0;
-  if IsWall( aCell.ifInc( 0, -1 ) ) and IsWall( aCell.ifInc( 0, 1 ) ) then
-    GetCellDoorRotation := 1;
 end;
 
 procedure TDRLSpriteMap.PushTerrain;

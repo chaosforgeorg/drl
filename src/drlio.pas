@@ -99,6 +99,7 @@ type TDRLIO = class( TIORL )
 
   function PushLayer( aLayer : TIOLayer ) : TIOLayer; override;
   procedure PreAction;
+  procedure EnterLevel( aCoord : TCoord2D ); virtual;
   procedure Clear; override;
   function OnEvent( const aEvent : TIOEvent ) : Boolean; override;
 
@@ -467,6 +468,10 @@ procedure TDRLIO.PreAction;
 begin
   FCachedAmmo := -1;
   FLastTarget.Create(0,0);
+end;
+
+procedure TDRLIO.EnterLevel( aCoord : TCoord2D );
+begin
 end;
 
 procedure TDRLIO.Clear;
