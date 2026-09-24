@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlhudviews;
 interface
 uses vutil, viotypes, vgenerics, vcolor, vioevent, vrltools,
-     dfdata, dfitem, dflevel, drlkeybindings, drlhooks;
+     dfdata, dfitem, dflevel, drlkeybindings, drlhooks, drlbase;
 
 type TLookModeView = class( TIOLayer )
   constructor Create( aLevel : TLevel );
@@ -67,9 +67,8 @@ protected
 end;
 
 type TTargetModeView = class( TIOLayer )
-  constructor Create( aLevel : TLevel; aItem : TItem; aCommand : Byte;
-    aActionName : AnsiString; aRange : Byte; aLimitRange : Boolean;
-    aTargets : TAutoTarget );
+  constructor Create( aSession : TDRLSession; aItem : TItem; aCommand : Byte;
+    aActionName : AnsiString; aRange : Byte; aLimitRange : Boolean );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsModal : Boolean; override;
   function HandleInput( aInput : Integer ) : Boolean; override;
@@ -80,7 +79,7 @@ protected
   procedure Finalize;
   procedure UpdateTarget;
 protected
-  FLevel      : TLevel;
+  FSession    : TDRLSession; // Borrowed; the view is released before Session.
   FFirst      : Boolean;
   FLimitRange : Boolean;
   FTarget     : TCoord2D;
@@ -89,7 +88,6 @@ protected
   FRange      : Byte;
   FActionName : AnsiString;
   FNameLen    : Byte;
-  FTargets    : TAutoTarget;
   FItem       : TItem;
   FCommand    : Byte;
 end;
@@ -111,7 +109,7 @@ implementation
 
 uses sysutils,
      vtig, vvision,
-     dfplayer, drlbase, drlio, drlcommand, drlcontrollerbindings, drlspritemap;
+     dfplayer, drlio, drlcommand, drlcontrollerbindings, drlspritemap;
 
 constructor TLookModeView.Create( aLevel : TLevel );
 begin
@@ -297,19 +295,17 @@ begin
   Exit( True );
 end;
 
-constructor TTargetModeView.Create( aLevel : TLevel; aItem : TItem; aCommand : Byte;
-  aActionName : AnsiString; aRange : Byte; aLimitRange : Boolean;
-  aTargets : TAutoTarget );
+constructor TTargetModeView.Create( aSession : TDRLSession; aItem : TItem; aCommand : Byte;
+  aActionName : AnsiString; aRange : Byte; aLimitRange : Boolean );
 begin
-  FLevel        := aLevel;
+  FSession      := aSession;
   FFirst        := True;
-  FTargets      := aTargets;
-  FTarget       := aTargets.Current;
+  FTarget       := FSession.Targeting.List.Current;
   FActionName   := aActionName;
   FNameLen      := VTIG_Length( aActionName );
   FLimitRange   := aLimitRange;
   FRange        := aRange;
-  FPosition     := Player.Position;
+  FPosition     := FSession.Player.Position;
   FColor        := Green;
   FItem         := aItem;
   FCommand      := aCommand;
@@ -343,7 +339,7 @@ begin
   if (iInput = INPUT_TOGGLEGRID) and GraphicsVersion then SpriteMap.ToggleGrid;
   if iInput = INPUT_TARGETNEXT then
   begin
-    FTarget := FTargets.Next;
+    FTarget := FSession.Targeting.List.Next;
     UpdateTarget;
   end;
 
@@ -354,7 +350,7 @@ begin
     if FLimitRange and ( iDist > FRange - 1 ) then
     begin
       iDist := 0;
-      iTargetLine.Init( FLevel, FPosition, FTarget);
+      iTargetLine.Init( FSession.Level, FPosition, FTarget);
       while iDist < (FRange - 1) do
       begin
         iTargetLine.Next;
@@ -374,7 +370,7 @@ begin
 
   if iInput = INPUT_MORE then
   begin
-    with FLevel do
+    with FSession.Level do
      if Being[FTarget] <> nil then
        IO.FullLook( Being[FTarget] );
     UpdateTarget;
@@ -382,8 +378,7 @@ begin
 
   if iInput = INPUT_MORESELF then
   begin
-    with FLevel do
-      IO.FullLook( Player );
+    IO.FullLook( FSession.Player );
     UpdateTarget;
   end;
 
@@ -413,10 +408,10 @@ begin
       if IO.GetPadLDir.NotZero
         then MoveTarget( FTarget + IO.GetPadLDir )
         else begin
-          with FLevel do
+          with FSession.Level do
           begin
             if IO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
-              then IO.FullLook( Player )
+              then IO.FullLook( FSession.Player )
               else if Being[FTarget] <> nil then
                 IO.FullLook( Being[FTarget] );
           end;
@@ -425,11 +420,11 @@ begin
         end;
     CONTROLLER_FIRE : HandleFire;
     CONTROLLER_TARGET_NEXT : begin
-      FTarget := FTargets.Next;
+      FTarget := FSession.Targeting.List.Next;
       UpdateTarget;
     end;
     CONTROLLER_TARGET_PREV : begin
-      FTarget := FTargets.Prev;
+      FTarget := FSession.Targeting.List.Prev;
       UpdateTarget;
     end;
     CONTROLLER_UP    : MoveTarget( FTarget + NewCoord2D(0,-1) );
@@ -464,15 +459,15 @@ begin
     IO.Msg( 'Find a more constructive way to commit suicide.' )
   else
   begin
-    DRL.Targeting.OnTarget( FTarget, False );
-    Player.TargetPos := FTarget;
-    DRL.HandleCommand( TCommand.Create( FCommand, FTarget, FItem ) );
+    FSession.Targeting.OnTarget( FTarget, False );
+    FSession.Player.TargetPos := FTarget;
+    FSession.HandleCommand( TCommand.Create( FCommand, FTarget, FItem ) );
   end;
 end;
 
 function TTargetModeView.MoveTarget( aNew : TCoord2D ) : Boolean;
 begin
-  if FLevel.isProperCoord( aNew )
+  if FSession.Level.isProperCoord( aNew )
     and ((not FLimitRange) or (Distance((aNew), FPosition) <= FRange-1)) then
   begin
     FTarget := aNew;
@@ -484,7 +479,6 @@ end;
 
 procedure TTargetModeView.Finalize;
 begin
-  FTargets := nil;
   IO.FinishTargeting;
   FFinished := true;
 end;
@@ -495,10 +489,10 @@ var iBlock      : Boolean;
     iTargetLine : TAssistedRay;
     iLevel      : TLevel;
 begin
-  iLevel := FLevel;
+  iLevel := FSession.Level;
   if FTarget <> FPosition then
   begin
-    iTargetLine.Init(iLevel, FPosition, FTarget, 0, Player.Vision, Player.GetVisionMap);
+    iTargetLine.Init(iLevel, FPosition, FTarget, 0, FSession.Player.Vision, FSession.Player.GetVisionMap);
     iBlock := false;
     repeat
       iTargetLine.Next;

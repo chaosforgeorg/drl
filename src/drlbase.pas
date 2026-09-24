@@ -804,7 +804,7 @@ begin
     if iRange = 0 then iRange := FPlayer.Vision;
     if iRange <> FPlayer.Vision then
       FTargeting.Update( iRange );
-    IO.PushLayer( TTargetModeView.Create( FLevel, iItem, iCommand, iFireTitle, iRange+1, iLimitRange, FTargeting.List ) );
+    IO.PushLayer( TTargetModeView.Create( Self, iItem, iCommand, iFireTitle, iRange+1, iLimitRange ) );
     Exit( False );
   end;
 
@@ -831,7 +831,7 @@ begin
   if iRange <> FPlayer.Vision then
     FTargeting.Update( iRange );
   iLimitRange := aItem.Flags[ IF_EXACTHIT ];
-  IO.PushLayer( TTargetModeView.Create( FLevel, aItem, COMMAND_USE, 'Choose target:', iRange+1, iLimitRange, FTargeting.List ) );
+  IO.PushLayer( TTargetModeView.Create( Self, aItem, COMMAND_USE, 'Choose target:', iRange+1, iLimitRange ) );
   Exit( False );
 end;
 
