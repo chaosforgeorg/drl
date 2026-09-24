@@ -8,7 +8,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit dflevel;
 interface
 uses sysutils, classes,
-     vluagamestack, vluaentitynode, vutil, vvision, viotypes, vrltools, vnode, vluamapnode, vtextmap, vlua, vrandom, vvector, vparticleengine,
+     vluagamestack, vluaentitynode, vutil, vvision, vrltools, vnode, vluamapnode, vlua, vrandom, vvector, vparticleengine,
      dfdata, dfmap, dfthing, dfbeing, dfitem, drlhooks, drlperk, drlmarkers, drldecals, drlparticles, drlgamedata;
 
 const CellWalls   : TCellSet = [];
@@ -18,7 +18,7 @@ type
 
 { TLevel }
 
-TLevel = class(TLuaMapNode, ITextMap)
+TLevel = class(TLuaMapNode)
     constructor Create( aContext : TNodeContext; aGameRNG : TRNG; aData : TGameData ); reintroduce;
     procedure Init( aTable : TLuaTable; aIndex : Integer; aDifficulty : Byte );
     procedure InitializeParticles( aEngine : TParticleEngine );
@@ -106,7 +106,6 @@ TLevel = class(TLuaMapNode, ITextMap)
 
     procedure Place( aThing : TThing; aCoord : TCoord2D );
     procedure RevealBeings;
-    function getGylph( const aCoord : TCoord2D ) : TIOGylph;
     function EntityFromStream( aStream : TStream; aEntityID : Byte ) : TLuaEntityNode; override;
     constructor CreateFromStream( aStream : TStream; aContext : TNodeContext; aGameRNG : TRNG; aData : TGameData ); reintroduce;
     procedure WriteToStream( aStream : TStream ); override;
@@ -324,112 +323,6 @@ begin
   for iNode in Self do
     if iNode is TBeing then
       TBeing(iNode).AnimCount := 0;
-end;
-
-function TLevel.getGylph(const aCoord: TCoord2D): TIOGylph;
-  function GetColor( aAtr : Byte; aCoord : TCoord2D; aHighlight : boolean = false ) : TIOColor;
-  var Mod2    : Boolean;
-      //color : TTrueColorRec;
-  begin
-    if aAtr > 16 then
-    begin
-      Mod2 := ((aCoord.x+aCoord.y) mod 2) = 0;
-      case aAtr of
-        COLOR_WATER : if Mod2 then aAtr := BLUE     else aAtr := LIGHTBLUE;
-        COLOR_ACID  : if Mod2 then aAtr := GREEN    else aAtr := LIGHTGREEN;
-        COLOR_LAVA  : if Mod2 then aAtr := YELLOW   else aAtr := RED;
-        COLOR_BLOOD : if Mod2 then aAtr := LIGHTRED else aAtr := RED;
-        COLOR_MUD   : if Mod2 then aAtr := YELLOW   else aAtr := BROWN;
-        MULTIPORTAL : case (( Player.Statistics.GameTime div 10 ) mod 3) of
-                        0 : aAtr := LIGHTMAGENTA;
-                        1 : aAtr := MAGENTA;
-                        2 : aAtr := WHITE;
-                      end;
-      end;
-    end;
-    {$IFDEF CORNERMAP}
-    if Corner( aCoord ) then aAtr := Yellow;
-    {$ENDIF CORNERMAP}
-    if StatusEffect <> StatusNormal then
-      case StatusEffect of
-        StatusRed     : if aHighlight then aAtr := LightRed     else aAtr := Red;
-        StatusGreen   : if aHighlight then aAtr := LightGreen   else aAtr := Green;
-        StatusBlue    : if aHighlight then aAtr := LightBlue    else aAtr := Blue;
-        StatusCyan    : if aHighlight then aAtr := LightCyan    else aAtr := Cyan;
-        StatusMagenta : if aHighlight then aAtr := LightMagenta else aAtr := Magenta;
-        StatusYellow  : if aHighlight then aAtr := Yellow       else aAtr := Brown;
-        StatusGray    : if aHighlight then aAtr := LightGray    else aAtr := DarkGray;
-        StatusWhite   : if aHighlight then aAtr := White        else aAtr := DarkGray;
-        StatusInvert  : if aHighlight then aAtr := 16*LightGray else aAtr := 16*LightGray+DarkGray;
-      end;
-    {    if GraphicsVersion then
-    begin
-      distmod := 1.0 - Distance(Coord,Player.Position) * 0.1;
-      if distmod < 0.2 then distmod := 0.2;
-      Color[0] := Round((GLFloatColors[atr mod 16].X * distmod ) * 255);
-      Color[1] := Round((GLFloatColors[atr mod 16].Y * distmod ) * 255);
-      Color[2] := Round((GLFloatColors[atr mod 16].Z * distmod ) * 255);
-      Color[3] := 255;
-      IO.Console.OutputChar( Coord.x+1,Coord.y+2,color,TTrueColor(chr));
-    end}
-    Exit( aAtr );
-  end;
-var iColor    : TIOColor;
-    iChar     : Char;
-    iCell     : DWord;
-    iStyle    : Integer;
-    iVisible  : Boolean;
-    iExplored : Boolean;
-    iBlood    : Boolean;
-    iItem     : TItem;
-    iBeing    : TBeing;
-begin
-  iBeing   := Being[ aCoord ];
-
-  if BeingVisible( aCoord, iBeing ) or BeingExplored( aCoord, iBeing) then
-    Exit( IOGylph( iBeing.Picture, GetColor( iBeing.Color, aCoord, True ) ) );
-
-  if BeingIntuited( aCoord, iBeing ) then
-    Exit( IOGylph( Option_IntuitionChar, GetColor( Option_IntuitionColor, aCoord, True ) ) );
-
-  iItem    := Item[ aCoord ];
-
-  if ItemVisible( aCoord, iItem ) then
-    Exit( IOGylph( iItem.Picture, GetColor( iItem.Color, aCoord, True ) ) );
-
-  if ItemExplored( aCoord, iItem ) then
-    Exit( IOGylph( iItem.Picture, GetColor( DarkGray, aCoord, True ) ) );
-
-  iVisible  := isVisible( aCoord );
-  iExplored := CellExplored( aCoord );
-  iCell     := GetCell( aCoord );
-
-  iColor   := LightGray;
-  iChar    := ' ';
-  with FData.Cells[ iCell ] do
-  if PicChr <> ' ' then
-  begin
-    if iVisible or iExplored then
-      if Option_HighASCII
-        then iChar := PicChr
-        else iChar := PicLow;
-    if iVisible then
-    begin
-      iBlood := LightFlag[ aCoord, LFBLOOD ] and (BloodColor <> 0);
-      if iBlood
-         then iColor := BloodColor
-         else
-         begin
-           iStyle := getStyle( aCoord );
-           iColor := LightColor[ iStyle ];
-           if iColor = 0 then
-             iColor := LightColor[ 0 ];
-         end;
-    end
-    else if iExplored then iColor := DarkColor;
-  end;
-  getGylph.ASCII := iChar;
-  getGylph.Color := GetColor( iColor, aCoord, CF_HIGHLIGHT in FData.Cells[ iCell ].Flags );
 end;
 
 function TLevel.EntityFromStream ( aStream : TStream; aEntityID : Byte ) : TLuaEntityNode;

@@ -7,14 +7,14 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drltextio;
 interface
 
-uses vrltools, vtextmap, vioevent, vluamapnode,
+uses vrltools, vtextmap, vioevent, viotypes, vluamapnode,
      drlio, dfdata, dflevel;
 
 // TDRLTextIO
 //
 // Architectural boundary: owns the concrete text rendering and animation
 // backend. Gameplay policy belongs outside this adapter.
-type TDRLTextIO = class( TDRLIO )
+type TDRLTextIO = class( TDRLIO, ITextMap )
     constructor Create; reintroduce;
     procedure Reset; override;
     procedure Initialize; override;
@@ -32,6 +32,7 @@ type TDRLTextIO = class( TDRLIO )
     procedure Explosion( aDelay : Integer; aWhere : TCoord2D; aData : TExplosionData ); override;
 
     procedure SetLevel( aLevel : TLuaMapNode ); override;
+    function GetGylph( const aCoord : TCoord2D ) : TIOGylph;
     procedure SetTarget( aTarget : TCoord2D; aColor : Byte; aRange : Byte ); override;
     procedure SetAutoTarget( aTarget : TCoord2D ); override;
 
@@ -50,7 +51,6 @@ type TDRLTextIO = class( TDRLIO )
 implementation
 
 uses sysutils,
-     viotypes,
      {$IFDEF WINDOWS}
      vtextio, vtextconsole,
      {$ELSE}
@@ -58,7 +58,7 @@ uses sysutils,
      {$ENDIF}
      vioconsole, vtig, vvision, vutil,
      drlbase, drlanimation,
-     dfplayer;
+     dfplayer, dfbeing, dfitem;
 
 constructor TDRLTextIO.Create;
 begin
@@ -255,7 +255,106 @@ end;
 procedure TDRLTextIO.SetLevel( aLevel : TLuaMapNode );
 begin
   inherited SetLevel( aLevel );
-  FTextMap.SetMap( TLevel( aLevel ) );
+  if aLevel <> nil
+    then FTextMap.SetMap( Self )
+    else FTextMap.SetMap( nil );
+end;
+
+function TDRLTextIO.GetGylph( const aCoord : TCoord2D ) : TIOGylph;
+var iLevel : TLevel;
+  function GetColor( aAtr : Byte; aCoord : TCoord2D; aHighlight : Boolean = False ) : TIOColor;
+  var iAlternate : Boolean;
+  begin
+    if aAtr > 16 then
+    begin
+      iAlternate := ((aCoord.x+aCoord.y) mod 2) = 0;
+      case aAtr of
+        COLOR_WATER : if iAlternate then aAtr := BLUE     else aAtr := LIGHTBLUE;
+        COLOR_ACID  : if iAlternate then aAtr := GREEN    else aAtr := LIGHTGREEN;
+        COLOR_LAVA  : if iAlternate then aAtr := YELLOW   else aAtr := RED;
+        COLOR_BLOOD : if iAlternate then aAtr := LIGHTRED else aAtr := RED;
+        COLOR_MUD   : if iAlternate then aAtr := YELLOW   else aAtr := BROWN;
+        MULTIPORTAL : case (( FSession.Player.Statistics.GameTime div 10 ) mod 3) of
+                        0 : aAtr := LIGHTMAGENTA;
+                        1 : aAtr := MAGENTA;
+                        2 : aAtr := WHITE;
+                      end;
+      end;
+    end;
+    {$IFDEF CORNERMAP}
+    if iLevel.Corner( aCoord ) then aAtr := Yellow;
+    {$ENDIF CORNERMAP}
+    if StatusEffect <> StatusNormal then
+      case StatusEffect of
+        StatusRed     : if aHighlight then aAtr := LightRed     else aAtr := Red;
+        StatusGreen   : if aHighlight then aAtr := LightGreen   else aAtr := Green;
+        StatusBlue    : if aHighlight then aAtr := LightBlue    else aAtr := Blue;
+        StatusCyan    : if aHighlight then aAtr := LightCyan    else aAtr := Cyan;
+        StatusMagenta : if aHighlight then aAtr := LightMagenta else aAtr := Magenta;
+        StatusYellow  : if aHighlight then aAtr := Yellow       else aAtr := Brown;
+        StatusGray    : if aHighlight then aAtr := LightGray    else aAtr := DarkGray;
+        StatusWhite   : if aHighlight then aAtr := White        else aAtr := DarkGray;
+        StatusInvert  : if aHighlight then aAtr := 16*LightGray else aAtr := 16*LightGray+DarkGray;
+      end;
+    Exit( aAtr );
+  end;
+var iColor    : TIOColor;
+    iChar     : Char;
+    iCell     : DWord;
+    iStyle    : Integer;
+    iVisible  : Boolean;
+    iExplored : Boolean;
+    iBlood    : Boolean;
+    iItem     : TItem;
+    iBeing    : TBeing;
+begin
+  iLevel   := TLevel( FLevel );
+  iBeing   := iLevel.Being[ aCoord ];
+
+  if iLevel.BeingVisible( aCoord, iBeing ) or iLevel.BeingExplored( aCoord, iBeing) then
+    Exit( IOGylph( iBeing.Picture, GetColor( iBeing.Color, aCoord, True ) ) );
+
+  if iLevel.BeingIntuited( aCoord, iBeing ) then
+    Exit( IOGylph( Option_IntuitionChar, GetColor( Option_IntuitionColor, aCoord, True ) ) );
+
+  iItem    := iLevel.Item[ aCoord ];
+
+  if iLevel.ItemVisible( aCoord, iItem ) then
+    Exit( IOGylph( iItem.Picture, GetColor( iItem.Color, aCoord, True ) ) );
+
+  if iLevel.ItemExplored( aCoord, iItem ) then
+    Exit( IOGylph( iItem.Picture, GetColor( DarkGray, aCoord, True ) ) );
+
+  iVisible  := iLevel.isVisible( aCoord );
+  iExplored := iLevel.CellExplored( aCoord );
+  iCell     := iLevel.Cell[ aCoord ];
+
+  iColor   := LightGray;
+  iChar    := ' ';
+  with iLevel.Data.Cells[ iCell ] do
+  if PicChr <> ' ' then
+  begin
+    if iVisible or iExplored then
+      if Option_HighASCII
+        then iChar := PicChr
+        else iChar := PicLow;
+    if iVisible then
+    begin
+      iBlood := iLevel.LightFlag[ aCoord, LFBLOOD ] and (BloodColor <> 0);
+      if iBlood
+         then iColor := BloodColor
+         else
+         begin
+           iStyle := iLevel.CStyle[ aCoord ];
+           iColor := LightColor[ iStyle ];
+           if iColor = 0 then
+             iColor := LightColor[ 0 ];
+         end;
+    end
+    else if iExplored then iColor := DarkColor;
+  end;
+  Result.ASCII := iChar;
+  Result.Color := GetColor( iColor, aCoord, CF_HIGHLIGHT in iLevel.Data.Cells[ iCell ].Flags );
 end;
 
 procedure TDRLTextIO.Explosion( aDelay : Integer; aWhere: TCoord2D; aData : TExplosionData );
