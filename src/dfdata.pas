@@ -136,27 +136,28 @@ const
   COMMAND_SKIP     = 250;
 
 const
-  Setting_AlwaysRandomName : Boolean = False;
-  Setting_NoIntro          : Boolean = False;
-  Setting_RunOverItems     : Boolean = False;
-  Setting_HideHints        : Boolean = False;
-  Setting_EmptyConfirm     : Boolean = False;
-  Setting_UnlockAll        : Boolean = False;
-  Setting_MenuSound        : Boolean = False;
-  Setting_WaitSound        : Boolean = True;
-  Setting_MouseEdgePan     : Boolean = False;
-  Setting_Mouse            : Boolean = True;
-  Setting_GamepadRumble    : Boolean = True;
-  Setting_Flash            : Boolean = True;
-  Setting_Glow             : Boolean = True;
-  Setting_Fade             : Boolean = True;
-  Setting_ScreenShake      : Boolean = True;
-  Setting_BloodPulse       : Boolean = True;
-  Setting_ItemDropAnimation: Boolean = True;
-  Setting_AutoTarget       : Boolean = True;
-  Setting_GroupMessages    : Boolean = True;
-  Setting_MusicVolume      : Byte = 25;
-  Setting_SoundVolume      : Byte = 25;
+  Setting_AlwaysRandomName  : Boolean = False;
+  Setting_NoIntro           : Boolean = False;
+  Setting_RunOverItems      : Boolean = False;
+  Setting_HideHints         : Boolean = False;
+  Setting_EmptyConfirm      : Boolean = False;
+  Setting_UnlockAll         : Boolean = False;
+  Setting_MenuSound         : Boolean = False;
+  Setting_WaitSound         : Boolean = True;
+  Setting_MouseEdgePan      : Boolean = False;
+  Setting_Mouse             : Boolean = True;
+  Setting_GamepadRumble     : Boolean = True;
+  Setting_Flash             : Boolean = True;
+  Setting_Glow              : Boolean = True;
+  Setting_Fade              : Boolean = True;
+  Setting_ScreenShake       : Boolean = True;
+  Setting_BloodPulse        : Boolean = True;
+  Setting_ItemDropAnimation : Boolean = True;
+  Setting_AdaptiveAnimations: Boolean = True;
+  Setting_AutoTarget        : Boolean = True;
+  Setting_GroupMessages     : Boolean = True;
+  Setting_MusicVolume       : Byte = 25;
+  Setting_SoundVolume       : Byte = 25;
 
 const
   Option_HighASCII        : Boolean = {$IFDEF WINDOWS}True{$ELSE}False{$ENDIF};

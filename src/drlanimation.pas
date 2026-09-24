@@ -495,6 +495,9 @@ begin
 
     iBeing := FUIDs.Get( FUID ) as TThing;
 
+    // Only the player's bump constrains the shared catch-up clock. 
+    FPreserveMotionSamples := ( aPartial <> 0.0 ) and TBeing( iBeing ).IsPlayer;
+
     if aLevel.Flags[ LF_BEINGSVISIBLE ] or iBeing.Flags[ BF_VISIBLE ] then
     begin
       FLightStart := Max( FLightStart, 40 );

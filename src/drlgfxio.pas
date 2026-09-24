@@ -33,6 +33,8 @@ type
     function AnimationsRunning : Boolean; override;
     function AnimationsBlockingFinished : Boolean; override;
     procedure ClearAnimations; override;
+    procedure RequestAnimationCatchUp; override;
+    procedure ResetAnimationSpeed; override;
     procedure Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0); override;
     procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ); override;
     procedure addMoveAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aWipeBump : Boolean ); override;
@@ -435,6 +437,16 @@ end;
 procedure TDRLGFXIO.ClearAnimations;
 begin
   FAnimations.Clear;
+end;
+
+procedure TDRLGFXIO.RequestAnimationCatchUp;
+begin
+  FAnimations.RequestCatchUp;
+end;
+
+procedure TDRLGFXIO.ResetAnimationSpeed;
+begin
+  FAnimations.ResetPlaybackSpeed;
 end;
 
 procedure TDRLGFXIO.Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0);
@@ -844,6 +856,8 @@ begin
   else
     SpriteMap.Marker := NewCoord2D(-1,-1);
 
+  if ( not Setting_AdaptiveAnimations ) or IsModal then
+    FAnimations.ResetPlaybackSpeed;
   FAnimations.Update( aMSec );
 
   iSizeY    := FIODriver.GetSizeY-2*FVPadding;

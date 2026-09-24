@@ -133,6 +133,10 @@ begin
     .SetName('Item drop animation')
     .SetDescription('Setting to {!Disabled} will disable the drop bump animation.')
     ;
+  iGroup.AddToggle( 'adaptive_animations', True )
+    .SetName('Adaptive animations')
+    .SetDescription('Gradually speed up unfinished animations when keyboard or gamepad actions arrive quickly. Mouse movement keeps its normal pace.')
+    ;
 
   iGroup := AddGroup( 'audio' );
   iGroup.AddInteger( 'volume_sound', 70 )

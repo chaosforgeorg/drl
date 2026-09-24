@@ -94,6 +94,7 @@ type TDRLSession = class(TVObject)
        FUIDStore        : TUIDStore;
        FContext         : TNodeContext;
        FLastInputTime   : QWord;
+       FAutoMoveAction  : Boolean;
        FTargeting       : TTargeting;
        FDamagedLastTurn : Boolean;
        FPlayerView      : TIOLayer;
@@ -229,6 +230,7 @@ end;
 procedure TDRLSession.SetState( aNewState: TDRLState );
 begin
   if ( FState = aNewState ) then Exit;
+  IO.ResetAnimationSpeed;
   if ( FState = DSPlaying ) then
   begin
     IO.FadeWait;
@@ -377,6 +379,7 @@ begin
 
   FLastInputTime   := 0;
   FDamagedLastTurn := False;
+  FAutoMoveAction  := False;
   FPadMoveNext     := 0;
   FLastFrameTime   := 0;
   FPadMoved        := False;
@@ -870,6 +873,9 @@ begin
 
   if aCommand.Command = COMMAND_NONE then
     Exit( False );
+  if Setting_AdaptiveAnimations and ( not FAutoMoveAction )
+    and ( IO.LastInputSource in [ VINPUT_KEYBOARD, VINPUT_GAMEPAD ] ) then
+    IO.RequestAnimationCatchUp;
   IO.MsgUpDate;
 try
   FPlayer.HandleCommand( aCommand );
@@ -1032,6 +1038,7 @@ begin
   if aPressed and ( iRepeatDelay < PAD_REPEAT_START ) then
     iRepeatDelay := PAD_REPEAT_START;
 
+  if not aPressed then IO.NotifyInputSource( VINPUT_GAMEPAD );
   if aPressed then // normal mode
   begin
     if IO.GetPadLDir.NotZero
@@ -1427,9 +1434,13 @@ begin
     begin
       if ( FPlayer.MultiMove.Active ) then
       begin
+        IO.ResetAnimationSpeed;
+        // CalculateInput can end a run while still returning its final action.
+        FAutoMoveAction := True;
         iInput := FPlayer.GetMultiMoveInput;
         if iInput <> INPUT_NONE then
           Action( iInput );
+        FAutoMoveAction := False;
         Continue;
       end;
 
