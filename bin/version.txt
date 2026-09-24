@@ -1,6 +1,7 @@
 0.10.12
 GHJ#467 [new] -- Game - removed old Chainfire and replaced with JHC spooling
 GHD#364 [new] -- UI - you can rebind UI controls (up/down/escape/etc)
+GHD#056 [new] -- UI - adaptive animation speed (can be turned off in options)
 GHJ#483 [mod] -- Game - all levers will now have a message
 GHJ#483 [mod] -- Game - explosion levers will only target barrels
 GHJ#483 [fix] -- Game - fixed explosion levers
