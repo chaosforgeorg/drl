@@ -592,8 +592,8 @@ begin
   if iCount > 1 then
   begin
     if iID = ''
-      then IO.PushLayer( TActionDirView.Create( 'Action', iFlag ) )
-      else IO.PushLayer( TActionDirView.Create( Capitalized(iID)+' door', iFlag ) );
+      then IO.PushLayer( TActionDirView.Create( Self, 'Action', iFlag ) )
+      else IO.PushLayer( TActionDirView.Create( Self, Capitalized(iID)+' door', iFlag ) );
     Exit( False );
   end;
 
@@ -710,7 +710,7 @@ begin
   begin
     if (not aMouse) and (not aAuto) and iItem.isMelee then
     begin
-      IO.PushLayer( TMeleeDirView.Create );
+      IO.PushLayer( TMeleeDirView.Create( Self ) );
       Exit( False );
     end;
 
@@ -1035,7 +1035,7 @@ begin
     end;
 
     if iButton in [ VMB_WHEEL_UP, VMB_WHEEL_DOWN ] then
-      IO.PushLayer( TScrollSwapLayer.Create );
+      IO.PushLayer( TScrollSwapLayer.Create( Self ) );
   end;
   Exit( False );
 end;
@@ -1268,7 +1268,7 @@ begin
         FPlayer.MultiMove.Stop;
         if FPlayer.EnemiesInVision > 0
           then IO.Msg( 'Can''t multi-move, there are enemies present.',[] )
-          else IO.PushLayer( TRunModeView.create );
+          else IO.PushLayer( TRunModeView.Create( FPlayer ) );
         Exit;
       end;
 

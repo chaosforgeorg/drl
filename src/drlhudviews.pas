@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlhudviews;
 interface
 uses vutil, viotypes, vgenerics, vcolor, vioevent, vrltools,
-     dfdata, dfitem, dflevel, drlkeybindings, drlhooks, drlbase;
+     dfdata, dfitem, dflevel, dfplayer, drlkeybindings, drlhooks, drlbase;
 
 type TLookModeView = class( TIOLayer )
   constructor Create( aLevel : TLevel );
@@ -37,23 +37,28 @@ protected
 end;
 
 type TRunModeView = class( TDirectionQueryLayer )
-  constructor Create;
+  constructor Create( aPlayer : TPlayer );
 protected
   procedure Finalize( aDir : TDirection ); override;
+protected
+  FPlayer : TPlayer; // Borrowed; the view is released before the player.
 end;
 
 type TMeleeDirView = class( TDirectionQueryLayer )
-  constructor Create;
+  constructor Create( aSession : TDRLSession );
 protected
   procedure Finalize( aDir : TDirection ); override;
+protected
+  FSession : TDRLSession; // Borrowed; the view is released before Session.
 end;
 
 type TActionDirView = class( TDirectionQueryLayer )
-  constructor Create( aAction : Ansistring; aFlag : Byte );
+  constructor Create( aSession : TDRLSession; aAction : Ansistring; aFlag : Byte );
 protected
   procedure Finalize( aDir : TDirection ); override;
 protected
-  FFlag : Byte;
+  FSession : TDRLSession; // Borrowed; the view is released before Session.
+  FFlag    : Byte;
 end;
 
 type TMoreLayer = class( TIOLayer )
@@ -95,12 +100,13 @@ end;
 type TScrollItemArray = specialize TGArray< TItem >;
 
 type TScrollSwapLayer = class( TIOLayer )
-  constructor Create;
+  constructor Create( aSession : TDRLSession );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsModal : Boolean; override;
   function HandleInput( aInput : Integer ) : Boolean; override;
   destructor Destroy; override;
 protected
+  FSession  : TDRLSession; // Borrowed; the view is released before Session.
   FIndex    : Integer;
   FArray    : TScrollItemArray;
 end;
@@ -109,7 +115,7 @@ implementation
 
 uses sysutils,
      vtig, vvision,
-     dfplayer, drlio, drlcommand, drlcontrollerbindings, drlspritemap;
+     drlio, drlcommand, drlcontrollerbindings, drlspritemap;
 
 constructor TLookModeView.Create( aLevel : TLevel );
 begin
@@ -232,40 +238,43 @@ begin
   end;
 end;
 
-constructor TRunModeView.Create;
+constructor TRunModeView.Create( aPlayer : TPlayer );
 begin
   inherited Create( False );
+  FPlayer := aPlayer;
   FPrompt := 'Run mode';
 end;
 
 procedure TRunModeView.Finalize( aDir : TDirection );
 begin
-  Player.MultiMove.Start( aDir );
+  FPlayer.MultiMove.Start( aDir );
 end;
 
-constructor TMeleeDirView.Create;
+constructor TMeleeDirView.Create( aSession : TDRLSession );
 begin
   inherited Create( ModuleOption_MeleeMoveOnKill );
+  FSession := aSession;
   FPrompt := 'Melee attack';
 end;
 
 procedure TMeleeDirView.Finalize( aDir : TDirection );
 begin
   if aDir.code <> DIR_CENTER then
-    DRL.HandleCommand( TCommand.Create( COMMAND_MELEE, Player.Position + aDir, ModuleOption_MeleeMoveOnKill and ( not FAlt ) ) );
+    FSession.HandleCommand( TCommand.Create( COMMAND_MELEE, FSession.Player.Position + aDir, ModuleOption_MeleeMoveOnKill and ( not FAlt ) ) );
 end;
 
-constructor TActionDirView.Create( aAction : Ansistring; aFlag : Byte );
+constructor TActionDirView.Create( aSession : TDRLSession; aAction : Ansistring; aFlag : Byte );
 begin
   inherited Create( False );
-  FPrompt := aAction;
-  FFlag   := aFlag;
+  FSession := aSession;
+  FPrompt  := aAction;
+  FFlag    := aFlag;
 end;
 
 procedure TActionDirView.Finalize( aDir : TDirection );
 begin
   if aDir.code = DIR_CENTER then Exit;
-  DRL.HandleActionCommand( Player.Position + aDir, FFlag );
+  FSession.HandleActionCommand( FSession.Player.Position + aDir, FFlag );
 end;
 
 constructor TMoreLayer.Create( aMore : Boolean = True );
@@ -512,24 +521,25 @@ begin
   IO.SetTarget( FTarget, FColor, FRange );
 end;
 
-constructor TScrollSwapLayer.Create;
+constructor TScrollSwapLayer.Create( aSession : TDRLSession );
 var iItem : TItem;
 
 begin
-  with Player.Inv do
+  FSession := aSession;
+  with FSession.Player.Inv do
   begin
     FArray := TScrollItemArray.Create;
     if Slot[ efWeapon ]  <> nil then
     begin
       FArray.Push( Slot[ efWeapon ] );
-      if not Slot[ efWeapon ].CallHookCheck( Hook_OnUnequipCheck, [ Player, False ] ) then
+      if not Slot[ efWeapon ].CallHookCheck( Hook_OnUnequipCheck, [ FSession.Player, False ] ) then
       begin
         FFinished := True;
         Exit;
       end;
     end;
     if (Slot[ efWeapon2 ] <> nil) and Slot[ efWeapon2 ].isEqWeapon then FArray.Push( Slot[ efWeapon2 ] );
-    for iItem in Player.Inv do
+    for iItem in FSession.Player.Inv do
       if not Equipped( iItem ) then
         if iItem.isEqWeapon then
           FArray.Push( iItem );
@@ -545,7 +555,7 @@ begin
     end;
   end;
   FIndex := 1;
-  if Player.Inv.Slot[ efWeapon ] = nil then FIndex := 0;
+  if FSession.Player.Inv.Slot[ efWeapon ] = nil then FIndex := 0;
 end;
 
 procedure TScrollSwapLayer.Update( aDTime : Integer; aActive : Boolean );
@@ -577,11 +587,11 @@ begin
   begin
     IO.HintOverlay := '';
     FFinished      := True;
-    if FArray[ FIndex ] = Player.Inv.Slot[ efWeapon2 ] then
-      DRL.HandleCommand( TCommand.Create( COMMAND_SWAPWEAPON ) )
+    if FArray[ FIndex ] = FSession.Player.Inv.Slot[ efWeapon2 ] then
+      FSession.HandleCommand( TCommand.Create( COMMAND_SWAPWEAPON ) )
     else
-      if FArray[ FIndex ] <> Player.Inv.Slot[ efWeapon ] then
-        DRL.HandleCommand( TCommand.Create( COMMAND_WEAR, FArray[FIndex] ) );
+      if FArray[ FIndex ] <> FSession.Player.Inv.Slot[ efWeapon ] then
+        FSession.HandleCommand( TCommand.Create( COMMAND_WEAR, FArray[FIndex] ) );
     Exit( True );
   end;
 
