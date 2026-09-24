@@ -58,7 +58,7 @@ uses sysutils,
      {$ENDIF}
      vioconsole, vtig, vvision, vutil,
      drlbase, drlanimation,
-     dfplayer, dfbeing, dfitem;
+     dfbeing, dfitem;
 
 constructor TDRLTextIO.Create;
 begin
@@ -150,8 +150,8 @@ procedure TDRLTextIO.addMissileAnimation(aDuration: DWord; aDelay: DWord; aSourc
 begin
   if Session.State <> DSPlaying then Exit;
   if aRay
-    then FTextMap.AddAnimation( TTextRayAnimation.Create( Session.Level, aSource, aTarget, IOGylph( aPic, aColor ), aDuration, aDelay, Player.Vision ) )
-    else FTextMap.AddAnimation( TTextBulletAnimation.Create( Session.Level, aSource, aTarget, IOGylph( aPic, aColor ), aDuration, aDelay, Player.Vision ) );
+    then FTextMap.AddAnimation( TTextRayAnimation.Create( Session.Level, aSource, aTarget, IOGylph( aPic, aColor ), aDuration, aDelay, FSession.Player.Vision ) )
+    else FTextMap.AddAnimation( TTextBulletAnimation.Create( Session.Level, aSource, aTarget, IOGylph( aPic, aColor ), aDuration, aDelay, FSession.Player.Vision ) );
 end;
 
 procedure TDRLTextIO.addMarkAnimation(aDuration: DWord; aDelay: DWord;
@@ -233,11 +233,11 @@ begin
   if FTargetEnabled then
   begin
     iLevel := Session.Level;
-    if ( Player.Position <> FTarget ) then
+    if ( FSession.Player.Position <> FTarget ) then
     begin
       iColor := Green;
-      iTargetRange := Distance( Player.Position, FTarget );
-      iTargetLine.Init( iLevel, Player.Position, FTarget, iTargetRange, Player.Vision, Player.GetVisionMap );
+      iTargetRange := Distance( FSession.Player.Position, FTarget );
+      iTargetLine.Init( iLevel, FSession.Player.Position, FTarget, iTargetRange, FSession.Player.Vision, FSession.Player.GetVisionMap );
       repeat
         iTargetLine.Next;
         iCurrent := iTargetLine.Current;

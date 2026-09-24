@@ -190,7 +190,7 @@ implementation
 
 uses math, video, dateutils,
      vsound, vlua, vuid, vlog, vdebug, vmath, vsdlio, vglconsole, vtig, vtigio, vvector,
-     dflevel, dfplayer, dfitem, dfhof, drlconfiguration, drluibindings, drlmoreview, drlchoiceview, drlmodulechoiceview, drlhudviews, drlplotview;
+     dflevel, dfitem, dfhof, drlconfiguration, drluibindings, drlmoreview, drlchoiceview, drlmodulechoiceview, drlhudviews, drlplotview;
 
 function TIGSubCallback( const aID : Ansistring ) : Ansistring;
 begin
@@ -219,8 +219,8 @@ var Temp  : TGFXScreen;
 }
 begin
   if GraphicsVersion then
-    if Player <> nil then
-      SpriteMap.NewShift := SpriteMap.ShiftValue( Player.Position );
+    if ( FSession <> nil ) and ( FSession.Player <> nil ) then
+      SpriteMap.NewShift := SpriteMap.ShiftValue( FSession.Player.Position );
 
 {
   for vx := 1 to 80 do for vy := 1 to 25 do Temp [vy,vx] := VideoBuf^[(vx-1)+(vy-1)*ScreenSizeX];
@@ -803,7 +803,7 @@ begin
      else iExt := '.txt';
 
   iName := 'DRL';
-  if Player <> nil then iName := Player.Name;
+  if FSession.Player <> nil then iName := FSession.Player.Name;
   if not DirectoryExists( FSession.Paths.ModuleUserPath + 'screenshot' ) then CreateDir( FSession.Paths.ModuleUserPath + 'screenshot' );
   iFName := FSession.Paths.ModuleUserPath + 'screenshot'+PathDelim+ToProperFilename('['+FormatDateTime(Option_TimeStamp,Now)+'] '+iName)+iExt;
   iCount := 1;
@@ -876,8 +876,8 @@ var iWeapon     : TItem;
   end;
   function ExpString : AnsiString;
   begin
-    if Player.ExpLevel >= MaxPlayerLevel - 1 then Exit('MAX');
-    Exit(IntToStr(Clamp(Floor(((Player.Exp-ExpTable[Player.ExpLevel]) / (ExpTable[Player.ExpLevel+1]-ExpTable[Player.ExpLevel]))*100),0,99))+'%');
+    if FSession.Player.ExpLevel >= MaxPlayerLevel - 1 then Exit('MAX');
+    Exit(IntToStr(Clamp(Floor(((FSession.Player.Exp-ExpTable[FSession.Player.ExpLevel]) / (ExpTable[FSession.Player.ExpLevel+1]-ExpTable[FSession.Player.ExpLevel]))*100),0,99))+'%');
   end;
   function HPCode( aHp, aHpMax : Integer ) : AnsiString;
   begin
@@ -895,7 +895,7 @@ begin
     iCBold   := VTIGDefaultStyle.Color[ VTIG_BOLD_COLOR ];
   end;
 
-  if Player <> nil then
+  if FSession.Player <> nil then
   begin
     iPos    := Point( 1,FConsole.SizeY-3 );
     iBottom := FConsole.SizeY-1;
@@ -912,26 +912,26 @@ begin
         iBottom := FConsole.SizeY-3;
       end;
     end;
-    iHPP    := Round((Player.HP/Player.HPMax)*100);
+    iHPP    := Round((FSession.Player.HP/FSession.Player.HPMax)*100);
 
     VTIG_FreeLabel( 'A:',                                 iPos + Point(28,0), iCNormal );
-    VTIG_FreeLabel( Player.Name,                          iPos + Point(1,0),  NameColor(iHPP) );
+    VTIG_FreeLabel( FSession.Player.Name,                          iPos + Point(1,0),  NameColor(iHPP) );
     if ModuleOption_PercentHealth then
     begin
       VTIG_FreeLabel( 'Health:      Exp:   /      W:',      iPos + Point(1,1),  iCNormal );
       VTIG_FreeLabel( IntToStr(iHPP)+'%',                   iPos + Point(9,1),  Red );
-      VTIG_FreeLabel( TwoInt(Player.ExpLevel),              iPos + Point(19,1), iCBold );
+      VTIG_FreeLabel( TwoInt(FSession.Player.ExpLevel),              iPos + Point(19,1), iCBold );
       VTIG_FreeLabel( ExpString,                            iPos + Point(22,1), iCBold );
     end
     else
     begin
       VTIG_FreeLabel( 'Health:        Exp:        W:',      iPos + Point(1,1),  iCNormal );
-      VTIG_FreeLabel( HPCode( Player.HP, Player.HPMax ),    iPos + Point(9,1),  [ Player.HP, Player.HPMax ], iCNormal );
-      VTIG_FreeLabel( TwoInt(Player.ExpLevel),              iPos + Point(20,1), iCBold );
+      VTIG_FreeLabel( HPCode( FSession.Player.HP, FSession.Player.HPMax ),    iPos + Point(9,1),  [ FSession.Player.HP, FSession.Player.HPMax ], iCNormal );
+      VTIG_FreeLabel( TwoInt(FSession.Player.ExpLevel),              iPos + Point(20,1), iCBold );
       VTIG_FreeLabel( ExpString,                            iPos + Point(23,1), iCBold );
     end;
 
-    iWeapon := Player.Inv.Slot[efWeapon];
+    iWeapon := FSession.Player.Inv.Slot[efWeapon];
     if iWeapon = nil
       then VTIG_FreeLabel( 'none',                                iPos + Point(31,1), iCBold )
       else
@@ -939,19 +939,19 @@ begin
         if iWeapon.isRanged and ( not iWeapon.Flags[ IF_NOAMMO ] ) and ( not iWeapon.Flags[ IF_NORELOAD ] ) then
         begin
           if FCachedAmmo = -1 then
-            FCachedAmmo := Player.Inv.CountAmount( iWeapon.AmmoID );
-          iDesc := Player.Inv.Slot[efWeapon].GetInvName;
+            FCachedAmmo := FSession.Player.Inv.CountAmount( iWeapon.AmmoID );
+          iDesc := FSession.Player.Inv.Slot[efWeapon].GetInvName;
           if Length( iDesc ) > 42 then iDesc := Copy(iDesc, 1, 42 );
-          VTIG_FreeLabel( iDesc, iPos + Point(31,1), WeaponColor(Player.Inv.Slot[efWeapon]) );
+          VTIG_FreeLabel( iDesc, iPos + Point(31,1), WeaponColor(FSession.Player.Inv.Slot[efWeapon]) );
           VTIG_FreeLabel( ' ({0})', iPos + Point(31+Length(iDesc),1), [ FCachedAmmo ], iCNormal );
         end
         else
-          VTIG_FreeLabel( Player.Inv.Slot[efWeapon].GetInvName, iPos + Point(31,1), WeaponColor(Player.Inv.Slot[efWeapon]) );
+          VTIG_FreeLabel( FSession.Player.Inv.Slot[efWeapon].GetInvName, iPos + Point(31,1), WeaponColor(FSession.Player.Inv.Slot[efWeapon]) );
       end;
 
-    if Player.Inv.Slot[efTorso] = nil
+    if FSession.Player.Inv.Slot[efTorso] = nil
       then VTIG_FreeLabel( 'none',                                iPos + Point(31,0), iCBold )
-      else VTIG_FreeLabel( Player.Inv.Slot[efTorso].GetInvName,  iPos + Point(31,0), ArmorColor(Player.Inv.Slot[efTorso].Durability) );
+      else VTIG_FreeLabel( FSession.Player.Inv.Slot[efTorso].GetInvName,  iPos + Point(31,0), ArmorColor(FSession.Player.Inv.Slot[efTorso].Durability) );
 
     iColor := Red;
     if FSession.Level.Empty
@@ -962,7 +962,7 @@ begin
     VTIG_FreeLabel( FSession.Level.Name, Point( -2-Length( FSession.Level.Name), iBottom ), iColor );
     VTIG_FreeLabel( FSeedHUDText, Point( FSeedHUDOffset, iBottom+1 ) );
 
-    iTraitStr := Player.GetPerkSummary;
+    iTraitStr := FSession.Player.GetPerkSummary;
     if iTraitStr <> '' then
       VTIG_FreeLabel( iTraitStr, Point( iPos.X+1, iBottom ) );
   end;
@@ -1085,7 +1085,7 @@ begin
     and (FTargeting or ( not isModal)) and ( FLastTarget <> FSession.Targeting.List.Current ) then
     begin
       FLastTarget := FSession.Targeting.List.Current;
-      if (FLastTarget.X * FLastTarget.Y <> 0) and (FLastTarget <> Player.Position) then
+      if (FLastTarget.X * FLastTarget.Y <> 0) and (FLastTarget <> FSession.Player.Position) then
         LookDescription(FLastTarget);
     end;
 
@@ -1191,7 +1191,7 @@ procedure TDRLIO.LookDescription(aWhere: TCoord2D);
 var LookDesc : string;
 begin
   LookDesc := FSession.Level.GetLookDescription( aWhere );
-  if Option_BlindMode then LookDesc += ' | '+BlindCoord( aWhere - Player.Position );
+  if Option_BlindMode then LookDesc += ' | '+BlindCoord( aWhere - FSession.Player.Position );
   if FSession.Level.isVisible(aWhere) and (FSession.Level.Being[aWhere] <> nil) then
   begin
     if isGamepad

@@ -151,7 +151,7 @@ uses {$IFDEF WINDOWS}windows,{$ENDIF}
      vdebug, vlog, vmath, vdf, vgl3library, vuid, vvision, vrandom,
      vglimage, vsdlio, vcolor, vglconsole, vioconsole,
      vtig, vtigstyle, vtigio,
-     dfplayer, dfitem, drlbase, drlconfiguration, drlcontrollerbindings, drlmodule;
+     dfitem, drlbase, drlconfiguration, drlcontrollerbindings, drlmodule;
 
 
 procedure TDRLGFXIO.RecalculateScaling( aInitialize : Boolean );
@@ -209,8 +209,8 @@ begin
     SetMinimapScale( FMiniScale );
 
   SpriteMap.Recalculate;
-  if Player <> nil then
-    SpriteMap.NewShift := SpriteMap.ShiftValue( Player.Position );
+  if ( FSession <> nil ) and ( FSession.Player <> nil ) then
+    SpriteMap.NewShift := SpriteMap.ShiftValue( FSession.Player.Position );
 
   if FFontMult <> iOldFontMult then
   begin
@@ -605,7 +605,7 @@ var iLevel  : TLevel;
       iFinalize : Boolean;
   begin
     iFinalize := False;
-    iRay.Init( aT, Player.Position );
+    iRay.Init( aT, FSession.Player.Position );
     repeat
       iRay.Next;
       if iRay.Done or ( not iLevel.isProperCoord( iRay.Current ) ) then Break;
@@ -632,7 +632,7 @@ var iLevel  : TLevel;
   var iTargetLine : TAssistedRay;
       iCurrent    : TCoord2D;
   begin
-    iTargetLine.Init( iLevel, Player.Position, aTarget, Distance( Player.Position, aTarget ), Player.Vision, Player.GetVisionMap );
+    iTargetLine.Init( iLevel, FSession.Player.Position, aTarget, Distance( FSession.Player.Position, aTarget ), FSession.Player.Vision, FSession.Player.GetVisionMap );
     repeat
       iTargetLine.Next;
       iCurrent := iTargetLine.Current;
@@ -658,7 +658,7 @@ begin
   iLevel := Session.Level;
   if ( iLevel = nil )              then Exit;
   iLevel.Markers.Wipe(0);
-  if ( aTarget = Player.Position ) or ( not iLevel.isProperCoord( aTarget ) ) then Exit;
+  if ( aTarget = FSession.Player.Position ) or ( not iLevel.isProperCoord( aTarget ) ) then Exit;
   FillChar( iSprite, SizeOf( iSprite ), 0 );
   iSprite.SpriteID[0] := HARDSPRITE_SHIELD;
   iSprite.Frames      := HARDSPRITE_SHIELD_COUNT;
@@ -671,7 +671,7 @@ begin
       iFirst := List.Current;
       repeat
         iCoord := List.Next;
-        if ( iCoord <> Player.Position ) and ( iCoord <> aTarget ) then
+        if ( iCoord <> FSession.Player.Position ) and ( iCoord <> aTarget ) then
           Trace( iCoord, False );
       until iCoord = iFirst;
       Trace( aTarget, True );
@@ -685,14 +685,14 @@ const RangeX = 9;
       RangeY = 7;
 begin
   inherited Focus( aCoord );
-  if FTargeting and (not FMCursor.Active) and ( aCoord <> Player.Position ) then
+  if FTargeting and (not FMCursor.Active) and ( aCoord <> FSession.Player.Position ) then
   begin
-    iDiff := aCoord - Player.Position;
+    iDiff := aCoord - FSession.Player.Position;
     if iDiff.X > RangeX then iDiff.X -= RangeX else if iDiff.X < -RangeX then iDiff.X += RangeX else iDiff.X := 0;
     if iDiff.Y > RangeY then iDiff.Y -= RangeY else if iDiff.Y < -RangeY then iDiff.Y += RangeY else iDiff.Y := 0;
     if ( iDiff.X <> 0 ) or ( iDiff.Y <> 0 ) then
     begin
-      SpriteMap.NewShift := SpriteMap.ShiftValue( Player.Position + iDiff );
+      SpriteMap.NewShift := SpriteMap.ShiftValue( FSession.Player.Position + iDiff );
     end;
   end;
 end;
@@ -708,7 +708,7 @@ end;
 procedure TDRLGFXIO.FinishTargeting;
 begin
   inherited FinishTargeting;
-  SpriteMap.NewShift := SpriteMap.ShiftValue( Player.Position );
+  SpriteMap.NewShift := SpriteMap.ShiftValue( FSession.Player.Position );
 end;
 
 function TDRLGFXIO.GetPadLDir     : TCoord2D;
@@ -830,13 +830,13 @@ begin
   if (not isModal) and (( FGPRight.X <> 0.0 ) or (FGPRight.Y <> 0.0 )) then
   begin
     FGPCamera := Minf( FGPCamera + aMSec * 0.005, Maxf( Abs(FGPRight.X), Abs(FGPRight.Y) ) );
-    iActive := SpriteMap.ShiftValue( Player.Position );
+    iActive := SpriteMap.ShiftValue( FSession.Player.Position );
     iMax    := Vec2i( FIODriver.GetSizeX div 2, FIODriver.GetSizeX div 2 );
     SpriteMap.NewShift := Clamp( iActive + Round(FGPRight * Vec2f(iMax).Scaled(FGPCamera)) , SpriteMap.MinShift, SpriteMap.MaxShift );
   end
   else if FGPCamera > 0.0 then
   begin
-    SpriteMap.NewShift := SpriteMap.ShiftValue( Player.Position );
+    SpriteMap.NewShift := SpriteMap.ShiftValue( FSession.Player.Position );
     FGPCamera := 0.0;
   end;
   }
@@ -852,7 +852,7 @@ begin
       then SpriteMap.Marker := SpriteMap.Target + FGPLeftDir
       else if ControllerActionHeld( CONTROLLER_MODIFIER_ALT )
         then SpriteMap.Marker := Session.Targeting.List.Current + FGPLeftDir
-        else SpriteMap.Marker := Player.Position + FGPLeftDir;
+        else SpriteMap.Marker := FSession.Player.Position + FGPLeftDir;
   end
   else
     SpriteMap.Marker := NewCoord2D(-1,-1);
@@ -875,7 +875,7 @@ begin
   begin
     if FTIGConsoleView = nil then
        FConsole.HideCursor;
-    //if not UI.AnimationsRunning then SpriteMap.NewShift := SpriteMap.ShiftValue( Player.Position );
+    //if not UI.AnimationsRunning then SpriteMap.NewShift := SpriteMap.ShiftValue( FSession.Player.Position );
 
     SpriteMap.Update( aMSec, FProjection );
     TLevel( FLevel ).Particles.Update( aMSec * 0.001 );
@@ -914,8 +914,8 @@ begin
     begin
       iBloodValue := 0;
 
-      if Player.HP < (Player.HPMax div 3) then
-        iBloodValue += ( 0.8 - ( Player.HP / (Player.HPMax div 2) ) ) + Sin( (FTime / 1000)*5 ) * 0.2;
+      if FSession.Player.HP < (FSession.Player.HPMax div 3) then
+        iBloodValue += ( 0.8 - ( FSession.Player.HP / (FSession.Player.HPMax div 2) ) ) + Sin( (FTime / 1000)*5 ) * 0.2;
 
       if iBloodValue > 0.0 then
         iBloodTarget := Maxf( iBloodValue, FBloodValueTarget );
@@ -978,8 +978,8 @@ begin
   SetMinimapScale(FMiniScale);
   DeviceChanged;
   SpriteMap.Recalculate;
-  if Player <> nil then
-    SpriteMap.NewShift := SpriteMap.ShiftValue( Player.Position );
+  if ( FSession <> nil ) and ( FSession.Player <> nil ) then
+    SpriteMap.NewShift := SpriteMap.ShiftValue( FSession.Player.Position );
 end;
 
 function TDRLGFXIO.FullScreenCallback ( aEvent : TIOEvent ) : Boolean;
@@ -1073,7 +1073,7 @@ var i       : Byte;
     iPoint  : vutil.TPoint;
     iCoord  : TCoord2D;
 begin
-  if (Player <> nil) and (Session.Level <> nil) and (not isModal)
+  if (FSession.Player <> nil) and (Session.Level <> nil) and (not isModal)
     and (FMCursor <> nil) and FMCursor.Active and FIODriver.GetMousePos( iPoint )
     and AnimationsBlockingFinished then
   begin
@@ -1093,22 +1093,22 @@ begin
   end;
 
   inherited DrawHUD;
-  if Player = nil then Exit;
+  if FSession.Player = nil then Exit;
 
   if IsGamepad and ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
     and ( not isModal ) then
   begin
     iPosY := 4;
     iPosX := 2;
-    if Player.Position.X < 20 then
+    if FSession.Player.Position.X < 20 then
       iPosX := 40;
     for i := 1 to 4 do
     begin
       iItem := nil;
-      with Player.FQuickSlots[ i ] do
+      with FSession.Player.FQuickSlots[ i ] do
       begin
              if UID <> 0 then iItem := Session.UIDs[ UID ] as TItem
-        else if ID <> '' then iItem := Player.Inv.Find( ID );
+        else if ID <> '' then iItem := FSession.Player.Inv.Find( ID );
       end;
       if iItem <> nil then
       begin
