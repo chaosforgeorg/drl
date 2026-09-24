@@ -177,7 +177,7 @@ begin
   FFirst := False;
   IO.Focus( FTarget );
   IO.LookDescription( FTarget );
-  if SpriteMap <> nil then SpriteMap.SetTarget( FTarget, NewColor( White ), False );
+  if SpriteMap <> nil then SpriteMap.SetTarget( FTarget, NewColor( White ) );
 end;
 
 constructor TDirectionQueryLayer.Create( aAllowAlt : Boolean );

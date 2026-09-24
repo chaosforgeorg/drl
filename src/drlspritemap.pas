@@ -54,7 +54,7 @@ type
   procedure Reset;
   procedure SetLevel( aLevel : TLevel );
   procedure Recalculate;
-  procedure Update( aTime : DWord; aProjection : TMatrix44 );
+  procedure Update( aTime : DWord; aProjection : TMatrix44; aDarkness : Boolean );
   procedure Draw;
   function DevicePointToCoord( aPoint : TPoint ) : TCoord2D;
   procedure PushSpriteBeing( aPos : TVec2i; const aSprite : TSprite; aLight : Byte );
@@ -66,8 +66,8 @@ type
   procedure PushSpriteFXRotated( aPos : TVec2i; const aSprite : TSprite; aRotation : Single );
   procedure PushSpriteTerrain( aCoord : TCoord2D; const aSprite : TSprite; aZ : Integer; aTSX : Single = 0; aTSY : Single = 0 );
   function ShiftValue( aFocus : TCoord2D ) : TVec2i;
-  procedure SetTarget( aTarget : TCoord2D; aColor : TColor; aDrawPath : Boolean );
-  procedure SetAutoTarget( aTarget : TCoord2D );
+  procedure SetTarget( aTarget : TCoord2D; aColor : TColor; aSource : TBeing = nil );
+  procedure SetAutoTarget( aSource, aTarget : TCoord2D );
   procedure ClearTarget;
   procedure ToggleGrid;
   function VariableLight( aWhere : TCoord2D; aBonus : ShortInt = 0 ) : Byte;
@@ -107,7 +107,7 @@ private
   procedure ApplyEffect;
   procedure UpdateLightMap;
   procedure PushTerrain;
-  procedure PushDecals;
+  procedure PushDecals( aDarkness : Boolean );
   procedure PushObjects( aDTime : Integer );
   procedure PushSprite( aPos : TVec2i; const aSprite : TSprite; aLight : Byte; aZ : Integer );
   procedure PushMultiSpriteTerrain( aCoord : TCoord2D; const aSprite : TSprite; aZ : Integer; aRotation : Byte );
@@ -136,7 +136,7 @@ implementation
 
 uses vmath, viotypes, vvision, vgl3library, vuid,
      drlio, drlgfxio,
-     dfmap, dfthing, dfitem, dfplayer, drlcontrollerbindings,
+     dfmap, dfthing, dfitem, drlcontrollerbindings,
      drlmarkers, drldecals;
 
 function SpritePartSetFill( aPart : TSpritePart ) : TSpritePartSet;
@@ -364,7 +364,7 @@ begin
   FLevel := aLevel;
 end;
 
-procedure TDRLSpriteMap.Update ( aTime : DWord; aProjection : TMatrix44 ) ;
+procedure TDRLSpriteMap.Update( aTime : DWord; aProjection : TMatrix44; aDarkness : Boolean );
 var iUIDs     : TUIDStore;
     iShift    : Single;
     iPixel    : Integer;
@@ -392,7 +392,7 @@ begin
   UpdateLightMap;
   FSpriteEngine.Update( aProjection );
   PushTerrain;
-  PushDecals;
+  PushDecals( aDarkness );
   PushObjects( aTime );
 
   for iMark in FLevel.Markers.Data do
@@ -1106,7 +1106,7 @@ begin
     ShiftValue.Y := S3Interpolate(FMinShift.Y,FMaxShift.Y,(aFocus.Y-2)/(MAXY-3));
 end;
 
-procedure TDRLSpriteMap.SetTarget ( aTarget : TCoord2D; aColor : TColor; aDrawPath : Boolean ) ;
+procedure TDRLSpriteMap.SetTarget( aTarget : TCoord2D; aColor : TColor; aSource : TBeing = nil );
 var iTargetLine  : TAssistedRay;
     iCurrent    : TCoord2D;
     iTargetRange : Byte;
@@ -1118,10 +1118,10 @@ begin
   FTargetList.Clear;
   //FOldTargetList.Clear;
 
-  if (Player.Position <> FTarget) and (aDrawPath) then
+  if ( aSource <> nil ) and ( aSource.Position <> FTarget ) then
   begin
-    iTargetRange := Distance( Player.Position, FTarget );
-    iTargetLine.Init( FLevel, Player.Position, FTarget, iTargetRange, Player.Vision, Player.GetVisionMap );
+    iTargetRange := Distance( aSource.Position, FTarget );
+    iTargetLine.Init( FLevel, aSource.Position, FTarget, iTargetRange, aSource.Vision, aSource.GetVisionMap );
     repeat
       iTargetLine.Next;
       iCurrent := iTargetLine.Current;
@@ -1131,7 +1131,7 @@ begin
     until (iTargetLine.Done) or (iTargetLine.Steps > 30);
 
     { TVisionRay comparison path, left here for later targeting tests.
-    iTargetLine.Init( FLevel, Player.Position, FTarget );
+    iTargetLine.Init( FLevel, aSource.Position, FTarget );
     repeat
       iTargetLine.Next;
       iCurrent := iTargetLine.Current;
@@ -1144,9 +1144,9 @@ begin
   FTargetList.Push( FTarget );
 end;
 
-procedure TDRLSpriteMap.SetAutoTarget( aTarget : TCoord2D );
+procedure TDRLSpriteMap.SetAutoTarget( aSource, aTarget : TCoord2D );
 begin
-  if aTarget = Player.Position
+  if aTarget = aSource
     then FAutoTarget.Create(0,0)
     else FAutoTarget := aTarget;
 end;
@@ -1481,13 +1481,12 @@ begin
 
 end;
 
-procedure TDRLSpriteMap.PushDecals;
+procedure TDRLSpriteMap.PushDecals( aDarkness : Boolean );
 var iData  : TDecalArray;
     iDecal : TDecal;
     iPos   : TVec2i;
     iCoord : TCoord2D;
     iLight : Byte;
-    iDark  : Boolean;
 //    iLQuad : TGLRawQColor;
   function GetLight( aPos : TVec2i ) : Byte;
   var iCoord   : TCoord2D;
@@ -1504,12 +1503,11 @@ var iData  : TDecalArray;
 
   begin
   iData := FLevel.Decals.Data;
-  iDark := Player.Flags[ BF_DARKNESS ];
   for iDecal in iData do
   begin
     iCoord := NewCoord2D( ( iDecal.Position.X + 16 ) div 32, ( iDecal.Position.Y + 16 ) div 32 );
     with FLevel do
-      if ( not isProperCoord( iCoord ) ) or ( iDark and ( not isVisible( iCoord ) ) ) or ( not isExplored( iCoord ) ) then
+      if ( not isProperCoord( iCoord ) ) or ( aDarkness and ( not isVisible( iCoord ) ) ) or ( not isExplored( iCoord ) ) then
           Continue;
 
     iPos.Init( Floor( ( iDecal.Position.X - 32 ) * FSpriteEngine.Scale ), Floor( ( iDecal.Position.Y - 32 ) * FSpriteEngine.Scale ) );

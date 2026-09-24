@@ -590,7 +590,7 @@ end;
 
 procedure TDRLGFXIO.SetTarget( aTarget : TCoord2D; aColor : Byte; aRange : Byte );
 begin
-  SpriteMap.SetTarget( aTarget, NewColor( aColor ), True )
+  SpriteMap.SetTarget( aTarget, NewColor( aColor ), FSession.Player )
 end;
 
 procedure TDRLGFXIO.SetAutoTarget( aTarget : TCoord2D );
@@ -652,7 +652,7 @@ var iLevel  : TLevel;
 
 begin
   inherited SetAutoTarget( aTarget );
-  SpriteMap.SetAutoTarget( aTarget );
+  SpriteMap.SetAutoTarget( FSession.Player.Position, aTarget );
 
   if ( Session.State <> DSPlaying )    then Exit;
   iLevel := Session.Level;
@@ -877,7 +877,7 @@ begin
        FConsole.HideCursor;
     //if not UI.AnimationsRunning then SpriteMap.NewShift := SpriteMap.ShiftValue( FSession.Player.Position );
 
-    SpriteMap.Update( aMSec, FProjection );
+    SpriteMap.Update( aMSec, FProjection, FSession.Player.Flags[ BF_DARKNESS ] );
     TLevel( FLevel ).Particles.Update( aMSec * 0.001 );
     FParticleEngine.Render( SpriteMap.Engine );
     FAnimations.Draw;
