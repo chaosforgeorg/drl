@@ -47,10 +47,10 @@ end;
 type TTraitViewArray = specialize TGArray< TTraitViewEntry >;
 
 type TPlayerView = class( TIOLayer )
-  constructor Create( aPlayer : TPlayer; aInitialState : TPlayerViewState = PLAYERVIEW_INVENTORY );
-  constructor CreateTrait( aPlayer : TPlayer );
-  constructor CreateInitialTrait( aKlass : Byte );
-  constructor CreateCommand( aPlayer : TPlayer; aCommand : Byte; aScavenger : Boolean = False );
+  constructor Create( aSession : TDRLSession; aInitialState : TPlayerViewState = PLAYERVIEW_INVENTORY );
+  constructor CreateTrait( aSession : TDRLSession );
+  constructor CreateInitialTrait( aSession : TDRLSession; aKlass : Byte );
+  constructor CreateCommand( aSession : TDRLSession; aCommand : Byte; aScavenger : Boolean = False );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
@@ -75,6 +75,7 @@ protected
 protected
   procedure Filter( aSet : TItemTypeSet; aUsableOnly : Boolean = False );
 protected
+  FSession     : TDRLSession; // Borrowed; the view is released before Session.
   FPlayer      : TPlayer; // Borrowed; nil only for initial trait selection.
   FState       : TPlayerViewState;
   FSize        : TIOPoint;
@@ -122,24 +123,27 @@ uses sysutils, math, variants,
      vutil, vtig, vtigio, vlua,
      dflevel, drlcommand, drlinventory, drlperk;
 
-constructor TPlayerView.Create( aPlayer : TPlayer; aInitialState : TPlayerViewState = PLAYERVIEW_INVENTORY );
+constructor TPlayerView.Create( aSession : TDRLSession; aInitialState : TPlayerViewState = PLAYERVIEW_INVENTORY );
 begin
-  FPlayer := aPlayer;
+  FSession := aSession;
+  FPlayer := FSession.Player;
   Initialize;
   FState := aInitialState;
 end;
 
-constructor TPlayerView.CreateTrait( aPlayer : TPlayer );
+constructor TPlayerView.CreateTrait( aSession : TDRLSession );
 begin
-  FPlayer := aPlayer;
+  FSession := aSession;
+  FPlayer := FSession.Player;
   Initialize;
   FState     := PLAYERVIEW_TRAITS;
   FTraitMode := True;
   ReadTraits( FPlayer.Klass );
 end;
 
-constructor TPlayerView.CreateInitialTrait( aKlass : Byte );
+constructor TPlayerView.CreateInitialTrait( aSession : TDRLSession; aKlass : Byte );
 begin
+  FSession := aSession;
   Initialize;
   FState      := PLAYERVIEW_TRAITS;
   FTraitMode  := True;
@@ -147,9 +151,10 @@ begin
   ReadTraits( aKlass );
 end;
 
-constructor TPlayerView.CreateCommand( aPlayer : TPlayer; aCommand : Byte; aScavenger : Boolean = False );
+constructor TPlayerView.CreateCommand( aSession : TDRLSession; aCommand : Byte; aScavenger : Boolean = False );
 begin
-  FPlayer := aPlayer;
+  FSession := aSession;
+  FPlayer := FSession.Player;
   Initialize;
   FCommandMode := aCommand;
   FScavenger   := aScavenger;
@@ -194,11 +199,13 @@ end;
 
 procedure TPlayerView.Update( aDTime : Integer; aActive : Boolean );
 var iTraitFirst : Boolean;
+    iSession    : TDRLSession;
 begin
   if IsFinished or (FState = PLAYERVIEW_CLOSING) or (FState = PLAYERVIEW_PENDING) then Exit;
 
   iTraitFirst := FTraitFirst;
-  if ( DRL.State <> DSPlaying ) and ( not iTraitFirst ) then
+  iSession := FSession;
+  if ( iSession.State <> DSPlaying ) and ( not iTraitFirst ) then
   begin
     FState := PLAYERVIEW_DONE;
     Exit;
@@ -211,7 +218,7 @@ begin
     PLAYERVIEW_TRAITS    : UpdateTraits( aActive );
   end;
 
-  if (( DRL.State <> DSPlaying ) and ( not iTraitFirst )) or IsFinished or (FState = PLAYERVIEW_CLOSING) or (FState = PLAYERVIEW_PENDING) then Exit;
+  if (( iSession.State <> DSPlaying ) and ( not iTraitFirst )) or IsFinished or (FState = PLAYERVIEW_CLOSING) or (FState = PLAYERVIEW_PENDING) then Exit;
 
   if (aActive) and ( not FSwapMode ) and ( not FTraitMode ) and ( FCommandMode = 0 ) then
   begin
@@ -285,7 +292,7 @@ end;
 destructor TPlayerView.Destroy;
 var i : Integer;
 begin
-  DRL.ClearPlayerView;
+  FSession.ClearPlayerView;
   FreeAndNil( FEq );
   FreeAndNil( FInv );
   FreeAndNil( FTraits );
@@ -411,7 +418,7 @@ begin
       if VTIG_EventConfirm then
       begin
         FState := PLAYERVIEW_CLOSING;
-        DRL.HandleCommand( TCommand.Create( COMMAND_SWAP, FInv[iSelected].Item, FSSlot ) );
+        FSession.HandleCommand( TCommand.Create( COMMAND_SWAP, FInv[iSelected].Item, FSSlot ) );
         FState := PLAYERVIEW_DONE;
       end;
     end
@@ -422,7 +429,7 @@ begin
         if VTIG_Event( UI_BINDING_DROP ) then
         begin
           FState := PLAYERVIEW_PENDING;
-          DRL.HandleCommand( TCommand.Create(
+          FSession.HandleCommand( TCommand.Create(
             COMMAND_DROP,
             FInv[iSelected].Item,
             VTIG_Event( VTIG_IE_SHIFT )
@@ -441,8 +448,8 @@ begin
           FState := PLAYERVIEW_CLOSING;
           if iCommand <> COMMAND_NONE then
             if FInv[iSelected].Item.IType = ITEMTYPE_URANGED
-              then DRL.HandleUsableCommand( FInv[iSelected].Item )
-              else DRL.HandleCommand( TCommand.Create( iCommand, FInv[iSelected].Item ) );
+              then FSession.HandleUsableCommand( FInv[iSelected].Item )
+              else FSession.HandleCommand( TCommand.Create( iCommand, FInv[iSelected].Item ) );
           FState := PLAYERVIEW_DONE;
         end;
         if VTIG_Event( VTIG_IE_1 ) then MarkQSlot( FInv[iSelected].Item, 1 );
@@ -462,9 +469,9 @@ begin
           iCommand := FCommandMode;
           FState := PLAYERVIEW_CLOSING;
                if iCommand = COMMAND_UNLOAD then
-            DRL.HandleUnloadCommand( FInv[iSelected].Item )
+            FSession.HandleUnloadCommand( FInv[iSelected].Item )
           else if iCommand <> COMMAND_NONE then
-            DRL.HandleCommand( TCommand.Create( iCommand, FInv[iSelected].Item ) );
+            FSession.HandleCommand( TCommand.Create( iCommand, FInv[iSelected].Item ) );
           FState := PLAYERVIEW_DONE;
         end;
       end;
@@ -550,7 +557,7 @@ begin
     for iCount := 1 to MAXTRAITS do
       if FPlayer.Traits[iCount] > 0 then
       begin
-        iName := IO.Session.Context.Lua.Get(['traits',iCount,'name']);
+        iName := FSession.Context.Lua.Get(['traits',iCount,'name']);
         if iName = '' then Continue;
         if iCount < 10 then
         begin
@@ -613,20 +620,20 @@ begin
           FState := PLAYERVIEW_CLOSING;
           if not Option_InvFullDrop then
           begin
-            IO.PushLayer( TNoRoomConfirmView.Create( DRL, FEq[iSelected].Item ) );
+            IO.PushLayer( TNoRoomConfirmView.Create( FSession, FEq[iSelected].Item ) );
             FState := PLAYERVIEW_DONE;
             Exit;
           end;
           if CannotUnequip then Exit;
           FState := PLAYERVIEW_CLOSING;
-          DRL.HandleCommand( TCommand.Create( COMMAND_DROP, FEq[iSelected].Item ) );
+          FSession.HandleCommand( TCommand.Create( COMMAND_DROP, FEq[iSelected].Item ) );
           FState := PLAYERVIEW_DONE;
         end
         else
         begin
           if CannotUnequip then Exit;
           FState := PLAYERVIEW_CLOSING;
-          DRL.HandleCommand( TCommand.Create( COMMAND_TAKEOFF, nil, TEqSlot(iSelected) ) );
+          FSession.HandleCommand( TCommand.Create( COMMAND_TAKEOFF, nil, TEqSlot(iSelected) ) );
           FState := PLAYERVIEW_DONE;
         end;
       end
@@ -650,7 +657,7 @@ begin
       begin
         if CannotUnequip then Exit;
         FState := PLAYERVIEW_CLOSING;
-        DRL.HandleCommand( TCommand.Create(
+        FSession.HandleCommand( TCommand.Create(
           COMMAND_DROP,
           FEq[iSelected].Item,
           VTIG_Event( VTIG_IE_SHIFT )
@@ -864,14 +871,14 @@ begin
   if not FTraitFirst then
     iLevel := FPlayer.ExpLevel;
 
-  iTraits := IO.Session.Context.Lua.Get(['klasses',iKlass,'traitlist']);
+  iTraits := FSession.Context.Lua.Get(['klasses',iKlass,'traitlist']);
   for i := VarArrayLowBound(iTraits, 1) to VarArrayHighBound(iTraits, 1) do
   begin
     iTrait := iTraits[ i ];
     iEntry.Value     := Value( iTrait );
-    iEntry.Name      := IO.Session.Context.Lua.Get(['traits',iTrait,'name']);
+    iEntry.Name      := FSession.Context.Lua.Get(['traits',iTrait,'name']);
     iEntry.Entry     := Padded(iEntry.Name,16) +' ({!'+IntToStr(iEntry.Value)+'})';
-    with IO.Session.Context.Lua.GetTable(['traits',iTrait]) do
+    with FSession.Context.Lua.GetTable(['traits',iTrait]) do
     try
       iEntry.Quote := getString('quote');
       iEntry.Desc  := getString('desc');
@@ -882,14 +889,14 @@ begin
     iReqLen := 0;
     iEntry.Requires := '';
     iEntry.Blocks   := '';
-    with IO.Session.Context.Lua.GetTable(['klasses',iKlass,'trait',iTrait]) do
+    with FSession.Context.Lua.GetTable(['klasses',iKlass,'trait',iTrait]) do
     try
       iEntry.Master:= getBoolean( 'master', False );
       if GetTableSize('requires') > 0 then
       for iTable in ITables('requires') do
       begin
         iNID            := iTable.GetValue( 1 );
-        iName           := IO.Session.Context.Lua.Get(['traits',iNID,'name']);
+        iName           := FSession.Context.Lua.Get(['traits',iNID,'name']);
         iValue          := iTable.GetValue( 2 );
         AddRequires( '{'+RG[Value(iNID) < iValue]+iName+'} ({!'+IntToStr(iValue)+'}), ' );
       end;
@@ -909,7 +916,7 @@ begin
           for iCount := 1 to iSize do
           begin
             iNID          := GetValue( iCount );
-            iName         := IO.Session.Context.Lua.Get(['traits',iNID,'name']);
+            iName         := FSession.Context.Lua.Get(['traits',iNID,'name']);
             iEntry.Blocks += '{'+RL[Value(iNID) > 0]+iName+'}, ';
           end;
         finally
@@ -923,7 +930,7 @@ begin
 
     iEntry.Index     := iTrait;
     if FTraitFirst
-      then iEntry.Available := TTraits.CanPickInitially( IO.Session.Context.Lua, iTrait, iKlass )
+      then iEntry.Available := TTraits.CanPickInitially( FSession.Context.Lua, iTrait, iKlass )
       else iEntry.Available := FPlayer.Traits.CanPick( iKlass, iTrait, iLevel );
     FTraits.Push( iEntry );
   end;
@@ -950,9 +957,9 @@ begin
     FreeAndNil( FCharacter[i] );
 
   iLevel := TLevel( FPlayer.Parent );
-  FCTitle := FPlayer.Context.Lua.Get([ 'diff', DRL.Difficulty, 'code' ]);
-  if DRL.Challenge <> ''  then FCTitle += ' / ' + FPlayer.Context.Lua.Get(['chal',DRL.Challenge,'abbr']);
-  if DRL.SChallenge <> '' then FCTitle += ' + ' + FPlayer.Context.Lua.Get(['chal',DRL.SChallenge,'abbr']);
+  FCTitle := FPlayer.Context.Lua.Get([ 'diff', FSession.Difficulty, 'code' ]);
+  if FSession.Challenge <> ''  then FCTitle += ' / ' + FPlayer.Context.Lua.Get(['chal',FSession.Challenge,'abbr']);
+  if FSession.SChallenge <> '' then FCTitle += ' + ' + FPlayer.Context.Lua.Get(['chal',FSession.SChallenge,'abbr']);
   FCTitle := 'Character ( '+FCTitle+' )';
 
   with FPlayer do

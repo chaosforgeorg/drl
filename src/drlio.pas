@@ -122,6 +122,7 @@ type TDRLIO = class( TIORL )
   procedure RenderUIBackgroundBlock( aUL, aBR : TIOPoint; aOpacity : Single = 0.85; aZ : Integer = 0 ); virtual;
   procedure RenderUIBackground( aTexture : TTextureID; aZ : Integer = 0 ); virtual;
   procedure FullLook( aThing : TThing );
+  procedure ChooseTrait;
   procedure SetTarget( aTarget : TCoord2D; aColor : Byte; aRange : Byte ); virtual; abstract;
   procedure SetAutoTarget( aTarget : TCoord2D ); virtual;
   function ResolveSub( const aID : Ansistring ) : Ansistring;
@@ -190,7 +191,7 @@ implementation
 
 uses math, video, dateutils,
      vsound, vlua, vuid, vlog, vdebug, vmath, vsdlio, vglconsole, vtig, vtigio, vvector,
-     dflevel, dfitem, dfhof, drlconfiguration, drluibindings, drlmoreview, drlchoiceview, drlmodulechoiceview, drlhudviews, drlplotview;
+     dflevel, dfitem, dfhof, drlconfiguration, drluibindings, drlmoreview, drlchoiceview, drlmodulechoiceview, drlhudviews, drlplotview, drlplayerview;
 
 function TIGSubCallback( const aID : Ansistring ) : Ansistring;
 begin
@@ -608,6 +609,12 @@ begin
     FConsole.HideCursor;
     PushLayer( TMoreItemView.Create( TItem(aThing) ) );
   end;
+end;
+
+procedure TDRLIO.ChooseTrait;
+begin
+  PushLayer( TPlayerView.CreateTrait( FSession ) );
+  WaitForLayer( True );
 end;
 
 procedure TDRLIO.SetAutoTarget( aTarget : TCoord2D );

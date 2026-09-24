@@ -110,7 +110,7 @@ implementation
 
 uses math, variants,
      vuid, vioevent, vgenerics, vcolor, vdebug, vtig,
-     dfmap, dflevel, drlhooks, drlio, drlspritemap, drlbase, drllua, drlinventory, drlplayerview, drlhudviews;
+     dfmap, dflevel, drlhooks, drlio, drlspritemap, drlbase, drllua, drlinventory, drlhudviews;
 
 constructor TPlayer.Create( aContext : TNodeContext; aGameRNG : TRNG );
 begin
@@ -761,8 +761,7 @@ end;
 procedure TPlayer.doUpgradeTrait;
 begin
   if DemoVersion and (ExpLevel > 7) then Exit;
-  IO.PushLayer( TPlayerView.CreateTrait( Self ) );
-  IO.WaitForLayer( True );
+  IO.ChooseTrait;
 end;
 
 procedure TPlayer.ResortStacks;

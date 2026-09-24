@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlmainmenuview;
 interface
 uses vio, viotypes, vgenerics, vtextures, vtigstyle,
-     dfdata, dfhof, drlio, drlhelp;
+     dfdata, dfhof, drlio, drlhelp, drlbase;
 
 type TMainMenuViewMode = (
   MAINMENU_FIRST, MAINMENU_INTRO, MAINMENU_ENGINECOMPAT, MAINMENU_MENU,
@@ -29,7 +29,7 @@ end;
 type TMainMenuEntryArray = specialize TGArray< TMainMenuEntry >;
 
 type TMainMenuView = class( TIOLayer )
-  constructor Create( aHOF : THOF; aHelp : THelp; aModErrors : TStringGArray;
+  constructor Create( aSession : TDRLSession; aHOF : THOF; aHelp : THelp; aModErrors : TStringGArray;
     aInitial : TMainMenuViewMode = MAINMENU_FIRST; aResult : TMenuResult = nil );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
@@ -60,6 +60,7 @@ protected
   procedure RenderASCIILogo;
   procedure UpdateModErrors;
 protected
+  FSession     : TDRLSession; // Borrowed; the view is released before Session.
   FHOF         : THOF;
   FHelp        : THelp;
   FModErrors   : TStringGArray;
@@ -94,7 +95,7 @@ implementation
 
 uses math, sysutils,
      vutil, vtig, vtigio, vgltypes, vlua, vluavalue,
-     drlbase, drlgfxio, drlplayerview, drlhelpview, drlsettingsview, drlpagedview;
+     drlgfxio, drlplayerview, drlhelpview, drlsettingsview, drlpagedview;
 
 var ChallengeType : array[1..4] of TMainMenuEntry =
 ((
@@ -141,14 +142,15 @@ const CTYPE_ANGEL  = 1;
 
       CTYPE_SECOND = 10;
 
-constructor TMainMenuView.Create( aHOF : THOF; aHelp : THelp; aModErrors : TStringGArray;
+constructor TMainMenuView.Create( aSession : TDRLSession; aHOF : THOF; aHelp : THelp; aModErrors : TStringGArray;
     aInitial : TMainMenuViewMode = MAINMENU_FIRST; aResult : TMenuResult = nil );
 var iLua : TLua;
 begin
+  FSession   := aSession;
   FHOF       := aHOF;
   FHelp      := aHelp;
   FModErrors := aModErrors;
-  iLua := IO.Session.Context.Lua;
+  iLua := FSession.Context.Lua;
   FMenuStyle   := TIGStyleFrameless;
   FMenuStyle.Padding[ VTIG_WINDOW_PADDING ]   := Point( 5, 1 );
   FWindowStyle := TIGStyleFrameless;
@@ -178,20 +180,20 @@ begin
 
   if FMode = MAINMENU_FIRST then
   begin
-    if not FileExists( IO.Session.Paths.WritePath + 'drl.prc' ) then
+    if not FileExists( FSession.Paths.WritePath + 'drl.prc' ) then
     begin
-      WriteFileString( IO.Session.Paths.WritePath + 'drl.prc', 'DRL was already run.' );
+      WriteFileString( FSession.Paths.WritePath + 'drl.prc', 'DRL was already run.' );
 
       FFirst := AnsiString( iLua.ProtectedCall( [CoreModuleID,'GetFirstText'], [] ) );
       if FFirst = '' then FMode := MAINMENU_INTRO;
 
       if not DemoVersion then
       begin
-        if FileExists( IO.Session.Paths.ModuleUserPath + 'savedemo' ) then
+        if FileExists( FSession.Paths.ModuleUserPath + 'savedemo' ) then
         begin
-          if ( not FileExists( IO.Session.Paths.ModuleUserPath + 'save' ) )
-            then RenameFile( IO.Session.Paths.ModuleUserPath + 'savedemo', IO.Session.Paths.ModuleUserPath + 'save' )
-            else DeleteFile( IO.Session.Paths.ModuleUserPath + 'savedemo' );
+          if ( not FileExists( FSession.Paths.ModuleUserPath + 'save' ) )
+            then RenameFile( FSession.Paths.ModuleUserPath + 'savedemo', FSession.Paths.ModuleUserPath + 'save' )
+            else DeleteFile( FSession.Paths.ModuleUserPath + 'savedemo' );
         end;
       end;
     end
@@ -215,7 +217,7 @@ begin
 
   if FMode = MAINMENU_MENU then
   begin
-    FSaveExists := DRL.SaveExists;
+    FSaveExists := FSession.SaveExists;
   end;
 end;
 
@@ -227,7 +229,7 @@ begin
     begin
       FResult.Klass := FArrayKlass[0].NID;
       FMode         := MAINMENU_TRAIT;
-      IO.PushLayer( TPlayerView.CreateInitialTrait( FResult.Klass ) );
+      IO.PushLayer( TPlayerView.CreateInitialTrait( FSession, FResult.Klass ) );
     end;
   end;
   VTIG_Clear;
@@ -325,7 +327,7 @@ begin
   VTIG_Text( '' );
   if VTIG_Selectable( 'Exit' ) then
   begin
-    DRL.SetState( DSQUIT );
+    FSession.SetState( DSQUIT );
     FMode := MAINMENU_DONE;
   end;
   if VTIG_Selectable( 'Continue' ) then
@@ -334,7 +336,7 @@ begin
 
   if VTIG_EventCancel then
   begin
-    DRL.SetState( DSQUIT );
+    FSession.SetState( DSQUIT );
     FMode := MAINMENU_DONE;
   end;
 end;
@@ -368,7 +370,7 @@ begin
     if FSaveExists then
       if VTIG_Selectable( TextContinueGame ) then
       begin
-        if DRL.LoadSaveFile then
+        if FSession.LoadSaveFile then
         begin
           FResult.Loaded := True;
           FMode := MAINMENU_DONE;
@@ -389,12 +391,12 @@ begin
       end;
     if VTIG_Selectable( TextShowHighscore ) then IO.PushLayer( TPagedView.Create( FHOF.GetPagedScoreReport ) );
     if VTIG_Selectable( TextShowPlayer )    then IO.PushLayer( TPagedView.Create( FHOF.GetPagedPlayerReport ) );
-    if VTIG_Selectable( TextHelp )          then IO.PushLayer( THelpView.Create( IO, IO.Session.Context.Lua, FHelp, CoreModuleID ) );
+    if VTIG_Selectable( TextHelp )          then IO.PushLayer( THelpView.Create( IO, FSession.Context.Lua, FHelp, CoreModuleID ) );
     if VTIG_Selectable( TextSettings )      then IO.PushLayer( TSettingsView.Create );
     if FJHCLink then
     begin
       if VTIG_Selectable( TextJHC ) then
-        DRL.OpenJHCPage;
+        FSession.OpenJHCPage;
     end;
     if VTIG_Selectable( TextExit ) then
     begin
@@ -417,7 +419,7 @@ begin
 
   if ForceShop then
   begin
-    DRL.OpenJHCPage;
+    FSession.OpenJHCPage;
     ForceShop := False;
   end;
 
@@ -427,7 +429,7 @@ begin
   if ForceRestart <> '' then
   begin
     FMode := MAINMENU_DONE;
-    DRL.SetState( DSQUIT );
+    FSession.SetState( DSQUIT );
     if FResult <> nil then FResult.Quit := True;
   end;
 end;
@@ -578,7 +580,7 @@ begin
   if VTIG_EventCancel or VTIG_EventConfirm then
   begin
     FSaveExists := False;
-    if DRL.DataReloadRequired then
+    if FSession.DataReloadRequired then
     begin
       FResult.ReloadData := True;
       FMode := MAINMENU_DONE;
@@ -623,7 +625,7 @@ begin
   if VTIG_Selectable( '  Delete save file' ) then
   begin
     FSaveExists := False;
-    DeleteFile( IO.Session.Paths.ModuleUserPath + 'save' );
+    DeleteFile( FSession.Paths.ModuleUserPath + 'save' );
     FMode := MAINMENU_MENU;
   end;
 
@@ -802,7 +804,7 @@ begin
       begin
         FResult.Klass := FArrayKlass[i].NID;
         FMode         := MAINMENU_TRAIT;
-        IO.PushLayer( TPlayerView.CreateInitialTrait( FResult.Klass ) );
+        IO.PushLayer( TPlayerView.CreateInitialTrait( FSession, FResult.Klass ) );
       end;
     iSelected := VTIG_Selected;
     VTIG_PopStyle;
@@ -884,7 +886,7 @@ begin
           VTIG_Text( 'Rating: {!'+FArrayChal[iSelect].Extra+'}'#10#10+FArrayChal[iSelect].Desc );
           if not FArrayChal[iSelect].Allow then
           begin
-            iRank := IO.Session.Context.Lua.Get( ['ranks','skill',FArrayChal[iSelect].Req+1,'name'] );
+            iRank := FSession.Context.Lua.Get( ['ranks','skill',FArrayChal[iSelect].Req+1,'name'] );
             VTIG_Text('');
             VTIG_Text( 'Reach {y'+iRank+'} rank to unlock!' );
           end;
@@ -1004,7 +1006,7 @@ var iLua : TLua;
     iCount : Word;
     iSkill : Integer;
 begin
-  iLua := IO.Session.Context.Lua;
+  iLua := FSession.Context.Lua;
   if FArrayCType = nil then FArrayCType := TMainMenuEntryArray.Create;
   if FArrayDiff  = nil then FArrayDiff  := TMainMenuEntryArray.Create;
   if FArrayKlass = nil then FArrayKlass := TMainMenuEntryArray.Create;
@@ -1065,7 +1067,7 @@ var iLua : TLua;
     iEntry      : TMainMenuEntry;
     iValue      : TLuaValue;
 begin
-  iLua := IO.Session.Context.Lua;
+  iLua := FSession.Context.Lua;
   VTIG_EventClear;
   VTIG_ResetSelect( 'challenges_view' );
 
