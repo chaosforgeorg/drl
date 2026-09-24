@@ -947,9 +947,7 @@ begin
       begin
         if isPlayer then IO.Msg('No time to waste.');
         if iItem.isPack then Exit( ActionUse( iItem, FPosition ) );
-        if DRL.Targeting.List.Current <> FPosition
-          then Exit( ActionUse( iItem, DRL.Targeting.List.Current ) )
-          else Exit( Fail( 'No valid target!', [] ) );
+        Exit( Fail( 'You must use that from the ground!', [] ) );
       end;
 
   if iItem.isStackable then

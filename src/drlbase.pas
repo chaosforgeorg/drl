@@ -881,8 +881,13 @@ end;
 function TDRLSession.HandlePickupCommand( aAlt : Boolean ) : Boolean;
 var iItem : TItem;
 begin
-  if not aAlt then Exit( HandleCommand( TCommand.Create( COMMAND_PICKUP ) ) );
   iItem := Level.Item[ FPlayer.Position ];
+  if ( iItem <> nil ) and FPlayer.Flags[ BF_IMPATIENT ] and iItem.isUsable then
+  begin
+    if not aAlt then IO.Msg( 'No time to waste.' );
+    aAlt := True;
+  end;
+  if not aAlt then Exit( HandleCommand( TCommand.Create( COMMAND_PICKUP ) ) );
   if ( iItem = nil ) or (not (iItem.isPickupable or iItem.isUsable or iItem.isWearable) ) then
   begin
     IO.Msg( 'There''s nothing to use on the ground!' );
@@ -892,7 +897,7 @@ begin
     Exit( HandleCommand( TCommand.Create( COMMAND_PICKUP ) ) );
   if iItem.IType = ITEMTYPE_URANGED
     then Exit( HandleUsableCommand( iItem ) );
-  Exit( HandleCommand( TCommand.Create( COMMAND_USE, iItem ) ) );
+  Exit( HandleCommand( TCommand.Create( COMMAND_USE, FPlayer.Position, iItem ) ) );
 end;
 
 function TDRLSession.HandleCommand( aCommand : TCommand ) : Boolean;
@@ -978,7 +983,7 @@ begin
             if Level.Item[ FPlayer.Position ].isLever then
               Exit( HandleCommand( TCommand.Create( COMMAND_USE, Level.Item[ FPlayer.Position ] ) ) )
             else
-              Exit( HandleCommand( TCommand.Create( COMMAND_PICKUP ) ) )
+              Exit( HandlePickupCommand( False ) )
           else
             begin
               FPlayerView := IO.PushLayer( TPlayerView.Create( FPlayer, PLAYERVIEW_INVENTORY ) );
