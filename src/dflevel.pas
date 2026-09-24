@@ -20,7 +20,7 @@ type
 
 TLevel = class(TLuaMapNode, ITextMap)
     constructor Create( aContext : TNodeContext; aGameRNG : TRNG; aData : TGameData ); reintroduce;
-    procedure Init( aStyle : byte; aName : Ansistring; aIndex : Integer; aDangerLevel : Word );
+    procedure Init( aTable : TLuaTable; aIndex : Integer; aDifficulty : Byte );
     procedure InitializeParticles( aEngine : TParticleEngine );
     procedure AfterGeneration;
     procedure Enter;
@@ -548,10 +548,7 @@ begin
   FDecals.Add( iPos, aDecalSprite );
 end;
 
-procedure TLevel.Init( aStyle : Byte; aName : Ansistring; aIndex : Integer; aDangerLevel : Word );
-var x,y         : Integer;
-    iFloorCell  : Integer;
-    iFloorStyle : Byte;
+procedure TLevel.Init( aTable : TLuaTable; aIndex : Integer; aDifficulty : Byte );
 begin
   FContext.Lua.Stack.ClearLuaProperties( Self );
   FActiveBeing := nil;
@@ -560,12 +557,12 @@ begin
   FIndex := aIndex;
   FBoss := 0;
   FLTime  := 0;
-  FStyle := aStyle;
+  FStyle := aTable.GetInteger( 'style', 0 );
   FullClear;
-  FName := aName;
+  FName := aTable.GetString( 'name', '' );
   FSName := FName;
   FAbbr  := '';
-  FDangerLevel := aDangerLevel;
+  FDangerLevel := aTable.GetInteger( 'danger', 0 );
   FID := 'level'+IntToStr(FIndex);
   FFlags := [];
   FEmpty := False;
@@ -573,8 +570,10 @@ begin
   FFeeling := '';
   FMusicID := '';
  
-  if FContext.Lua.Get(['diff',DRL.Difficulty,'respawn']) then Include( FFlags, LF_RESPAWN );
-  FAccuracyBonus := FContext.Lua.Get(['diff',DRL.Difficulty,'accuracybonus']);
+  if FContext.Lua.Get( [ 'diff', aDifficulty, 'respawn' ] ) then Include( FFlags, LF_RESPAWN );
+  FAccuracyBonus := FContext.Lua.Get( [ 'diff', aDifficulty, 'accuracybonus' ] );
+  if aTable.IsString( 'sname' ) then FSName := aTable.GetString( 'sname' );
+  if aTable.IsString( 'abbr' ) then FAbbr := aTable.GetString( 'abbr' );
 end;
 
 procedure TLevel.AfterGeneration;

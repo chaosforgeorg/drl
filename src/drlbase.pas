@@ -1316,6 +1316,7 @@ var iRank       : THOFRank;
     iCrashIndex : Integer;
     iEpisodeSeed : Cardinal;
     iLevelSeed   : Cardinal;
+    iLevelInfo   : TLuaTable;
 begin
   Result := DSR_Quit;
   iResult    := TMenuResult.Create;
@@ -1406,19 +1407,14 @@ begin
       FPlayer.Statistics.Update( FPlayer );
       FPlayer.NextLevelIndex;
 
-      with FContext.Lua.GetTable(['player','episode',FPlayer.Level_Index]) do
+      iLevelInfo := FContext.Lua.GetTable( [ 'player', 'episode', FPlayer.Level_Index ] );
       try
         FPlayer.Detach;
-        FLevel.Init(getInteger('style',0),
-                   getString('name',''),
-                   FPlayer.Level_Index,
-                   getInteger('danger',0));
-        if IsString('sname') then FLevel.SName := getString('sname');
-        if IsString('abbr')  then FLevel.Abbr  := getString('abbr');
-        iScript := getString('script','');
-        iLevelSeed := getInteger('seed',0);
+        FLevel.Init( iLevelInfo, FPlayer.Level_Index, FDifficulty );
+        iScript := iLevelInfo.GetString( 'script', '' );
+        iLevelSeed := iLevelInfo.GetInteger( 'seed', 0 );
       finally
-        Free;
+        iLevelInfo.Free;
       end;
 
       if iLevelSeed <> 0 then GameRNG.SetSeed( iLevelSeed );
