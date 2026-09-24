@@ -7,10 +7,10 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlhudviews;
 interface
 uses vutil, viotypes, vgenerics, vcolor, vioevent, vrltools,
-     dfdata, dfitem, dflevel, dfplayer, drlkeybindings, drlhooks, drlbase;
+     dfdata, dfitem, dflevel, dfbeing, dfplayer, drlkeybindings, drlhooks, drlbase;
 
 type TLookModeView = class( TIOLayer )
-  constructor Create( aLevel : TLevel );
+  constructor Create( aLevel : TLevel; aBeing : TBeing );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsModal : Boolean; override;
   function HandleInput( aInput : Integer ) : Boolean; override;
@@ -18,6 +18,7 @@ protected
   procedure UpdateTarget;
 protected
   FLevel    : TLevel;
+  FBeing    : TBeing; // Borrowed for the look view's lifetime.
   FFirst    : Boolean;
   FTarget   : TCoord2D;
 end;
@@ -117,11 +118,12 @@ uses sysutils,
      vtig, vvision,
      drlio, drlcommand, drlcontrollerbindings, drlspritemap;
 
-constructor TLookModeView.Create( aLevel : TLevel );
+constructor TLookModeView.Create( aLevel : TLevel; aBeing : TBeing );
 begin
   FLevel  := aLevel;
+  FBeing  := aBeing;
   FFirst  := True;
-  FTarget := Player.Position;
+  FTarget := FBeing.Position;
   IO.Targeting := True;
 end;
 
@@ -155,7 +157,7 @@ begin
   iLevel := FLevel;
   if iInput = INPUT_MORESELF then
   begin
-    IO.FullLook( Player );
+    IO.FullLook( FBeing );
     UpdateTarget;
     Exit( True );
   end;

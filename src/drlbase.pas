@@ -1160,7 +1160,7 @@ begin
     ) ) );
     CONTROLLER_MENU : begin
       ResetAutoTarget;
-      IO.PushLayer( TInGameMenuView.Create( TDRLRuntime( FRuntime ).HOF, TDRLRuntime( FRuntime ).Help ) );
+      IO.PushLayer( TInGameMenuView.Create( Self, TDRLRuntime( FRuntime ).HOF, TDRLRuntime( FRuntime ).Help ) );
       Exit( False );
     end;
     CONTROLLER_PLAYER : begin
@@ -1239,10 +1239,10 @@ begin
     case iInput of
 //      INPUT_ESCAPE     : begin if GodMode then SetState( DSQuit ); Exit; end;
       INPUT_TARGETNEXT : begin IO.SetAutoTarget( FTargeting.List.Next ); Exit; end;
-      INPUT_ESCAPE     : begin ResetAutoTarget; IO.PushLayer( TInGameMenuView.Create( TDRLRuntime( FRuntime ).HOF, TDRLRuntime( FRuntime ).Help ) ); Exit; end;
-      INPUT_QUIT       : begin IO.PushLayer( TAbandonView.Create ); Exit; end;
+      INPUT_ESCAPE     : begin ResetAutoTarget; IO.PushLayer( TInGameMenuView.Create( Self, TDRLRuntime( FRuntime ).HOF, TDRLRuntime( FRuntime ).Help ) ); Exit; end;
+      INPUT_QUIT       : begin IO.PushLayer( TAbandonView.Create( Self ) ); Exit; end;
       INPUT_HELP       : begin IO.PushLayer( THelpView.Create( IO, FContext.Lua, TDRLRuntime( FRuntime ).Help, CoreModuleID ) ); Exit; end;
-      INPUT_LOOKMODE   : begin IO.PushLayer( TLookModeView.Create( FLevel ) ); Exit; end;
+      INPUT_LOOKMODE   : begin IO.PushLayer( TLookModeView.Create( FLevel, FPlayer ) ); Exit; end;
       INPUT_PLAYERINFO : begin FPlayerView := IO.PushLayer( TPlayerView.Create( FPlayer, PLAYERVIEW_CHARACTER ) ); Exit; end;
       INPUT_INVENTORY  : begin FPlayerView := IO.PushLayer( TPlayerView.Create( FPlayer, PLAYERVIEW_INVENTORY ) ); Exit; end;
       INPUT_EQUIPMENT  : begin FPlayerView := IO.PushLayer( TPlayerView.Create( FPlayer, PLAYERVIEW_EQUIPMENT ) ); Exit; end;
