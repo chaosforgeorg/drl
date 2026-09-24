@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlplayerview;
 interface
 uses vioevent, viotypes, vgenerics, vtigstyle,
-     dfplayer, dfitem, dfdata, drlhooks, drlio, drluibindings, drltraits, drlconfirmview;
+     dfplayer, dfitem, dfdata, drlhooks, drlio, drluibindings, drltraits, drlconfirmview, drlbase;
 
 type TPlayerViewState = (
   PLAYERVIEW_INVENTORY,
@@ -100,7 +100,7 @@ public
 end;
 
 type TUnloadConfirmView = class( TConfirmView )
-  constructor Create( aItem : TItem; aID : Ansistring = '' );
+  constructor Create( aSession : TDRLSession; aItem : TItem; aID : Ansistring = '' );
 protected
   procedure OnConfirm; override;
 protected
@@ -109,7 +109,7 @@ protected
 end;
 
 type TNoRoomConfirmView = class( TConfirmView )
-  constructor Create( aItem : TItem; aID : Ansistring = '' );
+  constructor Create( aSession : TDRLSession; aItem : TItem; aID : Ansistring = '' );
 protected
   procedure OnConfirm; override;
 protected
@@ -120,7 +120,7 @@ implementation
 
 uses sysutils, math, variants,
      vutil, vtig, vtigio, vlua,
-     dflevel, drlcommand, drlbase, drlinventory, drlperk;
+     dflevel, drlcommand, drlinventory, drlperk;
 
 constructor TPlayerView.Create( aPlayer : TPlayer; aInitialState : TPlayerViewState = PLAYERVIEW_INVENTORY );
 begin
@@ -613,7 +613,7 @@ begin
           FState := PLAYERVIEW_CLOSING;
           if not Option_InvFullDrop then
           begin
-            IO.PushLayer( TNoRoomConfirmView.Create( FEq[iSelected].Item ) );
+            IO.PushLayer( TNoRoomConfirmView.Create( DRL, FEq[iSelected].Item ) );
             FState := PLAYERVIEW_DONE;
             Exit;
           end;
@@ -1160,9 +1160,9 @@ begin
   FSSlot := aSlot;
 end;
 
-constructor TUnloadConfirmView.Create( aItem : TItem; aID : Ansistring = '' );
+constructor TUnloadConfirmView.Create( aSession : TDRLSession; aItem : TItem; aID : Ansistring = '' );
 begin
-  inherited Create;
+  inherited Create( aSession );
   FItem := aItem;
   FID   := aID;
   if FID = ''
@@ -1175,12 +1175,12 @@ end;
 
 procedure TUnloadConfirmView.OnConfirm;
 begin
-  DRL.HandleCommand( TCommand.Create( COMMAND_UNLOAD, FItem, FID ) );
+  FSession.HandleCommand( TCommand.Create( COMMAND_UNLOAD, FItem, FID ) );
 end;
 
-constructor TNoRoomConfirmView.Create( aItem : TItem; aID : Ansistring = '' );
+constructor TNoRoomConfirmView.Create( aSession : TDRLSession; aItem : TItem; aID : Ansistring = '' );
 begin
-  inherited Create;
+  inherited Create( aSession );
   FItem := aItem;
   FConfirm := 'Drop item';
   FCancel  := 'Cancel';
@@ -1189,9 +1189,14 @@ begin
 end;
 
 procedure TNoRoomConfirmView.OnConfirm;
+var iSession : TDRLSession;
+    iItem    : TItem;
 begin
-  if FItem.CallHookCheck( Hook_OnUnequipCheck, [ Player, False ] )
-    then DRL.HandleCommand( TCommand.Create( COMMAND_DROP, FItem ) );
+  // The hook may redraw and release this finished view.
+  iSession := FSession;
+  iItem := FItem;
+  if iItem.CallHookCheck( Hook_OnUnequipCheck, [ iSession.Player, False ] )
+    then iSession.HandleCommand( TCommand.Create( COMMAND_DROP, iItem ) );
 end;
 
 

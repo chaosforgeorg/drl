@@ -852,7 +852,7 @@ begin
 
   if aItem.isAmmoPack then
   begin
-    IO.PushLayer( TUnloadConfirmView.Create( aItem ) );
+    IO.PushLayer( TUnloadConfirmView.Create( Self, aItem ) );
     Exit( True );
   end;
 
@@ -863,7 +863,7 @@ begin
     iID := FContext.Lua.ProtectedCall( [ CoreModuleID,'GetDisassembleId'], [ aItem ] );
     if iID <> '' then
     begin
-      IO.PushLayer( TUnloadConfirmView.Create(aItem,iID) );
+      IO.PushLayer( TUnloadConfirmView.Create( Self, aItem, iID ) );
       Exit( True );
     end;
   end;

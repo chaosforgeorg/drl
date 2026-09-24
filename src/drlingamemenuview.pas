@@ -22,12 +22,9 @@ end;
 
 type TAbandonView = class( TConfirmView )
   constructor Create( aSession : TDRLSession );
-  function IsFinished : Boolean; override;
 protected
   procedure OnConfirm; override;
   procedure OnCancel; override;
-private
-  FSession : TDRLSession; // Borrowed; the view is released before Session.
 end;
 
 implementation
@@ -109,18 +106,12 @@ end;
 
 constructor TAbandonView.Create( aSession : TDRLSession );
 begin
-  FSession := aSession;
-  inherited Create;
+  inherited Create( aSession );
   FCancel  := 'Continue run';
   FConfirm := 'Abandon run';
   FMessage := FSession.Context.Lua.ProtectedCall([CoreModuleID,'GetQuitMessage'],[]) + #10 +
     '{yAre you sure you want to abandon this run?}';
   FSize    := Point( 50, 10 );
-end;
-
-function TAbandonView.IsFinished : Boolean;
-begin
-  Exit( FFinished or ( FSession.State <> DSPlaying ) );
 end;
 
 procedure TAbandonView.OnConfirm;

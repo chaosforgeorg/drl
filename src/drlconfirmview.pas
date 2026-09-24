@@ -6,13 +6,13 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlconfirmview;
 interface
-uses vutil, viotypes, dfdata;
+uses vutil, viotypes, dfdata, drlbase;
 
 type TOnConfirmObjectCallback = procedure of object;
      TOnConfirmRawCallback    = procedure;
 
 type TConfirmView = class( TIOLayer )
-  constructor Create;
+  constructor Create( aSession : TDRLSession );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
@@ -21,6 +21,7 @@ protected
   procedure OnConfirm; virtual;
   procedure OnCancel; virtual;
 protected
+  FSession         : TDRLSession; // Borrowed; the view is released before Session.
   FSize            : TPoint;
 
   FCancel          : AnsiString;
@@ -33,10 +34,11 @@ end;
 
 implementation
 
-uses vtig, drlbase;
+uses vtig;
  
-constructor TConfirmView.Create;
+constructor TConfirmView.Create( aSession : TDRLSession );
 begin
+  FSession := aSession;
   Initialize;
 end;
 
@@ -77,7 +79,7 @@ end;
 
 function TConfirmView.IsFinished : Boolean;
 begin
-  Exit( FFinished or ( DRL.State <> DSPlaying ) );
+  Exit( FFinished or ( FSession.State <> DSPlaying ) );
 end;
 
 function TConfirmView.IsModal : Boolean;
