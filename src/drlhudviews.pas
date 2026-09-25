@@ -262,7 +262,7 @@ end;
 procedure TMeleeDirView.Finalize( aDir : TDirection );
 begin
   if aDir.code <> DIR_CENTER then
-    FSession.HandleCommand( TCommand.Create( COMMAND_MELEE, FSession.Player.Position + aDir, ModuleOption_MeleeMoveOnKill and ( not FAlt ) ) );
+    FSession.QueueCommand( TCommand.Create( COMMAND_MELEE, FSession.Player.Position + aDir, ModuleOption_MeleeMoveOnKill and ( not FAlt ) ) );
 end;
 
 constructor TActionDirView.Create( aSession : TDRLSession; aAction : Ansistring; aFlag : Byte );
@@ -532,14 +532,7 @@ begin
   begin
     FArray := TScrollItemArray.Create;
     if Slot[ efWeapon ]  <> nil then
-    begin
       FArray.Push( Slot[ efWeapon ] );
-      if not Slot[ efWeapon ].CallHookCheck( Hook_OnUnequipCheck, [ FSession.Player, False ] ) then
-      begin
-        FFinished := True;
-        Exit;
-      end;
-    end;
     if (Slot[ efWeapon2 ] <> nil) and Slot[ efWeapon2 ].isEqWeapon then FArray.Push( Slot[ efWeapon2 ] );
     for iItem in FSession.Player.Inv do
       if not Equipped( iItem ) then
@@ -590,10 +583,10 @@ begin
     IO.HintOverlay := '';
     FFinished      := True;
     if FArray[ FIndex ] = FSession.Player.Inv.Slot[ efWeapon2 ] then
-      FSession.HandleCommand( TCommand.Create( COMMAND_SWAPWEAPON ) )
+      FSession.QueueCommand( TCommand.Create( COMMAND_SWAPWEAPON ) )
     else
       if FArray[ FIndex ] <> FSession.Player.Inv.Slot[ efWeapon ] then
-        FSession.HandleCommand( TCommand.Create( COMMAND_WEAR, FArray[FIndex] ) );
+        FSession.QueueCommand( TCommand.Create( COMMAND_WEAR, FArray[FIndex] ) );
     Exit( True );
   end;
 

@@ -1092,7 +1092,14 @@ begin
     end;
 
     if iButton in [ VMB_WHEEL_UP, VMB_WHEEL_DOWN ] then
+    begin
+      if FPlayer.Inv.Slot[ efWeapon ] <> nil then
+      begin
+        if not FPlayer.Inv.Slot[ efWeapon ].CallHookCheck( Hook_OnUnequipCheck, [ FPlayer, False ] ) then Exit( False );
+        if FState <> DSPlaying then Exit( False );
+      end;
       IO.PushLayer( TScrollSwapLayer.Create( Self ) );
+    end;
   end;
   Exit( False );
 end;
