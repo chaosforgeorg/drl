@@ -736,6 +736,7 @@ end;
 
 procedure TDRLGFXIO.FadeOut( aTime : Single = 0.5; aWait : Boolean = False );
 begin
+  ResetAnimationSpeed;
   if not Setting_Fade then
   begin
     FadeReset;
@@ -791,6 +792,7 @@ var iMousePoint : TIOPoint;
     iAbsolute   : TIORect;
     iP1, iP2    : TIOPoint;
     iMouse      : Boolean;
+    iDrawLevel  : Boolean;
     iBloodValue : Single;
     iBloodTarget: Single;
 begin
@@ -871,7 +873,9 @@ begin
   glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
   FProjection := GLCreateOrtho( 0, iSizeX, iSizeY, 0, -16384, 16384 );
 
-  if (Session <> nil) and (Session.State = DSPlaying) then
+  iDrawLevel := ( FSession <> nil )
+    and ( ( FSession.State = DSPlaying ) or ( FFadeDirection < 0 ) );
+  if iDrawLevel then
   begin
     if FTIGConsoleView = nil then
        FConsole.HideCursor;
@@ -910,7 +914,7 @@ begin
   if Setting_BloodPulse then
   begin
     iBloodTarget := FBloodValueTarget;
-    if (Session <> nil) and (Session.State = DSPlaying) then
+    if iDrawLevel then
     begin
       iBloodValue := 0;
 
@@ -929,7 +933,7 @@ begin
     if FBloodValueTarget > 0 then
       FBloodValueTarget -= Minf( FBloodValueTarget, aMSec / 500 );
 
-    if (Session <> nil) and (Session.State = DSPlaying) and (FBloodValue > 0.02) then
+    if iDrawLevel and (FBloodValue > 0.02) then
     begin
       FPostSheet.PushTexturedQuad(
         GLVec2i(1,1), GLVec2i( FIODriver.GetSizeX, FIODriver.GetSizeY ),

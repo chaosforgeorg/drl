@@ -55,6 +55,7 @@ type TPlayerView = class( TIOLayer )
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
   procedure Retain;
+  procedure FinishPending;
   destructor Destroy; override;
 protected
   function MarkQSlot( aItem : TItem; aValue : Byte ) : Boolean;
@@ -281,7 +282,14 @@ end;
 
 procedure TPlayerView.Retain;
 begin
-  if FState = PLAYERVIEW_PENDING then FState := PLAYERVIEW_INVENTORY;
+  if FState <> PLAYERVIEW_PENDING then Exit;
+  ReadInv;
+  FState := PLAYERVIEW_INVENTORY;
+end;
+
+procedure TPlayerView.FinishPending;
+begin
+  if FState = PLAYERVIEW_PENDING then FState := PLAYERVIEW_DONE;
 end;
 
 function TPlayerView.IsModal : Boolean;
@@ -342,8 +350,10 @@ procedure TPlayerView.UpdateInventory( aActive : Boolean );
 var iEntry    : TItemViewEntry;
     iSelected : Integer;
     iCommand  : Byte;
+    iSession  : TDRLSession;
 
 begin
+  iSession := FSession;
   if FInv = nil then ReadInv;
   VTIG_PushStyle( @FCompactStyle );
   VTIG_BeginWindow( FITitle, 'inventory', FSize );
@@ -417,9 +427,9 @@ begin
     begin
       if VTIG_EventConfirm then
       begin
-        FState := PLAYERVIEW_CLOSING;
-        FSession.HandleCommand( TCommand.Create( COMMAND_SWAP, FInv[iSelected].Item, FSSlot ) );
+        FSession.QueueCommand( TCommand.Create( COMMAND_SWAP, FInv[iSelected].Item, FSSlot ) );
         FState := PLAYERVIEW_DONE;
+        Exit;
       end;
     end
     else
@@ -429,15 +439,13 @@ begin
         if VTIG_Event( UI_BINDING_DROP ) then
         begin
           FState := PLAYERVIEW_PENDING;
-          FSession.HandleCommand( TCommand.Create(
+          FSession.QueueCommand( TCommand.Create(
             COMMAND_DROP,
             FInv[iSelected].Item,
             VTIG_Event( VTIG_IE_SHIFT )
               or IO.PadState.Active( VPAD_BUTTON_RIGHTTRIGGER )
           ) );
-          if FState = PLAYERVIEW_PENDING
-            then FState := PLAYERVIEW_DONE
-            else begin ReadInv; FState := PLAYERVIEW_INVENTORY; end
+          Exit;
         end
         else
         if VTIG_EventConfirm then
@@ -450,6 +458,7 @@ begin
             if FInv[iSelected].Item.IType = ITEMTYPE_URANGED
               then FSession.HandleUsableCommand( FInv[iSelected].Item )
               else FSession.HandleCommand( TCommand.Create( iCommand, FInv[iSelected].Item ) );
+          if iSession.State <> DSPlaying then Exit;
           FState := PLAYERVIEW_DONE;
         end;
         if VTIG_Event( VTIG_IE_1 ) then MarkQSlot( FInv[iSelected].Item, 1 );
@@ -472,6 +481,7 @@ begin
             FSession.HandleUnloadCommand( FInv[iSelected].Item )
           else if iCommand <> COMMAND_NONE then
             FSession.HandleCommand( TCommand.Create( iCommand, FInv[iSelected].Item ) );
+          if iSession.State <> DSPlaying then Exit;
           FState := PLAYERVIEW_DONE;
         end;
       end;
@@ -492,14 +502,18 @@ var iEntry            : TItemViewEntry;
     iCount            : Integer;
     iRes              : TResistance;
     iName             : Ansistring;
+    iSession          : TDRLSession;
   function CannotUnequip : Boolean;
   var iSavedState : TPlayerViewState;
+      iAllowed    : Boolean;
   begin
     if ( FEq[iSelected].Item <> nil ) then
     begin
       iSavedState := FState;
       FState := PLAYERVIEW_CLOSING;
-      if not FEq[iSelected].Item.CallHookCheck( Hook_OnUnequipCheck, [ FPlayer, False ] ) then
+      iAllowed := FEq[iSelected].Item.CallHookCheck( Hook_OnUnequipCheck, [ FPlayer, False ] );
+      if iSession.State <> DSPlaying then Exit( True );
+      if not iAllowed then
       begin
         FState := PLAYERVIEW_DONE;
         Exit( True );
@@ -510,6 +524,7 @@ var iEntry            : TItemViewEntry;
   end;
 
 begin
+  iSession := FSession;
   if FEq = nil then ReadEq;
   VTIG_BeginWindow('Equipment', 'equipment', FSize );
     VTIG_BeginGroup( 10, True );
@@ -627,6 +642,7 @@ begin
           if CannotUnequip then Exit;
           FState := PLAYERVIEW_CLOSING;
           FSession.HandleCommand( TCommand.Create( COMMAND_DROP, FEq[iSelected].Item ) );
+          if iSession.State <> DSPlaying then Exit;
           FState := PLAYERVIEW_DONE;
         end
         else
@@ -634,6 +650,7 @@ begin
           if CannotUnequip then Exit;
           FState := PLAYERVIEW_CLOSING;
           FSession.HandleCommand( TCommand.Create( COMMAND_TAKEOFF, nil, TEqSlot(iSelected) ) );
+          if iSession.State <> DSPlaying then Exit;
           FState := PLAYERVIEW_DONE;
         end;
       end
@@ -663,6 +680,7 @@ begin
           VTIG_Event( VTIG_IE_SHIFT )
             or IO.PadState.Active( VPAD_BUTTON_RIGHTTRIGGER )
         ) );
+        if iSession.State <> DSPlaying then Exit;
         FState := PLAYERVIEW_DONE;
       end;
       if VTIG_Event( VTIG_IE_1 ) then MarkQSlot( FEq[iSelected].Item, 1 );

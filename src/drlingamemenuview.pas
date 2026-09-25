@@ -21,10 +21,12 @@ private
 end;
 
 type TAbandonView = class( TConfirmView )
-  constructor Create( aSession : TDRLSession );
+  constructor Create( aSession : TDRLSession; aFadeOut : Boolean = True );
 protected
   procedure OnConfirm; override;
   procedure OnCancel; override;
+private
+  FFadeOut : Boolean;
 end;
 
 implementation
@@ -104,9 +106,10 @@ begin
   Exit( True );
 end;
 
-constructor TAbandonView.Create( aSession : TDRLSession );
+constructor TAbandonView.Create( aSession : TDRLSession; aFadeOut : Boolean = True );
 begin
   inherited Create( aSession );
+  FFadeOut := aFadeOut;
   FCancel  := 'Continue run';
   FConfirm := 'Abandon run';
   FMessage := FSession.Context.Lua.ProtectedCall([CoreModuleID,'GetQuitMessage'],[]) + #10 +
@@ -115,13 +118,12 @@ begin
 end;
 
 procedure TAbandonView.OnConfirm;
-var iSession : TDRLSession;
 begin
-  // SetState may redraw and release this finished view.
-  iSession := FSession;
-  IO.FadeOut(0.5);
-  iSession.SetState( DSQuit );
-  iSession.Player.Score := -100000;
+  if FFadeOut
+    then IO.FadeOut(0.5)
+    else IO.FadeReset;
+  FSession.SetState( DSQuit );
+  FSession.Player.Score := -100000;
 end;
 
 procedure TAbandonView.OnCancel;

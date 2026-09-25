@@ -102,6 +102,7 @@ type TDRLIO = class( TIORL )
   function PushLayer( aLayer : TIOLayer ) : TIOLayer; override;
   procedure PreAction;
   procedure EnterLevel( aCoord : TCoord2D ); virtual;
+  procedure FinishLayers; override;
   procedure Clear; override;
   function OnEvent( const aEvent : TIOEvent ) : Boolean; override;
 
@@ -485,6 +486,12 @@ end;
 
 procedure TDRLIO.EnterLevel( aCoord : TCoord2D );
 begin
+end;
+
+procedure TDRLIO.FinishLayers;
+begin
+  if FTargeting then FinishTargeting;
+  inherited FinishLayers;
 end;
 
 procedure TDRLIO.Clear;

@@ -11,7 +11,6 @@ uses vutil, viotypes, drlio, dfdata, dfbeing, dfitem, drlhooks;
 type TMoreBeingView = class( TIOLayer )
   constructor Create( aBeing : TBeing );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
-  function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
   destructor Destroy; override;
 protected
@@ -27,7 +26,6 @@ end;
 type TMoreItemView = class( TIOLayer )
   constructor Create( aItem : TItem );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
-  function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
   destructor Destroy; override;
 protected
@@ -42,7 +40,7 @@ end;
 
 implementation
 
-uses math, sysutils, vlua, vtig, dfplayer, drlbase, drlperk;
+uses math, sysutils, vlua, vtig, drlperk;
 
 constructor TMoreBeingView.Create( aBeing : TBeing );
 var i : Integer;
@@ -54,9 +52,7 @@ begin
   FDesc     := FBeing.Context.Lua.Get(['beings',FBeing.ID,'desc']);
   FASCII    := '';
   if not ModuleOption_FullBeingDescription then
-    if FBeing.ID = 'soldier'
-      then FASCII := Player.ASCIIMoreCode
-      else FASCII := FBeing.ID;
+    FASCII := FBeing.ASCIIMoreCode;
   FSize      := Point( 80, 25 );
   for i := Low( FTexts ) to High( FTexts ) do
     FTexts[i] := nil;
@@ -220,11 +216,6 @@ begin
     FFinished := True;
 end;
 
-
-function TMoreBeingView.IsFinished : Boolean;
-begin
-  Exit( FFinished or ( DRL.State <> DSPlaying ) );
-end;
 
 function TMoreBeingView.IsModal : Boolean;
 begin
@@ -442,11 +433,6 @@ begin
     VTIG_EventClear;
     FFinished := True;
   end;
-end;
-
-function TMoreItemView.IsFinished : Boolean;
-begin
-  Exit( FFinished or ( DRL.State <> DSPlaying ) );
 end;
 
 function TMoreItemView.IsModal : Boolean;

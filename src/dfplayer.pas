@@ -843,7 +843,7 @@ begin
   State.Init(L);
   Being := State.ToObject(1) as TBeing;
   if not (Being is TPlayer) then Exit(0);
-  IO.FadeOut(1.0);
+  IO.FadeOut( 1.0, True );
   DRL.SetState( DSFinished );
   DRL.GameWon := True;
   Result := 0;
@@ -878,7 +878,7 @@ begin
   if DRL.State <> DSSaving then
   begin
     if iState.IsNumber(3) then
-      IO.FadeOut( iState.ToFloat(3) );
+      IO.FadeOut( iState.ToFloat(3), True );
     DRL.SetState( DSNextLevel );
   end;
   iPlayer.FSpeedCount := 4000;

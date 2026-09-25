@@ -63,6 +63,7 @@ type TDRLSession = class(TVObject)
        procedure GenerateMemorial( aPlayer : TPlayer );
        procedure OpenJHCPage;
        function HandleUnloadCommand( aItem : TItem ) : Boolean;
+       procedure QueueCommand( const aCommand : TCommand );
        function HandleCommand( aCommand : TCommand ) : Boolean;
        function HandleActionCommand( aInput : TInputKey ) : Boolean;
        function HandleActionCommand( aTarget : TCoord2D; aFlag : Byte ) : Boolean;
@@ -78,6 +79,7 @@ type TDRLSession = class(TVObject)
        procedure ReleaseLevel;
        procedure ReleasePlayer;
        procedure Apply( aResult : TMenuResult );
+       procedure HardQuit;
        function HandleMouseEvent( aEvent : TIOEvent ) : Boolean;
        function HandleKeyEvent( aEvent : TIOEvent ) : Boolean;
        function HandlePadMovement( aPressed : Boolean ) : Boolean;
@@ -100,6 +102,7 @@ type TDRLSession = class(TVObject)
        FTargeting       : TTargeting;
        FDamagedLastTurn : Boolean;
        FPlayerView      : TIOLayer;
+       FQueueCommand    : TCommand;
        FMemorial        : TPagedReport;
        FPadMoveActive   : Boolean;
        FPadMoveNext     : QWord;
@@ -229,16 +232,17 @@ begin
   Exit( True );
 end;
 
-procedure TDRLSession.SetState( aNewState: TDRLState );
+procedure TDRLSession.SetState( aNewState : TDRLState );
+var iWasPlaying : Boolean;
 begin
   if ( FState = aNewState ) then Exit;
-  IO.ResetAnimationSpeed;
-  if ( FState = DSPlaying ) then
-  begin
-    IO.FadeWait;
-    if ( aNewState <> DSQuit) then IO.FadeReset;
-  end;
+  iWasPlaying := FState = DSPlaying;
   FState := aNewState;
+  if iWasPlaying then
+  begin
+    FQueueCommand := TCommand.Create( COMMAND_NONE );
+    IO.FinishLayers;
+  end;
 end;
 
 procedure TDRLSession.GenerateMemorial( aPlayer : TPlayer );
@@ -368,6 +372,7 @@ begin
   FreeAndNil( FMemorial );
   ReleaseLevel;
 
+  FQueueCommand := TCommand.Create( COMMAND_NONE );
   SetState( DSStart );
   FTargeting.Clear;
   FDifficulty := 0;
@@ -903,6 +908,12 @@ begin
   Exit( HandleCommand( TCommand.Create( COMMAND_USE, FPlayer.Position, iItem ) ) );
 end;
 
+procedure TDRLSession.QueueCommand( const aCommand : TCommand );
+begin
+  Assert( FQueueCommand.Command = COMMAND_NONE, 'A command is already queued' );
+  FQueueCommand := aCommand;
+end;
+
 function TDRLSession.HandleCommand( aCommand : TCommand ) : Boolean;
 begin
   if not ( aCommand.Command in [ COMMAND_FIRE, COMMAND_ALTFIRE, COMMAND_RELOAD ] ) then
@@ -1199,6 +1210,14 @@ begin
   Exit( False );
 end;
 
+procedure TDRLSession.HardQuit;
+begin
+  IO.FadeReset;
+  Option_MenuReturn := False;
+  SetState( DSQuit );
+  FPlayer.Score := -100000;
+end;
+
 function TDRLSession.HandleKeyEvent( aEvent : TIOEvent ) : Boolean;
 var iAction : TBindingAction;
     iInput  : TInputKey;
@@ -1255,12 +1274,7 @@ begin
 
       INPUT_MESSAGES   : begin IO.PushLayer( TMessagesView.Create( IO, IO.MsgGetRecent ) ); Exit; end;
 
-      INPUT_HARDQUIT   : begin
-        Option_MenuReturn := False;
-        SetState( DSQuit );
-        FPlayer.Score := -100000;
-        Exit;
-      end;
+      INPUT_HARDQUIT   : begin HardQuit; Exit; end;
 
       INPUT_LEGACYSAVE: begin SetState( DSSaving ); Exit; end;
       INPUT_TRAITS    : begin FPlayerView := IO.PushLayer( TPlayerView.Create( Self, PLAYERVIEW_TRAITS ) ); Exit; end;
@@ -1320,6 +1334,7 @@ var iRank       : THOFRank;
     iResult     : TMenuResult;
     iEvent      : TIOEvent;
     iInput      : TInputKey;
+    iCommand    : TCommand;
     iFullLoad   : Boolean;
     iChalAbbr   : Ansistring;
     iScript     : Ansistring;
@@ -1465,6 +1480,16 @@ begin
 
     while ( State = DSPlaying ) do
     begin
+      if FQueueCommand.Command <> COMMAND_NONE then
+      begin
+        iCommand := FQueueCommand;
+        FQueueCommand := TCommand.Create( COMMAND_NONE );
+        HandleCommand( iCommand );
+        if FPlayerView <> nil then
+          ( FPlayerView as TPlayerView ).FinishPending;
+        Continue;
+      end;
+
       if ( FPlayer.MultiMove.Active ) then
       begin
         IO.ResetAnimationSpeed;
@@ -1477,7 +1502,8 @@ begin
         Continue;
       end;
 
-      while ( not IO.Driver.EventPending ) and ( State = DSPlaying ) do
+      while ( not IO.Driver.EventPending ) and ( State = DSPlaying )
+        and ( FQueueCommand.Command = COMMAND_NONE ) do
       begin
         if FPadMoveActive and ( IO.Time >= FPadMoveNext ) then
         begin
@@ -1489,6 +1515,7 @@ begin
         IO.Driver.Sleep(10);
       end;
       if State <> DSPlaying then Break;
+      if FQueueCommand.Command <> COMMAND_NONE then Continue;
 
       // Guarantee a render slice even when events arrive faster than we can drain them
       // (e.g. a drifting gamepad stick spamming VEVENT_PADAXIS keeps EventPending true).
@@ -1499,15 +1526,16 @@ begin
         FLastFrameTime := IO.Driver.GetMs;
       end;
 
+      if State <> DSPlaying then Break;
+      if FQueueCommand.Command <> COMMAND_NONE then Continue;
       if not IO.Driver.PollEvent( iEvent ) then continue;
       if IO.OnEvent( iEvent ) then Continue;
 
       if (iEvent.EType = VEVENT_SYSTEM) and (iEvent.System.Code = VIO_SYSEVENT_QUIT) then
       begin
         if Option_LockClose
-           then Action( INPUT_QUIT )
-           else Action( INPUT_HARDQUIT );
-        Continue;
+           then IO.PushLayer( TAbandonView.Create( Self, False ) )
+           else HardQuit;
       end;
 
       if ( State <> DSPlaying ) then Break;
@@ -1517,6 +1545,11 @@ begin
       if iEvent.EType in [ VEVENT_PADDOWN, VEVENT_PADUP, VEVENT_PADDEVICE] then
         HandlePadEvent( iEvent );
     end;
+
+    // Finish the requested fade after UI dispatch, while the outgoing level exists.
+    IO.ResetAnimationSpeed;
+    IO.FadeWait;
+    if State <> DSQuit then IO.FadeReset;
 
     if State = DSNextLevel then
     begin
