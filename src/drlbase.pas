@@ -59,7 +59,7 @@ type TDRLSession = class(TVObject)
        procedure CallHook( Hook : Byte; const Params : array of Const );
        function  CallHookCheck( Hook : Byte; const Params : array of Const ) : Boolean;
        procedure SetState( aNewState : TDRLState );
-       procedure ClearPlayerView;
+       procedure ClearPlayerView( aView : TIOLayer );
        procedure GenerateMemorial( aPlayer : TPlayer );
        procedure OpenJHCPage;
        function HandleUnloadCommand( aItem : TItem ) : Boolean;
@@ -80,6 +80,7 @@ type TDRLSession = class(TVObject)
        procedure ReleasePlayer;
        procedure Apply( aResult : TMenuResult );
        procedure HardQuit;
+       procedure HandlePlayerViewRequest;
        function HandleMouseEvent( aEvent : TIOEvent ) : Boolean;
        function HandleKeyEvent( aEvent : TIOEvent ) : Boolean;
        function HandlePadMovement( aPressed : Boolean ) : Boolean;
@@ -261,9 +262,9 @@ begin
   FMemorial.Add( iMemorial, 'mortem.txt' );
 end;
 
-procedure TDRLSession.ClearPlayerView;
+procedure TDRLSession.ClearPlayerView( aView : TIOLayer );
 begin
-  FPlayerView := nil;
+  if FPlayerView = aView then FPlayerView := nil;
 end;
 
 procedure TDRLSession.OpenJHCPage;
@@ -876,7 +877,8 @@ begin
   if not( aItem.IType in [ ItemType_Ranged, ItemType_AmmoPack ] )  then
      Exit( False );
 
-  Exit( HandleCommand( TCommand.Create( COMMAND_UNLOAD, aItem, iID ) ) );
+  QueueCommand( TCommand.Create( COMMAND_UNLOAD, aItem, iID ) );
+  Exit( True );
 end;
 
 function TDRLSession.HandleSwapWeaponCommand : Boolean;
@@ -914,8 +916,52 @@ begin
   FQueueCommand := aCommand;
 end;
 
-function TDRLSession.HandleCommand( aCommand : TCommand ) : Boolean;
+procedure TDRLSession.HandlePlayerViewRequest;
+var iRequest : TPlayerViewRequest;
+    iItem    : TItem;
+    iSlot    : TEqSlot;
 begin
+  if FPlayerView = nil then Exit;
+  iRequest := ( FPlayerView as TPlayerView ).TakeRequest( iItem, iSlot );
+  case iRequest of
+    PVR_UNLOAD : HandleUnloadCommand( iItem );
+    PVR_TAKEOFF :
+      begin
+        iItem := FPlayer.Inv.Slot[ iSlot ];
+        if FPlayer.Inv.IsFull then
+        begin
+          if Option_InvFullDrop
+            then QueueCommand( TCommand.Create( COMMAND_DROP, iItem ) )
+            else IO.PushLayer( TNoRoomConfirmView.Create( Self, iItem ) );
+        end
+        else QueueCommand( TCommand.Create( COMMAND_TAKEOFF, nil, iSlot ) );
+      end;
+    PVR_SWAP :
+      begin
+        iItem := FPlayer.Inv.Slot[ iSlot ];
+        if ( iItem = nil ) or iItem.CallHookCheck( Hook_OnUnequipCheck, [ FPlayer, False ] ) then
+          if FState = DSPlaying then
+            ( FPlayerView as TPlayerView ).InitSwapMode( iSlot );
+        if FPlayerView <> nil then
+          ( FPlayerView as TPlayerView ).FinishPending;
+      end;
+  end;
+end;
+
+function TDRLSession.HandleCommand( aCommand : TCommand ) : Boolean;
+var iItem : TItem;
+begin
+  iItem := nil;
+  case aCommand.Command of
+    COMMAND_DROP : if FPlayer.Inv.Equipped( aCommand.Item ) then iItem := aCommand.Item;
+    COMMAND_TAKEOFF : iItem := FPlayer.Inv.Slot[ aCommand.Slot ];
+  end;
+  if iItem <> nil then
+  begin
+    if not iItem.CallHookCheck( Hook_OnUnequipCheck, [ FPlayer, False ] ) then Exit( False );
+    if FState <> DSPlaying then Exit( False );
+  end;
+
   if not ( aCommand.Command in [ COMMAND_FIRE, COMMAND_ALTFIRE, COMMAND_RELOAD ] ) then
     FTargeting.ClearPosition;
 
@@ -1511,6 +1557,7 @@ begin
           Continue;
         end;
         IO.FullUpdate;
+        HandlePlayerViewRequest;
         FLastFrameTime := IO.Driver.GetMs;
         IO.Driver.Sleep(10);
       end;
@@ -1523,6 +1570,7 @@ begin
       if DWord( IO.Driver.GetMs - FLastFrameTime ) >= 16 then
       begin
         IO.FullUpdate;
+        HandlePlayerViewRequest;
         FLastFrameTime := IO.Driver.GetMs;
       end;
 

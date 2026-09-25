@@ -759,9 +759,11 @@ begin
 end;
 
 procedure TPlayer.doUpgradeTrait;
+var iTrait : Byte;
 begin
   if DemoVersion and (ExpLevel > 7) then Exit;
-  IO.ChooseTrait;
+  iTrait := IO.ChooseTrait;
+  if iTrait <> 255 then FTraits.Upgrade( FKlass, iTrait );
 end;
 
 procedure TPlayer.ResortStacks;

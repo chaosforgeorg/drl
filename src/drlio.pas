@@ -123,7 +123,7 @@ type TDRLIO = class( TIORL )
   procedure RenderUIBackgroundBlock( aUL, aBR : TIOPoint; aOpacity : Single = 0.85; aZ : Integer = 0 ); virtual;
   procedure RenderUIBackground( aTexture : TTextureID; aZ : Integer = 0 ); virtual;
   procedure FullLook( aThing : TThing );
-  procedure ChooseTrait;
+  function ChooseTrait : Byte;
   procedure SetTarget( aTarget : TCoord2D; aColor : Byte; aRange : Byte ); virtual; abstract;
   procedure SetAutoTarget( aTarget : TCoord2D ); virtual;
   function ResolveSub( const aID : Ansistring ) : Ansistring;
@@ -618,10 +618,12 @@ begin
   end;
 end;
 
-procedure TDRLIO.ChooseTrait;
+function TDRLIO.ChooseTrait : Byte;
 begin
   PushLayer( TPlayerView.CreateTrait( FSession ) );
   WaitForLayer( True );
+  if FSession.State <> DSPlaying then Exit( 255 );
+  Exit( TPlayerView.TraitPick );
 end;
 
 procedure TDRLIO.SetAutoTarget( aTarget : TCoord2D );

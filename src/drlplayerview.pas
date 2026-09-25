@@ -14,10 +14,11 @@ type TPlayerViewState = (
   PLAYERVIEW_EQUIPMENT,
   PLAYERVIEW_CHARACTER,
   PLAYERVIEW_TRAITS,
-  PLAYERVIEW_CLOSING,
   PLAYERVIEW_PENDING,
   PLAYERVIEW_DONE
 );
+
+type TPlayerViewRequest = ( PVR_NONE, PVR_UNLOAD, PVR_TAKEOFF, PVR_SWAP );
 
 type TItemViewEntry = record
   Name  : Ansistring;
@@ -56,6 +57,8 @@ type TPlayerView = class( TIOLayer )
   function IsModal : Boolean; override;
   procedure Retain;
   procedure FinishPending;
+  function TakeRequest( out aItem : TItem; out aSlot : TEqSlot ) : TPlayerViewRequest;
+  procedure InitSwapMode( aSlot : TEqSlot );
   destructor Destroy; override;
 protected
   function MarkQSlot( aItem : TItem; aValue : Byte ) : Boolean;
@@ -71,7 +74,6 @@ protected
   procedure ReadTraits( aKlass : Byte );
   procedure ReadCharacter;
   procedure ReadQuickslots;
-  procedure InitSwapMode( aSlot : TEqSlot );
   procedure Sort( aList : TItemViewArray );
 protected
   procedure Filter( aSet : TItemTypeSet; aUsableOnly : Boolean = False );
@@ -95,6 +97,8 @@ protected
   FSSlot       : TEqSlot;
   FTraits      : TTraitViewArray;
   FCommandMode : Byte;
+  FRequest     : TPlayerViewRequest;
+  FRequestItem : TItem;
 
   class var FTraitPick : Byte;
 public
@@ -162,11 +166,11 @@ begin
   FState       := PLAYERVIEW_INVENTORY;
   ReadInv;
   case aCommand of
-    COMMAND_USE    : begin FAction := 'use';  FITitle := 'Choose item to use';  Filter( [ITEMTYPE_PACK,ITEMTYPE_URANGED], True ); end;
+    COMMAND_USE    : begin FAction := 'use';  FITitle := 'Choose item to use'; end;
     COMMAND_DROP   : begin FAction := 'drop'; FITitle := 'Choose item to drop'; end;
     COMMAND_UNLOAD : if aScavenger
-                       then begin FAction := 'unload/scavenge';  FITitle := 'Choose item to unload/scavenge';  Filter( [ITEMTYPE_RANGED, ITEMTYPE_AMMOPACK, ITEMTYPE_MELEE, ITEMTYPE_ARMOR, ITEMTYPE_BOOTS] ); end
-                       else begin FAction := 'unload';           FITitle := 'Choose item to unload';  Filter( [ITEMTYPE_RANGED, ITEMTYPE_AMMOPACK] ); end;
+                       then begin FAction := 'unload/scavenge';  FITitle := 'Choose item to unload/scavenge'; end
+                       else begin FAction := 'unload';           FITitle := 'Choose item to unload'; end;
   end;
 end;
 
@@ -193,24 +197,15 @@ begin
   FTraitMode   := False;
   FTraitFirst  := False;
   FCommandMode := 0;
+  FRequest     := PVR_NONE;
   FAction      := 'wear/use';
   FITitle      := 'Inventory';
   FTraitPick   := 255;
 end;
 
 procedure TPlayerView.Update( aDTime : Integer; aActive : Boolean );
-var iTraitFirst : Boolean;
-    iSession    : TDRLSession;
 begin
-  if IsFinished or (FState = PLAYERVIEW_CLOSING) or (FState = PLAYERVIEW_PENDING) then Exit;
-
-  iTraitFirst := FTraitFirst;
-  iSession := FSession;
-  if ( iSession.State <> DSPlaying ) and ( not iTraitFirst ) then
-  begin
-    FState := PLAYERVIEW_DONE;
-    Exit;
-  end;
+  if IsFinished or ( FState = PLAYERVIEW_PENDING ) then Exit;
 
   case FState of
     PLAYERVIEW_INVENTORY : UpdateInventory( aActive );
@@ -219,7 +214,7 @@ begin
     PLAYERVIEW_TRAITS    : UpdateTraits( aActive );
   end;
 
-  if (( iSession.State <> DSPlaying ) and ( not iTraitFirst )) or IsFinished or (FState = PLAYERVIEW_CLOSING) or (FState = PLAYERVIEW_PENDING) then Exit;
+  if IsFinished or ( FState = PLAYERVIEW_PENDING ) then Exit;
 
   if (aActive) and ( not FSwapMode ) and ( not FTraitMode ) and ( FCommandMode = 0 ) then
   begin
@@ -281,8 +276,13 @@ begin
 end;
 
 procedure TPlayerView.Retain;
+var i : Integer;
 begin
   if FState <> PLAYERVIEW_PENDING then Exit;
+  FreeAndNil( FEq );
+  FreeAndNil( FTraits );
+  for i := Low( FCharacter ) to High( FCharacter ) do
+    FreeAndNil( FCharacter[i] );
   ReadInv;
   FState := PLAYERVIEW_INVENTORY;
 end;
@@ -292,15 +292,24 @@ begin
   if FState = PLAYERVIEW_PENDING then FState := PLAYERVIEW_DONE;
 end;
 
+function TPlayerView.TakeRequest( out aItem : TItem; out aSlot : TEqSlot ) : TPlayerViewRequest;
+begin
+  Result := FRequest;
+  aItem := FRequestItem;
+  aSlot := FSSlot;
+  FRequest := PVR_NONE;
+  if Result in [ PVR_UNLOAD, PVR_TAKEOFF ] then FState := PLAYERVIEW_DONE;
+end;
+
 function TPlayerView.IsModal : Boolean;
 begin
-  Exit( ( FState <> PLAYERVIEW_CLOSING ) and ( FState <> PLAYERVIEW_PENDING ) );
+  Exit( FState <> PLAYERVIEW_PENDING );
 end;
 
 destructor TPlayerView.Destroy;
 var i : Integer;
 begin
-  FSession.ClearPlayerView;
+  FSession.ClearPlayerView( Self );
   FreeAndNil( FEq );
   FreeAndNil( FInv );
   FreeAndNil( FTraits );
@@ -350,10 +359,7 @@ procedure TPlayerView.UpdateInventory( aActive : Boolean );
 var iEntry    : TItemViewEntry;
     iSelected : Integer;
     iCommand  : Byte;
-    iSession  : TDRLSession;
-
 begin
-  iSession := FSession;
   if FInv = nil then ReadInv;
   VTIG_PushStyle( @FCompactStyle );
   VTIG_BeginWindow( FITitle, 'inventory', FSize );
@@ -453,13 +459,12 @@ begin
           iCommand := COMMAND_NONE;
           if FInv[iSelected].Item.isWearable then iCommand := COMMAND_WEAR;
           if FInv[iSelected].Item.isUsable   then iCommand := COMMAND_USE;
-          FState := PLAYERVIEW_CLOSING;
+          FState := PLAYERVIEW_DONE;
           if iCommand <> COMMAND_NONE then
             if FInv[iSelected].Item.IType = ITEMTYPE_URANGED
               then FSession.HandleUsableCommand( FInv[iSelected].Item )
-              else FSession.HandleCommand( TCommand.Create( iCommand, FInv[iSelected].Item ) );
-          if iSession.State <> DSPlaying then Exit;
-          FState := PLAYERVIEW_DONE;
+              else FSession.QueueCommand( TCommand.Create( iCommand, FInv[iSelected].Item ) );
+          Exit;
         end;
         if VTIG_Event( VTIG_IE_1 ) then MarkQSlot( FInv[iSelected].Item, 1 );
         if VTIG_Event( VTIG_IE_2 ) then MarkQSlot( FInv[iSelected].Item, 2 );
@@ -475,14 +480,18 @@ begin
       begin
         if VTIG_EventConfirm then
         begin
-          iCommand := FCommandMode;
-          FState := PLAYERVIEW_CLOSING;
-               if iCommand = COMMAND_UNLOAD then
-            FSession.HandleUnloadCommand( FInv[iSelected].Item )
-          else if iCommand <> COMMAND_NONE then
-            FSession.HandleCommand( TCommand.Create( iCommand, FInv[iSelected].Item ) );
-          if iSession.State <> DSPlaying then Exit;
-          FState := PLAYERVIEW_DONE;
+          if FCommandMode = COMMAND_UNLOAD then
+          begin
+            FRequest := PVR_UNLOAD;
+            FRequestItem := FInv[iSelected].Item;
+            FState := PLAYERVIEW_PENDING;
+          end
+          else
+          begin
+            FSession.QueueCommand( TCommand.Create( FCommandMode, FInv[iSelected].Item ) );
+            FState := PLAYERVIEW_DONE;
+          end;
+          Exit;
         end;
       end;
     end;
@@ -502,29 +511,7 @@ var iEntry            : TItemViewEntry;
     iCount            : Integer;
     iRes              : TResistance;
     iName             : Ansistring;
-    iSession          : TDRLSession;
-  function CannotUnequip : Boolean;
-  var iSavedState : TPlayerViewState;
-      iAllowed    : Boolean;
-  begin
-    if ( FEq[iSelected].Item <> nil ) then
-    begin
-      iSavedState := FState;
-      FState := PLAYERVIEW_CLOSING;
-      iAllowed := FEq[iSelected].Item.CallHookCheck( Hook_OnUnequipCheck, [ FPlayer, False ] );
-      if iSession.State <> DSPlaying then Exit( True );
-      if not iAllowed then
-      begin
-        FState := PLAYERVIEW_DONE;
-        Exit( True );
-      end;
-      FState := iSavedState;
-    end;
-    Exit( False );
-  end;
-
 begin
-  iSession := FSession;
   if FEq = nil then ReadEq;
   VTIG_BeginWindow('Equipment', 'equipment', FSize );
     VTIG_BeginGroup( 10, True );
@@ -630,41 +617,20 @@ begin
     begin
       if Assigned( FEq[iSelected].Item ) then
       begin
-        if ( FPlayer.Inv.isFull ) then
-        begin
-          FState := PLAYERVIEW_CLOSING;
-          if not Option_InvFullDrop then
-          begin
-            IO.PushLayer( TNoRoomConfirmView.Create( FSession, FEq[iSelected].Item ) );
-            FState := PLAYERVIEW_DONE;
-            Exit;
-          end;
-          if CannotUnequip then Exit;
-          FState := PLAYERVIEW_CLOSING;
-          FSession.HandleCommand( TCommand.Create( COMMAND_DROP, FEq[iSelected].Item ) );
-          if iSession.State <> DSPlaying then Exit;
-          FState := PLAYERVIEW_DONE;
-        end
-        else
-        begin
-          if CannotUnequip then Exit;
-          FState := PLAYERVIEW_CLOSING;
-          FSession.HandleCommand( TCommand.Create( COMMAND_TAKEOFF, nil, TEqSlot(iSelected) ) );
-          if iSession.State <> DSPlaying then Exit;
-          FState := PLAYERVIEW_DONE;
-        end;
+        FRequest := PVR_TAKEOFF;
+        FSSlot := TEqSlot(iSelected);
+        FState := PLAYERVIEW_PENDING;
       end
       else
-      begin
         InitSwapMode( TEqSlot(iSelected) );
-        Exit;
-      end;
+      Exit;
     end
     else
     if VTIG_Event( UI_BINDING_SWAP ) then
     begin
-      if CannotUnequip then Exit;
-      InitSwapMode( TEqSlot(iSelected) );
+      FRequest := PVR_SWAP;
+      FSSlot := TEqSlot(iSelected);
+      FState := PLAYERVIEW_PENDING;
       Exit;
     end
     else
@@ -672,16 +638,14 @@ begin
     begin
       if VTIG_Event( UI_BINDING_DROP ) then
       begin
-        if CannotUnequip then Exit;
-        FState := PLAYERVIEW_CLOSING;
-        FSession.HandleCommand( TCommand.Create(
+        FSession.QueueCommand( TCommand.Create(
           COMMAND_DROP,
           FEq[iSelected].Item,
           VTIG_Event( VTIG_IE_SHIFT )
             or IO.PadState.Active( VPAD_BUTTON_RIGHTTRIGGER )
         ) );
-        if iSession.State <> DSPlaying then Exit;
         FState := PLAYERVIEW_DONE;
+        Exit;
       end;
       if VTIG_Event( VTIG_IE_1 ) then MarkQSlot( FEq[iSelected].Item, 1 );
       if VTIG_Event( VTIG_IE_2 ) then MarkQSlot( FEq[iSelected].Item, 2 );
@@ -769,13 +733,10 @@ begin
     then VTIG_End('{l<{!{$input_up},{$input_down}}> scroll, <{!{$input_ok}}> select}')
     else VTIG_End('{l<{!{$input_left},{$input_right}}> panels, <{!{$input_up},{$input_down}}> scroll, <{!{$input_escape}}> exit}');
 
-  if (iSelected >= 0) and FTraitMode and FTraits[iSelected].Available then
+  if aActive and (iSelected >= 0) and FTraitMode and FTraits[iSelected].Available then
     if VTIG_EventConfirm then
     begin
-      FState := PLAYERVIEW_CLOSING;
-      if FTraitFirst
-        then FTraitPick := FTraits[iSelected].Index
-        else FPlayer.Traits.Upgrade( FPlayer.Klass, FTraits[iSelected].Index );
+      FTraitPick := FTraits[iSelected].Index;
       FState := PLAYERVIEW_DONE;
     end;
 end;
@@ -811,10 +772,18 @@ begin
   FInv.Clear;
 
   for iItem in FPlayer.Inv do
-    if (not FPlayer.Inv.Equipped( iItem )) {and (iItem.IType in aFilter) }then
+    if not FPlayer.Inv.Equipped( iItem ) then
       PushItem( iItem, FInv );
 
   Sort( FInv );
+  if FSwapMode then
+    Filter( ItemEqFilters[ FSSlot ] )
+  else case FCommandMode of
+    COMMAND_USE : Filter( [ ITEMTYPE_PACK, ITEMTYPE_URANGED ], True );
+    COMMAND_UNLOAD : if FScavenger
+      then Filter( [ ITEMTYPE_RANGED, ITEMTYPE_AMMOPACK, ITEMTYPE_MELEE, ITEMTYPE_ARMOR, ITEMTYPE_BOOTS ] )
+      else Filter( [ ITEMTYPE_RANGED, ITEMTYPE_AMMOPACK ] );
+  end;
   ReadQuickSlots;
 end;
 
@@ -1116,7 +1085,6 @@ var iCount  : Integer;
     iSize   : Integer;
 begin
   iSize := 0;
-  if FInv = nil then ReadInv;
   if FInv.Size > 0 then
   for iCount := 0 to FInv.Size - 1 do
     if (FInv[ iCount ].Item.IType in aSet) and
@@ -1181,8 +1149,9 @@ begin
   FSwapMode := True;
   FITitle   := 'Select item to wear/wield';
   FAction   := 'wear/wield';
-  Filter( ItemEqFilters[ aSlot ] );
   FSSlot := aSlot;
+  FreeAndNil( FEq );
+  ReadInv;
 end;
 
 constructor TUnloadConfirmView.Create( aSession : TDRLSession; aItem : TItem; aID : Ansistring = '' );
@@ -1200,7 +1169,7 @@ end;
 
 procedure TUnloadConfirmView.OnConfirm;
 begin
-  FSession.HandleCommand( TCommand.Create( COMMAND_UNLOAD, FItem, FID ) );
+  FSession.QueueCommand( TCommand.Create( COMMAND_UNLOAD, FItem, FID ) );
 end;
 
 constructor TNoRoomConfirmView.Create( aSession : TDRLSession; aItem : TItem; aID : Ansistring = '' );
@@ -1214,14 +1183,8 @@ begin
 end;
 
 procedure TNoRoomConfirmView.OnConfirm;
-var iSession : TDRLSession;
-    iItem    : TItem;
 begin
-  // The hook may redraw and release this finished view.
-  iSession := FSession;
-  iItem := FItem;
-  if iItem.CallHookCheck( Hook_OnUnequipCheck, [ iSession.Player, False ] )
-    then iSession.HandleCommand( TCommand.Create( COMMAND_DROP, iItem ) );
+  FSession.QueueCommand( TCommand.Create( COMMAND_DROP, FItem ) );
 end;
 
 
