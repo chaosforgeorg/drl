@@ -54,13 +54,12 @@ protected
 end;
 
 type TActionDirView = class( TDirectionQueryLayer )
-  constructor Create( aAction : Ansistring );
+  constructor Create( aSession : TDRLSession; aAction : Ansistring; aFlag : Byte );
 protected
   procedure Finalize( aDir : TDirection ); override;
-private
-  class var FDirection : TDirection;
-public
-  class property Direction : TDirection read FDirection;
+protected
+  FSession : TDRLSession; // Borrowed; the view is released before Session.
+  FFlag    : Byte;
 end;
 
 type TMoreLayer = class( TIOLayer )
@@ -81,7 +80,7 @@ type TTargetModeView = class( TIOLayer )
   function HandleInput( aInput : Integer ) : Boolean; override;
   function HandleEvent( const aEvent : TIOEvent ) : Boolean; override;
 protected
-  procedure HandleFire;
+  procedure ConfirmTarget;
   function MoveTarget( aNew : TCoord2D ) : Boolean;
   procedure Finalize;
   procedure UpdateTarget;
@@ -266,16 +265,18 @@ begin
     FSession.QueueCommand( TCommand.Create( COMMAND_MELEE, FSession.Player.Position + aDir, ModuleOption_MeleeMoveOnKill and ( not FAlt ) ) );
 end;
 
-constructor TActionDirView.Create( aAction : Ansistring );
+constructor TActionDirView.Create( aSession : TDRLSession; aAction : Ansistring; aFlag : Byte );
 begin
   inherited Create( False );
+  FSession := aSession;
   FPrompt := aAction;
-  FDirection := NewDirection( DIR_CENTER );
+  FFlag := aFlag;
 end;
 
 procedure TActionDirView.Finalize( aDir : TDirection );
 begin
-  FDirection := aDir;
+  if aDir.code <> DIR_CENTER then
+    FSession.HandleActionCommand( FSession.Player.Position + aDir, FFlag );
 end;
 
 constructor TMoreLayer.Create( aMore : Boolean = True );
@@ -393,7 +394,7 @@ begin
   end;
 
   if ( iInput in [ INPUT_ACTION, INPUT_OK, INPUT_FIRE, INPUT_ALTFIRE, INPUT_TARGET, INPUT_ALTTARGET, INPUT_MLEFT ] ) then
-    HandleFire;
+    ConfirmTarget;
 
   Exit( True );
 end;
@@ -428,7 +429,7 @@ begin
           UpdateTarget;
           Exit( True );
         end;
-    CONTROLLER_FIRE : HandleFire;
+    CONTROLLER_FIRE : ConfirmTarget;
     CONTROLLER_TARGET_NEXT : begin
       FTarget := FSession.Targeting.List.Next;
       UpdateTarget;
@@ -462,7 +463,7 @@ begin
   Exit( True );
 end;
 
-procedure TTargetModeView.HandleFire;
+procedure TTargetModeView.ConfirmTarget;
 begin
   Finalize;
   if FTarget = FPosition then
@@ -540,7 +541,6 @@ begin
 
     if FArray.Size <= 1 then
     begin
-      IO.MsgUpDate;
       if FArray.Size = 0
         then IO.Msg('You have no weapons!')
         else IO.Msg('You have no other weapons!');

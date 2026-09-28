@@ -80,7 +80,7 @@ type TDRLSession = class(TVObject)
        procedure ReleasePlayer;
        procedure Apply( aResult : TMenuResult );
        procedure HardQuit;
-       procedure HandlePlayerViewRequest;
+       procedure HandlePlayerViewSwap;
        function HandleMouseEvent( aEvent : TIOEvent ) : Boolean;
        function HandleKeyEvent( aEvent : TIOEvent ) : Boolean;
        function HandlePadMovement( aPressed : Boolean ) : Boolean;
@@ -256,6 +256,7 @@ begin
     FContext.Lua.ProtectedCall( [CoreModuleID, 'RunAwards'], [NoPlayerRecord] );
   aPlayer.CalculateScore( FDifficulty, FGameWon );
   RecordResult( aPlayer );
+  if IO.MsgPending then IO.MsgUpdate;
   iMemorial := aPlayer.GenerateMemorial( FPaths.ModuleUserPath );
 
   FMemorial := TPagedReport.Create( 'Post mortem', False );
@@ -598,11 +599,9 @@ begin
   if iCount > 1 then
   begin
     if iID = ''
-      then IO.PushLayer( TActionDirView.Create( 'Action' ) )
-      else IO.PushLayer( TActionDirView.Create( Capitalized(iID)+' door' ) );
-    IO.WaitForLayer( False );
-    if ( FState <> DSPlaying ) or ( TActionDirView.Direction.code = DIR_CENTER ) then Exit( False );
-    iTarget := FPlayer.Position + TActionDirView.Direction;
+      then IO.PushLayer( TActionDirView.Create( Self, 'Action', iFlag ) )
+      else IO.PushLayer( TActionDirView.Create( Self, Capitalized(iID)+' door', iFlag ) );
+    Exit( False );
   end;
 
   Exit( HandleActionCommand( iTarget, iFlag ) );
@@ -918,36 +917,18 @@ begin
   FQueueCommand := aCommand;
 end;
 
-procedure TDRLSession.HandlePlayerViewRequest;
-var iRequest : TPlayerViewRequest;
-    iItem    : TItem;
-    iSlot    : TEqSlot;
+procedure TDRLSession.HandlePlayerViewSwap;
+var iItem : TItem;
+    iSlot : TEqSlot;
 begin
   if FPlayerView = nil then Exit;
-  iRequest := ( FPlayerView as TPlayerView ).TakeRequest( iItem, iSlot );
-  case iRequest of
-    PVR_UNLOAD : HandleUnloadCommand( iItem );
-    PVR_TAKEOFF :
-      begin
-        iItem := FPlayer.Inv.Slot[ iSlot ];
-        if FPlayer.Inv.IsFull then
-        begin
-          if Option_InvFullDrop
-            then QueueCommand( TCommand.Create( COMMAND_DROP, iItem ) )
-            else IO.PushLayer( TNoRoomConfirmView.Create( Self, iItem ) );
-        end
-        else QueueCommand( TCommand.Create( COMMAND_TAKEOFF, nil, iSlot ) );
-      end;
-    PVR_SWAP :
-      begin
-        iItem := FPlayer.Inv.Slot[ iSlot ];
-        if ( iItem = nil ) or iItem.CallHookCheck( Hook_OnUnequipCheck, [ FPlayer, False ] ) then
-          if FState = DSPlaying then
-            ( FPlayerView as TPlayerView ).InitSwapMode( iSlot );
-        if FPlayerView <> nil then
-          ( FPlayerView as TPlayerView ).FinishPending;
-      end;
-  end;
+  if not ( FPlayerView as TPlayerView ).TakeSwapRequest( iSlot ) then Exit;
+  iItem := FPlayer.Inv.Slot[ iSlot ];
+  if ( iItem = nil ) or iItem.CallHookCheck( Hook_OnUnequipCheck, [ FPlayer, False ] ) then
+    if FState = DSPlaying then
+      ( FPlayerView as TPlayerView ).InitSwapMode( iSlot );
+  if FPlayerView <> nil then
+    ( FPlayerView as TPlayerView ).FinishPending;
 end;
 
 function TDRLSession.HandleCommand( aCommand : TCommand ) : Boolean;
@@ -1405,9 +1386,8 @@ begin
   iEpisodeSeed := 0;
   if aShowIntro then
   begin
-    IO.PushLayer( TMainMenuView.Create(
-      Self, TDRLRuntime( FRuntime ).HOF, TDRLRuntime( FRuntime ).Help, TDRLRuntime( FRuntime ).ModErrors ) );
-    IO.WaitForLayer( True );
+    IO.RunLayer( TMainMenuView.Create(
+      Self, TDRLRuntime( FRuntime ).HOF, TDRLRuntime( FRuntime ).Help, TDRLRuntime( FRuntime ).ModErrors ), True );
   end;
   if FState <> DSQuit then
   begin
@@ -1428,9 +1408,8 @@ begin
   SetState( DSMenu );
   iResult.Reset; // TODO : could reuse for same game!
 
-  IO.PushLayer( TMainMenuView.Create(
-    Self, TDRLRuntime( FRuntime ).HOF, TDRLRuntime( FRuntime ).Help, TDRLRuntime( FRuntime ).ModErrors, MAINMENU_MENU, iResult ) );
-  IO.WaitForLayer( True );
+  IO.RunLayer( TMainMenuView.Create(
+    Self, TDRLRuntime( FRuntime ).HOF, TDRLRuntime( FRuntime ).Help, TDRLRuntime( FRuntime ).ModErrors, MAINMENU_MENU, iResult ), True );
   if iResult.ReloadData then
   begin
     Result := DSR_ReloadData;
@@ -1535,6 +1514,12 @@ begin
 
     while ( State = DSPlaying ) do
     begin
+      if IO.MsgPending then
+      begin
+        IO.MsgUpdate;
+        Continue;
+      end;
+
       if FQueueCommand.Command <> COMMAND_NONE then
       begin
         iCommand := FQueueCommand;
@@ -1558,7 +1543,7 @@ begin
       end;
 
       while ( not IO.Driver.EventPending ) and ( State = DSPlaying )
-        and ( FQueueCommand.Command = COMMAND_NONE ) do
+        and ( FQueueCommand.Command = COMMAND_NONE ) and ( not IO.MsgPending ) do
       begin
         if FPadMoveActive and ( IO.Time >= FPadMoveNext ) then
         begin
@@ -1566,12 +1551,12 @@ begin
           Continue;
         end;
         IO.FullUpdate;
-        HandlePlayerViewRequest;
+        HandlePlayerViewSwap;
         FLastFrameTime := IO.Driver.GetMs;
         IO.Driver.Sleep(10);
       end;
       if State <> DSPlaying then Break;
-      if FQueueCommand.Command <> COMMAND_NONE then Continue;
+      if ( FQueueCommand.Command <> COMMAND_NONE ) or IO.MsgPending then Continue;
 
       // Guarantee a render slice even when events arrive faster than we can drain them
       // (e.g. a drifting gamepad stick spamming VEVENT_PADAXIS keeps EventPending true).
@@ -1579,12 +1564,12 @@ begin
       if DWord( IO.Driver.GetMs - FLastFrameTime ) >= 16 then
       begin
         IO.FullUpdate;
-        HandlePlayerViewRequest;
+        HandlePlayerViewSwap;
         FLastFrameTime := IO.Driver.GetMs;
       end;
 
       if State <> DSPlaying then Break;
-      if FQueueCommand.Command <> COMMAND_NONE then Continue;
+      if ( FQueueCommand.Command <> COMMAND_NONE ) or IO.MsgPending then Continue;
       if not IO.Driver.PollEvent( iEvent ) then continue;
       if IO.OnEvent( iEvent ) then Continue;
 
@@ -1602,6 +1587,8 @@ begin
       if iEvent.EType in [ VEVENT_PADDOWN, VEVENT_PADUP, VEVENT_PADDEVICE] then
         HandlePadEvent( iEvent );
     end;
+
+    if ( State <> DSQuit ) and IO.MsgPending then IO.MsgUpdate;
 
     // Finish the requested fade after UI dispatch, while the outgoing level exists.
     IO.ResetAnimationSpeed;
@@ -1665,20 +1652,17 @@ begin
   begin
     if TDRLRuntime( FRuntime ).HOF.RankCheck( FStore, iRank ) then
     begin
-      IO.PushLayer( TRankUpView.Create( FContext.Lua, iRank ) );
-      IO.WaitForLayer( True );
+      IO.RunLayer( TRankUpView.Create( FContext.Lua, iRank ), True );
     end;
     if (FPlayer.Score >= -1000) and (FMemorial <> nil) then
     begin
       iReport := FMemorial;
       FMemorial := nil; // Ownership passes to the view.
-      IO.PushLayer( TPagedView.Create( iReport ) );
-      IO.WaitForLayer( True );
+      IO.RunLayer( TPagedView.Create( iReport ), True );
     end;
     iChalAbbr := '';
     if FChallenge <> '' then iChalAbbr := FContext.Lua.Get(['chal',FChallenge,'abbr']);
-    IO.PushLayer( TPagedView.Create( TDRLRuntime( FRuntime ).HOF.GetPagedScoreReport, iChalAbbr ) );
-    IO.WaitForLayer( True );
+    IO.RunLayer( TPagedView.Create( TDRLRuntime( FRuntime ).HOF.GetPagedScoreReport, iChalAbbr ), True );
   end;
   CallHook(Hook_OnUnLoad,[]);
 

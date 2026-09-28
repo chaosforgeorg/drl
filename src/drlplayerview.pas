@@ -18,8 +18,6 @@ type TPlayerViewState = (
   PLAYERVIEW_DONE
 );
 
-type TPlayerViewRequest = ( PVR_NONE, PVR_UNLOAD, PVR_TAKEOFF, PVR_SWAP );
-
 type TItemViewEntry = record
   Name  : Ansistring;
   Desc  : Ansistring;
@@ -57,7 +55,7 @@ type TPlayerView = class( TIOLayer )
   function IsModal : Boolean; override;
   procedure Retain;
   procedure FinishPending;
-  function TakeRequest( out aItem : TItem; out aSlot : TEqSlot ) : TPlayerViewRequest;
+  function TakeSwapRequest( out aSlot : TEqSlot ) : Boolean;
   procedure InitSwapMode( aSlot : TEqSlot );
   destructor Destroy; override;
 protected
@@ -97,8 +95,7 @@ protected
   FSSlot       : TEqSlot;
   FTraits      : TTraitViewArray;
   FCommandMode : Byte;
-  FRequest     : TPlayerViewRequest;
-  FRequestItem : TItem;
+  FSwapRequest : Boolean;
 
   class var FTraitPick : Byte;
 public
@@ -197,7 +194,7 @@ begin
   FTraitMode   := False;
   FTraitFirst  := False;
   FCommandMode := 0;
-  FRequest     := PVR_NONE;
+  FSwapRequest := False;
   FAction      := 'wear/use';
   FITitle      := 'Inventory';
   FTraitPick   := 255;
@@ -292,13 +289,11 @@ begin
   if FState = PLAYERVIEW_PENDING then FState := PLAYERVIEW_DONE;
 end;
 
-function TPlayerView.TakeRequest( out aItem : TItem; out aSlot : TEqSlot ) : TPlayerViewRequest;
+function TPlayerView.TakeSwapRequest( out aSlot : TEqSlot ) : Boolean;
 begin
-  Result := FRequest;
-  aItem := FRequestItem;
+  Result := FSwapRequest;
   aSlot := FSSlot;
-  FRequest := PVR_NONE;
-  if Result in [ PVR_UNLOAD, PVR_TAKEOFF ] then FState := PLAYERVIEW_DONE;
+  FSwapRequest := False;
 end;
 
 function TPlayerView.IsModal : Boolean;
@@ -480,17 +475,10 @@ begin
       begin
         if VTIG_EventConfirm then
         begin
-          if FCommandMode = COMMAND_UNLOAD then
-          begin
-            FRequest := PVR_UNLOAD;
-            FRequestItem := FInv[iSelected].Item;
-            FState := PLAYERVIEW_PENDING;
-          end
-          else
-          begin
-            FSession.QueueCommand( TCommand.Create( FCommandMode, FInv[iSelected].Item ) );
-            FState := PLAYERVIEW_DONE;
-          end;
+          FState := PLAYERVIEW_DONE;
+          if FCommandMode = COMMAND_UNLOAD
+            then FSession.HandleUnloadCommand( FInv[iSelected].Item )
+            else FSession.QueueCommand( TCommand.Create( FCommandMode, FInv[iSelected].Item ) );
           Exit;
         end;
       end;
@@ -617,9 +605,14 @@ begin
     begin
       if Assigned( FEq[iSelected].Item ) then
       begin
-        FRequest := PVR_TAKEOFF;
-        FSSlot := TEqSlot(iSelected);
-        FState := PLAYERVIEW_PENDING;
+        FState := PLAYERVIEW_DONE;
+        if FPlayer.Inv.IsFull then
+        begin
+          if Option_InvFullDrop
+            then FSession.QueueCommand( TCommand.Create( COMMAND_DROP, FEq[iSelected].Item ) )
+            else IO.PushLayer( TNoRoomConfirmView.Create( FSession, FEq[iSelected].Item ) );
+        end
+        else FSession.QueueCommand( TCommand.Create( COMMAND_TAKEOFF, nil, TEqSlot(iSelected) ) );
       end
       else
         InitSwapMode( TEqSlot(iSelected) );
@@ -628,7 +621,7 @@ begin
     else
     if VTIG_Event( UI_BINDING_SWAP ) then
     begin
-      FRequest := PVR_SWAP;
+      FSwapRequest := True;
       FSSlot := TEqSlot(iSelected);
       FState := PLAYERVIEW_PENDING;
       Exit;

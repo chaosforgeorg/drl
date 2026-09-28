@@ -302,8 +302,7 @@ begin
   IO.Blink( LightBlue, 100 );
 
   IO.Msg( 'You advance to level %d!', [ FExpLevel ] );
-  IO.PushLayer( TMoreLayer.Create( False ) );
-  IO.WaitForLayer( False );
+  IO.RunLayer( TMoreLayer.Create( False ) );
 
   if not DRL.CallHookCheck( Hook_OnPreLevelUp, [ FExpLevel ] ) then Exit;
   IO.BloodSlideDown( 20 );
@@ -607,8 +606,7 @@ begin
 
   begin
     IO.Msg('You die!...');
-    IO.PushLayer( TMoreLayer.Create( False ) );
-    IO.WaitForLayer( False );
+    IO.RunLayer( TMoreLayer.Create( False ) );
   end;
   DRL.SetState( DSFinished );
 

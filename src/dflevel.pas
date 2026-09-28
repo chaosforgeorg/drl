@@ -1360,8 +1360,7 @@ begin
       if DRL.State in [DSNextLevel,DSSaving] then
       begin
         IO.Msg('Right in the nick of time!');
-        IO.PushLayer( TMoreLayer.Create( False ) );
-        IO.WaitForLayer( False );
+        IO.RunLayer( TMoreLayer.Create( False ) );
         Exit;
       end;
 

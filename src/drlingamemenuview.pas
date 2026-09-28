@@ -128,7 +128,7 @@ end;
 
 procedure TAbandonView.OnCancel;
 begin
-  IO.Msg('Ok, then. Stay and take what''s coming to ya...');
+  IO.Msg( 'Ok, then. Stay and take what''s coming to ya...' );
 end;
 
 end.

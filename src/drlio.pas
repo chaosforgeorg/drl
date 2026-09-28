@@ -43,7 +43,7 @@ type TDRLIO = class( TIORL )
   procedure Reconfigure( aConfig : TLuaConfig ); virtual;
   procedure Configure( aConfig : TLuaConfig ); override; overload;
   procedure Configure( aConfig : TLuaConfig; aReload : Boolean ); overload; virtual;
-  procedure WaitForLayer( aHideHUD : Boolean ); reintroduce;
+  procedure RunLayer( aLayer : TIOLayer; aHideHUD : Boolean = False ); reintroduce;
   procedure PreUpdate; override;
   destructor Destroy; override;
   procedure Screenshot( aBB : Boolean );
@@ -66,8 +66,6 @@ type TDRLIO = class( TIORL )
 
   procedure LookDescription( aWhere : TCoord2D );
 
-  procedure Msg( const aText : AnsiString ); override; overload;
-  // TODO: Could this be removed as well?
   procedure MsgUpDate; override;
   procedure ErrorReport( const aText : AnsiString );
 
@@ -146,7 +144,6 @@ protected
   FSession     : TDRLSession;
 
   FHudEnabled  : Boolean;
-  FWaiting     : Boolean;
   FTargeting   : Boolean;
   FNarrowMode  : Boolean;
   FHint        : AnsiString;
@@ -235,16 +232,14 @@ end;
 
 procedure TDRLIO.WaitForAnimation( aStrict : Boolean = True );
 begin
-  if FWaiting then Exit;
-  if ( FSession = nil ) or ( FSession.State <> DSPlaying ) then Exit;
-  FWaiting := True;
-  try
-    if not WaitForAnimationCompletion( aStrict, 2000 ) then
-      Log( LOGWARN, 'Emergency animation break!' );
-    if aStrict then ClearAnimations;
-  finally
-    FWaiting := False;
+  if ( FSession = nil ) or ( FSession.State <> DSPlaying ) then
+  begin
+    if MsgPending then MsgUpdate;
+    Exit;
   end;
+  if not WaitForAnimationCompletion( aStrict, 2000 ) then
+    Log( LOGWARN, 'Emergency animation break!' );
+  if aStrict then ClearAnimations;
   if FSession.Level <> nil then FSession.Level.RevealBeings;
 end;
 
@@ -420,6 +415,7 @@ constructor TDRLIO.Create;
 begin
   inherited Create( FIODriver, nil );
 
+  FMsgQueue := True;
   FLoading  := nil;
   FAudio    := TDRLAudio.Create;
   InitializeMessages( 2, 77, @EventMore, Option_MessageBuffer );
@@ -437,6 +433,7 @@ end;
 
 procedure TDRLIO.Reset;
 begin
+  MsgClear;
   Clear;
   IO := Self;
   VTIG_Shutdown;
@@ -445,7 +442,6 @@ begin
   FTime := 0;
   FASCII.Clear;
   FAudio.Reset;
-  FWaiting     := False;
   FHudEnabled  := False;
   FTargeting   := False;
   FNarrowMode  := False;
@@ -620,8 +616,7 @@ end;
 
 function TDRLIO.ChooseTrait : Byte;
 begin
-  PushLayer( TPlayerView.CreateTrait( FSession ) );
-  WaitForLayer( True );
+  RunLayer( TPlayerView.CreateTrait( FSession ), True );
   if FSession.State <> DSPlaying then Exit( 255 );
   Exit( TPlayerView.TraitPick );
 end;
@@ -783,11 +778,13 @@ begin
     aConfig.EntryFeed( 'Messages', @FMessages.AddHighlightCallback );
 end;
 
-procedure TDRLIO.WaitForLayer( aHideHUD : Boolean );
+procedure TDRLIO.RunLayer( aLayer : TIOLayer; aHideHUD : Boolean );
+var iHudEnabled : Boolean;
 begin
+  iHudEnabled := FHudEnabled;
   if aHideHUD then FHudEnabled := False;
-  inherited WaitForLayer;
-  if aHideHUD then FHudEnabled := True;
+  inherited RunLayer( aLayer );
+  FHudEnabled := iHudEnabled;
 end;
 
 procedure TDRLIO.PreUpdate;
@@ -1054,12 +1051,13 @@ begin
 end;
 
 procedure TDRLIO.EventMore;
+var iHudEnabled : Boolean;
 begin
-  if Option_MorePrompt then
-  begin
-    IO.PushLayer( TMoreLayer.Create( True ) );
-    IO.WaitForLayer( False );
-  end;
+  if not Option_MorePrompt then Exit;
+  iHudEnabled := FHudEnabled;
+  FHudEnabled := True;
+  WaitForLayer( PushLayer( TMoreLayer.Create( True ) ) );
+  FHudEnabled := iHudEnabled;
 end;
 
 procedure TDRLIO.LoadStart;
@@ -1196,7 +1194,7 @@ end;
 
 procedure TDRLIO.FinishTargeting;
 begin
-  MsgUpDate;
+  FHintOverlay := '';
   FConsole.HideCursor;
   FTargeting := False;
   if SpriteMap <> nil then SpriteMap.ClearTarget;
@@ -1220,11 +1218,6 @@ begin
   FHintOverlay := LookDesc;
 end;
 
-procedure TDRLIO.Msg( const aText : AnsiString );
-begin
-  inherited Msg( aText );
-end;
-
 procedure TDRLIO.MsgUpDate;
 begin
   inherited MsgUpdate;
@@ -1234,8 +1227,7 @@ end;
 procedure TDRLIO.ErrorReport(const aText: AnsiString);
 begin
   Msg('{RError:} '+aText);
-  PushLayer( TMoreLayer.Create( False ) );
-  WaitForLayer( False );
+  RunLayer( TMoreLayer.Create( False ) );
   Msg('{yError written to error.log, please report!}');
 end;
 
@@ -1272,8 +1264,7 @@ function lua_ui_plot_screen(L: Plua_State): Integer; cdecl;
 var iState : TLuaGameStack;
 begin
   iState.Init(L);
-  IO.PushLayer( TPlotView.Create( iState.ToString(1), iState.ToIOColor(2), iState.ToString(3,'') ) );
-  IO.WaitForLayer( True );
+  IO.RunLayer( TPlotView.Create( iState.ToString(1), iState.ToIOColor(2), iState.ToString(3,'') ), True );
   Result := 0;
 end;
 
@@ -1297,8 +1288,7 @@ begin
   State.Init(L);
   if State.StackSize = 0 then Exit(0);
   IO.Msg(State.ToString(1));
-  IO.PushLayer( TMoreLayer.Create( False ) );
-  IO.WaitForLayer( False );
+  IO.RunLayer( TMoreLayer.Create( False ) );
   IO.MsgUpDate;
   Result := 0;
 end;
@@ -1372,11 +1362,7 @@ begin
     finally
       Free;
     end;
-  IO.PushLayer( iView );
-  repeat
-    IO.FullUpdate;
-    IO.HandleEvents;
-  until TChoiceView.Done;
+  IO.RunLayer( iView );
   State.PushVariant(TChoiceView.Result);
   Result := 1;
 end;
@@ -1496,8 +1482,7 @@ const lua_ui_lib : array[0..20] of luaL_Reg = (
 
 procedure TDRLIO.RunModuleChoice;
 begin
-  PushLayer( TModuleChoiceView.Create );
-  WaitForLayer( True );
+  RunLayer( TModuleChoiceView.Create, True );
 end;
 
 class procedure TDRLIO.RegisterLuaAPI( State : TLuaStack );
