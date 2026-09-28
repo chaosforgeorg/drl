@@ -54,12 +54,13 @@ protected
 end;
 
 type TActionDirView = class( TDirectionQueryLayer )
-  constructor Create( aSession : TDRLSession; aAction : Ansistring; aFlag : Byte );
+  constructor Create( aAction : Ansistring );
 protected
   procedure Finalize( aDir : TDirection ); override;
-protected
-  FSession : TDRLSession; // Borrowed; the view is released before Session.
-  FFlag    : Byte;
+private
+  class var FDirection : TDirection;
+public
+  class property Direction : TDirection read FDirection;
 end;
 
 type TMoreLayer = class( TIOLayer )
@@ -265,18 +266,16 @@ begin
     FSession.QueueCommand( TCommand.Create( COMMAND_MELEE, FSession.Player.Position + aDir, ModuleOption_MeleeMoveOnKill and ( not FAlt ) ) );
 end;
 
-constructor TActionDirView.Create( aSession : TDRLSession; aAction : Ansistring; aFlag : Byte );
+constructor TActionDirView.Create( aAction : Ansistring );
 begin
   inherited Create( False );
-  FSession := aSession;
-  FPrompt  := aAction;
-  FFlag    := aFlag;
+  FPrompt := aAction;
+  FDirection := NewDirection( DIR_CENTER );
 end;
 
 procedure TActionDirView.Finalize( aDir : TDirection );
 begin
-  if aDir.code = DIR_CENTER then Exit;
-  FSession.HandleActionCommand( FSession.Player.Position + aDir, FFlag );
+  FDirection := aDir;
 end;
 
 constructor TMoreLayer.Create( aMore : Boolean = True );

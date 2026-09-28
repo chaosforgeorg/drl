@@ -598,9 +598,11 @@ begin
   if iCount > 1 then
   begin
     if iID = ''
-      then IO.PushLayer( TActionDirView.Create( Self, 'Action', iFlag ) )
-      else IO.PushLayer( TActionDirView.Create( Self, Capitalized(iID)+' door', iFlag ) );
-    Exit( False );
+      then IO.PushLayer( TActionDirView.Create( 'Action' ) )
+      else IO.PushLayer( TActionDirView.Create( Capitalized(iID)+' door' ) );
+    IO.WaitForLayer( False );
+    if ( FState <> DSPlaying ) or ( TActionDirView.Direction.code = DIR_CENTER ) then Exit( False );
+    iTarget := FPlayer.Position + TActionDirView.Direction;
   end;
 
   Exit( HandleActionCommand( iTarget, iFlag ) );
@@ -618,8 +620,8 @@ begin
         IO.Msg( 'There''s something in the way!' );
         Exit( False );
       end;
-      // SUCCESS
-      Exit( HandleCommand( TCommand.Create( COMMAND_ACTION, aTarget ) ) );
+      QueueCommand( TCommand.Create( COMMAND_ACTION, aTarget ) );
+      Exit( True );
     end;
     IO.Msg( 'You can''t do that!' );
   end;
