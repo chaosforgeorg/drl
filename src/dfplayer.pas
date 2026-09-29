@@ -53,7 +53,6 @@ type TPlayer = class(TBeing)
   procedure LevelUp;
   procedure AddExp( aAmount : LongInt );
   procedure CalculateScore( aDifficulty : Integer; aGameWon : Boolean );
-  function GenerateMemorial( const aUserPath : AnsiString ) : TIOStringArray; // Caller owns the returned lines.
   destructor Destroy; override;
   procedure Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer ); override;
   procedure AddHistory( const aHistory : Ansistring );
@@ -109,7 +108,7 @@ var Player : TPlayer;
 implementation
 
 uses math, variants,
-     vuid, vioevent, vgenerics, vcolor, vdebug, vtig,
+     vuid, vioevent, vgenerics, vcolor, vdebug,
      dfmap, dflevel, drlhooks, drlio, drlspritemap, drlbase, drllua, drlinventory, drlhudviews;
 
 constructor TPlayer.Create( aContext : TNodeContext; aGameRNG : TRNG );
@@ -319,8 +318,7 @@ end;
 
 procedure TPlayer.ApplyDamage(aDamage: LongInt; aTarget: TBodyTarget; aDamageType: TDamageType; aSource : TItem; aDelay : Integer );
 begin
-  if aDamage < 0 then Exit;
-  if BF_INV in FFlags then Exit;
+  if ( aDamage < 0 ) or ( BF_INV in FFlags ) or Dead then Exit;
   if aDamage > 0 then
   begin
     FMultiMove.Stop;
@@ -569,6 +567,7 @@ procedure TPlayer.Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBe
 var iLevel   : TLevel;
     iSlot    : TEqSlot;
 begin
+  if FDying then Exit;
   iLevel := TLevel(Parent);
   if (DRL.State <> DSPlaying) and IsPlayer then Exit;
 
@@ -585,6 +584,8 @@ begin
     HP := Max(1,HP);
     Exit;
   end;
+
+  FDying := True;
 
   if DRL.GameWon then
     SetKilledBy( '', False )
@@ -645,52 +646,6 @@ begin
     ScoreCRC(FScore);
   end;
   if GodMode then FScore := 0;
-end;
-
-function TPlayer.GenerateMemorial( const aUserPath : AnsiString ) : TIOStringArray;
-var iMortemPath : AnsiString;
-    iString     : AnsiString;
-    iMortemList : TStringList;
-    i           : Integer;
-begin
-  Result := nil;
-  try
-    iMortemList := TStringList.Create;
-    try
-      iMortemList.Text := FContext.Lua.ProtectedCall( [CoreModuleID, 'GenerateMemorial'], [] );
-      Result := TIOStringArray.Create;
-      for i := 0 to iMortemList.Count - 1 do
-      begin
-        Result.Push( iMortemList[i] );
-        iMortemList[i] := VTIG_StripTags( iMortemList[i] );
-      end;
-      iMortemPath := aUserPath + 'mortem.txt';
-      iMortemList.SaveToFile( iMortemPath );
-    finally
-      FreeAndNil( iMortemList );
-    end;
-
-    FScore := -1000;
-
-    if Option_MortemArchive then
-    begin
-      iString := aUserPath + 'mortem'+PathDelim+ToProperFilename('['+FormatDateTime(Option_TimeStamp,Now)+'] '+Name)+'.txt';
-      Log('Writing mortem...: '+iString);
-      try
-        iMortemList := TStringList.Create;
-        try
-          iMortemList.LoadFromFile( iMortemPath );
-          iMortemList.SaveToFile( iString );
-        finally
-          FreeAndNil( iMortemList );
-        end;
-      except
-      end;
-    end;
-  except
-    FreeAndNil( Result );
-    raise;
-  end;
 end;
 
 procedure TPlayer.AddHistory( const aHistory : Ansistring );

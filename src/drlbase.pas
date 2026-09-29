@@ -74,7 +74,8 @@ type TDRLSession = class(TVObject)
        procedure ResetAutoTarget;
      private
        procedure FinishGame;
-       procedure RecordResult( aPlayer : TPlayer );
+       procedure RecordResult;
+       function GenerateMemorial : TIOStringArray;
        procedure SetLevel( aLevel : TLevel );
        procedure ReleaseLevel;
        procedure ReleasePlayer;
@@ -157,7 +158,7 @@ var DRL : TDRLSession;
 implementation
 
 uses {$IFDEF WINDOWS}windows,{$ELSE}unix,{$ENDIF} classes, sysutils, zstream,
-     vbindings, vdebug, vstream,
+     vbindings, vdebug, vstream, vtig,
      dfmap, dfbeing, drlio, drlgfxio, drlspritemap { remove }, drlplayerview, drlingamemenuview, drlhelpview, drlassemblyview, drlpagedview, drlrankupview, drlmainmenuview, drlhudviews, drlmessagesview, drlapplication, drlcontrollerbindings;
 
 const PAD_REPEAT_START = 400;
@@ -253,10 +254,10 @@ begin
   if FContext.Lua.Defined( [CoreModuleID, 'RunAwards'] ) then
     FContext.Lua.ProtectedCall( [CoreModuleID, 'RunAwards'], [NoPlayerRecord] );
   FPlayer.CalculateScore( FDifficulty, FGameWon );
-  RecordResult( FPlayer );
+  RecordResult;
   // Include messages from the result hooks before the memorial reads history.
   if IO.MsgPending then IO.MsgUpdate;
-  iMemorial := FPlayer.GenerateMemorial( FPaths.ModuleUserPath );
+  iMemorial := GenerateMemorial;
 
   FMemorial := TPagedReport.Create( 'Post mortem', False );
   FMemorial.Add( iMemorial, 'mortem.txt' );
@@ -347,19 +348,57 @@ begin
   FModuleHooks := aModuleHooks;
 end;
 
-procedure TDRLSession.RecordResult( aPlayer : TPlayer );
+procedure TDRLSession.RecordResult;
 var iRuntime : TDRLRuntime;
 begin
   iRuntime := TDRLRuntime( FRuntime );
-  if aPlayer.Score > 0 then
+  if FPlayer.Score > 0 then
   begin
-    FStore.IncStat( 'drl_kills', aPlayer.FKills.Count );
-    if aPlayer.HP <= 0 then FStore.IncStat( 'drl_deaths' );
+    FStore.IncStat( 'drl_kills', FPlayer.FKills.Count );
+    if FPlayer.HP <= 0 then FStore.IncStat( 'drl_deaths' );
     if FGameWon then FStore.IncStat( 'drl_wins' );
   end;
-  iRuntime.HOF.Add( aPlayer, FDifficulty, FGameWon,
-    FChallenge, TLevel( aPlayer.Parent ).Abbr );
+  iRuntime.HOF.Add( FPlayer, FDifficulty, FGameWon,
+    FChallenge, FLevel.Abbr );
   iRuntime.SaveProfile;
+end;
+
+function TDRLSession.GenerateMemorial : TIOStringArray;
+var iMortemPath : AnsiString;
+    iMortemList : TStringList;
+    i           : Integer;
+begin
+  Result := nil;
+  iMortemList := TStringList.Create;
+  try
+    try
+      iMortemList.Text := FContext.Lua.ProtectedCall( [CoreModuleID, 'GenerateMemorial'], [] );
+      Result := TIOStringArray.Create;
+      for i := 0 to iMortemList.Count - 1 do
+      begin
+        Result.Push( iMortemList[i] );
+        iMortemList[i] := VTIG_StripTags( iMortemList[i] );
+      end;
+      iMortemList.SaveToFile( FPaths.ModuleUserPath + 'mortem.txt' );
+
+      if Option_MortemArchive then
+      begin
+        iMortemPath := FPaths.ModuleUserPath + 'mortem' + PathDelim
+          + ToProperFilename( '[' + FormatDateTime( Option_TimeStamp, Now ) + '] ' + FPlayer.Name ) + '.txt';
+        Log( 'Writing mortem...: ' + iMortemPath );
+        try
+          iMortemList.SaveToFile( iMortemPath );
+        except
+          // An optional archive failure must not discard the completed memorial.
+        end;
+      end;
+    except
+      FreeAndNil( Result );
+      raise;
+    end;
+  finally
+    iMortemList.Free;
+  end;
 end;
 
 procedure TDRLSession.Reconfigure;
@@ -1251,7 +1290,6 @@ begin
   IO.FadeReset;
   Option_MenuReturn := False;
   SetState( DSQuit );
-  FPlayer.Score := -100000;
 end;
 
 function TDRLSession.HandleKeyEvent( aEvent : TIOEvent ) : Boolean;
@@ -1654,7 +1692,7 @@ begin
     begin
       IO.RunLayer( TRankUpView.Create( FContext.Lua, iRank ), True );
     end;
-    if (FPlayer.Score >= -1000) and (FMemorial <> nil) then
+    if FMemorial <> nil then
     begin
       iReport := FMemorial;
       FMemorial := nil; // Ownership passes to the view.

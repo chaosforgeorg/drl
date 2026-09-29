@@ -554,7 +554,7 @@ end;
 
 function TBeing.Dead: Boolean;
 begin
-  Exit( FHP <= 0 );
+  Exit( FDying or ( FHP <= 0 ) );
 end;
 
 procedure TBeing.Remove( Node : TNode );
@@ -2090,7 +2090,7 @@ var iLevel         : TLevel;
     iOldDurability : LongInt;
 begin
   iUIDs := FContext.UIDs;
-  if ( aDamage < 0 ) or (BF_INV in FFlags) or FDying or Dead then Exit;
+  if ( aDamage < 0 ) or (BF_INV in FFlags) or Dead then Exit;
 
   if aSource <> nil then
   begin
