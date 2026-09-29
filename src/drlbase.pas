@@ -1750,6 +1750,7 @@ begin
   FContext.Lua.Context.BindUIDs( FUIDStore );
   FPlayer := TPlayer.Create( FContext, GameRNG );
   dfplayer.Player := FPlayer;
+  CallHook( Hook_OnCreate, [ FPlayer ] );
   FLevel.Place( FPlayer, NewCoord2D(4,4) );
   FPlayer.Klass := aResult.Klass;
 

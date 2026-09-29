@@ -139,7 +139,6 @@ begin
 
   FillChar( FQuickSlots, SizeOf(FQuickSlots), 0 );
   CallHook( Hook_OnCreate, [] );
-  DRL.CallHook( Hook_OnCreate, [Self] );
 end;
 
 procedure TPlayer.Initialize;
