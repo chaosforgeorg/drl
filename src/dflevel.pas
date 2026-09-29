@@ -1223,7 +1223,7 @@ procedure TLevel.UpdateKillState;
 var iEnemiesLeft       : Integer;
     iUniqueEnemiesLeft : Integer;
 begin
-  if not ( DRL.State in [ DSPlaying, DSFinished ] ) or DRL.GameWon then Exit;
+  if not ( DRL.State in [ DSPlaying, DSPlayerDead, DSFinished ] ) or DRL.GameWon then Exit;
 
   iEnemiesLeft       := EnemiesLeft();
   if ( iEnemiesLeft < 4 ) and ( not ( LF_NOBEINGREVEAL in FFlags ) ) then
@@ -1296,7 +1296,7 @@ begin
     NukeTick;
 
     // Finish this tick's effects before finalizing a death or victory.
-    if DRL.State in [ DSPlaying, DSFinished ] then
+    if DRL.State in [ DSPlaying, DSPlayerDead, DSFinished ] then
     begin
       iNode := Child;
       if iNode <> nil then
@@ -1308,7 +1308,7 @@ begin
           FActiveBeing := TBeing(iNode);
           FActiveBeing.Tick;
         end;
-        if not ( DRL.State in [ DSPlaying, DSFinished ] ) then Break;
+        if not ( DRL.State in [ DSPlaying, DSPlayerDead, DSFinished ] ) then Break;
         iNode := FNextNode;
       until (iNode = Child) or (iNode = nil);
       FActiveBeing := nil;
@@ -1358,7 +1358,7 @@ begin
     else
     begin
       Player.Statistics.Increase('levels_nuked');
-      if DRL.State in [DSNextLevel,DSSaving] then
+      if DRL.State in [ DSNextLevel, DSSaving ] then
       begin
         IO.Msg('Right in the nick of time!');
         IO.RunLayer( TMoreLayer.Create( False ) );

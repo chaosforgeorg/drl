@@ -11,7 +11,7 @@ function aitk.OnAction( self )
 		local ai        = ais[ self.ai_type ]
 		local old_state = self.ai_state
 		local new_state = ai.states[ old_state ]( self ) or old_state
-		if not core.is_playing() then return end -- gracefully exit if being kills player
+		if not game.is_playing() then return end -- gracefully exit if being kills player
 		if not self.__ptr then return end -- gracefully exit if being dies
 		self.ai_state = new_state
 		safe = safe + 1
@@ -743,7 +743,7 @@ function aitk.charge_charge( self )
     if move_check ~= MOVEOK then
         if player.position == move_coord then
             self:attack( move_coord )
-       		if ( not core.is_playing() ) or ( not self.__ptr ) then return "idle" end 
+		if ( not game.is_playing() ) or ( not self.__ptr ) then return "idle" end
         else
             self.scount = self.scount - 500
         end
@@ -763,7 +763,7 @@ function aitk.charge_post_charge( self )
     if move_check ~= MOVEOK then
         if player.position == move_coord then
             self:attack( move_coord )
-       		if ( not core.is_playing() ) or ( not self.__ptr ) then return "idle" end 
+		if ( not game.is_playing() ) or ( not self.__ptr ) then return "idle" end
         else
             self.scount = self.scount - 500
         end

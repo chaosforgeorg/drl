@@ -1484,7 +1484,7 @@ begin
   else
     HandleShots( aTarget, aGun, iShots, aAlt, aDelay );
 
-  if not (DRL.State in [DSPlaying,DSNextLevel]) then Exit( False );
+  if not ( DRL.State in [ DSPlaying, DSNextLevel ] ) then Exit( False );
   if iUIDs[ iUID ] = nil then Exit( False );
   FTargetPos := aTarget;
   if iUIDs[ iUIDW ] = nil then aGun := nil;
@@ -1757,7 +1757,7 @@ begin
     if iUIDs[ iKillerUID ] = nil then aKiller := nil;
   end;
 
-  if ( DRL.State in [ DSPlaying, DSFinished ] ) and ( not DRL.GameWon ) then
+  if ( DRL.State in [ DSPlaying, DSPlayerDead, DSFinished ] ) and ( not DRL.GameWon ) then
     iLevel.CallHook( Hook_OnKill,[ Self, aKiller, aWeapon, iMeleeKill, aOverkill ] );
 
   if not aOverkill and not ( CF_BLOCKMOVE in iLevel.Data.Cells[ iLevel.Floor[ FPosition ] ].Flags ) then

@@ -49,7 +49,7 @@ procedure TInGameMenuView.Update( aDTime : Integer; aActive : Boolean );
 var iSaveQuit : Boolean;
 begin
   iSaveQuit := False; 
-  if IsFinished or (FSession.State <> DSPlaying) then Exit;
+  if IsFinished then Exit;
 
   VTIG_Begin('ingame_menu', Point( 30, 11 ) );
   if VTIG_Selectable( 'Continue' ) then
@@ -123,7 +123,6 @@ begin
     then IO.FadeOut(0.5)
     else IO.FadeReset;
   FSession.SetState( DSQuit );
-  FSession.Player.Score := -100000;
 end;
 
 procedure TAbandonView.OnCancel;

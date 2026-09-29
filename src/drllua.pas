@@ -45,14 +45,6 @@ uses typinfo, variants,
 
 var SpriteSheetCounter : Integer = -1;
 
-function lua_core_is_playing(L: Plua_State): Integer; cdecl;
-var State : TLuaGameStack;
-begin
-  State.Init(L);
-  State.Push( DRL.State = DSPlaying );
-  Result := 1;
-end;
-
 function lua_statistics_get(L: Plua_State): Integer; cdecl;
 var State : TLuaGameStack;
 begin
@@ -398,7 +390,7 @@ end;
 
 procedure TDRLLua.OnError(const ErrorString : Ansistring);
 begin
-  if (IO <> nil) and (DRL.State = DSPlaying) then
+  if (IO <> nil) and ( DRL.State in [ DSPlaying, DSPlayerDead ] ) then
   begin
     IO.ErrorReport( ErrorString );
   end
@@ -520,12 +512,11 @@ begin
   Result := 0;
 end;
 
-const lua_core_lib : array[0..10] of luaL_Reg = (
+const lua_core_lib : array[0..9] of luaL_Reg = (
     ( name : 'add_to_cell_set';func : @lua_core_add_to_cell_set),
     ( name : 'game_time';      func : @lua_core_game_time),
     ( name : 'time_ms';        func : @lua_core_time_ms),
     ( name : 'visual_random';  func : @lua_core_visual_random),
-    ( name : 'is_playing';func : @lua_core_is_playing),
 
     ( name : 'play_music';func : @lua_core_play_music),
 
@@ -577,6 +568,7 @@ begin
 
   Register( 'player_data', @lua_player_data_lib );
   Register( 'core', lua_core_lib );
+  TDRLSession.RegisterLuaAPI( Self );
 
   FStack.RegisterEnumValues( TypeInfo(TParticleFlag) );
   FStack.RegisterEnumValues( TypeInfo(TItemType) );

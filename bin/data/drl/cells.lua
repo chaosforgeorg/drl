@@ -336,7 +336,7 @@ function drl.register_cells()
 
 		OnExit = function(c)
 			local linfo = player.episode[level.index]
-			player:exit( linfo.exit, 0.5 )
+			game.exit( linfo.exit, 0.5 )
 		end,
 	}
 
@@ -360,7 +360,7 @@ function drl.register_cells()
 			if sinfo and sinfo.script and levels[sinfo.script].entry then
 				player:add_history( levels[sinfo.script].entry )
 			end
-			player:exit( linfo.special, 0.5 )
+			game.exit( linfo.special, 0.5 )
 		end,
 
 		getGroundDesc = function(c)

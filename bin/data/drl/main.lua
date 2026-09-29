@@ -335,7 +335,7 @@ local death_reasons = {
 function drl.GetResultId()
 	local result    = "unknown"
 	local dead      = player.hp <= 0
-	local won       = player:has_won()
+	local won       = game.has_won()
 	local nuked     = level.flags[ LF_NUKED ]
 	local boss1dead = won
 	local boss2dead = kills.get("jc") > 0 or kills.get("apostle") > 0
@@ -380,7 +380,7 @@ function drl.GetResultDescription( result, highscore )
 		) or killed_by
 	end
 
-	if player:has_won() then
+	if game.has_won() then
 		local chal_idx
 		if highscore then
 			if ARCHANGEL then

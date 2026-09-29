@@ -5,8 +5,7 @@
 
 -- use F1 to toggle console
 --   example commands:
---     player:exit(12) -- exit to level indexed 12
---     player:exit("the_valuts") -- exit to level id "the_valuts"
+--     game.exit(12) -- exit to level indexed 12
 --     player.inv:add( "barmor") -- add item to inventory
 
 
@@ -48,7 +47,7 @@ Keytable["F3"] = function()
 end
 Keytable["F4"] = function() 
 	ui.msg("Next level!")
-	player:exit()
+	game.exit()
 end
 Keytable["F5"] = function() 
 	ui.msg("Visibility! "..player.x.."x"..player.y)

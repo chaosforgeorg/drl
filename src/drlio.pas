@@ -232,7 +232,7 @@ end;
 
 procedure TDRLIO.WaitForAnimation( aStrict : Boolean = True );
 begin
-  if ( FSession = nil ) or ( FSession.State <> DSPlaying ) then
+  if ( FSession = nil ) or not ( FSession.State in [ DSPlaying, DSPlayerDead ] ) then
   begin
     if MsgPending then MsgUpdate;
     Exit;
@@ -1095,7 +1095,7 @@ begin
     FStore.Update;
 
   if ControllerActionHeld( CONTROLLER_MODIFIER_ALT )
-    and (FSession <> nil) and (FSession.State = DSPlaying)
+    and (FSession <> nil) and ( FSession.State = DSPlaying )
     and (FTargeting or ( not isModal)) and ( FLastTarget <> FSession.Targeting.List.Current ) then
     begin
       FLastTarget := FSession.Targeting.List.Current;

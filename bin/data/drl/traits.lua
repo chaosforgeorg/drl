@@ -270,7 +270,7 @@ function drl.register_traits()
 		OnPick = function (being,lvl)
 			being:add_property( "LEVER_SENSE", lvl )
 			if lvl == 1 then
-				if core.is_playing() then
+				if game.is_playing() then
 					level:reveal_powerups()
 				end
 			elseif lvl == 2 then

@@ -3,7 +3,7 @@ core.declare( "classic", {} )
 require "classic:data/phobos_arena"
 
 function classic.OnMortem()
-	if not player:has_won() then return end
+	if not game.has_won() then return end
 	
 	local is_maxkills  = (statistics.unique_kills == statistics.max_unique_kills)
 	local is_90kills   = (statistics.unique_kills >= statistics.max_unique_kills * 0.9)

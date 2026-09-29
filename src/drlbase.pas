@@ -32,9 +32,9 @@ public
   property List : TAutoTarget read FList;
 end;
 
-type TDRLState = ( DSStart,      DSMenu,    DSLoading,   DSCrashLoading,
-                    DSPlaying,    DSSaving,  DSNextLevel,
-                    DSQuit,       DSFinished );
+type TDRLState = ( DSStart,   DSMenu,       DSLoading, DSCrashLoading,
+                  DSPlaying, DSPlayerDead, DSSaving,  DSNextLevel,
+                  DSQuit,    DSFinished );
 type TDRLSessionResult = ( DSR_Quit, DSR_Played, DSR_ReloadData );
 
 // TDRLSession
@@ -50,6 +50,7 @@ type TDRLSession = class(TVObject)
        procedure Reset;
        procedure Reconfigure;
        procedure SetModuleHooks( aModuleHooks : TFlags );
+       class procedure RegisterLuaAPI( aLua : TLua );
        function LoadSaveFile : Boolean;
        procedure WriteSaveFile( aCrash : Boolean );
        function SaveExists : Boolean;
@@ -59,6 +60,8 @@ type TDRLSession = class(TVObject)
        procedure CallHook( Hook : Byte; const Params : array of Const );
        function  CallHookCheck( Hook : Byte; const Params : array of Const ) : Boolean;
        procedure SetState( aNewState : TDRLState );
+       procedure WinGame;
+       procedure ExitLevel( aFade : Boolean; aFadeTime : Single );
        procedure ClearPlayerView( aView : TIOLayer );
        procedure OpenJHCPage;
        function HandleUnloadCommand( aItem : TItem ) : Boolean;
@@ -102,7 +105,6 @@ type TDRLSession = class(TVObject)
        FLastInputTime   : QWord;
        FAutoMoveAction  : Boolean;
        FTargeting       : TTargeting;
-       FDamagedLastTurn : Boolean;
        FPlayerView      : TIOLayer;
        FQueueCommand    : TCommand;
        FMemorial        : TPagedReport;
@@ -130,7 +132,7 @@ type TDRLSession = class(TVObject)
        FRuntime         : TRLRuntime;
        FPaths           : TGamePaths;
      public
-       property GameWon : Boolean read FGameWon write FGameWon;
+       property GameWon : Boolean read FGameWon;
        property Difficulty : Byte read FDifficulty;
        property Challenge  : Ansistring read FChallenge;
        property SChallenge : Ansistring read FSChallenge;
@@ -144,7 +146,6 @@ type TDRLSession = class(TVObject)
        property Player : TPlayer read FPlayer;
        property State : TDRLState read FState;
        property Targeting : TTargeting read FTargeting;
-       property DamagedLastTurn : Boolean read FDamagedLastTurn write FDamagedLastTurn;
        property GameSeed : Cardinal read FGameSeed;
        property SeededGame : Boolean read FSeededGame;
        property DataReloadRequired : Boolean read FReloadData;
@@ -158,7 +159,7 @@ var DRL : TDRLSession;
 implementation
 
 uses {$IFDEF WINDOWS}windows,{$ELSE}unix,{$ENDIF} classes, sysutils, zstream,
-     vbindings, vdebug, vstream, vtig,
+     vbindings, vdebug, vstream, vtig, vluagamestack,
      dfmap, dfbeing, drlio, drlgfxio, drlspritemap { remove }, drlplayerview, drlingamemenuview, drlhelpview, drlassemblyview, drlpagedview, drlrankupview, drlmainmenuview, drlhudviews, drlmessagesview, drlapplication, drlcontrollerbindings;
 
 const PAD_REPEAT_START = 400;
@@ -245,6 +246,20 @@ begin
     FQueueCommand := TCommand.Create( COMMAND_NONE );
     IO.FinishLayers;
   end;
+end;
+
+procedure TDRLSession.WinGame;
+begin
+  IO.FadeOut( 1.0, True );
+  if FState <> DSPlayerDead then SetState( DSFinished );
+  FGameWon := True;
+end;
+
+procedure TDRLSession.ExitLevel( aFade : Boolean; aFadeTime : Single );
+begin
+  if FState in [ DSSaving, DSPlayerDead ] then Exit;
+  if aFade then IO.FadeOut( aFadeTime, True );
+  SetState( DSNextLevel );
 end;
 
 procedure TDRLSession.FinishGame;
@@ -425,7 +440,6 @@ begin
   FSeededGame := False;
 
   FLastInputTime   := 0;
-  FDamagedLastTurn := False;
   FAutoMoveAction  := False;
   FPadMoveNext     := 0;
   FLastFrameTime   := 0;
@@ -518,7 +532,7 @@ begin
   FPlayer.PreAction;
   FTargeting.Update( FPlayer.Vision );
   IO.SetAutoTarget( FTargeting.List.Current );
-  if ( FPlayerView <> nil ) and (not FDamagedLastTurn) and (FPlayer.EnemiesInVision < 1) then
+  if ( FPlayerView <> nil ) and (not FPlayer.DamagedLastTurn) and (FPlayer.EnemiesInVision < 1) then
      (FPlayerView as TPlayerView).Retain;
 end;
 
@@ -964,7 +978,7 @@ begin
   if not ( FPlayerView as TPlayerView ).TakeSwapRequest( iSlot ) then Exit;
   iItem := FPlayer.Inv.Slot[ iSlot ];
   if ( iItem = nil ) or iItem.CallHookCheck( Hook_OnUnequipCheck, [ FPlayer, False ] ) then
-    if FState = DSPlaying then
+    if State = DSPlaying then
       ( FPlayerView as TPlayerView ).InitSwapMode( iSlot );
   if FPlayerView <> nil then
     ( FPlayerView as TPlayerView ).FinishPending;
@@ -981,7 +995,7 @@ begin
   if iItem <> nil then
   begin
     if not iItem.CallHookCheck( Hook_OnUnequipCheck, [ FPlayer, False ] ) then Exit( False );
-    if FState <> DSPlaying then Exit( False );
+    if State <> DSPlaying then Exit( False );
   end;
 
   if not ( aCommand.Command in [ COMMAND_FIRE, COMMAND_ALTFIRE, COMMAND_RELOAD ] ) then
@@ -1010,8 +1024,8 @@ end;
   FPlayer.PostAction;
   if State <> DSPlaying then Exit( False );
   IO.Focus( FPlayer.Position );
-  FDamagedLastTurn := False;
-  while (FPlayer.SCount < 5000) and (State = DSPlaying) do
+  FPlayer.DamagedLastTurn := False;
+  while (FPlayer.SCount < 5000) and ( State = DSPlaying ) do
   begin
     FLevel.CalculateVision( FPlayer.Position, FPlayer.Vision );
     FLevel.Tick;
@@ -1118,7 +1132,7 @@ begin
       if FPlayer.Inv.Slot[ efWeapon ] <> nil then
       begin
         if not FPlayer.Inv.Slot[ efWeapon ].CallHookCheck( Hook_OnUnequipCheck, [ FPlayer, False ] ) then Exit( False );
-        if FState <> DSPlaying then Exit( False );
+        if State <> DSPlaying then Exit( False );
       end;
       IO.PushLayer( TScrollSwapLayer.Create( Self ) );
     end;
@@ -1196,7 +1210,7 @@ begin
     and ( not IO.IsModal )
     and IO.ControllerActionHeld( CONTROLLER_MOVE )
     and ( FPlayer.EnemiesInVision = 0 )
-    and ( aPressed or (not FDamagedLastTurn) );
+    and ( aPressed or (not FPlayer.DamagedLastTurn) );
   Exit( Result );
 end;
 
@@ -1618,7 +1632,7 @@ begin
            else HardQuit;
       end;
 
-      if ( State <> DSPlaying ) then Break;
+      if State <> DSPlaying then Break;
 
       if iEvent.EType = VEVENT_MOUSEDOWN then HandleMouseEvent( iEvent );
       if iEvent.EType = VEVENT_KEYDOWN   then HandleKeyEvent( iEvent );
@@ -1634,8 +1648,16 @@ begin
     if State <> DSQuit then IO.FadeReset;
 
     if State = DSNextLevel then
-    begin
       LeaveLevel;
+
+    // Present accepted death after gameplay and exit callbacks have returned.
+    if State = DSPlayerDead then
+    begin
+      IO.WaitForAnimation;
+      FPlayer.AnimCount := 1;
+      IO.Msg( 'You die!...' );
+      IO.RunLayer( TMoreLayer.Create( False ) );
+      SetState( DSFinished );
     end;
 
     // Animation destructors may still access the outgoing level and its entities.
@@ -1933,6 +1955,54 @@ begin
   FreeAndNil( FContext );
   Log('DRL destroyed.');
   inherited Destroy;
+end;
+
+function lua_game_win( L : PLua_State ) : Integer; cdecl;
+begin
+  DRL.WinGame;
+  Result := 0;
+end;
+
+function lua_game_has_won( L : PLua_State ) : Integer; cdecl;
+var iState : TLuaGameStack;
+begin
+  iState.Init( L );
+  iState.Push( DRL.GameWon );
+  Result := 1;
+end;
+
+function lua_game_is_playing( L : PLua_State ) : Integer; cdecl;
+var iState : TLuaGameStack;
+begin
+  iState.Init( L );
+  iState.Push( DRL.State = DSPlaying );
+  Result := 1;
+end;
+
+function lua_game_exit( L : PLua_State ) : Integer; cdecl;
+var iState : TLuaGameStack;
+begin
+  iState.Init( L );
+  if not ( iState.IsNil( 1 ) or iState.IsNumber( 1 ) ) then
+    iState.Error( 'game.exit - expected a level index or nil!' );
+  DRL.ExitLevel( iState.IsNumber( 2 ), iState.ToFloat( 2, 0.0 ) );
+  DRL.FPlayer.SCount := 4000;
+  if iState.IsNumber( 1 ) then
+    DRL.FPlayer.Level_Index := iState.ToInteger( 1 ) - 1;
+  Result := 0;
+end;
+
+const lua_game_lib : array[0..4] of luaL_Reg = (
+  ( name : 'win';        func : @lua_game_win ),
+  ( name : 'exit';       func : @lua_game_exit ),
+  ( name : 'has_won';    func : @lua_game_has_won ),
+  ( name : 'is_playing'; func : @lua_game_is_playing ),
+  ( name : nil;         func : nil )
+);
+
+class procedure TDRLSession.RegisterLuaAPI( aLua : TLua );
+begin
+  aLua.Register( 'game', lua_game_lib );
 end;
 
 end.

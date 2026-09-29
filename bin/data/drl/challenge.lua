@@ -1105,7 +1105,7 @@ function drl.register_challenges()
 				if ARCHANGEL then
 					ui.msg_enter("Or wait... false alarm. Still 566 to go.")
 				else
-					player:win()
+					game.win()
 				end
 			-- Adding flavour text
 			elseif l == 299 then ui.msg_enter("Sparta coming right up.")
@@ -1116,7 +1116,7 @@ function drl.register_challenges()
 			elseif l == 666 then
 				ui.msg_enter("You're crazy, you know that, right? Hell, congratulations anyway!")
 				-- Should we add a medal here?
-				player:win()
+				game.win()
 			end
 		end,
 
@@ -1613,7 +1613,7 @@ You can rest easy knowing that you're Boss. Yet at the last level you sensed som
 
 		OnMortem = function ()
 			if player.level_index >= 8 then player:add_badge("haste1") end
-			if player:has_won() then
+			if game.has_won() then
 				player:add_badge("haste2")
 				if statistics.unique_kills == statistics.max_unique_kills and DIFFICULTY >= DIFF_VERYHARD then player:add_badge("haste3") end
 			end

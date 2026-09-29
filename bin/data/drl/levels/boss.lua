@@ -98,7 +98,7 @@ register_level "hellgate"
 					if not being:is_player() then return end
 					level:explosion( being.position, { range = 4, delay = 50, color = GREEN, sound_id = "hellportal.use" } )
 					ui.msg_enter("You feel yanked in a non-existing direction!")
-					player:exit( nil, 1.0 )
+					game.exit( nil, 1.0 )
 					drl.plot_outro_1()
 				end,
 			},
@@ -190,7 +190,7 @@ register_level "tower_of_babel"
 
 		OnKillAll = function ( self )
 			if not (self.flags[ LF_NUKED ] and not player.flags[BF_INV]) then
-				player:exit( nil, 1.0 )
+				game.exit( nil, 1.0 )
 				drl.plot_outro_2()
 				if not self.flags[ LF_NUKED ] and statistics.damage_on_level == 0 then
 					if DIFFICULTY >= DIFF_MEDIUM then player:add_badge("hellgate3") end
@@ -251,7 +251,7 @@ register_level "dis"
 		OnKillAll = function ( self )
 			if not (self.flags[ LF_NUKED ] and player.flags[BF_INV]) then
 				ui.msg_enter("Congratulations! You defeated the Spider Mastermind!")
-				player:win()
+				game.win()
 			end
 		end,
 	},
@@ -338,7 +338,7 @@ register_level "hell_fortress"
 
 	runtime = {
 		OnKillAll = function ( self )
-			player:win()
+			game.win()
 		end,
 	},
 

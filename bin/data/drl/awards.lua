@@ -994,7 +994,7 @@ function drl.award_badges()
 		end
 	end
 
-	if player:has_won() and CHALLENGE == "" then
+	if game.has_won() and CHALLENGE == "" then
 		player:set_achievement("drl_legacy_2")
 		if DIFFICULTY >= DIFF_HARD then
 			player:set_achievement("drl_legacy_3")

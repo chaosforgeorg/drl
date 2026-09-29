@@ -67,6 +67,7 @@ type TPlayer = class(TBeing)
   function GetPerkEffect : TStatusEffect;
   function GetVisionMap : TVision; override;
 private
+  FDamagedLastTurn: Boolean;
   FLevelIndex     : Integer;
   FExp            : LongInt;
   FExpLevel       : Byte;
@@ -85,6 +86,7 @@ private
   function ActionQuickKey( aIndex : Byte; aTarget : TCoord2D ) : Boolean;
   procedure ResortStacks;
 public
+  property DamagedLastTurn : Boolean read FDamagedLastTurn write FDamagedLastTurn;
   property MultiMove       : TMultiMove  read FMultiMove;
   property Statistics      : TStatistics read FStatistics;
   property Traits          : TTraits     read FTraits;
@@ -142,6 +144,7 @@ end;
 
 procedure TPlayer.Initialize;
 begin
+  FDamagedLastTurn:= False;
   FKilledBy       := '';
   FKilledMelee    := False;
 
@@ -322,7 +325,7 @@ begin
   if aDamage > 0 then
   begin
     FMultiMove.Stop;
-    DRL.DamagedLastTurn := True;
+    FDamagedLastTurn := True;
     if ( aDamage >= Max( FHPMax div 3, 10 ) ) then
     begin
       IO.Blink( Red, 100 );
@@ -569,7 +572,7 @@ var iLevel   : TLevel;
 begin
   if FDying then Exit;
   iLevel := TLevel(Parent);
-  if (DRL.State <> DSPlaying) and IsPlayer then Exit;
+  if DRL.State <> DSPlaying then Exit;
 
   for iSlot in TEqSlot do
     if FInv.Slot[ iSlot ] <> nil then
@@ -586,6 +589,7 @@ begin
   end;
 
   FDying := True;
+  DRL.SetState( DSPlayerDead );
 
   if DRL.GameWon then
     SetKilledBy( '', False )
@@ -601,22 +605,11 @@ begin
      then iLevel.playSound( 'gib',FPosition )
      else PlaySound( 'die' );
 
-  IO.ResetAnimationSpeed;
   IO.addKillAnimation( 1000, aDelay, Self );
-  IO.WaitForAnimation;
-  FAnimCount := 1;
-
-  begin
-    IO.Msg('You die!...');
-    IO.RunLayer( TMoreLayer.Create( False ) );
-  end;
-  DRL.SetState( DSFinished );
-
   if NukeActivated > 0 then
   begin
     NukeActivated := 1;
     iLevel.NukeTick;
-    IO.WaitForAnimation;
   end;
 end;
 
@@ -772,15 +765,6 @@ begin
   Result := 0;
 end;
 
-
-function lua_player_has_won(L: Plua_State): Integer; cdecl;
-var State   : TLuaGameStack;
-begin
-  State.Init(L);
-  State.Push(DRL.GameWon);
-  Result := 1;
-end;
-
 function lua_player_resort_stacks( L : PLua_State ) : Integer; cdecl;
 var iState  : TLuaGameStack;
     iPlayer : TPlayer;
@@ -788,19 +772,6 @@ begin
   iState.Init( L );
   iPlayer := iState.ToObject( 1 ) as TPlayer;
   iPlayer.ResortStacks;
-  Result := 0;
-end;
-
-function lua_player_win(L: Plua_State): Integer; cdecl;
-var State   : TLuaGameStack;
-    Being   : TBeing;
-begin
-  State.Init(L);
-  Being := State.ToObject(1) as TBeing;
-  if not (Being is TPlayer) then Exit(0);
-  IO.FadeOut( 1.0, True );
-  DRL.SetState( DSFinished );
-  DRL.GameWon := True;
   Result := 0;
 end;
 
@@ -821,29 +792,6 @@ begin
   iState.Init( L );
   iPlayer := iState.ToObject( 1 ) as TPlayer;
   iPlayer.LevelUp();
-  Result := 0;
-end;
-
-function lua_player_exit( L : PLua_State ) : Integer; cdecl;
-var iState  : TLuaGameStack;
-    iPlayer : TPlayer;
-begin
-  iState.Init( L );
-  iPlayer := iState.ToObject( 1 ) as TPlayer;
-  if DRL.State <> DSSaving then
-  begin
-    if iState.IsNumber(3) then
-      IO.FadeOut( iState.ToFloat(3), True );
-    DRL.SetState( DSNextLevel );
-  end;
-  iPlayer.FSpeedCount := 4000;
-  if iState.IsNil(2) then Exit( 0 );
-  if iState.IsNumber(2) then
-  begin
-    iPlayer.FLevelIndex := iState.ToInteger(2)-1;
-    Exit( 0 );
-  end;
-  iState.Error('Player.exit - bad parameters!');
   Result := 0;
 end;
 
@@ -952,22 +900,19 @@ begin
   Result := 0;
 end;
 
-const lua_player_lib : array[0..17] of luaL_Reg = (
+const lua_player_lib : array[0..14] of luaL_Reg = (
       ( name : 'set_achievement'; func : @lua_player_set_achievement),
       ( name : 'store_inc_stat';  func : @lua_player_store_inc_stat),
       ( name : 'store_mark_stat'; func : @lua_player_store_mark_stat),
       ( name : 'add_exp';         func : @lua_player_add_exp),
       ( name : 'remove_kill';     func : @lua_player_remove_kill),
-      ( name : 'has_won';         func : @lua_player_has_won),
       ( name : 'add_trait';       func : @lua_player_add_trait),
       ( name : 'get_trait';       func : @lua_player_get_trait),
       ( name : 'has_trait';       func : @lua_player_has_trait),
       ( name : 'get_trait_hist';  func : @lua_player_get_trait_hist),
       ( name : 'resort_stacks';   func : @lua_player_resort_stacks),
-      ( name : 'win';             func : @lua_player_win),
       ( name : 'choose_trait';    func : @lua_player_choose_trait),
       ( name : 'level_up';        func : @lua_player_level_up),
-      ( name : 'exit';            func : @lua_player_exit),
       ( name : 'quick_weapon';    func : @lua_player_quick_weapon),
       ( name : 'set_inv_size';    func : @lua_player_set_inv_size),
       ( name : nil;               func : nil; )

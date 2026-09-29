@@ -214,7 +214,7 @@ end
 
 function core.check_award_requirements( t )
 	if not t then return true end
-	if t.winonly and not player:has_won() then return false end
+	if t.winonly and not game.has_won() then return false end
 	if t.challenge ~= nil then
 		if t.challenge == "" then
 			if CHALLENGE ~= "" then return false end
@@ -394,7 +394,7 @@ register_being         = core.register_storage( "beings", "being", function( bp 
 			local SafeOnAction = function( func )
 				if func == nil then return nil end
 				return function( self )
-				  if not core.is_playing() then return nil end
+				  if not game.is_playing() then return nil end
 				  if not self.__ptr then return nil end
 				  func( self )
 				end

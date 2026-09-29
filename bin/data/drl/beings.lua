@@ -1235,7 +1235,7 @@ function drl.register_beings()
 		end,
 
 		OnAction = function (self)
-			if not core.is_playing() then return end
+			if not game.is_playing() then return end
 			if self.hp < self.hpmax then
 				self.hp = self.hp + 1
 			end
@@ -1304,7 +1304,7 @@ function drl.register_beings()
 		end,
 
 		OnAction = function (self)
-			if not core.is_playing() then return end
+			if not game.is_playing() then return end
 			if self.hp < self.hpmax then
 				self.hp = self.hp + 1
 			end
@@ -1627,7 +1627,7 @@ function drl.register_beings()
 		end,
 
 		OnAction = function (self)
-			if not core.is_playing() then return end
+			if not game.is_playing() then return end
 			if self.hp < self.hpmax then
 				self.hp = self.hp + 1
 			end
