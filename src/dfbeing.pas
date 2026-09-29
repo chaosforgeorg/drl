@@ -1567,7 +1567,9 @@ end;
 
 procedure TBeing.Tick;
 begin
+  if Dead then Exit;
   FInv.Tick;
+  if Dead then Exit;
 
   if ( FHP * 100 ) > Integer( FHPMax * FHPDecayMax ) then
     if FHP > 1 then
@@ -1755,10 +1757,8 @@ begin
     if iUIDs[ iKillerUID ] = nil then aKiller := nil;
   end;
 
-  if DRL.State = DSPlaying then
-  begin
+  if ( DRL.State in [ DSPlaying, DSFinished ] ) and ( not DRL.GameWon ) then
     iLevel.CallHook( Hook_OnKill,[ Self, aKiller, aWeapon, iMeleeKill, aOverkill ] );
-  end;
 
   if not aOverkill and not ( CF_BLOCKMOVE in iLevel.Data.Cells[ iLevel.Floor[ FPosition ] ].Flags ) then
   try
@@ -2090,7 +2090,7 @@ var iLevel         : TLevel;
     iOldDurability : LongInt;
 begin
   iUIDs := FContext.UIDs;
-  if ( aDamage < 0 ) or (BF_INV in FFlags) or FDying then Exit;
+  if ( aDamage < 0 ) or (BF_INV in FFlags) or FDying or Dead then Exit;
 
   if aSource <> nil then
   begin
@@ -2952,7 +2952,7 @@ begin
   Being := State.ToObject(1) as TBeing;
   iSource := State.ToObjectOrNil(5) as TItem;
   iKilledBy := '';
-  if State.IsString(5) then
+  if State.IsString(5) and ( not Player.Dead ) then
   begin
     iKilledBy := State.ToString(5);
     if iKilledBy <> '' then
@@ -2963,7 +2963,7 @@ begin
     end;
   end;
   Being.ApplyDamage(State.ToInteger(2),TBodyTarget( State.ToInteger(3) ), TDamageType( State.ToInteger(4,Byte(Damage_Bullet)) ), iSource, 0 );
-  if (iKilledBy <> '') and (DRL.State = DSPlaying) then
+  if ( iKilledBy <> '' ) and ( not Player.Dead ) then
     Player.SetKilledBy( iPreviousKilledBy, iPreviousMelee );
   Result := 0;
 end;

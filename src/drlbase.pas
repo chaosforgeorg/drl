@@ -60,7 +60,6 @@ type TDRLSession = class(TVObject)
        function  CallHookCheck( Hook : Byte; const Params : array of Const ) : Boolean;
        procedure SetState( aNewState : TDRLState );
        procedure ClearPlayerView( aView : TIOLayer );
-       procedure GenerateMemorial( aPlayer : TPlayer );
        procedure OpenJHCPage;
        function HandleUnloadCommand( aItem : TItem ) : Boolean;
        procedure QueueCommand( const aCommand : TCommand );
@@ -74,6 +73,7 @@ type TDRLSession = class(TVObject)
        function HandlePickupCommand( aAlt : Boolean ) : Boolean;
        procedure ResetAutoTarget;
      private
+       procedure FinishGame;
        procedure RecordResult( aPlayer : TPlayer );
        procedure SetLevel( aLevel : TLevel );
        procedure ReleaseLevel;
@@ -246,18 +246,17 @@ begin
   end;
 end;
 
-procedure TDRLSession.GenerateMemorial( aPlayer : TPlayer );
+procedure TDRLSession.FinishGame;
 var iMemorial : TIOStringArray;
 begin
-  if aPlayer.Score = -1000 then Exit;
-
-  aPlayer.Statistics.Update( aPlayer );
+  FPlayer.Statistics.Update( FPlayer );
   if FContext.Lua.Defined( [CoreModuleID, 'RunAwards'] ) then
     FContext.Lua.ProtectedCall( [CoreModuleID, 'RunAwards'], [NoPlayerRecord] );
-  aPlayer.CalculateScore( FDifficulty, FGameWon );
-  RecordResult( aPlayer );
+  FPlayer.CalculateScore( FDifficulty, FGameWon );
+  RecordResult( FPlayer );
+  // Include messages from the result hooks before the memorial reads history.
   if IO.MsgPending then IO.MsgUpdate;
-  iMemorial := aPlayer.GenerateMemorial( FPaths.ModuleUserPath );
+  iMemorial := FPlayer.GenerateMemorial( FPaths.ModuleUserPath );
 
   FMemorial := TPagedReport.Create( 'Post mortem', False );
   FMemorial.Add( iMemorial, 'mortem.txt' );
@@ -464,11 +463,12 @@ begin
       FPlayer.AddHistory( 'He left @1 as soon as possible.' );
   end;
 
-  IO.MsgReset;
+  if FState = DSNextLevel then IO.MsgReset;
 end;
 
 procedure TDRLSession.PreAction;
 begin
+  if FPlayer.Dead then Exit;
   FLevel.CalculateVision( FPlayer.Position, FPlayer.Vision );
   StatusEffect := FPlayer.GetPerkEffect;
   IO.PreAction;
@@ -1604,9 +1604,9 @@ begin
     IO.ClearAnimations;
     if State <> DSSaving then
     begin
-      FPlayer.Score := FPlayer.Score + 1000;
-      if FGameWon and (State <> DSNextLevel) and (FMemorial = nil) then
-        GenerateMemorial( FPlayer );
+      if ( State = DSNextLevel ) or ( ( State = DSFinished ) and FGameWon ) then
+        FPlayer.Score := FPlayer.Score + 1000;
+      if State = DSFinished then FinishGame;
       FPlayer.Detach;
       FLevel.Clear;
     end;

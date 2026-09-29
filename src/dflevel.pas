@@ -1216,7 +1216,6 @@ begin
   FMarkers.Wipe( aBeing.UID );
   FParticles.Kill( aBeing.UID );
   FreeAndNil(aBeing);
-  if DRL.State <> DSPlaying then Exit;
   UpdateKillState;
 end;
 
@@ -1224,7 +1223,7 @@ procedure TLevel.UpdateKillState;
 var iEnemiesLeft       : Integer;
     iUniqueEnemiesLeft : Integer;
 begin
-  if DRL.State <> DSPlaying then Exit;
+  if not ( DRL.State in [ DSPlaying, DSFinished ] ) or DRL.GameWon then Exit;
 
   iEnemiesLeft       := EnemiesLeft();
   if ( iEnemiesLeft < 4 ) and ( not ( LF_NOBEINGREVEAL in FFlags ) ) then
@@ -1277,6 +1276,7 @@ procedure TLevel.Tick;
 var iNode : TNode;
 begin
   FActiveBeing := nil;
+  if DRL.State <> DSPlaying then Exit;
   repeat
 
     Inc(FLTime);
@@ -1295,7 +1295,8 @@ begin
 
     NukeTick;
 
-    if DRL.State = DSPlaying then
+    // Finish this tick's effects before finalizing a death or victory.
+    if DRL.State in [ DSPlaying, DSFinished ] then
     begin
       iNode := Child;
       if iNode <> nil then
@@ -1307,7 +1308,7 @@ begin
           FActiveBeing := TBeing(iNode);
           FActiveBeing.Tick;
         end;
-        if DRL.State <> DSPlaying then Break;
+        if not ( DRL.State in [ DSPlaying, DSFinished ] ) then Break;
         iNode := FNextNode;
       until (iNode = Child) or (iNode = nil);
       FActiveBeing := nil;
@@ -1806,7 +1807,7 @@ begin
 
   iSource := iState.ToObjectOrNil(iSourceIndex) as TItem;
   iKilledBy := '';
-  if iState.IsString(iSourceIndex) then
+  if iState.IsString(iSourceIndex) and ( not Player.Dead ) then
   begin
     iKilledBy := iState.ToString(iSourceIndex);
     if iKilledBy <> '' then
@@ -1817,7 +1818,7 @@ begin
     end;
   end;
   iLevel.Explosion( iDelay, iState.ToPosition(2), iData, iSource, NewDirection(0) );
-  if (iKilledBy <> '') and (DRL.State = DSPlaying) then
+  if ( iKilledBy <> '' ) and ( not Player.Dead ) then
     Player.SetKilledBy( iPreviousKilledBy, iPreviousMelee );
   Result := 0;
 end;

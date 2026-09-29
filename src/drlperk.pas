@@ -87,7 +87,7 @@ implementation
 
 uses sysutils, math,
      vuid,
-     drlhooks, drllua, dfplayer;
+     drlhooks, drllua, dfbeing, dfplayer;
 
 procedure TPerkDefinitions.RegisterPerk( aLua : TLua; aID : Integer );
 begin
@@ -287,11 +287,18 @@ end;
 
 procedure TPerks.OnTick;
 var iUIDs  : TUIDStore;
+    iBeing : TBeing;
     i      : Integer;
     iUID   : TUID;
     iTime  : LongInt;
 begin
   if FList.Size = 0 then Exit;
+  iBeing := nil;
+  if FOwner is TBeing then
+  begin
+    iBeing := TBeing( FOwner );
+    if iBeing.Dead then Exit;
+  end;
   iUIDs := FOwner.Context.UIDs;
   iUID  := FOwner.UID;
   BeginIteration;
@@ -314,11 +321,13 @@ begin
             FOwner.Context.Lua.ProtectedCall( [ 'perks', ID, 'OnTick10' ], [ FOwner, iTime div 10 ] );
             // Perk owners include levels and items nested in inventories.
             if ( iUID <> 0 ) and ( iUIDs.Get( iUID ) = nil ) then Exit;
+            if ( iBeing <> nil ) and iBeing.Dead then Break;
           end;
     end;
   EndIteration;
   // Flushing deferred removals can destroy the owner and this perk list.
   if ( iUID <> 0 ) and ( iUIDs.Get( iUID ) = nil ) then Exit;
+  if ( iBeing <> nil ) and iBeing.Dead then Exit;
   i := 0;
   while i < FList.Size do
     if FList[i].Time = 0
@@ -326,6 +335,7 @@ begin
       begin
         Expire( i, False );
         if ( iUID <> 0 ) and ( iUIDs.Get( iUID ) = nil ) then Exit;
+        if ( iBeing <> nil ) and iBeing.Dead then Exit;
       end
       else Inc(i);
 end;

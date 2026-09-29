@@ -382,6 +382,7 @@ function TPlayer.PlayerTick : Boolean;
 var iUIDs       : TUIDStore;
     iThisUID    : DWord;
 begin
+  if Dead then Exit( False );
   iUIDs := FContext.UIDs;
   iThisUID := UID;
   TLevel(Parent).CallHook( FPosition, Self, CellHook_OnEnter );
@@ -616,7 +617,6 @@ begin
     iLevel.NukeTick;
     IO.WaitForAnimation;
   end;
-  DRL.GenerateMemorial( Self );
 end;
 
 procedure TPlayer.CalculateScore( aDifficulty : Integer; aGameWon : Boolean );
