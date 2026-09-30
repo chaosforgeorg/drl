@@ -384,8 +384,6 @@ core.register_blueprint "challenge"
 
 	OnCreate         = { false, core.TFUNC },
 	OnRegister       = { false, core.TFUNC },
-	OnEnterLevel     = { false, core.TFUNC },
-	OnExitLevel      = { false, core.TFUNC },
 	OnUnLoad         = { false, core.TFUNC },
 	OnCreatePlayer   = { false, core.TFUNC },
 	OnLevelUp        = { false, core.TFUNC },

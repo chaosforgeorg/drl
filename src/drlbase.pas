@@ -471,8 +471,8 @@ begin
 
   FChallengeHooks := [];
   FSChallengeHooks := [];
-  if FChallenge  <> '' then FChallengeHooks  := LoadHooks( FContext.Lua, ['chal',FChallenge], GlobalHooks );
-  if FSChallenge <> '' then FSChallengeHooks := LoadHooks( FContext.Lua, ['chal',FSChallenge], GlobalHooks );
+  if FChallenge  <> '' then FChallengeHooks  := LoadHooks( FContext.Lua, ['chal',FChallenge], ChallengeHooks );
+  if FSChallenge <> '' then FSChallengeHooks := LoadHooks( FContext.Lua, ['chal',FSChallenge], ChallengeHooks );
 end;
 
 procedure TDRLSession.RegisterChallengeRuntimes;
@@ -509,6 +509,7 @@ var iTimeDiff : LongInt;
 begin
   FLevel.CallHook( Hook_OnExitLevel, [ FLevel.Index, FLevel.ID, FLevel.Status ] );
   CallHook( Hook_OnExitLevel, [ FLevel.Index, FLevel.ID, FLevel.Status ] );
+  FPlayer.CallHook( Hook_OnExitLevel, [ FLevel.Index, FLevel.ID, FLevel.Status ] );
   if ( FPlayer.HP > 0 ) and ( not FLevel.HasHook( Hook_OnExitLevel ) ) then
   begin
     iTimeDiff := FPlayer.Statistics.GameTime - FPlayer.Statistics['entry_time'];

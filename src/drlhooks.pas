@@ -9,7 +9,7 @@ interface
 uses vutil, vlua, dfdata;
 
 const
-  Hook_OnCreate        = 0;   // Being and Item; Module and Challenge notified explicitly
+  Hook_OnCreate        = 0;   // Being and Item; Module and Challenge notified only for beings
   Hook_OnAction        = 1;   // Being
   Hook_OnAttacked      = 2;   // Being
   Hook_OnUseActive     = 3;   // Trait, Being
@@ -35,10 +35,10 @@ const
   Hook_OnAct           = 23;  // Being, Perk
   Hook_OnDestroy       = 24;  // Perk (item)
   Hook_OnEnter         = 25;  // Perk (item; separate from cell OnEnter)
-  Hook_OnEnterLevel    = 26;  // Trait, Perk, Module, Challenge
+  Hook_OnEnterLevel    = 26;  // Trait, Perk, Module
   Hook_OnFire          = 27;  // Trait, Perk
   Hook_OnFired         = 28;  // Trait, Perk
-  Hook_OnExitLevel     = 29;  // Perk (level), Module, Challenge
+  Hook_OnExitLevel     = 29;  // Perk, Module
   Hook_OnTick          = 30;  // Perk, Module
   Hook_OnNuked         = 31;  // Perk (level)
   Hook_OnLoad          = 32;  // Module
@@ -90,6 +90,7 @@ var   BeingHooks       : TFlags;
       FullInvHooks     : TFlags;
       NoInventoryHooks : TFlags;
       GlobalHooks      : TFlags;
+      ChallengeHooks   : TFlags;
       ModuleHooks      : TFlags;
 
 
@@ -169,6 +170,7 @@ GlobalHooks  := [ Hook_OnCreate, Hook_OnEnterLevel, Hook_OnExitLevel, Hook_OnTic
   Hook_OnLoad, Hook_OnLoaded, Hook_OnUnLoad, Hook_OnCreatePlayer, Hook_OnLevelUp,
   Hook_OnPreLevelUp, Hook_OnWinGame, Hook_OnCreateEpisode,
   Hook_OnIntro, Hook_OnGenerate ];
+ChallengeHooks := GlobalHooks - [ Hook_OnEnterLevel, Hook_OnExitLevel ];
 ModuleHooks  := [ Hook_OnLoad ];
 
 end.
