@@ -107,6 +107,8 @@ private
   procedure ApplyEffect;
   procedure UpdateLightMap;
   procedure PushTerrain;
+  function PushFluidTerrain( aCoord : TCoord2D; const aSprite : TSprite; aZ : Integer ) : Boolean;
+  function GetTerrainSprite( aCoord : TCoord2D; aCell : Byte; out aDeco : Byte ) : TSprite;
   procedure PushDecals( aDarkness : Boolean );
   procedure PushObjects( aDTime : Integer );
   procedure PushSprite( aPos : TVec2i; const aSprite : TSprite; aLight : Byte; aZ : Integer );
@@ -361,6 +363,7 @@ end;
 
 procedure TDRLSpriteMap.SetLevel( aLevel : TLevel );
 begin
+  if FLevel <> aLevel then FSpriteEngine.Clear;
   FLevel := aLevel;
 end;
 
@@ -1214,27 +1217,137 @@ begin
       end;
 end;
 
-procedure TDRLSpriteMap.PushTerrain;
-var iDMinX  : Word;
-    iDMaxX  : Word;
-    iBottom : Word;
-    iZ      : Integer;
-    iY,iX   : DWord;
-    iSpr    : TSprite;
-    iFSpr   : TSprite;
-    iCoord  : TCoord2D;
-    iStyle  : Byte;
-    iDeco   : Byte;
-    iFloor  : Byte;
-    iCell   : TCell;
-    iColor  : TColor;
-
-    function Mix( L, C : Byte ) : Byte;
+function TDRLSpriteMap.GetTerrainSprite( aCoord : TCoord2D; aCell : Byte; out aDeco : Byte ) : TSprite;
+var iCell  : TCell;
+    iColor : TColor;
+begin
+  Result := GetSprite( aCell, FLevel.CStyle[aCoord] );
+  aDeco := FLevel.Deco[aCoord];
+  if (aDeco > 0) and (SF_FULLDECO in Result.Flags) then
+  begin
+    iCell := FLevel.Data.Cells[aCell];
+    if iCell.Deco[aDeco].SpriteID[0] = 0 then Exit;
+    if SF_COSPLAY in Result.Flags then
     begin
-      Exit( Clamp( Floor( ( L / 255 ) * C ) * 255, 0, 255 ) );
+      iColor := Result.Color;
+      Result := iCell.Deco[aDeco];
+      Result.Color := iColor;
+      Include( Result.Flags, SF_COSPLAY );
+    end
+    else
+      Result := iCell.Deco[aDeco];
+    aDeco := 0;
+  end;
+end;
+
+function TDRLSpriteMap.PushFluidTerrain( aCoord : TCoord2D; const aSprite : TSprite; aZ : Integer ) : Boolean;
+const FluidMixWidth = 3.0;
+var iSurfaces  : array[0..2,0..2] of TSpriteTransitionMaterial;
+    iEligible  : array[0..2,0..2] of Boolean;
+    iPatches   : array[0..3] of TSpriteTransitionMaterials;
+    iMasks     : array[0..3] of Byte;
+    iLight     : TGLRawQColor;
+    iNeighbour : TCoord2D;
+    iSprite    : TSprite;
+    iLayer     : TSpriteDataSet;
+    iLayerID   : DWord;
+    iBottom    : Byte;
+    iDeco      : Byte;
+    iMask      : Byte;
+    iOwn       : Integer;
+    iX, iY     : Integer;
+    iQX, iQY   : Integer;
+    iQ, iSlot  : Integer;
+
+    function Material( const aSurface : TSprite ) : TSpriteTransitionMaterial;
+    begin
+      Assert( aSurface.SpriteID[0] div 100000 = iLayerID, 'Mixing fluids must share a spritesheet' );
+      Result.SpriteID := aSurface.SpriteID[0] mod 100000;
+      if SF_COSPLAY in aSurface.Flags then Result.Color := aSurface.Color else Result.Color := ColorBlack;
+      // Terrain ignores the tint alpha; normalize it for surface identity too.
+      Result.Color.A := 255;
+      Result.Emissive := GetEmissive( aSurface );
+      if SF_FLOW in aSurface.Flags then
+        Result.Shift := TVec2f.Create( FFluidX, FFluidY )
+      else
+        Result.Shift := TVec2f.Create( 0, 0 );
     end;
 
 begin
+  Result := False;
+  iLayerID := aSprite.SpriteID[0] div 100000;
+  FillChar( iEligible, SizeOf( iEligible ), 0 );
+  iSurfaces[1,1] := Material( aSprite );
+  iEligible[1,1] := True;
+  // One small value snapshot per tile; all four patches reuse these neighbours.
+  for iY := 0 to 2 do
+    for iX := 0 to 2 do
+    begin
+      if (iX = 1) and (iY = 1) then Continue;
+      iNeighbour.Create( aCoord.X+iX-1, aCoord.Y+iY-1 );
+      if not FLevel.isProperCoord( iNeighbour ) then Continue;
+      if not FLevel.CellExplored( iNeighbour ) then Continue;
+      iBottom := FLevel.CellBottom[iNeighbour];
+      if iBottom = 0 then Continue;
+      if not (CF_LIQUID in FLevel.Data.Cells[iBottom].Flags) then Continue;
+      iSprite := GetTerrainSprite( iNeighbour, iBottom, iDeco );
+      if not (SF_FLUID in iSprite.Flags) then Continue;
+      iSurfaces[iX,iY] := Material( iSprite );
+      iEligible[iX,iY] := True;
+    end;
+
+  for iQ := 0 to 3 do
+  begin
+    iQX := iQ and 1;
+    iQY := iQ shr 1;
+    iOwn := 3 xor iQ;
+    iMask := 0;
+    for iSlot := 0 to 3 do
+    begin
+      iX := iQX + (iSlot and 1);
+      iY := iQY + (iSlot shr 1);
+      // Initialize excluded slots as well; only the mask gives them weight.
+      iPatches[iQ][iSlot] := iSurfaces[1,1];
+      if not iEligible[iX,iY] then Continue;
+      iPatches[iQ][iSlot] := iSurfaces[iX,iY];
+      iMask := iMask or (1 shl iSlot);
+    end;
+    // In a 2x2 block, only the opposite corner needs a connectivity check.
+    if (iMask and ((1 shl (iOwn xor 1)) or (1 shl (iOwn xor 2)))) = 0 then
+      iMask := iMask and not (1 shl (iOwn xor 3));
+    iMasks[iQ] := iMask;
+    for iSlot := 0 to 3 do
+      if ((iMask and (1 shl iSlot)) <> 0) and
+         (iPatches[iQ][iSlot].Compare( iSurfaces[1,1] ) <> 0) then Result := True;
+  end;
+  if not Result then Exit;
+
+  iLight.Data[0] := TVec3b.CreateAll( FLightMap[aCoord.X-1,aCoord.Y-1] );
+  iLight.Data[1] := TVec3b.CreateAll( FLightMap[aCoord.X-1,aCoord.Y] );
+  iLight.Data[2] := TVec3b.CreateAll( FLightMap[aCoord.X,aCoord.Y] );
+  iLight.Data[3] := TVec3b.CreateAll( FLightMap[aCoord.X,aCoord.Y-1] );
+  iLayer := FSpriteEngine.Layers[iLayerID];
+  for iQ := 0 to 3 do
+    iLayer.PushTransition( aCoord, iQ, iMasks[iQ], iPatches[iQ], iLight, aZ, FluidMixWidth );
+end;
+
+procedure TDRLSpriteMap.PushTerrain;
+var iDMinX     : Word;
+    iDMaxX     : Word;
+    iBottom    : Word;
+    iZ         : Integer;
+    iY,iX      : DWord;
+    iSpr       : TSprite;
+    iFSpr      : TSprite;
+    iCoord     : TCoord2D;
+    iDeco      : Byte;
+    iFloor     : Byte;
+    iCell      : TCell;
+    iColor     : TColor;
+    iMixFluids : Boolean;
+
+begin
+  iMixFluids := not FLevel.Flags[ LF_SHARPFLUID ];
   iDMinX := FShift.X div FSpriteEngine.Grid.X + 1;
   iDMaxX := Min(FShift.X div FSpriteEngine.Grid.X + (IO.Driver.GetSizeX div FSpriteEngine.Grid.X + 1),MAXX);
 
@@ -1247,32 +1360,18 @@ begin
       if iBottom <> 0 then
       begin
         iZ     := iY * DRL_Z_LINE;
-        iStyle := FLevel.CStyle[ iCoord ];
-        iSpr   := GetSprite( iBottom, iStyle );
-        iDeco  := FLevel.Deco[iCoord];
-        if ( iDeco > 0 ) and ( SF_FULLDECO in iSpr.Flags ) then
-          if FLevel.Data.Cells[ iBottom ].Deco[ iDeco ].SpriteID[0] <> 0 then
-          begin
-            if SF_COSPLAY in iSpr.Flags then
+        iSpr := GetTerrainSprite( iCoord, iBottom, iDeco );
+        if not (iMixFluids and (CF_LIQUID in FLevel.Data.Cells[iBottom].Flags) and
+          (SF_FLUID in iSpr.Flags) and PushFluidTerrain( iCoord, iSpr, iZ )) then
+          if SF_FLOW in iSpr.Flags
+            then PushSpriteTerrain( iCoord, iSpr, iZ, FFluidX, FFluidY )
+            else
             begin
-              iColor     := iSpr.Color;
-              iSpr       := FLevel.Data.Cells[ iBottom ].Deco[ iDeco ];
-              iSpr.Color := iColor;
-              Include( iSpr.Flags, SF_COSPLAY );
-            end
-            else
-              iSpr := FLevel.Data.Cells[ iBottom ].Deco[ iDeco ];
-            iDeco      := 0;
-          end;
-        if SF_FLOW in iSpr.Flags
-          then PushSpriteTerrain( iCoord, iSpr, iZ, FFluidX, FFluidY )
-          else
-          begin
-            if SF_MULTI in iSpr.Flags then
-              PushMultiSpriteTerrain( iCoord, iSpr, iZ, FLevel.Rotation[ iCoord ] )
-            else
-              PushSpriteTerrain( iCoord, iSpr, iZ );
-          end;
+              if SF_MULTI in iSpr.Flags then
+                PushMultiSpriteTerrain( iCoord, iSpr, iZ, FLevel.Rotation[ iCoord ] )
+              else
+                PushSpriteTerrain( iCoord, iSpr, iZ );
+            end;
         if (SF_FLUID in iSpr.Flags) and (FLevel.Rotation[ iCoord ] <> 0) then
         begin
           iFloor := FLevel.Floor[ iCoord ];
