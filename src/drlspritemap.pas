@@ -1241,7 +1241,7 @@ begin
 end;
 
 function TDRLSpriteMap.PushFluidTerrain( aCoord : TCoord2D; const aSprite : TSprite; aZ : Integer ) : Boolean;
-const FluidMixWidth = 3.0;
+const FluidMixWidth = 8.0;
 var iSurfaces  : array[0..2,0..2] of TSpriteTransitionMaterial;
     iEligible  : array[0..2,0..2] of Boolean;
     iPatches   : array[0..3] of TSpriteTransitionMaterials;
