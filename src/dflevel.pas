@@ -85,6 +85,7 @@ TLevel = class(TLuaMapNode)
     function GetEnemiesVisible : Word;
 
     function DropItem ( aItem  : TItem;  aCoord : TCoord2D; aNoHazard : Boolean; aDropAnim : Boolean ) : boolean;  // raises EPlacementException
+    function SpawnBeing( aNID : Byte; aCoord : TCoord2D; aRespawn : Boolean = False ) : TBeing;
     procedure DropBeing( aBeing : TBeing; aCoord : TCoord2D ); // raises EPlacementException
 
     procedure Remove( Node : TNode ); override;
@@ -859,6 +860,22 @@ begin
   end;
 end;
 
+function TLevel.SpawnBeing( aNID : Byte; aCoord : TCoord2D; aRespawn : Boolean ) : TBeing;
+begin
+  Result := TBeing.Create( aNID, FContext, FGameRNG );
+  try
+    if aRespawn then Result.Flags[ BF_RESPAWN ] := True;
+    DropBeing( Result, aCoord );
+  except
+    on EPlacementException do FreeAndNil( Result );
+    else
+    begin
+      Result.Free;
+      raise;
+    end;
+  end;
+end;
+
 procedure TLevel.DropBeing( aBeing : TBeing; aCoord : TCoord2D );
 var iBlockFlag : Byte;
 begin
@@ -1134,19 +1151,14 @@ var iBeing  : TBeing;
 begin
   iCellID := GetCell( aCoord );
   if FData.Cells[ iCellID ].raiseto = '' then Exit( nil );
-  try
-    iBeing := TBeing.Create( FData.Cells[ iCellID ].raiseto, FContext, FGameRNG );
-    iBeing.Flags[ BF_RESPAWN ] := True;
-    DropBeing( iBeing, aCoord );
-    Cell[ aCoord ] := FContext.Lua.Defines[ FData.Cells[ iCellID ].destroyto ];
-    iBeing.Flags[ BF_NOEXP   ] := True;
-    for iItem in iBeing.Inv do
-      iItem.Flags[ IF_NODROP ] := True;
-    if BeingVisible( aCoord, iBeing ) or BeingExplored( aCoord, iBeing ) then
-      IO.addKillAnimation( 1000, 0, iBeing, True );
-  except
-    on EPlacementException do FreeAndNil( iBeing );
-  end;
+  iBeing := SpawnBeing( FContext.Lua.Defines[ FData.Cells[ iCellID ].raiseto ], aCoord, True );
+  if iBeing = nil then Exit( nil );
+  Cell[ aCoord ] := FContext.Lua.Defines[ FData.Cells[ iCellID ].destroyto ];
+  iBeing.Flags[ BF_NOEXP ] := True;
+  for iItem in iBeing.Inv do
+    iItem.Flags[ IF_NODROP ] := True;
+  if BeingVisible( aCoord, iBeing ) or BeingExplored( aCoord, iBeing ) then
+    IO.addKillAnimation( 1000, 0, iBeing, True );
   Exit( iBeing );
 end;
 
@@ -1680,30 +1692,27 @@ begin
   if iToHit > 0 then Result += ' {'+THColor+IntToStr( iToHit )+'}%';
 end;
 
-function lua_level_drop_being(L: Plua_State): Integer; cdecl;
+function lua_level_drop_being( L : Plua_State ) : Integer; cdecl;
 var iState   : TLuaGameStack;
     iBeing   : TBeing;
     iLevel   : TLevel;
     iRespawn : Boolean;
 begin
-  iState.Init(L);
-  iLevel := iState.ToObject(1) as TLevel;
-  if iState.IsNil(3) then Exit(0);
-  try
-    iRespawn := iState.ToBoolean( 4, False );
-    if iState.IsTable(2)
-      then iBeing := iState.ToObject(2) as TBeing
-      else iBeing := TBeing.Create( iState.ToId( iLevel.Context.Lua, 2 ), iLevel.Context, iLevel.GameRNG );
+  iState.Init( L );
+  iLevel := iState.ToObject( 1 ) as TLevel;
+  iRespawn := iState.ToBoolean( 4, False );
+  if iState.IsTable( 2 ) then
+  begin
+    iBeing := iState.ToObject( 2 ) as TBeing;
     if iRespawn then iBeing.Flags[ BF_RESPAWN ] := True;
-    iLevel.DropBeing( iBeing, iState.ToCoord(3) );
-    iState.Push( iBeing );
-  except
-    on EPlacementException do
-    begin
-      FreeAndNil( iBeing );
-      iState.PushNil();
-    end;
+    iLevel.DropBeing( iBeing, iState.ToCoord( 3 ) );
+  end
+  else
+  begin
+    if iState.IsNil( 3 ) then Exit( 0 );
+    iBeing := iLevel.SpawnBeing( iState.ToId( iLevel.Context.Lua, 2 ), iState.ToCoord( 3 ), iRespawn );
   end;
+  iState.Push( iBeing );
   Result := 1;
 end;
 

@@ -2893,20 +2893,6 @@ begin
   Exit( False );
 end;
 
-function lua_being_new( L : PLua_State ): Integer; cdecl;
-var iState : TLuaGameStack;
-    iRNG   : TRNG;
-    iLua   : TDRLLua;
-    iBeing : TBeing;
-begin
-  iState.Init( L );
-  iLua := TDRLLua( TLuaContext.FromState( L ).Lua );
-  iRNG := iLua.Context.RNG;
-  iBeing := TBeing.Create( iState.ToId( iLua, 1 ), iLua.NodeContext, iRNG );
-  iState.Push( iBeing );
-  Result := 1;
-end;
-
 function lua_being_kill(L: Plua_State): Integer; cdecl;
 var State       : TLuaGameStack;
     Being       : TBeing;
@@ -3628,8 +3614,7 @@ begin
   Result := 1;
 end;
 
-const lua_being_lib : array[0..41] of luaL_Reg = (
-      ( name : 'new';           func : @lua_being_new),
+const lua_being_lib : array[0..40] of luaL_Reg = (
       ( name : 'kill';          func : @lua_being_kill),
       ( name : 'resurrect';     func : @lua_being_resurrect),
       ( name : 'apply_damage';  func : @lua_being_apply_damage),
