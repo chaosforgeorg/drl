@@ -450,7 +450,7 @@ var iName : AnsiString;
 begin
   iName := lua_tolstring( L, aIndex, nil );
   // search standard hooks first
-  for i := 0 to HookAmount - 1 do
+  for i in AllHooks do
     if HookNames[i] = iName then
       Exit( i );
   // search core.callbacks

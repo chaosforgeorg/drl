@@ -1120,10 +1120,6 @@ function drl.register_challenges()
 			statistics.bonus_levels_count = 0
 		end,
 
-		OnUnLoad = function ()
-			drl.OnCreateEpisode()
-		end,
-
 		OnWinGame = function ()
 			if player.eq.armor and player.eq.armor.id == "uberarmor" then
 				drl.plot_outro_special()
@@ -1252,10 +1248,6 @@ You can rest easy knowing that you're Boss. Yet at the last level you sensed som
 		OnCreateEpisode = function ()
 			local seed = player.episode[1].seed
 			player.episode[1] = { style = 1, name = "Phobos L1", danger = 2, deathname = "level 1 of the Phobos base", seed = seed }
-		end,
-
-		OnUnLoad = function ()
-			drl.OnCreateEpisode()
 		end,
 
 	}
@@ -1534,10 +1526,6 @@ You can rest easy knowing that you're Boss. Yet at the last level you sensed som
 				{ script = table.random_pick{ "the_asmos_den", "the_lava_pits" }, style = 3 },
 				{ script = "dis", style = 3 },
 			}
-		end,
-
-		OnUnLoad = function ()
-			drl.OnCreateEpisode()
 		end,
 
 		OnMortem = function ()

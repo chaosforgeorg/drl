@@ -43,7 +43,7 @@ const
   Hook_OnNuked         = 31;  // Perk (level)
   Hook_OnLoad          = 32;  // Module
   Hook_OnLoaded        = 33;  // Module
-  Hook_OnUnLoad        = 34;  // Module, Challenge
+  // 34 is unused; retain subsequent hook IDs.
   Hook_OnCreatePlayer  = 35;  // Module, Challenge
   Hook_OnLevelUp       = 36;  // Perk (player)
   Hook_OnPreLevelUp    = 37;  // Perk (player)
@@ -84,7 +84,7 @@ const
 
   HookAmount           = 69;
 
-const AllHooks      : TFlags = [ 0..HookAmount-1 ];
+const AllHooks      : TFlags = [ 0..33, 35..HookAmount-1 ];
 
 var   BeingHooks       : TFlags;
       FullInvHooks     : TFlags;
@@ -100,7 +100,7 @@ const HookNames : array[ 0..HookAmount-1 ] of AnsiString = (
       'OnAltFire', 'OnAltReload', 'OnEquip', 'OnUnequip', 'OnAdd', 'OnRemove', 'OnTick10', 'OnKill', 'OnKillAll',
       'OnHitBeing', 'OnReload', 'getGroundDesc', 'OnEquipCheck', 'OnAct', 'OnDestroy', 'OnEnter', 'OnEnterLevel',
       'OnFire', 'OnFired', 'OnExitLevel', 'OnTick', 'OnNuked',
-      'OnLoad','OnLoaded','OnUnLoad', 'OnCreatePlayer', 'OnLevelUp','OnPreLevelUp',
+      'OnLoad','OnLoaded','', 'OnCreatePlayer', 'OnLevelUp','OnPreLevelUp',
       'OnWinGame', 'OnCreateEpisode', 'OnIntro' , 'OnGenerate',
 
       'OnPostMove', 'OnPreReload', 'OnDamage', 'OnReceiveDamage', 'OnPreAction', 'OnPostAction',
@@ -159,7 +159,6 @@ end;
 
 initialization
 
-AllHooks     := [ 0..HookAmount-1 ];
 // Prototype masks; perks load their hooks independently.
 BeingHooks   := [ Hook_OnCreate, Hook_OnAction, Hook_OnAttacked, Hook_OnUseActive,
   Hook_OnDie, Hook_OnDieCheck, Hook_OnPickup, Hook_OnDamage, Hook_OnReceiveDamage,
@@ -167,10 +166,10 @@ BeingHooks   := [ Hook_OnCreate, Hook_OnAction, Hook_OnAttacked, Hook_OnUseActiv
 FullInvHooks := [ Hook_OnPreAction, Hook_OnPostAction, Hook_OnTick ];
 NoInventoryHooks := [ Hook_OnPickup ];
 GlobalHooks  := [ Hook_OnCreate, Hook_OnEnterLevel, Hook_OnExitLevel, Hook_OnTick,
-  Hook_OnLoad, Hook_OnLoaded, Hook_OnUnLoad, Hook_OnCreatePlayer,
+  Hook_OnLoad, Hook_OnLoaded, Hook_OnCreatePlayer,
   Hook_OnWinGame, Hook_OnCreateEpisode,
   Hook_OnIntro, Hook_OnGenerate ];
-ChallengeHooks := [ Hook_OnCreate, Hook_OnUnLoad, Hook_OnCreatePlayer,
+ChallengeHooks := [ Hook_OnCreate, Hook_OnCreatePlayer,
   Hook_OnWinGame, Hook_OnCreateEpisode ];
 ModuleHooks  := [ Hook_OnLoad ];
 

@@ -1725,7 +1725,6 @@ begin
     if FChallenge <> '' then iChalAbbr := FContext.Lua.Get(['chal',FChallenge,'abbr']);
     IO.RunLayer( TPagedView.Create( TDRLRuntime( FRuntime ).HOF.GetPagedScoreReport, iChalAbbr ), True );
   end;
-  CallHook(Hook_OnUnLoad,[]);
 
   IO.BloodSlideDown(20);
   ReleasePlayer;
