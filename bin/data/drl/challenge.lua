@@ -936,6 +936,14 @@ function drl.register_challenges()
 				end
 				return true
 			end,
+			OnLevelUp = function( self, l )
+				if not ARCHANGEL then
+					ui.msg("SuperCharge!")
+					ui.blink(LIGHTBLUE,100)
+					self.hp = 2 * self.hpmax
+					self:remove_perk( "tired" )
+				end
+			end,
 		},
 
 		OnCreatePlayer = function ()
@@ -960,15 +968,6 @@ function drl.register_challenges()
 					add = { "rarmor", "psboots" },
 				}
 			)
-		end,
-		
-		OnLevelUp = function (l)
-			if not ARCHANGEL then
-				ui.msg("SuperCharge!")
-				ui.blink(LIGHTBLUE,100)
-				player.hp = 2 * player.hpmax
-				player:remove_perk( "tired" )
-			end
 		end,
 
 	}
@@ -1328,6 +1327,12 @@ You can rest easy knowing that you're Boss. Yet at the last level you sensed som
 		arch_rating      = "TORMUSE",
 		arch_rank        = 9,
 
+		runtime = {
+			OnPreLevelUp = function( self, l )
+				return not ARCHANGEL
+			end,
+		},
+
 		OnCreatePlayer = function ()
 			player.hp = player.hp / 5
 			player.hpmax = player.hp
@@ -1351,10 +1356,6 @@ You can rest easy knowing that you're Boss. Yet at the last level you sensed som
 					add = { reward },
 				}
 			)
-		end,
-		
-		OnPreLevelUp = function ()
-			return not ARCHANGEL
 		end,
 	}
 

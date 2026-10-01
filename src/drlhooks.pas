@@ -45,8 +45,8 @@ const
   Hook_OnLoaded        = 33;  // Module
   Hook_OnUnLoad        = 34;  // Module, Challenge
   Hook_OnCreatePlayer  = 35;  // Module, Challenge
-  Hook_OnLevelUp       = 36;  // Module, Challenge
-  Hook_OnPreLevelUp    = 37;  // Module, Challenge
+  Hook_OnLevelUp       = 36;  // Perk (player)
+  Hook_OnPreLevelUp    = 37;  // Perk (player)
   Hook_OnWinGame       = 38;  // Module, Challenge
   Hook_OnCreateEpisode = 39;  // Module, Challenge
   Hook_OnIntro         = 40;  // Module
@@ -167,10 +167,11 @@ BeingHooks   := [ Hook_OnCreate, Hook_OnAction, Hook_OnAttacked, Hook_OnUseActiv
 FullInvHooks := [ Hook_OnPreAction, Hook_OnPostAction, Hook_OnTick ];
 NoInventoryHooks := [ Hook_OnPickup ];
 GlobalHooks  := [ Hook_OnCreate, Hook_OnEnterLevel, Hook_OnExitLevel, Hook_OnTick,
-  Hook_OnLoad, Hook_OnLoaded, Hook_OnUnLoad, Hook_OnCreatePlayer, Hook_OnLevelUp,
-  Hook_OnPreLevelUp, Hook_OnWinGame, Hook_OnCreateEpisode,
+  Hook_OnLoad, Hook_OnLoaded, Hook_OnUnLoad, Hook_OnCreatePlayer,
+  Hook_OnWinGame, Hook_OnCreateEpisode,
   Hook_OnIntro, Hook_OnGenerate ];
-ChallengeHooks := GlobalHooks - [ Hook_OnEnterLevel, Hook_OnExitLevel ];
+ChallengeHooks := [ Hook_OnCreate, Hook_OnUnLoad, Hook_OnCreatePlayer,
+  Hook_OnWinGame, Hook_OnCreateEpisode ];
 ModuleHooks  := [ Hook_OnLoad ];
 
 end.

@@ -214,6 +214,8 @@ core.register_blueprint "perk"
 	OnKill         = { false, core.TFUNC },
 	OnKillAll      = { false, core.TFUNC },
 	OnExitLevel    = { false, core.TFUNC },
+	OnPreLevelUp   = { false, core.TFUNC },
+	OnLevelUp      = { false, core.TFUNC },
 	OnNuked        = { false, core.TFUNC },
 	OnHitBeing     = { false, core.TFUNC },
 	OnEnter        = { false, core.TFUNC },
@@ -386,8 +388,6 @@ core.register_blueprint "challenge"
 	OnRegister       = { false, core.TFUNC },
 	OnUnLoad         = { false, core.TFUNC },
 	OnCreatePlayer   = { false, core.TFUNC },
-	OnLevelUp        = { false, core.TFUNC },
-	OnPreLevelUp     = { false, core.TFUNC },
 	OnWinGame        = { false, core.TFUNC },
 	OnCreateEpisode  = { false, core.TFUNC },
 }
