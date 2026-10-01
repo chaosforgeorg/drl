@@ -213,6 +213,7 @@ core.register_blueprint "perk"
 	OnPostAction   = { false, core.TFUNC },
 	OnKill         = { false, core.TFUNC },
 	OnKillAll      = { false, core.TFUNC },
+	OnCreateBeing  = { false, core.TFUNC },
 	OnExitLevel    = { false, core.TFUNC },
 	OnPreLevelUp   = { false, core.TFUNC },
 	OnLevelUp      = { false, core.TFUNC },

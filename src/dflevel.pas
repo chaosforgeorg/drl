@@ -864,6 +864,8 @@ function TLevel.SpawnBeing( aNID : Byte; aCoord : TCoord2D; aRespawn : Boolean )
 begin
   Result := TBeing.Create( aNID, FContext, FGameRNG );
   try
+    CallHook( Hook_OnCreateBeing, [ Result ] );
+    DRL.CallHook( Hook_OnCreate, [ Result ] );
     if aRespawn then Result.Flags[ BF_RESPAWN ] := True;
     DropBeing( Result, aCoord );
   except

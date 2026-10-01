@@ -43,7 +43,7 @@ const
   Hook_OnNuked         = 31;  // Perk (level)
   Hook_OnLoad          = 32;  // Module
   Hook_OnLoaded        = 33;  // Module
-  // 34 is unused; retain subsequent hook IDs.
+  Hook_OnCreateBeing   = 34;  // Perk (level)
   Hook_OnCreatePlayer  = 35;  // Module, Challenge
   Hook_OnLevelUp       = 36;  // Perk (player)
   Hook_OnPreLevelUp    = 37;  // Perk (player)
@@ -84,7 +84,7 @@ const
 
   HookAmount           = 69;
 
-const AllHooks      : TFlags = [ 0..33, 35..HookAmount-1 ];
+const AllHooks      : TFlags = [ 0..HookAmount-1 ];
 
 var   BeingHooks       : TFlags;
       FullInvHooks     : TFlags;
@@ -100,7 +100,7 @@ const HookNames : array[ 0..HookAmount-1 ] of AnsiString = (
       'OnAltFire', 'OnAltReload', 'OnEquip', 'OnUnequip', 'OnAdd', 'OnRemove', 'OnTick10', 'OnKill', 'OnKillAll',
       'OnHitBeing', 'OnReload', 'getGroundDesc', 'OnEquipCheck', 'OnAct', 'OnDestroy', 'OnEnter', 'OnEnterLevel',
       'OnFire', 'OnFired', 'OnExitLevel', 'OnTick', 'OnNuked',
-      'OnLoad','OnLoaded','', 'OnCreatePlayer', 'OnLevelUp','OnPreLevelUp',
+      'OnLoad','OnLoaded','OnCreateBeing', 'OnCreatePlayer', 'OnLevelUp','OnPreLevelUp',
       'OnWinGame', 'OnCreateEpisode', 'OnIntro' , 'OnGenerate',
 
       'OnPostMove', 'OnPreReload', 'OnDamage', 'OnReceiveDamage', 'OnPreAction', 'OnPostAction',
