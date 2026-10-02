@@ -504,8 +504,6 @@ begin
   IO.EnterLevel( FPlayer.Position );
 
   aLevel.CallHook( Hook_OnEnterLevel, [ aLevel.Index, aLevel.ID ] );
-  CallHook( Hook_OnEnterLevel, [ aLevel.Index, aLevel.ID ] );
-  FPlayer.CallHook( Hook_OnEnterLevel, [ aLevel.Index, aLevel.ID ] );
 
   FPlayer.LevelEnter;
 
@@ -1501,11 +1499,10 @@ begin
   FContext.Lua.SetValue('GAME_SEED', FGameSeed);
   IO.SetSeed( FGameSeed );
 
-  if (not (State in [DSLoading, DSCrashLoading])) then
-    CallHook( Hook_OnIntro, [Setting_NoIntro] );
-
   if (not(State in [DSLoading, DSCrashLoading])) then
   begin
+    if ( not Setting_NoIntro ) and FContext.Lua.Defined( [ CoreModuleID, 'ShowIntro' ] ) then
+      FContext.Lua.ProtectedCall( [ CoreModuleID, 'ShowIntro' ], [] );
     GameRNG.SetSeed( iEpisodeSeed );
     CallHook( Hook_OnCreateWorld, [QWord( iEpisodeSeed )] );
   end;
@@ -1547,7 +1544,7 @@ begin
         else
         begin
           IO.Msg('You enter %s.',[ FLevel.Name ] );
-          CallHook( Hook_OnGenerate, [] );
+          FContext.Lua.ProtectedCall( [ CoreModuleID, 'GenerateLevel' ], [] );
           FLevel.AfterGeneration;
         end;
     end;

@@ -250,6 +250,11 @@ function drl.register_base_data()
 			self:set_coscolor{ 0.8, 0.7, 0.7, 1.0 }
 		end,
 
+		OnEnterLevel = function( self )
+			self:remove_perk( "running", true )
+			self:remove_perk( "tired", true )
+		end,
+
 		--These stubs exist so that modders can hijack them properly
 		OnAction   = function(self) return end,
 		OnAttacked = function(self) return end,
@@ -292,19 +297,33 @@ function drl.register_base_data()
 
 end
 
-function drl.OnCreateLevel()
-	level:add_perk( "perk_level_enrage" )
+function drl.ShowIntro()
+	drl.plot_intro()
 end
 
-function drl.OnEnterLevel()
+function drl.GenerateLevel()
+	core.log("drl.GenerateLevel()")
+
+	local dlevel = level.danger_level
+	local choice = weight_table.new()
+	for _,g in ipairs(generators) do
+		if dlevel >= g.min_lev and DIFFICULTY >= g.min_diff then
+			local weight = core.ranged_table( g.weight, dlevel )
+			choice:add( g, weight )
+		end
+	end
+	if choice:size() == 0 then error("NO GENERATOR AVAILABLE!") end
+	local gen = choice:roll()
+	generator.run( gen )
+end
+
+function drl.OnCreateLevel()
+	level:add_perk( "perk_level_enrage" )
+	level:add_perk( "perk_level_unique_feeling" )
 	local linfo = player.episode[ level.index ]
 	player:add_property( "crash_index", ( linfo and linfo.exit ) or ( level.index + 1 ) )
-	player:remove_perk( "running", true )
-	player:remove_perk( "tired", true )
-	if level:get_property( "unique_item", false ) then
-		ui.msg_feel( "You feel there is something really valuable here!" )
-	end
 end
+
 
 function drl.GetDisassembleId( it )
 	local modlist = {"mod_agility","mod_bulk","mod_tech","mod_power"}
@@ -852,21 +871,6 @@ function drl.GetItemMax( id )
 	return result
 end
 
-function drl.OnGenerate()
-	core.log("drl.OnGenerate()")
-
-	local dlevel = level.danger_level
-	local choice = weight_table.new()
-	for _,g in ipairs(generators) do
-		if dlevel >= g.min_lev and DIFFICULTY >= g.min_diff then
-			local weight = core.ranged_table( g.weight, dlevel ) 
-			choice:add( g, weight )
-		end
-	end
-	if choice:size() == 0 then error("NO GENERATOR AVAILABLE!") end
-	local gen = choice:roll()
-	generator.run( gen )
-end
 
 drl.help = {
 	{ "intro", "Introduction" },

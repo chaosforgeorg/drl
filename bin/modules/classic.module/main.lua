@@ -43,7 +43,7 @@ function classic.OnCreateWorld()
 	statistics.bonus_levels_count = 0
 end
 
-function classic.OnGenerate()
+function classic.GenerateLevel()
 	generator.reset()
 	generator.run( generators.gen_tiled )
 end

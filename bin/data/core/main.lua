@@ -475,6 +475,15 @@ register_being         = core.register_storage( "beings", "being", function( bp 
 	end
 )
 
+register_perk "perk_level_unique_feeling"
+{
+	OnEnterLevel = function( self )
+		if self:get_property( "unique_item", false ) then
+			ui.msg_feel( "You feel there is something really valuable here!" )
+		end
+	end,
+}
+
 register_perk "perk_lever_description"
 {
 	getGroundDesc = function( self )

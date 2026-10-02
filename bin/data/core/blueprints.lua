@@ -297,6 +297,7 @@ core.register_blueprint "being"
 	weapon = { false, core.TANY },
 
 	OnCreate        = { false, core.TFUNC },
+	OnEnterLevel    = { false, core.TFUNC }, -- Player
 	OnAction        = { false, core.TFUNC },
 	OnAttacked      = { false, core.TFUNC },
 	OnDie           = { false, core.TFUNC },

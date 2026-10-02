@@ -476,7 +476,11 @@ begin
 end;
 
 procedure TPlayer.LevelEnter;
+var iLevel : TLevel;
 begin
+  iLevel := TLevel( Parent );
+  CallHook( Hook_OnEnterLevel, [ iLevel.Index, iLevel.ID ] );
+
   if FHP < (FHPMax div 10) then
     AddHistory('Entering @1 he was almost dead...');
 

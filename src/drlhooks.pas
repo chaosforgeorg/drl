@@ -35,7 +35,7 @@ const
   Hook_OnAct           = 23;  // Being, Perk
   Hook_OnDestroy       = 24;  // Perk (item)
   Hook_OnEnter         = 25;  // Perk (item; separate from cell OnEnter)
-  Hook_OnEnterLevel    = 26;  // Trait, Perk, Module
+  Hook_OnEnterLevel    = 26;  // Being (player), Trait, Perk (level, player, item)
   Hook_OnFire          = 27;  // Trait, Perk
   Hook_OnFired         = 28;  // Trait, Perk
   Hook_OnExitLevel     = 29;  // Perk (level, player, item)
@@ -49,8 +49,7 @@ const
   Hook_OnPreLevelUp    = 37;  // Perk (player)
   Hook_OnWinGame       = 38;  // Module, Challenge
   Hook_OnCreateWorld   = 39;  // Module, Challenge
-  Hook_OnIntro         = 40;  // Module
-  Hook_OnGenerate      = 41;  // Module
+  // Slots 40 and 41 are unused.
 
   // TODO: merge with above
   Hook_OnPostMove      = 42;   // Trait, Perk
@@ -85,7 +84,7 @@ const
 
   HookAmount           = 70;
 
-const AllHooks      : TFlags = [ 0..HookAmount-1 ];
+const AllHooks      : TFlags = [ 0..HookAmount-1 ] - [ 40, 41 ];
 
 var   BeingHooks       : TFlags;
       FullInvHooks     : TFlags;
@@ -102,7 +101,7 @@ const HookNames : array[ 0..HookAmount-1 ] of AnsiString = (
       'OnHitBeing', 'OnReload', 'getGroundDesc', 'OnEquipCheck', 'OnAct', 'OnDestroy', 'OnEnter', 'OnEnterLevel',
       'OnFire', 'OnFired', 'OnExitLevel', 'OnTick', 'OnNuked',
       'OnLoad','OnLoaded','OnCreateBeing', 'OnCreatePlayer', 'OnLevelUp','OnPreLevelUp',
-      'OnWinGame', 'OnCreateWorld', 'OnIntro' , 'OnGenerate',
+      'OnWinGame', 'OnCreateWorld', '', '',
 
       'OnPostMove', 'OnPreReload', 'OnDamage', 'OnReceiveDamage', 'OnPreAction', 'OnPostAction',
       'OnCanDualWield', 'OnCanMaxDamage',
@@ -163,13 +162,12 @@ initialization
 // Prototype masks; perks load their hooks independently.
 BeingHooks   := [ Hook_OnCreate, Hook_OnAction, Hook_OnAttacked, Hook_OnUseActive,
   Hook_OnDie, Hook_OnDieCheck, Hook_OnPickup, Hook_OnDamage, Hook_OnReceiveDamage,
-  Hook_OnAct, Hook_OnCanAct ];
+  Hook_OnAct, Hook_OnCanAct, Hook_OnEnterLevel ];
 FullInvHooks := [ Hook_OnPreAction, Hook_OnPostAction, Hook_OnTick ];
 NoInventoryHooks := [ Hook_OnPickup ];
-GlobalHooks  := [ Hook_OnCreateLevel, Hook_OnEnterLevel,
+GlobalHooks  := [ Hook_OnCreateLevel,
   Hook_OnLoaded, Hook_OnCreatePlayer,
-  Hook_OnWinGame, Hook_OnCreateWorld,
-  Hook_OnIntro, Hook_OnGenerate ];
+  Hook_OnWinGame, Hook_OnCreateWorld ];
 ChallengeHooks := [ Hook_OnCreateLevel, Hook_OnCreatePlayer,
   Hook_OnWinGame, Hook_OnCreateWorld ];
 ModuleHooks  := [ Hook_OnLoad ];
