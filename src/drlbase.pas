@@ -50,7 +50,7 @@ type TDRLSession = class(TVObject)
        procedure ResetLevel;
        procedure Reset;
        procedure Reconfigure;
-       procedure SetModuleHooks( aModuleHooks : TFlags );
+       procedure SetSessionHooks( aSessionHooks : TFlags );
        class procedure RegisterLuaAPI( aLua : TLua );
        function LoadSaveFile : Boolean;
        procedure WriteSaveFile( aCrash : Boolean );
@@ -58,8 +58,6 @@ type TDRLSession = class(TVObject)
        function Action( aInput : TInputKey ) : Boolean;
        function Run( aShowIntro : Boolean ) : TDRLSessionResult;
        destructor Destroy; override;
-       procedure CallHook( Hook : Byte; const Params : array of Const );
-       function  CallHookCheck( Hook : Byte; const Params : array of Const ) : Boolean;
        procedure SetState( aNewState : TDRLState );
        procedure WinGame;
        procedure ExitLevel( aFade : Boolean; aFadeTime : Single );
@@ -77,6 +75,8 @@ type TDRLSession = class(TVObject)
        function HandlePickupCommand( aAlt : Boolean ) : Boolean;
        procedure ResetAutoTarget;
      private
+       procedure CallHook( aHook : Byte; const aParams : array of Const );
+       procedure ShowEnding;
        procedure FinishGame;
        procedure RecordResult;
        function GenerateMemorial : TIOStringArray;
@@ -118,7 +118,7 @@ type TDRLSession = class(TVObject)
 
        FChallengeHooks  : TFlags;
        FSChallengeHooks : TFlags;
-       FModuleHooks     : TFlags;
+       FSessionHooks    : TFlags;
 
        FDifficulty      : Byte;
        FChallenge       : AnsiString;
@@ -221,19 +221,24 @@ begin
   inherited Destroy;
 end;
 
-procedure TDRLSession.CallHook( Hook : Byte; const Params : array of const ) ;
+procedure TDRLSession.CallHook( aHook : Byte; const aParams : array of Const );
 begin
-  if (Hook in FModuleHooks) then FContext.Lua.ProtectedCall([CoreModuleID,TDRLLua( FContext.Lua ).HookName(Hook)],Params);
-  if (FChallenge <> '')  and (Hook in FChallengeHooks) then FContext.Lua.ProtectedCall(['chal',FChallenge,TDRLLua( FContext.Lua ).HookName(Hook)],Params);
-  if (FSChallenge <> '') and (Hook in FSChallengeHooks) then FContext.Lua.ProtectedCall(['chal',FSChallenge,TDRLLua( FContext.Lua ).HookName(Hook)],Params);
+  if aHook in FSessionHooks then
+    FContext.Lua.ProtectedCall( [ CoreModuleID, HookNames[ aHook ] ], aParams );
+  if aHook in FChallengeHooks then
+    FContext.Lua.ProtectedCall( [ 'chal', FChallenge, HookNames[ aHook ] ], aParams );
+  if aHook in FSChallengeHooks then
+    FContext.Lua.ProtectedCall( [ 'chal', FSChallenge, HookNames[ aHook ] ], aParams );
 end;
 
-function TDRLSession.CallHookCheck ( Hook : Byte; const Params : array of const ) : Boolean;
+procedure TDRLSession.ShowEnding;
 begin
-  if (FChallenge <> '') and (Hook in FChallengeHooks) then if not FContext.Lua.ProtectedCall(['chal',FChallenge,HookNames[Hook]],Params) then Exit( False );
-  if (FSChallenge <> '') and (Hook in FSChallengeHooks) then if not FContext.Lua.ProtectedCall(['chal',FSChallenge,HookNames[Hook]],Params) then Exit( False );
-  if Hook in FModuleHooks then if not FContext.Lua.ProtectedCall([CoreModuleID,HookNames[Hook]],Params) then Exit( False );
-  Exit( True );
+  if Hook_OnWinGame in FChallengeHooks then
+    if not FContext.Lua.ProtectedCall( [ 'chal', FChallenge, HookNames[ Hook_OnWinGame ] ], [] ) then Exit;
+  if Hook_OnWinGame in FSChallengeHooks then
+    if not FContext.Lua.ProtectedCall( [ 'chal', FSChallenge, HookNames[ Hook_OnWinGame ] ], [] ) then Exit;
+  if Hook_OnWinGame in FSessionHooks then
+    FContext.Lua.ProtectedCall( [ CoreModuleID, HookNames[ Hook_OnWinGame ] ], [] );
 end;
 
 procedure TDRLSession.SetState( aNewState : TDRLState );
@@ -359,9 +364,9 @@ begin
   Result := FRuntime.GameRNG;
 end;
 
-procedure TDRLSession.SetModuleHooks( aModuleHooks : TFlags );
+procedure TDRLSession.SetSessionHooks( aSessionHooks : TFlags );
 begin
-  FModuleHooks := aModuleHooks;
+  FSessionHooks := aSessionHooks;
 end;
 
 procedure TDRLSession.RecordResult;
@@ -1506,7 +1511,7 @@ begin
     GameRNG.SetSeed( iEpisodeSeed );
     CallHook( Hook_OnCreateWorld, [QWord( iEpisodeSeed )] );
   end;
-  CallHook( Hook_OnLoaded, [(State in [DSLoading, DSCrashLoading])] );
+  CallHook( Hook_OnStartGame, [(State in [DSLoading, DSCrashLoading])] );
 
   FPlayer.Statistics.StartTimer;
   try
@@ -1710,7 +1715,7 @@ begin
     if FGameWon then
     begin
       IO.Audio.PlayMusic('victory');
-      CallHookCheck(Hook_OnWinGame,[]);
+      ShowEnding;
     end
     else IO.Audio.PlayMusic('bunny');
   end;

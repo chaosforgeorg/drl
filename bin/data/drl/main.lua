@@ -56,7 +56,7 @@ require( "drl:levels/house" )
 
 -- main DRL lua script file --
 
-function drl.OnLoaded()
+function drl.OnStartGame()
 	ui.msg('Welcome to {RDRL}...')
 end
 

@@ -28,7 +28,7 @@ type TDRLRuntime = class( TRLRuntime )
     FData             : TGameData;
     FHelp             : THelp;
     FModErrors        : TStringGArray;
-    FModuleHooks      : TFlags;
+    FSessionHooks     : TFlags;
     FDataLoaded       : Boolean;
     FHOF              : THOF;
     FProfileTimeStart : Comp;
@@ -197,7 +197,7 @@ begin
   if not aInitializeData then Exit;
   TDRLLua( FLua ).BindNodeContext( FSession.Context );
   FSession.InitializeLevel;
-  FSession.SetModuleHooks( FModuleHooks );
+  FSession.SetSessionHooks( FSessionHooks );
 end;
 
 // Phase order: select module and paths; create an initial session shell;
@@ -261,7 +261,7 @@ begin
   TDRLIO(IO).LoadStart;
   FDataLoaded := True;
   TDRLIO(IO).Configure(Config, True);
-  FModuleHooks := [];
+  FSessionHooks := [];
   FHelp := THelp.Create;
 end;
 
@@ -276,7 +276,7 @@ begin
   TDRLLua( FLua ).ReadWad( FHelp, FModErrors );
   if GodMode then RegisterDebugConsole( VKEY_F1 );
   FLua.CallDefaultResult := True;
-  FModuleHooks := LoadHooks( FLua, [CoreModuleID], GlobalHooks );
+  FSessionHooks := LoadHooks( FLua, [CoreModuleID], SessionHooks );
   SafeCallModuleHook(Hook_OnLoad, []);
   ApplyConfiguration;
   TDRLIO(IO).Reconfigure(Config);
@@ -312,7 +312,7 @@ begin
     for i := 0 to 3 do
       HARDSPRITE_DECAL_WALL_BLOOD[i] := FLua.Get('HARDSPRITE_DECAL_WALL_BLOOD_'+IntToStr(i+1), 0);
 
-  FSession.SetModuleHooks(FModuleHooks);
+  FSession.SetSessionHooks( FSessionHooks );
   TDRLIO(IO).LoadStop;
 end;
 

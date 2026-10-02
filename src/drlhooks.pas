@@ -42,7 +42,7 @@ const
   Hook_OnTick          = 30;  // Perk (level, being, item)
   Hook_OnNuked         = 31;  // Perk (level)
   Hook_OnLoad          = 32;  // Module
-  Hook_OnLoaded        = 33;  // Module
+  Hook_OnStartGame     = 33;  // Module
   Hook_OnCreateBeing   = 34;  // Perk (level)
   Hook_OnCreatePlayer  = 35;  // Module, Challenge
   Hook_OnLevelUp       = 36;  // Perk (player)
@@ -89,9 +89,9 @@ const AllHooks      : TFlags = [ 0..HookAmount-1 ] - [ 40, 41 ];
 var   BeingHooks       : TFlags;
       FullInvHooks     : TFlags;
       NoInventoryHooks : TFlags;
-      GlobalHooks      : TFlags;
+      SessionHooks     : TFlags;
       ChallengeHooks   : TFlags;
-      ModuleHooks      : TFlags;
+      ModuleLoadHooks  : TFlags;
 
 
 const HookNames : array[ 0..HookAmount-1 ] of AnsiString = (
@@ -100,7 +100,7 @@ const HookNames : array[ 0..HookAmount-1 ] of AnsiString = (
       'OnAltFire', 'OnAltReload', 'OnEquip', 'OnUnequip', 'OnAdd', 'OnRemove', 'OnTick10', 'OnKill', 'OnKillAll',
       'OnHitBeing', 'OnReload', 'getGroundDesc', 'OnEquipCheck', 'OnAct', 'OnDestroy', 'OnEnter', 'OnEnterLevel',
       'OnFire', 'OnFired', 'OnExitLevel', 'OnTick', 'OnNuked',
-      'OnLoad','OnLoaded','OnCreateBeing', 'OnCreatePlayer', 'OnLevelUp','OnPreLevelUp',
+      'OnLoad','OnStartGame','OnCreateBeing', 'OnCreatePlayer', 'OnLevelUp','OnPreLevelUp',
       'OnWinGame', 'OnCreateWorld', '', '',
 
       'OnPostMove', 'OnPreReload', 'OnDamage', 'OnReceiveDamage', 'OnPreAction', 'OnPostAction',
@@ -165,11 +165,11 @@ BeingHooks   := [ Hook_OnCreate, Hook_OnAction, Hook_OnAttacked, Hook_OnUseActiv
   Hook_OnAct, Hook_OnCanAct, Hook_OnEnterLevel ];
 FullInvHooks := [ Hook_OnPreAction, Hook_OnPostAction, Hook_OnTick ];
 NoInventoryHooks := [ Hook_OnPickup ];
-GlobalHooks  := [ Hook_OnCreateLevel,
-  Hook_OnLoaded, Hook_OnCreatePlayer,
+SessionHooks := [ Hook_OnCreateLevel,
+  Hook_OnStartGame, Hook_OnCreatePlayer,
   Hook_OnWinGame, Hook_OnCreateWorld ];
 ChallengeHooks := [ Hook_OnCreateLevel, Hook_OnCreatePlayer,
   Hook_OnWinGame, Hook_OnCreateWorld ];
-ModuleHooks  := [ Hook_OnLoad ];
+ModuleLoadHooks := [ Hook_OnLoad ];
 
 end.
