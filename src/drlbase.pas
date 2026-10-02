@@ -81,6 +81,7 @@ type TDRLSession = class(TVObject)
        procedure RecordResult;
        function GenerateMemorial : TIOStringArray;
        procedure SetLevel( aLevel : TLevel );
+       procedure SetPlayer( aPlayer : TPlayer );
        procedure ReleaseLevel;
        procedure ReleasePlayer;
        procedure Apply( aResult : TMenuResult );
@@ -91,6 +92,7 @@ type TDRLSession = class(TVObject)
        function HandlePadMovement( aPressed : Boolean ) : Boolean;
        function HandlePadEvent( aEvent : TIOEvent ) : Boolean;
        function MoveTargetEvent( aCoord : TCoord2D ) : Boolean;
+       procedure AdvanceTime;
        procedure PreAction;
        procedure LeaveLevel;
        procedure CreatePlayer( aResult : TMenuResult );
@@ -336,6 +338,7 @@ end;
 procedure TDRLSession.SetLevel( aLevel : TLevel );
 begin
   FLevel := aLevel;
+  FLevel.BindPlayer( FPlayer );
   if GraphicsVersion
     then FLevel.InitializeParticles( TDRLGFXIO(IO).ParticleEngine )
     else FLevel.InitializeParticles( nil );
@@ -353,8 +356,16 @@ begin
   FreeAndNil( FLevel );
 end;
 
+procedure TDRLSession.SetPlayer( aPlayer : TPlayer );
+begin
+  FPlayer := aPlayer;
+  dfplayer.Player := FPlayer;
+  FLevel.BindPlayer( FPlayer );
+end;
+
 procedure TDRLSession.ReleasePlayer;
 begin
+  if FLevel <> nil then FLevel.BindPlayer( nil );
   dfplayer.Player := nil;
   FreeAndNil( FPlayer );
 end;
@@ -529,6 +540,17 @@ begin
   end;
 
   if FState = DSNextLevel then IO.MsgReset;
+end;
+
+procedure TDRLSession.AdvanceTime;
+begin
+  if FState <> DSPlaying then Exit;
+  // Each batch includes at least one step, also on fresh level entry.
+  repeat
+    FLevel.Tick;
+  until ( FState <> DSPlaying ) or ( FPlayer.SCount > 5000 );
+  if FState = DSPlaying then
+    CRASHMODE := False;
 end;
 
 procedure TDRLSession.PreAction;
@@ -1040,7 +1062,7 @@ end;
   while (FPlayer.SCount < 5000) and ( State = DSPlaying ) do
   begin
     FLevel.CalculateVision( FPlayer.Position, FPlayer.Vision );
-    FLevel.Tick;
+    AdvanceTime;
     if FPlayer.MultiMove.Active then
       IO.WaitForAnimation;
     if not FPlayer.PlayerTick then Exit( True );
@@ -1571,7 +1593,7 @@ begin
     if not iFullLoad then
     begin
       EnterLevel( FLevel );
-      FLevel.Tick;
+      AdvanceTime;
     end;
     FTargeting.Clear;
     PreAction;
@@ -1759,8 +1781,7 @@ begin
   FLevel.Particles.BindUIDs( FUIDStore );
   FContext.BindUIDs( FUIDStore );
   FContext.Lua.Context.BindUIDs( FUIDStore );
-  FPlayer := TPlayer.Create( FContext, GameRNG );
-  dfplayer.Player := FPlayer;
+  SetPlayer( TPlayer.Create( FContext, GameRNG ) );
   FLevel.Place( FPlayer, NewCoord2D(4,4) );
   FPlayer.Klass := aResult.Klass;
 
@@ -1843,8 +1864,7 @@ begin
       FLevel.BindGameRNG( iGameRNG );
       FRuntime.ReplaceGameRNG( iGameRNG );
 
-      FPlayer := TPlayer.CreateFromStream( iStream, FContext, FData.Perks );
-      dfplayer.Player := FPlayer;
+      SetPlayer( TPlayer.CreateFromStream( iStream, FContext, FData.Perks ) );
       FCrashSave := iStream.ReadByte <> 0;
 
       if not FCrashSave then
