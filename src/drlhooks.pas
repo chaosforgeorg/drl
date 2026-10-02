@@ -9,7 +9,7 @@ interface
 uses vutil, vlua, dfdata;
 
 const
-  Hook_OnCreate        = 0;   // Being and Item; Module and Challenge notified explicitly
+  Hook_OnCreate        = 0;   // Being and Item
   Hook_OnAction        = 1;   // Being
   Hook_OnAttacked      = 2;   // Being
   Hook_OnUseActive     = 3;   // Trait, Being
@@ -35,22 +35,21 @@ const
   Hook_OnAct           = 23;  // Being, Perk
   Hook_OnDestroy       = 24;  // Perk (item)
   Hook_OnEnter         = 25;  // Perk (item; separate from cell OnEnter)
-  Hook_OnEnterLevel    = 26;  // Trait, Perk, Module, Challenge
+  Hook_OnEnterLevel    = 26;  // Being (player), Trait, Perk (level, player, item)
   Hook_OnFire          = 27;  // Trait, Perk
   Hook_OnFired         = 28;  // Trait, Perk
-  Hook_OnExitLevel     = 29;  // Perk (level), Module, Challenge
-  Hook_OnTick          = 30;  // Perk, Module
+  Hook_OnExitLevel     = 29;  // Perk (level, player, item)
+  Hook_OnTick          = 30;  // Perk (level, being, item)
   Hook_OnNuked         = 31;  // Perk (level)
   Hook_OnLoad          = 32;  // Module
-  Hook_OnLoaded        = 33;  // Module
-  Hook_OnUnLoad        = 34;  // Module, Challenge
+  Hook_OnStartGame     = 33;  // Module
+  Hook_OnCreateBeing   = 34;  // Perk (level)
   Hook_OnCreatePlayer  = 35;  // Module, Challenge
-  Hook_OnLevelUp       = 36;  // Module, Challenge
-  Hook_OnPreLevelUp    = 37;  // Module, Challenge
+  Hook_OnLevelUp       = 36;  // Perk (player)
+  Hook_OnPreLevelUp    = 37;  // Perk (player)
   Hook_OnWinGame       = 38;  // Module, Challenge
-  Hook_OnCreateEpisode = 39;  // Module, Challenge
-  Hook_OnIntro         = 40;  // Module
-  Hook_OnGenerate      = 41;  // Module
+  Hook_OnCreateWorld   = 39;  // Module, Challenge
+  // Slots 40 and 41 are unused.
 
   // TODO: merge with above
   Hook_OnPostMove      = 42;   // Trait, Perk
@@ -81,16 +80,18 @@ const
   Hook_OnCanAct        = 66; // Being
   Hook_getLabel        = 67; // Perk
   Hook_getDescription  = 68; // Perk
+  Hook_OnCreateLevel   = 69; // Module, Challenge
 
-  HookAmount           = 69;
+  HookAmount           = 70;
 
-const AllHooks      : TFlags = [ 0..HookAmount-1 ];
+const AllHooks      : TFlags = [ 0..HookAmount-1 ] - [ 40, 41 ];
 
 var   BeingHooks       : TFlags;
       FullInvHooks     : TFlags;
       NoInventoryHooks : TFlags;
-      GlobalHooks      : TFlags;
-      ModuleHooks      : TFlags;
+      SessionHooks     : TFlags;
+      ChallengeHooks   : TFlags;
+      ModuleLoadHooks  : TFlags;
 
 
 const HookNames : array[ 0..HookAmount-1 ] of AnsiString = (
@@ -99,8 +100,8 @@ const HookNames : array[ 0..HookAmount-1 ] of AnsiString = (
       'OnAltFire', 'OnAltReload', 'OnEquip', 'OnUnequip', 'OnAdd', 'OnRemove', 'OnTick10', 'OnKill', 'OnKillAll',
       'OnHitBeing', 'OnReload', 'getGroundDesc', 'OnEquipCheck', 'OnAct', 'OnDestroy', 'OnEnter', 'OnEnterLevel',
       'OnFire', 'OnFired', 'OnExitLevel', 'OnTick', 'OnNuked',
-      'OnLoad','OnLoaded','OnUnLoad', 'OnCreatePlayer', 'OnLevelUp','OnPreLevelUp',
-      'OnWinGame', 'OnCreateEpisode', 'OnIntro' , 'OnGenerate',
+      'OnLoad','OnStartGame','OnCreateBeing', 'OnCreatePlayer', 'OnLevelUp','OnPreLevelUp',
+      'OnWinGame', 'OnCreateWorld', '', '',
 
       'OnPostMove', 'OnPreReload', 'OnDamage', 'OnReceiveDamage', 'OnPreAction', 'OnPostAction',
       'OnCanDualWield', 'OnCanMaxDamage',
@@ -111,7 +112,7 @@ const HookNames : array[ 0..HookAmount-1 ] of AnsiString = (
       'getGibMul',
       'OnUnequipCheck',
       'OnDrop', 'OnCanAct',
-      'getLabel', 'getDescription'
+      'getLabel', 'getDescription', 'OnCreateLevel'
       );
 
 function LoadHooks( aLua : TLua; const aTable : array of Const ) : TFlags;
@@ -158,17 +159,17 @@ end;
 
 initialization
 
-AllHooks     := [ 0..HookAmount-1 ];
 // Prototype masks; perks load their hooks independently.
 BeingHooks   := [ Hook_OnCreate, Hook_OnAction, Hook_OnAttacked, Hook_OnUseActive,
   Hook_OnDie, Hook_OnDieCheck, Hook_OnPickup, Hook_OnDamage, Hook_OnReceiveDamage,
-  Hook_OnAct, Hook_OnCanAct ];
+  Hook_OnAct, Hook_OnCanAct, Hook_OnEnterLevel ];
 FullInvHooks := [ Hook_OnPreAction, Hook_OnPostAction, Hook_OnTick ];
 NoInventoryHooks := [ Hook_OnPickup ];
-GlobalHooks  := [ Hook_OnCreate, Hook_OnEnterLevel, Hook_OnExitLevel, Hook_OnTick,
-  Hook_OnLoad, Hook_OnLoaded, Hook_OnUnLoad, Hook_OnCreatePlayer, Hook_OnLevelUp,
-  Hook_OnPreLevelUp, Hook_OnWinGame, Hook_OnCreateEpisode,
-  Hook_OnIntro, Hook_OnGenerate ];
-ModuleHooks  := [ Hook_OnLoad ];
+SessionHooks := [ Hook_OnCreateLevel,
+  Hook_OnStartGame, Hook_OnCreatePlayer,
+  Hook_OnWinGame, Hook_OnCreateWorld ];
+ChallengeHooks := [ Hook_OnCreateLevel, Hook_OnCreatePlayer,
+  Hook_OnWinGame, Hook_OnCreateWorld ];
+ModuleLoadHooks := [ Hook_OnLoad ];
 
 end.

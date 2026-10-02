@@ -520,7 +520,7 @@ function drl.register_challenges()
 		let         = "N",
 		removemedals = { "icarus1", "icarus2", "explorer", "conqueror", "competn1", "competn2", "competn3", "untouchable1", "untouchable2", "untouchable3" },
 
-		OnCreateEpisode = function ()
+		OnCreateWorld = function ()
 			local slevcount = 0
 			for i=8,24 do
 				if player.episode[i].special then
@@ -693,19 +693,21 @@ function drl.register_challenges()
 		arch_rating      = "BLADE",
 		arch_rank        = 6,
 
+		runtime = {
+			OnEnterLevel = function( self )
+				self.flags[ BF_STAIRSENSE ] = false
+				if ARCHANGEL then
+					self:nuke(2.5*60*10)
+					ui.msg_feel("\"Thermonuclear bomb deployed. 2 minutes 30 seconds till explosion.\"")
+				else
+					self:nuke(5*60*10)
+					ui.msg_feel("\"Thermonuclear bomb deployed. 5 minutes till explosion.\"")
+				end
+			end,
+		},
+
 		OnCreatePlayer = function ()
 			player.level_data.hells_arena.drop_zone = area(3,8,7,12)
-		end,
-
-		OnEnterLevel = function (l, lid)
-			player.flags[ BF_STAIRSENSE ] = false
-			if ARCHANGEL then
-				player:nuke(2.5*60*10)
-				ui.msg_feel("\"Thermonuclear bomb deployed. 2 minutes 30 seconds till explosion.\"")
-			else
-				player:nuke(5*60*10)
-				ui.msg_feel("\"Thermonuclear bomb deployed. 5 minutes till explosion.\"")
-			end
 		end,
 
 	}
@@ -777,20 +779,19 @@ function drl.register_challenges()
 		let         = "D",
 		secondary   = { "AoCn", "AoOC", "A100", "AoLT", "AoI", "AoP", "AoRA", "AoMs" },
 
-		OnEnterLevel = function ()
-			level.flags[ LF_RESPAWN ] = true
-		end,
+		level_runtime = {
+			OnCreateBeing = function( self, being )
+				being.expvalue = being.expvalue * 2
+			end,
+			OnEnterLevel = function( self )
+				self.flags[ LF_RESPAWN ] = true
+			end,
+		},
 
 		OnCreatePlayer = function ()
 			player.flags[ BF_STAIRSENSE ] = true
 			player.flags[ BF_DARKNESS ]   = true
 			player.vision = player.vision - 2
-		end,
-
-		OnCreate = function ( this )
-			if this:is_being() then
-				this.expvalue = this.expvalue * 2
-			end
 		end,
 
 	}
@@ -853,11 +854,16 @@ function drl.register_challenges()
 		let         = "C",
 		secondary   = { "AoCn", "AoOC", "A100", "AoLT", "AoI", "AoP", "AoRA", "AoD", "AoMs" },
 
-		OnCreate = function ( this )
-			if this:is_being() then
-				this.flags[ BF_MAXDAMAGE ] = true
-				this.flags[ BF_AUTOHIT ] = true
-			end
+		level_runtime = {
+			OnCreateBeing = function( self, being )
+				being.flags[ BF_MAXDAMAGE ] = true
+				being.flags[ BF_AUTOHIT ] = true
+			end,
+		},
+
+		OnCreatePlayer = function()
+			player.flags[ BF_MAXDAMAGE ] = true
+			player.flags[ BF_AUTOHIT ] = true
 		end,
 
 	}
@@ -932,6 +938,14 @@ function drl.register_challenges()
 				end
 				return true
 			end,
+			OnLevelUp = function( self, l )
+				if not ARCHANGEL then
+					ui.msg("SuperCharge!")
+					ui.blink(LIGHTBLUE,100)
+					self.hp = 2 * self.hpmax
+					self:remove_perk( "tired" )
+				end
+			end,
 		},
 
 		OnCreatePlayer = function ()
@@ -956,15 +970,6 @@ function drl.register_challenges()
 					add = { "rarmor", "psboots" },
 				}
 			)
-		end,
-		
-		OnLevelUp = function (l)
-			if not ARCHANGEL then
-				ui.msg("SuperCharge!")
-				ui.blink(LIGHTBLUE,100)
-				player.hp = 2 * player.hpmax
-				player:remove_perk( "tired" )
-			end
 		end,
 
 	}
@@ -1040,7 +1045,51 @@ function drl.register_challenges()
 		arch_win_mortem    = "completed 666 levels of torture",
 		arch_win_highscore = "completed 666 levels",
 
-		OnCreateEpisode = function ( episode_seed )
+		runtime = {
+			OnEnterLevel = function( self, l )
+				local LevCount = 100
+				if ARCHANGEL then LevCount = 666 end
+
+				if l == LevCount and self.eq.armor and self.eq.armor.id == "uberarmor" then
+					level.flags[ LF_NOBEINGREVEAL ] = true
+					ui.msg_enter("Something is wrong... Something is really wrong here!")
+					for b in level:beings() do
+						if not b:is_player() then
+							b:kill()
+						end
+					end
+					local apostle = level:summon("apostle")
+					level:transmute("stairs", "floor")
+				end
+			end,
+			OnExitLevel = function( self, l )
+				    if l == 25 then ui.msg_enter("Well, that was easy. Now starts the really hard part...")
+				elseif l == 50 then ui.msg_enter("Halfway there, and it's getting less and less funny!")
+				elseif l == 75 then ui.msg_enter("Just 25 more, you can make it!")
+				elseif l == 90 then ui.msg_enter("Ten more! Can you really take the heat?")
+				elseif l == 99 then ui.msg_enter("Just one more! Just one more! Will you die here?")
+				elseif l == 100 then
+					ui.msg_enter("You did it! You completed 100 levels of DRL! You're the champion!")
+					if ARCHANGEL then
+						ui.msg_enter("Or wait... false alarm. Still 566 to go.")
+					else
+						game.win()
+					end
+				-- Adding flavour text
+				elseif l == 299 then ui.msg_enter("Sparta coming right up.")
+				elseif l == 313 then ui.msg_enter("Half-way round a circle.")
+				elseif l == 402 then ui.msg_enter("Next floor is forbidden.")
+				elseif l == 403 then ui.msg_enter("Next floor is not found.")
+				elseif l == 627 then ui.msg_enter("Feel like you have travelled in a circle?")
+				elseif l == 666 then
+					ui.msg_enter("You're crazy, you know that, right? Hell, congratulations anyway!")
+					-- Should we add a medal here?
+					game.win()
+				end
+			end,
+		},
+
+		OnCreateWorld = function ( episode_seed )
 			local LevCount = 100
 			local LevD = 9
 			local LevH = 17
@@ -1071,53 +1120,6 @@ function drl.register_challenges()
 			-- Here is where we can add some Ao100 specific special levels like #88
 			player.episode[LevCount] = { style = 3, name = "Hell L"..tostring(LevCount), danger = LevCount*2, deathname = "level "..tostring(LevCount).." of Hell", seed = core.level_seed() }
 			statistics.bonus_levels_count = 0
-		end,
-
-		OnUnLoad = function ()
-			drl.OnCreateEpisode()
-		end,
-
-		OnEnterLevel = function (l)
-			local LevCount = 100
-			if ARCHANGEL then LevCount = 666 end
-
-			if l == LevCount and player.eq.armor and player.eq.armor.id == "uberarmor" then
-				level.flags[ LF_NOBEINGREVEAL ] = true
-				ui.msg_enter("Something is wrong... Something is really wrong here!")
-				for b in level:beings() do
-					if not b:is_player() then
-						b:kill()
-					end
-				end
-				local apostle = level:summon("apostle")
-				level:transmute("stairs", "floor")
-			end
-		end,
-
-		OnExitLevel = function (l)
-			    if l == 25 then ui.msg_enter("Well, that was easy. Now starts the really hard part...")
-			elseif l == 50 then ui.msg_enter("Halfway there, and it's getting less and less funny!")
-			elseif l == 75 then ui.msg_enter("Just 25 more, you can make it!")
-			elseif l == 90 then ui.msg_enter("Ten more! Can you really take the heat?")
-			elseif l == 99 then ui.msg_enter("Just one more! Just one more! Will you die here?")
-			elseif l == 100 then
-				ui.msg_enter("You did it! You completed 100 levels of DRL! You're the champion!")
-				if ARCHANGEL then
-					ui.msg_enter("Or wait... false alarm. Still 566 to go.")
-				else
-					game.win()
-				end
-			-- Adding flavour text
-			elseif l == 299 then ui.msg_enter("Sparta coming right up.")
-			elseif l == 313 then ui.msg_enter("Half-way round a circle.")
-			elseif l == 402 then ui.msg_enter("Next floor is forbidden.")
-			elseif l == 403 then ui.msg_enter("Next floor is not found.")
-			elseif l == 627 then ui.msg_enter("Feel like you have travelled in a circle?")
-			elseif l == 666 then
-				ui.msg_enter("You're crazy, you know that, right? Hell, congratulations anyway!")
-				-- Should we add a medal here?
-				game.win()
-			end
 		end,
 
 		OnWinGame = function ()
@@ -1220,6 +1222,14 @@ You can rest easy knowing that you're Boss. Yet at the last level you sensed som
 				ui.msg("No way! You're a pacifist!")
 				return false
 			end,
+			OnEnterLevel = function( self, l, lid )
+				if not ARCHANGEL and l % 3 == 0 and self.explevel < 25 then
+					self:level_up()
+				end
+				if lid == "tower_of_babel" then
+					level.map[coord(77,19)] = "stairs"
+				end
+			end,
 		},
 
 		OnCreatePlayer = function ()
@@ -1237,21 +1247,9 @@ You can rest easy knowing that you're Boss. Yet at the last level you sensed som
 			end
 		end,
 
-		OnEnterLevel = function (l,lid)
-			if not ARCHANGEL and l % 3 == 0 and player.explevel < 25 then
-				player:level_up()
-			end
-			if lid == "tower_of_babel" then
-				level.map[coord(77,19)] = "stairs"
-			end
-		end,
-		OnCreateEpisode = function ()
+		OnCreateWorld = function ()
 			local seed = player.episode[1].seed
 			player.episode[1] = { style = 1, name = "Phobos L1", danger = 2, deathname = "level 1 of the Phobos base", seed = seed }
-		end,
-
-		OnUnLoad = function ()
-			drl.OnCreateEpisode()
 		end,
 
 	}
@@ -1323,6 +1321,12 @@ You can rest easy knowing that you're Boss. Yet at the last level you sensed som
 		arch_rating      = "TORMUSE",
 		arch_rank        = 9,
 
+		runtime = {
+			OnPreLevelUp = function( self, l )
+				return not ARCHANGEL
+			end,
+		},
+
 		OnCreatePlayer = function ()
 			player.hp = player.hp / 5
 			player.hpmax = player.hp
@@ -1346,10 +1350,6 @@ You can rest easy knowing that you're Boss. Yet at the last level you sensed som
 					add = { reward },
 				}
 			)
-		end,
-		
-		OnPreLevelUp = function ()
-			return not ARCHANGEL
 		end,
 	}
 
@@ -1400,7 +1400,7 @@ You can rest easy knowing that you're Boss. Yet at the last level you sensed som
 		let         = "V",
 		removemedals = { "icarus1", "icarus2", "explorer", "conqueror", "competn1", "competn2", "competn3", "untouchable1", "untouchable2", "untouchable3" },
 
-		OnCreateEpisode = function ()
+		OnCreateWorld = function ()
 			local slevcount = 0
 			for i=16,24 do
 				if player.episode[i].special then
@@ -1511,7 +1511,7 @@ You can rest easy knowing that you're Boss. Yet at the last level you sensed som
 		win_mortem    = "completed 100 levels of torture",
 		win_highscore = "completed 100 levels",
 
-		OnCreateEpisode = function ()
+		OnCreateWorld = function ()
 			player.episode = {
 				{ script = "intro", style = 1 },
 				{ script = "hells_arena", style = 1 },
@@ -1528,10 +1528,6 @@ You can rest easy knowing that you're Boss. Yet at the last level you sensed som
 				{ script = table.random_pick{ "the_asmos_den", "the_lava_pits" }, style = 3 },
 				{ script = "dis", style = 3 },
 			}
-		end,
-
-		OnUnLoad = function ()
-			drl.OnCreateEpisode()
 		end,
 
 		OnMortem = function ()
@@ -1570,7 +1566,7 @@ You can rest easy knowing that you're Boss. Yet at the last level you sensed som
 		let         = "H",
 		removemedals = { "icarus1", "icarus2", "explorer", "conqueror", "competn1", "competn2", "competn3", "untouchable1", "untouchable2", "untouchable3" },
 
-		OnCreateEpisode = function ()
+		OnCreateWorld = function ()
 			local LevCount = 15
 			local LevH = math.ceil(3*(LevCount-1) / 5)
 			player.episode = {}

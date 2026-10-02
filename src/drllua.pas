@@ -354,7 +354,7 @@ begin
 
     end;
     if RawDefined( iModule.ID ) then
-      iModule.Hooks := LoadHooks( Self, [ iModule.ID ], ModuleHooks );
+      iModule.Hooks := LoadHooks( Self, [ iModule.ID ], ModuleLoadHooks );
     if iModule.IsBase then
       SetupBase;
   end;
@@ -451,7 +451,7 @@ var iName : AnsiString;
 begin
   iName := lua_tolstring( L, aIndex, nil );
   // search standard hooks first
-  for i := 0 to HookAmount - 1 do
+  for i in AllHooks do
     if HookNames[i] = iName then
       Exit( i );
   // search core.callbacks

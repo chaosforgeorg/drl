@@ -898,7 +898,7 @@ begin
     glDisable( GL_DEPTH_TEST );
   end;
 
-  if FHudEnabled then
+  if FHudEnabled and ( FLevel <> nil ) then
   begin
     FMinimap.Render( FQuadSheet );
 

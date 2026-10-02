@@ -442,7 +442,7 @@ begin
   FTime := 0;
   FASCII.Clear;
   FAudio.Reset;
-  FHudEnabled  := False;
+  FHudEnabled  := True;
   FTargeting   := False;
   FNarrowMode  := False;
   FHint        := '';
@@ -790,7 +790,7 @@ end;
 procedure TDRLIO.PreUpdate;
 begin
   VTIG_Clear;
-  if FHudEnabled then DrawHud;
+  if FHudEnabled and ( FLevel <> nil ) then DrawHud;
   inherited PreUpdate;
 end;
 

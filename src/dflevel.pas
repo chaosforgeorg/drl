@@ -9,7 +9,7 @@ unit dflevel;
 interface
 uses sysutils, classes,
      vluagamestack, vluaentitynode, vutil, vvision, vrltools, vnode, vluamapnode, vlua, vrandom, vvector, vparticleengine,
-     dfdata, dfmap, dfthing, dfbeing, dfitem, drlhooks, drlperk, drlmarkers, drldecals, drlparticles, drlgamedata;
+     dfdata, dfmap, dfthing, dfbeing, dfitem, dfplayer, drlhooks, drlperk, drlmarkers, drldecals, drlparticles, drlgamedata;
 
 const CellWalls   : TCellSet = [];
       CellFloors  : TCellSet = [];
@@ -22,6 +22,7 @@ TLevel = class(TLuaMapNode)
     constructor Create( aContext : TNodeContext; aGameRNG : TRNG; aData : TGameData ); reintroduce;
     procedure Init( aTable : TLuaTable; aIndex : Integer; aDifficulty : Byte );
     procedure InitializeParticles( aEngine : TParticleEngine );
+    procedure BindPlayer( aPlayer : TPlayer );
     procedure AfterGeneration;
     procedure Enter;
     procedure RecalcFluids;
@@ -85,6 +86,7 @@ TLevel = class(TLuaMapNode)
     function GetEnemiesVisible : Word;
 
     function DropItem ( aItem  : TItem;  aCoord : TCoord2D; aNoHazard : Boolean; aDropAnim : Boolean ) : boolean;  // raises EPlacementException
+    function SpawnBeing( aNID : Byte; aCoord : TCoord2D; aRespawn : Boolean = False ) : TBeing;
     procedure DropBeing( aBeing : TBeing; aCoord : TCoord2D ); // raises EPlacementException
 
     procedure Remove( Node : TNode ); override;
@@ -135,6 +137,7 @@ TLevel = class(TLuaMapNode)
     function  getBeing( const coord : TCoord2D ) : TBeing; override;
     function  getItem( const coord : TCoord2D ) : TItem; override;
   private
+    FPlayer        : TPlayer; // Borrowed from Session; nil before/after a run.
     FData          : TGameData;
     FMap           : TMap;
     FIndex         : Integer;
@@ -210,7 +213,7 @@ implementation
 
 uses math, typinfo,
      vgenerics, vluatools, vdebug, vuid,
-     dfplayer, drlbase, drlio, drlhudviews;
+     drlbase, drlio, drlhudviews;
 
 type TProcessedUIDList = specialize TGArray<TUID>;
 
@@ -268,7 +271,7 @@ begin
   if EF_NOTELE   in aEmptyFlags then if (iItem <> nil) and (iItem.IType = ITEMTYPE_TELE) then Exit(False);
   if EF_NOHARM   in aEmptyFlags then if cellFlagSet(aCoord,CF_HAZARD) then Exit(False);
   if EF_NOLIQUID in aEmptyFlags then if cellFlagSet(aCoord,CF_LIQUID) then Exit(False);
-  if EF_NOSAFE   in aEmptyFlags then if Distance(aCoord,Player.Position) < PlayerSafeZone then Exit(False);
+  if EF_NOSAFE   in aEmptyFlags then if Distance(aCoord,FPlayer.Position) < PlayerSafeZone then Exit(False);
   if EF_NOSPAWN  in aEmptyFlags then if LightFlag[ aCoord, lfNoSpawn ] then Exit(False);
   if EF_CANTELE  in aEmptyFlags then if LightFlag[ aCoord, lfNoTele ] then Exit(False);
 end;
@@ -419,6 +422,11 @@ begin
   FParticles := TParticleStore.Create( FContext.UIDs );
   FPerks     := TPerks.Create( Self, FData.Perks );
   FIndex     := 0;
+end;
+
+procedure TLevel.BindPlayer( aPlayer : TPlayer );
+begin
+  FPlayer := aPlayer;
 end;
 
 procedure TLevel.InitializeParticles( aEngine : TParticleEngine );
@@ -647,8 +655,8 @@ end;
 
 function TLevel.CellExplored( coord: TCoord2D ): boolean;
 begin
-  if Player.Flags[ BF_DARKNESS ] and not isVisible( coord ) then Exit(False);
-  if Player.Flags[ BF_STAIRSENSE ] and (CF_STAIRSENSE in FData.Cells[ GetCell(coord) ].Flags) then Exit(True);
+  if FPlayer.Flags[ BF_DARKNESS ] and not isVisible( coord ) then Exit(False);
+  if FPlayer.Flags[ BF_STAIRSENSE ] and (CF_STAIRSENSE in FData.Cells[ GetCell(coord) ].Flags) then Exit(True);
   if Option_BlindMode and not GraphicsVersion then Exit(False);
   Exit(isExplored( coord ));
 end;
@@ -658,7 +666,7 @@ begin
   if aItem = nil then Exit(False);
   if isVisible( coord ) then Exit(True);
   if aItem.Flags[ IF_REVEALED ] then Exit(True);
-  if Player.Flags[ BF_DARKNESS ] then Exit(False);
+  if FPlayer.Flags[ BF_DARKNESS ] then Exit(False);
   if ( LF_ITEMSVISIBLE in FFlags ) and ( ( not aItem.isFeature ) or ( aItem.Flags[IF_HIGHLIGHT] ) ) then Exit(True);
   Exit(False);
 end;
@@ -666,7 +674,7 @@ end;
 function TLevel.ItemExplored( coord: TCoord2D; aItem: TItem ) : boolean;
 begin
   if aItem = nil then Exit(False);
-  if Player.Flags[ BF_DARKNESS ] and not isVisible( coord ) then Exit(False);
+  if FPlayer.Flags[ BF_DARKNESS ] and not isVisible( coord ) then Exit(False);
   Exit(isExplored( coord ));
 end;
 	
@@ -679,7 +687,7 @@ end;
 function TLevel.BeingExplored( coord: TCoord2D; aBeing: TBeing ) : boolean;
 begin
   if aBeing = nil then Exit(False);
-  if Player.Flags[ BF_DARKNESS ] and not isVisible( coord ) then Exit(False);
+  if FPlayer.Flags[ BF_DARKNESS ] and not isVisible( coord ) then Exit(False);
   Exit(aBeing.Flags[ BF_VISIBLE ] or (LF_BEINGSVISIBLE in FFlags));
 end;
 
@@ -693,7 +701,7 @@ function TLevel.AnimationVisible( aCoord : TCoord2D; aBeing : TBeing ) : boolean
 begin
    if aBeing = nil then Exit(False);
    if isVisible( aCoord ) then Exit( True );
-   if Player.Flags[ BF_DARKNESS ] then Exit(False);
+   if FPlayer.Flags[ BF_DARKNESS ] then Exit(False);
    Exit(aBeing.Flags[ BF_VISIBLE ] or (LF_BEINGSVISIBLE in FFlags));
 end;
 
@@ -859,6 +867,23 @@ begin
   end;
 end;
 
+function TLevel.SpawnBeing( aNID : Byte; aCoord : TCoord2D; aRespawn : Boolean ) : TBeing;
+begin
+  Result := TBeing.Create( aNID, FContext, FGameRNG );
+  try
+    CallHook( Hook_OnCreateBeing, [ Result ] );
+    if aRespawn then Result.Flags[ BF_RESPAWN ] := True;
+    DropBeing( Result, aCoord );
+  except
+    on EPlacementException do FreeAndNil( Result );
+    else
+    begin
+      Result.Free;
+      raise;
+    end;
+  end;
+end;
+
 procedure TLevel.DropBeing( aBeing : TBeing; aCoord : TCoord2D );
 var iBlockFlag : Byte;
 begin
@@ -870,8 +895,8 @@ begin
   Add( aBeing, aCoord );
   if ( not aBeing.IsPlayer ) and ( not aBeing.Flags[ BF_FRIENDLY ] ) and ( not aBeing.Flags[ BF_ILLUSION ] ) and ( not aBeing.Flags[ BF_NOKILL ] ) then
   begin
-    Player.FKills.MaxCount := Player.FKills.MaxCount + 1;
-    if not aBeing.Flags[ BF_RESPAWN ] then Player.FKillMax := Player.FKillMax + 1;
+    FPlayer.FKills.MaxCount := FPlayer.FKills.MaxCount + 1;
+    if not aBeing.Flags[ BF_RESPAWN ] then FPlayer.FKillMax := FPlayer.FKillMax + 1;
   end;
 end;
 
@@ -1134,19 +1159,14 @@ var iBeing  : TBeing;
 begin
   iCellID := GetCell( aCoord );
   if FData.Cells[ iCellID ].raiseto = '' then Exit( nil );
-  try
-    iBeing := TBeing.Create( FData.Cells[ iCellID ].raiseto, FContext, FGameRNG );
-    iBeing.Flags[ BF_RESPAWN ] := True;
-    DropBeing( iBeing, aCoord );
-    Cell[ aCoord ] := FContext.Lua.Defines[ FData.Cells[ iCellID ].destroyto ];
-    iBeing.Flags[ BF_NOEXP   ] := True;
-    for iItem in iBeing.Inv do
-      iItem.Flags[ IF_NODROP ] := True;
-    if BeingVisible( aCoord, iBeing ) or BeingExplored( aCoord, iBeing ) then
-      IO.addKillAnimation( 1000, 0, iBeing, True );
-  except
-    on EPlacementException do FreeAndNil( iBeing );
-  end;
+  iBeing := SpawnBeing( FContext.Lua.Defines[ FData.Cells[ iCellID ].raiseto ], aCoord, True );
+  if iBeing = nil then Exit( nil );
+  Cell[ aCoord ] := FContext.Lua.Defines[ FData.Cells[ iCellID ].destroyto ];
+  iBeing.Flags[ BF_NOEXP ] := True;
+  for iItem in iBeing.Inv do
+    iItem.Flags[ IF_NODROP ] := True;
+  if BeingVisible( aCoord, iBeing ) or BeingExplored( aCoord, iBeing ) then
+    IO.addKillAnimation( 1000, 0, iBeing, True );
   Exit( iBeing );
 end;
 
@@ -1276,88 +1296,80 @@ procedure TLevel.Tick;
 var iNode : TNode;
 begin
   FActiveBeing := nil;
-  if DRL.State <> DSPlaying then Exit;
-  repeat
+  Inc(FLTime);
+  FPerks.OnTick;
+  FPlayer.Statistics.OnTick;
 
-    Inc(FLTime);
-    FPerks.OnTick;
-    Player.Statistics.OnTick;
+  CallHook( Hook_OnTick,[ FLTime ] );
 
-    CallHook( Hook_OnTick,[ FLTime ] );
-    DRL.CallHook( Hook_OnTick, [FLTime] );
+  if LF_RESPAWN in FFlags  then
+  begin
+    if FLTime mod 100 = 0 then
+      if ((FLTime div 100)+20) > DWord( FGameRNG.RLongInt( 100 ) ) then
+        Respawn( Min( (FLTime div 1000) + 10, 100 ) );
+  end;
 
-    if LF_RESPAWN in FFlags  then
-    begin
-      if FLTime mod 100 = 0 then
-        if ((FLTime div 100)+20) > DWord( FGameRNG.RLongInt( 100 ) ) then
-          Respawn( Min( (FLTime div 1000) + 10, 100 ) );
-    end;
+  NukeTick;
 
-    NukeTick;
-
-    // Finish this tick's effects before finalizing a death or victory.
-    if DRL.State in [ DSPlaying, DSPlayerDead, DSFinished ] then
-    begin
-      iNode := Child;
-      if iNode <> nil then
-      repeat
-        FNextNode    := iNode.Next;
-        FActiveBeing := nil;
-        if iNode is TBeing then
-        begin
-          FActiveBeing := TBeing(iNode);
-          FActiveBeing.Tick;
-        end;
-        if not ( DRL.State in [ DSPlaying, DSPlayerDead, DSFinished ] ) then Break;
-        iNode := FNextNode;
-      until (iNode = Child) or (iNode = nil);
+  // Finish this tick's effects before finalizing a death or victory.
+  if DRL.State in [ DSPlaying, DSPlayerDead, DSFinished ] then
+  begin
+    iNode := Child;
+    if iNode <> nil then
+    repeat
+      FNextNode    := iNode.Next;
       FActiveBeing := nil;
-    end;
-
-    if DRL.State = DSPlaying then
-    begin
-      iNode := Child;
-      if iNode <> nil then
-      repeat
-        FNextNode    := iNode.Next;
-        FActiveBeing := nil;
-        if iNode is TBeing then
-          if TBeing(iNode).SCount >= 5000 then
-            if not TBeing(iNode).isPlayer then
-              begin
-                FActiveBeing := TBeing(iNode);
-                FActiveBeing.Action;
-              end;
-        if DRL.State <> DSPlaying then Break;
-        iNode := FNextNode;
-      until (iNode = Child) or (iNode = nil);
-    end;
+      if iNode is TBeing then
+      begin
+        FActiveBeing := TBeing(iNode);
+        FActiveBeing.Tick( FPlayer.Statistics.GameTime );
+      end;
+      if not ( DRL.State in [ DSPlaying, DSPlayerDead, DSFinished ] ) then Break;
+      iNode := FNextNode;
+    until (iNode = Child) or (iNode = nil);
     FActiveBeing := nil;
+  end;
 
-  until ( DRL.State <> DSPlaying ) or ( Player.SCount > 5000 );
   if DRL.State = DSPlaying then
   begin
-    CRASHMODE    := False;
-    FActiveBeing := Player;
+    iNode := Child;
+    if iNode <> nil then
+    repeat
+      FNextNode    := iNode.Next;
+      FActiveBeing := nil;
+      if iNode is TBeing then
+        if TBeing(iNode).SCount >= 5000 then
+          if not TBeing(iNode).isPlayer then
+            begin
+              FActiveBeing := TBeing(iNode);
+              FActiveBeing.Action;
+            end;
+      if DRL.State <> DSPlaying then Break;
+      iNode := FNextNode;
+    until (iNode = Child) or (iNode = nil);
   end;
+  FActiveBeing := nil;
+
+  if DRL.State = DSPlaying then
+    FActiveBeing := FPlayer;
 end;
 
 procedure TLevel.NukeTick;
 var iNuke : DWord;
 begin
-  if Player.NukeActivated <> 0 then
+  if FPlayer.NukeActivated <> 0 then
   begin
-    Dec(Player.NukeActivated);
-    if (Player.NukeActivated <> 0) then
+    Dec(FPlayer.NukeActivated);
+    if (FPlayer.NukeActivated <> 0) then
     begin
-      iNuke := Player.NukeActivated;
-      if (iNuke <= 100)   then begin if (iNuke mod 10  = 0) then IO.Msg('Warning! Explosion in %d seconds!',[Player.NukeActivated div 10]); end else
-      if (iNuke <= 10*60) then begin if (iNuke mod 100 = 0) then IO.Msg('Warning! Explosion in %d seconds!',[Player.NukeActivated div 10]); end else
-      if (iNuke mod (10*60) = 0) then IO.Msg('Warning! Explosion in %d minutes!',[Player.NukeActivated div 600]);
+      iNuke := FPlayer.NukeActivated;
+      if (iNuke <= 100)   then begin if (iNuke mod 10  = 0) then IO.Msg('Warning! Explosion in %d seconds!',[FPlayer.NukeActivated div 10]); end else
+      if (iNuke <= 10*60) then begin if (iNuke mod 100 = 0) then IO.Msg('Warning! Explosion in %d seconds!',[FPlayer.NukeActivated div 10]); end else
+      if (iNuke mod (10*60) = 0) then IO.Msg('Warning! Explosion in %d minutes!',[FPlayer.NukeActivated div 600]);
     end
     else
     begin
-      Player.Statistics.Increase('levels_nuked');
+      FPlayer.Statistics.Increase('levels_nuked');
       if DRL.State in [ DSNextLevel, DSSaving ] then
       begin
         IO.Msg('Right in the nick of time!');
@@ -1369,8 +1381,8 @@ begin
 
       NukeRun;
 
-      Player.NukeActivated := 0;
-      Player.ApplyDamage( 6000, Target_Internal, Damage_Plasma, nil, 0 );
+      FPlayer.NukeActivated := 0;
+      FPlayer.ApplyDamage( 6000, Target_Internal, Damage_Plasma, nil, 0 );
 
       CallHook(Hook_OnNuked,[FIndex,FID]);
     end;
@@ -1680,30 +1692,27 @@ begin
   if iToHit > 0 then Result += ' {'+THColor+IntToStr( iToHit )+'}%';
 end;
 
-function lua_level_drop_being(L: Plua_State): Integer; cdecl;
+function lua_level_drop_being( L : Plua_State ) : Integer; cdecl;
 var iState   : TLuaGameStack;
     iBeing   : TBeing;
     iLevel   : TLevel;
     iRespawn : Boolean;
 begin
-  iState.Init(L);
-  iLevel := iState.ToObject(1) as TLevel;
-  if iState.IsNil(3) then Exit(0);
-  try
-    iRespawn := iState.ToBoolean( 4, False );
-    if iState.IsTable(2)
-      then iBeing := iState.ToObject(2) as TBeing
-      else iBeing := TBeing.Create( iState.ToId( iLevel.Context.Lua, 2 ), iLevel.Context, iLevel.GameRNG );
+  iState.Init( L );
+  iLevel := iState.ToObject( 1 ) as TLevel;
+  iRespawn := iState.ToBoolean( 4, False );
+  if iState.IsTable( 2 ) then
+  begin
+    iBeing := iState.ToObject( 2 ) as TBeing;
     if iRespawn then iBeing.Flags[ BF_RESPAWN ] := True;
-    iLevel.DropBeing( iBeing, iState.ToCoord(3) );
-    iState.Push( iBeing );
-  except
-    on EPlacementException do
-    begin
-      FreeAndNil( iBeing );
-      iState.PushNil();
-    end;
+    iLevel.DropBeing( iBeing, iState.ToCoord( 3 ) );
+  end
+  else
+  begin
+    if iState.IsNil( 3 ) then Exit( 0 );
+    iBeing := iLevel.SpawnBeing( iState.ToId( iLevel.Context.Lua, 2 ), iState.ToCoord( 3 ), iRespawn );
   end;
+  iState.Push( iBeing );
   Result := 1;
 end;
 
@@ -1807,19 +1816,19 @@ begin
 
   iSource := iState.ToObjectOrNil(iSourceIndex) as TItem;
   iKilledBy := '';
-  if iState.IsString(iSourceIndex) and ( not Player.Dead ) then
+  if iState.IsString(iSourceIndex) and ( not iLevel.FPlayer.Dead ) then
   begin
     iKilledBy := iState.ToString(iSourceIndex);
     if iKilledBy <> '' then
     begin
-      iPreviousKilledBy := Player.KilledBy;
-      iPreviousMelee    := Player.KilledMelee;
-      Player.SetKilledBy( iKilledBy, False );
+      iPreviousKilledBy := iLevel.FPlayer.KilledBy;
+      iPreviousMelee    := iLevel.FPlayer.KilledMelee;
+      iLevel.FPlayer.SetKilledBy( iKilledBy, False );
     end;
   end;
   iLevel.Explosion( iDelay, iState.ToPosition(2), iData, iSource, NewDirection(0) );
-  if ( iKilledBy <> '' ) and ( not Player.Dead ) then
-    Player.SetKilledBy( iPreviousKilledBy, iPreviousMelee );
+  if ( iKilledBy <> '' ) and ( not iLevel.FPlayer.Dead ) then
+    iLevel.FPlayer.SetKilledBy( iPreviousKilledBy, iPreviousMelee );
   Result := 0;
 end;
 
@@ -2014,20 +2023,6 @@ begin
   Exit( 0 );
 end;
 
-function lua_level_reset( L : Plua_State ) : Integer; cdecl;
-var iState  : TLuaGameStack;
-    iLevel  : TLevel;
-    iPlayer : TPlayer;
-begin
-  iState.Init( L );
-  iLevel := iState.ToObject( 1 ) as TLevel;
-  iPlayer := DRL.Player;
-  if iPlayer <> nil then iPlayer.Detach;
-  iLevel.Clear;
-  iLevel.FullClear;
-  Exit( 0 );
-end;
-
 function lua_level_post_generate( L : Plua_State ) : Integer; cdecl;
 var iState : TLuaGameStack;
     iLevel : TLevel;
@@ -2037,8 +2032,8 @@ begin
   iLevel := iState.ToObject( 1 ) as TLevel;
   iLevel.AfterGeneration;
   DRL.EnterLevel( iLevel );
-  iLevel.CalculateVision( DRL.Player.Position, DRL.Player.Vision );
-  DRL.Player.PreAction;
+  iLevel.CalculateVision( iLevel.FPlayer.Position, iLevel.FPlayer.Vision );
+  iLevel.FPlayer.PreAction;
   Exit( 0 );
 end;
 
@@ -2103,7 +2098,7 @@ begin
   Result := 1;
 end;
 
-const lua_level_lib : array[0..26] of luaL_Reg = (
+const lua_level_lib : array[0..25] of luaL_Reg = (
       ( name : 'drop_item';  func : @lua_level_drop_item),
       ( name : 'drop_being'; func : @lua_level_drop_being),
       ( name : 'respawn';    func : @lua_level_respawn),
@@ -2122,7 +2117,6 @@ const lua_level_lib : array[0..26] of luaL_Reg = (
       ( name : 'copy_lflags';        func : @lua_level_copy_lflags),
       ( name : 'damage_tile';func : @lua_level_damage_tile),
       ( name : 'push_item';  func : @lua_level_push_item),
-      ( name : 'reset';         func : @lua_level_reset),
       ( name : 'post_generate'; func : @lua_level_post_generate),
       ( name : 'get_enemies_left'; func : @lua_level_get_enemies_left),
       ( name : 'is_passable_ext'; func : @lua_level_is_passable_ext),

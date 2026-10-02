@@ -112,28 +112,39 @@ register_ai = core.register_storage( "ais", "ai", function( ai )
 	end
 end )
 register_challenge = core.register_storage( "chal", "challenge", function( challenge )
-	if challenge.runtime or (challenge.perks and #challenge.perks > 0) then
-		local runtime_id
-		if challenge.runtime then
-			local runtime_source = challenge.runtime
-			runtime_id = "perk_"..challenge.id
-			local function register_runtime()
-				register_perk( runtime_id )( runtime_source )
-			end
-
-			challenge.runtime = runtime_id
-			if BASE_MODULE_LOADING then
-				register_runtime()
-			else
-				challenge.OnRegister = core.create_seq_function( register_runtime, challenge.OnRegister )
-			end
+	local runtime_id
+	local level_runtime_id
+	if challenge.runtime or challenge.level_runtime then
+		local runtime_source = challenge.runtime
+		local level_runtime_source = challenge.level_runtime
+		if runtime_source then runtime_id = "perk_"..challenge.id end
+		if level_runtime_source then level_runtime_id = "perk_level_"..challenge.id end
+		local function register_runtimes()
+			if runtime_id then register_perk( runtime_id )( runtime_source ) end
+			if level_runtime_id then register_perk( level_runtime_id )( level_runtime_source ) end
 		end
 
+		challenge.runtime = runtime_id
+		challenge.level_runtime = level_runtime_id
+		if BASE_MODULE_LOADING then
+			register_runtimes()
+		else
+			challenge.OnRegister = core.create_seq_function( register_runtimes, challenge.OnRegister )
+		end
+	end
+
+	if runtime_id or (challenge.perks and #challenge.perks > 0) then
 		local function OnCreatePlayer()
 			if runtime_id then player:add_perk( runtime_id ) end
 			add_perks( player, challenge.perks )
 		end
 		challenge.OnCreatePlayer = core.create_seq_function( OnCreatePlayer, challenge.OnCreatePlayer )
+	end
+	if level_runtime_id then
+		local function OnCreateLevel()
+			level:add_perk( level_runtime_id )
+		end
+		challenge.OnCreateLevel = core.create_seq_function( OnCreateLevel, challenge.OnCreateLevel )
 	end
 end )
 register_itemset    = core.register_storage( "itemsets", "itemset" )
@@ -463,6 +474,15 @@ register_being         = core.register_storage( "beings", "being", function( bp 
 		bp.OnCreate = core.create_seq_function( OnCreate, bp.OnCreate )
 	end
 )
+
+register_perk "perk_level_unique_feeling"
+{
+	OnEnterLevel = function( self )
+		if self:get_property( "unique_item", false ) then
+			ui.msg_feel( "You feel there is something really valuable here!" )
+		end
+	end,
+}
 
 register_perk "perk_lever_description"
 {

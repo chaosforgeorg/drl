@@ -32,7 +32,7 @@ type TThing = class( TLuaEntityNode )
   function GetPerkLabel( aID : Integer ) : AnsiString;
   function GetPerkDescription( aID : Integer ) : AnsiString;
   function GetPerkSummary( aInvMode : Boolean = False ) : AnsiString;
-  procedure Tick; virtual;
+  procedure Tick( aTime : LongInt ); virtual;
   procedure WriteToStream( aStream : TStream ); override;
   destructor Destroy; override;
   class procedure RegisterLuaAPI( aLua : TLua );
@@ -235,7 +235,7 @@ begin
       else SetLength( Result, Length(Result) - 1 );
 end;
 
-procedure TThing.Tick;
+procedure TThing.Tick( aTime : LongInt );
 begin
   if FPerks <> nil then
     FPerks.OnTick;

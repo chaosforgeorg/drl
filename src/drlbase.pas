@@ -47,9 +47,10 @@ type TDRLSession = class(TVObject)
          aStore : TStoreInterface; aData : TGameData; const aPaths : TGamePaths );
        procedure InitializeLevel;
        procedure EnterLevel( aLevel : TLevel );
+       procedure ResetLevel;
        procedure Reset;
        procedure Reconfigure;
-       procedure SetModuleHooks( aModuleHooks : TFlags );
+       procedure SetSessionHooks( aSessionHooks : TFlags );
        class procedure RegisterLuaAPI( aLua : TLua );
        function LoadSaveFile : Boolean;
        procedure WriteSaveFile( aCrash : Boolean );
@@ -57,8 +58,6 @@ type TDRLSession = class(TVObject)
        function Action( aInput : TInputKey ) : Boolean;
        function Run( aShowIntro : Boolean ) : TDRLSessionResult;
        destructor Destroy; override;
-       procedure CallHook( Hook : Byte; const Params : array of Const );
-       function  CallHookCheck( Hook : Byte; const Params : array of Const ) : Boolean;
        procedure SetState( aNewState : TDRLState );
        procedure WinGame;
        procedure ExitLevel( aFade : Boolean; aFadeTime : Single );
@@ -76,10 +75,13 @@ type TDRLSession = class(TVObject)
        function HandlePickupCommand( aAlt : Boolean ) : Boolean;
        procedure ResetAutoTarget;
      private
+       procedure CallHook( aHook : Byte; const aParams : array of Const );
+       procedure ShowEnding;
        procedure FinishGame;
        procedure RecordResult;
        function GenerateMemorial : TIOStringArray;
        procedure SetLevel( aLevel : TLevel );
+       procedure SetPlayer( aPlayer : TPlayer );
        procedure ReleaseLevel;
        procedure ReleasePlayer;
        procedure Apply( aResult : TMenuResult );
@@ -90,6 +92,7 @@ type TDRLSession = class(TVObject)
        function HandlePadMovement( aPressed : Boolean ) : Boolean;
        function HandlePadEvent( aEvent : TIOEvent ) : Boolean;
        function MoveTargetEvent( aCoord : TCoord2D ) : Boolean;
+       procedure AdvanceTime;
        procedure PreAction;
        procedure LeaveLevel;
        procedure CreatePlayer( aResult : TMenuResult );
@@ -117,7 +120,7 @@ type TDRLSession = class(TVObject)
 
        FChallengeHooks  : TFlags;
        FSChallengeHooks : TFlags;
-       FModuleHooks     : TFlags;
+       FSessionHooks    : TFlags;
 
        FDifficulty      : Byte;
        FChallenge       : AnsiString;
@@ -220,19 +223,24 @@ begin
   inherited Destroy;
 end;
 
-procedure TDRLSession.CallHook( Hook : Byte; const Params : array of const ) ;
+procedure TDRLSession.CallHook( aHook : Byte; const aParams : array of Const );
 begin
-  if (Hook in FModuleHooks) then FContext.Lua.ProtectedCall([CoreModuleID,TDRLLua( FContext.Lua ).HookName(Hook)],Params);
-  if (FChallenge <> '')  and (Hook in FChallengeHooks) then FContext.Lua.ProtectedCall(['chal',FChallenge,TDRLLua( FContext.Lua ).HookName(Hook)],Params);
-  if (FSChallenge <> '') and (Hook in FSChallengeHooks) then FContext.Lua.ProtectedCall(['chal',FSChallenge,TDRLLua( FContext.Lua ).HookName(Hook)],Params);
+  if aHook in FSessionHooks then
+    FContext.Lua.ProtectedCall( [ CoreModuleID, HookNames[ aHook ] ], aParams );
+  if aHook in FChallengeHooks then
+    FContext.Lua.ProtectedCall( [ 'chal', FChallenge, HookNames[ aHook ] ], aParams );
+  if aHook in FSChallengeHooks then
+    FContext.Lua.ProtectedCall( [ 'chal', FSChallenge, HookNames[ aHook ] ], aParams );
 end;
 
-function TDRLSession.CallHookCheck ( Hook : Byte; const Params : array of const ) : Boolean;
+procedure TDRLSession.ShowEnding;
 begin
-  if (FChallenge <> '') and (Hook in FChallengeHooks) then if not FContext.Lua.ProtectedCall(['chal',FChallenge,HookNames[Hook]],Params) then Exit( False );
-  if (FSChallenge <> '') and (Hook in FSChallengeHooks) then if not FContext.Lua.ProtectedCall(['chal',FSChallenge,HookNames[Hook]],Params) then Exit( False );
-  if Hook in FModuleHooks then if not FContext.Lua.ProtectedCall([CoreModuleID,HookNames[Hook]],Params) then Exit( False );
-  Exit( True );
+  if Hook_OnWinGame in FChallengeHooks then
+    if not FContext.Lua.ProtectedCall( [ 'chal', FChallenge, HookNames[ Hook_OnWinGame ] ], [] ) then Exit;
+  if Hook_OnWinGame in FSChallengeHooks then
+    if not FContext.Lua.ProtectedCall( [ 'chal', FSChallenge, HookNames[ Hook_OnWinGame ] ], [] ) then Exit;
+  if Hook_OnWinGame in FSessionHooks then
+    FContext.Lua.ProtectedCall( [ CoreModuleID, HookNames[ Hook_OnWinGame ] ], [] );
 end;
 
 procedure TDRLSession.SetState( aNewState : TDRLState );
@@ -330,6 +338,7 @@ end;
 procedure TDRLSession.SetLevel( aLevel : TLevel );
 begin
   FLevel := aLevel;
+  FLevel.BindPlayer( FPlayer );
   if GraphicsVersion
     then FLevel.InitializeParticles( TDRLGFXIO(IO).ParticleEngine )
     else FLevel.InitializeParticles( nil );
@@ -347,8 +356,16 @@ begin
   FreeAndNil( FLevel );
 end;
 
+procedure TDRLSession.SetPlayer( aPlayer : TPlayer );
+begin
+  FPlayer := aPlayer;
+  dfplayer.Player := FPlayer;
+  FLevel.BindPlayer( FPlayer );
+end;
+
 procedure TDRLSession.ReleasePlayer;
 begin
+  if FLevel <> nil then FLevel.BindPlayer( nil );
   dfplayer.Player := nil;
   FreeAndNil( FPlayer );
 end;
@@ -358,9 +375,9 @@ begin
   Result := FRuntime.GameRNG;
 end;
 
-procedure TDRLSession.SetModuleHooks( aModuleHooks : TFlags );
+procedure TDRLSession.SetSessionHooks( aSessionHooks : TFlags );
 begin
-  FModuleHooks := aModuleHooks;
+  FSessionHooks := aSessionHooks;
 end;
 
 procedure TDRLSession.RecordResult;
@@ -471,8 +488,8 @@ begin
 
   FChallengeHooks := [];
   FSChallengeHooks := [];
-  if FChallenge  <> '' then FChallengeHooks  := LoadHooks( FContext.Lua, ['chal',FChallenge], GlobalHooks );
-  if FSChallenge <> '' then FSChallengeHooks := LoadHooks( FContext.Lua, ['chal',FSChallenge], GlobalHooks );
+  if FChallenge  <> '' then FChallengeHooks  := LoadHooks( FContext.Lua, ['chal',FChallenge], ChallengeHooks );
+  if FSChallenge <> '' then FSChallengeHooks := LoadHooks( FContext.Lua, ['chal',FSChallenge], ChallengeHooks );
 end;
 
 procedure TDRLSession.RegisterChallengeRuntimes;
@@ -489,14 +506,20 @@ begin
   end;
 end;
 
+procedure TDRLSession.ResetLevel;
+begin
+  FPlayer.Detach;
+  FLevel.Clear;
+  FLevel.FullClear;
+  CallHook( Hook_OnCreateLevel, [] );
+end;
+
 procedure TDRLSession.EnterLevel( aLevel : TLevel );
 begin
   aLevel.Enter;
   IO.EnterLevel( FPlayer.Position );
 
   aLevel.CallHook( Hook_OnEnterLevel, [ aLevel.Index, aLevel.ID ] );
-  CallHook( Hook_OnEnterLevel, [ aLevel.Index, aLevel.ID ] );
-  FPlayer.CallHook( Hook_OnEnterLevel, [ aLevel.Index, aLevel.ID ] );
 
   FPlayer.LevelEnter;
 
@@ -508,7 +531,7 @@ procedure TDRLSession.LeaveLevel;
 var iTimeDiff : LongInt;
 begin
   FLevel.CallHook( Hook_OnExitLevel, [ FLevel.Index, FLevel.ID, FLevel.Status ] );
-  CallHook( Hook_OnExitLevel, [ FLevel.Index, FLevel.ID, FLevel.Status ] );
+  FPlayer.CallHook( Hook_OnExitLevel, [ FLevel.Index, FLevel.ID, FLevel.Status ] );
   if ( FPlayer.HP > 0 ) and ( not FLevel.HasHook( Hook_OnExitLevel ) ) then
   begin
     iTimeDiff := FPlayer.Statistics.GameTime - FPlayer.Statistics['entry_time'];
@@ -517,6 +540,17 @@ begin
   end;
 
   if FState = DSNextLevel then IO.MsgReset;
+end;
+
+procedure TDRLSession.AdvanceTime;
+begin
+  if FState <> DSPlaying then Exit;
+  // Each batch includes at least one step, also on fresh level entry.
+  repeat
+    FLevel.Tick;
+  until ( FState <> DSPlaying ) or ( FPlayer.SCount > 5000 );
+  if FState = DSPlaying then
+    CRASHMODE := False;
 end;
 
 procedure TDRLSession.PreAction;
@@ -1028,7 +1062,7 @@ end;
   while (FPlayer.SCount < 5000) and ( State = DSPlaying ) do
   begin
     FLevel.CalculateVision( FPlayer.Position, FPlayer.Vision );
-    FLevel.Tick;
+    AdvanceTime;
     if FPlayer.MultiMove.Active then
       IO.WaitForAnimation;
     if not FPlayer.PlayerTick then Exit( True );
@@ -1492,15 +1526,14 @@ begin
   FContext.Lua.SetValue('GAME_SEED', FGameSeed);
   IO.SetSeed( FGameSeed );
 
-  if (not (State in [DSLoading, DSCrashLoading])) then
-    CallHookCheck( Hook_OnIntro, [Setting_NoIntro] );
-
   if (not(State in [DSLoading, DSCrashLoading])) then
   begin
+    if ( not Setting_NoIntro ) and FContext.Lua.Defined( [ CoreModuleID, 'ShowIntro' ] ) then
+      FContext.Lua.ProtectedCall( [ CoreModuleID, 'ShowIntro' ], [] );
     GameRNG.SetSeed( iEpisodeSeed );
-    CallHook( Hook_OnCreateEpisode, [QWord( iEpisodeSeed )] );
+    CallHook( Hook_OnCreateWorld, [QWord( iEpisodeSeed )] );
   end;
-  CallHook( Hook_OnLoaded, [(State in [DSLoading, DSCrashLoading])] );
+  CallHook( Hook_OnStartGame, [(State in [DSLoading, DSCrashLoading])] );
 
   FPlayer.Statistics.StartTimer;
   try
@@ -1531,13 +1564,14 @@ begin
       end;
 
       if iLevelSeed <> 0 then GameRNG.SetSeed( iLevelSeed );
+      CallHook( Hook_OnCreateLevel, [] );
       if iScript <> ''
         then
           FLevel.ScriptLevel(iScript)
         else
         begin
           IO.Msg('You enter %s.',[ FLevel.Name ] );
-          CallHookCheck(Hook_OnGenerate,[]);
+          FContext.Lua.ProtectedCall( [ CoreModuleID, 'GenerateLevel' ], [] );
           FLevel.AfterGeneration;
         end;
     end;
@@ -1559,7 +1593,7 @@ begin
     if not iFullLoad then
     begin
       EnterLevel( FLevel );
-      FLevel.Tick;
+      AdvanceTime;
     end;
     FTargeting.Clear;
     PreAction;
@@ -1703,7 +1737,7 @@ begin
     if FGameWon then
     begin
       IO.Audio.PlayMusic('victory');
-      CallHookCheck(Hook_OnWinGame,[]);
+      ShowEnding;
     end
     else IO.Audio.PlayMusic('bunny');
   end;
@@ -1724,7 +1758,6 @@ begin
     if FChallenge <> '' then iChalAbbr := FContext.Lua.Get(['chal',FChallenge,'abbr']);
     IO.RunLayer( TPagedView.Create( TDRLRuntime( FRuntime ).HOF.GetPagedScoreReport, iChalAbbr ), True );
   end;
-  CallHook(Hook_OnUnLoad,[]);
 
   IO.BloodSlideDown(20);
   ReleasePlayer;
@@ -1748,9 +1781,7 @@ begin
   FLevel.Particles.BindUIDs( FUIDStore );
   FContext.BindUIDs( FUIDStore );
   FContext.Lua.Context.BindUIDs( FUIDStore );
-  FPlayer := TPlayer.Create( FContext, GameRNG );
-  dfplayer.Player := FPlayer;
-  CallHook( Hook_OnCreate, [ FPlayer ] );
+  SetPlayer( TPlayer.Create( FContext, GameRNG ) );
   FLevel.Place( FPlayer, NewCoord2D(4,4) );
   FPlayer.Klass := aResult.Klass;
 
@@ -1833,8 +1864,7 @@ begin
       FLevel.BindGameRNG( iGameRNG );
       FRuntime.ReplaceGameRNG( iGameRNG );
 
-      FPlayer := TPlayer.CreateFromStream( iStream, FContext, FData.Perks );
-      dfplayer.Player := FPlayer;
+      SetPlayer( TPlayer.CreateFromStream( iStream, FContext, FData.Perks ) );
       FCrashSave := iStream.ReadByte <> 0;
 
       if not FCrashSave then
@@ -1993,11 +2023,18 @@ begin
   Result := 0;
 end;
 
-const lua_game_lib : array[0..4] of luaL_Reg = (
+function lua_game_reset_level( L : PLua_State ) : Integer; cdecl;
+begin
+  DRL.ResetLevel;
+  Result := 0;
+end;
+
+const lua_game_lib : array[0..5] of luaL_Reg = (
   ( name : 'win';        func : @lua_game_win ),
   ( name : 'exit';       func : @lua_game_exit ),
   ( name : 'has_won';    func : @lua_game_has_won ),
   ( name : 'is_playing'; func : @lua_game_is_playing ),
+  ( name : 'reset_level';func : @lua_game_reset_level ),
   ( name : nil;         func : nil )
 );
 

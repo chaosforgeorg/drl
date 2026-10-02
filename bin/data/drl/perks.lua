@@ -1,5 +1,57 @@
 function drl.register_perks()
 
+	register_perk "perk_level_enrage"
+	{
+		OnTick = function( self, time )
+			if self.empty    then return end
+			if time % 10 ~= 0 then return end
+			time = time / 10 -- convert to seconds
+			local enrage = 15*60 -- 15 minutes
+			local stage1 = enrage - 2*60
+			local stage2 = enrage - 1*60
+			local stage3 = enrage -   10
+			if time >= stage1 then
+				if time == stage1 then
+					ui.msg( "Demonic forces grow restless..." )
+				elseif time == stage2 then
+					ui.msg( "Demonic forces grow more restless..." )
+				elseif time == stage3 then
+					ui.msg( "The air grows thick with malice..." )
+				end
+				if time == enrage then
+					ui.msg( "You hear angry growls!" )
+					self.flags[ LF_ENRAGE ] = true
+					for b in self:beings() do
+						if not b:is_player() then
+							b.flags[ BF_HUNTING ] = true
+							b.expvalue = math.ceil( b.expvalue * 0.5 )
+							b.speed    = math.min( math.ceil( b.speed * 1.5 ), 250 )
+							b.accuracy = b.accuracy + 4
+						end
+					end
+				end
+				if time == enrage * 2 then
+					for b in self:beings() do
+						if not b:is_player() then
+							b.expvalue = 0
+							b.speed    = math.min( math.ceil( b.speed * 1.5 ), 250 )
+							b.accuracy = b.accuracy + 4
+						end
+					end
+				end
+			end
+		end,
+
+		OnCreateBeing = function( self, being )
+			if not self.flags[ LF_ENRAGE ] then return end
+			if being.flags[ BF_HUNTING ] then return end
+			being.flags[ BF_HUNTING ] = true
+			being.expvalue = math.ceil( being.expvalue * 0.5 )
+			being.speed    = math.ceil( being.speed * 1.5 )
+			being.accuracy = being.accuracy + 4
+		end,
+	}
+
 	register_perk "perk_pushable"
 	{
 		OnAct = function( self, c, being )

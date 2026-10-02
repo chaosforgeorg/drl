@@ -305,10 +305,10 @@ begin
   IO.Msg( 'You advance to level %d!', [ FExpLevel ] );
   IO.RunLayer( TMoreLayer.Create( False ) );
 
-  if not DRL.CallHookCheck( Hook_OnPreLevelUp, [ FExpLevel ] ) then Exit;
+  if not CallHookCheck( Hook_OnPreLevelUp, [ FExpLevel ] ) then Exit;
   IO.BloodSlideDown( 20 );
   doUpgradeTrait();
-  DRL.CallHook( Hook_OnLevelUp, [ FExpLevel ] );
+  CallHook( Hook_OnLevelUp, [ FExpLevel ] );
 end;
 
 procedure TPlayer.AddExp( aAmount : LongInt );
@@ -476,7 +476,11 @@ begin
 end;
 
 procedure TPlayer.LevelEnter;
+var iLevel : TLevel;
 begin
+  iLevel := TLevel( Parent );
+  CallHook( Hook_OnEnterLevel, [ iLevel.Index, iLevel.ID ] );
+
   if FHP < (FHPMax div 10) then
     AddHistory('Entering @1 he was almost dead...');
 

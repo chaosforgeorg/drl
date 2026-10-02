@@ -32,7 +32,7 @@ TBeing = class(TThing,IPathQuery)
     procedure WriteToStream( Stream: TStream ); override;
     procedure Initialize;
     function GetName( known : boolean ) : string;
-    procedure Tick; override;
+    procedure Tick( aTime : LongInt ); override;
     procedure Action; virtual;
     procedure HandlePostMove; virtual;
     procedure HandlePostDisplace;
@@ -381,11 +381,7 @@ begin
 
   FHPDecayMax   := 100;
 
-  if not isPlayer then
-  begin
-    CallHook( Hook_OnCreate, [] );
-    DRL.CallHook( Hook_OnCreate, [Self] );
-  end;
+  if not isPlayer then CallHook( Hook_OnCreate, [] );
 end;
 
 function TBeing.getAmmoItem ( Weapon : TItem ) : TItem;
@@ -1565,19 +1561,19 @@ begin
   if Result then FLastCommand := aCommand;
 end;
 
-procedure TBeing.Tick;
+procedure TBeing.Tick( aTime : LongInt );
 begin
   if Dead then Exit;
-  FInv.Tick;
+  FInv.Tick( aTime );
   if Dead then Exit;
 
   if ( FHP * 100 ) > Integer( FHPMax * FHPDecayMax ) then
     if FHP > 1 then
-      if ( Player.Statistics.GameTime mod 50 = 0 ) then
+      if ( aTime mod 50 = 0 ) then
         Dec( FHP );
   FSpeedCount := Min( FSpeedCount + FSpeed, 10000 );
-  CallHook( Hook_OnTick, [ Player.Statistics.GameTime ] );
-  inherited Tick;
+  CallHook( Hook_OnTick, [ aTime ] );
+  inherited Tick( aTime );
 end;
 
 function TBeing.Resurrect( aRange : Integer ) : TBeing;
@@ -2893,20 +2889,6 @@ begin
   Exit( False );
 end;
 
-function lua_being_new( L : PLua_State ): Integer; cdecl;
-var iState : TLuaGameStack;
-    iRNG   : TRNG;
-    iLua   : TDRLLua;
-    iBeing : TBeing;
-begin
-  iState.Init( L );
-  iLua := TDRLLua( TLuaContext.FromState( L ).Lua );
-  iRNG := iLua.Context.RNG;
-  iBeing := TBeing.Create( iState.ToId( iLua, 1 ), iLua.NodeContext, iRNG );
-  iState.Push( iBeing );
-  Result := 1;
-end;
-
 function lua_being_kill(L: Plua_State): Integer; cdecl;
 var State       : TLuaGameStack;
     Being       : TBeing;
@@ -3628,8 +3610,7 @@ begin
   Result := 1;
 end;
 
-const lua_being_lib : array[0..41] of luaL_Reg = (
-      ( name : 'new';           func : @lua_being_new),
+const lua_being_lib : array[0..40] of luaL_Reg = (
       ( name : 'kill';          func : @lua_being_kill),
       ( name : 'resurrect';     func : @lua_being_resurrect),
       ( name : 'apply_damage';  func : @lua_being_apply_damage),

@@ -1,8 +1,6 @@
 -- DRL plot lua script file --
 
-function drl.OnIntro( skip )
---	if core.game_type() ~= GAMESTANDARD then return end
-	if skip then return end
+function drl.plot_intro()
 	ui.blood_slide()
 	ui.plot_screen([[
 The trip was long -- you thought it would never end. But hell, a marine's job is rarely interesting. You hate the UAC -- nothing ever happens here. Now you've got to sit around and wait for your squadmates, who are supposed to check out what happened on Phobos.
