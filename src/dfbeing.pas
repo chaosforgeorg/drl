@@ -32,7 +32,7 @@ TBeing = class(TThing,IPathQuery)
     procedure WriteToStream( Stream: TStream ); override;
     procedure Initialize;
     function GetName( known : boolean ) : string;
-    procedure Tick; override;
+    procedure Tick( aTime : LongInt ); override;
     procedure Action; virtual;
     procedure HandlePostMove; virtual;
     procedure HandlePostDisplace;
@@ -1561,19 +1561,19 @@ begin
   if Result then FLastCommand := aCommand;
 end;
 
-procedure TBeing.Tick;
+procedure TBeing.Tick( aTime : LongInt );
 begin
   if Dead then Exit;
-  FInv.Tick;
+  FInv.Tick( aTime );
   if Dead then Exit;
 
   if ( FHP * 100 ) > Integer( FHPMax * FHPDecayMax ) then
     if FHP > 1 then
-      if ( Player.Statistics.GameTime mod 50 = 0 ) then
+      if ( aTime mod 50 = 0 ) then
         Dec( FHP );
   FSpeedCount := Min( FSpeedCount + FSpeed, 10000 );
-  CallHook( Hook_OnTick, [ Player.Statistics.GameTime ] );
-  inherited Tick;
+  CallHook( Hook_OnTick, [ aTime ] );
+  inherited Tick( aTime );
 end;
 
 function TBeing.Resurrect( aRange : Integer ) : TBeing;

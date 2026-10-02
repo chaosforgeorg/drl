@@ -1322,7 +1322,7 @@ begin
       if iNode is TBeing then
       begin
         FActiveBeing := TBeing(iNode);
-        FActiveBeing.Tick;
+        FActiveBeing.Tick( FPlayer.Statistics.GameTime );
       end;
       if not ( DRL.State in [ DSPlaying, DSPlayerDead, DSFinished ] ) then Break;
       iNode := FNextNode;

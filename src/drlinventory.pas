@@ -29,7 +29,7 @@ TInventory = class( TVObject )
        function  isFull : boolean;
        procedure RawSetSlot( aIndex : TEqSlot; aItem : TItem ); inline;
        procedure EqSwap( aSlot1, aSlot2 : TEqSlot );
-       procedure Tick;
+       procedure Tick( aTime : LongInt );
        procedure ClearSlot( aItem : TItem );
        function DoWear( aItem : TItem ) : Boolean;
        // no checking if slot fits!
@@ -232,12 +232,12 @@ begin
   FSlots[aSlot2] := iItem;
 end;
 
-procedure TInventory.Tick;
+procedure TInventory.Tick( aTime : LongInt );
 var iSlot : TEqSlot;
 begin
   for iSlot in TEqSlot do
     if FSlots[iSlot] <> nil then
-      FSlots[iSlot].Tick;
+      FSlots[iSlot].Tick( aTime );
 end;
 
 procedure TInventory.ClearSlot ( aItem : TItem ) ;
