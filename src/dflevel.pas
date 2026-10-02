@@ -174,6 +174,7 @@ TLevel = class(TLuaMapNode)
     function getSpriteTop( Index : TCoord2D ): TSprite;
     function getSpriteBottom( Index : TCoord2D ): TSprite;
   public
+    property Player    : TPlayer                    read FPlayer;
     property Perks     : TPerks                     read FPerks;
     property Data      : TGameData                  read FData;
     property Markers   : TMarkerStore               read FMarkers;
