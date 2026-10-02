@@ -23,6 +23,8 @@ type
     procedure SetLevel( aLevel : TLuaMapNode ); override;
     procedure EnterLevel( aCoord : TCoord2D ); override;
     procedure Initialize; override;
+    // Finish module uploads and GPU warm-up while the loading screen is active.
+    procedure PrepareGraphics;
     procedure Reconfigure( aConfig : TLuaConfig ); override;
     procedure Configure( aConfig : TLuaConfig; aReload : Boolean ); override; overload;
     procedure Update( aMSec : DWord ); override;
@@ -266,6 +268,12 @@ begin
   FMinimap    := TMinimap.Create;
   inherited Create;
   FParticleEngine := TParticleEngine.Create( VisualRNG );
+end;
+
+procedure TDRLGFXIO.PrepareGraphics;
+begin
+  FTextures.Upload;
+  SpriteMap.WarmUp;
 end;
 
 procedure TDRLGFXIO.Reset;

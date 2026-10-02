@@ -52,6 +52,8 @@ type
  TDRLSpriteMap = class( TVObject )
   constructor Create( aFramebuffer : TVec2i );
   procedure Reset;
+  // Called after module resources are loaded, before level rendering begins.
+  procedure WarmUp;
   procedure SetLevel( aLevel : TLevel );
   procedure Recalculate;
   procedure Update( aTime : DWord; aProjection : TMatrix44; aDarkness : Boolean );
@@ -312,6 +314,12 @@ end;
 procedure TDRLSpriteMap.Reset;
 begin
   FSpriteEngine.Reset;
+end;
+
+procedure TDRLSpriteMap.WarmUp;
+begin
+  // Terrain can render through postprocessing or directly to the window.
+  FSpriteEngine.WarmUp( [FFramebuffer, nil] );
 end;
 
 procedure TDRLSpriteMap.Recalculate;
@@ -1244,6 +1252,7 @@ function TDRLSpriteMap.PushFluidTerrain( aCoord : TCoord2D; const aSprite : TSpr
 const FluidMixWidth = 8.0;
 var iSurfaces  : array[0..2,0..2] of TSpriteTransitionMaterial;
     iEligible  : array[0..2,0..2] of Boolean;
+    iDifferent : Boolean;
     iPatches   : array[0..3] of TSpriteTransitionMaterials;
     iMasks     : array[0..3] of Byte;
     iLight     : TGLRawQColor;
@@ -1277,6 +1286,7 @@ begin
   Result := False;
   iLayerID := aSprite.SpriteID[0] div 100000;
   FillChar( iEligible, SizeOf( iEligible ), 0 );
+  iDifferent := False;
   iSurfaces[1,1] := Material( aSprite );
   iEligible[1,1] := True;
   // One small value snapshot per tile; all four patches reuse these neighbours.
@@ -1293,8 +1303,13 @@ begin
       iSprite := GetTerrainSprite( iNeighbour, iBottom, iDeco );
       if not (SF_FLUID in iSprite.Flags) then Continue;
       iSurfaces[iX,iY] := Material( iSprite );
+      if not iDifferent then
+        iDifferent := iSurfaces[iX,iY].Compare( iSurfaces[1,1] ) <> 0;
       iEligible[iX,iY] := True;
     end;
+
+  // Uniform neighbourhoods need neither patch masks nor transition geometry.
+  if not iDifferent then Exit;
 
   for iQ := 0 to 3 do
   begin

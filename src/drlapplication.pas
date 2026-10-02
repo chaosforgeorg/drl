@@ -282,7 +282,7 @@ begin
   TDRLIO(IO).Reconfigure(Config);
 
   if GraphicsVersion then
-    (IO as TDRLGFXIO).Textures.Upload;
+    (IO as TDRLGFXIO).PrepareGraphics;
 
   if GodMode and FileExists(Paths.WritePath + 'god.lua') then
     FLua.LoadFile(Paths.WritePath + 'god.lua');
