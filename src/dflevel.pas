@@ -1297,7 +1297,6 @@ begin
     Player.Statistics.OnTick;
 
     CallHook( Hook_OnTick,[ FLTime ] );
-    DRL.CallHook( Hook_OnTick, [FLTime] );
 
     if LF_RESPAWN in FFlags  then
     begin

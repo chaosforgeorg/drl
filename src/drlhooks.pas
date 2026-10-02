@@ -38,8 +38,8 @@ const
   Hook_OnEnterLevel    = 26;  // Trait, Perk, Module
   Hook_OnFire          = 27;  // Trait, Perk
   Hook_OnFired         = 28;  // Trait, Perk
-  Hook_OnExitLevel     = 29;  // Perk, Module
-  Hook_OnTick          = 30;  // Perk, Module
+  Hook_OnExitLevel     = 29;  // Perk (level, player, item)
+  Hook_OnTick          = 30;  // Perk (level, being, item)
   Hook_OnNuked         = 31;  // Perk (level)
   Hook_OnLoad          = 32;  // Module
   Hook_OnLoaded        = 33;  // Module
@@ -48,7 +48,7 @@ const
   Hook_OnLevelUp       = 36;  // Perk (player)
   Hook_OnPreLevelUp    = 37;  // Perk (player)
   Hook_OnWinGame       = 38;  // Module, Challenge
-  Hook_OnCreateEpisode = 39;  // Module, Challenge
+  Hook_OnCreateWorld   = 39;  // Module, Challenge
   Hook_OnIntro         = 40;  // Module
   Hook_OnGenerate      = 41;  // Module
 
@@ -102,7 +102,7 @@ const HookNames : array[ 0..HookAmount-1 ] of AnsiString = (
       'OnHitBeing', 'OnReload', 'getGroundDesc', 'OnEquipCheck', 'OnAct', 'OnDestroy', 'OnEnter', 'OnEnterLevel',
       'OnFire', 'OnFired', 'OnExitLevel', 'OnTick', 'OnNuked',
       'OnLoad','OnLoaded','OnCreateBeing', 'OnCreatePlayer', 'OnLevelUp','OnPreLevelUp',
-      'OnWinGame', 'OnCreateEpisode', 'OnIntro' , 'OnGenerate',
+      'OnWinGame', 'OnCreateWorld', 'OnIntro' , 'OnGenerate',
 
       'OnPostMove', 'OnPreReload', 'OnDamage', 'OnReceiveDamage', 'OnPreAction', 'OnPostAction',
       'OnCanDualWield', 'OnCanMaxDamage',
@@ -166,12 +166,12 @@ BeingHooks   := [ Hook_OnCreate, Hook_OnAction, Hook_OnAttacked, Hook_OnUseActiv
   Hook_OnAct, Hook_OnCanAct ];
 FullInvHooks := [ Hook_OnPreAction, Hook_OnPostAction, Hook_OnTick ];
 NoInventoryHooks := [ Hook_OnPickup ];
-GlobalHooks  := [ Hook_OnCreateLevel, Hook_OnEnterLevel, Hook_OnExitLevel, Hook_OnTick,
-  Hook_OnLoad, Hook_OnLoaded, Hook_OnCreatePlayer,
-  Hook_OnWinGame, Hook_OnCreateEpisode,
+GlobalHooks  := [ Hook_OnCreateLevel, Hook_OnEnterLevel,
+  Hook_OnLoaded, Hook_OnCreatePlayer,
+  Hook_OnWinGame, Hook_OnCreateWorld,
   Hook_OnIntro, Hook_OnGenerate ];
 ChallengeHooks := [ Hook_OnCreateLevel, Hook_OnCreatePlayer,
-  Hook_OnWinGame, Hook_OnCreateEpisode ];
+  Hook_OnWinGame, Hook_OnCreateWorld ];
 ModuleHooks  := [ Hook_OnLoad ];
 
 end.

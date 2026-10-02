@@ -517,7 +517,6 @@ procedure TDRLSession.LeaveLevel;
 var iTimeDiff : LongInt;
 begin
   FLevel.CallHook( Hook_OnExitLevel, [ FLevel.Index, FLevel.ID, FLevel.Status ] );
-  CallHook( Hook_OnExitLevel, [ FLevel.Index, FLevel.ID, FLevel.Status ] );
   FPlayer.CallHook( Hook_OnExitLevel, [ FLevel.Index, FLevel.ID, FLevel.Status ] );
   if ( FPlayer.HP > 0 ) and ( not FLevel.HasHook( Hook_OnExitLevel ) ) then
   begin
@@ -1503,12 +1502,12 @@ begin
   IO.SetSeed( FGameSeed );
 
   if (not (State in [DSLoading, DSCrashLoading])) then
-    CallHookCheck( Hook_OnIntro, [Setting_NoIntro] );
+    CallHook( Hook_OnIntro, [Setting_NoIntro] );
 
   if (not(State in [DSLoading, DSCrashLoading])) then
   begin
     GameRNG.SetSeed( iEpisodeSeed );
-    CallHook( Hook_OnCreateEpisode, [QWord( iEpisodeSeed )] );
+    CallHook( Hook_OnCreateWorld, [QWord( iEpisodeSeed )] );
   end;
   CallHook( Hook_OnLoaded, [(State in [DSLoading, DSCrashLoading])] );
 
@@ -1548,7 +1547,7 @@ begin
         else
         begin
           IO.Msg('You enter %s.',[ FLevel.Name ] );
-          CallHookCheck(Hook_OnGenerate,[]);
+          CallHook( Hook_OnGenerate, [] );
           FLevel.AfterGeneration;
         end;
     end;

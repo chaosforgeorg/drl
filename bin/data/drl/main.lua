@@ -610,7 +610,7 @@ function drl.OnCreatePlayer()
 	player.level_data.hells_arena = { reward_modifications = {} }
 end
 
-function drl.OnCreateEpisode()
+function drl.OnCreateWorld()
 	player.episode = {}
 	local paired = {
 		{"hells_arena"}, -- 2                                    26

@@ -520,7 +520,7 @@ function drl.register_challenges()
 		let         = "N",
 		removemedals = { "icarus1", "icarus2", "explorer", "conqueror", "competn1", "competn2", "competn3", "untouchable1", "untouchable2", "untouchable3" },
 
-		OnCreateEpisode = function ()
+		OnCreateWorld = function ()
 			local slevcount = 0
 			for i=8,24 do
 				if player.episode[i].special then
@@ -1089,7 +1089,7 @@ function drl.register_challenges()
 			end,
 		},
 
-		OnCreateEpisode = function ( episode_seed )
+		OnCreateWorld = function ( episode_seed )
 			local LevCount = 100
 			local LevD = 9
 			local LevH = 17
@@ -1247,7 +1247,7 @@ You can rest easy knowing that you're Boss. Yet at the last level you sensed som
 			end
 		end,
 
-		OnCreateEpisode = function ()
+		OnCreateWorld = function ()
 			local seed = player.episode[1].seed
 			player.episode[1] = { style = 1, name = "Phobos L1", danger = 2, deathname = "level 1 of the Phobos base", seed = seed }
 		end,
@@ -1400,7 +1400,7 @@ You can rest easy knowing that you're Boss. Yet at the last level you sensed som
 		let         = "V",
 		removemedals = { "icarus1", "icarus2", "explorer", "conqueror", "competn1", "competn2", "competn3", "untouchable1", "untouchable2", "untouchable3" },
 
-		OnCreateEpisode = function ()
+		OnCreateWorld = function ()
 			local slevcount = 0
 			for i=16,24 do
 				if player.episode[i].special then
@@ -1511,7 +1511,7 @@ You can rest easy knowing that you're Boss. Yet at the last level you sensed som
 		win_mortem    = "completed 100 levels of torture",
 		win_highscore = "completed 100 levels",
 
-		OnCreateEpisode = function ()
+		OnCreateWorld = function ()
 			player.episode = {
 				{ script = "intro", style = 1 },
 				{ script = "hells_arena", style = 1 },
@@ -1566,7 +1566,7 @@ You can rest easy knowing that you're Boss. Yet at the last level you sensed som
 		let         = "H",
 		removemedals = { "icarus1", "icarus2", "explorer", "conqueror", "competn1", "competn2", "competn3", "untouchable1", "untouchable2", "untouchable3" },
 
-		OnCreateEpisode = function ()
+		OnCreateWorld = function ()
 			local LevCount = 15
 			local LevH = math.ceil(3*(LevCount-1) / 5)
 			player.episode = {}

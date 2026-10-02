@@ -30,7 +30,7 @@ function classic.OnMortemPrint(killedby)
     player:mortem_print( " "..player.name..", level "..player.explevel.." "..klasses[player.klass].name..", "..killedby )
 end
 
-function classic.OnCreateEpisode()
+function classic.OnCreateWorld()
 	local BOSS_LEVEL = 10
 	player.episode = {}
   

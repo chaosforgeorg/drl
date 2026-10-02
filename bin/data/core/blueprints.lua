@@ -392,7 +392,7 @@ core.register_blueprint "challenge"
 	OnRegister       = { false, core.TFUNC },
 	OnCreatePlayer   = { false, core.TFUNC },
 	OnWinGame        = { false, core.TFUNC },
-	OnCreateEpisode  = { false, core.TFUNC },
+	OnCreateWorld    = { false, core.TFUNC },
 }
 
 core.register_blueprint "mod_array"
