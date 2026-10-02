@@ -290,7 +290,7 @@ begin
 
   iAmount := aStream.ReadByte;
   for i := 1 to iAmount do
-    FInv.Add( TItem.CreateFromStream( aStream, FContext, aPerkDefinitions ) );
+    Add( TItem.CreateFromStream( aStream, FContext, aPerkDefinitions ) );
   for iSlot in TEqSlot do
     if aStream.ReadByte <> 0 then
       FInv.RawSetSlot( iSlot, TItem.CreateFromStream( aStream, FContext, aPerkDefinitions ) );
