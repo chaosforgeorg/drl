@@ -779,9 +779,12 @@ function drl.register_challenges()
 		let         = "D",
 		secondary   = { "AoCn", "AoOC", "A100", "AoLT", "AoI", "AoP", "AoRA", "AoMs" },
 
-		runtime = {
+		level_runtime = {
+			OnCreateBeing = function( self, being )
+				being.expvalue = being.expvalue * 2
+			end,
 			OnEnterLevel = function( self )
-				level.flags[ LF_RESPAWN ] = true
+				self.flags[ LF_RESPAWN ] = true
 			end,
 		},
 
@@ -789,12 +792,6 @@ function drl.register_challenges()
 			player.flags[ BF_STAIRSENSE ] = true
 			player.flags[ BF_DARKNESS ]   = true
 			player.vision = player.vision - 2
-		end,
-
-		OnCreate = function ( this )
-			if this:is_being() then
-				this.expvalue = this.expvalue * 2
-			end
 		end,
 
 	}
@@ -857,11 +854,16 @@ function drl.register_challenges()
 		let         = "C",
 		secondary   = { "AoCn", "AoOC", "A100", "AoLT", "AoI", "AoP", "AoRA", "AoD", "AoMs" },
 
-		OnCreate = function ( this )
-			if this:is_being() then
-				this.flags[ BF_MAXDAMAGE ] = true
-				this.flags[ BF_AUTOHIT ] = true
-			end
+		level_runtime = {
+			OnCreateBeing = function( self, being )
+				being.flags[ BF_MAXDAMAGE ] = true
+				being.flags[ BF_AUTOHIT ] = true
+			end,
+		},
+
+		OnCreatePlayer = function()
+			player.flags[ BF_MAXDAMAGE ] = true
+			player.flags[ BF_AUTOHIT ] = true
 		end,
 
 	}

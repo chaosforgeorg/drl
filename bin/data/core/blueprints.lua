@@ -378,6 +378,7 @@ core.register_blueprint "challenge"
 	win_highscore = { false, core.TSTRING },
 	secondary     = { false, core.TTABLE },
 	runtime       = { false, core.TTABLE },
+	level_runtime = { false, core.TTABLE },
 	perks         = { false, core.TARRAY( core.TSTRING ) },
 
 	arch_name          = { false, core.TSTRING },
@@ -387,7 +388,7 @@ core.register_blueprint "challenge"
 	arch_win_mortem    = { false, core.TSTRING },
     arch_win_highscore = { false, core.TSTRING },
 
-	OnCreate         = { false, core.TFUNC },
+	OnCreateLevel    = { false, core.TFUNC },
 	OnRegister       = { false, core.TFUNC },
 	OnCreatePlayer   = { false, core.TFUNC },
 	OnWinGame        = { false, core.TFUNC },

@@ -47,6 +47,7 @@ type TDRLSession = class(TVObject)
          aStore : TStoreInterface; aData : TGameData; const aPaths : TGamePaths );
        procedure InitializeLevel;
        procedure EnterLevel( aLevel : TLevel );
+       procedure ResetLevel;
        procedure Reset;
        procedure Reconfigure;
        procedure SetModuleHooks( aModuleHooks : TFlags );
@@ -487,6 +488,14 @@ begin
     FReloadData := True;
     FContext.Lua.Call( [ 'chal', FSChallenge, 'OnRegister' ], [] );
   end;
+end;
+
+procedure TDRLSession.ResetLevel;
+begin
+  FPlayer.Detach;
+  FLevel.Clear;
+  FLevel.FullClear;
+  CallHook( Hook_OnCreateLevel, [] );
 end;
 
 procedure TDRLSession.EnterLevel( aLevel : TLevel );
@@ -1532,6 +1541,7 @@ begin
       end;
 
       if iLevelSeed <> 0 then GameRNG.SetSeed( iLevelSeed );
+      CallHook( Hook_OnCreateLevel, [] );
       if iScript <> ''
         then
           FLevel.ScriptLevel(iScript)
@@ -1750,7 +1760,6 @@ begin
   FContext.Lua.Context.BindUIDs( FUIDStore );
   FPlayer := TPlayer.Create( FContext, GameRNG );
   dfplayer.Player := FPlayer;
-  CallHook( Hook_OnCreate, [ FPlayer ] );
   FLevel.Place( FPlayer, NewCoord2D(4,4) );
   FPlayer.Klass := aResult.Klass;
 
@@ -1993,11 +2002,18 @@ begin
   Result := 0;
 end;
 
-const lua_game_lib : array[0..4] of luaL_Reg = (
+function lua_game_reset_level( L : PLua_State ) : Integer; cdecl;
+begin
+  DRL.ResetLevel;
+  Result := 0;
+end;
+
+const lua_game_lib : array[0..5] of luaL_Reg = (
   ( name : 'win';        func : @lua_game_win ),
   ( name : 'exit';       func : @lua_game_exit ),
   ( name : 'has_won';    func : @lua_game_has_won ),
   ( name : 'is_playing'; func : @lua_game_is_playing ),
+  ( name : 'reset_level';func : @lua_game_reset_level ),
   ( name : nil;         func : nil )
 );
 

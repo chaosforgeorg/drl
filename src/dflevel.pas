@@ -865,7 +865,6 @@ begin
   Result := TBeing.Create( aNID, FContext, FGameRNG );
   try
     CallHook( Hook_OnCreateBeing, [ Result ] );
-    DRL.CallHook( Hook_OnCreate, [ Result ] );
     if aRespawn then Result.Flags[ BF_RESPAWN ] := True;
     DropBeing( Result, aCoord );
   except
@@ -2025,20 +2024,6 @@ begin
   Exit( 0 );
 end;
 
-function lua_level_reset( L : Plua_State ) : Integer; cdecl;
-var iState  : TLuaGameStack;
-    iLevel  : TLevel;
-    iPlayer : TPlayer;
-begin
-  iState.Init( L );
-  iLevel := iState.ToObject( 1 ) as TLevel;
-  iPlayer := DRL.Player;
-  if iPlayer <> nil then iPlayer.Detach;
-  iLevel.Clear;
-  iLevel.FullClear;
-  Exit( 0 );
-end;
-
 function lua_level_post_generate( L : Plua_State ) : Integer; cdecl;
 var iState : TLuaGameStack;
     iLevel : TLevel;
@@ -2114,7 +2099,7 @@ begin
   Result := 1;
 end;
 
-const lua_level_lib : array[0..26] of luaL_Reg = (
+const lua_level_lib : array[0..25] of luaL_Reg = (
       ( name : 'drop_item';  func : @lua_level_drop_item),
       ( name : 'drop_being'; func : @lua_level_drop_being),
       ( name : 'respawn';    func : @lua_level_respawn),
@@ -2133,7 +2118,6 @@ const lua_level_lib : array[0..26] of luaL_Reg = (
       ( name : 'copy_lflags';        func : @lua_level_copy_lflags),
       ( name : 'damage_tile';func : @lua_level_damage_tile),
       ( name : 'push_item';  func : @lua_level_push_item),
-      ( name : 'reset';         func : @lua_level_reset),
       ( name : 'post_generate'; func : @lua_level_post_generate),
       ( name : 'get_enemies_left'; func : @lua_level_get_enemies_left),
       ( name : 'is_passable_ext'; func : @lua_level_is_passable_ext),

@@ -292,8 +292,11 @@ function drl.register_base_data()
 
 end
 
-function drl.OnEnterLevel()
+function drl.OnCreateLevel()
 	level:add_perk( "perk_level_enrage" )
+end
+
+function drl.OnEnterLevel()
 	local linfo = player.episode[ level.index ]
 	player:add_property( "crash_index", ( linfo and linfo.exit ) or ( level.index + 1 ) )
 	player:remove_perk( "running", true )

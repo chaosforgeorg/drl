@@ -9,7 +9,7 @@ interface
 uses vutil, vlua, dfdata;
 
 const
-  Hook_OnCreate        = 0;   // Being and Item; Module and Challenge notified only for beings
+  Hook_OnCreate        = 0;   // Being and Item
   Hook_OnAction        = 1;   // Being
   Hook_OnAttacked      = 2;   // Being
   Hook_OnUseActive     = 3;   // Trait, Being
@@ -81,8 +81,9 @@ const
   Hook_OnCanAct        = 66; // Being
   Hook_getLabel        = 67; // Perk
   Hook_getDescription  = 68; // Perk
+  Hook_OnCreateLevel   = 69; // Module, Challenge
 
-  HookAmount           = 69;
+  HookAmount           = 70;
 
 const AllHooks      : TFlags = [ 0..HookAmount-1 ];
 
@@ -112,7 +113,7 @@ const HookNames : array[ 0..HookAmount-1 ] of AnsiString = (
       'getGibMul',
       'OnUnequipCheck',
       'OnDrop', 'OnCanAct',
-      'getLabel', 'getDescription'
+      'getLabel', 'getDescription', 'OnCreateLevel'
       );
 
 function LoadHooks( aLua : TLua; const aTable : array of Const ) : TFlags;
@@ -165,11 +166,11 @@ BeingHooks   := [ Hook_OnCreate, Hook_OnAction, Hook_OnAttacked, Hook_OnUseActiv
   Hook_OnAct, Hook_OnCanAct ];
 FullInvHooks := [ Hook_OnPreAction, Hook_OnPostAction, Hook_OnTick ];
 NoInventoryHooks := [ Hook_OnPickup ];
-GlobalHooks  := [ Hook_OnCreate, Hook_OnEnterLevel, Hook_OnExitLevel, Hook_OnTick,
+GlobalHooks  := [ Hook_OnCreateLevel, Hook_OnEnterLevel, Hook_OnExitLevel, Hook_OnTick,
   Hook_OnLoad, Hook_OnLoaded, Hook_OnCreatePlayer,
   Hook_OnWinGame, Hook_OnCreateEpisode,
   Hook_OnIntro, Hook_OnGenerate ];
-ChallengeHooks := [ Hook_OnCreate, Hook_OnCreatePlayer,
+ChallengeHooks := [ Hook_OnCreateLevel, Hook_OnCreatePlayer,
   Hook_OnWinGame, Hook_OnCreateEpisode ];
 ModuleHooks  := [ Hook_OnLoad ];
 
