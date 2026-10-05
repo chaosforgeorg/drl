@@ -1882,15 +1882,8 @@ begin
     FMeleeAttack := False;
     if Result and aMoveOnKill and ( iPosition = Position ) and ( TryMove( aWhere ) = MoveOk ) then
       ActionMove( aWhere, 1.0, 0 )
-    else if IsPlayer then
-    begin
-      // Blended melee must not wait for unrelated blocking clips before enemy responses.
-      if GraphicsVersion and Setting_AnimationBlending then
-      begin
-        if IO.MsgPending then IO.MsgUpdate;
-      end
-      else IO.WaitForAnimation( False );
-    end;
+    else if IsPlayer and ( ( not GraphicsVersion ) or ( not Setting_AnimationBlending ) ) then
+      IO.WaitForAnimation( False );
   end;
 end;
 
