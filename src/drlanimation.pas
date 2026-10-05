@@ -128,15 +128,18 @@ TGFXMoveAnimation = class(TAnimation)
   procedure OnStart; override;
   procedure OnDraw; override;
   destructor Destroy; override;
+protected
+  function TryBlend( aAnimation : TAnimation ) : Boolean; override;
 private
-  FUIDs       : TUIDStore;
-  FLightStart : Byte;
-  FLightEnd   : Byte;
-  FSprite     : TSprite;
-  FPosition   : TVec2i;
-  FSource     : TVec2i;
-  FTarget     : TVec2i;
-  FBeing      : Boolean;
+  FUIDs          : TUIDStore;
+  FLightStart    : Byte;
+  FLightEnd      : Byte;
+  FSprite        : TSprite;
+  FPosition      : TVec2i;
+  FSource        : TVec2i;
+  FTarget        : TVec2i;
+  FBeing         : Boolean;
+  FMoveStartTime : DWord;
 public
   property LastPosition : TVec2i read FPosition;
 end;
@@ -481,12 +484,13 @@ var iSize  : Word;
     iBeing : TThing;
 begin
   inherited Create( aDuration, aDelay, 0 );
-  FUIDs       := aLevel.Context.UIDs;
-  FUID        := aUID;
-  FSprite     := aSprite;
-  FBeing      := aBeing;
-  FLightStart := 255;
-  FLightEnd   := 255;
+  FUIDs          := aLevel.Context.UIDs;
+  FUID           := aUID;
+  FSprite        := aSprite;
+  FBeing         := aBeing;
+  FMoveStartTime := 0;
+  FLightStart    := 255;
+  FLightEnd      := 255;
 
   if aBeing then
   begin
@@ -512,6 +516,34 @@ begin
   FPosition := FSource;
 end;
 
+function TGFXMoveAnimation.TryBlend( aAnimation : TAnimation ) : Boolean;
+var iMove     : TGFXMoveAnimation;
+    iValue    : Single;
+    iDistance : Single;
+    iDuration : DWord;
+begin
+  // Bumps retain their separate outward and return clips.
+  if ( ClassType <> TGFXMoveAnimation ) or ( aAnimation.ClassType <> TGFXMoveAnimation ) then
+    Exit( False );
+  iMove := TGFXMoveAnimation( aAnimation );
+  iDistance := iMove.FSource.Distance( iMove.FTarget );
+  if iDistance = 0.0 then Exit( False );
+
+  iValue := Clampf( ( FTime - FMoveStartTime ) / ( FDuration - FMoveStartTime ), 0, 1 );
+  FSource := Lerp( FSource, FTarget, iValue );
+  FPosition := FSource;
+  FLightStart := Lerp( FLightStart, FLightEnd, iValue );
+  iDuration := Max( 1, Min( iMove.FDuration,
+    Ceil( iMove.FDuration * FSource.Distance( iMove.FTarget ) / iDistance ) ) );
+  FTarget := iMove.FTarget;
+  FLightEnd := iMove.FLightEnd;
+  FSprite := iMove.FSprite;
+  // Keep the clip's clock running so OnStart and entity ownership stay intact.
+  FMoveStartTime := FTime;
+  FDuration := FTime + iDuration;
+  Exit( True );
+end;
+
 procedure TGFXMoveAnimation.OnStart;
 var iThing : TThing;
 begin
@@ -525,7 +557,7 @@ var iValue : Single;
     iBeing : TBeing;
     iThing : TThing;
 begin
-  iValue    := Clampf( FTime / FDuration, 0, 1 );
+  iValue    := Clampf( ( FTime - FMoveStartTime ) / ( FDuration - FMoveStartTime ), 0, 1 );
   iLight    := Lerp( FLightStart, FLightEnd, iValue );
   FPosition := Lerp( FSource, FTarget, iValue );
   iThing := FUIDs.Get( FUID ) as TThing;
@@ -549,10 +581,10 @@ destructor TGFXMoveAnimation.Destroy;
 var iThing : TThing;
 begin
   iThing := FUIDs.Get( FUID ) as TThing;
-  if iThing <> nil then
+  if ( iThing <> nil ) and Started then
   begin
     iThing.DrawPosition := Vec2i( 0, 0 );
-    if Started then iThing.AnimCount := Max( 0, iThing.AnimCount - 1 );
+    iThing.AnimCount := Max( 0, iThing.AnimCount - 1 );
   end;
   inherited Destroy;
 end;

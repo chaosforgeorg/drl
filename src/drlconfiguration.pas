@@ -137,6 +137,10 @@ begin
     .SetName('Adaptive animations')
     .SetDescription('Gradually speed up unfinished animations when keyboard or gamepad actions arrive quickly. Mouse movement keeps its normal pace.')
     ;
+  iGroup.AddToggle( 'animation_blending', True )
+    .SetName('Animation blending')
+    .SetDescription('Redirect unfinished player movement toward the latest destination. Setting to {!Disabled} keeps each move separate.')
+    ;
 
   iGroup := AddGroup( 'audio' );
   iGroup.AddInteger( 'volume_sound', 70 )
