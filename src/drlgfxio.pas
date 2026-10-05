@@ -36,8 +36,6 @@ type
     function AnimationsRunning : Boolean; override;
     function AnimationsBlockingFinished : Boolean; override;
     procedure ClearAnimations; override;
-    procedure RequestAnimationCatchUp; override;
-    procedure ResetAnimationSpeed; override;
     procedure Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0); override;
     procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ); override;
     procedure addMoveAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aWipeBump : Boolean ); override;
@@ -448,16 +446,6 @@ begin
   FAnimations.Clear;
 end;
 
-procedure TDRLGFXIO.RequestAnimationCatchUp;
-begin
-  FAnimations.RequestCatchUp;
-end;
-
-procedure TDRLGFXIO.ResetAnimationSpeed;
-begin
-  FAnimations.ResetPlaybackSpeed;
-end;
-
 procedure TDRLGFXIO.Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0);
 begin
   if Setting_Flash then
@@ -481,18 +469,20 @@ begin
     with FAnimations do
       if Animations.Size > 0 then
       repeat
-        if ( Animations[iCount].UID = aUID ) and ( Animations[iCount] is TGFXBumpAnimation )
+        if ( Animations[iCount].UID = aUID ) and ( Animations[iCount] is TGFXMoveAnimation )
+          and TGFXMoveAnimation( Animations[iCount] ).IsBump
           then Animations.Delete( iCount )
           else Inc( iCount );
       until iCount >= Animations.Size;
-  FAnimations.AddAnimation(TGFXMoveAnimation.Create( TLevel( FLevel ), aDuration, aDelay, aUID, aFrom, aTo, aSprite, aBeing ));
+  FAnimations.AddAnimation( TGFXMoveAnimation.Create( TLevel( FLevel ), aDuration, aDelay, aUID, aFrom, aTo, aSprite, aBeing ),
+    Setting_AnimationBlending and aBeing and ( not aWipeBump ) );
 end;
 
 procedure TDRLGFXIO.addBumpAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aAmount : Single );
 begin
   if not ( Session.State in [ DSPlaying, DSPlayerDead ] ) then Exit;
-  FAnimations.AddAnimation(TGFXBumpAnimation.Create( TLevel( FLevel ), aDuration, aDelay, aUID, aFrom, aTo, aSprite, True, aAmount ));
-  FAnimations.AddAnimation(TGFXBumpAnimation.Create( TLevel( FLevel ), aDuration, aDelay, aUID, aTo, aFrom, aSprite, True, -aAmount ));
+  FAnimations.AddAnimation( TGFXBumpAnimation.Create( TLevel( FLevel ), aDuration, aDelay, aUID,
+    aFrom, aTo, aSprite, True, aAmount ), Setting_AnimationBlending );
 end;
 
 function TDRLGFXIO.getUIDPosition( aUID : TUID; var aPosition : TVec2i ) : Boolean;
@@ -744,7 +734,6 @@ end;
 
 procedure TDRLGFXIO.FadeOut( aTime : Single = 0.5; aWait : Boolean = False );
 begin
-  ResetAnimationSpeed;
   if not Setting_Fade then
   begin
     FadeReset;
@@ -867,8 +856,6 @@ begin
   else
     SpriteMap.Marker := NewCoord2D(-1,-1);
 
-  if ( not Setting_AdaptiveAnimations ) or IsModal then
-    FAnimations.ResetPlaybackSpeed;
   FAnimations.Update( aMSec );
 
   iSizeY    := FIODriver.GetSizeY-2*FVPadding;

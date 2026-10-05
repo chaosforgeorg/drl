@@ -74,8 +74,6 @@ type TDRLIO = class( TIORL )
   procedure BloodSlideDown( aDelayTime : Word );
 
   procedure WaitForAnimation( aStrict : Boolean = True ); virtual;
-  procedure RequestAnimationCatchUp; virtual;
-  procedure ResetAnimationSpeed; virtual;
   procedure Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0); virtual; abstract;
   procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ); virtual;
   procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single );
@@ -240,17 +238,9 @@ begin
   if not WaitForAnimationCompletion( aStrict, 2000 ) then
     Log( LOGWARN, 'Emergency animation break!' );
   if aStrict then ClearAnimations;
-  if FSession.Level <> nil then FSession.Level.RevealBeings;
-end;
-
-procedure TDRLIO.RequestAnimationCatchUp;
-begin
-  // Graphical backends may opt into adaptive playback.
-end;
-
-procedure TDRLIO.ResetAnimationSpeed;
-begin
-  // Text animation playback always uses its normal speed.
+  // Partial waits can leave nonblocking clips drawing beings.
+  if ( FSession.Level <> nil ) and ( not AnimationsRunning ) then
+    FSession.Level.RevealBeings;
 end;
 
 procedure TDRLIO.addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection );
@@ -504,9 +494,6 @@ begin
   if ( aEvent.EType in [ VEVENT_MOUSEMOVE, VEVENT_MOUSEDOWN, VEVENT_MOUSEUP ] ) then
     if not Setting_Mouse then
       Exit( False );
-
-  if aEvent.EType in [ VEVENT_MOUSEDOWN, VEVENT_PADDEVICE ] then
-    ResetAnimationSpeed;
 
   if ( aEvent.EType in [ VEVENT_KEYDOWN, VEVENT_KEYUP ] ) and
      ( not aEvent.Key.Repeated ) then
