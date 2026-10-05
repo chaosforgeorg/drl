@@ -139,7 +139,7 @@ begin
     ;
   iGroup.AddToggle( 'animation_blending', True )
     .SetName('Animation blending')
-    .SetDescription('Redirect unfinished player movement toward the latest destination. Setting to {!Disabled} keeps each move separate.')
+    .SetDescription('Blend unfinished movement and melee animations toward the latest action. Setting to {!Disabled} keeps each action separate.')
     ;
 
   iGroup := AddGroup( 'audio' );

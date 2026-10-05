@@ -238,7 +238,9 @@ begin
   if not WaitForAnimationCompletion( aStrict, 2000 ) then
     Log( LOGWARN, 'Emergency animation break!' );
   if aStrict then ClearAnimations;
-  if FSession.Level <> nil then FSession.Level.RevealBeings;
+  // Partial waits can leave nonblocking clips drawing beings.
+  if ( FSession.Level <> nil ) and ( not AnimationsRunning ) then
+    FSession.Level.RevealBeings;
 end;
 
 procedure TDRLIO.addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection );

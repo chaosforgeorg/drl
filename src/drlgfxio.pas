@@ -469,19 +469,20 @@ begin
     with FAnimations do
       if Animations.Size > 0 then
       repeat
-        if ( Animations[iCount].UID = aUID ) and ( Animations[iCount] is TGFXBumpAnimation )
+        if ( Animations[iCount].UID = aUID ) and ( Animations[iCount] is TGFXMoveAnimation )
+          and TGFXMoveAnimation( Animations[iCount] ).IsBump
           then Animations.Delete( iCount )
           else Inc( iCount );
       until iCount >= Animations.Size;
   FAnimations.AddAnimation( TGFXMoveAnimation.Create( TLevel( FLevel ), aDuration, aDelay, aUID, aFrom, aTo, aSprite, aBeing ),
-    Setting_AnimationBlending and aBeing and ( not aWipeBump ) and ( aUID = FSession.Player.UID ) );
+    Setting_AnimationBlending and aBeing and ( not aWipeBump ) );
 end;
 
 procedure TDRLGFXIO.addBumpAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aAmount : Single );
 begin
   if not ( Session.State in [ DSPlaying, DSPlayerDead ] ) then Exit;
-  FAnimations.AddAnimation(TGFXBumpAnimation.Create( TLevel( FLevel ), aDuration, aDelay, aUID, aFrom, aTo, aSprite, True, aAmount ));
-  FAnimations.AddAnimation(TGFXBumpAnimation.Create( TLevel( FLevel ), aDuration, aDelay, aUID, aTo, aFrom, aSprite, True, -aAmount ));
+  FAnimations.AddAnimation( TGFXBumpAnimation.Create( TLevel( FLevel ), aDuration, aDelay, aUID,
+    aFrom, aTo, aSprite, True, aAmount ), Setting_AnimationBlending );
 end;
 
 function TDRLGFXIO.getUIDPosition( aUID : TUID; var aPosition : TVec2i ) : Boolean;

@@ -140,11 +140,20 @@ private
   FTarget        : TVec2i;
   FBeing         : Boolean;
   FMoveStartTime : DWord;
+  FMoveDuration  : DWord;
+  FReturnTarget  : TVec2i;
+  FLightReturn   : Byte;
+  FReturnDuration: DWord;
+  procedure Interpolate( out aPosition : TVec2i; out aLight : Byte );
 public
+  function IsBump : Boolean;
   property LastPosition : TVec2i read FPosition;
 end;
 
-TGFXBumpAnimation = class(TGFXMoveAnimation);
+TGFXBumpAnimation = class(TGFXMoveAnimation)
+  constructor Create( aLevel : TLevel; aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D;
+    aSprite : TSprite; aBeing : Boolean; aAmount : Single );
+end;
 
 { TGFXScreenMoveAnimation }
 
@@ -489,6 +498,8 @@ begin
   FSprite        := aSprite;
   FBeing         := aBeing;
   FMoveStartTime := 0;
+  FMoveDuration  := aDuration;
+  FReturnDuration:= 0;
   FLightStart    := 255;
   FLightEnd      := 255;
 
@@ -518,30 +529,75 @@ end;
 
 function TGFXMoveAnimation.TryBlend( aAnimation : TAnimation ) : Boolean;
 var iMove     : TGFXMoveAnimation;
-    iValue    : Single;
     iDistance : Single;
+    iSpeed    : Single;
     iDuration : DWord;
+    iReturning: Boolean;
 begin
-  // Bumps retain their separate outward and return clips.
-  if ( ClassType <> TGFXMoveAnimation ) or ( aAnimation.ClassType <> TGFXMoveAnimation ) then
-    Exit( False );
+  if not ( aAnimation is TGFXMoveAnimation ) then Exit( False );
   iMove := TGFXMoveAnimation( aAnimation );
   iDistance := iMove.FSource.Distance( iMove.FTarget );
   if iDistance = 0.0 then Exit( False );
 
-  iValue := Clampf( ( FTime - FMoveStartTime ) / ( FDuration - FMoveStartTime ), 0, 1 );
-  FSource := Lerp( FSource, FTarget, iValue );
-  FPosition := FSource;
-  FLightStart := Lerp( FLightStart, FLightEnd, iValue );
-  iDuration := Max( 1, Min( iMove.FDuration,
-    Ceil( iMove.FDuration * FSource.Distance( iMove.FTarget ) / iDistance ) ) );
+  iReturning := IsBump and ( FTime - FMoveStartTime >= FMoveDuration );
+  iSpeed := iDistance / iMove.FMoveDuration;
+  if iReturning then
+    iSpeed := FTarget.Distance( FReturnTarget ) / FReturnDuration;
+  if iSpeed = 0.0 then Exit( False );
+
+  Interpolate( FPosition, FLightStart );
+  FSource := FPosition;
+  iDuration := Max( 1, Ceil( FSource.Distance( iMove.FTarget ) / iSpeed ) );
+  // Ordinary movement retains its single-move duration cap.
+  if ( not iReturning ) or ( not iMove.IsBump ) then
+    iDuration := Min( iDuration, iMove.FMoveDuration );
   FTarget := iMove.FTarget;
   FLightEnd := iMove.FLightEnd;
   FSprite := iMove.FSprite;
+  FReturnTarget := iMove.FReturnTarget;
+  FLightReturn := iMove.FLightReturn;
+  FReturnDuration := iMove.FReturnDuration;
+  FBlocking := iMove.FBlocking;
   // Keep the clip's clock running so OnStart and entity ownership stay intact.
   FMoveStartTime := FTime;
-  FDuration := FTime + iDuration;
+  FMoveDuration := iDuration;
+  FDuration := FTime + FMoveDuration + FReturnDuration;
   Exit( True );
+end;
+
+function TGFXMoveAnimation.IsBump : Boolean;
+begin
+  Exit( FReturnDuration > 0 );
+end;
+
+procedure TGFXMoveAnimation.Interpolate( out aPosition : TVec2i; out aLight : Byte );
+var iValue : Single;
+    iTime  : DWord;
+begin
+  iTime := FTime - FMoveStartTime;
+  if IsBump and ( iTime >= FMoveDuration ) then
+  begin
+    iValue := Clampf( ( iTime - FMoveDuration ) / FReturnDuration, 0, 1 );
+    aPosition := Lerp( FTarget, FReturnTarget, iValue );
+    aLight := Lerp( FLightEnd, FLightReturn, iValue );
+  end
+  else
+  begin
+    iValue := Clampf( iTime / FMoveDuration, 0, 1 );
+    aPosition := Lerp( FSource, FTarget, iValue );
+    aLight := Lerp( FLightStart, FLightEnd, iValue );
+  end;
+end;
+
+constructor TGFXBumpAnimation.Create( aLevel : TLevel; aDuration : DWord; aDelay : DWord; aUID : TUID;
+  aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aAmount : Single );
+begin
+  inherited Create( aLevel, aDuration, aDelay, aUID, aFrom, aTo, aSprite, aBeing, aAmount );
+  FReturnTarget := FSource;
+  FLightReturn := FLightStart;
+  FReturnDuration := aDuration;
+  FDuration := aDuration * 2;
+  FBlocking := not Setting_AnimationBlending;
 end;
 
 procedure TGFXMoveAnimation.OnStart;
@@ -552,14 +608,11 @@ begin
 end;
 
 procedure TGFXMoveAnimation.OnDraw;
-var iValue : Single;
-    iLight : Byte;
+var iLight : Byte;
     iBeing : TBeing;
     iThing : TThing;
 begin
-  iValue    := Clampf( ( FTime - FMoveStartTime ) / ( FDuration - FMoveStartTime ), 0, 1 );
-  iLight    := Lerp( FLightStart, FLightEnd, iValue );
-  FPosition := Lerp( FSource, FTarget, iValue );
+  Interpolate( FPosition, iLight );
   iThing := FUIDs.Get( FUID ) as TThing;
   if iThing <> nil then iThing.DrawPosition := FPosition;
   if FBeing
