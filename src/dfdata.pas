@@ -153,7 +153,6 @@ const
   Setting_ScreenShake       : Boolean = True;
   Setting_BloodPulse        : Boolean = True;
   Setting_ItemDropAnimation : Boolean = True;
-  Setting_AdaptiveAnimations: Boolean = True;
   Setting_AnimationBlending : Boolean = True;
   Setting_AutoTarget        : Boolean = True;
   Setting_GroupMessages     : Boolean = True;
