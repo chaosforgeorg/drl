@@ -2927,31 +2927,37 @@ begin
   Result := 1;
 end;
 
-function lua_being_apply_damage(L: Plua_State): Integer; cdecl;
-var State             : TLuaGameStack;
-    Being             : TBeing;
+function lua_being_apply_damage( L : Plua_State ) : Integer; cdecl;
+var iState            : TLuaGameStack;
+    iBeing            : TBeing;
+    iPlayer           : TPlayer;
     iSource           : TItem;
     iKilledBy         : AnsiString;
     iPreviousKilledBy : AnsiString;
     iPreviousMelee    : Boolean;
 begin
-  State.Init(L);
-  Being := State.ToObject(1) as TBeing;
-  iSource := State.ToObjectOrNil(5) as TItem;
+  iState.Init( L );
+  iBeing := iState.ToObject( 1 ) as TBeing;
+  iSource := iState.ToObjectOrNil( 5 ) as TItem;
   iKilledBy := '';
-  if State.IsString(5) and ( not Player.Dead ) then
+  if iState.IsString( 5 ) then
   begin
-    iKilledBy := State.ToString(5);
-    if iKilledBy <> '' then
+    // Damage may destroy the target; the run's player survives until Session cleanup.
+    iPlayer := TLevel( iBeing.Parent ).Player;
+    if not iPlayer.Dead then
     begin
-      iPreviousKilledBy := Player.KilledBy;
-      iPreviousMelee    := Player.KilledMelee;
-      Player.SetKilledBy( iKilledBy, False );
+      iKilledBy := iState.ToString( 5 );
+      if iKilledBy <> '' then
+      begin
+        iPreviousKilledBy := iPlayer.KilledBy;
+        iPreviousMelee    := iPlayer.KilledMelee;
+        iPlayer.SetKilledBy( iKilledBy, False );
+      end;
     end;
   end;
-  Being.ApplyDamage(State.ToInteger(2),TBodyTarget( State.ToInteger(3) ), TDamageType( State.ToInteger(4,Byte(Damage_Bullet)) ), iSource, 0 );
-  if ( iKilledBy <> '' ) and ( not Player.Dead ) then
-    Player.SetKilledBy( iPreviousKilledBy, iPreviousMelee );
+  iBeing.ApplyDamage( iState.ToInteger( 2 ), TBodyTarget( iState.ToInteger( 3 ) ), TDamageType( iState.ToInteger( 4, Byte( Damage_Bullet ) ) ), iSource, 0 );
+  if ( iKilledBy <> '' ) and ( not iPlayer.Dead ) then
+    iPlayer.SetKilledBy( iPreviousKilledBy, iPreviousMelee );
   Result := 0;
 end;
 
