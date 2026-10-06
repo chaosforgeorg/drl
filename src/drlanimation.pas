@@ -130,7 +130,6 @@ TGFXMoveAnimation = class(TAnimation)
   destructor Destroy; override;
 protected
   function TryBlend( aAnimation : TAnimation ) : Boolean; override;
-  procedure OnFollowupQueued( aAnimation : TAnimation ); override;
 private
   FUIDs          : TUIDStore;
   FLightStart    : Byte;
@@ -567,21 +566,6 @@ begin
   FMoveDuration := iDuration;
   FDuration := FTime + FMoveDuration + FReturnDuration;
   Exit( True );
-end;
-
-procedure TGFXMoveAnimation.OnFollowupQueued( aAnimation : TAnimation );
-const FollowupSpeedMultiplier = 2.0;
-var iElapsed : DWord;
-begin
-  if not FMustFinish or not Setting_AnimationBlending then Exit;
-  if not ( aAnimation is TGFXMoveAnimation ) then Exit;
-  iElapsed := FTime - FMoveStartTime;
-  if iElapsed >= FMoveDuration then Exit;
-  Interpolate( FPosition, FLightStart );
-  FSource := FPosition;
-  FMoveDuration := Max( 1, Ceil( ( FMoveDuration - iElapsed ) / FollowupSpeedMultiplier ) );
-  FMoveStartTime := FTime;
-  FDuration := FTime + FMoveDuration;
 end;
 
 function TGFXMoveAnimation.IsBump : Boolean;
