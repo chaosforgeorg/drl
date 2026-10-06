@@ -38,7 +38,7 @@ type
     procedure ClearAnimations; override;
     procedure Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0); override;
     procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ); override;
-    procedure addMoveAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aWipeBump : Boolean ); override;
+    procedure addMoveAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aWipeBump : Boolean; aFinishBeforeNext : Boolean = False ); override;
     procedure addBumpAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aAmount : Single ); override;
     procedure addScreenMoveAnimation( aDuration : DWord; aTo : TCoord2D ); override;
     procedure addCellAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aValue : Integer ); override;
@@ -460,7 +460,7 @@ begin
       FAnimations.addAnimation( TGFXScreenShakeAnimation.Create( aDuration, aDelay, aStrength, aDirection ) );
 end;
 
-procedure TDRLGFXIO.addMoveAnimation ( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aWipeBump : Boolean );
+procedure TDRLGFXIO.addMoveAnimation ( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aWipeBump : Boolean; aFinishBeforeNext : Boolean );
 var iCount : Integer;
 begin
   if not ( Session.State in [ DSPlaying, DSPlayerDead ] ) then Exit;
@@ -474,7 +474,7 @@ begin
           then Animations.Delete( iCount )
           else Inc( iCount );
       until iCount >= Animations.Size;
-  FAnimations.AddAnimation( TGFXMoveAnimation.Create( TLevel( FLevel ), aDuration, aDelay, aUID, aFrom, aTo, aSprite, aBeing ),
+  FAnimations.AddAnimation( TGFXMoveAnimation.Create( TLevel( FLevel ), aDuration, aDelay, aUID, aFrom, aTo, aSprite, aBeing, 0.0, aFinishBeforeNext ),
     Setting_AnimationBlending and aBeing and ( not aWipeBump ) );
 end;
 

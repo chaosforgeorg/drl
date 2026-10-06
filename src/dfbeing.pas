@@ -2672,7 +2672,7 @@ begin
       if isPlayer then
         IO.addScreenMoveAnimation(100, iKnock );
       if iLevel.AnimationVisible( FPosition, Self ) or iLevel.AnimationVisible( iKnock, Self ) then
-        IO.addMoveAnimation(100,0,FUID,Position,iKnock,Sprite,True,True);
+        IO.addMoveAnimation( 100, 0, FUID, Position, iKnock, Sprite, True, True, True );
       if isPlayer then
         IO.addScreenShakeAnimation( 400, 0, Clampf( iStrength * 1.0, 2.0, 10.0 ) );
     end;

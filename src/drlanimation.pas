@@ -124,12 +124,13 @@ end;
 { TGFXMoveAnimation }
 
 TGFXMoveAnimation = class(TAnimation)
-  constructor Create( aLevel : TLevel; aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aPartial : Single = 0.0 );
+  constructor Create( aLevel : TLevel; aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aPartial : Single = 0.0; aFinishBeforeNext : Boolean = False );
   procedure OnStart; override;
   procedure OnDraw; override;
   destructor Destroy; override;
 protected
   function TryBlend( aAnimation : TAnimation ) : Boolean; override;
+  procedure OnFollowupQueued( aAnimation : TAnimation ); override;
 private
   FUIDs          : TUIDStore;
   FLightStart    : Byte;
@@ -139,6 +140,7 @@ private
   FSource        : TVec2i;
   FTarget        : TVec2i;
   FBeing         : Boolean;
+  FMustFinish    : Boolean;
   FMoveStartTime : DWord;
   FMoveDuration  : DWord;
   FReturnTarget  : TVec2i;
@@ -488,7 +490,7 @@ end;
 { TGFXMoveAnimation }
 
 constructor TGFXMoveAnimation.Create ( aLevel : TLevel; aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D;
-  aSprite : TSprite; aBeing : Boolean; aPartial : Single ) ;
+  aSprite : TSprite; aBeing : Boolean; aPartial : Single; aFinishBeforeNext : Boolean ) ;
 var iSize  : Word;
     iBeing : TThing;
 begin
@@ -497,6 +499,7 @@ begin
   FUID           := aUID;
   FSprite        := aSprite;
   FBeing         := aBeing;
+  FMustFinish    := aFinishBeforeNext;
   FMoveStartTime := 0;
   FMoveDuration  := aDuration;
   FReturnDuration:= 0;
@@ -536,6 +539,7 @@ var iMove     : TGFXMoveAnimation;
 begin
   if not ( aAnimation is TGFXMoveAnimation ) then Exit( False );
   iMove := TGFXMoveAnimation( aAnimation );
+  if FMustFinish or iMove.FMustFinish then Exit( False );
   iDistance := iMove.FSource.Distance( iMove.FTarget );
   if iDistance = 0.0 then Exit( False );
 
@@ -563,6 +567,21 @@ begin
   FMoveDuration := iDuration;
   FDuration := FTime + FMoveDuration + FReturnDuration;
   Exit( True );
+end;
+
+procedure TGFXMoveAnimation.OnFollowupQueued( aAnimation : TAnimation );
+const FollowupSpeedMultiplier = 2.0;
+var iElapsed : DWord;
+begin
+  if not FMustFinish or not Setting_AnimationBlending then Exit;
+  if not ( aAnimation is TGFXMoveAnimation ) then Exit;
+  iElapsed := FTime - FMoveStartTime;
+  if iElapsed >= FMoveDuration then Exit;
+  Interpolate( FPosition, FLightStart );
+  FSource := FPosition;
+  FMoveDuration := Max( 1, Ceil( ( FMoveDuration - iElapsed ) / FollowupSpeedMultiplier ) );
+  FMoveStartTime := FTime;
+  FDuration := FTime + FMoveDuration;
 end;
 
 function TGFXMoveAnimation.IsBump : Boolean;
