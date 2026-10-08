@@ -431,13 +431,13 @@ end;
 
 function TDRLGFXIO.AnimationsRunning : Boolean;
 begin
-  if not ( Session.State in [ DSPlaying, DSPlayerDead ] ) then Exit(False);
+  if not ( Session.State in [ DSPlaying, DSEnding ] ) then Exit(False);
   Exit( not FAnimations.Finished );
 end;
 
 function TDRLGFXIO.AnimationsBlockingFinished : Boolean;
 begin
-  if not ( Session.State in [ DSPlaying, DSPlayerDead ] ) then Exit(True);
+  if not ( Session.State in [ DSPlaying, DSEnding ] ) then Exit(True);
   Exit( FAnimations.BlockingFinished );
 end;
 
@@ -454,7 +454,7 @@ end;
 
 procedure TDRLGFXIO.addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection );
 begin
-  if not ( Session.State in [ DSPlaying, DSPlayerDead ] ) then Exit;
+  if not ( Session.State in [ DSPlaying, DSEnding ] ) then Exit;
   if Setting_ScreenShake then
     if not TGFXScreenShakeAnimation.Update( aDuration, aDelay, aStrength, aDirection ) then
       FAnimations.addAnimation( TGFXScreenShakeAnimation.Create( aDuration, aDelay, aStrength, aDirection ) );
@@ -463,7 +463,7 @@ end;
 procedure TDRLGFXIO.addMoveAnimation ( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aWipeBump : Boolean; aFinishBeforeNext : Boolean );
 var iCount : Integer;
 begin
-  if not ( Session.State in [ DSPlaying, DSPlayerDead ] ) then Exit;
+  if not ( Session.State in [ DSPlaying, DSEnding ] ) then Exit;
   iCount := 0;
   if aWipeBump then
     with FAnimations do
@@ -480,7 +480,7 @@ end;
 
 procedure TDRLGFXIO.addBumpAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aAmount : Single );
 begin
-  if not ( Session.State in [ DSPlaying, DSPlayerDead ] ) then Exit;
+  if not ( Session.State in [ DSPlaying, DSEnding ] ) then Exit;
   FAnimations.AddAnimation( TGFXBumpAnimation.Create( TLevel( FLevel ), aDuration, aDelay, aUID,
     aFrom, aTo, aSprite, True, aAmount ), Setting_AnimationBlending );
 end;
@@ -500,26 +500,26 @@ end;
 
 procedure TDRLGFXIO.addScreenMoveAnimation(aDuration: DWord; aTo: TCoord2D);
 begin
-  if not ( Session.State in [ DSPlaying, DSPlayerDead ] ) then Exit;
+  if not ( Session.State in [ DSPlaying, DSEnding ] ) then Exit;
   if not TGFXScreenMoveAnimation.Update( aDuration, aTo ) then
     FAnimations.addAnimation( TGFXScreenMoveAnimation.Create( aDuration, aTo ) );
 end;
 
 procedure TDRLGFXIO.addCellAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aValue : Integer );
 begin
-  if not ( Session.State in [ DSPlaying, DSPlayerDead ] ) then Exit;
+  if not ( Session.State in [ DSPlaying, DSEnding ] ) then Exit;
   FAnimations.addAnimation( TGFXCellAnimation.Create( TLevel( FLevel ), aDuration, aDelay, aCoord, aSprite, aValue ) );
 end;
 
 procedure TDRLGFXIO.addItemAnimation( aDuration : DWord; aDelay : DWord; aItem : TThing; aValue : Integer );
 begin
-  if not ( Session.State in [ DSPlaying, DSPlayerDead ] ) then Exit;
+  if not ( Session.State in [ DSPlaying, DSEnding ] ) then Exit;
   FAnimations.addAnimation( TGFXItemAnimation.Create( aItem.Context.UIDs, aDuration, aDelay, aItem.UID, aValue ) );
 end;
 
 procedure TDRLGFXIO.addKillAnimation( aDuration : DWord; aDelay : DWord; aBeing : TThing; aReverse : Boolean = False );
 begin
-  if not ( Session.State in [ DSPlaying, DSPlayerDead ] ) then Exit;
+  if not ( Session.State in [ DSPlaying, DSEnding ] ) then Exit;
   if SF_PAINANIM in aBeing.Sprite.Flags then
     FAnimations.addAnimation( TGFXKillAnimation.Create( TLevel( FLevel ), aDuration, aDelay, aBeing.UID, aReverse ) );
 end;
@@ -529,7 +529,7 @@ procedure TDRLGFXIO.addMissileAnimation(aDuration: DWord; aDelay: DWord; aSource
   aTarget: TCoord2D; aColor: Byte; aPic: Char; aDrawDelay: Word;
   aSprite: TSprite; aRay: Boolean; aTrailNID : Word);
 begin
-  if not ( Session.State in [ DSPlaying, DSPlayerDead ] ) then Exit;
+  if not ( Session.State in [ DSPlaying, DSEnding ] ) then Exit;
   FAnimations.addAnimation(
     TGFXMissileAnimation.Create( TLevel( FLevel ), aDuration, aDelay, aSource,
       aTarget, aDrawDelay, aSprite, aRay, aTrailNID ) );
@@ -538,14 +538,14 @@ end;
 procedure TDRLGFXIO.addMarkAnimation(aDuration: DWord; aDelay: DWord;
   aCoord: TCoord2D; aSprite : TSprite; aColor: Byte; aPic: Char);
 begin
-  if not ( Session.State in [ DSPlaying, DSPlayerDead ] ) then Exit;
+  if not ( Session.State in [ DSPlaying, DSEnding ] ) then Exit;
   FAnimations.addAnimation( TGFXMarkAnimation.Create(aDuration, aDelay, aCoord, aSprite ) )
 end;
 
 procedure TDRLGFXIO.addFXAnimation(aDuration: DWord; aDelay: DWord;
   aCoord: TCoord2D; aSprite : TSprite);
 begin
-  if not ( Session.State in [ DSPlaying, DSPlayerDead ] ) then Exit;
+  if not ( Session.State in [ DSPlaying, DSEnding ] ) then Exit;
   FAnimations.addAnimation( TGFXFXAnimation.Create(aDuration, aDelay, aCoord, aSprite) )
 end;
 
@@ -553,7 +553,7 @@ procedure TDRLGFXIO.addParticleBurstAnimation( aDelay : DWord; aEmitterID : Word
   aPosition : TCoord2D; aDirection : TDirection; aCount : Word;
   aDistanceScale, aSpreadScale : Single );
 begin
-  if not ( Session.State in [ DSPlaying, DSPlayerDead ] ) then Exit;
+  if not ( Session.State in [ DSPlaying, DSEnding ] ) then Exit;
   if ( aEmitterID = 0 ) or ( aCount = 0 ) then Exit;
   FAnimations.AddAnimation( TGFXParticleBurstAnimation.Create(
     TLevel( FLevel ).Particles, aDelay, aEmitterID, aPosition, aDirection, aCount, aDistanceScale, aSpreadScale ) );
@@ -561,14 +561,14 @@ end;
 
 procedure TDRLGFXIO.addSoundAnimation(aDelay: DWord; aPosition: TCoord2D; aSoundID: DWord);
 begin
-  if not ( Session.State in [ DSPlaying, DSPlayerDead ] ) then Exit;
+  if not ( Session.State in [ DSPlaying, DSEnding ] ) then Exit;
   if aSoundID > 0 then
     FAnimations.addAnimation( TSoundEventAnimation.Create( aDelay, aPosition, aSoundID ) )
 end;
 
 procedure TDRLGFXIO.addRumbleAnimation( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord );
 begin
-  if not ( Session.State in [ DSPlaying, DSPlayerDead ] ) then Exit;
+  if not ( Session.State in [ DSPlaying, DSEnding ] ) then Exit;
   if (not Setting_GamepadRumble) or (not IsGamepad ) then Exit;
   if aDelay = 0
     then IO.Driver.Rumble( aLow, aHigh, aDuration )
@@ -869,7 +869,7 @@ begin
   FProjection := GLCreateOrtho( 0, iSizeX, iSizeY, 0, -16384, 16384 );
 
   iDrawLevel := ( FSession <> nil )
-    and ( ( FSession.State in [ DSPlaying, DSPlayerDead ] ) or ( FFadeDirection < 0 ) );
+    and ( ( FSession.State in [ DSPlaying, DSEnding ] ) or ( FFadeDirection < 0 ) );
   if iDrawLevel then
   begin
     if FTIGConsoleView = nil then
@@ -1143,7 +1143,7 @@ end;
 
 procedure TDRLGFXIO.UpdateMinimap;
 begin
-  if ( FSession <> nil ) and ( FSession.State in [ DSPlaying, DSPlayerDead ] ) then
+  if ( FSession <> nil ) and ( FSession.State in [ DSPlaying, DSEnding ] ) then
     FMinimap.Redraw( TLevel( FLevel ) );
 end;
 

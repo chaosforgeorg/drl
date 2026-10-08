@@ -391,7 +391,7 @@ end;
 
 procedure TDRLLua.OnError(const ErrorString : Ansistring);
 begin
-  if (IO <> nil) and ( DRL.State in [ DSPlaying, DSPlayerDead ] ) then
+  if (IO <> nil) and ( DRL.State in [ DSPlaying, DSEnding ] ) then
   begin
     IO.ErrorReport( ErrorString );
   end

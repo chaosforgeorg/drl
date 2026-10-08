@@ -230,7 +230,7 @@ end;
 
 procedure TDRLIO.WaitForAnimation( aStrict : Boolean = True );
 begin
-  if ( FSession = nil ) or not ( FSession.State in [ DSPlaying, DSPlayerDead ] ) then
+  if ( FSession = nil ) or not ( FSession.State in [ DSPlaying, DSEnding ] ) then
   begin
     if MsgPending then MsgUpdate;
     Exit;

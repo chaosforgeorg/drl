@@ -121,13 +121,13 @@ end;
 
 function TDRLTextIO.AnimationsRunning : Boolean;
 begin
-  if not ( Session.State in [ DSPlaying, DSPlayerDead ] ) then Exit(False);
+  if not ( Session.State in [ DSPlaying, DSEnding ] ) then Exit(False);
   Exit( not FTextMap.AnimationsFinished );
 end;
 
 function TDRLTextIO.AnimationsBlockingFinished : Boolean;
 begin
-  if not ( Session.State in [ DSPlaying, DSPlayerDead ] ) then Exit(True);
+  if not ( Session.State in [ DSPlaying, DSEnding ] ) then Exit(True);
   Exit( FTextMap.AnimationsBlockingFinished );
 end;
 
@@ -148,7 +148,7 @@ procedure TDRLTextIO.addMissileAnimation(aDuration: DWord; aDelay: DWord; aSourc
   aTarget: TCoord2D; aColor: Byte; aPic: Char; aDrawDelay: Word;
   aSprite: TSprite; aRay: Boolean; aTrailNID : Word);
 begin
-  if not ( Session.State in [ DSPlaying, DSPlayerDead ] ) then Exit;
+  if not ( Session.State in [ DSPlaying, DSEnding ] ) then Exit;
   if aRay
     then FTextMap.AddAnimation( TTextRayAnimation.Create( Session.Level, aSource, aTarget, IOGylph( aPic, aColor ), aDuration, aDelay, FSession.Player.Vision ) )
     else FTextMap.AddAnimation( TTextBulletAnimation.Create( Session.Level, aSource, aTarget, IOGylph( aPic, aColor ), aDuration, aDelay, FSession.Player.Vision ) );
@@ -157,13 +157,13 @@ end;
 procedure TDRLTextIO.addMarkAnimation(aDuration: DWord; aDelay: DWord;
   aCoord: TCoord2D; aSprite : TSprite; aColor: Byte; aPic: Char);
 begin
-  if not ( Session.State in [ DSPlaying, DSPlayerDead ] ) then Exit;
+  if not ( Session.State in [ DSPlaying, DSEnding ] ) then Exit;
   FTextMap.AddAnimation( TTextMarkAnimation.Create( aCoord, IOGylph( aPic, aColor ), aDuration, aDelay ) );
 end;
 
 procedure TDRLTextIO.addSoundAnimation(aDelay: DWord; aPosition: TCoord2D; aSoundID: DWord);
 begin
-  if not ( Session.State in [ DSPlaying, DSPlayerDead ] ) then Exit;
+  if not ( Session.State in [ DSPlaying, DSEnding ] ) then Exit;
   FTextMap.AddAnimation( TSoundEventAnimation.Create( aDelay, aPosition, aSoundID ) )
 end;
 

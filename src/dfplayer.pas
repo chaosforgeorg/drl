@@ -86,6 +86,7 @@ private
   function ActionQuickKey( aIndex : Byte; aTarget : TCoord2D ) : Boolean;
   procedure ResortStacks;
 public
+  property Dying           : Boolean read FDying;
   property DamagedLastTurn : Boolean read FDamagedLastTurn write FDamagedLastTurn;
   property MultiMove       : TMultiMove  read FMultiMove;
   property Statistics      : TStatistics read FStatistics;
@@ -592,7 +593,7 @@ begin
   end;
 
   FDying := True;
-  DRL.SetState( DSPlayerDead );
+  DRL.SetState( DSEnding );
 
   if DRL.GameWon then
     SetKilledBy( '', False )

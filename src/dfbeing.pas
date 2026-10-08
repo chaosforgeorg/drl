@@ -1753,7 +1753,7 @@ begin
     if iUIDs[ iKillerUID ] = nil then aKiller := nil;
   end;
 
-  if ( DRL.State in [ DSPlaying, DSPlayerDead, DSFinished ] ) and ( not DRL.GameWon ) then
+  if ( DRL.State in [ DSPlaying, DSEnding ] ) and ( not DRL.GameWon ) then
     iLevel.CallHook( Hook_OnKill,[ Self, aKiller, aWeapon, iMeleeKill, aOverkill ] );
 
   if not aOverkill and not ( CF_BLOCKMOVE in iLevel.Data.Cells[ iLevel.Floor[ FPosition ] ].Flags ) then

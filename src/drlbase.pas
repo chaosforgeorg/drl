@@ -33,7 +33,7 @@ public
 end;
 
 type TDRLState = ( DSStart,   DSMenu,       DSLoading, DSCrashLoading,
-                  DSPlaying, DSPlayerDead, DSSaving,  DSNextLevel,
+                  DSPlaying, DSEnding,   DSSaving,  DSNextLevel,
                   DSQuit,    DSFinished );
 type TDRLSessionResult = ( DSR_Quit, DSR_Played, DSR_ReloadData );
 
@@ -257,14 +257,14 @@ end;
 
 procedure TDRLSession.WinGame;
 begin
-  IO.FadeOut( 1.0, True );
-  if FState <> DSPlayerDead then SetState( DSFinished );
+  if FGameWon then Exit;
   FGameWon := True;
+  SetState( DSEnding );
 end;
 
 procedure TDRLSession.ExitLevel( aFade : Boolean; aFadeTime : Single );
 begin
-  if FState in [ DSSaving, DSPlayerDead ] then Exit;
+  if FState in [ DSSaving, DSEnding ] then Exit;
   if aFade then IO.FadeOut( aFadeTime, True );
   SetState( DSNextLevel );
 end;
@@ -1673,13 +1673,17 @@ begin
     if State = DSNextLevel then
       LeaveLevel;
 
-    // Present accepted death after gameplay and exit callbacks have returned.
-    if State = DSPlayerDead then
+    // Present accepted outcomes after gameplay and exit callbacks have returned.
+    if State = DSEnding then
     begin
       IO.WaitForAnimation;
-      FPlayer.AnimCount := 1;
-      IO.Msg( 'You die!...' );
-      IO.RunLayer( TMoreLayer.Create( False ) );
+      if FGameWon then IO.FadeOut( 1.0, True );
+      if FPlayer.Dying then
+      begin
+        FPlayer.AnimCount := 1;
+        IO.Msg( 'You die!...' );
+        IO.RunLayer( TMoreLayer.Create( False ) );
+      end;
       SetState( DSFinished );
     end;
 

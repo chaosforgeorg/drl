@@ -1243,7 +1243,7 @@ procedure TLevel.UpdateKillState;
 var iEnemiesLeft       : Integer;
     iUniqueEnemiesLeft : Integer;
 begin
-  if not ( DRL.State in [ DSPlaying, DSPlayerDead, DSFinished ] ) or DRL.GameWon then Exit;
+  if not ( DRL.State in [ DSPlaying, DSEnding ] ) or DRL.GameWon then Exit;
 
   iEnemiesLeft       := EnemiesLeft();
   if ( iEnemiesLeft < 4 ) and ( not ( LF_NOBEINGREVEAL in FFlags ) ) then
@@ -1312,7 +1312,7 @@ begin
   NukeTick;
 
   // Finish this tick's effects before finalizing a death or victory.
-  if DRL.State in [ DSPlaying, DSPlayerDead, DSFinished ] then
+  if DRL.State in [ DSPlaying, DSEnding ] then
   begin
     iNode := Child;
     if iNode <> nil then
@@ -1324,7 +1324,7 @@ begin
         FActiveBeing := TBeing(iNode);
         FActiveBeing.Tick( FPlayer.Statistics.GameTime );
       end;
-      if not ( DRL.State in [ DSPlaying, DSPlayerDead, DSFinished ] ) then Break;
+      if not ( DRL.State in [ DSPlaying, DSEnding ] ) then Break;
       iNode := FNextNode;
     until (iNode = Child) or (iNode = nil);
     FActiveBeing := nil;
