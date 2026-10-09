@@ -44,6 +44,7 @@ type TDRLIO = class( TIORL )
   procedure Configure( aConfig : TLuaConfig ); override; overload;
   procedure Configure( aConfig : TLuaConfig; aReload : Boolean ); overload; virtual;
   procedure RunLayer( aLayer : TIOLayer; aHideHUD : Boolean = False ); reintroduce;
+  procedure FadeLevel( aFadeTime : Single = 0.0 );
   procedure PreUpdate; override;
   destructor Destroy; override;
   procedure Screenshot( aBB : Boolean );
@@ -74,12 +75,10 @@ type TDRLIO = class( TIORL )
   procedure BloodSlideDown( aDelayTime : Word );
 
   procedure WaitForAnimation( aStrict : Boolean = True ); virtual;
-  procedure RequestAnimationCatchUp; virtual;
-  procedure ResetAnimationSpeed; virtual;
   procedure Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0); virtual; abstract;
   procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ); virtual;
   procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single );
-  procedure addMoveAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aWipeBump : Boolean ); virtual;
+  procedure addMoveAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aWipeBump : Boolean; aFinishBeforeNext : Boolean = False ); virtual;
   procedure addBumpAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aAmount : Single ); virtual;
   procedure addScreenMoveAnimation( aDuration : DWord; aTo : TCoord2D ); virtual;
   procedure addCellAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aValue : Integer ); virtual;
@@ -234,7 +233,7 @@ end;
 
 procedure TDRLIO.WaitForAnimation( aStrict : Boolean = True );
 begin
-  if ( FSession = nil ) or not ( FSession.State in [ DSPlaying, DSPlayerDead ] ) then
+  if ( FSession = nil ) or not ( FSession.State in [ DSPlaying, DSEnding ] ) then
   begin
     if MsgPending then MsgUpdate;
     Exit;
@@ -242,17 +241,9 @@ begin
   if not WaitForAnimationCompletion( aStrict, 2000 ) then
     Log( LOGWARN, 'Emergency animation break!' );
   if aStrict then ClearAnimations;
-  if FSession.Level <> nil then FSession.Level.RevealBeings;
-end;
-
-procedure TDRLIO.RequestAnimationCatchUp;
-begin
-  // Graphical backends may opt into adaptive playback.
-end;
-
-procedure TDRLIO.ResetAnimationSpeed;
-begin
-  // Text animation playback always uses its normal speed.
+  // Partial waits can leave nonblocking clips drawing beings.
+  if ( FSession.Level <> nil ) and ( not AnimationsRunning ) then
+    FSession.Level.RevealBeings;
 end;
 
 procedure TDRLIO.addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection );
@@ -265,7 +256,7 @@ begin
   addScreenShakeAnimation( aDuration, aDelay, aStrength, NewDirection(0) );
 end;
 
-procedure TDRLIO.addMoveAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aWipeBump : Boolean );
+procedure TDRLIO.addMoveAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aWipeBump : Boolean; aFinishBeforeNext : Boolean );
 begin
 
 end;
@@ -506,9 +497,6 @@ begin
   if ( aEvent.EType in [ VEVENT_MOUSEMOVE, VEVENT_MOUSEDOWN, VEVENT_MOUSEUP ] ) then
     if not Setting_Mouse then
       Exit( False );
-
-  if aEvent.EType in [ VEVENT_MOUSEDOWN, VEVENT_PADDEVICE ] then
-    ResetAnimationSpeed;
 
   if ( aEvent.EType in [ VEVENT_KEYDOWN, VEVENT_KEYUP ] ) and
      ( not aEvent.Key.Repeated ) then
@@ -794,6 +782,14 @@ begin
   VTIG_Clear;
   if FHudEnabled and ( FLevel <> nil ) then DrawHud;
   inherited PreUpdate;
+end;
+
+procedure TDRLIO.FadeLevel( aFadeTime : Single );
+begin
+  if FLevel = nil then Exit;
+  if aFadeTime > 0.0 then FadeOut( aFadeTime, True );
+  ClearAnimations;
+  SetLevel( nil );
 end;
 
 destructor TDRLIO.Destroy;
@@ -1276,6 +1272,8 @@ function lua_ui_plot_screen(L: Plua_State): Integer; cdecl;
 var iState : TLuaGameStack;
 begin
   iState.Init(L);
+  if ( IO.Session <> nil ) and ( IO.Session.State = DSFinished ) then
+    IO.FadeLevel( 1.0 );
   IO.RunLayer( TPlotView.Create( iState.ToString(1), iState.ToIOColor(2), iState.ToString(3,'') ), True );
   Result := 0;
 end;

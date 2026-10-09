@@ -427,6 +427,8 @@ function being:pick_item_to_mod( mod, filter )
 end
 
 function being:apply_timed_perk( id, max_duration, resist, target )
+	local proto = perks[ id ]
+	if proto.OnApplyCheck and not proto.OnApplyCheck( self ) then return false end
 	if resist then
 		local rvalue = self:get_total_resistance( resist, target or TARGET_TORSO )
 		if rvalue > 0 then

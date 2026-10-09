@@ -290,7 +290,7 @@ begin
 
   iAmount := aStream.ReadByte;
   for i := 1 to iAmount do
-    FInv.Add( TItem.CreateFromStream( aStream, FContext, aPerkDefinitions ) );
+    Add( TItem.CreateFromStream( aStream, FContext, aPerkDefinitions ) );
   for iSlot in TEqSlot do
     if aStream.ReadByte <> 0 then
       FInv.RawSetSlot( iSlot, TItem.CreateFromStream( aStream, FContext, aPerkDefinitions ) );
@@ -1758,7 +1758,7 @@ begin
     if iUIDs[ iKillerUID ] = nil then aKiller := nil;
   end;
 
-  if ( DRL.State in [ DSPlaying, DSPlayerDead, DSFinished ] ) and ( not DRL.GameWon ) then
+  if ( DRL.State in [ DSPlaying, DSEnding ] ) and ( not DRL.GameWon ) then
     iLevel.CallHook( Hook_OnKill,[ Self, aKiller, aWeapon, iMeleeKill, aOverkill ] );
 
   if not aOverkill and not ( CF_BLOCKMOVE in iLevel.Data.Cells[ iLevel.Floor[ FPosition ] ].Flags ) then
@@ -1887,9 +1887,8 @@ begin
     FMeleeAttack := False;
     if Result and aMoveOnKill and ( iPosition = Position ) and ( TryMove( aWhere ) = MoveOk ) then
       ActionMove( aWhere, 1.0, 0 )
-    else
-      if IsPlayer
-        then IO.WaitForAnimation( False );
+    else if IsPlayer and ( ( not GraphicsVersion ) or ( not Setting_AnimationBlending ) ) then
+      IO.WaitForAnimation( False );
   end;
 end;
 
@@ -2678,7 +2677,7 @@ begin
       if isPlayer then
         IO.addScreenMoveAnimation(100, iKnock );
       if iLevel.AnimationVisible( FPosition, Self ) or iLevel.AnimationVisible( iKnock, Self ) then
-        IO.addMoveAnimation(100,0,FUID,Position,iKnock,Sprite,True,True);
+        IO.addMoveAnimation( 100, 0, FUID, Position, iKnock, Sprite, True, True, True );
       if isPlayer then
         IO.addScreenShakeAnimation( 400, 0, Clampf( iStrength * 1.0, 2.0, 10.0 ) );
     end;

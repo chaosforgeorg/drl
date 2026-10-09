@@ -174,6 +174,10 @@ core.register_blueprint "perk"
 	min_lev        = { false, core.TNUMBER, 0 },
 	min_diff       = { false, core.TNUMBER, 0 },
 
+	-- TODO: decide whether to keep this (add bleeding etc) 
+	-- or change to different mechanism
+	OnApplyCheck   = { false, core.TFUNC }, -- being:apply_timed_perk
+
 	-- Native dispatch owners; Being includes Player unless noted.
 	-- Item includes hooks forwarded to equipped items by Player.
 	OnAdd          = { false, core.TFUNC }, -- Level, Being, Item

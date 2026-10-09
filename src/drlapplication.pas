@@ -282,7 +282,7 @@ begin
   TDRLIO(IO).Reconfigure(Config);
 
   if GraphicsVersion then
-    (IO as TDRLGFXIO).Textures.Upload;
+    (IO as TDRLGFXIO).PrepareGraphics;
 
   if GodMode and FileExists(Paths.WritePath + 'god.lua') then
     FLua.LoadFile(Paths.WritePath + 'god.lua');
@@ -367,7 +367,7 @@ begin
   Setting_WaitSound          := drlconfiguration.Configuration.GetBoolean('wait_sound');
   Setting_GroupMessages      := drlconfiguration.Configuration.GetBoolean('group_messages');
   Setting_ItemDropAnimation  := drlconfiguration.Configuration.GetBoolean('item_drop_animation');
-  Setting_AdaptiveAnimations := drlconfiguration.Configuration.GetBoolean('adaptive_animations');
+  Setting_AnimationBlending  := drlconfiguration.Configuration.GetBoolean('animation_blending');
   Setting_Fade               := drlconfiguration.Configuration.GetBoolean('fade_fx');
 end;
 

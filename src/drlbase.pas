@@ -33,7 +33,7 @@ public
 end;
 
 type TDRLState = ( DSStart,   DSMenu,       DSLoading, DSCrashLoading,
-                  DSPlaying, DSPlayerDead, DSSaving,  DSNextLevel,
+                  DSPlaying, DSEnding,   DSSaving,  DSNextLevel,
                   DSQuit,    DSFinished );
 type TDRLSessionResult = ( DSR_Quit, DSR_Played, DSR_ReloadData );
 
@@ -106,7 +106,6 @@ type TDRLSession = class(TVObject)
        FUIDStore        : TUIDStore;
        FContext         : TNodeContext;
        FLastInputTime   : QWord;
-       FAutoMoveAction  : Boolean;
        FTargeting       : TTargeting;
        FPlayerView      : TIOLayer;
        FQueueCommand    : TCommand;
@@ -258,14 +257,14 @@ end;
 
 procedure TDRLSession.WinGame;
 begin
-  IO.FadeOut( 1.0, True );
-  if FState <> DSPlayerDead then SetState( DSFinished );
+  if FGameWon then Exit;
   FGameWon := True;
+  SetState( DSEnding );
 end;
 
 procedure TDRLSession.ExitLevel( aFade : Boolean; aFadeTime : Single );
 begin
-  if FState in [ DSSaving, DSPlayerDead ] then Exit;
+  if FState in [ DSSaving, DSEnding ] then Exit;
   if aFade then IO.FadeOut( aFadeTime, True );
   SetState( DSNextLevel );
 end;
@@ -457,7 +456,6 @@ begin
   FSeededGame := False;
 
   FLastInputTime   := 0;
-  FAutoMoveAction  := False;
   FPadMoveNext     := 0;
   FLastFrameTime   := 0;
   FPadMoved        := False;
@@ -1037,9 +1035,6 @@ begin
 
   if aCommand.Command = COMMAND_NONE then
     Exit( False );
-  if Setting_AdaptiveAnimations and ( not FAutoMoveAction )
-    and ( IO.LastInputSource in [ VINPUT_KEYBOARD, VINPUT_GAMEPAD ] ) then
-    IO.RequestAnimationCatchUp;
   IO.MsgUpDate;
 try
   FPlayer.HandleCommand( aCommand );
@@ -1209,7 +1204,6 @@ begin
   if aPressed and ( iRepeatDelay < PAD_REPEAT_START ) then
     iRepeatDelay := PAD_REPEAT_START;
 
-  if not aPressed then IO.NotifyInputSource( VINPUT_GAMEPAD );
   if aPressed then // normal mode
   begin
     if IO.GetPadLDir.NotZero
@@ -1618,13 +1612,9 @@ begin
 
       if ( FPlayer.MultiMove.Active ) then
       begin
-        IO.ResetAnimationSpeed;
-        // CalculateInput can end a run while still returning its final action.
-        FAutoMoveAction := True;
         iInput := FPlayer.GetMultiMoveInput;
         if iInput <> INPUT_NONE then
           Action( iInput );
-        FAutoMoveAction := False;
         Continue;
       end;
 
@@ -1677,20 +1667,22 @@ begin
     if ( State <> DSQuit ) and IO.MsgPending then IO.MsgUpdate;
 
     // Finish the requested fade after UI dispatch, while the outgoing level exists.
-    IO.ResetAnimationSpeed;
     IO.FadeWait;
     if State <> DSQuit then IO.FadeReset;
 
     if State = DSNextLevel then
       LeaveLevel;
 
-    // Present accepted death after gameplay and exit callbacks have returned.
-    if State = DSPlayerDead then
+    // Finish the outgoing effects before recording an accepted outcome.
+    if State = DSEnding then
     begin
       IO.WaitForAnimation;
-      FPlayer.AnimCount := 1;
-      IO.Msg( 'You die!...' );
-      IO.RunLayer( TMoreLayer.Create( False ) );
+      if FPlayer.Dying then
+      begin
+        FPlayer.AnimCount := 1;
+        IO.Msg( 'You die!...' );
+        IO.RunLayer( TMoreLayer.Create( False ) );
+      end;
       SetState( DSFinished );
     end;
 
@@ -1700,9 +1692,13 @@ begin
     begin
       if ( State = DSNextLevel ) or ( ( State = DSFinished ) and FGameWon ) then
         FPlayer.Score := FPlayer.Score + 1000;
-      if State = DSFinished then FinishGame;
-      FPlayer.Detach;
-      FLevel.Clear;
+      if State = DSFinished then
+        FinishGame
+      else
+      begin
+        FPlayer.Detach;
+        FLevel.Clear;
+      end;
     end;
     IO.SetHint('');
   until (State <> DSNextLevel);
@@ -1732,14 +1728,23 @@ begin
   if State = DSSaving then
     WriteSaveFile( False );
 
+  // The ending hook may confirm the outcome over the finished level.
+  // Opening the first plot screen closes its view before showing the outro.
   if State = DSFinished then
   begin
     if FGameWon then
     begin
-      IO.Audio.PlayMusic('victory');
+      IO.Audio.PlayMusic( 'victory' );
       ShowEnding;
+      IO.FadeLevel( 1.0 );
     end
-    else IO.Audio.PlayMusic('bunny');
+    else
+    begin
+      IO.Audio.PlayMusic( 'bunny' );
+      IO.FadeLevel( 0.0 );
+    end;
+    FPlayer.Detach;
+    FLevel.Clear;
   end;
 
   if State = DSFinished then
