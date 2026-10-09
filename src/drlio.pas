@@ -44,6 +44,7 @@ type TDRLIO = class( TIORL )
   procedure Configure( aConfig : TLuaConfig ); override; overload;
   procedure Configure( aConfig : TLuaConfig; aReload : Boolean ); overload; virtual;
   procedure RunLayer( aLayer : TIOLayer; aHideHUD : Boolean = False ); reintroduce;
+  procedure FadeLevel( aFadeTime : Single = 0.0 );
   procedure PreUpdate; override;
   destructor Destroy; override;
   procedure Screenshot( aBB : Boolean );
@@ -781,6 +782,14 @@ begin
   inherited PreUpdate;
 end;
 
+procedure TDRLIO.FadeLevel( aFadeTime : Single );
+begin
+  if FLevel = nil then Exit;
+  if aFadeTime > 0.0 then FadeOut( aFadeTime, True );
+  ClearAnimations;
+  SetLevel( nil );
+end;
+
 destructor TDRLIO.Destroy;
 begin
   FreeAndNil( FAudio );
@@ -1251,6 +1260,8 @@ function lua_ui_plot_screen(L: Plua_State): Integer; cdecl;
 var iState : TLuaGameStack;
 begin
   iState.Init(L);
+  if ( IO.Session <> nil ) and ( IO.Session.State = DSFinished ) then
+    IO.FadeLevel( 1.0 );
   IO.RunLayer( TPlotView.Create( iState.ToString(1), iState.ToIOColor(2), iState.ToString(3,'') ), True );
   Result := 0;
 end;

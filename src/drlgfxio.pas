@@ -868,8 +868,8 @@ begin
   glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
   FProjection := GLCreateOrtho( 0, iSizeX, iSizeY, 0, -16384, 16384 );
 
-  iDrawLevel := ( FSession <> nil )
-    and ( ( FSession.State in [ DSPlaying, DSEnding ] ) or ( FFadeDirection < 0 ) );
+  iDrawLevel := ( FSession <> nil ) and ( FLevel <> nil )
+    and ( ( FSession.State in [ DSPlaying, DSEnding, DSFinished ] ) or ( FFadeDirection < 0 ) );
   if iDrawLevel then
   begin
     if FTIGConsoleView = nil then

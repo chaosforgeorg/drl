@@ -1673,11 +1673,10 @@ begin
     if State = DSNextLevel then
       LeaveLevel;
 
-    // Present accepted outcomes after gameplay and exit callbacks have returned.
+    // Finish the outgoing effects before recording an accepted outcome.
     if State = DSEnding then
     begin
       IO.WaitForAnimation;
-      if FGameWon then IO.FadeOut( 1.0, True );
       if FPlayer.Dying then
       begin
         FPlayer.AnimCount := 1;
@@ -1693,9 +1692,13 @@ begin
     begin
       if ( State = DSNextLevel ) or ( ( State = DSFinished ) and FGameWon ) then
         FPlayer.Score := FPlayer.Score + 1000;
-      if State = DSFinished then FinishGame;
-      FPlayer.Detach;
-      FLevel.Clear;
+      if State = DSFinished then
+        FinishGame
+      else
+      begin
+        FPlayer.Detach;
+        FLevel.Clear;
+      end;
     end;
     IO.SetHint('');
   until (State <> DSNextLevel);
@@ -1725,14 +1728,23 @@ begin
   if State = DSSaving then
     WriteSaveFile( False );
 
+  // The ending hook may confirm the outcome over the finished level.
+  // Opening the first plot screen closes its view before showing the outro.
   if State = DSFinished then
   begin
     if FGameWon then
     begin
-      IO.Audio.PlayMusic('victory');
+      IO.Audio.PlayMusic( 'victory' );
       ShowEnding;
+      IO.FadeLevel( 1.0 );
     end
-    else IO.Audio.PlayMusic('bunny');
+    else
+    begin
+      IO.Audio.PlayMusic( 'bunny' );
+      IO.FadeLevel( 0.0 );
+    end;
+    FPlayer.Detach;
+    FLevel.Clear;
   end;
 
   if State = DSFinished then
