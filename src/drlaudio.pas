@@ -56,6 +56,7 @@ type
     function SourceKey( const aEntry : TAudioEntry; const aFolder : AnsiString ) : AnsiString;
     function CountSound( aSoundID : Word ) : Byte;
     procedure UpdateHeartbeat( aVolume : Integer );
+    procedure DoUpdate( aMSec : DWord; aListenerPosition : PCoord2D; aHeartbeatVolume : Integer );
   public
     constructor Create;
     procedure Reset;
@@ -363,24 +364,28 @@ end;
 
 procedure TDRLAudio.Update( aMSec : DWord );
 begin
-  FTime += aMSec;
-  FSoundCounts.Clear;
-  FSoundEvents.Clear;
-  if FAudio <> nil then FAudio.Update( aMSec );
-  UpdateHeartbeat( 0 );
+  DoUpdate( aMSec, nil, 0 );
 end;
 
 procedure TDRLAudio.Update( aMSec : DWord; aListenerPosition : TCoord2D; aHeartbeatVolume : Integer );
+begin
+  DoUpdate( aMSec, @aListenerPosition, aHeartbeatVolume );
+end;
+
+procedure TDRLAudio.DoUpdate( aMSec : DWord; aListenerPosition : PCoord2D; aHeartbeatVolume : Integer );
 var iEvent : TSoundEvent;
 begin
   FTime += aMSec;
   FSoundCounts.Clear;
-  while not FSoundEvents.IsEmpty and (FSoundEvents.Top.Time <= FTime) do
-  begin
-    iEvent := FSoundEvents.Pop;
-    PlaySound( iEvent.SoundID, iEvent.Coord, aListenerPosition );
-  end;
-  if FAudio <> nil then FAudio.Update(aMSec);
+  if aListenerPosition = nil then
+    FSoundEvents.Clear
+  else
+    while not FSoundEvents.IsEmpty and (FSoundEvents.Top.Time <= FTime) do
+    begin
+      iEvent := FSoundEvents.Pop;
+      PlaySound( iEvent.SoundID, iEvent.Coord, aListenerPosition^ );
+    end;
+  if FAudio <> nil then FAudio.Update( aMSec );
   UpdateHeartbeat( aHeartbeatVolume );
 end;
 
