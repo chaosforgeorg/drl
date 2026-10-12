@@ -128,7 +128,7 @@ TBeing = class(TThing,IPathQuery)
     class procedure RegisterLuaAPI( aLua : TLua );
 
   protected
-    procedure BloodDecal( aFrom : TDirection; aAmount : LongInt );
+    procedure BloodDecal( aFrom : TDirection; aAmount : LongInt; aRange : Single = 1.0 );
     procedure BloodSpray( aFrom : TDirection; aAmount : LongInt; aDelay : Integer;
       aDistanceScale, aSpreadScale : Single );
     procedure LuaLoad( aTable : TLuaTable; aGameRNG : TRNG ); reintroduce;
@@ -1642,7 +1642,7 @@ begin
     aAmount, aDistanceScale, aSpreadScale );
 end;
 
-procedure TBeing.BloodDecal( aFrom : TDirection; aAmount : LongInt );
+procedure TBeing.BloodDecal( aFrom : TDirection; aAmount : LongInt; aRange : Single );
 var iCount    : Integer;
     iLevel    : TLevel;
     iPosition : TVec2i;
@@ -1689,8 +1689,9 @@ var iCount    : Integer;
   end;
 
 begin
+  if ( not GraphicsVersion ) or ( HARDSPRITE_DECAL_BLOOD[1] = 0 ) then Exit;
   iLevel := TLevel(Parent);
-  iRange := Clampf( aAmount / 3.0, 0.75, 2.5 );
+  iRange := Clampf( aAmount / 3.0, 0.75, 2.5 ) * aRange;
   iCanBleed := CanBleedOn( FPosition );
   iDirOffset.Init( aFrom.X * 0.5, aFrom.Y * 0.5 );
   for iCount := 1 to aAmount do
@@ -2634,7 +2635,7 @@ begin
   if (iLevel.cellFlagSet(FPosition,CF_VBLOODY)) or
      (iLevel.LightFlag[ FPosition, LFBLOOD ]) then Exit;
   iLevel.Blood(FPosition);
-  BloodDecal( NewDirection(0), 1 );
+  BloodDecal( NewDirection(0), IO.VisualRNG.RLongInt( 1, 2 ), 0.4 );
 end;
 
 procedure TBeing.Knockback( aDir : TDirection; aStrength : Single );
