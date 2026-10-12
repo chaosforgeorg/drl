@@ -100,7 +100,10 @@ TLevel = class(TLuaMapNode)
     destructor Destroy; override;
 
     procedure DestroyItem( coord : TCoord2D );
-    procedure Blood( coord : TCoord2D );
+    procedure Blood( aCoord : TCoord2D ); overload;
+    procedure Blood( aPosition : TCoord2D; aFrom : TDirection; aAmount : LongInt; aSpray : Boolean;
+      aDelay : Integer = 0; aOverkill : Boolean = False ); overload;
+    procedure BloodDecal( aPosition : TCoord2D; aFrom : TDirection; aAmount : LongInt; aRange : Single = 1.0 );
     procedure Kill( aBeing : TBeing );
     procedure UpdateKillState;
     function ActiveBeing : TBeing;
@@ -130,7 +133,10 @@ TLevel = class(TLuaMapNode)
   private
     function GetCellRotationMask( aCell : TCoord2D ) : Byte;
     function GetCellDoorRotation( aCell : TCoord2D ) : Byte;
-    procedure AddDecal( const aPosition : TVec3f; aDecalSprite : DWord );
+    procedure BloodSpray( aPosition : TCoord2D; aFrom : TDirection; aAmount : LongInt; aDelay : Integer;
+      aDistanceScale, aSpreadScale : Single );
+    function GetBloodDecalSprite( aCoord, aOrigin : TCoord2D; aFloorSprite : DWord = 0 ) : DWord;
+    procedure AddDecal( const aPosition : TVec3f; aDecalSprite : DWord; const aOrigin : TVec3f );
     function CellToID( const aCell : Byte ) : AnsiString; override;
     function  getCell( const aWhere : TCoord2D ) : byte; override;
     procedure putCell( const aWhere : TCoord2D; const aWhat : byte ); override;
@@ -212,7 +218,7 @@ TLevel = class(TLuaMapNode)
 implementation
 
 uses math, typinfo,
-     vgenerics, vluatools, vdebug, vuid,
+     vgenerics, vluatools, vdebug, vuid, vmath,
      drlbase, drlio, drlhudviews;
 
 type TProcessedUIDList = specialize TGArray<TUID>;
@@ -435,17 +441,27 @@ begin
   if aEngine <> nil then aEngine.DecalCallback := @AddDecal;
 end;
 
-procedure TLevel.AddDecal( const aPosition : TVec3f; aDecalSprite : DWord );
-var iPos   : TVec2i;
-    iCoord : TCoord2D;
+procedure TLevel.AddDecal( const aPosition : TVec3f; aDecalSprite : DWord; const aOrigin : TVec3f );
+var iPos    : TVec2i;
+    iCoord  : TCoord2D;
+    iOrigin : TCoord2D;
 begin
-  iCoord := NewCoord2D( ( Round( aPosition.X ) + 16 ) div 32,
-    ( Round( aPosition.Y ) + 16 ) div 32 );
-  if not isProperCoord( iCoord ) then Exit;
-  if cellFlagSet( iCoord, CF_LIQUID ) then Exit;
-  if cellFlagSet( iCoord, CF_BLOCKMOVE ) then Exit;
   iPos.X := Round( aPosition.X ) + 16;
   iPos.Y := Round( aPosition.Y ) + 16;
+  iCoord := NewCoord2D( ( iPos.X + 16 ) div 32, ( iPos.Y + 16 ) div 32 );
+  if isDecalBloodId( aDecalSprite ) then
+  begin
+    iOrigin := NewCoord2D( ( Round( aOrigin.X ) + 32 ) div 32,
+      ( Round( aOrigin.Y ) + 32 ) div 32 );
+    aDecalSprite := GetBloodDecalSprite( iCoord, iOrigin, aDecalSprite );
+    if aDecalSprite = 0 then Exit;
+  end
+  else
+  begin
+    if not isProperCoord( iCoord ) then Exit;
+    if cellFlagSet( iCoord, CF_LIQUID ) then Exit;
+    if cellFlagSet( iCoord, CF_BLOCKMOVE ) then Exit;
+  end;
   FDecals.Add( iPos, aDecalSprite );
 end;
 
@@ -1218,13 +1234,130 @@ begin
   SetItem( coord, nil );
 end;
 
-procedure TLevel.Blood( coord : TCoord2D );
+procedure TLevel.Blood( aCoord : TCoord2D );
 var iCell : DWord;
 begin
-  iCell := GetCell(coord);
-  if (FData.Cells[ iCell ].bloodto <> '') and (LightFlag[ coord, LFBLOOD ] or (FData.Cells[ iCell ].BloodColor = 0))
-    then Cell[ coord ] := FContext.Lua.Defines[ FData.Cells[ iCell ].bloodto ]
-    else LightFlag[ coord, LFBLOOD ] := True;
+  iCell := GetCell( aCoord );
+  if (FData.Cells[ iCell ].bloodto <> '') and (LightFlag[ aCoord, LFBLOOD ] or (FData.Cells[ iCell ].BloodColor = 0))
+    then Cell[ aCoord ] := FContext.Lua.Defines[ FData.Cells[ iCell ].bloodto ]
+    else LightFlag[ aCoord, LFBLOOD ] := True;
+end;
+
+procedure TLevel.Blood( aPosition : TCoord2D; aFrom : TDirection; aAmount : LongInt; aSpray : Boolean; aDelay : Integer;
+  aOverkill : Boolean );
+var iCount          : Integer;
+    iCoord          : TCoord2D;
+    iAmount         : LongInt;
+    iDistanceScale  : Single;
+    iParticleAmount : LongInt;
+    iSpreadScale    : Single;
+begin
+  if aAmount > 0 then
+    for iCount := 1 to Min( aAmount, 20 ) do
+    begin
+      repeat
+        case IO.VisualRNG.RLongInt( 5 ) of
+          0..1 : iCoord := aPosition;
+          2..3 : iCoord := aPosition + aFrom;
+          4    : iCoord := aPosition + NewCoord2D( IO.VisualRNG.RLongInt( 3 ) - 1, IO.VisualRNG.RLongInt( 3 ) - 1 );
+        end;
+      until isProperCoord( iCoord );
+      Blood( iCoord );
+    end;
+  iAmount := Clamp( aAmount + IO.VisualRNG.RLongInt( aAmount ), 1, 12 );
+  if GraphicsVersion and aSpray and isVisible( aPosition ) and ( HARDEMITTER_BLOOD <> 0 ) then
+  begin
+    iParticleAmount := iAmount * 2;
+    iDistanceScale  := 0.66;
+    iSpreadScale    := 1.0;
+    if aOverkill then
+    begin
+      iParticleAmount *= 2;
+      iDistanceScale := 1.0;
+      iSpreadScale   := 2.0;
+    end;
+    BloodSpray( aPosition, aFrom, iParticleAmount, aDelay, iDistanceScale, iSpreadScale );
+  end
+  else
+    BloodDecal( aPosition, aFrom, iAmount );
+end;
+
+procedure TLevel.BloodSpray( aPosition : TCoord2D; aFrom : TDirection; aAmount : LongInt; aDelay : Integer;
+  aDistanceScale, aSpreadScale : Single );
+begin
+  IO.addParticleBurstAnimation( aDelay, HARDEMITTER_BLOOD, aPosition, aFrom,
+    aAmount, aDistanceScale, aSpreadScale );
+end;
+
+function TLevel.GetBloodDecalSprite( aCoord, aOrigin : TCoord2D; aFloorSprite : DWord ) : DWord;
+var iCell : TCell;
+begin
+  if not isProperCoord( aCoord ) then Exit( 0 );
+  iCell := FData.Cells[ CellBottom[ aCoord ] ];
+  if CF_LIQUID    in iCell.Flags then Exit( 0 );
+  if CF_BLOCKMOVE in iCell.Flags then
+  begin
+    if aCoord.y >= aOrigin.y then Exit( 0 );
+    if not ( CF_BLOCKLOS in iCell.Flags ) then Exit( 0 ); // void check
+    aCoord.y := aCoord.y + 1;
+    if not isProperCoord( aCoord ) then Exit( 0 );
+    iCell := FData.Cells[ CellBottom[ aCoord ] ];
+    if ( CF_BLOCKMOVE in iCell.Flags ) then Exit( 0 );
+    Exit( HARDSPRITE_DECAL_WALL_BLOOD[1 + IO.VisualRNG.RLongInt( 3 )] );
+  end;
+  if aFloorSprite <> 0 then Exit( aFloorSprite );
+  Exit( HARDSPRITE_DECAL_BLOOD[1 + IO.VisualRNG.RLongInt( 3 )] );
+end;
+
+procedure TLevel.BloodDecal( aPosition : TCoord2D; aFrom : TDirection; aAmount : LongInt; aRange : Single );
+var iCount    : Integer;
+    iPosition : TVec2i;
+    iOffset   : TVec2f;
+    iDirOffset: TVec2f;
+    iTCoord   : TCoord2D;
+    iRange    : Single;
+    iCanBleed : DWord;
+    iSprite   : DWord;
+
+  function RandomNorm : Single;
+  var iU1, iU2 : Single;
+  begin
+    repeat iU1 := IO.VisualRNG.RFloat until iU1 <> 0.0;
+    iU2 := IO.VisualRNG.RFloat;
+    RandomNorm := Sqrt( -2.0 * Ln( iU1 ) ) * Cos( 2.0 * Pi * iU2 );
+  end;
+
+  function RandGuassian( aRadius : Single ) : TVec2f;
+  begin
+    repeat
+      Result.X := RandomNorm * aRadius * 0.3;
+      Result.Y := RandomNorm * aRadius * 0.3;
+    until ( Result.X * Result.X + Result.Y * Result.Y ) < aRadius * aRadius;
+  end;
+
+begin
+  if ( not GraphicsVersion ) or ( HARDSPRITE_DECAL_BLOOD[1] = 0 ) then Exit;
+  iRange := Clampf( aAmount / 3.0, 0.75, 2.5 ) * aRange;
+  iCanBleed := GetBloodDecalSprite( aPosition, aPosition );
+  iDirOffset.Init( aFrom.X * 0.5, aFrom.Y * 0.5 );
+  for iCount := 1 to aAmount do
+  begin
+    iOffset := RandGuassian( iRange );
+    iPosition.Init(
+      Math.Floor( ( aPosition.X + iOffset.X + iDirOffset.X ) * 32.0 ),
+      Math.Floor( ( aPosition.Y + iOffset.Y + iDirOffset.Y ) * 32.0 )
+    );
+    iTCoord := NewCoord2D( ( iPosition.X + 16 ) div 32, ( iPosition.Y + 16 ) div 32 );
+    if iTCoord = aPosition then
+    begin
+      if ( iCanBleed <> 0 ) then
+        FDecals.Add( iPosition, iCanBleed );
+      Continue;
+    end;
+    iSprite := GetBloodDecalSprite( iTCoord, aPosition );
+    if iSprite <> 0 then
+      FDecals.Add( iPosition, iSprite );
+  end;
 end;
 
 procedure TLevel.Kill( aBeing : TBeing );
