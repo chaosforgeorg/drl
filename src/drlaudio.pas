@@ -64,9 +64,10 @@ type
     function LoadBindingFile( const aFile, aRoot : AnsiString ) : Boolean;
     function LoadBindingDataFile( aData : TVDataFile; const aFile, aRoot : AnsiString ) : Boolean;
     procedure Load;
-    procedure Update( aMSec : DWord; aHeartbeatVolume : Integer );
+    procedure Update( aMSec : DWord ); overload;
+    procedure Update( aMSec : DWord; aListenerPosition : TCoord2D; aHeartbeatVolume : Integer ); overload;
     procedure PlaySound( const aSoundID : AnsiString; aVolumePercent : Integer = 100 ); overload;
-    procedure PlaySound( aSoundID : Word; aCoord : TCoord2D; aDelay : DWord = 0 );
+    procedure PlaySound( aSoundID : Word; aCoord, aListenerPosition : TCoord2D; aDelay : DWord = 0 );
     procedure PlayMusic( const aMusicID : AnsiString; aNotFound : Boolean = False );
     procedure PlayMusicOnce( const aMusicID : AnsiString );
     procedure ToggleSound;
@@ -80,7 +81,7 @@ type
 implementation
 
 uses sysutils, vdebug, vutil, vmath, vvector, vsdlaudio, vfmodaudio,
-     drlio, drlconfiguration, dfplayer, dfdata;
+     drlio, drlconfiguration, dfdata;
 
 const MAX_SOUND_COUNT = 8;
       SOUND_DELAY_MIN = 75;
@@ -360,7 +361,16 @@ begin
     FAudio.SetInstanceVolume( FHeartbeatInstance, aVolume );
 end;
 
-procedure TDRLAudio.Update( aMSec : DWord; aHeartbeatVolume : Integer );
+procedure TDRLAudio.Update( aMSec : DWord );
+begin
+  FTime += aMSec;
+  FSoundCounts.Clear;
+  FSoundEvents.Clear;
+  if FAudio <> nil then FAudio.Update( aMSec );
+  UpdateHeartbeat( 0 );
+end;
+
+procedure TDRLAudio.Update( aMSec : DWord; aListenerPosition : TCoord2D; aHeartbeatVolume : Integer );
 var iEvent : TSoundEvent;
 begin
   FTime += aMSec;
@@ -368,7 +378,7 @@ begin
   while not FSoundEvents.IsEmpty and (FSoundEvents.Top.Time <= FTime) do
   begin
     iEvent := FSoundEvents.Pop;
-    PlaySound( iEvent.SoundID, iEvent.Coord );
+    PlaySound( iEvent.SoundID, iEvent.Coord, aListenerPosition );
   end;
   if FAudio <> nil then FAudio.Update(aMSec);
   UpdateHeartbeat( aHeartbeatVolume );
@@ -382,14 +392,15 @@ begin
   if iAsset <> 0 then FAudio.Play(iAsset, aVolumePercent);
 end;
 
-procedure TDRLAudio.PlaySound( aSoundID : Word; aCoord : TCoord2D; aDelay : DWord );
+procedure TDRLAudio.PlaySound( aSoundID : Word; aCoord, aListenerPosition : TCoord2D; aDelay : DWord );
 var iEvent    : TSoundEvent;
     iCount    : Byte;
     iDistance : Integer;
     iVolume   : Integer;
     iDelay    : Integer;
 begin
-  if (aSoundID = 0) or (FAudio = nil) or not Option_Sound or FSoundMuted or (Setting_SoundVolume = 0) then Exit;
+  if (aSoundID = 0) or (FAudio = nil) or
+     not Option_Sound or FSoundMuted or (Setting_SoundVolume = 0) then Exit;
   if aDelay > 0 then
   begin
     iEvent.Coord := aCoord;
@@ -404,10 +415,10 @@ begin
   if iCount > 1 then
   begin
     iDelay := SOUND_DELAY_MIN * ( iCount - 1 ) + IO.VisualRNG.RLongInt( 25 );
-    PlaySound( aSoundID, aCoord, iDelay );
+    PlaySound( aSoundID, aCoord, aListenerPosition, iDelay );
     Exit;
   end;
-  iDistance := Distance(aCoord, Player.Position);
+  iDistance := Distance( aCoord, aListenerPosition );
   if iDistance <= 1 then iVolume := 127 else iVolume := Clamp((25-iDistance)*6, 0, 127);
   if (iVolume > 0) and (iVolume < 30) then iVolume := 30;
   if iVolume > 0 then FAudio.Play(aSoundID, Round(iVolume * 100.0 / 127.0));

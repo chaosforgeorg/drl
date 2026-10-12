@@ -56,6 +56,7 @@ type TDRLIO = class( TIORL )
   procedure LoadProgress( aProgress : DWord );
   procedure LoadStop;
   procedure Update( aMSec : DWord ); override;
+  procedure PlaySound( aSoundID : Word; aCoord : TCoord2D; aDelay : DWord = 0 );
 
   function EventToUIInput( const aEvent : TIOEvent ) : Integer; override;
   function CommandEventPending : Boolean;
@@ -1119,11 +1120,20 @@ begin
   end;
 
   FTime += aMSec;
-  FAudio.Update( aMSec, GetHeartbeatVolume );
+  if ( FSession <> nil ) and ( FSession.Player <> nil ) then
+    FAudio.Update( aMSec, FSession.Player.Position, GetHeartbeatVolume )
+  else
+    FAudio.Update( aMSec );
 
   inherited Update( aMSec );
  // if aMSec > 200 then
  //   VTIG_EventClear;
+end;
+
+procedure TDRLIO.PlaySound( aSoundID : Word; aCoord : TCoord2D; aDelay : DWord );
+begin
+  if ( FSession = nil ) or ( FSession.Player = nil ) then Exit;
+  FAudio.PlaySound( aSoundID, aCoord, FSession.Player.Position, aDelay );
 end;
 
 function TDRLIO.EventToUIInput( const aEvent : TIOEvent ) : Integer;
