@@ -91,7 +91,7 @@ register_level "containment_area"
 			['X'] = { "wall", style = 1, flags = { LFMARKER1 }},
 			['P'] = { "wall", flags = { LFPERMANENT } },
 			['*'] = "gwall",
-			[','] = { "floor", flags = { LFBLOOD } },
+			[','] = { "floor", blood = { 1, 3 } },
 			['+'] = "door",
 			['L'] = "ldoor",
 			['>'] = "stairs",

@@ -124,7 +124,7 @@ register_level "deimos_lab"
 		local mod1,mod2 = generator.roll_pair{"mod_power","mod_agility","mod_bulk","mod_tech"}
 		local translation = {
 			['.'] = "floor",
-			[','] = { "floor", flags = { LFBLOOD } },
+			[','] = { "floor", blood = { 1, 3 } },
 			['%'] = { "wall",  style = 1, },
 			['#'] = "wall",
 			['Z'] = { "rwall", flags = { LFPERMANENT } },
@@ -137,10 +137,10 @@ register_level "deimos_lab"
 			['X'] = "crate_ammo",
 			['Y'] = "crate_armor",
 
-			['7'] = { "floor", item = { "teleport", target = coord(MAXX-1,5)       } },
-			['8'] = { "floor", item = { "teleport", target = coord(MAXX-1,MAXY-4)  } },
-			['9'] = { "floor", item = { "teleport", target = coord(8,10)  } },
-			['0'] = { "floor", item = { "teleport", target = coord(8,11) } },
+			['7'] = { "floor", item = { "teleport", TARGET = coord(MAXX-1,5)       } },
+			['8'] = { "floor", item = { "teleport", TARGET = coord(MAXX-1,MAXY-4)  } },
+			['9'] = { "floor", item = { "teleport", TARGET = coord(8,10)  } },
+			['0'] = { "floor", item = { "teleport", TARGET = coord(8,11) } },
 
 
 			['h'] = { "floor", being = core.bydiff{"former", "former", "sergeant", "captain"} },

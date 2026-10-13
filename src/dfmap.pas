@@ -27,7 +27,6 @@ type TCell = class
   PicLow      : Char;
   Sprite      : array[0..15] of TSprite;
   Deco        : array[1..16] of TSprite;
-  BloodSprite : TSprite;
   LightColor  : array[0..15] of Byte;
   DarkColor   : Byte;
   BloodColor  : Byte;
@@ -128,7 +127,6 @@ begin
     iCell.raiseto   := getString('raiseto');
     iCell.MoveCost  := getFloat('move_cost', 1.0 );
     FillChar( iCell.Sprite,      SizeOf(iCell.Sprite),      0 );
-    FillChar( iCell.BloodSprite, SizeOf(iCell.BloodSprite), 0 );
     FillChar( iCell.Deco,        SizeOf(iCell.Deco),        0 );
     Initialize( iBase );
     FillChar( iBase,             SizeOf(iBase),             0 );
@@ -160,7 +158,6 @@ begin
     end
     else
       iCell.Sprite[0] := iBase;
-    iCell.BloodSprite.SpriteID[0] := getInteger('blsprite',0);
     if iTable.IsTable( 'deco' ) then
     begin
       iSize := iTable.GetTableSize( 'deco' );

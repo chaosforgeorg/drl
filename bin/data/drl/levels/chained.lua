@@ -59,7 +59,7 @@ register_level "the_chained_court"
 						ui.msg("With a sudden inspiration you yell \"OPEN SESAME!\"!")
 						player:play_sound( "lever.use" )
 						for c in level:each( "rwall", area.FULL_SHRINKED ) do
-							if level:get_light_flag( c, LFBLOOD ) then
+							if level:get_light_flag( c, LFMARKER1 ) then
 								level:set_light_flag( c, LFPERMANENT, false )
 								level.map[ c ] = "floor"
 							end
@@ -249,9 +249,9 @@ register_level "the_chained_court"
 		local mod1,mod2 = generator.roll_pair{"mod_power","mod_agility","mod_bulk","mod_tech"}
 		local translation = {
 			['.'] = "floor",
-			[','] = { "floor", flags = { LFBLOOD } },
+			[','] = { "floor", blood = { 1, 3 } },
 			['#'] = "wall",
-			['X'] = { "wall", flags = { LFBLOOD } },
+			['X'] = { "wall", blood = { 1, 3 } },
 			['>'] = "stairs",
 			['+'] = "door",
 			['='] = "lava",

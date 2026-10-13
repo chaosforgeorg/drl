@@ -201,7 +201,7 @@ register_level "unholy_cathedral"
 
 		local translation = {
 		['.'] = "floor",
-		[','] = {"floor", flags = {LFBLOOD} },
+		[','] = {"floor", blood = { 1, 3 } },
 		['#'] = "rwall",
 		['+'] = "door",
 		['>'] = "stairs",
@@ -209,9 +209,9 @@ register_level "unholy_cathedral"
 		['$'] = { "odoor", item = reward },
 		['s'] = { "floor", being = "lostsoul" },
 		['d'] = { "floor", being = "demon" },
-		['S'] = { "floor", flags = { LFBLOOD }, being = core.ifdiff( 3, "lostsoul" ) },
+		['S'] = { "floor", blood = { 1, 3 }, being = core.ifdiff( 3, "lostsoul" ) },
 		['D'] = { "floor", being = core.ifdiff( 4, "demon" ) },
-		['A'] = { "floor", flags = { LFBLOOD }, being = "angel" },
+		['A'] = { "floor", blood = { 1, 3 }, being = "angel" },
 		}
 
 		local map = [[

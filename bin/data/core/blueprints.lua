@@ -341,7 +341,6 @@ core.register_blueprint "cell"
 	sprite     = { true,  core.TANY },
 	sprites    = { false, core.TANY },
 	deco       = { false, core.TANY },
-	blsprite   = { false, core.TNUMBER },
 	sflags     = { false, core.TFLAGS },
 	sframes    = { false, core.TNUMBER, 0 },
 	sftime     = { false, core.TNUMBER, FRAME_TIME },

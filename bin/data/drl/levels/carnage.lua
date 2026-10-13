@@ -28,9 +28,9 @@ register_level "halls_of_carnage"
 
 		local translation = {
 			['.'] = "floor",
-			[','] = {"floor", flags = {LFBLOOD} },
+			[','] = {"floor", blood = { 1, 3 } },
 			['#'] = "wall",
-			['%'] = { "wall", flags = { LFBLOOD } },
+			['%'] = { "wall", blood = { 1, 3 } },
 			['X'] = "rwall",
 			['+'] = "door",
 			['['] = "ldoor",

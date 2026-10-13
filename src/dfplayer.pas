@@ -602,7 +602,8 @@ begin
     SetKilledBy( aKiller.ID, aKiller.MeleeAttack );
   end;
 
-  Blood( NewDirection(0,0), 15, aDelay, aOverkill );
+  if not ( BF_NOBLEED in FFlags ) then
+    iLevel.Blood( FPosition, NewDirection(0,0), 15, False, aDelay, aOverkill );
   iLevel.DropCorpse( FPosition, GetLuaProtoValue('corpse') );
 
   if aOverkill

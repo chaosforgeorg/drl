@@ -162,10 +162,20 @@ function drl.register_sprites()
     core.declare( "SPRITE_PORTAL",       DRL_SDOODAD + DRL_COLS * 7 + 3 )
     core.declare( "SPRITE_TELEPORT",     DRL_SDOODAD + DRL_COLS * 7 + 4 )
     core.declare( "SPRITE_LEVER",        DRL_SDOODAD + DRL_COLS * 7 + 5 )
-    core.declare( "SPRITE_BLOOD",        DRL_SDOODAD + DRL_COLS * 7 + 6 )
     core.declare( "SPRITE_BLOODPOOL",    DRL_SDOODAD + DRL_COLS * 7 + 7 )
     core.declare( "SPRITE_CORPSE",       DRL_SDOODAD + DRL_COLS * 7 + 8 )
-    core.declare( "SPRITE_WALLBLOOD",    DRL_SDOODAD + DRL_COLS * 7 + 9 )
+
+    core.declare( "SPRITE_DECAL_BLOOD_1",      DRL_SDOODAD + DRL_COLS*7  + 11)
+    core.declare( "SPRITE_DECAL_BLOOD_2",      DRL_SDOODAD + DRL_COLS*8  + 11)
+    core.declare( "SPRITE_DECAL_BLOOD_3",      DRL_SDOODAD + DRL_COLS*7  + 12)
+    core.declare( "SPRITE_DECAL_BLOOD_4",      DRL_SDOODAD + DRL_COLS*8  + 12)
+
+    core.declare( "SPRITE_DECAL_WALL_BLOOD_1", DRL_SDOODAD + DRL_COLS*7 + 13)
+    core.declare( "SPRITE_DECAL_WALL_BLOOD_2", DRL_SDOODAD + DRL_COLS*8 + 13)
+    core.declare( "SPRITE_DECAL_WALL_BLOOD_3", DRL_SDOODAD + DRL_COLS*7 + 14)
+    core.declare( "SPRITE_DECAL_WALL_BLOOD_4", DRL_SDOODAD + DRL_COLS*8 + 14)
+
+    core.declare( "SPRITE_PARTICLE_BLOOD",     DRL_SDOODAD + DRL_COLS*7 + 15)
 
     --
     core.declare( "SPRITE_FLOOR",      DRL_SENVIRO + 1 )
@@ -219,4 +229,34 @@ function drl.register_sprites()
 	core.declare( "HARDSPRITE_GRID",      SPRITE_GRID )
 	core.declare( "HARDSPRITE_SHIELD",    SPRITE_MARK )
    	core.declare( "HARDSPRITE_SHIELD_COUNT", 1 )
+
+   	core.declare( "HARDSPRITE_DECAL_BLOOD_1",   SPRITE_DECAL_BLOOD_1 )
+  	core.declare( "HARDSPRITE_DECAL_BLOOD_2",   SPRITE_DECAL_BLOOD_2 )
+  	core.declare( "HARDSPRITE_DECAL_BLOOD_3",   SPRITE_DECAL_BLOOD_3 )
+  	core.declare( "HARDSPRITE_DECAL_BLOOD_4",   SPRITE_DECAL_BLOOD_4 )
+
+   	core.declare( "HARDSPRITE_DECAL_WALL_BLOOD_1",   SPRITE_DECAL_WALL_BLOOD_1 )
+  	core.declare( "HARDSPRITE_DECAL_WALL_BLOOD_2",   SPRITE_DECAL_WALL_BLOOD_2 )
+  	core.declare( "HARDSPRITE_DECAL_WALL_BLOOD_3",   SPRITE_DECAL_WALL_BLOOD_3 )
+  	core.declare( "HARDSPRITE_DECAL_WALL_BLOOD_4",   SPRITE_DECAL_WALL_BLOOD_4 )
+
+    register_emitter "emit_blood_hit"
+    {
+        shape        = "point",
+        offset       = { 0, 0, 6 },
+        direction    = { 0, 0, 0.9 },
+        spread_angle = 25,
+        speed        = { 160, 320 },
+        accel        = { 0, 0, -1920 },
+        lifetime     = { 1.5, 1.5 },
+        rotation     = { 0, 360 },
+        rot_speed    = { -180, 180 },
+        sprite       = SPRITE_PARTICLE_BLOOD,
+        anim_frames  = 4,
+        anim_ftime   = 0.05,
+        flags        = { PF_DECAL_ON_GROUND, PF_ROTATE, PF_RAND_OFFSET, PF_NO_EMISSIVE },
+    }
+
+    core.declare( "HARDEMITTER_BLOOD", emitters.emit_blood_hit.nid )
+
 end

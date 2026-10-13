@@ -52,9 +52,9 @@ register_level "the_wall"
 			['.'] = "floor",
 			['#'] = "wall",
 			['X'] = { "wall", flags = { LFMARKER1 }},
-			['%'] = { "wall", flags = { LFBLOOD } },
+			['%'] = { "wall", blood = { 1, 3 } },
 			['*'] = "bloodpool",
-			[','] = { "floor", flags = { LFBLOOD } },
+			[','] = { "floor", blood = { 1, 3 } },
 			['+'] = "door",
 			['>'] = "stairs",
 
