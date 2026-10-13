@@ -41,7 +41,7 @@ end
 function player:add_badge( badge )
 	assert( badges [badge ], "Unknown badge: "..badge )
 	if badges[ badge ].achievement ~= "" then
-		player:set_achievement( badges[ badge ].achievement )
+		store.set_achievement( badges[ badge ].achievement )
 	end
 	if SEEDED_GAME and badges[ badge ].level >= 4 then
 		return

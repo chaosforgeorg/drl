@@ -3,7 +3,7 @@ unit drlaudio;
 
 interface
 
-uses classes, vgenerics, vrltools, vluaconfig, vdf, vaudio;
+uses classes, vgenerics, vrltools, vluaconfig, vdf, vaudio, vrandom;
 
 type
   TSoundEvent = packed record
@@ -33,6 +33,7 @@ type
 
   TDRLAudio = class
   private
+    FVisualRNG         : TRNG; // Borrowed from IO, which owns Audio.
     FLastMusic         : AnsiString;
     FTime              : QWord;
     FSoundEvents       : TSoundEventHeap;
@@ -58,7 +59,7 @@ type
     procedure UpdateHeartbeat( aVolume : Integer );
     procedure DoUpdate( aMSec : DWord; aListenerPosition : PCoord2D; aHeartbeatVolume : Integer );
   public
-    constructor Create;
+    constructor Create( aVisualRNG : TRNG );
     procedure Reset;
     procedure Reconfigure;
     procedure Configure( aConfig : TLuaConfig; aReload : Boolean = False );
@@ -82,7 +83,7 @@ type
 implementation
 
 uses sysutils, vdebug, vutil, vmath, vvector, vsdlaudio, vfmodaudio,
-     drlio, drlconfiguration, dfdata;
+     drlconfiguration, dfdata;
 
 const MAX_SOUND_COUNT = 8;
       SOUND_DELAY_MIN = 75;
@@ -94,8 +95,9 @@ begin
   Result := 0;
 end;
 
-constructor TDRLAudio.Create;
+constructor TDRLAudio.Create( aVisualRNG : TRNG );
 begin
+  FVisualRNG := aVisualRNG;
   FSoundMuted := False;
   FMusicMuted := False;
   FSoundEvents   := TSoundEventHeap.Create(@EventCompare);
@@ -300,7 +302,6 @@ begin
     FAudioRegistry[i] := iEntry;
   end;
   FHeartbeatAsset := FindAsset( 'heartbeat' );
-  IO.LoadProgress(100);
 end;
 
 function TDRLAudio.FindAsset( const aID : AnsiString ) : TAudioAssetHandle;
@@ -419,7 +420,7 @@ begin
   if iCount >= MAX_SOUND_COUNT then Exit;
   if iCount > 1 then
   begin
-    iDelay := SOUND_DELAY_MIN * ( iCount - 1 ) + IO.VisualRNG.RLongInt( 25 );
+    iDelay := SOUND_DELAY_MIN * ( iCount - 1 ) + FVisualRNG.RLongInt( 25 );
     PlaySound( aSoundID, aCoord, aListenerPosition, iDelay );
     Exit;
   end;
@@ -466,7 +467,7 @@ begin
   if FMusicMuted then Exit;
   iAsset := FindAsset(aMusicID);
   if iAsset <> 0 then FAudio.PlayMusic(iAsset)
-  else if not aNotFound then PlayMusic('level'+IntToStr(IO.VisualRNG.RLongInt(23)+2), True);
+  else if not aNotFound then PlayMusic('level'+IntToStr(FVisualRNG.RLongInt(23)+2), True);
 end;
 
 procedure TDRLAudio.ToggleSound;

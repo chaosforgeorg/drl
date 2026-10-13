@@ -361,6 +361,7 @@ begin
 
   IO.LoadProgress(iProgBase + 50);
   IO.Audio.Load;
+  IO.LoadProgress( 100 );
 
   ModuleOption_KlassAchievements    := Get( ['core','options','klass_achievements'], False );
   ModuleOption_NewMenu              := Get( ['core','options','new_menu'], False );

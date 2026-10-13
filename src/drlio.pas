@@ -411,7 +411,7 @@ begin
 
   FMsgQueue := True;
   FLoading  := nil;
-  FAudio    := TDRLAudio.Create;
+  FAudio    := TDRLAudio.Create( FVisualRNG );
   InitializeMessages( 2, 77, @EventMore, Option_MessageBuffer );
   Messages.GroupMultiple := Configuration.GetBoolean( 'group_messages' );
   inherited Configure( dfdata.Config );
