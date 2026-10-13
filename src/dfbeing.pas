@@ -42,8 +42,6 @@ TBeing = class(TThing,IPathQuery)
     procedure Reload( aAmmoItem : TItem; aSingle : Boolean; aWeapon : TItem = nil ); 
     function Resurrect( aRange : Integer ) : TBeing;
     procedure Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer ); virtual;
-    procedure Blood( aFrom : TDirection; aAmount : LongInt; aDelay : Integer = 0;
-      aOverkill : Boolean = False );
     function Attack( aWhere : TCoord2D; aMoveOnKill : Boolean; aWeapon : TItem = nil ) : Boolean; overload;
     function Attack( aTarget : TBeing; aSecond : Boolean = False; aWeapon : TItem = nil ) : Boolean; overload;
     function meleeWeaponSlot : TEqSlot;
@@ -128,9 +126,6 @@ TBeing = class(TThing,IPathQuery)
     class procedure RegisterLuaAPI( aLua : TLua );
 
   protected
-    procedure BloodDecal( aFrom : TDirection; aAmount : LongInt );
-    procedure BloodSpray( aFrom : TDirection; aAmount : LongInt; aDelay : Integer;
-      aDistanceScale, aSpreadScale : Single );
     procedure LuaLoad( aTable : TLuaTable; aGameRNG : TRNG ); reintroduce;
     // private
     function FireRanged( aTarget : TCoord2D; aGun : TItem; aAlt : Boolean = False; aDelay : Integer = 0 ) : Boolean;
@@ -1593,126 +1588,6 @@ begin
 end;
 
 
-procedure TBeing.Blood( aFrom : TDirection; aAmount : LongInt; aDelay : Integer;
-  aOverkill : Boolean );
-var iCount          : Integer;
-    iCoord          : TCoord2D;
-    iAmount         : LongInt;
-    iDistanceScale  : Single;
-    iParticleAmount : LongInt;
-    iSpreadScale    : Single;
-    iLevel          : TLevel;
-begin
-  if BF_NOBLEED in FFlags then Exit;
-  iLevel := TLevel(Parent);
-  if aAmount > 0 then
-    for iCount := 1 to Min( aAmount, 20 ) do
-    begin
-      repeat
-        case IO.VisualRNG.RLongInt( 5 ) of
-          0..1 : iCoord := FPosition;
-          2..3 : iCoord := FPosition + aFrom;
-          4    : iCoord := FPosition + NewCoord2D( IO.VisualRNG.RLongInt( 3 ) - 1, IO.VisualRNG.RLongInt( 3 ) - 1 );
-        end;
-      until iLevel.isProperCoord( iCoord );
-      iLevel.Blood( iCoord );
-    end;
-  iAmount := Clamp( aAmount + IO.VisualRNG.RLongInt( aAmount ), 1, 12 );
-  if GraphicsVersion and ( not IsPlayer ) and isVisible and ( HARDEMITTER_BLOOD <> 0 ) then
-  begin
-    iParticleAmount := iAmount * 2;
-    iDistanceScale  := 0.66;
-    iSpreadScale    := 1.0;
-    if aOverkill then
-    begin
-      iParticleAmount *= 2;
-      iDistanceScale := 1.0;
-      iSpreadScale   := 2.0;
-    end;
-    BloodSpray( aFrom, iParticleAmount, aDelay, iDistanceScale, iSpreadScale );
-  end
-  else
-    BloodDecal( aFrom, iAmount );
-end;
-
-procedure TBeing.BloodSpray( aFrom : TDirection; aAmount : LongInt; aDelay : Integer;
-  aDistanceScale, aSpreadScale : Single );
-begin
-  IO.addParticleBurstAnimation( aDelay, HARDEMITTER_BLOOD, FPosition, aFrom,
-    aAmount, aDistanceScale, aSpreadScale );
-end;
-
-procedure TBeing.BloodDecal( aFrom : TDirection; aAmount : LongInt );
-var iCount    : Integer;
-    iLevel    : TLevel;
-    iPosition : TVec2i;
-    iOffset   : TVec2f;
-    iDirOffset: TVec2f;
-    iTCoord   : TCoord2D;
-    iRange    : Single;
-    iCanBleed : DWord;
-    iSprite   : DWord;
-
-  function RandomNorm : Single;
-  var iU1, iU2 : Single;
-  begin
-    repeat iU1 := IO.VisualRNG.RFloat until iU1 <> 0.0;
-    iU2 := IO.VisualRNG.RFloat;
-    RandomNorm := Sqrt( -2.0 * Ln( iU1 ) ) * Cos( 2.0 * Pi * iU2 );
-  end;
-
-  function RandGuassian( aRadius : Single ) : TVec2f;
-  begin
-    repeat
-      Result.X := RandomNorm * aRadius * 0.3;
-      Result.Y := RandomNorm * aRadius * 0.3;
-    until ( Result.X * Result.X + Result.Y * Result.Y ) < aRadius * aRadius;
-  end;
-
-  function CanBleedOn( aCoord : TCoord2D ) : DWord;
-  var iCell : TCell;
-  begin
-    if not iLevel.isProperCoord( aCoord ) then Exit( 0 );
-    iCell := iLevel.Data.Cells[ iLevel.CellBottom[ aCoord ] ];
-    if CF_LIQUID    in iCell.Flags then Exit( 0 );
-    if CF_BLOCKMOVE in iCell.Flags then
-    begin
-      if aCoord.y >= FPosition.y then Exit( 0 );
-      if not ( CF_BLOCKLOS in iCell.Flags ) then Exit( 0 ); // void check
-      aCoord.y := aCoord.y + 1;
-      if not iLevel.isProperCoord( aCoord ) then Exit( 0 );
-      iCell := iLevel.Data.Cells[ iLevel.CellBottom[ aCoord ] ];
-      if ( CF_BLOCKMOVE in iCell.Flags ) then Exit( 0 );
-      Exit( HARDSPRITE_DECAL_WALL_BLOOD[1 + IO.VisualRNG.RLongInt( 3 )] );
-    end;
-    Exit( HARDSPRITE_DECAL_BLOOD[1 + IO.VisualRNG.RLongInt( 3 )] );
-  end;
-
-begin
-  iLevel := TLevel(Parent);
-  iRange := Clampf( aAmount / 3.0, 0.75, 2.5 );
-  iCanBleed := CanBleedOn( FPosition );
-  iDirOffset.Init( aFrom.X * 0.5, aFrom.Y * 0.5 );
-  for iCount := 1 to aAmount do
-  begin
-    iOffset := RandGuassian( iRange );
-    iPosition.Init(
-      Floor( ( FPosition.X + iOffset.X + iDirOffset.X ) * 32.0 ),
-      Floor( ( FPosition.Y + iOffset.Y + iDirOffset.Y ) * 32.0 )
-    );
-    iTCoord := NewCoord2D( ( iPosition.X + 16 ) div 32, ( iPosition.Y + 16 ) div 32 );
-    if iTCoord = FPosition then
-    begin
-      if ( iCanBleed <> 0 ) then
-        iLevel.Decals.Add( iPosition, iCanBleed );
-      Continue;
-    end;
-    iSprite := CanBleedOn( iTCoord );
-    if iSprite <> 0 then
-      iLevel.Decals.Add( iPosition, iSprite );
-  end;
-end;
-
 procedure TBeing.Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer );
 var iUIDs      : TUIDStore;
     iItem      : TItem;
@@ -1781,7 +1656,8 @@ begin
 
   iBlood := aBloodAmount;
   if aOverkill then iBlood *= 3;
-  Blood( iDir, iBlood, aDelay, aOverkill );
+  if not ( BF_NOBLEED in FFlags ) then
+    iLevel.Blood( FPosition, iDir, iBlood, not IsPlayer, aDelay, aOverkill );
 
   CallHook( Hook_OnDie, [ aOverkill, iMeleeKill ] );
 
@@ -2219,7 +2095,8 @@ begin
     if iActive <> nil then
       iDirection.Create( iActive.FPosition, FPosition )
     else iDirection.code := 5;
-    Blood( iDirection, aDamage div 7, aDelay );
+    if not ( BF_NOBLEED in FFlags ) then
+      iLevel.Blood( FPosition, iDirection, aDamage div 7, not IsPlayer, aDelay );
   end;
 
   case aDamageType of
@@ -2625,16 +2502,17 @@ procedure TBeing.BloodFloor;
 var iLevel : TLevel;
 begin
   if BF_FLY in FFlags then Exit;
-  iLevel := TLevel(Parent);
-       if iLevel.cellFlagSet( FPosition, CF_VBLOODY ) then Inc(FBloodBoots,1)
-  else if iLevel.LightFlag[ FPosition, LFBLOOD ] then Inc(FBloodBoots,0)
-    else if FBloodBoots > 0 then Dec(FBloodBoots);
-  if FBloodBoots > 6 then FBloodBoots := 6;
+  iLevel := TLevel( Parent );
+  if iLevel.cellFlagSet( FPosition, CF_VBLOODY ) then
+  begin
+    FBloodBoots := Min( FBloodBoots + 1, 6 );
+    Exit;
+  end;
+  if iLevel.LightFlag[ FPosition, LFBLOOD ] then Exit;
+  if FBloodBoots > 0 then Dec( FBloodBoots );
   if FBloodBoots = 0 then Exit;
-  if (iLevel.cellFlagSet(FPosition,CF_VBLOODY)) or
-     (iLevel.LightFlag[ FPosition, LFBLOOD ]) then Exit;
-  iLevel.Blood(FPosition);
-  BloodDecal( NewDirection(0), 1 );
+  iLevel.Blood( FPosition );
+  iLevel.BloodDecal( FPosition, NewDirection( 0 ), IO.VisualRNG.RLongInt( 1, 2 ), 0.4 );
 end;
 
 procedure TBeing.Knockback( aDir : TDirection; aStrength : Single );

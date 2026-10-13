@@ -1,4 +1,5 @@
 0.10.12
+GHJ#501 [new] -- Visual - blood splatter, blood decals
 GHJ#492 [new] -- Visual - better edges between different fluids
 GHJ#492 [new] -- Visual - better edges of destroyed walls
 GHJ#467 [new] -- Game - removed old Chainfire and replaced with JHC spooling

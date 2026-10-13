@@ -219,7 +219,7 @@ register_level "hells_arena"
 		level:fill( "floor", area.FULL_SHRINKED )
 		local translation = {
 			['.'] = "floor",
-			[','] = { "water", flags = { LFBLOOD } },
+			[','] = "water",
 			['#'] = "rwall",
 			['>'] = "stairs"
 		}
@@ -304,7 +304,10 @@ register_level "hells_arena"
 		generator.set_permanence( area.FULL )
 
 		generator.scatter_put( area( 5,3,68,15 ), translation, table.random_pick( column ), "floor",8+math.random(8))
-		level:transmute("water", "floor")
+		for c in level:each( "water" ) do
+			level.map[ c ] = "floor"
+			level:add_blood( c, core.visual_random(3) )
+		end
 		generator.scatter_blood(area.FULL_SHRINKED,"floor",100)
 		level.data.drop_zone = level.data.drop_zone or area.FULL_SHRINKED
 		level.data.final_reward =

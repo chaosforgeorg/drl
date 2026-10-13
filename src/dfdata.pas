@@ -257,6 +257,7 @@ type TCellSet = set of Byte;
 
 function NewSprite( ID : DWord ) : TSprite;
 function NewSprite( ID : DWord; Color : TColor ) : TSprite;
+function isDecalBloodId( aID : DWord ) : Boolean;
 
 const
   ActionCostPickUp = 1000;
@@ -676,6 +677,15 @@ begin
     5 : Exit( INPUT_WAIT );
     else Exit( INPUT_WAIT );
   end;
+end;
+
+function isDecalBloodId( aID : DWord ) : Boolean;
+begin
+  Result := ( aID <> 0 ) and
+    ( ( aID = HARDSPRITE_DECAL_BLOOD[0] ) or
+      ( aID = HARDSPRITE_DECAL_BLOOD[1] ) or
+      ( aID = HARDSPRITE_DECAL_BLOOD[2] ) or
+      ( aID = HARDSPRITE_DECAL_BLOOD[3] ) );
 end;
 
 function NewSprite ( ID : DWord ) : TSprite;

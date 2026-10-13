@@ -73,16 +73,15 @@ register_level "the_mortuary"
 		level:set_generator_style( 1 )
 		level:fill( "rwall" )
 		level:fill( "floor", area.FULL_SHRINKED )
-		generator.set_blood( area.FULL_SHRINKED, true )
 
 		local translation = {
-			['.'] = { "floor", flags = { LFBLOOD } },
+			['.'] = "floor",
 			['>'] = "stairs",
 			['X'] = "rwall",
-			['1'] = { "floor", flags = { LFBLOOD }, item = "lmed" },
-			['2'] = { "floor", flags = { LFBLOOD }, item = "scglobe" },
-			['3'] = { "floor", flags = { LFBLOOD }, item = "rarmor" },
-			['4'] = { "floor", flags = { LFBLOOD }, item = "ashard" },
+			['1'] = { "floor", item = "lmed" },
+			['2'] = { "floor", item = "scglobe" },
+			['3'] = { "floor", item = "rarmor" },
+			['4'] = { "floor", item = "ashard" },
 		}
 
 		local tile = [[
@@ -111,6 +110,10 @@ XX.XX
 		level:drop_item( "uashotgun", coord(3, 18) )
 
 		generator.place_tile( translation, center, 36,8 )
+
+		for c in area.FULL_SHRINKED:coords() do
+			level:add_blood( c, core.visual_random(3) )
+		end
 
 		local corpses = {
 			"former",  "sergeant", "captain", "imp",      "demon",    "cacodemon",

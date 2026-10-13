@@ -1515,8 +1515,6 @@ begin
               end;
           end;
         end;
-        if FLevel.LightFlag[ iCoord, LFBLOOD ] and (FLevel.Data.Cells[iBottom].BloodSprite.SpriteID[0] <> 0) then
-          PushSpriteDoodad( iCoord, FLevel.Data.Cells[iBottom].BloodSprite );
         if iDeco <> 0 then
         begin
           iCell := FLevel.Data.Cells[ iBottom ];

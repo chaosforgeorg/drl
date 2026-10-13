@@ -47,7 +47,7 @@ register_level "military_base"
 
 		local translation = {
 			['.'] = "floor",
-			[','] = { "floor", flags = { LFBLOOD } },
+			[','] = { "floor", blood = { 1, 3 } },
 			['#'] = { "wall", flags = { LFPERMANENT } },
 			['+'] = { "door", flags = { LFPERMANENT } },
 			['L'] = { "ldoor", flags = { LFPERMANENT } },
