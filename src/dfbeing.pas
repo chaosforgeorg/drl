@@ -1948,6 +1948,7 @@ var iLevel         : TLevel;
     iArmor         : TItem;
     iActive        : TBeing;
     iActiveUID     : TUID;
+    iThisUID       : TUID;
     iSlot          : TEqSlot;
     iArmorDamage   : LongInt;
     iProtection    : LongInt;
@@ -1962,6 +1963,7 @@ var iLevel         : TLevel;
 begin
   iUIDs := FContext.UIDs;
   if ( aDamage < 0 ) or (BF_INV in FFlags) or Dead then Exit;
+  iThisUID := UID;
 
   if aSource <> nil then
   begin
@@ -1979,11 +1981,14 @@ begin
     iMeleeAttack := iActive.MeleeAttack;
     if ( aSource <> nil ) and ( iActive.Inv.Equipped( aSource ) or ( aSource.IType = ITEMTYPE_URANGED ) ) then
     begin
-      iActive.CallHook( Hook_OnDamage, [ Self, aDamage, aSource, aSource.isMelee ] );
-      aSource.CallHook( Hook_OnDamage, [ Self, aDamage, iActive ] );
+      if iActive.CallHook( Hook_OnDamage, [ Self, aDamage, aSource, aSource.isMelee ] ) then
+        if iUIDs.Get( iThisUID ) = nil then Exit;
+      if aSource.CallHook( Hook_OnDamage, [ Self, aDamage, iActive ] ) then
+        if iUIDs.Get( iThisUID ) = nil then Exit;
     end
     else if iMeleeAttack then
-      iActive.CallHook( Hook_OnDamage, [ Self, aDamage, aSource, True ] );
+      if iActive.CallHook( Hook_OnDamage, [ Self, aDamage, aSource, True ] ) then
+        if iUIDs.Get( iThisUID ) = nil then Exit;
   end
   else
   begin

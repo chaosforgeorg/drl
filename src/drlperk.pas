@@ -151,15 +151,19 @@ begin
 end;
 
 function TPerks.CallHook( aHook : Byte; const aParams : array of Const ) : Boolean;
-var iUIDs : TUIDStore;
-    i     : Integer;
-    iUID  : TUID;
+var iUIDs      : TUIDStore;
+    i          : Integer;
+    iUID       : TUID;
+    iTargetUID : TUID;
 begin
   CallHook := False;
   if aHook in FHooks then
   begin
     iUIDs := FOwner.Context.UIDs;
     iUID  := FOwner.UID;
+    iTargetUID := 0;
+    if aHook = Hook_OnDamage then
+      iTargetUID := TNode( aParams[0].VObject ).UID;
     BeginIteration;
     for i := 0 to FList.Size-1 do
       if aHook in FDefinitions.Data[FList[i].ID].Hooks then
@@ -169,6 +173,8 @@ begin
           // A callback may consume the owner and free this perk list.
           // Session-owned levels created before the UID store have UID 0.
           if ( iUID <> 0 ) and ( iUIDs.Get( iUID ) = nil ) then Exit;
+          // Nested damage can kill the target before the next perk runs.
+          if ( iTargetUID <> 0 ) and ( iUIDs.Get( iTargetUID ) = nil ) then Break;
         end;
     EndIteration;
   end;

@@ -177,6 +177,7 @@ core.register_blueprint "perk"
 	-- TODO: decide whether to keep this (add bleeding etc) 
 	-- or change to different mechanism
 	OnApplyCheck   = { false, core.TFUNC }, -- being:apply_timed_perk
+	matches_item   = { false, core.TFUNC }, -- item perk generation
 
 	-- Native dispatch owners; Being includes Player unless noted.
 	-- Item includes hooks forwarded to equipped items by Player.
