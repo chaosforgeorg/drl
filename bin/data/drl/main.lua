@@ -721,6 +721,7 @@ Major changes since last version (see {yversion.txt} for full list)
 end
 
 function drl.OnWinGame()
+	core.play_music("victory")
 	if kills.get("jc") > 0 then
 		drl.plot_outro_final()
 	elseif player.level_index >= 24 then

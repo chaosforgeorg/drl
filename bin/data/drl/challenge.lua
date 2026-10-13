@@ -1123,6 +1123,7 @@ function drl.register_challenges()
 		end,
 
 		OnWinGame = function ()
+			core.play_music("victory")
 			if player.eq.armor and player.eq.armor.id == "uberarmor" then
 				drl.plot_outro_special()
 				return false

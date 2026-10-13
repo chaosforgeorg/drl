@@ -270,19 +270,12 @@ begin
 end;
 
 procedure TDRLSession.FinishGame;
-var iMemorial : TIOStringArray;
 begin
   FPlayer.Statistics.Update( FPlayer );
   if FContext.Lua.Defined( [CoreModuleID, 'RunAwards'] ) then
     FContext.Lua.ProtectedCall( [CoreModuleID, 'RunAwards'], [NoPlayerRecord] );
   FPlayer.CalculateScore( FDifficulty, FGameWon );
   RecordResult;
-  // Include messages from the result hooks before the memorial reads history.
-  if IO.MsgPending then IO.MsgUpdate;
-  iMemorial := GenerateMemorial;
-
-  FMemorial := TPagedReport.Create( 'Post mortem', False );
-  FMemorial.Add( iMemorial, 'mortem.txt' );
 end;
 
 procedure TDRLSession.ClearPlayerView( aView : TIOLayer );
@@ -1455,6 +1448,7 @@ var iRank       : THOFRank;
     iChalAbbr   : Ansistring;
     iScript     : Ansistring;
     iReport     : TPagedReport;
+    iMemorial   : TIOStringArray;
     iEnterNuke  : Boolean;
     iCrashIndex : Integer;
     iEpisodeSeed : Cardinal;
@@ -1729,12 +1723,10 @@ begin
     WriteSaveFile( False );
 
   // The ending hook may confirm the outcome over the finished level.
-  // Opening the first plot screen closes its view before showing the outro.
   if State = DSFinished then
   begin
     if FGameWon then
     begin
-      IO.Audio.PlayMusic( 'victory' );
       ShowEnding;
       IO.FadeLevel( 1.0 );
     end
@@ -1743,6 +1735,13 @@ begin
       IO.Audio.PlayMusic( 'bunny' );
       IO.FadeLevel( 0.0 );
     end;
+
+    // Include messages from the result and ending hooks before reading history.
+    if IO.MsgPending then IO.MsgUpdate;
+    iMemorial := GenerateMemorial;
+    FMemorial := TPagedReport.Create( 'Post mortem', False );
+    FMemorial.Add( iMemorial, 'mortem.txt' );
+
     FPlayer.Detach;
     FLevel.Clear;
   end;
