@@ -81,7 +81,7 @@ register_level "abyssal_plains"
 
 		local translation = {
 			['.'] = "floor",
-			[','] = { "floor", flags = { LFBLOOD } },
+			[','] = { "floor", blood = { 1, 3 } },
 			['C'] = { "floor", flags = { LFMARKER1 } },
 			['#'] = { "wall",  flags = { LFPERMANENT } },
 			['$'] = { "rwall", flags = { LFPERMANENT } },

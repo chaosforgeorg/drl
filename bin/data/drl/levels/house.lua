@@ -129,7 +129,7 @@ register_level "house_of_pain"
 
 		local translation = {
 			['.'] = "floor",
-			[','] = {"floor", flags = {LFBLOOD} },
+			[','] = {"floor", blood = { 1, 3 } },
 			['#'] = {"iwall", flags = {LFPERMANENT} },
 			['$'] = {"gwall", flags = {LFPERMANENT} },
 			['Z'] = {"rwall", flags = {LFPERMANENT} },

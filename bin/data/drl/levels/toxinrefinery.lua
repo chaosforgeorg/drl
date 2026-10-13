@@ -179,7 +179,7 @@ register_level "toxin_refinery"
 			['+'] = "door",
 
 			['~'] = { "floor", item = "barrel" },
-			['%'] = { "wall", flags = { LFBLOOD } },
+			['%'] = { "wall", blood = { 1, 3 } },
 			['L'] = { "ldoor",  flags = { LFPERMANENT } },
 
 			['a'] = { "floor", item = "ammo" },

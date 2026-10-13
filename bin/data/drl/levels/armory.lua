@@ -98,7 +98,7 @@ register_level "hells_armory"
 					for x = 6,7 do
 						for y = 9,11 do
 							level.map[ coord(x,y) ] = "floor"
-							level:set_light_flag( coord(x,y), LFBLOOD, true )
+							level:add_blood( coord(x,y), core.visual_random(3) )
 						end
 					end
 					local b = level:drop_being("shambler",coord(6,10))
@@ -127,7 +127,7 @@ register_level "hells_armory"
 		local mod1,mod2 = generator.roll_pair{"mod_power","mod_agility","mod_bulk","mod_tech"}
 		local translation = {
 			['.'] = "floor",
-			[','] = { "floor", flags = { LFBLOOD } },
+			[','] = { "floor", blood = { 1, 3 } },
 			['#'] = "wall",
 			['X'] = "rwall",
 			['+'] = "door",

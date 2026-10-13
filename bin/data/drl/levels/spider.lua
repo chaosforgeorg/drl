@@ -72,7 +72,7 @@ register_level "spiders_lair"
 
 		local translation = {
 			['.'] = "floor",
-			[','] = { "floor", flags = { LFBLOOD } },
+			[','] = { "floor", blood = { 1, 3 } },
 			['#'] = "wall",
 			['X'] = "rwall",
 			['>'] = "stairs",
@@ -84,10 +84,10 @@ register_level "spiders_lair"
 			['m'] = { "floor", being = core.ifdiff( 3, "arachno" ) },
 			['h'] = { "floor", being = core.ifdiff( 4, "arachno" ) },
 
-			['1'] = { "floor", item = { "teleport", target = coord(8,7)   } },
-			['2'] = { "floor", item = { "teleport", target = coord(70,7)  } },
-			['3'] = { "floor", item = { "teleport", target = coord(8,13)  } },
-			['4'] = { "floor", item = { "teleport", target = coord(70,13) } },
+			['1'] = { "floor", item = { "teleport", TARGET = coord(8,7)   } },
+			['2'] = { "floor", item = { "teleport", TARGET = coord(70,7)  } },
+			['3'] = { "floor", item = { "teleport", TARGET = coord(8,13)  } },
+			['4'] = { "floor", item = { "teleport", TARGET = coord(70,13) } },
 		}
 
 		local map = [[

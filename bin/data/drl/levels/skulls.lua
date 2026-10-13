@@ -59,7 +59,7 @@ register_level "city_of_skulls"
 
 		local translation = {
 			['.'] = "floor",
-			[','] = { "floor", flags = { LFBLOOD } },
+			[','] = { "floor", blood = { 1, 3 } },
 			['#'] = "wall",
 			['>'] = "stairs",
 

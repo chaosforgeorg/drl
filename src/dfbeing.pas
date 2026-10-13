@@ -2502,16 +2502,17 @@ procedure TBeing.BloodFloor;
 var iLevel : TLevel;
 begin
   if BF_FLY in FFlags then Exit;
-  iLevel := TLevel(Parent);
-       if iLevel.cellFlagSet( FPosition, CF_VBLOODY ) then Inc(FBloodBoots,1)
-  else if iLevel.LightFlag[ FPosition, LFBLOOD ] then Inc(FBloodBoots,0)
-    else if FBloodBoots > 0 then Dec(FBloodBoots);
-  if FBloodBoots > 6 then FBloodBoots := 6;
+  iLevel := TLevel( Parent );
+  if iLevel.cellFlagSet( FPosition, CF_VBLOODY ) then
+  begin
+    FBloodBoots := Min( FBloodBoots + 1, 6 );
+    Exit;
+  end;
+  if iLevel.LightFlag[ FPosition, LFBLOOD ] then Exit;
+  if FBloodBoots > 0 then Dec( FBloodBoots );
   if FBloodBoots = 0 then Exit;
-  if (iLevel.cellFlagSet(FPosition,CF_VBLOODY)) or
-     (iLevel.LightFlag[ FPosition, LFBLOOD ]) then Exit;
-  iLevel.Blood(FPosition);
-  iLevel.BloodDecal( FPosition, NewDirection(0), IO.VisualRNG.RLongInt( 1, 2 ), 0.4 );
+  iLevel.Blood( FPosition );
+  iLevel.BloodDecal( FPosition, NewDirection( 0 ), IO.VisualRNG.RLongInt( 1, 2 ), 0.4 );
 end;
 
 procedure TBeing.Knockback( aDir : TDirection; aStrength : Single );

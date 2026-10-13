@@ -25,7 +25,6 @@ function drl.register_cells()
 		blname     = "blood",
 		blcolor    = RED;
 		bloodto    = "bloodpool";
-		blsprite   = SPRITE_BLOOD;
 		sprite     = {
 			SPRITE_FLOOR, -- phobos
 			SPRITE_PLATEFLOOR, -- deimos
@@ -50,7 +49,6 @@ function drl.register_cells()
 		set        = CELLSET_FLOORS,
 		blcolor    = RED,
 		sprite     = SPRITE_RUBBLE,
-		blsprite   = SPRITE_BLOOD,
 		sflags     = { SF_MULTI, SF_FLOOR },
 	}
 
@@ -74,7 +72,6 @@ function drl.register_cells()
 			SPRITE_WALL, -- hell (unused)
 			SPRITE_PIPEWALL, -- phobos (alt 2)
 		},
-		blsprite   = SPRITE_WALLBLOOD,
 		destroyto  = "wall_destroyed",
 		sflags     = { SF_MULTI },
 	}
@@ -105,7 +102,6 @@ function drl.register_cells()
 			SPRITE_STONEWALL,
 			SPRITE_STONEWALL,
 		},
-		blsprite   = SPRITE_WALLBLOOD,
 		destroyto  = "wall_destroyed",
 		sflags     = { SF_MULTI },
 	}
@@ -126,7 +122,6 @@ function drl.register_cells()
 		flags      = { CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_STICKWALL, CF_FRAGILE },
 		coscolor   = { 0.6,0.6,1.0,1.0 },
 		sprite     = SPRITE_CAVEWALL,
-		blsprite   = SPRITE_WALLBLOOD,
 		sflags     = { SF_MULTI },
 		destroyto  = "wall_destroyed",
 	}
@@ -152,7 +147,6 @@ function drl.register_cells()
 		hp         = 30,
 		set        = CELLSET_WALLS,
 		flags      = { CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_STICKWALL },
-		blsprite   = SPRITE_WALLBLOOD,
 		sflags     = { SF_MULTI },
 	}
 
@@ -165,7 +159,6 @@ function drl.register_cells()
 		blname     = "blood",
 		blcolor    = RED;
 		bloodto    = "bloodpool";
-		blsprite   = SPRITE_BLOOD;
 		sprite     = {
 			SPRITE_CAVEFLOOR, -- cave 0
 			SPRITE_HELLFLOOR, -- cave 1
@@ -189,7 +182,6 @@ function drl.register_cells()
 		flags      = { CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_STICKWALL },
 		sprite     = SPRITE_BOSSWALL,
 		deco       = { SPRITE_DECO_SKULL_1, SPRITE_DECO_SKULL_2, SPRITE_DECO_SKULL_3, SPRITE_DECO_SKULL_4 },
-		blsprite   = SPRITE_WALLBLOOD,
 		sflags     = { SF_MULTI },
 		destroyto  = "wall_destroyed",
 	}
@@ -210,7 +202,6 @@ function drl.register_cells()
 		set        = CELLSET_WALLS,
 		flags      = {CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_STICKWALL},
 		sprite     = SPRITE_YBOX,
-		blsprite   = SPRITE_WALLBLOOD,
 	}
 
 	register_cell "ycrate"
@@ -225,7 +216,6 @@ function drl.register_cells()
 		set        = CELLSET_WALLS,
 		flags      = {CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_STICKWALL},
 		sprite     = SPRITE_WBOX,
-		blsprite   = SPRITE_WALLBLOOD,
 	}
 
 
@@ -524,7 +514,6 @@ function drl.register_cells()
 		sprite     = SPRITE_BRIDGE,
 		blname     = "blood",
 		blcolor    = RED;
-		blsprite   = SPRITE_BLOOD;
 		sflags     = { SF_FLUID },
 	}
 
@@ -564,7 +553,6 @@ function drl.register_cells()
 		set        = CELLSET_WALLS,
 		flags      = {CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_STICKWALL, CF_FRAGILE},
 		sprite     = SPRITE_WBOXC,
-		blsprite   = SPRITE_WALLBLOOD,
 		coscolor   = {1.0,0.0,0.0,1.0},
 
 		OnDestroy = function(c)
@@ -590,7 +578,6 @@ function drl.register_cells()
 		set        = CELLSET_WALLS,
 		flags      = {CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_STICKWALL, CF_FRAGILE},
 		sprite     = SPRITE_YBOXC,
-		blsprite   = SPRITE_WALLBLOOD,
 		coscolor   = {1.0,1.0,0.0,1.0},
 
 		OnDestroy = function(c)

@@ -113,10 +113,10 @@ register_level "hellgate"
 		local translation = {
 			['.'] = "floor",
 			[','] = "rock",
-			[':'] = { "floor", flags = { LFBLOOD } },
+			[':'] = { "floor", blood = { 1, 3 } },
 			['#'] = "wall",
 			['%'] = "rwall",
-			['*'] = { "rwall", flags = { LFBLOOD } },
+			['*'] = { "rwall", blood = { 1, 3 } },
 			['+'] = "door",
 
 			['B'] = { "floor", being = "bruiser" },
@@ -205,7 +205,7 @@ register_level "tower_of_babel"
 		level:fill( "floor", area.FULL_SHRINKED )
 		local scatter_area = area( 5,3,68,15 )
 		local translation = {
-			['.'] = { "floor", flags = { LFBLOOD } },
+			['.'] = { "floor", blood = { 1, 3 } },
 			['#'] = "gwall", 
 			['D'] = { "gwall", deco = 1 },
 			['>'] = "stairs",
@@ -288,7 +288,7 @@ register_level "dis"
 		level:fill( "floor", area.FULL_SHRINKED )
 		local translation = {
 			['.'] = "floor",
-			[','] = { "floor", flags = { LFBLOOD } },
+			[','] = { "floor", blood = { 1, 3 } },
 			['Z'] = "wall",
 			['W'] = "rwall",
 			['#'] = "gwall",
@@ -346,7 +346,7 @@ register_level "hell_fortress"
 		level:fill( "rwall" )
 		level:fill( "floor", area.FULL_SHRINKED )
 		local translation = {
-			[','] = { "floor", flags = { LFBLOOD } },
+			[','] = { "floor", blood = { 1, 3 } },
 			['.'] = "floor",
 		}
 

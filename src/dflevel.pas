@@ -133,8 +133,6 @@ TLevel = class(TLuaMapNode)
   private
     function GetCellRotationMask( aCell : TCoord2D ) : Byte;
     function GetCellDoorRotation( aCell : TCoord2D ) : Byte;
-    procedure BloodSpray( aPosition : TCoord2D; aFrom : TDirection; aAmount : LongInt; aDelay : Integer;
-      aDistanceScale, aSpreadScale : Single );
     function GetBloodDecalSprite( aCoord, aOrigin : TCoord2D; aFloorSprite : DWord = 0 ) : DWord;
     procedure AddDecal( const aPosition : TVec3f; aDecalSprite : DWord; const aOrigin : TVec3f );
     function CellToID( const aCell : Byte ) : AnsiString; override;
@@ -1276,17 +1274,11 @@ begin
       iDistanceScale := 1.0;
       iSpreadScale   := 2.0;
     end;
-    BloodSpray( aPosition, aFrom, iParticleAmount, aDelay, iDistanceScale, iSpreadScale );
+    IO.addParticleBurstAnimation( aDelay, HARDEMITTER_BLOOD, aPosition, aFrom,
+      iParticleAmount, iDistanceScale, iSpreadScale );
   end
   else
     BloodDecal( aPosition, aFrom, iAmount );
-end;
-
-procedure TLevel.BloodSpray( aPosition : TCoord2D; aFrom : TDirection; aAmount : LongInt; aDelay : Integer;
-  aDistanceScale, aSpreadScale : Single );
-begin
-  IO.addParticleBurstAnimation( aDelay, HARDEMITTER_BLOOD, aPosition, aFrom,
-    aAmount, aDistanceScale, aSpreadScale );
 end;
 
 function TLevel.GetBloodDecalSprite( aCoord, aOrigin : TCoord2D; aFloorSprite : DWord ) : DWord;
@@ -1315,6 +1307,7 @@ var iCount    : Integer;
     iOffset   : TVec2f;
     iDirOffset: TVec2f;
     iTCoord   : TCoord2D;
+    iOrigin   : TCoord2D;
     iRange    : Single;
     iCanBleed : DWord;
     iSprite   : DWord;
@@ -1329,6 +1322,7 @@ var iCount    : Integer;
 
   function RandGuassian( aRadius : Single ) : TVec2f;
   begin
+    if aRadius = 0.0 then Exit( Vec2f( 0.0, 0.0 ) );
     repeat
       Result.X := RandomNorm * aRadius * 0.3;
       Result.Y := RandomNorm * aRadius * 0.3;
@@ -1338,7 +1332,10 @@ var iCount    : Integer;
 begin
   if ( not GraphicsVersion ) or ( HARDSPRITE_DECAL_BLOOD[1] = 0 ) then Exit;
   iRange := Clampf( aAmount / 3.0, 0.75, 2.5 ) * aRange;
-  iCanBleed := GetBloodDecalSprite( aPosition, aPosition );
+  iOrigin := aPosition;
+  // Direct wall stains approach the exposed face from the cell below.
+  if CF_BLOCKMOVE in FData.Cells[ CellBottom[ aPosition ] ].Flags then Inc( iOrigin.Y );
+  iCanBleed := GetBloodDecalSprite( aPosition, iOrigin );
   iDirOffset.Init( aFrom.X * 0.5, aFrom.Y * 0.5 );
   for iCount := 1 to aAmount do
   begin
@@ -1349,12 +1346,9 @@ begin
     );
     iTCoord := NewCoord2D( ( iPosition.X + 16 ) div 32, ( iPosition.Y + 16 ) div 32 );
     if iTCoord = aPosition then
-    begin
-      if ( iCanBleed <> 0 ) then
-        FDecals.Add( iPosition, iCanBleed );
-      Continue;
-    end;
-    iSprite := GetBloodDecalSprite( iTCoord, aPosition );
+      iSprite := iCanBleed
+    else
+      iSprite := GetBloodDecalSprite( iTCoord, iOrigin );
     if iSprite <> 0 then
       FDecals.Add( iPosition, iSprite );
   end;
@@ -2136,6 +2130,24 @@ begin
   Result := 1;
 end;
 
+function lua_level_add_blood( L : PLua_State ) : Integer; cdecl;
+var iState  : TLuaGameStack;
+    iLevel  : TLevel;
+    iCoord  : TCoord2D;
+    iAmount : Integer;
+    iRange  : Single;
+begin
+  iState.Init( L );
+  iLevel := iState.ToObject( 1 ) as TLevel;
+  iCoord := iState.ToCoord( 2 );
+  iAmount := iState.ToInteger( 3 );
+  iRange := iState.ToFloat( 4, 1.0 );
+  if not iLevel.isProperCoord( iCoord ) then Exit( 0 );
+  iLevel.LightFlag[ iCoord, LFBLOOD ] := True;
+  iLevel.BloodDecal( iCoord, NewDirection( 0 ), iAmount, iRange );
+  Result := 0;
+end;
+
 function lua_level_damage_tile(L: Plua_State): Integer; cdecl;
 var State : TLuaGameStack;
     Level : TLevel;
@@ -2231,7 +2243,7 @@ begin
   Result := 1;
 end;
 
-const lua_level_lib : array[0..25] of luaL_Reg = (
+const lua_level_lib : array[0..26] of luaL_Reg = (
       ( name : 'drop_item';  func : @lua_level_drop_item),
       ( name : 'drop_being'; func : @lua_level_drop_being),
       ( name : 'respawn';    func : @lua_level_respawn),
@@ -2248,6 +2260,7 @@ const lua_level_lib : array[0..25] of luaL_Reg = (
       ( name : 'get_raw_deco';      func : @lua_level_get_raw_deco),
       ( name : 'fix_rotation';      func : @lua_level_fix_rotation),
       ( name : 'copy_lflags';        func : @lua_level_copy_lflags),
+      ( name : 'add_blood';          func : @lua_level_add_blood),
       ( name : 'damage_tile';func : @lua_level_damage_tile),
       ( name : 'push_item';  func : @lua_level_push_item),
       ( name : 'post_generate'; func : @lua_level_post_generate),

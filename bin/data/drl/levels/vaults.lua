@@ -110,7 +110,7 @@ register_level "the_vaults"
 		local translation = {
 			['.'] = "floor",
 			['#'] = { "rwall", flags = { LFPERMANENT } },
-			['X'] = { "rwall", flags = { LFPERMANENT, LFBLOOD } },
+			['X'] = { "rwall", flags = { LFPERMANENT, LFMARKER1 }, blood = { 1, 3 } },
 			['%'] = "rwall",
 			['='] = "lava",
 			['>'] = "stairs",
@@ -149,7 +149,7 @@ register_level "the_vaults"
 			['9'] = { "floor", item = level:roll_item( vault_armor ) },
 			['0'] = { "floor", item = level:roll_item( vault_armor ) },
 
-			['*'] = { "floor", item = { "teleport", target = coord(4,11) } },
+			['*'] = { "floor", item = { "teleport", TARGET = coord(4,11) } },
 		}
 
 		local map = [[

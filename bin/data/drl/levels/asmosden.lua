@@ -147,9 +147,9 @@ register_level "the_asmos_den"
 
 		local translation = {
 			['.'] = "floor",
-			[','] = { "floor", flags = { LFBLOOD } },
+			[','] = { "floor", blood = { 1, 3 } },
 			['#'] = { "rwall", flags = { LFPERMANENT } },
-			['%'] = { "rwall", flags = { LFPERMANENT, LFBLOOD } },
+			['%'] = { "rwall", flags = { LFPERMANENT }, blood = { 1, 3 } },
 			['>'] = { "stairs" },
 			['='] = "lava",
 			['~'] = "bridge",

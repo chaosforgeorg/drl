@@ -136,10 +136,10 @@ register_level "limbo"
 			['e'] = { "blood", flags = { LFMARKER2 } },
 			['W'] = { "floor", item = "lever_limbow" },
 			['E'] = { "floor", item = "lever_limboe" },
-			['1'] = { "floor", flags = { LFBLOOD }, item = "lmed" },
-			['2'] = { "floor", flags = { LFBLOOD }, item = "scglobe" },
-			['3'] = { "floor", flags = { LFBLOOD }, item = "rarmor" },
-			['4'] = { "floor", flags = { LFBLOOD }, item = "ashard" },
+			['1'] = { "floor", blood = { 1, 3 }, item = "lmed" },
+			['2'] = { "floor", blood = { 1, 3 }, item = "scglobe" },
+			['3'] = { "floor", blood = { 1, 3 }, item = "rarmor" },
+			['4'] = { "floor", blood = { 1, 3 }, item = "ashard" },
 		}
 
 		local map = [=[
