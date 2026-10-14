@@ -1468,7 +1468,9 @@ begin
   if aGun.Dead then aGun := nil;
 
   if aGun <> nil then aGun.CallHook( Hook_OnFired, [ Self, iSecond, DRL.State <> DSPlaying ] );
+  if Dead then Exit( False );
   CallHook( Hook_OnFired, [ aGun, iSecond, DRL.State <> DSPlaying ] );
+  if Dead then Exit( False );
 
   if aGun <> nil then
     if aGun.Flags[ IF_FIREDESTROY ] then
