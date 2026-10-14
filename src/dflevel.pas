@@ -155,7 +155,6 @@ TLevel = class(TLuaMapNode)
     FAccuracyBonus : Integer;
 
     FActiveBeing   : TBeing;
-    FNextNode      : TNode;
 
     FFeeling       : AnsiString;
     FMusicID       : AnsiString;
@@ -361,7 +360,6 @@ begin
   FPerks       := TPerks.CreateFromStream( aStream, Self, FData.Perks );
 
   FActiveBeing := nil;
-  FNextNode    := nil;
 end;
 
 procedure TLevel.WriteToStream( aStream : TStream );
@@ -391,7 +389,6 @@ begin
   FPerks.WriteToStream( aStream );
 
 //    FActiveBeing : TBeing;
-//    FNextNode    : TNode;
 end;
 
 function TLevel.EnemiesLeft( aUnique : Boolean = False ) : DWord;
@@ -462,7 +459,6 @@ procedure TLevel.Init( aTable : TLuaTable; aIndex : Integer; aDifficulty : Byte 
 begin
   FContext.Lua.Stack.ClearLuaProperties( Self );
   FActiveBeing := nil;
-  FNextNode    := nil;
 
   FIndex := aIndex;
   FBoss := 0;
@@ -914,11 +910,6 @@ end;
 procedure TLevel.Remove ( Node : TNode ) ;
 begin
   if FActiveBeing = Node then FActiveBeing := nil;
-  if FNextNode = Node then
-  begin
-    FNextNode := Node.Next;
-    if FNextNode = Node then FNextNode := nil;
-  end;
   inherited Remove( Node );
 end;
 
@@ -1413,10 +1404,8 @@ begin
   // Finish this tick's effects before finalizing a death or victory.
   if DRL.State in [ DSPlaying, DSEnding ] then
   begin
-    iNode := Child;
-    if iNode <> nil then
-    repeat
-      FNextNode    := iNode.Next;
+    for iNode in Self do
+    begin
       FActiveBeing := nil;
       if iNode is TBeing then
       begin
@@ -1424,17 +1413,14 @@ begin
         FActiveBeing.Tick( FPlayer.Statistics.GameTime );
       end;
       if not ( DRL.State in [ DSPlaying, DSEnding ] ) then Break;
-      iNode := FNextNode;
-    until (iNode = Child) or (iNode = nil);
+    end;
     FActiveBeing := nil;
   end;
 
   if DRL.State = DSPlaying then
   begin
-    iNode := Child;
-    if iNode <> nil then
-    repeat
-      FNextNode    := iNode.Next;
+    for iNode in Self do
+    begin
       FActiveBeing := nil;
       if iNode is TBeing then
         if TBeing(iNode).SCount >= 5000 then
@@ -1444,8 +1430,7 @@ begin
               FActiveBeing.Action;
             end;
       if DRL.State <> DSPlaying then Break;
-      iNode := FNextNode;
-    until (iNode = Child) or (iNode = nil);
+    end;
   end;
   FActiveBeing := nil;
 

@@ -3124,22 +3124,24 @@ end;
 function lua_being_inv_items_closure(L: Plua_State): Integer; cdecl;
 var State     : TLuaGameStack;
     Parent    : TBeing;
-    Next      : TItem;
+    Next      : TNode;
     Current   : TItem;
+    iSequence : QWord;
     Filter    : Byte;
 begin
   State.Init( L );
   Parent    := TObject( lua_touserdata( L, lua_upvalueindex(1) ) ) as TBeing;
-  Next      := TObject( lua_touserdata( L, lua_upvalueindex(2) ) ) as TItem;
+  Next      := TObject( lua_touserdata( L, lua_upvalueindex(2) ) ) as TNode;
   Filter    := lua_tointeger( L, lua_upvalueindex(3) );
+  iSequence := Trunc( lua_tonumber( L, lua_upvalueindex(4) ) );
 
   repeat
-    Current := Next as TItem;
-    if Next <> nil then Next := Next.Next as TItem;
-    if Next = Parent.Child then Next := nil;
+    Current := Parent.NextChild( Next, iSequence ) as TItem;
   until (Current = nil) or
         (((Filter = 0) or (Byte(Current.iType) = Filter)) and
          ( not Parent.Inv.Equipped(Current) ));
+  lua_pushnumber( L, iSequence );
+  lua_replace( L, lua_upvalueindex(4) );
 
   lua_pushlightuserdata( L, Next );
   lua_replace( L, lua_upvalueindex(2) );
@@ -3160,7 +3162,8 @@ begin
   if lua_isnumber( L, 2 )
     then lua_pushvalue( L, 2 )
     else lua_pushnumber( L, 0 );
-  lua_pushcclosure( L, @lua_being_inv_items_closure, 3 );
+  lua_pushnumber( L, 0 );
+  lua_pushcclosure( L, @lua_being_inv_items_closure, 4 );
   Exit( 1 );
 end;
 
