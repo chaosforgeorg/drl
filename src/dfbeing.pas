@@ -381,17 +381,19 @@ end;
 
 function TBeing.getAmmoItem ( Weapon : TItem ) : TItem;
 var iGroundAmmo : TItem;
+    iLevel      : TLevel;
 begin
   if Weapon = nil then Exit( nil );
   iGroundAmmo := nil;
   if isPlayer then
   begin
-    iGroundAmmo := TLevel(Parent).Item[ Position ];
+    iLevel := TLevel(Parent);
+    iGroundAmmo := iLevel.Item[ Position ];
     if iGroundAmmo <> nil then
     begin
       if ( iGroundAmmo.IType <> ITEMTYPE_AMMO ) or ( iGroundAmmo.NID <> Weapon.AmmoID )
         then iGroundAmmo := nil
-        else if Player.EnemiesInVision < 1 then
+        else if iLevel.Player.EnemiesInVision < 1 then
           Exit( iGroundAmmo );
     end;
   end;
@@ -838,6 +840,7 @@ end;
 
 function TBeing.ActionFire ( aTarget : TCoord2D; aWeapon : TItem; aAltFire : Boolean; aDelay : Integer = 0; aForceSingle : Boolean = False ) : Boolean;
 var iUIDs       : TUIDStore;
+    iLevel      : TLevel;
     iLimitRange : Boolean;
     iRange      : Byte;
     iDist       : Byte;
@@ -890,17 +893,18 @@ begin
     then Dec( FSpeedCount, getFireCost( iAltFire, False, aWeapon ) )
     else Dec( FSpeedCount, getFireCost( iAltFire, False ) );
 
+  iLevel := TLevel(Parent);
   iTargetUID := 0;
-  if TLevel(Parent).Being[ aTarget ] <> nil then
-    iTargetUID := TLevel(Parent).Being[ aTarget ].UID;
+  if iLevel.Being[ aTarget ] <> nil then
+    iTargetUID := iLevel.Being[ aTarget ].UID;
 
-  if ( not FireRanged( aTarget, aWeapon, iAltFire, aDelay )) or Player.Dead then Exit( True );
+  if ( not FireRanged( aTarget, aWeapon, iAltFire, aDelay )) or iLevel.Player.Dead then Exit( True );
   if ( not aForceSingle ) and canDualWield and ( Inv.Slot[ efWeapon2 ].Flags[ IF_NOAMMO ] or ( Inv.Slot[ efWeapon2 ].Ammo > 0 ) ) then
   begin
     if ( iTargetUID <> 0 ) and ( iUIDs[ iTargetUID ] <> nil ) then
       aTarget := TBeing( iUIDs[ iTargetUID ] ).Position;
     if Inv.Slot[ efWeapon2 ].CallHookCheck( Hook_OnFire, [Self, False, aAltFire] ) then
-      if ( not FireRanged( aTarget, Inv.Slot[ efWeapon2 ], iAltFire, aDelay + 100 )) or Player.Dead then Exit( True );
+      if ( not FireRanged( aTarget, Inv.Slot[ efWeapon2 ], iAltFire, aDelay + 100 )) or iLevel.Player.Dead then Exit( True );
   end;
 
   Exit( True );
@@ -1409,6 +1413,7 @@ end;
 
 function TBeing.FireRanged( aTarget : TCoord2D; aGun : TItem; aAlt : Boolean; aDelay : Integer = 0 ) : Boolean;
 var iUIDs        : TUIDStore;
+    iLevel       : TLevel;
     iShots       : Integer;
     iShotsBonus  : Integer;
     iShotCost    : Integer;
@@ -1431,14 +1436,15 @@ begin
   iShots      += iShotsBonus;
   iSecond      := (aGun = FInv.Slot[ efWeapon2 ]);
 
+  iLevel := TLevel(Parent);
   iFreeShot := False;
   if aGun.Flags[ IF_NOAMMO ] or aGun.isUsable then iFreeShot := true;
 
   if not iFreeShot then
   begin
     iTargetBeing := nil;
-    if TLevel(Parent).isProperCoord( aTarget ) then
-      iTargetBeing := TLevel(Parent).Being[ aTarget ];
+    if iLevel.isProperCoord( aTarget ) then
+      iTargetBeing := iLevel.Being[ aTarget ];
     iShotCost       := aGun.getShotCost( aAlt, 1, iTargetBeing );
     iShotsCost      := iShotCost;
     if iShots > 1 then iShotsCost := aGun.getShotCost( aAlt, iShots, iTargetBeing );
@@ -1457,7 +1463,7 @@ begin
 
   if iShots < 1 then Exit;
 
-  if FTargetPos = Player.Position then Player.MultiMove.Stop;
+  if FTargetPos = iLevel.Player.Position then iLevel.Player.MultiMove.Stop;
 
   if isPlayer then
   begin
@@ -1611,9 +1617,8 @@ begin
   iKillerUID := 0;
   if aKiller <> nil then iKillerUID := aKiller.UID;
 
-  // TODO: Change to Player.RegisterKill(kill)
   if ( not ( BF_FRIENDLY in FFlags ) ) and ( not ( BF_ILLUSION in FFlags ) ) and ( not ( BF_NOKILL in FFlags ) ) then
-    Player.RegisterKill( FID, aKiller, aWeapon, not Flags[ BF_RESPAWN ] );
+    iLevel.Player.RegisterKill( FID, aKiller, aWeapon, not Flags[ BF_RESPAWN ] );
 
   if (aKiller <> nil) and (aWeapon <> nil) then
     aWeapon.CallHook(Hook_OnKill, [ aKiller, Self ]);
@@ -1674,7 +1679,7 @@ begin
 
   IO.addKillAnimation( 400, aDelay, Self );
 
-  if not (BF_NOEXP in FFlags) then Player.AddExp(FExpValue);
+  if not (BF_NOEXP in FFlags) then iLevel.Player.AddExp(FExpValue);
 
   iLevel.Kill( Self );
 end;
@@ -2804,31 +2809,37 @@ begin
   Result := 1;
 end;
 
-function lua_being_apply_damage(L: Plua_State): Integer; cdecl;
-var State             : TLuaGameStack;
-    Being             : TBeing;
+function lua_being_apply_damage( L : Plua_State ) : Integer; cdecl;
+var iState            : TLuaGameStack;
+    iBeing            : TBeing;
+    iPlayer           : TPlayer;
     iSource           : TItem;
     iKilledBy         : AnsiString;
     iPreviousKilledBy : AnsiString;
     iPreviousMelee    : Boolean;
 begin
-  State.Init(L);
-  Being := State.ToObject(1) as TBeing;
-  iSource := State.ToObjectOrNil(5) as TItem;
+  iState.Init( L );
+  iBeing := iState.ToObject( 1 ) as TBeing;
+  iSource := iState.ToObjectOrNil( 5 ) as TItem;
   iKilledBy := '';
-  if State.IsString(5) and ( not Player.Dead ) then
+  if iState.IsString( 5 ) then
   begin
-    iKilledBy := State.ToString(5);
-    if iKilledBy <> '' then
+    // Damage may destroy the target; the run's player survives until Session cleanup.
+    iPlayer := TLevel( iBeing.Parent ).Player;
+    if not iPlayer.Dead then
     begin
-      iPreviousKilledBy := Player.KilledBy;
-      iPreviousMelee    := Player.KilledMelee;
-      Player.SetKilledBy( iKilledBy, False );
+      iKilledBy := iState.ToString( 5 );
+      if iKilledBy <> '' then
+      begin
+        iPreviousKilledBy := iPlayer.KilledBy;
+        iPreviousMelee    := iPlayer.KilledMelee;
+        iPlayer.SetKilledBy( iKilledBy, False );
+      end;
     end;
   end;
-  Being.ApplyDamage(State.ToInteger(2),TBodyTarget( State.ToInteger(3) ), TDamageType( State.ToInteger(4,Byte(Damage_Bullet)) ), iSource, 0 );
-  if ( iKilledBy <> '' ) and ( not Player.Dead ) then
-    Player.SetKilledBy( iPreviousKilledBy, iPreviousMelee );
+  iBeing.ApplyDamage( iState.ToInteger( 2 ), TBodyTarget( iState.ToInteger( 3 ) ), TDamageType( iState.ToInteger( 4, Byte( Damage_Bullet ) ) ), iSource, 0 );
+  if ( iKilledBy <> '' ) and ( not iPlayer.Dead ) then
+    iPlayer.SetKilledBy( iPreviousKilledBy, iPreviousMelee );
   Result := 0;
 end;
 

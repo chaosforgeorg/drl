@@ -178,6 +178,7 @@ TLevel = class(TLuaMapNode)
     function getSpriteTop( Index : TCoord2D ): TSprite;
     function getSpriteBottom( Index : TCoord2D ): TSprite;
   public
+    property Player    : TPlayer                    read FPlayer;
     property Perks     : TPerks                     read FPerks;
     property Data      : TGameData                  read FData;
     property Markers   : TMarkerStore               read FMarkers;
@@ -287,17 +288,17 @@ end;
 
 procedure TLevel.playSound( const aSoundID: DWord; aCoord : TCoord2D; aDelay : DWord = 0 );
 begin
-  IO.Audio.PlaySound(aSoundID, aCoord, aDelay);
+  IO.PlaySound(aSoundID, aCoord, aDelay);
 end;
 
 procedure TLevel.playSound(const SoundID: string; coord : TCoord2D; aDelay : DWord = 0 );
 begin
-  IO.Audio.PlaySound(IO.Audio.ResolveSoundID([SoundID]), coord, aDelay );
+  IO.PlaySound(IO.Audio.ResolveSoundID([SoundID]), coord, aDelay );
 end;
 
 procedure TLevel.playSound(const BaseID, SoundID: string; coord : TCoord2D );
 begin
-  IO.Audio.PlaySound(IO.Audio.ResolveSoundID([BaseID+'.'+SoundID,SoundID]), coord );
+  IO.PlaySound(IO.Audio.ResolveSoundID([BaseID+'.'+SoundID,SoundID]), coord );
 end;
 
 function TLevel.GetEnemiesVisible : Word;

@@ -56,6 +56,7 @@ type TDRLIO = class( TIORL )
   procedure LoadProgress( aProgress : DWord );
   procedure LoadStop;
   procedure Update( aMSec : DWord ); override;
+  procedure PlaySound( aSoundID : Word; aCoord : TCoord2D; aDelay : DWord = 0 );
 
   function EventToUIInput( const aEvent : TIOEvent ) : Integer; override;
   function CommandEventPending : Boolean;
@@ -125,6 +126,8 @@ type TDRLIO = class( TIORL )
   procedure SetAutoTarget( aTarget : TCoord2D ); virtual;
   function ResolveSub( const aID : Ansistring ) : Ansistring;
   procedure RunModuleChoice; virtual;
+private
+  function GetHeartbeatVolume : Integer;
 protected
   procedure UpdateStyles;
   procedure ExplosionMark( aCoord : TCoord2D; aColor : Byte; aDuration : DWord; aDelay : DWord ); virtual; abstract;
@@ -408,7 +411,7 @@ begin
 
   FMsgQueue := True;
   FLoading  := nil;
-  FAudio    := TDRLAudio.Create;
+  FAudio    := TDRLAudio.Create( FVisualRNG );
   InitializeMessages( 2, 77, @EventMore, Option_MessageBuffer );
   Messages.GroupMultiple := Configuration.GetBoolean( 'group_messages' );
   inherited Configure( dfdata.Config );
@@ -1083,6 +1086,16 @@ begin
   end;
 end;
 
+function TDRLIO.GetHeartbeatVolume : Integer;
+var iPlayer : TBeing;
+begin
+  if ( FSession = nil ) or ( FSession.State <> DSPlaying ) then Exit( 0 );
+  iPlayer := FSession.Player;
+  if ( iPlayer = nil ) or iPlayer.Dead or ( iPlayer.HP * 2 >= iPlayer.HPMax ) then Exit( 0 );
+  Result := Round( 200.0 * ( iPlayer.HPMax - 2 * iPlayer.HP ) / Max( iPlayer.HPMax - 2, 1 ) );
+  Result := Clamp( Result, 0, 100 );
+end;
+
 procedure TDRLIO.Update( aMSec : DWord );
 begin
   if Assigned( Sound ) then
@@ -1107,11 +1120,20 @@ begin
   end;
 
   FTime += aMSec;
-  FAudio.Update( aMSec );
+  if ( FSession <> nil ) and ( FSession.Player <> nil ) then
+    FAudio.Update( aMSec, FSession.Player.Position, GetHeartbeatVolume )
+  else
+    FAudio.Update( aMSec );
 
   inherited Update( aMSec );
  // if aMSec > 200 then
  //   VTIG_EventClear;
+end;
+
+procedure TDRLIO.PlaySound( aSoundID : Word; aCoord : TCoord2D; aDelay : DWord );
+begin
+  if ( FSession = nil ) or ( FSession.Player = nil ) then Exit;
+  FAudio.PlaySound( aSoundID, aCoord, FSession.Player.Position, aDelay );
 end;
 
 function TDRLIO.EventToUIInput( const aEvent : TIOEvent ) : Integer;

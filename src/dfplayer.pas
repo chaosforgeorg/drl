@@ -867,48 +867,7 @@ begin
   Result := 1;
 end;
 
-function lua_player_set_achievement(L: Plua_State): Integer; cdecl;
-var iState : TLuaGameStack;
-    iID    : Ansistring;
-begin
-  iState.Init(L);
-  if (iState.ToObject(1) as TPlayer) = nil then Exit(0);
-  iID := iState.ToString(2);
-  if DRL.Store.SetAchievement( iID ) then
-    Log( LOGINFO, 'lua: set_achievement('+iID+') succeeded!');
-  Result := 0;
-end;
-
-function lua_player_store_inc_stat(L: Plua_State): Integer; cdecl;
-var iState : TLuaGameStack;
-    iID    : Ansistring;
-begin
-  if GodMode then Exit(0);
-  iState.Init(L);
-  if (iState.ToObject(1) as TPlayer) = nil then Exit(0);
-  iID := iState.ToString(2);
-  if DRL.Store.IncStat( iID ) then
-    Log( LOGINFO, 'lua: store_inc_stat('+iID+') succeeded!');
-  Result := 0;
-end;
-
-function lua_player_store_mark_stat(L: Plua_State): Integer; cdecl;
-var iState : TLuaGameStack;
-    iID    : Ansistring;
-begin
-  if GodMode then Exit(0);
-  iState.Init(L);
-  if (iState.ToObject(1) as TPlayer) = nil then Exit(0);
-  iID := iState.ToString(2);
-  if DRL.Store.MarkStat( iID ) then
-    Log( LOGINFO, 'lua: store_mark_stat('+iID+') succeeded!');
-  Result := 0;
-end;
-
-const lua_player_lib : array[0..14] of luaL_Reg = (
-      ( name : 'set_achievement'; func : @lua_player_set_achievement),
-      ( name : 'store_inc_stat';  func : @lua_player_store_inc_stat),
-      ( name : 'store_mark_stat'; func : @lua_player_store_mark_stat),
+const lua_player_lib : array[0..11] of luaL_Reg = (
       ( name : 'add_exp';         func : @lua_player_add_exp),
       ( name : 'remove_kill';     func : @lua_player_remove_kill),
       ( name : 'add_trait';       func : @lua_player_add_trait),

@@ -84,7 +84,7 @@ type TDRLApplication = class( TRLApplication )
 implementation
 
 uses {$IFDEF WINDOWS}windows,{$ENDIF}
-     {$IFDEF WINDOWS}vos,{$ENDIF} vdebug, vlog, vluastate,
+     {$IFDEF WINDOWS}vos,{$ENDIF} vdebug, vlog, vluastate, vluastore,
      dfmap, drlconfig, drlconfiguration, drlgfxio, drlhooks, drlio, drllua, drltextio, drlworkshop;
 
 type TDRLConfigurationState = class( TDRLConfiguration )
@@ -143,6 +143,7 @@ begin
   inherited Create(aPaths, aConfiguration);
   ApplyConfiguration;
   FStore := TStoreInterface.Get;
+  FStore.SuppressProgress := GodMode;
   FModules := TDRLModules.Create(Paths.DataPath, aModulesFile);
   FModules.ScanModules;
   FModErrors := TStringGArray.Create;
@@ -273,6 +274,7 @@ begin
   FSession.Context.BindLua( FLua );
   TDRLLua( FLua ).BindNodeContext( FSession.Context );
   FData.RegisterLuaAPI( FLua );
+  RegisterStoreLuaAPI( FLua, FStore );
   TDRLLua( FLua ).ReadWad( FHelp, FModErrors );
   if GodMode then RegisterDebugConsole( VKEY_F1 );
   FLua.CallDefaultResult := True;

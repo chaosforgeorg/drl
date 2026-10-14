@@ -114,7 +114,7 @@ begin
     else iSoundID := IO.Audio.ResolveSoundID( [ FID+'.'+aSoundID, FSoundID+'.'+aSoundID, aSoundID ] );
 
   if iSoundID = 0 then Exit( False );
-  IO.Audio.PlaySound( iSoundID, aPosition, aDelay );
+  IO.PlaySound( iSoundID, aPosition, aDelay );
   Exit( True );
 end;
 

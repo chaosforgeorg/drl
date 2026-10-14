@@ -423,7 +423,7 @@ end;
 
 procedure TSoundEventAnimation.OnStart;
 begin
-  IO.Audio.PlaySound( FSoundID, FPosition );
+  IO.PlaySound( FSoundID, FPosition );
 end;
 
 { TGFXParticleBurstAnimation }
