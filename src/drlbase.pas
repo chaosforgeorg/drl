@@ -189,7 +189,7 @@ procedure TTargeting.Update( aRange : Integer );
 var iBeing : TBeing;
 begin
   FSession.Level.UpdateAutoTarget( FList, FSession.Player, aRange );
-  if (FLastUID <> 0) and FSession.Level.isAlive( FLastUID ) then
+  if FLastUID <> 0 then
   begin
     iBeing := FSession.Level.FindChild( FLastUID ) as TBeing;
     if iBeing <> nil then
@@ -1588,6 +1588,8 @@ begin
 
     while ( State = DSPlaying ) do
     begin
+      // No callback is running between loop iterations.
+      FLevel.FlushDestroyed;
       if IO.MsgPending then
       begin
         IO.MsgUpdate;
@@ -1671,7 +1673,7 @@ begin
     if State = DSEnding then
     begin
       IO.WaitForAnimation;
-      if FPlayer.Dying then
+      if FPlayer.Dead then
       begin
         FPlayer.AnimCount := 1;
         IO.Msg( 'You die!...' );
@@ -1887,7 +1889,7 @@ begin
 
     IO.Msg('Game loaded.');
 
-    if FPlayer.Dead then
+    if FPlayer.HP <= 0 then
       raise EException.Create('Player in save file is dead anyway.');
     LoadSaveFile := True;
     FPadMoved    := True;

@@ -86,7 +86,6 @@ private
   function ActionQuickKey( aIndex : Byte; aTarget : TCoord2D ) : Boolean;
   procedure ResortStacks;
 public
-  property Dying           : Boolean read FDying;
   property DamagedLastTurn : Boolean read FDamagedLastTurn write FDamagedLastTurn;
   property MultiMove       : TMultiMove  read FMultiMove;
   property Statistics      : TStatistics read FStatistics;
@@ -321,7 +320,7 @@ end;
 
 procedure TPlayer.ApplyDamage(aDamage: LongInt; aTarget: TBodyTarget; aDamageType: TDamageType; aSource : TItem; aDelay : Integer );
 begin
-  if ( aDamage < 0 ) or ( BF_INV in FFlags ) or Dead then Exit;
+  if ( aDamage < 0 ) or ( BF_INV in FFlags ) or FDying then Exit;
   if aDamage > 0 then
   begin
     FMultiMove.Stop;
@@ -380,14 +379,9 @@ begin
 end;
 
 function TPlayer.PlayerTick : Boolean;
-var iUIDs       : TUIDStore;
-    iThisUID    : DWord;
 begin
-  if Dead then Exit( False );
-  iUIDs := FContext.UIDs;
-  iThisUID := UID;
+  if FDead then Exit( False );
   TLevel(Parent).CallHook( FPosition, Self, CellHook_OnEnter );
-  if iUIDs[ iThisUID ] = nil then Exit( False );
 
   MasterDodge := False;
   if DRL.State <> DSPlaying then Exit( False );
@@ -592,7 +586,9 @@ begin
     Exit;
   end;
 
+  // The player's death completes here; Session keeps owning the player.
   FDying := True;
+  FDead  := True;
   DRL.SetState( DSEnding );
 
   if DRL.GameWon then

@@ -74,7 +74,6 @@ TBeing = class(TThing,IPathQuery)
     function canPackReload : Boolean;
     function getStrayChance( aDefender : TBeing; aWeapon : TItem ) : Byte;
     function Preposition( Creature : AnsiString ) : string;
-    function Dead : Boolean;
     procedure Remove( Node : TNode ); override;
     function ASCIIMoreCode : AnsiString; virtual;
     function GetVisualOverlay : TThing;
@@ -207,7 +206,7 @@ TBeing = class(TThing,IPathQuery)
 implementation
 
 uses math,
-     vlualibrary, vluaentitynode, vuid, vdebug, vluatools, vcolor, vvector,
+     vlualibrary, vluaentitynode, vdebug, vluatools, vcolor, vvector,
      dfplayer, dflevel, dfmap, drlhooks, drlbase, drlio, drllua;
 
 const PAIN_DURATION = 500;
@@ -403,19 +402,15 @@ begin
 end;
 
 procedure TBeing.HandleShotgunFire( aTarget : TCoord2D; aShotGun : TItem; aAltFire : Boolean; aShots : DWord );
-var iUIDs      : TUIDStore;
-    iThisUID   : DWord;
-    iDual      : Boolean;
+var iDual      : Boolean;
     iCount     : DWord;
     iDamageMul : Single;
     iDamage    : TDiceRoll;
     iDamageType: TDamageType;
     iBeing     : TBeing;
 begin
-  iUIDs := FContext.UIDs;
   Assert( aShotGun <> nil );
   Assert( aShotGun.Flags[ IF_SHOTGUN ] );
-  iThisUID := FUID;
   iBeing   := TLevel(Parent).Being[ aTarget ];
 
   iDual := aShotGun.Flags[ IF_DUALSHOTGUN ];
@@ -434,7 +429,7 @@ begin
     iDamageType := aShotGun.DamageType;
     if (BF_ARMYDEAD in FFlags) and (iDamageType = DAMAGE_SHARPNEL) then iDamageType := Damage_IgnoreArmor;
     TLevel(Parent).ShotGun( FPosition, aTarget, iDamage, iDamageMul, iDamageType, aShotgun );
-    if iUIDs[ iThisUID ] = nil then Exit;
+    if FDead then Exit;
     if (not iDual) and (aShotGun.Shots > 1) then IO.Delay(30);
   end;
 end;
@@ -543,11 +538,6 @@ begin
     'a','e','i','o','u' : Exit('an ');
   end;
   Exit('a ');
-end;
-
-function TBeing.Dead: Boolean;
-begin
-  Exit( FDying or ( FHP <= 0 ) );
 end;
 
 procedure TBeing.Remove( Node : TNode );
@@ -746,16 +736,13 @@ begin
 end;
 
 function TBeing.ActionReload : Boolean;
-var iUIDs     : TUIDStore;
-    iSCount   : LongInt;
+var iSCount   : LongInt;
     iWeapon   : TItem;
     iItem     : TItem;
-    iAmmoUID  : TUID;
     iIsPack   : Boolean;
     iIsGround : Boolean;
     iAmmoName : AnsiString;
 begin
-  iUIDs := FContext.UIDs;
   iSCount := SCount;
   iWeapon := Inv.Slot[ efWeapon ];
   if ( iWeapon = nil ) or ( not iWeapon.isRanged ) then Exit( Fail( 'You have no weapon to reload.',[] ) );
@@ -774,7 +761,6 @@ begin
 
   if iItem = nil then Exit( Fail( 'You have no more ammo for the %s!',[iWeapon.Name] ) );
 
-  iAmmoUID  := iItem.UID;
   iAmmoName := iItem.Name;
 
   iIsPack     := iItem.isAmmoPack;
@@ -788,7 +774,7 @@ begin
     Emote( 'You '+IIf(iIsPack,'quickly ')+'reload the %s%s.', 'reloads his %s%s.', [iWeapon.Name,Iif(iIsGround,' from the ground')] );
   end;
 
-  if iIsPack and ( iUIDs[ iAmmoUID ] = nil ) and IsPlayer then
+  if iIsPack and iItem.Dead and IsPlayer then
     IO.Msg( 'Your %s is depleted.', [iAmmoName] );
   
   Exit( True );
@@ -828,7 +814,7 @@ begin
     if iWeapon.Flags[ IF_DESTROY ] then
     begin
       FInv.setSlot( efWeapon, nil );
-      FreeAndNil( iWeapon );
+      iWeapon.Discard;
     end;
     Exit;
   end;
@@ -839,15 +825,13 @@ begin
 end;
 
 function TBeing.ActionFire ( aTarget : TCoord2D; aWeapon : TItem; aAltFire : Boolean; aDelay : Integer = 0; aForceSingle : Boolean = False ) : Boolean;
-var iUIDs       : TUIDStore;
-    iLevel      : TLevel;
+var iLevel      : TLevel;
     iLimitRange : Boolean;
     iRange      : Byte;
     iDist       : Byte;
     iAltFire    : Boolean;
-    iTargetUID  : TUID;
+    iTarget     : TBeing;
 begin
-  iUIDs := FContext.UIDs;
   if (aWeapon = nil) then Exit( False );
   iAltFire    := aAltFire and aWeapon.HasHook( Hook_OnAltFire );
 
@@ -894,15 +878,13 @@ begin
     else Dec( FSpeedCount, getFireCost( iAltFire, False ) );
 
   iLevel := TLevel(Parent);
-  iTargetUID := 0;
-  if iLevel.Being[ aTarget ] <> nil then
-    iTargetUID := iLevel.Being[ aTarget ].UID;
+  iTarget := iLevel.Being[ aTarget ];
 
   if ( not FireRanged( aTarget, aWeapon, iAltFire, aDelay )) or iLevel.Player.Dead then Exit( True );
   if ( not aForceSingle ) and canDualWield and ( Inv.Slot[ efWeapon2 ].Flags[ IF_NOAMMO ] or ( Inv.Slot[ efWeapon2 ].Ammo > 0 ) ) then
   begin
-    if ( iTargetUID <> 0 ) and ( iUIDs[ iTargetUID ] <> nil ) then
-      aTarget := TBeing( iUIDs[ iTargetUID ] ).Position;
+    if ( iTarget <> nil ) and ( not iTarget.Dead ) then
+      aTarget := iTarget.Position;
     if Inv.Slot[ efWeapon2 ].CallHookCheck( Hook_OnFire, [Self, False, aAltFire] ) then
       if ( not FireRanged( aTarget, Inv.Slot[ efWeapon2 ], iAltFire, aDelay + 100 )) or iLevel.Player.Dead then Exit( True );
   end;
@@ -979,8 +961,7 @@ begin
 end;
 
 function TBeing.ActionUse ( aItem : TItem; aTarget : TCoord2D ) : Boolean;
-var iUIDs      : TUIDStore;
-    isOnGround : Boolean;
+var isOnGround : Boolean;
     isLever    : Boolean;
     isUsable   : Boolean;
     isEquip    : Boolean;
@@ -991,13 +972,11 @@ var iUIDs      : TUIDStore;
     isURanged  : Boolean;
     iSlot      : TEqSlot;
     iUseCost   : Integer;
-    iUID       : TUID;
     iOldItem   : TItem;
     iOldName   : AnsiString;
     iDropOld   : Boolean;
 	
 begin
-  iUIDs := FContext.UIDs;
   isFailed   := False;
   iDropOld   := False;
   iOldItem   := nil;
@@ -1023,7 +1002,6 @@ begin
   isURanged := aItem.IType = ITEMTYPE_URANGED;
 
   isUse   := not isEquip;
-  iUID    := aItem.uid;
   if isOnGround then
     begin
       if isLever then
@@ -1106,7 +1084,7 @@ begin
     begin
       aItem.Flags[ IF_NODESTROY ] := True;
       isUsedUp := ActionFire( aTarget, aItem, False, 0, True );
-      if iUIDs.Get( iUID ) <> nil then aItem.Flags[ IF_NODESTROY ] := False;
+      if not aItem.Dead then aItem.Flags[ IF_NODESTROY ] := False;
       if isUsedUp
         then Emote( 'You use %s.', 'uses %s.', [ aItem.GetName(False, True) ] )
         else Exit( Fail( 'Out of range!', [] ) );
@@ -1114,12 +1092,12 @@ begin
     end
     else
       isUsedUp := aItem.CallHookCheck( Hook_OnUse,[Self] );
-    if isUsedUp and ((iUIDs.Get( iUID ) <> nil)  and (isLever or isUsable)) then
+    if isUsedUp and ( not aItem.Dead ) and ( isLever or isUsable ) then
     begin
       if ( not isOnGround ) and ( aItem.Parent = Self ) then
         aItem := FInv.SeekStack( aItem.NID );
       aItem.Amount := aItem.Amount - 1;
-      if aItem.Amount < 1 then FreeAndNil( aItem );
+      if aItem.Amount < 1 then aItem.Discard;
     end;
   end;
 
@@ -1140,7 +1118,7 @@ begin
   if ( aDisassembleID <> '' ) then
   begin
     iName   := aItem.Name;
-    FreeAndNil( aItem );
+    aItem.Discard;
     aItem := TItem.Create( aDisassembleID, FContext );
     aItem.PlaySound('reload', FPosition );
     if not Inv.isFull
@@ -1160,7 +1138,7 @@ begin
   if iAmount = 0 then
   begin
     aItem.Ammo := 0;
-    if aItem.isAmmoPack then FreeAndNil( aItem );
+    if aItem.isAmmoPack then aItem.Discard;
     Exit( Success( 'You fully unload the %s.', [iName], ActionCostReload ) );
   end;
   if aItem.Ammo = iAmount then Exit( Fail( 'You don''t have enough room in your backpack to unload the %s.', [ iName ] ) );
@@ -1392,7 +1370,8 @@ begin
     aWeapon.Ammo := aWeapon.Ammo + iAmmo;
     if iCount = 0 then
     begin
-      FreeAndNil( aAmmoItem );
+      aAmmoItem.Discard;
+      aAmmoItem := nil;
       if not iPack then
       begin
         if ( not aSingle ) and ( aWeapon.AmmoMax <> aWeapon.Ammo ) then
@@ -1412,8 +1391,7 @@ begin
 end;
 
 function TBeing.FireRanged( aTarget : TCoord2D; aGun : TItem; aAlt : Boolean; aDelay : Integer = 0 ) : Boolean;
-var iUIDs        : TUIDStore;
-    iLevel       : TLevel;
+var iLevel       : TLevel;
     iShots       : Integer;
     iShotsBonus  : Integer;
     iShotCost    : Integer;
@@ -1421,15 +1399,11 @@ var iUIDs        : TUIDStore;
     iFreeShot    : Boolean;
     iResult      : Boolean;
     iSecond      : Boolean;
-    iUID, iUIDW  : TUID;
     iTargetBeing : TBeing;
 begin
-  iUIDs := FContext.UIDs;
   if DRL.State <> DSPlaying then Exit( False );
   if aTarget = FPosition then Exit( False );
   if aGun = nil then Exit( False );
-  iUIDW := aGun.UID;
-  iUID  := FUID;
 
   iShotsBonus := GetBonus( Hook_getShotsBonus, [ aGun, aAlt ] );
   iShots      := Max( aGun.Shots, 1 );
@@ -1482,35 +1456,31 @@ begin
     HandleShots( aTarget, aGun, iShots, aAlt, aDelay );
 
   if not ( DRL.State in [ DSPlaying, DSNextLevel ] ) then Exit( False );
-  if iUIDs[ iUID ] = nil then Exit( False );
+  if FDead then Exit( False );
   FTargetPos := aTarget;
-  if iUIDs[ iUIDW ] = nil then aGun := nil;
+  if aGun.Dead then aGun := nil;
 
   if aGun <> nil then aGun.CallHook( Hook_OnFired, [ Self, iSecond, DRL.State <> DSPlaying ] );
   CallHook( Hook_OnFired, [ aGun, iSecond, DRL.State <> DSPlaying ] );
 
   if aGun <> nil then
     if aGun.Flags[ IF_FIREDESTROY ] then
-      FreeAndNil( aGun );
+      aGun.Discard;
 
   Exit( True );
 end;
 
 procedure TBeing.Action;
-var iUIDs    : TUIDStore;
-    iThisUID : DWord;
 begin
-  iUIDs := FContext.UIDs;
   FMeleeAttack := False;
-  iThisUID := UID;
   TLevel(Parent).CallHook( FPosition, Self, CellHook_OnEnter );
-  if iUIDs[ iThisUID ] = nil then Exit;
+  if FDead then Exit;
   LastPos := FPosition;
-  if iUIDs[ iThisUID ] = nil then Exit;
-  if CallHook(Hook_OnPreAction,[])  then if iUIDs[ iThisUID ] = nil then Exit;
+  CallHook(Hook_OnPreAction,[]);
+  if FDead then Exit;
   CallHook(Hook_OnAction,[]);
-  if iUIDs[ iThisUID ] = nil then Exit;
-  if CallHook(Hook_OnPostAction,[]) then if iUIDs[ iThisUID ] = nil then Exit;
+  if FDead then Exit;
+  CallHook(Hook_OnPostAction,[]);
   while FSpeedCount >= 5000 do Dec( FSpeedCount, 1000 );
 end;
 
@@ -1564,9 +1534,9 @@ end;
 
 procedure TBeing.Tick( aTime : LongInt );
 begin
-  if Dead then Exit;
+  if FDead then Exit;
   FInv.Tick( aTime );
-  if Dead then Exit;
+  if FDead then Exit;
 
   if ( FHP * 100 ) > Integer( FHPMax * FHPDecayMax ) then
     if FHP > 1 then
@@ -1595,16 +1565,13 @@ end;
 
 
 procedure TBeing.Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer );
-var iUIDs      : TUIDStore;
-    iItem      : TItem;
+var iItem      : TItem;
     iCorpse    : Word;
     iBlood     : Byte;
     iDir       : TDirection;
     iLevel     : TLevel;
-    iKillerUID : TUID;
     iMeleeKill : Boolean;
 begin
-  iUIDs := FContext.UIDs;
   iLevel := TLevel(Parent);
   if FDying then Exit;
   if not CallHookCheck( Hook_OnDieCheck, [ aOverkill ] ) then
@@ -1613,9 +1580,7 @@ begin
     Exit;
   end;
   FDying := True;
-
-  iKillerUID := 0;
-  if aKiller <> nil then iKillerUID := aKiller.UID;
+  if ( aKiller <> nil ) and aKiller.Dead then aKiller := nil;
 
   if ( not ( BF_FRIENDLY in FFlags ) ) and ( not ( BF_ILLUSION in FFlags ) ) and ( not ( BF_NOKILL in FFlags ) ) then
     iLevel.Player.RegisterKill( FID, aKiller, aWeapon, not Flags[ BF_RESPAWN ] );
@@ -1623,14 +1588,13 @@ begin
   if (aKiller <> nil) and (aWeapon <> nil) then
     aWeapon.CallHook(Hook_OnKill, [ aKiller, Self ]);
 
-  if iUIDs[ iKillerUID ] = nil then aKiller := nil;
+  if ( aKiller <> nil ) and aKiller.Dead then aKiller := nil;
 
   iMeleeKill := False;
   if (aKiller <> nil) then
   begin
     iMeleeKill := aKiller.MeleeAttack;
     aKiller.CallHook( Hook_OnKill, [ Self, aWeapon, iMeleeKill ] );
-    if iUIDs[ iKillerUID ] = nil then aKiller := nil;
   end;
 
   if ( DRL.State in [ DSPlaying, DSEnding ] ) and ( not DRL.GameWon ) then
@@ -1655,8 +1619,7 @@ begin
 
   iDir.code := 5;
 
-  if iUIDs[ iKillerUID ] = nil then aKiller := nil;
-  if aKiller <> nil then
+  if ( aKiller <> nil ) and ( not aKiller.Dead ) then
     iDir.CreateSmooth( aKiller.FPosition, FPosition );
 
   iBlood := aBloodAmount;
@@ -1720,14 +1683,12 @@ var iSlot       : TEqSlot;
     iWeapon     : TItem;
     iAttackCost : DWord;
     iLevel      : TLevel;
-    iUID        : TUID;
     iPosition   : TCoord2D;
 begin
   Result := False;
   FMeleeAttack := True;
   iSlot     := efTorso;
   iWeapon   := nil;
-  iUID      := FUID;
   iLevel    := TLevel(Parent);
   iPosition := Position;
   if iLevel.Being[ aWhere ] <> nil then
@@ -1746,7 +1707,7 @@ begin
 
     if iLevel.AnimationVisible( Position, Self ) then
     begin
-      IO.addBumpAnimation( VisualTime( iAttackCost, AnimationSpeedAttack ), 0, iUID, iPosition, aWhere, Sprite, 0.5 );
+      IO.addBumpAnimation( VisualTime( iAttackCost, AnimationSpeedAttack ), 0, FUID, iPosition, aWhere, Sprite, 0.5 );
       // Melee FX animation - weapon sprite takes priority, fallback to attacker's melsprite
       if ( iWeapon <> nil ) and ( iWeapon.MelSprite.SpriteID[0] > 0 ) then
         IO.addFXAnimation( VisualTime( iAttackCost, iWeapon.MelSprite.Frames * iWeapon.MelSprite.Frametime ), 0, aWhere, iWeapon.MelSprite )
@@ -1758,7 +1719,7 @@ begin
       Result := iLevel.DamageTile( aWhere, rollMeleeDamage( iWeapon ), Damage_Melee );
     Dec( FSpeedCount, iAttackCost )
   end;
-  if iLevel.isAlive( iUID ) then
+  if not FDead then
   begin
     FMeleeAttack := False;
     if Result and aMoveOnKill and ( iPosition = Position ) and ( TryMove( aWhere ) = MoveOk ) then
@@ -1770,7 +1731,6 @@ end;
 
 function TBeing.Attack( aTarget : TBeing; aSecond : Boolean = False; aWeapon : TItem = nil ) : Boolean;
 var iGameRNG      : TRNG;
-    iUIDs         : TUIDStore;
     iName         : string;
     iDefenderName : string;
     iResult       : string;
@@ -1781,11 +1741,8 @@ var iGameRNG      : TRNG;
     iToHit        : Integer;
     iDualAttack   : Boolean;
     iAttackCost   : DWord;
-    iTargetUID    : TUID;
-    iUID          : TUID;
     iMissed       : Boolean;
 begin
-  iUIDs := FContext.UIDs;
   Result := False;
   if BF_NOMELEE in FFlags then Exit;
   if aTarget = nil then Exit;
@@ -1793,8 +1750,6 @@ begin
   iGameRNG     := iLevel.GameRNG;
   FMeleeAttack := True;
   iDualAttack  := False;
-  iTargetUID   := aTarget.UID;
-  iUID         := UID;
   iMissed      := False;
   iDamageType  := Damage_Melee;
 
@@ -1881,18 +1836,18 @@ begin
     // Apply damage
     if not ( BF_ILLUSION in FFlags ) then
       aTarget.ApplyDamage( iDamage, Target_Torso, iDamageType, aWeapon, 0 );
-    if ( DRL.State <> DSPlaying ) or ( not iLevel.isAlive( iUID ) ) then Exit;
+    if ( DRL.State <> DSPlaying ) or FDead then Exit;
   end;
 
   if aWeapon <> nil then aWeapon.CallHook( Hook_OnFired, [ Self, aSecond ] );
   CallHook( Hook_OnFired, [ aWeapon, aSecond ] );
 
-  Result := not TLevel(Parent).isAlive( iTargetUID );
+  Result := aTarget.Dead;
 
   // Dualblade attack
   if iDualAttack and (not aSecond) and (not Result) then
     Result := Attack( aTarget, True );
-  if iUIDs[ iUID ] <> nil then FMeleeAttack := False;
+  FMeleeAttack := False;
 end;
 
 function TBeing.meleeWeaponSlot: TEqSlot;
@@ -1948,12 +1903,9 @@ end;
 procedure TBeing.ApplyDamage( aDamage : LongInt; aTarget : TBodyTarget; aDamageType : TDamageType; aSource : TItem; aDelay : Integer );
 var iLevel         : TLevel;
     iGameRNG       : TRNG;
-    iUIDs          : TUIDStore;
     iDirection     : TDirection;
     iArmor         : TItem;
     iActive        : TBeing;
-    iActiveUID     : TUID;
-    iThisUID       : TUID;
     iSlot          : TEqSlot;
     iArmorDamage   : LongInt;
     iProtection    : LongInt;
@@ -1966,9 +1918,9 @@ var iLevel         : TLevel;
     iDeathMessage  : AnsiString;
     iOldDurability : LongInt;
 begin
-  iUIDs := FContext.UIDs;
-  if ( aDamage < 0 ) or (BF_INV in FFlags) or Dead then Exit;
-  iThisUID := UID;
+  if ( aDamage < 0 ) or (BF_INV in FFlags) or FDying then Exit;
+  // A source destroyed by an earlier callback no longer takes part.
+  if ( aSource <> nil ) and aSource.Dead then aSource := nil;
 
   if aSource <> nil then
   begin
@@ -1979,21 +1931,17 @@ begin
   iLevel     := TLevel(Parent);
   iGameRNG   := iLevel.GameRNG;
   iActive    := iLevel.ActiveBeing;
-  iActiveUID := 0;
   if iActive <> nil then
   begin
-    iActiveUID   := iActive.UID;
     iMeleeAttack := iActive.MeleeAttack;
     if ( aSource <> nil ) and ( iActive.Inv.Equipped( aSource ) or ( aSource.IType = ITEMTYPE_URANGED ) ) then
     begin
-      if iActive.CallHook( Hook_OnDamage, [ Self, aDamage, aSource, aSource.isMelee ] ) then
-        if iUIDs.Get( iThisUID ) = nil then Exit;
-      if aSource.CallHook( Hook_OnDamage, [ Self, aDamage, iActive ] ) then
-        if iUIDs.Get( iThisUID ) = nil then Exit;
+      iActive.CallHook( Hook_OnDamage, [ Self, aDamage, aSource, aSource.isMelee ] );
+      if FDying then Exit;
+      aSource.CallHook( Hook_OnDamage, [ Self, aDamage, iActive ] );
     end
     else if iMeleeAttack then
-      if iActive.CallHook( Hook_OnDamage, [ Self, aDamage, aSource, True ] ) then
-        if iUIDs.Get( iThisUID ) = nil then Exit;
+      iActive.CallHook( Hook_OnDamage, [ Self, aDamage, aSource, True ] );
   end
   else
   begin
@@ -2003,12 +1951,9 @@ begin
 
   if FDying then Exit;
 
-  if iUIDs[ iActiveUID ] = nil then iActive := nil;
-
   CallHook( Hook_OnReceiveDamage, [ aDamage, aSource, iActive ] );
 
   if FDying or ( BF_INV in FFlags ) then Exit;
-  if iUIDs[ iActiveUID ] = nil then iActive := nil;
 
   iResist := 0;
   if aDamageType <> Damage_IgnoreArmor then
@@ -2067,7 +2012,6 @@ begin
 
     if iArmorDamage > 0 then iArmor.CallHook( Hook_OnReceiveDamage, [ aDamage, aSource, iActive ] );
 
-    if iUIDs[ iActiveUID ] = nil then iActive := nil;
     if (iOldDurability > 0) and iArmor.Flags[ IF_SHIELD ] then 
     begin
       CallHook( Hook_OnAttacked, [ iActive, aSource ] );
@@ -2079,7 +2023,7 @@ begin
       if IsPlayer then
         if aTarget = Target_Torso then IO.Msg('Your '+iArmor.Name+' is completely destroyed!')
                                   else IO.Msg('Your '+iArmor.Name+' are completely destroyed!');
-      FreeAndNil( iArmor );
+      iArmor.Discard;
     end
     else if IsPlayer and ( iProtection <> iArmor.GetProtection ) then
       if aTarget = Target_Torso then IO.Msg('Your '+iArmor.Name+' is damaged!')
@@ -2100,6 +2044,8 @@ begin
     aDamage := Max( 1, aDamage - iArmorValue );
   end;
 
+  // Damage callbacks may have killed the attacker.
+  if ( iActive <> nil ) and iActive.Dead then iActive := nil;
   if aDamage > 2 then
   begin
     if iActive <> nil then
@@ -2122,7 +2068,6 @@ begin
   iGibMul := 1.0;
   if iActive <> nil then
     iGibMul := iActive.GetBonusMul( Hook_getGibMul, [ aSource, Byte(aDamageType), iMeleeAttack ] );
-  if iUIDs[ iActiveUID ] = nil then iActive := nil;
   if aSource <> nil then
     iGibMul := iGibMul * aSource.GetBonusMul( Hook_getGibMul, [ iActive, Byte(aDamageType), iMeleeAttack ] );
   iForceOverkill := iGibMul >= 10.0;
@@ -2142,14 +2087,13 @@ begin
   end;
 
   FHP := Max( FHP - aDamage, 0 );
-  if Dead and (not IsPlayer) and (not (BF_NODEATHMESSAGE in FFlags)) then
+  if ( FHP <= 0 ) and (not IsPlayer) and (not (BF_NODEATHMESSAGE in FFlags)) then
     if FContext.Lua.Defined( [ CoreModuleID, 'GetDeathMessage' ] ) then
     begin
       iDeathMessage := FContext.Lua.ProtectedCall( [ CoreModuleID, 'GetDeathMessage' ], [ Self, isVisible ] );
       if iDeathMessage <> '' then IO.Msg( iDeathMessage );
     end;
-  if iUIDs[ iActiveUID ] = nil then iActive := nil;
-  if Dead
+  if FHP <= 0
     then Kill( Min( aDamage div 2, 15), (aDamage >= iOverKillValue) or iForceOverkill, iActive, aSource, aDelay )
     else begin
       CallHook( Hook_OnAttacked, [ iActive, aSource ] );
@@ -2200,7 +2144,6 @@ end;
 
 function TBeing.SendMissile( aTarget : TCoord2D; aItem : TItem; aAltFire : Boolean; aSequence : DWord; aShotCount : Integer ) : Boolean;
 var iGameRNG    : TRNG;
-    iUIDs       : TUIDStore;
     iDirection  : TDirection;
     iMisslePath : TAssistedRay;
     iOldCoord   : TCoord2D;
@@ -2227,8 +2170,6 @@ var iGameRNG    : TRNG;
     iDelay      : DWord;
     iSound      : DWord;
     iDirectHit  : Boolean;
-    iThisUID    : TUID;
-    iItemUID    : TUID;
     iHit        : Boolean;
     iLevel      : TLevel;
     iStart      : TCoord2D;
@@ -2239,7 +2180,6 @@ var iGameRNG    : TRNG;
     iCoverValue : Integer;
     iExplosion  : TExplosionData;
 begin
-  iUIDs := FContext.UIDs;
   if DRL.State <> DSPlaying then Exit( False );
   if aItem = nil then Exit( False );
   if not aItem.isWeapon then Exit( False );
@@ -2248,8 +2188,6 @@ begin
   iLevel     := TLevel(Parent);
   iGameRNG   := iLevel.GameRNG;
   iDirectHit := False;
-  iThisUID   := FUID;
-  iItemUID   := aItem.uid;
   iDodged    := False;
   iBeing := nil;
   if iLevel.isProperCoord( aTarget ) then
@@ -2410,7 +2348,7 @@ begin
             iBeing.ApplyDamage( iDamage, Target_Torso, aItem.DamageType, aItem, aSequence );
         end;
 
-        if ( iUIDs[ iItemUID ] = nil ) or ( iUIDs[ iThisUID ] = nil ) then
+        if aItem.Dead or FDead then
         begin
           vdebug.Log( LOGWARN, 'Item/Self destroyed during SendMissile!');
           Exit( False );
@@ -2437,15 +2375,14 @@ begin
       break;
     end;
 
-    if iUIDs[ iItemUID ] = nil then
+    if aItem.Dead then
     begin
-      aItem := nil;
       vdebug.Log( LOGWARN, 'Item destroyed during SendMissile!');
       Exit( False );
     end;
   until false;
 
-  if ( iUIDs[ iItemUID ] = nil ) or ( iUIDs[ iThisUID ] = nil ) then
+  if aItem.Dead or FDead then
   begin
     vdebug.Log( LOGWARN, 'Item/Self destroyed during SendMissile!');
     Exit( False );
@@ -2484,7 +2421,7 @@ begin
   try
     iLevel.DropItem( aItem, iCoord, False, True )
   except
-    FreeAndNil( aItem );
+    aItem.Discard;
   end;
 
   if iRadius <> 0 then
@@ -2505,7 +2442,7 @@ begin
     iLevel.Explosion( iDelay*(iSteps+(aShotCount*2)), iCoord, iExplosion, aItem, iDirection, iDirectHit, iDamageMul );
   end;
   if iDodged then TPlayer( iAimedBeing ).LastTurnDodge := True;
-  Exit( iUIDs[ iThisUID ] <> nil );
+  Exit( not FDead );
 end;
 
 procedure TBeing.BloodFloor;
@@ -2531,6 +2468,7 @@ var iKnock     : TCoord2D;
     iStrength  : Integer;
     iBlockFlag : Byte;
 begin
+  if FDead                    then Exit;
   iLevel := TLevel(Parent);
   if aStrength <= 0.0         then Exit;
   if aDir.code = 0            then Exit;
@@ -2824,7 +2762,6 @@ begin
   iKilledBy := '';
   if iState.IsString( 5 ) then
   begin
-    // Damage may destroy the target; the run's player survives until Session cleanup.
     iPlayer := TLevel( iBeing.Parent ).Player;
     if not iPlayer.Dead then
     begin
@@ -2865,7 +2802,7 @@ begin
   Item  := State.ToObjectOrNil(3) as TItem;
 
   if (Being.Inv.Slot[slot] <> nil) and (Being.Inv.Slot[slot] <> Item) then
-    Being.Inv.Slot[slot].Free;
+    Being.Inv.Slot[slot].Discard;
 
   if item <> nil then
     if not (Item.IType in ItemEqFilters[slot]) then
@@ -2891,7 +2828,7 @@ begin
     if iAmount <> iItem.Amount then
     begin
       if iAmount = 0
-        then iItem.Free
+        then iItem.Discard
         else iItem.Amount := iAmount;
       iState.Push( iAmount = 0 );
     end

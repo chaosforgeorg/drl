@@ -91,7 +91,6 @@ TLevel = class(TLuaMapNode)
 
     procedure Remove( Node : TNode ); override;
     procedure Add( aThing : TThing; aWhere : TCoord2D ); reintroduce;
-    function isAlive( aUID : TUID ) : boolean;
 
     procedure ScriptLevel(script : string);
 
@@ -217,7 +216,7 @@ TLevel = class(TLuaMapNode)
 implementation
 
 uses math, typinfo,
-     vgenerics, vluatools, vdebug, vuid, vmath,
+     vgenerics, vluatools, vdebug, vmath,
      drlbase, drlio, drlhudviews;
 
 type TProcessedUIDList = specialize TGArray<TUID>;
@@ -312,11 +311,6 @@ begin
           if not TBeing(iNode).Flags[ BF_FRIENDLY ] then
             if not TBeing(iNode).Flags[ BF_NOKILL ] then
             Inc(GetEnemiesVisible);
-end;
-
-function TLevel.isAlive ( aUID : TUID ) : boolean;
-begin
-  Exit( FindChild( aUID ) <> nil );
 end;
 
 procedure TLevel.Place( aThing: TThing; aCoord: TCoord2D);
@@ -631,6 +625,7 @@ procedure TLevel.Clear;
 begin
   FHooks := [];
   DestroyChildren;
+  FlushDestroyed;
   ClearEntities;
   FMarkers.Clear;
   FDecals.Clear;
@@ -946,12 +941,10 @@ begin
 end;
 
 procedure TLevel.Explosion( aDelay : Integer; aCoord : TCoord2D; aData : TExplosionData; aItem : TItem; aKnockback : TDirection; aDirectHit : Boolean = False; aDamageMult : Single = 1.0 );
-var iUIDs       : TUIDStore;
-    iC          : TCoord2D;
+var iC          : TCoord2D;
     iDamage     : Integer;
     iDir        : TDirection;
     iKnockback  : Byte;
-    iItemUID    : TUID;
     iBeing      : TBeing;
     iBeingUID   : TUID;
     iChain      : TExplosionData;
@@ -975,9 +968,7 @@ var iUIDs       : TUIDStore;
     Exit( True );
   end;
 begin
-  iUIDs := FContext.UIDs;
   if not isProperCoord( aCoord ) then Exit;
-  if aItem <> nil then iItemUID := aItem.uid;
 
   IO.Explosion( aDelay, aCoord, aData );
 
@@ -1012,30 +1003,22 @@ begin
           begin
             iBeingUID := iBeing.UID;
             if iProcessed.IndexOf( iBeingUID ) >= 0 then Continue;
-            if (efSelfSafe in aData.Flags) and iBeing.isActive then Continue;
+            if (efSelfSafe in aData.Flags) and ( iBeing = FActiveBeing ) then Continue;
             iProcessed.Push( iBeingUID );
             if efChain in aData.Flags then
               Explosion( iPointDelay, iC, iChain, nil, NewDirection(0) );
-            if iUIDs[ iBeingUID ] <> nil then
+            iKnockback := aData.Knockback;
+            if (efSelfKnockback in aData.Flags) and ( iBeing = FActiveBeing ) then iKnockback := 2;
+            if iKnockback > 0 then
             begin
-              iKnockback := aData.Knockback;
-              if (efSelfKnockback in aData.Flags) and iBeing.isActive then iKnockback := 2;
-              if iKnockback > 0 then
-              begin
-                if aCoord = iC
-                  then iDir := aKnockback
-                  else iDir.CreateSmooth( aCoord, iC );
-                iBeing.Knockback( iDir, iDamage / iKnockback );
-              end;
+              if aCoord = iC
+                then iDir := aKnockback
+                else iDir.CreateSmooth( aCoord, iC );
+              iBeing.Knockback( iDir, iDamage / iKnockback );
             end;
-            if iUIDs[ iBeingUID ] <> nil then
-            begin
-              if (iBeing.Flags[BF_SPLASHIMMUNE]) and (aCoord <> iC) then Continue;
-              if (efSelfHalf in aData.Flags) and iBeing.isActive then iDamage := iDamage div 2;
-              if ( aItem <> nil ) and ( iUIDs[ iItemUID ] = nil ) then aItem := nil;
-              iBeing.ApplyDamage( iDamage, Target_Torso, aData.DamageType, aItem, iPointDelay );
-              if ( aItem <> nil ) and ( iUIDs[ iItemUID ] = nil ) then aItem := nil;
-            end;
+            if (iBeing.Flags[BF_SPLASHIMMUNE]) and (aCoord <> iC) then Continue;
+            if (efSelfHalf in aData.Flags) and ( iBeing = FActiveBeing ) then iDamage := iDamage div 2;
+            iBeing.ApplyDamage( iDamage, Target_Torso, aData.DamageType, aItem, iPointDelay );
           end;
           if ( iDamage > 10 ) and ( Item[iC] <> nil ) and (not Item[iC].isFeature) then
           begin
@@ -1055,8 +1038,7 @@ begin
 end;
 
 procedure TLevel.Shotgun( aSource, aTarget : TCoord2D; aDamage : TDiceRoll; aDamageMul : Single; aDamageType : TDamageType; aItem : TItem );
-var iUIDs    : TUIDStore;
-    iDiff,iC : TCoord2D;
+var iDiff,iC : TCoord2D;
     iTC      : TCoord2D;
     iDist    : Single;
     iDmg     : Integer;
@@ -1066,7 +1048,6 @@ var iUIDs    : TUIDStore;
     iKnock   : Integer;
     iFalloff : Integer;
     iDir     : TDirection;
-    iItemUID : TUID;
     iBeing   : TBeing;
     iBeingUID  : TUID;
     iProcessed : TProcessedUIDList;
@@ -1087,15 +1068,12 @@ var iUIDs    : TUIDStore;
       until iCount = iRange;
     end;
 begin
-  iUIDs := FContext.UIDs;
   iRange   := Max( aItem.Range, 1 );
   iSpread  := Max( aItem.Spread, 1 );
   iFalloff := Max( aItem.Falloff, 0 );
   iKnock   := aItem.Knockback;
   iHSprite := aItem.HitSprite;
   if ( iSpread <= 0 ) then Exit;
-
-  iItemUID := aItem.uid;
 
   if aSource = aTarget then Exit;
   iDiff := aTarget - aSource;
@@ -1134,13 +1112,7 @@ begin
             iDir.CreateSmooth( aSource, iTC );
             iBeing.Knockback( iDir, iDmg / iKnock );
           end;
-          // knockback can run Lua hooks that destroy iBeing
-          if iUIDs[ iBeingUID ] <> nil then
-          begin
-            if ( aItem <> nil ) and ( iUIDs[ iItemUID ] = nil ) then aItem := nil;
-            iBeing.ApplyDamage( iDmg, Target_Torso, aDamageType, aItem, 0 );
-            if ( aItem <> nil ) and ( iUIDs[ iItemUID ] = nil ) then aItem := nil;
-          end;
+          iBeing.ApplyDamage( iDmg, Target_Torso, aDamageType, aItem, 0 );
         end;
         
         DamageTile( iTC, iDmg, aDamageType, False );
@@ -1229,8 +1201,7 @@ begin
   iItem := Item[ coord ];
   if iItem = nil then Exit;
   if iItem.Flags[ IF_UNIQUE ] or iItem.Flags[ IF_NODESTROY ] then Exit;
-  FreeAndNil( iItem );
-  SetItem( coord, nil );
+  iItem.Discard;
 end;
 
 procedure TLevel.Blood( aCoord : TCoord2D );
@@ -1357,13 +1328,9 @@ end;
 
 procedure TLevel.Kill( aBeing : TBeing );
 begin
-  if aBeing = nil then Exit;
-  if Being[ aBeing.Position ] = aBeing then
-    SetBeing( aBeing.Position, nil );
-
   FMarkers.Wipe( aBeing.UID );
   FParticles.Kill( aBeing.UID );
-  FreeAndNil(aBeing);
+  aBeing.Discard;
   UpdateKillState;
 end;
 
@@ -1871,7 +1838,7 @@ begin
   except
     on EPlacementException do
     begin
-      FreeAndNil( iItem );
+      iItem.Discard;
       iState.PushNil();
     end;
   end;

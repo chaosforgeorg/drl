@@ -86,8 +86,7 @@ end;
 implementation
 
 uses sysutils, math,
-     vuid,
-     drlhooks, drllua, dfbeing, dfplayer;
+     drlhooks, drllua, dfplayer;
 
 procedure TPerkDefinitions.RegisterPerk( aLua : TLua; aID : Integer );
 begin
@@ -151,52 +150,41 @@ begin
 end;
 
 function TPerks.CallHook( aHook : Byte; const aParams : array of Const ) : Boolean;
-var iUIDs      : TUIDStore;
-    i          : Integer;
-    iUID       : TUID;
-    iTargetUID : TUID;
+var i       : Integer;
+    iTarget : TNode;
 begin
   CallHook := False;
   if aHook in FHooks then
   begin
-    iUIDs := FOwner.Context.UIDs;
-    iUID  := FOwner.UID;
-    iTargetUID := 0;
+    iTarget := nil;
     if aHook = Hook_OnDamage then
-      iTargetUID := TNode( aParams[0].VObject ).UID;
+      iTarget := TNode( aParams[0].VObject );
     BeginIteration;
     for i := 0 to FList.Size-1 do
       if aHook in FDefinitions.Data[FList[i].ID].Hooks then
         begin
           CallHook := True;
           FOwner.Context.Lua.ProtectedCall( [ 'perks',FList[i].ID, TDRLLua( FOwner.Context.Lua ).HookName(aHook) ], ConcatConstArray( [FOwner], aParams ) );
-          // A callback may consume the owner and free this perk list.
-          // Session-owned levels created before the UID store have UID 0.
-          if ( iUID <> 0 ) and ( iUIDs.Get( iUID ) = nil ) then Exit;
-          // Nested damage can kill the target before the next perk runs.
-          if ( iTargetUID <> 0 ) and ( iUIDs.Get( iTargetUID ) = nil ) then Break;
+          // A callback may kill the owner, or the damaged target.
+          if FOwner.Dead then Break;
+          if ( iTarget <> nil ) and iTarget.Dead then Break;
         end;
     EndIteration;
   end;
 end;
 
 function TPerks.CallHookCheck( aHook : Byte; const aParams : array of Const ) : Boolean;
-var iUIDs : TUIDStore;
-    i     : Integer;
-    iUID  : TUID;
+var i : Integer;
 begin
   Result := True;
   if aHook in FHooks then
   begin
-    iUIDs := FOwner.Context.UIDs;
-    iUID  := FOwner.UID;
     BeginIteration;
     for i := 0 to FList.Size-1 do
       if aHook in FDefinitions.Data[FList[i].ID].Hooks then
       begin
         Result := FOwner.Context.Lua.ProtectedCall( [ 'perks',FList[i].ID, HookNames[aHook] ], ConcatConstArray( [FOwner], aParams ) );
-        // A check may destroy its owner; stop before touching the freed list.
-        if ( iUID <> 0 ) and ( iUIDs.Get( iUID ) = nil ) then Exit( False );
+        if FOwner.Dead then Result := False;
         if not Result then Break;
       end;
     EndIteration;
@@ -292,21 +280,11 @@ begin
 end;
 
 procedure TPerks.OnTick;
-var iUIDs  : TUIDStore;
-    iBeing : TBeing;
-    i      : Integer;
-    iUID   : TUID;
-    iTime  : LongInt;
+var i     : Integer;
+    iTime : LongInt;
 begin
   if FList.Size = 0 then Exit;
-  iBeing := nil;
-  if FOwner is TBeing then
-  begin
-    iBeing := TBeing( FOwner );
-    if iBeing.Dead then Exit;
-  end;
-  iUIDs := FOwner.Context.UIDs;
-  iUID  := FOwner.UID;
+  if FOwner.Dead then Exit;
   BeginIteration;
   for i := 0 to FList.Size - 1 do
     with FList[i] do
@@ -325,23 +303,19 @@ begin
           if Hook_OnTick10 in FDefinitions.Data[ID].Hooks then
           begin
             FOwner.Context.Lua.ProtectedCall( [ 'perks', ID, 'OnTick10' ], [ FOwner, iTime div 10 ] );
-            // Perk owners include levels and items nested in inventories.
-            if ( iUID <> 0 ) and ( iUIDs.Get( iUID ) = nil ) then Exit;
-            if ( iBeing <> nil ) and iBeing.Dead then Break;
+            if FOwner.Dead then Break;
           end;
     end;
   EndIteration;
-  // Flushing deferred removals can destroy the owner and this perk list.
-  if ( iUID <> 0 ) and ( iUIDs.Get( iUID ) = nil ) then Exit;
-  if ( iBeing <> nil ) and iBeing.Dead then Exit;
+  // Flushing deferred removals can kill the owner.
+  if FOwner.Dead then Exit;
   i := 0;
   while i < FList.Size do
     if FList[i].Time = 0
       then
       begin
         Expire( i, False );
-        if ( iUID <> 0 ) and ( iUIDs.Get( iUID ) = nil ) then Exit;
-        if ( iBeing <> nil ) and iBeing.Dead then Exit;
+        if FOwner.Dead then Exit;
       end
       else Inc(i);
 end;
@@ -393,16 +367,13 @@ begin
 end;
 
 procedure TPerks.FlushQueue;
-var iUIDs   : TUIDStore;
-    i       : Integer;
+var i       : Integer;
     iIdx    : Integer;
     iPerk   : Integer;
     iSilent : Boolean;
-    iUID    : TUID;
 begin
-  iUIDs := FOwner.Context.UIDs;
-  iUID  := FOwner.UID;
-  while Length( FExpireQueue ) > 0 do
+  // A dead owner runs no further perk callbacks.
+  while ( Length( FExpireQueue ) > 0 ) and ( not FOwner.Dead ) do
   begin
     iPerk   := FExpireQueue[0].ID;
     iSilent := FExpireQueue[0].Silent;
@@ -420,10 +391,7 @@ begin
       end;
 
     if iIdx >= 0 then
-    begin
       ExpireNow( iIdx, iSilent );
-      if ( iUID <> 0 ) and ( iUIDs.Get( iUID ) = nil ) then Exit;
-    end;
   end;
 end;
 
@@ -445,12 +413,8 @@ begin
 end;
 
 procedure TPerks.Clear;
-var iUIDs : TUIDStore;
-    i     : Integer;
-    iUID  : TUID;
+var i : Integer;
 begin
-  iUIDs := FOwner.Context.UIDs;
-  iUID  := FOwner.UID;
   if FList.Size > 0 then
   begin
     BeginIteration;
@@ -458,10 +422,9 @@ begin
       if Hook_OnRemove in FDefinitions.Data[FList[i].ID].Hooks then
       begin
         FOwner.Context.Lua.ProtectedCall( [ 'perks', FList[i].ID, 'OnRemove' ], [FOwner, True] );
-        if ( iUID <> 0 ) and ( iUIDs.Get( iUID ) = nil ) then Exit;
+        if FOwner.Dead then Break;
       end;
     EndIteration;
-    if ( iUID <> 0 ) and ( iUIDs.Get( iUID ) = nil ) then Exit;
     FList.Clear;
   end;
   FHooks := [];
