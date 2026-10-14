@@ -313,14 +313,14 @@ end;
 
 procedure TPlayer.AddExp( aAmount : LongInt );
 begin
-  if Dead then Exit;
+  if Dying then Exit;
   aAmount := Round( aAmount * FExpFactor );
   FExp += aAmount;
 end;
 
 procedure TPlayer.ApplyDamage(aDamage: LongInt; aTarget: TBodyTarget; aDamageType: TDamageType; aSource : TItem; aDelay : Integer );
 begin
-  if ( aDamage < 0 ) or ( BF_INV in FFlags ) or FDying then Exit;
+  if ( aDamage < 0 ) or ( BF_INV in FFlags ) or Dying then Exit;
   if aDamage > 0 then
   begin
     FMultiMove.Stop;
@@ -380,7 +380,7 @@ end;
 
 function TPlayer.PlayerTick : Boolean;
 begin
-  if FDead then Exit( False );
+  if Dying then Exit( False );
   TLevel(Parent).CallHook( FPosition, Self, CellHook_OnEnter );
 
   MasterDodge := False;
@@ -459,7 +459,7 @@ end;
 
 procedure TPlayer.PostAction;
 begin
-  if not Dead then
+  if not Dying then
     if FExpLevel < MaxPlayerLevel - 1 then
       while FExp >= ExpTable[ FExpLevel + 1 ] do
         LevelUp;
@@ -586,9 +586,7 @@ begin
     Exit;
   end;
 
-  // The player's death completes here; Session keeps owning the player.
   FDying := True;
-  FDead  := True;
   DRL.SetState( DSEnding );
 
   if DRL.GameWon then

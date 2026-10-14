@@ -546,7 +546,7 @@ end;
 
 procedure TDRLSession.PreAction;
 begin
-  if FPlayer.Dead then Exit;
+  if FPlayer.Dying then Exit;
   FLevel.CalculateVision( FPlayer.Position, FPlayer.Vision );
   StatusEffect := FPlayer.GetPerkEffect;
   IO.PreAction;
@@ -1589,7 +1589,7 @@ begin
     while ( State = DSPlaying ) do
     begin
       // No callback is running between loop iterations.
-      FLevel.FlushDestroyed;
+      FContext.FlushDestroyed;
       if IO.MsgPending then
       begin
         IO.MsgUpdate;
@@ -1673,7 +1673,7 @@ begin
     if State = DSEnding then
     begin
       IO.WaitForAnimation;
-      if FPlayer.Dead then
+      if FPlayer.Dying then
       begin
         FPlayer.AnimCount := 1;
         IO.Msg( 'You die!...' );
@@ -1889,7 +1889,7 @@ begin
 
     IO.Msg('Game loaded.');
 
-    if FPlayer.HP <= 0 then
+    if FPlayer.Dying then
       raise EException.Create('Player in save file is dead anyway.');
     LoadSaveFile := True;
     FPadMoved    := True;

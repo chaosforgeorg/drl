@@ -74,6 +74,8 @@ TBeing = class(TThing,IPathQuery)
     function canPackReload : Boolean;
     function getStrayChance( aDefender : TBeing; aWeapon : TItem ) : Byte;
     function Preposition( Creature : AnsiString ) : string;
+    // True once Kill has started, the being was discarded or its HP is depleted.
+    function Dying : Boolean;
     procedure Remove( Node : TNode ); override;
     function ASCIIMoreCode : AnsiString; virtual;
     function GetVisualOverlay : TThing;
@@ -429,7 +431,7 @@ begin
     iDamageType := aShotGun.DamageType;
     if (BF_ARMYDEAD in FFlags) and (iDamageType = DAMAGE_SHARPNEL) then iDamageType := Damage_IgnoreArmor;
     TLevel(Parent).ShotGun( FPosition, aTarget, iDamage, iDamageMul, iDamageType, aShotgun );
-    if FDead then Exit;
+    if Dead then Exit;
     if (not iDual) and (aShotGun.Shots > 1) then IO.Delay(30);
   end;
 end;
@@ -538,6 +540,11 @@ begin
     'a','e','i','o','u' : Exit('an ');
   end;
   Exit('a ');
+end;
+
+function TBeing.Dying : Boolean;
+begin
+  Exit( FDying or Dead or ( FHP <= 0 ) );
 end;
 
 procedure TBeing.Remove( Node : TNode );
@@ -880,13 +887,13 @@ begin
   iLevel := TLevel(Parent);
   iTarget := iLevel.Being[ aTarget ];
 
-  if ( not FireRanged( aTarget, aWeapon, iAltFire, aDelay )) or iLevel.Player.Dead then Exit( True );
+  if ( not FireRanged( aTarget, aWeapon, iAltFire, aDelay )) or iLevel.Player.Dying then Exit( True );
   if ( not aForceSingle ) and canDualWield and ( Inv.Slot[ efWeapon2 ].Flags[ IF_NOAMMO ] or ( Inv.Slot[ efWeapon2 ].Ammo > 0 ) ) then
   begin
     if ( iTarget <> nil ) and ( not iTarget.Dead ) then
       aTarget := iTarget.Position;
     if Inv.Slot[ efWeapon2 ].CallHookCheck( Hook_OnFire, [Self, False, aAltFire] ) then
-      if ( not FireRanged( aTarget, Inv.Slot[ efWeapon2 ], iAltFire, aDelay + 100 )) or iLevel.Player.Dead then Exit( True );
+      if ( not FireRanged( aTarget, Inv.Slot[ efWeapon2 ], iAltFire, aDelay + 100 )) or iLevel.Player.Dying then Exit( True );
   end;
 
   Exit( True );
@@ -1456,7 +1463,7 @@ begin
     HandleShots( aTarget, aGun, iShots, aAlt, aDelay );
 
   if not ( DRL.State in [ DSPlaying, DSNextLevel ] ) then Exit( False );
-  if FDead then Exit( False );
+  if Dead then Exit( False );
   FTargetPos := aTarget;
   if aGun.Dead then aGun := nil;
 
@@ -1474,12 +1481,12 @@ procedure TBeing.Action;
 begin
   FMeleeAttack := False;
   TLevel(Parent).CallHook( FPosition, Self, CellHook_OnEnter );
-  if FDead then Exit;
+  if Dead then Exit;
   LastPos := FPosition;
   CallHook(Hook_OnPreAction,[]);
-  if FDead then Exit;
+  if Dead then Exit;
   CallHook(Hook_OnAction,[]);
-  if FDead then Exit;
+  if Dead then Exit;
   CallHook(Hook_OnPostAction,[]);
   while FSpeedCount >= 5000 do Dec( FSpeedCount, 1000 );
 end;
@@ -1534,9 +1541,9 @@ end;
 
 procedure TBeing.Tick( aTime : LongInt );
 begin
-  if FDead then Exit;
+  if Dying then Exit;
   FInv.Tick( aTime );
-  if FDead then Exit;
+  if Dying then Exit;
 
   if ( FHP * 100 ) > Integer( FHPMax * FHPDecayMax ) then
     if FHP > 1 then
@@ -1572,8 +1579,8 @@ var iItem      : TItem;
     iLevel     : TLevel;
     iMeleeKill : Boolean;
 begin
+  if FDying or Dead then Exit;
   iLevel := TLevel(Parent);
-  if FDying then Exit;
   if not CallHookCheck( Hook_OnDieCheck, [ aOverkill ] ) then
   begin
     HP := Max(1,HP);
@@ -1719,7 +1726,7 @@ begin
       Result := iLevel.DamageTile( aWhere, rollMeleeDamage( iWeapon ), Damage_Melee );
     Dec( FSpeedCount, iAttackCost )
   end;
-  if not FDead then
+  if not Dead then
   begin
     FMeleeAttack := False;
     if Result and aMoveOnKill and ( iPosition = Position ) and ( TryMove( aWhere ) = MoveOk ) then
@@ -1836,11 +1843,14 @@ begin
     // Apply damage
     if not ( BF_ILLUSION in FFlags ) then
       aTarget.ApplyDamage( iDamage, Target_Torso, iDamageType, aWeapon, 0 );
-    if ( DRL.State <> DSPlaying ) or FDead then Exit;
+    if ( DRL.State <> DSPlaying ) or Dead then Exit;
   end;
 
+  if ( aWeapon <> nil ) and aWeapon.Dead then aWeapon := nil;
   if aWeapon <> nil then aWeapon.CallHook( Hook_OnFired, [ Self, aSecond ] );
+  if Dead then Exit;
   CallHook( Hook_OnFired, [ aWeapon, aSecond ] );
+  if Dead then Exit;
 
   Result := aTarget.Dead;
 
@@ -1918,7 +1928,7 @@ var iLevel         : TLevel;
     iDeathMessage  : AnsiString;
     iOldDurability : LongInt;
 begin
-  if ( aDamage < 0 ) or (BF_INV in FFlags) or FDying then Exit;
+  if ( aDamage < 0 ) or (BF_INV in FFlags) or Dying then Exit;
   // A source destroyed by an earlier callback no longer takes part.
   if ( aSource <> nil ) and aSource.Dead then aSource := nil;
 
@@ -1937,8 +1947,9 @@ begin
     if ( aSource <> nil ) and ( iActive.Inv.Equipped( aSource ) or ( aSource.IType = ITEMTYPE_URANGED ) ) then
     begin
       iActive.CallHook( Hook_OnDamage, [ Self, aDamage, aSource, aSource.isMelee ] );
-      if FDying then Exit;
-      aSource.CallHook( Hook_OnDamage, [ Self, aDamage, iActive ] );
+      if FDying or Dead then Exit;
+      if not aSource.Dead then
+        aSource.CallHook( Hook_OnDamage, [ Self, aDamage, iActive ] );
     end
     else if iMeleeAttack then
       iActive.CallHook( Hook_OnDamage, [ Self, aDamage, aSource, True ] );
@@ -1949,11 +1960,11 @@ begin
     if aSource <> nil then iMeleeAttack := aSource.isMelee;
   end;
 
-  if FDying then Exit;
+  if FDying or Dead then Exit;
 
   CallHook( Hook_OnReceiveDamage, [ aDamage, aSource, iActive ] );
 
-  if FDying or ( BF_INV in FFlags ) then Exit;
+  if FDying or Dead or ( BF_INV in FFlags ) then Exit;
 
   iResist := 0;
   if aDamageType <> Damage_IgnoreArmor then
@@ -2044,8 +2055,9 @@ begin
     aDamage := Max( 1, aDamage - iArmorValue );
   end;
 
-  // Damage callbacks may have killed the attacker.
+  // Damage callbacks may have discarded the attacker or the source.
   if ( iActive <> nil ) and iActive.Dead then iActive := nil;
+  if ( aSource <> nil ) and aSource.Dead then aSource := nil;
   if aDamage > 2 then
   begin
     if iActive <> nil then
@@ -2348,7 +2360,7 @@ begin
             iBeing.ApplyDamage( iDamage, Target_Torso, aItem.DamageType, aItem, aSequence );
         end;
 
-        if aItem.Dead or FDead then
+        if aItem.Dead or Dead then
         begin
           vdebug.Log( LOGWARN, 'Item/Self destroyed during SendMissile!');
           Exit( False );
@@ -2382,7 +2394,7 @@ begin
     end;
   until false;
 
-  if aItem.Dead or FDead then
+  if aItem.Dead or Dead then
   begin
     vdebug.Log( LOGWARN, 'Item/Self destroyed during SendMissile!');
     Exit( False );
@@ -2442,7 +2454,7 @@ begin
     iLevel.Explosion( iDelay*(iSteps+(aShotCount*2)), iCoord, iExplosion, aItem, iDirection, iDirectHit, iDamageMul );
   end;
   if iDodged then TPlayer( iAimedBeing ).LastTurnDodge := True;
-  Exit( not FDead );
+  Exit( not Dead );
 end;
 
 procedure TBeing.BloodFloor;
@@ -2468,7 +2480,7 @@ var iKnock     : TCoord2D;
     iStrength  : Integer;
     iBlockFlag : Byte;
 begin
-  if FDead                    then Exit;
+  if Dead                    then Exit;
   iLevel := TLevel(Parent);
   if aStrength <= 0.0         then Exit;
   if aDir.code = 0            then Exit;
@@ -2763,7 +2775,7 @@ begin
   if iState.IsString( 5 ) then
   begin
     iPlayer := TLevel( iBeing.Parent ).Player;
-    if not iPlayer.Dead then
+    if not iPlayer.Dying then
     begin
       iKilledBy := iState.ToString( 5 );
       if iKilledBy <> '' then
@@ -2775,7 +2787,7 @@ begin
     end;
   end;
   iBeing.ApplyDamage( iState.ToInteger( 2 ), TBodyTarget( iState.ToInteger( 3 ) ), TDamageType( iState.ToInteger( 4, Byte( Damage_Bullet ) ) ), iSource, 0 );
-  if ( iKilledBy <> '' ) and ( not iPlayer.Dead ) then
+  if ( iKilledBy <> '' ) and ( not iPlayer.Dying ) then
     iPlayer.SetKilledBy( iPreviousKilledBy, iPreviousMelee );
   Result := 0;
 end;

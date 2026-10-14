@@ -625,7 +625,6 @@ procedure TLevel.Clear;
 begin
   FHooks := [];
   DestroyChildren;
-  FlushDestroyed;
   ClearEntities;
   FMarkers.Clear;
   FDecals.Clear;
@@ -835,9 +834,11 @@ begin
       SetItem( aCoord, nil );
       iFeature.Detach;
       iFeature.CallHook( Hook_OnDestroy, [ LuaCoord( aCoord ) ] );
-      for iNode in iFeature do
-        DropItem( iNode as TItem, aCoord, False, True );
-      FreeAndNil( iFeature );
+      // The hook may discard the feature together with its contents.
+      if not iFeature.Dead then
+        for iNode in iFeature do
+          DropItem( iNode as TItem, aCoord, False, True );
+      iFeature.Discard;
     end;
   end;
 end;
@@ -1016,9 +1017,12 @@ begin
                 else iDir.CreateSmooth( aCoord, iC );
               iBeing.Knockback( iDir, iDamage / iKnockback );
             end;
-            if (iBeing.Flags[BF_SPLASHIMMUNE]) and (aCoord <> iC) then Continue;
-            if (efSelfHalf in aData.Flags) and ( iBeing = FActiveBeing ) then iDamage := iDamage div 2;
-            iBeing.ApplyDamage( iDamage, Target_Torso, aData.DamageType, aItem, iPointDelay );
+            if not iBeing.Dead then
+            begin
+              if (iBeing.Flags[BF_SPLASHIMMUNE]) and (aCoord <> iC) then Continue;
+              if (efSelfHalf in aData.Flags) and ( iBeing = FActiveBeing ) then iDamage := iDamage div 2;
+              iBeing.ApplyDamage( iDamage, Target_Torso, aData.DamageType, aItem, iPointDelay );
+            end;
           end;
           if ( iDamage > 10 ) and ( Item[iC] <> nil ) and (not Item[iC].isFeature) then
           begin
@@ -1911,7 +1915,7 @@ begin
 
   iSource := iState.ToObjectOrNil(iSourceIndex) as TItem;
   iKilledBy := '';
-  if iState.IsString(iSourceIndex) and ( not iLevel.FPlayer.Dead ) then
+  if iState.IsString(iSourceIndex) and ( not iLevel.FPlayer.Dying ) then
   begin
     iKilledBy := iState.ToString(iSourceIndex);
     if iKilledBy <> '' then
@@ -1922,7 +1926,7 @@ begin
     end;
   end;
   iLevel.Explosion( iDelay, iState.ToPosition(2), iData, iSource, NewDirection(0) );
-  if ( iKilledBy <> '' ) and ( not iLevel.FPlayer.Dead ) then
+  if ( iKilledBy <> '' ) and ( not iLevel.FPlayer.Dying ) then
     iLevel.FPlayer.SetKilledBy( iPreviousKilledBy, iPreviousMelee );
   Result := 0;
 end;

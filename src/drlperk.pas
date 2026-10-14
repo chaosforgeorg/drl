@@ -86,7 +86,7 @@ end;
 implementation
 
 uses sysutils, math,
-     drlhooks, drllua, dfplayer;
+     drlhooks, drllua, dfbeing, dfplayer;
 
 procedure TPerkDefinitions.RegisterPerk( aLua : TLua; aID : Integer );
 begin
@@ -280,11 +280,20 @@ begin
 end;
 
 procedure TPerks.OnTick;
-var i     : Integer;
-    iTime : LongInt;
+var iBeing : TBeing;
+    i      : Integer;
+    iTime  : LongInt;
+
+  function OwnerGone : Boolean;
+  begin
+    Exit( FOwner.Dead or ( ( iBeing <> nil ) and iBeing.Dying ) );
+  end;
+
 begin
   if FList.Size = 0 then Exit;
-  if FOwner.Dead then Exit;
+  iBeing := nil;
+  if FOwner is TBeing then iBeing := TBeing( FOwner );
+  if OwnerGone then Exit;
   BeginIteration;
   for i := 0 to FList.Size - 1 do
     with FList[i] do
@@ -303,19 +312,19 @@ begin
           if Hook_OnTick10 in FDefinitions.Data[ID].Hooks then
           begin
             FOwner.Context.Lua.ProtectedCall( [ 'perks', ID, 'OnTick10' ], [ FOwner, iTime div 10 ] );
-            if FOwner.Dead then Break;
+            if OwnerGone then Break;
           end;
     end;
   EndIteration;
   // Flushing deferred removals can kill the owner.
-  if FOwner.Dead then Exit;
+  if OwnerGone then Exit;
   i := 0;
   while i < FList.Size do
     if FList[i].Time = 0
       then
       begin
         Expire( i, False );
-        if FOwner.Dead then Exit;
+        if OwnerGone then Exit;
       end
       else Inc(i);
 end;
