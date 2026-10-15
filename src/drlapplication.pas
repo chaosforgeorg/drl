@@ -275,6 +275,8 @@ begin
   TDRLLua( FLua ).BindNodeContext( FSession.Context );
   FData.RegisterLuaAPI( FLua );
   RegisterStoreLuaAPI( FLua, FStore );
+  // Runtime outlives Lua; the callbacks resolve the Session active at each call.
+  TDRLSession.RegisterLuaAPI( FLua, @FSession );
   TDRLLua( FLua ).ReadWad( FHelp, FModErrors );
   if GodMode then RegisterDebugConsole( VKEY_F1 );
   FLua.CallDefaultResult := True;

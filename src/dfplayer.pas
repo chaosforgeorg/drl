@@ -104,8 +104,6 @@ published
   property EnemiesInVision : Word       read FEnemiesInVision;
 end;
 
-// Borrowed alias of the active session's player.
-var Player : TPlayer;
 
 implementation
 

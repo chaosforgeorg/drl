@@ -45,33 +45,6 @@ uses typinfo, variants,
 
 var SpriteSheetCounter : Integer = -1;
 
-function lua_statistics_get(L: Plua_State): Integer; cdecl;
-var State : TLuaGameStack;
-begin
-  State.Init(L);
-  Player.Statistics.Update( Player );
-  // Unused parameter #1 is self
-  State.Push( Player.Statistics[ State.ToString( 2 ) ] );
-  Result := 1;
-end;
-
-function lua_statistics_set(L: Plua_State): Integer; cdecl;
-var State : TLuaGameStack;
-begin
-  State.Init(L);
-  // Unused parameter #1 is self
-  Player.Statistics.Assign( State.ToString( 2 ), State.ToInteger( 3 ) );
-  Result := 0;
-end;
-
-function lua_statistics_inc(L: Plua_State): Integer; cdecl;
-var State : TLuaGameStack;
-begin
-  State.Init(L);
-  Player.Statistics.Increase( State.ToString( 1 ), State.ToInteger( 2 ) );
-  Result := 0;
-end;
-
 function lua_statistics_get_date(L: Plua_State): Integer; cdecl;
 var State : TLuaGameStack;
     Curr : TSystemTime;
@@ -155,14 +128,6 @@ end;
 
 // ************************************************************************ //
 // ************************************************************************ //
-
-function lua_core_game_time(L: Plua_State): Integer; cdecl;
-var State : TLuaGameStack;
-begin
-  State.Init(L);
-  State.Push(Player.Statistics.GameTime);
-  Result := 1;
-end;
 
 function lua_core_time_ms(L: Plua_State): Integer; cdecl;
 var State : TLuaGameStack;
@@ -432,8 +397,7 @@ begin
   FreeMem(PP);
 end;
 
-const lua_statistics_lib : array[0..2] of luaL_Reg = (
-    ( name : 'inc';        func : @lua_statistics_inc),
+const lua_statistics_lib : array[0..1] of luaL_Reg = (
     ( name : 'get_date';   func : @lua_statistics_get_date),
     ( name : nil;          func : nil; )
 );
@@ -514,9 +478,8 @@ begin
   Result := 0;
 end;
 
-const lua_core_lib : array[0..9] of luaL_Reg = (
+const lua_core_lib : array[0..8] of luaL_Reg = (
     ( name : 'add_to_cell_set';func : @lua_core_add_to_cell_set),
-    ( name : 'game_time';      func : @lua_core_game_time),
     ( name : 'time_ms';        func : @lua_core_time_ms),
     ( name : 'visual_random';  func : @lua_core_visual_random),
 
@@ -566,11 +529,9 @@ begin
   TDRLIO.RegisterLuaAPI( FStack );
 
   Register( 'statistics', lua_statistics_lib );
-  RegisterMetaTable('statistics',@lua_statistics_get, @lua_statistics_set );
 
   Register( 'player_data', @lua_player_data_lib );
   Register( 'core', lua_core_lib );
-  TDRLSession.RegisterLuaAPI( Self );
 
   FStack.RegisterEnumValues( TypeInfo(TParticleFlag) );
   FStack.RegisterEnumValues( TypeInfo(TItemType) );

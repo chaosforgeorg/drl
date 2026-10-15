@@ -11,6 +11,7 @@ uses vapp, vnode, vutil, vuid, viotypes, vrltools, vlua, vioevent, vstoreinterfa
      dflevel, dfdata, dfhof, dfplayer, dfitem, drlhooks, drllua, drlcommand, drlkeybindings, drlmodule, drlgamedata;
 
 type TDRLSession = class;
+     PDRLSession = ^TDRLSession;
 
 // TTargeting
 //
@@ -51,7 +52,7 @@ type TDRLSession = class(TVObject)
        procedure Reset;
        procedure Reconfigure;
        procedure SetSessionHooks( aSessionHooks : TFlags );
-       class procedure RegisterLuaAPI( aLua : TLua );
+       class procedure RegisterLuaAPI( aLua : TLua; aActive : PDRLSession );
        function LoadSaveFile : Boolean;
        procedure WriteSaveFile( aCrash : Boolean );
        function SaveExists : Boolean;
@@ -161,7 +162,7 @@ var DRL : TDRLSession;
 implementation
 
 uses {$IFDEF WINDOWS}windows,{$ELSE}unix,{$ENDIF} classes, sysutils, zstream,
-     vbindings, vdebug, vstream, vtig, vluagamestack,
+     vbindings, vdebug, vstream, vtig, vlualibrary, vluagamestack,
      dfmap, dfbeing, drlio, drlgfxio, drlspritemap { remove }, drlplayerview, drlingamemenuview, drlhelpview, drlassemblyview, drlpagedview, drlrankupview, drlmainmenuview, drlhudviews, drlmessagesview, drlapplication, drlcontrollerbindings;
 
 const PAD_REPEAT_START = 400;
@@ -351,14 +352,12 @@ end;
 procedure TDRLSession.SetPlayer( aPlayer : TPlayer );
 begin
   FPlayer := aPlayer;
-  dfplayer.Player := FPlayer;
   FLevel.BindPlayer( FPlayer );
 end;
 
 procedure TDRLSession.ReleasePlayer;
 begin
   if FLevel <> nil then FLevel.BindPlayer( nil );
-  dfplayer.Player := nil;
   FreeAndNil( FPlayer );
 end;
 
@@ -1994,9 +1993,16 @@ begin
   inherited Destroy;
 end;
 
+// Session-bound native callbacks capture the owner's current-session slot as
+// upvalue 1, so functions cached by Lua always act on the active Session.
+function ActiveSession( L : PLua_State ) : TDRLSession; inline;
+begin
+  Exit( PDRLSession( lua_touserdata( L, lua_upvalueindex( 1 ) ) )^ );
+end;
+
 function lua_game_win( L : PLua_State ) : Integer; cdecl;
 begin
-  DRL.WinGame;
+  ActiveSession( L ).WinGame;
   Result := 0;
 end;
 
@@ -2004,7 +2010,7 @@ function lua_game_has_won( L : PLua_State ) : Integer; cdecl;
 var iState : TLuaGameStack;
 begin
   iState.Init( L );
-  iState.Push( DRL.GameWon );
+  iState.Push( ActiveSession( L ).GameWon );
   Result := 1;
 end;
 
@@ -2012,41 +2018,92 @@ function lua_game_is_playing( L : PLua_State ) : Integer; cdecl;
 var iState : TLuaGameStack;
 begin
   iState.Init( L );
-  iState.Push( DRL.State = DSPlaying );
+  iState.Push( ActiveSession( L ).State = DSPlaying );
   Result := 1;
 end;
 
 function lua_game_exit( L : PLua_State ) : Integer; cdecl;
-var iState : TLuaGameStack;
+var iState   : TLuaGameStack;
+    iSession : TDRLSession;
 begin
   iState.Init( L );
   if not ( iState.IsNil( 1 ) or iState.IsNumber( 1 ) ) then
     iState.Error( 'game.exit - expected a level index or nil!' );
-  DRL.ExitLevel( iState.IsNumber( 2 ), iState.ToFloat( 2, 0.0 ) );
-  DRL.FPlayer.SCount := 4000;
+  iSession := ActiveSession( L );
+  iSession.ExitLevel( iState.IsNumber( 2 ), iState.ToFloat( 2, 0.0 ) );
+  iSession.FPlayer.SCount := 4000;
   if iState.IsNumber( 1 ) then
-    DRL.FPlayer.Level_Index := iState.ToInteger( 1 ) - 1;
+    iSession.FPlayer.Level_Index := iState.ToInteger( 1 ) - 1;
   Result := 0;
 end;
 
 function lua_game_reset_level( L : PLua_State ) : Integer; cdecl;
 begin
-  DRL.ResetLevel;
+  ActiveSession( L ).ResetLevel;
   Result := 0;
 end;
 
-const lua_game_lib : array[0..5] of luaL_Reg = (
+function lua_statistics_get( L : PLua_State ) : Integer; cdecl;
+var iState  : TLuaGameStack;
+    iPlayer : TPlayer;
+begin
+  iState.Init( L );
+  iPlayer := ActiveSession( L ).FPlayer;
+  iPlayer.Statistics.Update( iPlayer );
+  // Unused parameter #1 is self
+  iState.Push( iPlayer.Statistics[ iState.ToString( 2 ) ] );
+  Result := 1;
+end;
+
+function lua_statistics_set( L : PLua_State ) : Integer; cdecl;
+var iState : TLuaGameStack;
+begin
+  iState.Init( L );
+  // Unused parameter #1 is self
+  ActiveSession( L ).FPlayer.Statistics.Assign( iState.ToString( 2 ), iState.ToInteger( 3 ) );
+  Result := 0;
+end;
+
+function lua_statistics_inc( L : PLua_State ) : Integer; cdecl;
+var iState : TLuaGameStack;
+begin
+  iState.Init( L );
+  ActiveSession( L ).FPlayer.Statistics.Increase( iState.ToString( 1 ), iState.ToInteger( 2 ) );
+  Result := 0;
+end;
+
+function lua_game_time( L : PLua_State ) : Integer; cdecl;
+var iState : TLuaGameStack;
+begin
+  iState.Init( L );
+  iState.Push( ActiveSession( L ).FPlayer.Statistics.GameTime );
+  Result := 1;
+end;
+
+const lua_game_lib : array[0..6] of luaL_Reg = (
   ( name : 'win';        func : @lua_game_win ),
   ( name : 'exit';       func : @lua_game_exit ),
   ( name : 'has_won';    func : @lua_game_has_won ),
   ( name : 'is_playing'; func : @lua_game_is_playing ),
   ( name : 'reset_level';func : @lua_game_reset_level ),
+  ( name : 'time';       func : @lua_game_time ),
   ( name : nil;         func : nil )
 );
 
-class procedure TDRLSession.RegisterLuaAPI( aLua : TLua );
+const lua_statistics_lib : array[0..1] of luaL_Reg = (
+  ( name : 'inc';        func : @lua_statistics_inc ),
+  ( name : nil;         func : nil )
+);
+
+class procedure TDRLSession.RegisterLuaAPI( aLua : TLua; aActive : PDRLSession );
 begin
-  aLua.Register( 'game', lua_game_lib );
+  // aActive is borrowed from the owner and must outlive the Lua state.
+  lua_pushlightuserdata( aLua.Raw, aActive );
+  aLua.Register( 'game', lua_game_lib, 1 );
+  lua_pushlightuserdata( aLua.Raw, aActive );
+  aLua.Register( 'statistics', lua_statistics_lib, 1 );
+  lua_pushlightuserdata( aLua.Raw, aActive );
+  aLua.RegisterMetaTable( 'statistics', @lua_statistics_get, @lua_statistics_set, 1 );
 end;
 
 end.

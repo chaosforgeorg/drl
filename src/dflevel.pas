@@ -1387,7 +1387,7 @@ var iNode : TNode;
 begin
   FActiveBeing := nil;
   Inc(FLTime);
-  FPerks.OnTick;
+  FPerks.OnTick( FPlayer.Statistics.GameTime );
   FPlayer.Statistics.OnTick;
 
   CallHook( Hook_OnTick,[ FLTime ] );

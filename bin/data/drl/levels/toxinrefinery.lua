@@ -9,7 +9,7 @@ register_level "toxin_refinery"
 
 	runtime = {
 		OnTick = function ( self )
-			if (self.data.half_wall_down_time > 0) and (core.game_time() >= self.data.half_wall_down_time) and not self.data.half_wall:contains(player.position) then
+			if (self.data.half_wall_down_time > 0) and (game.time() >= self.data.half_wall_down_time) and not self.data.half_wall:contains(player.position) then
 				local target = self:get_being(self.data.half_wall_coord)
 				if target then
 					if target:is_player() then return false end
@@ -20,9 +20,9 @@ register_level "toxin_refinery"
 				self.data.half_wall_down_time = 0
 			elseif self.data.half_wall_down_time == 0 and (self.data.half_wall_trigger:contains(player.position) or self.data.half_wall_trigger2:contains(player.position)) then
 				self:transmute("wall", "floor", self.data.half_wall)
-				self.data.half_wall_down_time = core.game_time() + 150
+				self.data.half_wall_down_time = game.time() + 150
 			end
-			if self.data.darkness_end_time > 0 and self.data.darkness_end_time < core.game_time() then
+			if self.data.darkness_end_time > 0 and self.data.darkness_end_time < game.time() then
 				player.vision = player.vision + self.data.vision_reduction
 				player.flags[ BF_DARKNESS ] = self.data.old_darkness
 				self.data.darkness_end_time = 0
@@ -81,7 +81,7 @@ register_level "toxin_refinery"
 					statistics.levers_pulled = statistics.levers_pulled + 1
 					level:transmute( "ldoor", "floor", level.data.door1 )
 					level:transmute( "wall", "floor", level.data.trap1 )
-					level.data.darkness_end_time = core.game_time() + 150
+					level.data.darkness_end_time = game.time() + 150
 					level.data.old_darkness = player.flags[ BF_DARKNESS ]
 					player.flags[ BF_DARKNESS ]   = true
 					player.vision = player.vision - level.data.vision_reduction

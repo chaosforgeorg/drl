@@ -418,7 +418,7 @@ function drl.register_cells()
 				if being:is_perk("running") then damage = damage / 2 end
 				if not fully_resisted then
 					ui.msg("Argh!!! Acid!")
-					if core.game_time() % 3 == 0 then
+					if game.time() % 3 == 0 then
 						being:play_sound("hit")
 					end
 				end
@@ -452,7 +452,7 @@ function drl.register_cells()
 				if being:is_perk("running") then damage = damage / 2 end
 				if not fully_resisted then
 					ui.msg("Argh!!! Lava!")
-					if core.game_time() % 3 == 0 then
+					if game.time() % 3 == 0 then
 						being:play_sound("hit")
 					end
 				end
@@ -487,7 +487,7 @@ function drl.register_cells()
 			if being:is_perk("running") then damage = damage / 2 end
 			if not fully_resisted then
 				ui.msg("Argh!!! Blood!")
-				if core.game_time() % 3 == 0 then
+				if game.time() % 3 == 0 then
 					being:play_sound("hit")
 				end
 			end

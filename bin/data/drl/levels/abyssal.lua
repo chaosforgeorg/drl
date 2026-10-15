@@ -9,7 +9,7 @@ register_level "abyssal_plains"
 
 	runtime = {
 		OnTick = function ( self )
-			local time = core.game_time()
+			local time = game.time()
 			local res = self.status
 			if res > 1 then return end
 			if res == 0 and self.data.inner_room:contains(player.position) then

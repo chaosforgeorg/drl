@@ -136,21 +136,31 @@ begin
     iState := DRL.State;
     iLua := TDRLLua( FContext.Lua );
     iLua.ProtectedRunHook( Self, iLua.HookName( aHook ), aParams );
-    if DRL.State <> iState then Exit;
+    // A discarded receiver has no Lua object; its perks do not run.
+    if ( DRL.State <> iState ) or Dead then Exit;
   end;
   if FPerks <> nil then if FPerks.CallHook( aHook, aParams ) then CallHook := True;
 end;
 
+// If the prototype hook discards Self, its answer is final.
 function TThing.CallHookCheck ( aHook : Byte; const aParams : array of const ) : Boolean;
 begin
-  if aHook in FHooks then if not FContext.Lua.ProtectedRunHook(Self, HookNames[aHook], aParams ) then Exit( False );
+  if aHook in FHooks then
+  begin
+    if not FContext.Lua.ProtectedRunHook(Self, HookNames[aHook], aParams ) then Exit( False );
+    if Dead then Exit( True );
+  end;
   if FPerks <> nil then if not FPerks.CallHookCheck( aHook, aParams ) then Exit( False );
   Exit( True );
 end;
 
 function TThing.CallHookCan ( aHook : Byte; const aParams : array of const ) : Boolean;
 begin
-  if aHook in FHooks then if FContext.Lua.ProtectedRunHook(Self, HookNames[aHook], aParams ) then Exit( True );
+  if aHook in FHooks then
+  begin
+    if FContext.Lua.ProtectedRunHook(Self, HookNames[aHook], aParams ) then Exit( True );
+    if Dead then Exit( False );
+  end;
   if FPerks <> nil   then if FPerks.CallHookCan( aHook, aParams ) then Exit( True );
   Exit( False );
 end;
@@ -238,7 +248,7 @@ end;
 procedure TThing.Tick( aTime : LongInt );
 begin
   if FPerks <> nil then
-    FPerks.OnTick;
+    FPerks.OnTick( aTime );
 end;
 
 procedure TThing.WriteToStream( aStream : TStream );
