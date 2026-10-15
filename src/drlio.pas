@@ -94,6 +94,8 @@ type TDRLIO = class( TIORL )
   procedure addRumbleAnimation( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord ); virtual;
   procedure Explosion( aDelay : Integer; aWhere : TCoord2D; aData : TExplosionData ); reintroduce; virtual;
   procedure PulseBlood( aValue : Single ); virtual;
+  // Shows the being's pain sprite for a while after the given animation delay.
+  procedure ShowPain( aBeing : TBeing; aDelay : Integer );
 
   class procedure RegisterLuaAPI( State : TLuaStack ); reintroduce;
 
@@ -360,6 +362,12 @@ end;
 procedure TDRLIO.PulseBlood( aValue : Single );
 begin
 
+end;
+
+procedure TDRLIO.ShowPain( aBeing : TBeing; aDelay : Integer );
+const PAIN_DURATION = 500;
+begin
+  aBeing.OverlayUntil := Max( aBeing.OverlayUntil, FTime + aDelay + PAIN_DURATION );
 end;
 
 {

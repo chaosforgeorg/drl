@@ -81,6 +81,8 @@ type
     procedure ToggleSound;
     procedure ToggleMusic( const aMusicID : AnsiString );
     function ResolveSoundID( const aResolveIDs : array of AnsiString ) : Word;
+    // Like ResolveSoundID, but independent of mute, for IDs cached at creation.
+    function FindSoundID( const aResolveIDs : array of AnsiString ) : Word;
     function GetSampleID( const aID : AnsiString ) : Word;
     destructor Destroy; override;
   end;
@@ -438,11 +440,17 @@ begin
 end;
 
 function TDRLAudio.ResolveSoundID( const aResolveIDs : array of AnsiString ) : Word;
+begin
+  if FSoundMuted then Exit( 0 );
+  Exit( FindSoundID( aResolveIDs ) );
+end;
+
+function TDRLAudio.FindSoundID( const aResolveIDs : array of AnsiString ) : Word;
 var i      : Integer;
     iAsset : TAudioAssetHandle;
 begin
   Result := 0;
-  if (FAudio = nil) or FSoundMuted then Exit;
+  if FAudio = nil then Exit;
   for i := Low(aResolveIDs) to High(aResolveIDs) do
   begin
     iAsset := FindAsset( aResolveIDs[i] );

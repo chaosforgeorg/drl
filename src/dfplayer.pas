@@ -61,7 +61,6 @@ type TPlayer = class(TBeing)
   procedure AddHistory( const aHistory : Ansistring );
   class procedure RegisterLuaAPI( aLua : TLua );
   procedure UpdateVisual;
-  function ASCIIMoreCode : AnsiString; override;
   function RunPath( const aCoord : TCoord2D ) : Boolean;
   procedure ExamineNPC;
   procedure ExamineItem;
@@ -440,23 +439,6 @@ begin
   FEnemiesInVision := iLevel.GetEnemiesVisible;
   if FEnemiesInVision > 0 then
     FMultiMove.Stop;
-
-  if FMultiMove.Active then
-  begin
-    if IO.CommandEventPending then
-    begin
-      IO.Msg('Stop.');
-      FMultiMove.Stop;
-      IO.ClearEventBuffer;
-    end
-    else
-    begin
-      if not GraphicsVersion then
-        IO.Delay( Option_RunDelay );
-    end;
-  end;
-
-  CallHook(Hook_OnPreAction,[]);
 end;
 
 procedure TPlayer.PostAction;
@@ -689,13 +671,6 @@ begin
   end
   else
     FCSprite.SpriteID[0] := FContext.Lua.Get( ['beings', ID, 'sprite'], 0 ) + iSpMod;
-end;
-
-function TPlayer.ASCIIMoreCode : AnsiString;
-begin
-  if (Inv.Slot[efTorso] <> nil) and (IO.ASCII.Exists(Inv.Slot[efTorso].ID)) then
-    exit(Inv.Slot[efTorso].ID);
-  Exit('player');
 end;
 
 procedure TPlayer.ResortStacks;

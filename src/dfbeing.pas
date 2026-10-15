@@ -77,7 +77,6 @@ TBeing = class(TThing,IPathQuery)
     // True once Kill has started, the being was discarded or its HP is depleted.
     function Dying : Boolean;
     procedure Remove( Node : TNode ); override;
-    function ASCIIMoreCode : AnsiString; virtual;
     function GetVisualOverlay : TThing;
 
     // Actions
@@ -178,7 +177,8 @@ TBeing = class(TThing,IPathQuery)
     // depleted HP while the hooks decide.
     property Killed       : Boolean read FDying;
 
-    property OverlayUntil : QWord   read FOverlayUntil;
+    // Presentation time until which the pain sprite shows; written by IO.
+    property OverlayUntil : QWord   read FOverlayUntil write FOverlayUntil;
   published
 
     property can_dual_wield       : Boolean read canDualWield;
@@ -214,7 +214,6 @@ uses math,
      vlualibrary, vluaentitynode, vdebug, vluatools, vcolor, vvector,
      dfplayer, dflevel, dfmap, drlhooks, drlio, drllua;
 
-const PAIN_DURATION = 500;
 
 function TBeing.getStrayChance( aDefender : TBeing; aWeapon : TItem ) : Byte;
 var iMiss   : Integer;
@@ -372,7 +371,9 @@ begin
 
   FVisionRadius := VisionBaseValue + aTable.getInteger('vision');
 
-  Flags[ BF_WALKSOUND ] := ( IO.Audio.ResolveSoundID( [ FID+'.hoof', FSoundID+'.hoof' ] ) <> 0 );
+  // Cached once: moves are frequent. Mute must not affect it; it is checked
+  // at playback.
+  Flags[ BF_WALKSOUND ] := ( IO.Audio.FindSoundID( [ FID+'.hoof', FSoundID+'.hoof' ] ) <> 0 );
 
   FHPMax := FHP;
   FHPNom := FHP;
@@ -556,11 +557,6 @@ begin
     if Node is TItem then
       FInv.ClearSlot( Node as TItem );
   inherited Remove( Node );
-end;
-
-function TBeing.ASCIIMoreCode : AnsiString;
-begin
-  Exit( ID );
 end;
 
 function TBeing.GetVisualOverlay : TThing;
@@ -2117,7 +2113,7 @@ begin
     else begin
       CallHook( Hook_OnAttacked, [ iActive, aSource ] );
       // TODO: handle Delay?
-      FOverlayUntil := Max( FOverlayUntil, IO.Time + aDelay + PAIN_DURATION );
+      IO.ShowPain( Self, aDelay );
     end;
 end;
 

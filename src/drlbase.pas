@@ -84,6 +84,7 @@ type TDRLSession = class(TVObject)
        procedure ReleasePlayer;
        procedure PostRegenerateLevel;
        procedure LevelUpPlayer;
+       procedure PlayerPreAction;
        procedure ChoosePlayerTrait;
        procedure ApplyOutcome;
        function ContinuePlaying : Boolean;
@@ -538,7 +539,7 @@ begin
   FLevel.AfterGeneration;
   EnterLevel( FLevel );
   FLevel.CalculateVision( FPlayer.Position, FPlayer.Vision );
-  FPlayer.PreAction;
+  PlayerPreAction;
 end;
 
 // One player level-up: the player advances, the advance is presented, then
@@ -606,6 +607,25 @@ begin
     CRASHMODE := False;
 end;
 
+// The player's pre-action steps, with the multi-move interruption between
+// them: a pending key stops the move; console mode paces each step.
+procedure TDRLSession.PlayerPreAction;
+begin
+  FPlayer.PreAction;
+  if FPlayer.MultiMove.Active then
+  begin
+    if IO.CommandEventPending then
+    begin
+      IO.Msg('Stop.');
+      FPlayer.MultiMove.Stop;
+      IO.ClearEventBuffer;
+    end
+    else if not GraphicsVersion then
+      IO.Delay( Option_RunDelay );
+  end;
+  FPlayer.CallHook( Hook_OnPreAction, [] );
+end;
+
 procedure TDRLSession.PreAction;
 begin
   if FPlayer.Dying then Exit;
@@ -616,7 +636,7 @@ begin
   FPlayer.UpdateVisual;
   if GraphicsVersion then
     (IO as TDRLGFXIO).UpdateMinimap;
-  FPlayer.PreAction;
+  PlayerPreAction;
   FTargeting.Update( FPlayer.Vision );
   IO.SetAutoTarget( FTargeting.List.Current );
   if ( FPlayerView <> nil ) and (not FPlayer.DamagedLastTurn) and (FPlayer.EnemiesInVision < 1) then
