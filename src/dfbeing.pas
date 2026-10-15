@@ -1170,7 +1170,7 @@ begin
     then Dec( FSpeedCount, iMoveCost )
     else Dec( FSpeedCount, aMoveCost );
   HandlePostDisplace;
-  HandlePostMove;
+  if not Dead then HandlePostMove;
   Exit( True );
 end;
 
@@ -1340,7 +1340,8 @@ begin
   if BF_WALKSOUND in FFlags then
     PlaySound( 'hoof' );
   HandlePostDisplace;
-  if not IsPlayer then CallHook( Hook_OnPostMove, [] );
+  if not Dead then
+    if not IsPlayer then CallHook( Hook_OnPostMove, [] );
   Exit( iMoveResult );
 end;
 

@@ -1872,7 +1872,6 @@ var iState            : TLuaGameStack;
 begin
   iState.Init(L);
   iLevel := iState.ToObject(1) as TLevel;
-  Log( iState.ToPosition(2).ToString );
   if iState.IsNil(2) then Exit(0);
 
   if iState.IsTable(3) then

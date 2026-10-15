@@ -211,6 +211,8 @@ function aitk.flock_idle( self )
             self.scount =  self.scount - 500
             self.move_to = false
             return "idle"
+        elseif not self.__ptr then
+            return "idle"
         end
     else
         self.scount =  self.scount - 500
@@ -350,6 +352,7 @@ function aitk.basic_pursue( self )
         return "idle"
     end
     local move_check = aitk.move_path( self, self.move_to )
+    if not self.__ptr then return "idle" end
     if aitk.basic_scan( self ) then
         self.move_to = false
         return "hunt"
@@ -760,6 +763,7 @@ end
 
 function aitk.charge_post_charge( self )
     local move_check,move_coord = self:direct_seek( self.move_to, 2.0 )
+    if not self.__ptr then return "idle" end
     if move_check ~= MOVEOK then
         if player.position == move_coord then
             self:attack( move_coord )
