@@ -8,7 +8,7 @@ unit drlgfxio;
 interface
 uses vglquadrenderer, vgltypes, vluaconfig, vioevent, viotypes, vimage,
      vrltools, vutil, vtextures, vvector, vbitmapfont, vio, vparticleengine, vluamapnode,
-     drlio, drlspritemap, drlanimation, drlminimap, dfdata, dfthing, dflevel;
+     drlio, drlspritemap, drlanimation, drlminimap, dfdata, dfthing, dflevel, drlconfig, drlconfiguration;
 
 type
 
@@ -18,7 +18,7 @@ type
 // animation backend. Gameplay policy belongs outside this adapter.
 
  TDRLGFXIO = class( TDRLIO )
-    constructor Create; reintroduce;
+    constructor Create( aSettings : TDRLConfiguration ); reintroduce;
     procedure Reset; override;
     procedure SetLevel( aLevel : TLuaMapNode ); override;
     procedure EnterLevel( aCoord : TCoord2D ); override;
@@ -26,7 +26,7 @@ type
     // Finish module uploads and GPU warm-up while the loading screen is active.
     procedure PrepareGraphics;
     procedure Reconfigure( aConfig : TLuaConfig ); override;
-    procedure Configure( aConfig : TLuaConfig; aReload : Boolean ); override; overload;
+    procedure Configure( aConfig : TDRLConfig; aReload : Boolean ); override; overload;
     procedure Update( aMSec : DWord ); override;
     function PushLayer( aLayer : TIOLayer ) : TIOLayer; override;
     function OnEvent( const iEvent : TIOEvent ) : Boolean; override;
@@ -151,7 +151,7 @@ uses {$IFDEF WINDOWS}windows,{$ENDIF}
      vdebug, vlog, vmath, vdf, vgl3library, vuid, vvision, vrandom,
      vglimage, vsdlio, vcolor, vglconsole, vioconsole,
      vtig, vtigstyle, vtigio,
-     dfitem, drlbase, drlconfiguration, drlcontrollerbindings, drlmodule;
+     dfitem, drlbase, drlcontrollerbindings, drlmodule;
 
 
 procedure TDRLGFXIO.RecalculateScaling( aInitialize : Boolean );
@@ -219,7 +219,7 @@ begin
   end;
 end;
 
-constructor TDRLGFXIO.Create;
+constructor TDRLGFXIO.Create( aSettings : TDRLConfiguration );
 var iSDLFlags   : TSDLIOFlags;
     iMode       : TIODisplayMode;
     iWidth      : Integer;
@@ -264,7 +264,7 @@ begin
 
   FAnimations := TAnimationManager.Create;
   FMinimap    := TMinimap.Create;
-  inherited Create;
+  inherited Create( aSettings );
   FParticleEngine := TParticleEngine.Create( VisualRNG );
 end;
 
@@ -768,7 +768,7 @@ begin
   end;
 end;
 
-procedure TDRLGFXIO.Configure( aConfig : TLuaConfig; aReload : Boolean );
+procedure TDRLGFXIO.Configure( aConfig : TDRLConfig; aReload : Boolean );
 begin
   inherited Configure( aConfig, aReload );
 

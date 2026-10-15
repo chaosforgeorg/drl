@@ -8,14 +8,14 @@ unit drltextio;
 interface
 
 uses vrltools, vtextmap, vioevent, viotypes, vluamapnode,
-     drlio, dfdata, dflevel;
+     drlio, dfdata, dflevel, drlconfiguration;
 
 // TDRLTextIO
 //
 // Architectural boundary: owns the concrete text rendering and animation
 // backend. Gameplay policy belongs outside this adapter.
 type TDRLTextIO = class( TDRLIO, ITextMap )
-    constructor Create; reintroduce;
+    constructor Create( aSettings : TDRLConfiguration ); reintroduce;
     procedure Reset; override;
     procedure Initialize; override;
     destructor Destroy; override;
@@ -60,7 +60,7 @@ uses sysutils,
      drlbase, drlanimation,
      dfbeing, dfitem;
 
-constructor TDRLTextIO.Create;
+constructor TDRLTextIO.Create( aSettings : TDRLConfiguration );
 begin
   FTextMap  := nil;
   {$IFDEF WINDOWS}
@@ -70,7 +70,7 @@ begin
   {$ENDIF}
   if (FIODriver.GetSizeX < 80) or (FIODriver.GetSizeY < 25) then
     raise EIOException.Create('Too small console available, resize your console to 80x25!');
-  inherited Create;
+  inherited Create( aSettings );
 end;
 
 procedure TDRLTextIO.Reset;

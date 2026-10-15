@@ -8,7 +8,8 @@ unit drlio;
 interface
 uses {$IFDEF WINDOWS}windows,{$ENDIF} classes, sysutils,
      vluagamestack, vio, vbindings, viorl, vrltools, vluaconfig, vglquadrenderer, vstoreinterface, vtextures, vtigstyle, vluastack, viotypes, vioevent, vioconsole, vgenerics, vutil,
-     dfdata, dfthing, dfbeing, drlspritemap, drlaudio, drlkeybindings, drlbase, drlcontrollerbindings, drlloadingview, drlmodule;
+     dfdata, dfthing, dfbeing, drlspritemap, drlaudio, drlkeybindings, drlbase, drlcontrollerbindings, drlloadingview, drlmodule,
+     drlconfig, drlconfiguration;
 
 const TIG_EV_NONE      = 0;
       TIG_EV_INVENTORY = 2;
@@ -35,14 +36,13 @@ type TStringHashMap       = specialize TGHashMap< AnsiString >;
 
 // Architectural boundary: adapts shared roguelike presentation mechanics to DRL policy and its active session.
 type TDRLIO = class( TIORL )
-  constructor Create; reintroduce;
+  constructor Create( aSettings : TDRLConfiguration ); reintroduce;
   procedure Reset; virtual;
   procedure SetSeed( aCardinal : LongInt );
   procedure Initialize; virtual; abstract;
   procedure Initialize( iRenderer : TIOConsoleRenderer );
   procedure Reconfigure( aConfig : TLuaConfig ); virtual;
-  procedure Configure( aConfig : TLuaConfig ); override; overload;
-  procedure Configure( aConfig : TLuaConfig; aReload : Boolean ); overload; virtual;
+  procedure Configure( aConfig : TDRLConfig; aReload : Boolean ); overload; virtual;
   procedure RunLayer( aLayer : TIOLayer; aHideHUD : Boolean = False ); reintroduce;
   procedure FadeLevel( aFadeTime : Single = 0.0 );
   procedure PreUpdate; override;
@@ -191,7 +191,7 @@ implementation
 
 uses math, video, dateutils,
      vsound, vlua, vuid, vlog, vdebug, vmath, vsdlio, vglconsole, vtig, vtigio, vvector,
-     dflevel, dfitem, dfhof, drlconfiguration, drluibindings, drlmoreview, drlchoiceview, drlmodulechoiceview, drlhudviews, drlplotview, drlplayerview;
+     dflevel, dfitem, dfhof, drluibindings, drlmoreview, drlchoiceview, drlmodulechoiceview, drlhudviews, drlplotview, drlplayerview;
 
 function TIGSubCallback( const aID : Ansistring ) : Ansistring;
 begin
@@ -405,15 +405,15 @@ end;
 
 { TDRLIO }
 
-constructor TDRLIO.Create;
+constructor TDRLIO.Create( aSettings : TDRLConfiguration );
 begin
   inherited Create( FIODriver, nil );
 
   FMsgQueue := True;
   FLoading  := nil;
-  FAudio    := TDRLAudio.Create( FVisualRNG );
+  FAudio    := TDRLAudio.Create( FVisualRNG, aSettings );
   InitializeMessages( 2, 77, @EventMore, Option_MessageBuffer );
-  Messages.GroupMultiple := Configuration.GetBoolean( 'group_messages' );
+  Messages.GroupMultiple := aSettings.GetBoolean( 'group_messages' );
   inherited Configure( dfdata.Config );
   FASCII    := TASCIIImageMap.Create( True );
 
@@ -749,12 +749,7 @@ begin
   end;
 end;
 
-procedure TDRLIO.Configure( aConfig : TLuaConfig );
-begin
-  Configure( aConfig, False );
-end;
-
-procedure TDRLIO.Configure ( aConfig : TLuaConfig; aReload : Boolean ) ;
+procedure TDRLIO.Configure ( aConfig : TDRLConfig; aReload : Boolean ) ;
 begin
   inherited Configure( aConfig );
   // TODO : configurable

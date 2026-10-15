@@ -180,9 +180,9 @@ end;
 function TDRLRuntime.CreateIO : TIORL;
 begin
   if GraphicsVersion then
-    Result := TDRLGFXIO.Create
+    Result := TDRLGFXIO.Create( Self.Configuration as TDRLConfiguration )
   else
-    Result := TDRLTextIO.Create;
+    Result := TDRLTextIO.Create( Self.Configuration as TDRLConfiguration );
 end;
 
 function TDRLRuntime.CreateLua : TLua;
@@ -235,7 +235,7 @@ begin
   TDRLIO(IO).Initialize;
   TDRLIO(IO).LoadStart;
   FProfileTimeStart := MSecNow();
-  TDRLIO(IO).Configure(Config);
+  TDRLIO(IO).Configure(Config, False);
   TDRLIO(IO).Reconfigure(Config);
 
   {$IFDEF WINDOWS}
@@ -365,7 +365,6 @@ begin
   Setting_GamepadRumble      := drlconfiguration.Configuration.GetBoolean('enable_rumble');
   Setting_MouseEdgePan       := drlconfiguration.Configuration.GetBoolean('mouse_edge_pan');
   Setting_UnlockAll          := drlconfiguration.Configuration.GetBoolean('unlock_all');
-  Setting_MenuSound          := drlconfiguration.Configuration.GetBoolean('menu_sound');
   Setting_WaitSound          := drlconfiguration.Configuration.GetBoolean('wait_sound');
   Setting_GroupMessages      := drlconfiguration.Configuration.GetBoolean('group_messages');
   Setting_ItemDropAnimation  := drlconfiguration.Configuration.GetBoolean('item_drop_animation');
