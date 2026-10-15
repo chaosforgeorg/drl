@@ -2125,20 +2125,6 @@ begin
   Exit( 0 );
 end;
 
-function lua_level_post_generate( L : Plua_State ) : Integer; cdecl;
-var iState : TLuaGameStack;
-    iLevel : TLevel;
-begin
-  iState.Init( L );
-  IO.MsgUpdate;
-  iLevel := iState.ToObject( 1 ) as TLevel;
-  iLevel.AfterGeneration;
-  DRL.EnterLevel( iLevel );
-  iLevel.CalculateVision( iLevel.FPlayer.Position, iLevel.FPlayer.Vision );
-  iLevel.FPlayer.PreAction;
-  Exit( 0 );
-end;
-
 function lua_level_get_enemies_left(L: Plua_State): Integer; cdecl;
 var iState : TLuaGameStack;
     iLevel : TLevel;
@@ -2200,7 +2186,7 @@ begin
   Result := 1;
 end;
 
-const lua_level_lib : array[0..26] of luaL_Reg = (
+const lua_level_lib : array[0..25] of luaL_Reg = (
       ( name : 'drop_item';  func : @lua_level_drop_item),
       ( name : 'drop_being'; func : @lua_level_drop_being),
       ( name : 'respawn';    func : @lua_level_respawn),
@@ -2220,7 +2206,6 @@ const lua_level_lib : array[0..26] of luaL_Reg = (
       ( name : 'add_blood';          func : @lua_level_add_blood),
       ( name : 'damage_tile';func : @lua_level_damage_tile),
       ( name : 'push_item';  func : @lua_level_push_item),
-      ( name : 'post_generate'; func : @lua_level_post_generate),
       ( name : 'get_enemies_left'; func : @lua_level_get_enemies_left),
       ( name : 'is_passable_ext'; func : @lua_level_is_passable_ext),
       ( name : 'add_perk';      func : @lua_level_add_perk),

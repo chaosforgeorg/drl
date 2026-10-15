@@ -37,6 +37,7 @@ type TDRLRuntime = class( TRLRuntime )
     procedure ReleaseSession;
     procedure SafeCallModuleHook( aHook : Byte; const aParams : array of Const );
     procedure UnloadGameData;
+    procedure LuaError( const aMessage : AnsiString );
   protected
     function CreateIO : TIORL; override;
     function CreateLua : TLua; override;
@@ -188,6 +189,17 @@ end;
 function TDRLRuntime.CreateLua : TLua;
 begin
   Result := TDRLLua.Create( FModules, Paths.DataPath );
+  Result.ErrorFunc := @LuaError;
+end;
+
+// Lua errors during a run are reported in game; elsewhere they abort.
+procedure TDRLRuntime.LuaError( const aMessage : AnsiString );
+begin
+  if FSession.State in [ DSPlaying, DSEnding ] then
+    TDRLIO(IO).ErrorReport( aMessage )
+  else
+    raise ELuaException.Create( 'LuaError: ' + aMessage );
+  Log( 'LuaError: ' + aMessage );
 end;
 
 procedure TDRLRuntime.CreateSession( aInitializeData : Boolean );

@@ -85,6 +85,7 @@ type TDRLSession = class(TVObject)
        procedure SetPlayer( aPlayer : TPlayer );
        procedure ReleaseLevel;
        procedure ReleasePlayer;
+       procedure PostRegenerateLevel;
        procedure Apply( aResult : TMenuResult );
        procedure HardQuit;
        procedure HandlePlayerViewSwap;
@@ -502,6 +503,16 @@ begin
   FLevel.Clear;
   FLevel.FullClear;
   CallHook( Hook_OnCreateLevel, [] );
+end;
+
+// Completes a god-mode regeneration started by ResetLevel.
+procedure TDRLSession.PostRegenerateLevel;
+begin
+  IO.MsgUpdate;
+  FLevel.AfterGeneration;
+  EnterLevel( FLevel );
+  FLevel.CalculateVision( FPlayer.Position, FPlayer.Vision );
+  FPlayer.PreAction;
 end;
 
 procedure TDRLSession.EnterLevel( aLevel : TLevel );
@@ -2043,6 +2054,12 @@ begin
   Result := 0;
 end;
 
+function lua_game_post_regenerate( L : PLua_State ) : Integer; cdecl;
+begin
+  ActiveSession( L ).PostRegenerateLevel;
+  Result := 0;
+end;
+
 function lua_statistics_get( L : PLua_State ) : Integer; cdecl;
 var iState  : TLuaGameStack;
     iPlayer : TPlayer;
@@ -2080,12 +2097,13 @@ begin
   Result := 1;
 end;
 
-const lua_game_lib : array[0..6] of luaL_Reg = (
+const lua_game_lib : array[0..7] of luaL_Reg = (
   ( name : 'win';        func : @lua_game_win ),
   ( name : 'exit';       func : @lua_game_exit ),
   ( name : 'has_won';    func : @lua_game_has_won ),
   ( name : 'is_playing'; func : @lua_game_is_playing ),
   ( name : 'reset_level';func : @lua_game_reset_level ),
+  ( name : 'post_regenerate'; func : @lua_game_post_regenerate ),
   ( name : 'time';       func : @lua_game_time ),
   ( name : nil;         func : nil )
 );

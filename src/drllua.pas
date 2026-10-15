@@ -17,7 +17,6 @@ type
 
 TDRLLua = class(TLua)
        constructor Create( aModules : TDRLModules; const aDataPath : AnsiString ); reintroduce;
-       procedure OnError(const ErrorString : Ansistring); override;
        procedure RegisterPlayer(Thing: TThing);
        function HookName( aHook : Byte ) : AnsiString;
        destructor Destroy; override;
@@ -41,7 +40,7 @@ implementation
 
 uses typinfo, variants,
      vdebug, vluastate, vluatools, vluadungen, vluaentitynode, vluatype, vtextures, vtigstyle, vparticleengine,
-     dfplayer, dflevel, drlhooks, dfhof, drlbase, drlio, drlgfxio, drlspritemap;
+     dfplayer, dflevel, drlhooks, dfhof, drlio, drlgfxio, drlspritemap;
 
 var SpriteSheetCounter : Integer = -1;
 
@@ -355,17 +354,6 @@ begin
   until (FindNext(iSearchRec) <> 0);
 end;
 
-procedure TDRLLua.OnError(const ErrorString : Ansistring);
-begin
-  if (IO <> nil) and ( DRL.State in [ DSPlaying, DSEnding ] ) then
-  begin
-    IO.ErrorReport( ErrorString );
-  end
-  else
-    raise ELuaException.Create('LuaError: '+ErrorString);
-  Log('LuaError: '+ErrorString);
-end;
-
 procedure TDRLLua.RegisterPlayer(Thing: TThing);
 begin
   SetValue('player',Thing);
@@ -518,8 +506,6 @@ begin
   RegisterAreaFull( Raw, NewArea( NewCoord2D(1,1), NewCoord2D(MaxX,MaxY) ) );
   RegisterWeightTableClass( Raw );
 
-  ErrorFunc := @OnError;
-  
   SetValue('WINDOWSVERSION', {$IFDEF WINDOWS}1{$ELSE}0{$ENDIF});
   SetValue('GRAPHICSVERSION',GraphicsVersion);
   SetValue('GODMODE',        GodMode);
