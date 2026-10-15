@@ -311,7 +311,7 @@ constructor TDRLSession.Create( aRuntime : TRLRuntime; aModules : TDRLModules;
   aStore : TStoreInterface; aData : TGameData; const aPaths : TGamePaths );
 begin
   FRuntime := aRuntime;
-  FContext := TNodeContext.Create( aRuntime.Lua, nil, True );
+  FContext := TNodeContext.Create( aRuntime.Lua, nil );
   FModules := aModules;
   FStore := aStore;
   FPaths := aPaths;
