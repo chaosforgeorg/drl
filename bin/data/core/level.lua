@@ -416,7 +416,7 @@ function level:drop_item_ext( item, c )
 		assert( items[id], "item "..id.." not defined!" ) 
 		id = items[id].nid
 	end
-	local new_item = self:drop_item(id,c)
+	local new_item = self:drop_ammo(id,c)
 	if type(item) == "table" then
 		for k,v in pairs(item) do
 			if type(k) == "string" then

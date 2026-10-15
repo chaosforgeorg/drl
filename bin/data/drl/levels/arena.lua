@@ -85,7 +85,7 @@ register_level "hells_arena"
 
 				for _,reward in ipairs(self.data.final_reward) do
 					if reward.amount > 0 then
-						self:area_drop(self.data.drop_zone, reward.id, reward.amount, true )
+						self:area_drop_ammo(self.data.drop_zone, reward.id, reward.amount, true )
 					end
 				end
 
