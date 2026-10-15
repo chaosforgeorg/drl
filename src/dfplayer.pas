@@ -109,7 +109,7 @@ implementation
 
 uses math, variants,
      vuid, vioevent, vgenerics, vcolor, vdebug,
-     dfmap, dflevel, drlhooks, drlio, drlspritemap, drlbase, drllua, drlinventory, drlhudviews;
+     dfmap, dflevel, drlhooks, drlio, drlspritemap, drllua, drlinventory, drlhudviews;
 
 constructor TPlayer.Create( aContext : TNodeContext; aGameRNG : TRNG );
 begin
@@ -382,7 +382,7 @@ begin
   TLevel(Parent).CallHook( FPosition, Self, CellHook_OnEnter );
 
   MasterDodge := False;
-  if DRL.State <> DSPlaying then Exit( False );
+  if not TLevel( Parent ).IsActive then Exit( False );
   FLastPos := FPosition;
   FMeleeAttack := False;
   Exit( True );
@@ -463,7 +463,7 @@ begin
         LevelUp;
 
   CallHook(Hook_OnPostAction,[]);
-  if DRL.State <> DSPlaying then Exit;
+  if not TLevel( Parent ).IsActive then Exit;
   FLastTurnDodge := False;
   UpdateVisual;
 end;
@@ -568,7 +568,6 @@ var iLevel   : TLevel;
 begin
   if FDying then Exit;
   iLevel := TLevel(Parent);
-  if DRL.State <> DSPlaying then Exit;
 
   for iSlot in TEqSlot do
     if FInv.Slot[ iSlot ] <> nil then
@@ -585,9 +584,8 @@ begin
   end;
 
   FDying := True;
-  DRL.SetState( DSEnding );
 
-  if DRL.GameWon then
+  if iLevel.RunStatus.GameWon then
     SetKilledBy( '', False )
   else if (FKilledBy = '') and (aKiller <> nil) then
   begin

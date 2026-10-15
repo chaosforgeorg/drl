@@ -23,6 +23,10 @@ TLevel = class(TLuaMapNode)
     procedure Init( aTable : TLuaTable; aIndex : Integer; aDifficulty : Byte );
     procedure InitializeParticles( aEngine : TParticleEngine );
     procedure BindPlayer( aPlayer : TPlayer );
+    procedure BindRunStatus( aStatus : TRunStatus );
+    // Actions and AI may continue: the run is undecided and the player has not
+    // been killed. Read at the moment of the check.
+    function IsActive : Boolean;
     procedure AfterGeneration;
     procedure Enter;
     procedure RecalcFluids;
@@ -141,6 +145,7 @@ TLevel = class(TLuaMapNode)
     function  getItem( const coord : TCoord2D ) : TItem; override;
   private
     FPlayer        : TPlayer; // Borrowed from Session; nil before/after a run.
+    FRunStatus     : TRunStatus; // Borrowed from Session, which outlives the level.
     FData          : TGameData;
     FMap           : TMap;
     FIndex         : Integer;
@@ -177,6 +182,7 @@ TLevel = class(TLuaMapNode)
     function getSpriteBottom( Index : TCoord2D ): TSprite;
   public
     property Player    : TPlayer                    read FPlayer;
+    property RunStatus : TRunStatus                 read FRunStatus;
     property Perks     : TPerks                     read FPerks;
     property Data      : TGameData                  read FData;
     property Markers   : TMarkerStore               read FMarkers;
@@ -216,7 +222,7 @@ implementation
 
 uses math, typinfo,
      vgenerics, vluatools, vdebug, vmath,
-     drlbase, drlio, drlhudviews;
+     drlio, drlhudviews;
 
 type TProcessedUIDList = specialize TGArray<TUID>;
 
@@ -423,6 +429,16 @@ end;
 procedure TLevel.BindPlayer( aPlayer : TPlayer );
 begin
   FPlayer := aPlayer;
+end;
+
+procedure TLevel.BindRunStatus( aStatus : TRunStatus );
+begin
+  FRunStatus := aStatus;
+end;
+
+function TLevel.IsActive : Boolean;
+begin
+  Exit( FRunStatus.Undecided and ( not FPlayer.Killed ) );
 end;
 
 procedure TLevel.InitializeParticles( aEngine : TParticleEngine );
@@ -1333,7 +1349,7 @@ procedure TLevel.UpdateKillState;
 var iEnemiesLeft       : Integer;
     iUniqueEnemiesLeft : Integer;
 begin
-  if not ( DRL.State in [ DSPlaying, DSEnding ] ) or DRL.GameWon then Exit;
+  if not FRunStatus.Undecided then Exit;
 
   iEnemiesLeft       := EnemiesLeft();
   if ( iEnemiesLeft < 4 ) and ( not ( LF_NOBEINGREVEAL in FFlags ) ) then
@@ -1401,8 +1417,8 @@ begin
 
   NukeTick;
 
-  // Finish this tick's effects before finalizing a death or victory.
-  if DRL.State in [ DSPlaying, DSEnding ] then
+  // Passive effects finish this step, also after a death or victory in it.
+  if FRunStatus.State = DSPlaying then
   begin
     for iNode in Self do
     begin
@@ -1412,12 +1428,12 @@ begin
         FActiveBeing := TBeing(iNode);
         FActiveBeing.Tick( FPlayer.Statistics.GameTime );
       end;
-      if not ( DRL.State in [ DSPlaying, DSEnding ] ) then Break;
+      if FRunStatus.State <> DSPlaying then Break;
     end;
     FActiveBeing := nil;
   end;
 
-  if DRL.State = DSPlaying then
+  if IsActive then
   begin
     for iNode in Self do
     begin
@@ -1429,12 +1445,12 @@ begin
               FActiveBeing := TBeing(iNode);
               FActiveBeing.Action;
             end;
-      if DRL.State <> DSPlaying then Break;
+      if not IsActive then Break;
     end;
   end;
   FActiveBeing := nil;
 
-  if DRL.State = DSPlaying then
+  if IsActive then
     FActiveBeing := FPlayer;
 end;
 
@@ -1454,7 +1470,7 @@ begin
     else
     begin
       FPlayer.Statistics.Increase('levels_nuked');
-      if DRL.State in [ DSNextLevel, DSSaving ] then
+      if FRunStatus.State in [ DSNextLevel, DSSaving ] then
       begin
         IO.Msg('Right in the nick of time!');
         IO.RunLayer( TMoreLayer.Create( False ) );

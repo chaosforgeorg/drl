@@ -173,8 +173,6 @@ begin
   end;
   if TDRLIO(IO).Session = FSession then
     TDRLIO(IO).Session := nil;
-  if drlbase.DRL = FSession then
-    drlbase.DRL := nil;
   FreeAndNil(FSession);
 end;
 
@@ -206,7 +204,6 @@ procedure TDRLRuntime.CreateSession( aInitializeData : Boolean );
 begin
   FSession := TDRLSession.Create( Self, FModules, FStore, FData, Paths );
   TDRLIO(IO).Session := FSession;
-  drlbase.DRL := FSession;
   if not aInitializeData then Exit;
   TDRLLua( FLua ).BindNodeContext( FSession.Context );
   FSession.InitializeLevel;

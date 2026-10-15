@@ -66,7 +66,7 @@ implementation
 
 uses typinfo, variants,
      vdebug, vtig,
-     drlgamedata, dflevel, drlbase, drlio, drllua, drlspritemap;
+     drlgamedata, dflevel, drlio, drllua, drlspritemap;
 
 constructor TThing.Create( const aID : AnsiString; aContext : TNodeContext );
 begin
@@ -126,18 +126,16 @@ begin
 end;
 
 function TThing.CallHook ( aHook : Byte; const aParams : array of const ) : Boolean;
-var iState : TDRLState;
-    iLua   : TDRLLua;
+var iLua : TDRLLua;
 begin
   CallHook := False;
   if aHook in FHooks then
   begin
     CallHook := True;
-    iState := DRL.State;
     iLua := TDRLLua( FContext.Lua );
     iLua.ProtectedRunHook( Self, iLua.HookName( aHook ), aParams );
     // A discarded receiver has no Lua object; its perks do not run.
-    if ( DRL.State <> iState ) or Dead then Exit;
+    if Dead then Exit;
   end;
   if FPerks <> nil then if FPerks.CallHook( aHook, aParams ) then CallHook := True;
 end;

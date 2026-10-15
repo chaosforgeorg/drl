@@ -33,9 +33,6 @@ public
   property List : TAutoTarget read FList;
 end;
 
-type TDRLState = ( DSStart,   DSMenu,       DSLoading, DSCrashLoading,
-                  DSPlaying, DSEnding,   DSSaving,  DSNextLevel,
-                  DSQuit,    DSFinished );
 type TDRLSessionResult = ( DSR_Quit, DSR_Played, DSR_ReloadData );
 
 // TDRLSession
@@ -86,6 +83,8 @@ type TDRLSession = class(TVObject)
        procedure ReleaseLevel;
        procedure ReleasePlayer;
        procedure PostRegenerateLevel;
+       procedure ApplyOutcome;
+       function ContinuePlaying : Boolean;
        procedure Apply( aResult : TMenuResult );
        procedure HardQuit;
        procedure HandlePlayerViewSwap;
@@ -101,8 +100,10 @@ type TDRLSession = class(TVObject)
        function PrepareGameSeed( aRequestedSeed : Cardinal ) : Cardinal;
        procedure RegisterChallengeRuntimes;
        function GetGameRNG : TRNG;
+       function GetState : TDRLState;
+       function GetGameWon : Boolean;
      private
-       FState           : TDRLState;
+       FStatus          : TRunStatus;
        FLevel           : TLevel;
        FPlayer          : TPlayer;
        FUIDStore        : TUIDStore;
@@ -128,7 +129,6 @@ type TDRLSession = class(TVObject)
        FSChallenge      : AnsiString;
        FArchAngel       : Boolean;
        FReloadData      : Boolean;
-       FGameWon         : Boolean;
        FCrashSave       : Boolean;
        FData            : TGameData;
        FGameSeed        : Cardinal;
@@ -136,7 +136,7 @@ type TDRLSession = class(TVObject)
        FRuntime         : TRLRuntime;
        FPaths           : TGamePaths;
      public
-       property GameWon : Boolean read FGameWon;
+       property GameWon : Boolean read GetGameWon;
        property Difficulty : Byte read FDifficulty;
        property Challenge  : Ansistring read FChallenge;
        property SChallenge : Ansistring read FSChallenge;
@@ -148,7 +148,7 @@ type TDRLSession = class(TVObject)
        property Modules : TDRLModules read FModules;
        property Level : TLevel read FLevel;
        property Player : TPlayer read FPlayer;
-       property State : TDRLState read FState;
+       property State : TDRLState read GetState;
        property Targeting : TTargeting read FTargeting;
        property GameSeed : Cardinal read FGameSeed;
        property SeededGame : Boolean read FSeededGame;
@@ -156,8 +156,6 @@ type TDRLSession = class(TVObject)
        property GameRNG : TRNG read GetGameRNG;
        property Paths : TGamePaths read FPaths;
      end;
-
-var DRL : TDRLSession;
 
 
 implementation
@@ -247,9 +245,9 @@ end;
 procedure TDRLSession.SetState( aNewState : TDRLState );
 var iWasPlaying : Boolean;
 begin
-  if ( FState = aNewState ) then Exit;
-  iWasPlaying := FState = DSPlaying;
-  FState := aNewState;
+  if ( FStatus.State = aNewState ) then Exit;
+  iWasPlaying := FStatus.State = DSPlaying;
+  FStatus.State := aNewState;
   if iWasPlaying then
   begin
     FQueueCommand := TCommand.Create( COMMAND_NONE );
@@ -257,16 +255,30 @@ begin
   end;
 end;
 
+// Death and victory are recorded during an action. Session ends play at its
+// control points, outside the action, so the current step finishes first.
+procedure TDRLSession.ApplyOutcome;
+begin
+  if ( FStatus.State in [ DSPlaying, DSNextLevel ] )
+    and ( FStatus.GameWon or FPlayer.Killed ) then
+    SetState( DSEnding );
+end;
+
+function TDRLSession.ContinuePlaying : Boolean;
+begin
+  ApplyOutcome;
+  Exit( FStatus.State = DSPlaying );
+end;
+
 procedure TDRLSession.WinGame;
 begin
-  if FGameWon then Exit;
-  FGameWon := True;
-  SetState( DSEnding );
+  FStatus.GameWon := True;
 end;
 
 procedure TDRLSession.ExitLevel( aFade : Boolean; aFadeTime : Single );
 begin
-  if FState in [ DSSaving, DSEnding ] then Exit;
+  if FStatus.State in [ DSSaving, DSEnding ] then Exit;
+  if FStatus.GameWon or FPlayer.Killed then Exit;
   if aFade then IO.FadeOut( aFadeTime, True );
   SetState( DSNextLevel );
 end;
@@ -276,7 +288,7 @@ begin
   FPlayer.Statistics.Update( FPlayer );
   if FContext.Lua.Defined( [CoreModuleID, 'RunAwards'] ) then
     FContext.Lua.ProtectedCall( [CoreModuleID, 'RunAwards'], [NoPlayerRecord] );
-  FPlayer.CalculateScore( FDifficulty, FGameWon );
+  FPlayer.CalculateScore( FDifficulty, FStatus.GameWon );
   RecordResult;
 end;
 
@@ -314,6 +326,7 @@ constructor TDRLSession.Create( aRuntime : TRLRuntime; aModules : TDRLModules;
 begin
   FRuntime := aRuntime;
   FContext := TNodeContext.Create( aRuntime.Lua, nil );
+  FStatus  := TRunStatus.Create;
   FModules := aModules;
   FStore := aStore;
   FPaths := aPaths;
@@ -333,6 +346,7 @@ procedure TDRLSession.SetLevel( aLevel : TLevel );
 begin
   FLevel := aLevel;
   FLevel.BindPlayer( FPlayer );
+  FLevel.BindRunStatus( FStatus );
   if GraphicsVersion
     then FLevel.InitializeParticles( TDRLGFXIO(IO).ParticleEngine )
     else FLevel.InitializeParticles( nil );
@@ -367,6 +381,16 @@ begin
   Result := FRuntime.GameRNG;
 end;
 
+function TDRLSession.GetState : TDRLState;
+begin
+  Exit( FStatus.State );
+end;
+
+function TDRLSession.GetGameWon : Boolean;
+begin
+  Exit( FStatus.GameWon );
+end;
+
 procedure TDRLSession.SetSessionHooks( aSessionHooks : TFlags );
 begin
   FSessionHooks := aSessionHooks;
@@ -380,9 +404,9 @@ begin
   begin
     FStore.IncStat( 'drl_kills', FPlayer.FKills.Count );
     if FPlayer.HP <= 0 then FStore.IncStat( 'drl_deaths' );
-    if FGameWon then FStore.IncStat( 'drl_wins' );
+    if FStatus.GameWon then FStore.IncStat( 'drl_wins' );
   end;
-  iRuntime.HOF.Add( FPlayer, FDifficulty, FGameWon,
+  iRuntime.HOF.Add( FPlayer, FDifficulty, FStatus.GameWon,
     FChallenge, FLevel.Abbr );
   iRuntime.SaveProfile;
 end;
@@ -444,7 +468,7 @@ begin
   FSChallenge := '';
   FArchAngel  := False;
   FReloadData := False;
-  FGameWon    := False;
+  FStatus.GameWon    := False;
   FCrashSave  := False;
   FSeededGame := False;
 
@@ -540,17 +564,19 @@ begin
       FPlayer.AddHistory( 'He left @1 as soon as possible.' );
   end;
 
-  if FState = DSNextLevel then IO.MsgReset;
+  // Exit hooks may win the game; keep their final messages.
+  ApplyOutcome;
+  if FStatus.State = DSNextLevel then IO.MsgReset;
 end;
 
 procedure TDRLSession.AdvanceTime;
 begin
-  if FState <> DSPlaying then Exit;
+  if not ContinuePlaying then Exit;
   // Each batch includes at least one step, also on fresh level entry.
   repeat
     FLevel.Tick;
-  until ( FState <> DSPlaying ) or ( FPlayer.SCount > 5000 );
-  if FState = DSPlaying then
+  until ( not ContinuePlaying ) or ( FPlayer.SCount > 5000 );
+  if FStatus.State = DSPlaying then
     CRASHMODE := False;
 end;
 
@@ -1013,7 +1039,7 @@ begin
   if not ( FPlayerView as TPlayerView ).TakeSwapRequest( iSlot ) then Exit;
   iItem := FPlayer.Inv.Slot[ iSlot ];
   if ( iItem = nil ) or iItem.CallHookCheck( Hook_OnUnequipCheck, [ FPlayer, False ] ) then
-    if State = DSPlaying then
+    if ContinuePlaying then
       ( FPlayerView as TPlayerView ).InitSwapMode( iSlot );
   if FPlayerView <> nil then
     ( FPlayerView as TPlayerView ).FinishPending;
@@ -1030,7 +1056,7 @@ begin
   if iItem <> nil then
   begin
     if not iItem.CallHookCheck( Hook_OnUnequipCheck, [ FPlayer, False ] ) then Exit( False );
-    if State <> DSPlaying then Exit( False );
+    if not ContinuePlaying then Exit( False );
   end;
 
   if not ( aCommand.Command in [ COMMAND_FIRE, COMMAND_ALTFIRE, COMMAND_RELOAD ] ) then
@@ -1052,12 +1078,12 @@ except
     CRASHMODE := True;
   end;
 end;
-  if State <> DSPlaying then Exit( False );
+  if not ContinuePlaying then Exit( False );
   FPlayer.PostAction;
-  if State <> DSPlaying then Exit( False );
+  if not ContinuePlaying then Exit( False );
   IO.Focus( FPlayer.Position );
   FPlayer.DamagedLastTurn := False;
-  while (FPlayer.SCount < 5000) and ( State = DSPlaying ) do
+  while (FPlayer.SCount < 5000) and ContinuePlaying do
   begin
     FLevel.CalculateVision( FPlayer.Position, FPlayer.Vision );
     AdvanceTime;
@@ -1164,7 +1190,7 @@ begin
       if FPlayer.Inv.Slot[ efWeapon ] <> nil then
       begin
         if not FPlayer.Inv.Slot[ efWeapon ].CallHookCheck( Hook_OnUnequipCheck, [ FPlayer, False ] ) then Exit( False );
-        if State <> DSPlaying then Exit( False );
+        if not ContinuePlaying then Exit( False );
       end;
       IO.PushLayer( TScrollSwapLayer.Create( Self ) );
     end;
@@ -1178,7 +1204,7 @@ var iTarget      : TCoord2D;
     iRepeatDelay : DWord;
 begin
   Result := False;
-  if ( State <> DSPlaying ) or IO.IsModal
+  if ( not ContinuePlaying ) or IO.IsModal
     or ( not IO.ControllerActionHeld( CONTROLLER_MOVE ) ) then
   begin
     FPadMoveActive := False;
@@ -1237,7 +1263,7 @@ begin
   end;
   FPadMoveNext := IO.Time + iRepeatDelay;
   // A nested prompt may have consumed the release while handling the command.
-  FPadMoveActive := ( State = DSPlaying )
+  FPadMoveActive := ContinuePlaying
     and ( not IO.IsModal )
     and IO.ControllerActionHeld( CONTROLLER_MOVE )
     and ( FPlayer.EnemiesInVision = 0 )
@@ -1473,7 +1499,7 @@ begin
     IO.RunLayer( TMainMenuView.Create(
       Self, TDRLRuntime( FRuntime ).HOF, TDRLRuntime( FRuntime ).Help, TDRLRuntime( FRuntime ).ModErrors ), True );
   end;
-  if FState <> DSQuit then
+  if FStatus.State <> DSQuit then
   begin
   IO.LoadStop;
 
@@ -1482,7 +1508,7 @@ begin
   FArchAngel     := False;
   FChallenge     := '';
   FSChallenge    := '';
-  FGameWon       := False;
+  FStatus.GameWon       := False;
   NoPlayerRecord := False;
   NoScoreRecord  := False;
 
@@ -1596,7 +1622,7 @@ begin
     FTargeting.Clear;
     PreAction;
 
-    while ( State = DSPlaying ) do
+    while ContinuePlaying do
     begin
       // No callback is running between loop iterations.
       FContext.FlushDestroyed;
@@ -1624,7 +1650,7 @@ begin
         Continue;
       end;
 
-      while ( not IO.Driver.EventPending ) and ( State = DSPlaying )
+      while ( not IO.Driver.EventPending ) and ContinuePlaying
         and ( FQueueCommand.Command = COMMAND_NONE ) and ( not IO.MsgPending ) do
       begin
         if FPadMoveActive and ( IO.Time >= FPadMoveNext ) then
@@ -1637,7 +1663,7 @@ begin
         FLastFrameTime := IO.Driver.GetMs;
         IO.Driver.Sleep(10);
       end;
-      if State <> DSPlaying then Break;
+      if not ContinuePlaying then Break;
       if ( FQueueCommand.Command <> COMMAND_NONE ) or IO.MsgPending then Continue;
 
       // Guarantee a render slice even when events arrive faster than we can drain them
@@ -1650,7 +1676,7 @@ begin
         FLastFrameTime := IO.Driver.GetMs;
       end;
 
-      if State <> DSPlaying then Break;
+      if not ContinuePlaying then Break;
       if ( FQueueCommand.Command <> COMMAND_NONE ) or IO.MsgPending then Continue;
       if not IO.Driver.PollEvent( iEvent ) then continue;
       if IO.OnEvent( iEvent ) then Continue;
@@ -1662,7 +1688,7 @@ begin
            else HardQuit;
       end;
 
-      if State <> DSPlaying then Break;
+      if not ContinuePlaying then Break;
 
       if iEvent.EType = VEVENT_MOUSEDOWN then HandleMouseEvent( iEvent );
       if iEvent.EType = VEVENT_KEYDOWN   then HandleKeyEvent( iEvent );
@@ -1696,7 +1722,7 @@ begin
     IO.ClearAnimations;
     if State <> DSSaving then
     begin
-      if ( State = DSNextLevel ) or ( ( State = DSFinished ) and FGameWon ) then
+      if ( State = DSNextLevel ) or ( ( State = DSFinished ) and FStatus.GameWon ) then
         FPlayer.Score := FPlayer.Score + 1000;
       if State = DSFinished then
         FinishGame
@@ -1737,7 +1763,7 @@ begin
   // The ending hook may confirm the outcome over the finished level.
   if State = DSFinished then
   begin
-    if FGameWon then
+    if FStatus.GameWon then
     begin
       ShowEnding;
       IO.FadeLevel( 1.0 );
@@ -1862,7 +1888,7 @@ begin
       FLevel.Particles.BindUIDs( FUIDStore );
       FContext.BindUIDs( FUIDStore );
       FContext.Lua.Context.BindUIDs( FUIDStore );
-      FGameWon         := iStream.ReadByte <> 0;
+      FStatus.GameWon         := iStream.ReadByte <> 0;
       FDifficulty      := iStream.ReadByte;
       FChallenge       := iStream.ReadAnsiString;
       FArchAngel       := iStream.ReadByte <> 0;
@@ -1954,7 +1980,7 @@ begin
   Stream.WriteAnsiString( VersionModuleSave );
   Stream.WriteAnsiString( FModules.ModString );
   FUIDStore.WriteToStream( Stream );
-  if FGameWon   then Stream.WriteByte( 1 ) else Stream.WriteByte( 0 );
+  if FStatus.GameWon   then Stream.WriteByte( 1 ) else Stream.WriteByte( 0 );
   Stream.WriteByte( FDifficulty );
   Stream.WriteAnsiString( FChallenge );
   if FArchAngel then Stream.WriteByte( 1 ) else Stream.WriteByte( 0 );
@@ -2000,6 +2026,7 @@ begin
   end;
   FreeAndNil( FUIDStore );
   FreeAndNil( FContext );
+  FreeAndNil( FStatus );
   Log('DRL destroyed.');
   inherited Destroy;
 end;
@@ -2026,10 +2053,13 @@ begin
 end;
 
 function lua_game_is_playing( L : PLua_State ) : Integer; cdecl;
-var iState : TLuaGameStack;
+var iState   : TLuaGameStack;
+    iSession : TDRLSession;
 begin
   iState.Init( L );
-  iState.Push( ActiveSession( L ).State = DSPlaying );
+  iSession := ActiveSession( L );
+  // The level exists whenever the run is playing.
+  iState.Push( ( iSession.State = DSPlaying ) and iSession.FLevel.IsActive );
   Result := 1;
 end;
 

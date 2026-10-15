@@ -72,6 +72,21 @@ type TMenuResult = class
   procedure Reset;
 end;
 
+type TDRLState = ( DSStart,   DSMenu,       DSLoading, DSCrashLoading,
+                  DSPlaying, DSEnding,   DSSaving,  DSNextLevel,
+                  DSQuit,    DSFinished );
+
+// Run control owned by the Session and borrowed by its level, which only
+// reads it. Player death and victory are recorded during an action; the
+// Session enters DSEnding at its own control points.
+type TRunStatus = class
+  State   : TDRLState;
+  GameWon : Boolean;
+
+  // Play continues and no victory is recorded yet.
+  function Undecided : Boolean;
+end;
+
 type THOFRankEntry = record
   ID    : Ansistring;
   Value : Integer;
@@ -479,6 +494,11 @@ begin
 end;
 
 { TMenuResult }
+
+function TRunStatus.Undecided : Boolean;
+begin
+  Exit( ( State = DSPlaying ) and ( not GameWon ) );
+end;
 
 constructor TMenuResult.Create;
 begin
