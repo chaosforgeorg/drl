@@ -189,7 +189,7 @@ procedure TTargeting.Update( aRange : Integer );
 var iBeing : TBeing;
 begin
   FSession.Level.UpdateAutoTarget( FList, FSession.Player, aRange );
-  if (FLastUID <> 0) and FSession.Level.isAlive( FLastUID ) then
+  if FLastUID <> 0 then
   begin
     iBeing := FSession.Level.FindChild( FLastUID ) as TBeing;
     if iBeing <> nil then
@@ -546,7 +546,7 @@ end;
 
 procedure TDRLSession.PreAction;
 begin
-  if FPlayer.Dead then Exit;
+  if FPlayer.Dying then Exit;
   FLevel.CalculateVision( FPlayer.Position, FPlayer.Vision );
   StatusEffect := FPlayer.GetPerkEffect;
   IO.PreAction;
@@ -1588,6 +1588,8 @@ begin
 
     while ( State = DSPlaying ) do
     begin
+      // No callback is running between loop iterations.
+      FContext.FlushDestroyed;
       if IO.MsgPending then
       begin
         IO.MsgUpdate;
@@ -1887,7 +1889,7 @@ begin
 
     IO.Msg('Game loaded.');
 
-    if FPlayer.Dead then
+    if FPlayer.Dying then
       raise EException.Create('Player in save file is dead anyway.');
     LoadSaveFile := True;
     FPadMoved    := True;

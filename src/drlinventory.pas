@@ -210,7 +210,7 @@ begin
     iAmount := Min( aCount, iItem.Amount );
     aCount -= iAmount;
     iItem.Amount := iItem.Amount - iAmount;
-    if iItem.Amount <= 0 then iItem.Free;
+    if iItem.Amount <= 0 then iItem.Discard;
   until aCount = 0;
   Exit( True );
 end;

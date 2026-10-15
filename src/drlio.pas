@@ -1091,7 +1091,7 @@ var iPlayer : TBeing;
 begin
   if ( FSession = nil ) or ( FSession.State <> DSPlaying ) then Exit( 0 );
   iPlayer := FSession.Player;
-  if ( iPlayer = nil ) or iPlayer.Dead or ( iPlayer.HP * 2 >= iPlayer.HPMax ) then Exit( 0 );
+  if ( iPlayer = nil ) or iPlayer.Dying or ( iPlayer.HP * 2 >= iPlayer.HPMax ) then Exit( 0 );
   Result := Round( 200.0 * ( iPlayer.HPMax - 2 * iPlayer.HP ) / Max( iPlayer.HPMax - 2, 1 ) );
   Result := Clamp( Result, 0, 100 );
 end;

@@ -418,7 +418,7 @@ begin
     else
     begin
       iTarget := iUIDs[ iMark.Target ] as TBeing;
-      if ( iTarget <> nil ) and ( not iTarget.Dead ) and FLevel.isVisible( iTarget.Position ) then
+      if ( iTarget <> nil ) and ( not iTarget.Dying ) and FLevel.isVisible( iTarget.Position ) then
       begin
         iPosition := Vec2i( iTarget.Position.X-1, iTarget.Position.Y-1 ) * FSpriteEngine.Grid;
         if iTarget.AnimCount > 0 then

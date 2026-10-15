@@ -86,7 +86,6 @@ private
   function ActionQuickKey( aIndex : Byte; aTarget : TCoord2D ) : Boolean;
   procedure ResortStacks;
 public
-  property Dying           : Boolean read FDying;
   property DamagedLastTurn : Boolean read FDamagedLastTurn write FDamagedLastTurn;
   property MultiMove       : TMultiMove  read FMultiMove;
   property Statistics      : TStatistics read FStatistics;
@@ -314,14 +313,14 @@ end;
 
 procedure TPlayer.AddExp( aAmount : LongInt );
 begin
-  if Dead then Exit;
+  if Dying then Exit;
   aAmount := Round( aAmount * FExpFactor );
   FExp += aAmount;
 end;
 
 procedure TPlayer.ApplyDamage(aDamage: LongInt; aTarget: TBodyTarget; aDamageType: TDamageType; aSource : TItem; aDelay : Integer );
 begin
-  if ( aDamage < 0 ) or ( BF_INV in FFlags ) or Dead then Exit;
+  if ( aDamage < 0 ) or ( BF_INV in FFlags ) or Dying then Exit;
   if aDamage > 0 then
   begin
     FMultiMove.Stop;
@@ -380,14 +379,9 @@ begin
 end;
 
 function TPlayer.PlayerTick : Boolean;
-var iUIDs       : TUIDStore;
-    iThisUID    : DWord;
 begin
-  if Dead then Exit( False );
-  iUIDs := FContext.UIDs;
-  iThisUID := UID;
+  if Dying then Exit( False );
   TLevel(Parent).CallHook( FPosition, Self, CellHook_OnEnter );
-  if iUIDs[ iThisUID ] = nil then Exit( False );
 
   MasterDodge := False;
   if DRL.State <> DSPlaying then Exit( False );
@@ -465,7 +459,7 @@ end;
 
 procedure TPlayer.PostAction;
 begin
-  if not Dead then
+  if not Dying then
     if FExpLevel < MaxPlayerLevel - 1 then
       while FExp >= ExpTable[ FExpLevel + 1 ] do
         LevelUp;

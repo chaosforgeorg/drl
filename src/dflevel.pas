@@ -91,7 +91,6 @@ TLevel = class(TLuaMapNode)
 
     procedure Remove( Node : TNode ); override;
     procedure Add( aThing : TThing; aWhere : TCoord2D ); reintroduce;
-    function isAlive( aUID : TUID ) : boolean;
 
     procedure ScriptLevel(script : string);
 
@@ -156,7 +155,6 @@ TLevel = class(TLuaMapNode)
     FAccuracyBonus : Integer;
 
     FActiveBeing   : TBeing;
-    FNextNode      : TNode;
 
     FFeeling       : AnsiString;
     FMusicID       : AnsiString;
@@ -217,7 +215,7 @@ TLevel = class(TLuaMapNode)
 implementation
 
 uses math, typinfo,
-     vgenerics, vluatools, vdebug, vuid, vmath,
+     vgenerics, vluatools, vdebug, vmath,
      drlbase, drlio, drlhudviews;
 
 type TProcessedUIDList = specialize TGArray<TUID>;
@@ -314,11 +312,6 @@ begin
             Inc(GetEnemiesVisible);
 end;
 
-function TLevel.isAlive ( aUID : TUID ) : boolean;
-begin
-  Exit( FindChild( aUID ) <> nil );
-end;
-
 procedure TLevel.Place( aThing: TThing; aCoord: TCoord2D);
 begin
   aThing.Position := aCoord;
@@ -367,7 +360,6 @@ begin
   FPerks       := TPerks.CreateFromStream( aStream, Self, FData.Perks );
 
   FActiveBeing := nil;
-  FNextNode    := nil;
 end;
 
 procedure TLevel.WriteToStream( aStream : TStream );
@@ -397,7 +389,6 @@ begin
   FPerks.WriteToStream( aStream );
 
 //    FActiveBeing : TBeing;
-//    FNextNode    : TNode;
 end;
 
 function TLevel.EnemiesLeft( aUnique : Boolean = False ) : DWord;
@@ -468,7 +459,6 @@ procedure TLevel.Init( aTable : TLuaTable; aIndex : Integer; aDifficulty : Byte 
 begin
   FContext.Lua.Stack.ClearLuaProperties( Self );
   FActiveBeing := nil;
-  FNextNode    := nil;
 
   FIndex := aIndex;
   FBoss := 0;
@@ -840,9 +830,11 @@ begin
       SetItem( aCoord, nil );
       iFeature.Detach;
       iFeature.CallHook( Hook_OnDestroy, [ LuaCoord( aCoord ) ] );
-      for iNode in iFeature do
-        DropItem( iNode as TItem, aCoord, False, True );
-      FreeAndNil( iFeature );
+      // The hook may discard the feature together with its contents.
+      if not iFeature.Dead then
+        for iNode in iFeature do
+          DropItem( iNode as TItem, aCoord, False, True );
+      iFeature.Discard;
     end;
   end;
 end;
@@ -918,11 +910,6 @@ end;
 procedure TLevel.Remove ( Node : TNode ) ;
 begin
   if FActiveBeing = Node then FActiveBeing := nil;
-  if FNextNode = Node then
-  begin
-    FNextNode := Node.Next;
-    if FNextNode = Node then FNextNode := nil;
-  end;
   inherited Remove( Node );
 end;
 
@@ -946,12 +933,10 @@ begin
 end;
 
 procedure TLevel.Explosion( aDelay : Integer; aCoord : TCoord2D; aData : TExplosionData; aItem : TItem; aKnockback : TDirection; aDirectHit : Boolean = False; aDamageMult : Single = 1.0 );
-var iUIDs       : TUIDStore;
-    iC          : TCoord2D;
+var iC          : TCoord2D;
     iDamage     : Integer;
     iDir        : TDirection;
     iKnockback  : Byte;
-    iItemUID    : TUID;
     iBeing      : TBeing;
     iBeingUID   : TUID;
     iChain      : TExplosionData;
@@ -975,9 +960,7 @@ var iUIDs       : TUIDStore;
     Exit( True );
   end;
 begin
-  iUIDs := FContext.UIDs;
   if not isProperCoord( aCoord ) then Exit;
-  if aItem <> nil then iItemUID := aItem.uid;
 
   IO.Explosion( aDelay, aCoord, aData );
 
@@ -1012,29 +995,24 @@ begin
           begin
             iBeingUID := iBeing.UID;
             if iProcessed.IndexOf( iBeingUID ) >= 0 then Continue;
-            if (efSelfSafe in aData.Flags) and iBeing.isActive then Continue;
+            if (efSelfSafe in aData.Flags) and ( iBeing = FActiveBeing ) then Continue;
             iProcessed.Push( iBeingUID );
             if efChain in aData.Flags then
               Explosion( iPointDelay, iC, iChain, nil, NewDirection(0) );
-            if iUIDs[ iBeingUID ] <> nil then
+            iKnockback := aData.Knockback;
+            if (efSelfKnockback in aData.Flags) and ( iBeing = FActiveBeing ) then iKnockback := 2;
+            if iKnockback > 0 then
             begin
-              iKnockback := aData.Knockback;
-              if (efSelfKnockback in aData.Flags) and iBeing.isActive then iKnockback := 2;
-              if iKnockback > 0 then
-              begin
-                if aCoord = iC
-                  then iDir := aKnockback
-                  else iDir.CreateSmooth( aCoord, iC );
-                iBeing.Knockback( iDir, iDamage / iKnockback );
-              end;
+              if aCoord = iC
+                then iDir := aKnockback
+                else iDir.CreateSmooth( aCoord, iC );
+              iBeing.Knockback( iDir, iDamage / iKnockback );
             end;
-            if iUIDs[ iBeingUID ] <> nil then
+            if not iBeing.Dead then
             begin
               if (iBeing.Flags[BF_SPLASHIMMUNE]) and (aCoord <> iC) then Continue;
-              if (efSelfHalf in aData.Flags) and iBeing.isActive then iDamage := iDamage div 2;
-              if ( aItem <> nil ) and ( iUIDs[ iItemUID ] = nil ) then aItem := nil;
+              if (efSelfHalf in aData.Flags) and ( iBeing = FActiveBeing ) then iDamage := iDamage div 2;
               iBeing.ApplyDamage( iDamage, Target_Torso, aData.DamageType, aItem, iPointDelay );
-              if ( aItem <> nil ) and ( iUIDs[ iItemUID ] = nil ) then aItem := nil;
             end;
           end;
           if ( iDamage > 10 ) and ( Item[iC] <> nil ) and (not Item[iC].isFeature) then
@@ -1055,8 +1033,7 @@ begin
 end;
 
 procedure TLevel.Shotgun( aSource, aTarget : TCoord2D; aDamage : TDiceRoll; aDamageMul : Single; aDamageType : TDamageType; aItem : TItem );
-var iUIDs    : TUIDStore;
-    iDiff,iC : TCoord2D;
+var iDiff,iC : TCoord2D;
     iTC      : TCoord2D;
     iDist    : Single;
     iDmg     : Integer;
@@ -1066,7 +1043,6 @@ var iUIDs    : TUIDStore;
     iKnock   : Integer;
     iFalloff : Integer;
     iDir     : TDirection;
-    iItemUID : TUID;
     iBeing   : TBeing;
     iBeingUID  : TUID;
     iProcessed : TProcessedUIDList;
@@ -1087,15 +1063,12 @@ var iUIDs    : TUIDStore;
       until iCount = iRange;
     end;
 begin
-  iUIDs := FContext.UIDs;
   iRange   := Max( aItem.Range, 1 );
   iSpread  := Max( aItem.Spread, 1 );
   iFalloff := Max( aItem.Falloff, 0 );
   iKnock   := aItem.Knockback;
   iHSprite := aItem.HitSprite;
   if ( iSpread <= 0 ) then Exit;
-
-  iItemUID := aItem.uid;
 
   if aSource = aTarget then Exit;
   iDiff := aTarget - aSource;
@@ -1134,13 +1107,7 @@ begin
             iDir.CreateSmooth( aSource, iTC );
             iBeing.Knockback( iDir, iDmg / iKnock );
           end;
-          // knockback can run Lua hooks that destroy iBeing
-          if iUIDs[ iBeingUID ] <> nil then
-          begin
-            if ( aItem <> nil ) and ( iUIDs[ iItemUID ] = nil ) then aItem := nil;
-            iBeing.ApplyDamage( iDmg, Target_Torso, aDamageType, aItem, 0 );
-            if ( aItem <> nil ) and ( iUIDs[ iItemUID ] = nil ) then aItem := nil;
-          end;
+          iBeing.ApplyDamage( iDmg, Target_Torso, aDamageType, aItem, 0 );
         end;
         
         DamageTile( iTC, iDmg, aDamageType, False );
@@ -1229,8 +1196,7 @@ begin
   iItem := Item[ coord ];
   if iItem = nil then Exit;
   if iItem.Flags[ IF_UNIQUE ] or iItem.Flags[ IF_NODESTROY ] then Exit;
-  FreeAndNil( iItem );
-  SetItem( coord, nil );
+  iItem.Discard;
 end;
 
 procedure TLevel.Blood( aCoord : TCoord2D );
@@ -1357,13 +1323,9 @@ end;
 
 procedure TLevel.Kill( aBeing : TBeing );
 begin
-  if aBeing = nil then Exit;
-  if Being[ aBeing.Position ] = aBeing then
-    SetBeing( aBeing.Position, nil );
-
   FMarkers.Wipe( aBeing.UID );
   FParticles.Kill( aBeing.UID );
-  FreeAndNil(aBeing);
+  aBeing.Discard;
   UpdateKillState;
 end;
 
@@ -1442,10 +1404,8 @@ begin
   // Finish this tick's effects before finalizing a death or victory.
   if DRL.State in [ DSPlaying, DSEnding ] then
   begin
-    iNode := Child;
-    if iNode <> nil then
-    repeat
-      FNextNode    := iNode.Next;
+    for iNode in Self do
+    begin
       FActiveBeing := nil;
       if iNode is TBeing then
       begin
@@ -1453,17 +1413,14 @@ begin
         FActiveBeing.Tick( FPlayer.Statistics.GameTime );
       end;
       if not ( DRL.State in [ DSPlaying, DSEnding ] ) then Break;
-      iNode := FNextNode;
-    until (iNode = Child) or (iNode = nil);
+    end;
     FActiveBeing := nil;
   end;
 
   if DRL.State = DSPlaying then
   begin
-    iNode := Child;
-    if iNode <> nil then
-    repeat
-      FNextNode    := iNode.Next;
+    for iNode in Self do
+    begin
       FActiveBeing := nil;
       if iNode is TBeing then
         if TBeing(iNode).SCount >= 5000 then
@@ -1473,8 +1430,7 @@ begin
               FActiveBeing.Action;
             end;
       if DRL.State <> DSPlaying then Break;
-      iNode := FNextNode;
-    until (iNode = Child) or (iNode = nil);
+    end;
   end;
   FActiveBeing := nil;
 
@@ -1871,7 +1827,7 @@ begin
   except
     on EPlacementException do
     begin
-      FreeAndNil( iItem );
+      iItem.Discard;
       iState.PushNil();
     end;
   end;
@@ -1944,7 +1900,7 @@ begin
 
   iSource := iState.ToObjectOrNil(iSourceIndex) as TItem;
   iKilledBy := '';
-  if iState.IsString(iSourceIndex) and ( not iLevel.FPlayer.Dead ) then
+  if iState.IsString(iSourceIndex) and ( not iLevel.FPlayer.Dying ) then
   begin
     iKilledBy := iState.ToString(iSourceIndex);
     if iKilledBy <> '' then
@@ -1955,7 +1911,7 @@ begin
     end;
   end;
   iLevel.Explosion( iDelay, iState.ToPosition(2), iData, iSource, NewDirection(0) );
-  if ( iKilledBy <> '' ) and ( not iLevel.FPlayer.Dead ) then
+  if ( iKilledBy <> '' ) and ( not iLevel.FPlayer.Dying ) then
     iLevel.FPlayer.SetKilledBy( iPreviousKilledBy, iPreviousMelee );
   Result := 0;
 end;
