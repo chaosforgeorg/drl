@@ -83,6 +83,8 @@ type TDRLSession = class(TVObject)
        procedure ReleaseLevel;
        procedure ReleasePlayer;
        procedure PostRegenerateLevel;
+       procedure LevelUpPlayer;
+       procedure ChoosePlayerTrait;
        procedure ApplyOutcome;
        function ContinuePlaying : Boolean;
        procedure Apply( aResult : TMenuResult );
@@ -537,6 +539,30 @@ begin
   EnterLevel( FLevel );
   FLevel.CalculateVision( FPlayer.Position, FPlayer.Vision );
   FPlayer.PreAction;
+end;
+
+// One player level-up: the player advances, the advance is presented, then
+// the trait choice runs between the pre- and post-level-up hooks.
+procedure TDRLSession.LevelUpPlayer;
+begin
+  FPlayer.AdvanceLevel;
+  IO.Blink( LightBlue, 100 );
+  IO.Msg( 'You advance to level %d!', [ FPlayer.ExpLevel ] );
+  IO.RunLayer( TMoreLayer.Create( False ) );
+
+  if not FPlayer.CallHookCheck( Hook_OnPreLevelUp, [ FPlayer.ExpLevel ] ) then Exit;
+  IO.BloodSlideDown( 20 );
+  ChoosePlayerTrait;
+  FPlayer.CallHook( Hook_OnLevelUp, [ FPlayer.ExpLevel ] );
+end;
+
+// Runs the trait view and applies the pick; cancelling applies nothing.
+procedure TDRLSession.ChoosePlayerTrait;
+var iTrait : Byte;
+begin
+  if DemoVersion and ( FPlayer.ExpLevel > 7 ) then Exit;
+  iTrait := IO.ChooseTrait;
+  if iTrait <> 255 then FPlayer.UpgradeTrait( iTrait );
 end;
 
 procedure TDRLSession.EnterLevel( aLevel : TLevel );
@@ -1079,6 +1105,8 @@ except
   end;
 end;
   if not ContinuePlaying then Exit( False );
+  while FPlayer.LevelUpPending do
+    LevelUpPlayer;
   FPlayer.PostAction;
   if not ContinuePlaying then Exit( False );
   IO.Focus( FPlayer.Position );
@@ -2090,6 +2118,18 @@ begin
   Result := 0;
 end;
 
+function lua_game_level_up( L : PLua_State ) : Integer; cdecl;
+begin
+  ActiveSession( L ).LevelUpPlayer;
+  Result := 0;
+end;
+
+function lua_game_choose_trait( L : PLua_State ) : Integer; cdecl;
+begin
+  ActiveSession( L ).ChoosePlayerTrait;
+  Result := 0;
+end;
+
 function lua_statistics_get( L : PLua_State ) : Integer; cdecl;
 var iState  : TLuaGameStack;
     iPlayer : TPlayer;
@@ -2127,15 +2167,17 @@ begin
   Result := 1;
 end;
 
-const lua_game_lib : array[0..7] of luaL_Reg = (
-  ( name : 'win';        func : @lua_game_win ),
-  ( name : 'exit';       func : @lua_game_exit ),
-  ( name : 'has_won';    func : @lua_game_has_won ),
-  ( name : 'is_playing'; func : @lua_game_is_playing ),
-  ( name : 'reset_level';func : @lua_game_reset_level ),
+const lua_game_lib : array[0..9] of luaL_Reg = (
+  ( name : 'win';             func : @lua_game_win ),
+  ( name : 'exit';            func : @lua_game_exit ),
+  ( name : 'has_won';         func : @lua_game_has_won ),
+  ( name : 'is_playing';      func : @lua_game_is_playing ),
+  ( name : 'reset_level';     func : @lua_game_reset_level ),
   ( name : 'post_regenerate'; func : @lua_game_post_regenerate ),
-  ( name : 'time';       func : @lua_game_time ),
-  ( name : nil;         func : nil )
+  ( name : 'level_up';        func : @lua_game_level_up ),
+  ( name : 'choose_trait';    func : @lua_game_choose_trait ),
+  ( name : 'time';            func : @lua_game_time ),
+  ( name : nil;               func : nil )
 );
 
 const lua_statistics_lib : array[0..1] of luaL_Reg = (
