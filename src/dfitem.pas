@@ -17,8 +17,8 @@ type
 
 TItem  = class( TThing )
 
-    constructor Create( const aID : AnsiString; aContext : TNodeContext; aOnFloor : Boolean = False ); overload;
-    constructor Create( aNID : Integer; aContext : TNodeContext; aOnFloor : Boolean = False ); overload;
+    constructor Create( const aID : AnsiString; aContext : TNodeContext ); overload;
+    constructor Create( aNID : Integer; aContext : TNodeContext ); overload;
     constructor CreateFromStream( aStream : TStream; aContext : TNodeContext; aPerkDefinitions : TPerkDefinitions ); override;
     procedure WriteToStream( aStream: TStream ); override;
 
@@ -65,7 +65,7 @@ TItem  = class( TThing )
     FAppear   : Integer;
     FAmount   : Integer;
     FMax      : Integer;
-    procedure LuaLoad( aTable : TLuaTable; aOnFloor: boolean ); reintroduce;
+    procedure LuaLoad( aTable : TLuaTable ); override;
     public
     property PGlowColor     : TColor         read FProps.PGlowColor      write FProps.PGlowColor;
     property PCosColor      : TColor         read FProps.PCosColor       write FProps.PCosColor;
@@ -116,7 +116,7 @@ procedure SwapItem(var a, b: TItem);
 implementation
 
 uses vluaentitynode, vutil, vdebug, vmath,
-     dfbeing, drllua, drlbase, drlhooks;
+     dfbeing, drllua, drlhooks;
 
 procedure SwapItem(var a, b: TItem);
 var c : TItem;
@@ -149,7 +149,7 @@ begin
   raise EItemException.CreateFmt('eqSlot -- unsupported IType: %d',[ Byte( FProps.Itype ) ]);
 end;
 
-constructor TItem.Create( aNID : Integer; aContext : TNodeContext; aOnFloor : Boolean );
+constructor TItem.Create( aNID : Integer; aContext : TNodeContext );
 var iTable : TLuaTable;
 begin
   if aNID <= 0 then raise EItemException.Create('Bad item (ID<=0) passed to Create!');
@@ -157,11 +157,11 @@ begin
   FEntityID := ENTITY_ITEM;
 
   iTable := FContext.Lua.GetTable( ['items', aNID ] );
-  LuaLoad( iTable, aOnFloor );
+  LuaLoad( iTable );
   FreeAndNil( iTable );
 end;
 
-constructor TItem.Create( const aID : AnsiString; aContext : TNodeContext; aOnFloor: Boolean );
+constructor TItem.Create( const aID : AnsiString; aContext : TNodeContext );
 var iTable : TLuaTable;
 begin
   if aID = '' then raise EItemException.Create('Bad item id!');
@@ -169,7 +169,7 @@ begin
   FEntityID := ENTITY_ITEM;
 
   iTable := FContext.Lua.GetTable( ['items', aID ] );
-  LuaLoad( iTable, aOnFloor );
+  LuaLoad( iTable );
   FreeAndNil( iTable );
 end;
 
@@ -211,7 +211,7 @@ begin
        iNode.WriteToStream( aStream );
 end;
 
-procedure TItem.LuaLoad( aTable : TLuaTable; aOnFloor: boolean );
+procedure TItem.LuaLoad( aTable : TLuaTable );
 var i   : Byte;
     iID : AnsiString;
 begin
@@ -273,10 +273,6 @@ begin
   ReadSprite( aTable, 'missprite', FProps.MisSprite );
   ReadSprite( aTable, 'hitsprite', FProps.HitSprite );
   ReadExplosion( FContext.Lua, aTable, 'explosion', FProps.Explosion );
-
-
-  if aOnFloor and ( FProps.IType = ITEMTYPE_AMMO ) then
-    FAmount := Round( FAmount * Double(FContext.Lua.Get([ 'diff', DRL.Difficulty, 'ammofactor' ])) );
 
   FContext.Lua.ProtectedRunHook( Self, 'OnCreate', [] );
 end;
@@ -638,7 +634,7 @@ var iState : TLuaGameStack;
 begin
   iState.Init( L );
   iLua := TDRLLua( TLuaContext.FromState( L ).Lua );
-  iItem := TItem.Create( iState.ToId( iLua, 1 ), iLua.NodeContext, iState.ToBoolean( 2 ) );
+  iItem := TItem.Create( iState.ToId( iLua, 1 ), iLua.NodeContext );
   iState.Push(iItem);
   Result := 1;
 end;

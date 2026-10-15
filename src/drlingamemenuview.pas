@@ -63,7 +63,7 @@ begin
   end;
   if VTIG_Selectable( 'Settings' ) then
   begin
-    IO.PushLayer( TSettingsView.Create );
+    IO.PushLayer( TSettingsView.Create( FSession ) );
     FFinished := True;
   end;
   if VTIG_Selectable( 'Message history' ) then

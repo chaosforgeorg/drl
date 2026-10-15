@@ -1821,8 +1821,8 @@ begin
   try
     if iState.IsTable(2)
       then iItem := iState.ToObject(2) as TItem
-      else iItem := TItem.Create( iState.ToId( iLevel.Context.Lua, 2 ), iLevel.Context, iState.ToBoolean( 4, False ) );
-    iLevel.DropItem( iItem, iState.ToPosition(3), iState.ToBoolean( 5, False ), iState.ToBoolean( 6, False ) );
+      else iItem := TItem.Create( iState.ToId( iLevel.Context.Lua, 2 ), iLevel.Context );
+    iLevel.DropItem( iItem, iState.ToPosition(3), iState.ToBoolean( 4, False ), iState.ToBoolean( 5, False ) );
     iState.Push( iItem );
   except
     on EPlacementException do

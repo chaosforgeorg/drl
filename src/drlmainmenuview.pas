@@ -392,7 +392,7 @@ begin
     if VTIG_Selectable( TextShowHighscore ) then IO.PushLayer( TPagedView.Create( FHOF.GetPagedScoreReport ) );
     if VTIG_Selectable( TextShowPlayer )    then IO.PushLayer( TPagedView.Create( FHOF.GetPagedPlayerReport ) );
     if VTIG_Selectable( TextHelp )          then IO.PushLayer( THelpView.Create( IO, FSession.Context.Lua, FHelp, CoreModuleID ) );
-    if VTIG_Selectable( TextSettings )      then IO.PushLayer( TSettingsView.Create );
+    if VTIG_Selectable( TextSettings )      then IO.PushLayer( TSettingsView.Create( FSession ) );
     if FJHCLink then
     begin
       if VTIG_Selectable( TextJHC ) then

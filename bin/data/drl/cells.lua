@@ -561,7 +561,7 @@ function drl.register_cells()
 				if math.random(5) == 1 then
 					item_spawn = {"pammo","pshell"}
 				end
-				level:drop_item( table.random_pick( item_spawn ), c, true, true, true )
+				level:drop_ammo( table.random_pick( item_spawn ), c, true, true )
 			end
 		end,
 	}
@@ -586,7 +586,7 @@ function drl.register_cells()
 				if math.random(5) == 1 then
 					item_spawn = {"barmor","pboots","lmed"}
 				end
-				level:drop_item( table.random_pick( item_spawn ), c, true, true, true )
+				level:drop_ammo( table.random_pick( item_spawn ), c, true, true )
 			end
 		end,
 	}

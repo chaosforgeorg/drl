@@ -46,7 +46,7 @@ function generator.scatter_item(scatter_area,good,item_id,count)
 	for _ = 1, count do
 		local c = level:random_empty_coord({ EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM, EF_NOLIQUID }, scatter_area )
 		if level:get_cell(c) == good then
-			level:drop_item( item_id, c, true )
+			level:drop_item( item_id, c )
 		end
 	end
 end
@@ -75,7 +75,7 @@ function generator.scatter_cross_item(scatter_area,good,item_id,count)
 			if c then
 				if test( coord( c.x-1, c.y ) ) and test( coord( c.x+1, c.y ) ) and
 					test( coord( c.x, c.y-1 ) ) and test( coord( c.x, c.y+1 ) ) then
-					level:drop_item( id, c, true )
+					level:drop_item( id, c )
 					return true
 				end
 			end	

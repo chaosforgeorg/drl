@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlsettingsview;
 interface
 uses vio, viotypes, vioevent, vconfiguration, vbindings, drlio, dfdata,
-     drlcontrollerbindings;
+     drlcontrollerbindings, drlbase;
 
 type TSettingsViewState = (
   SETTINGSVIEW_GENERAL,
@@ -38,7 +38,7 @@ const SETTINGSVIEW_KEYS : set of TSettingsViewState = [
 ];
 
 type TSettingsView = class( TIOLayer )
-  constructor Create;
+  constructor Create( aSession : TDRLSession );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
@@ -53,6 +53,7 @@ protected
   procedure ControllerCapture( aBindings : TControllerBindingCatalog;
     aAction : TBindingAction; aSelected : Boolean );
 protected
+  FSession             : TDRLSession; // Borrowed; the view is released before Session.
   FState               : TSettingsViewState;
   FSize                : TIOPoint;
   FWSize               : TIOPoint;
@@ -79,7 +80,7 @@ end;
 implementation
 
 uses math, sysutils, vutil, vdebug, vtig, vtigio,
-     drlconfiguration, drlbase, drluibindings;
+     drlconfiguration, drluibindings;
 
 const CStates : array[ TSettingsViewState ] of record Title, ID : Ansistring; end = (
    ( Title : 'Settings'; ID : 'general' ),
@@ -115,10 +116,11 @@ const CSub : array[ 1..13 ] of record State : TSettingsViewState; Select, Desc :
   ( State : SETTINGSVIEW_UICONTROLLER;Select : 'UI bindings - Controller'; Desc : 'Configure controller navigation shared by menus and dialogs.' )
 );
 
-constructor TSettingsView.Create;
+constructor TSettingsView.Create( aSession : TDRLSession );
 var i, iCount : Integer;
 begin
   inherited Create;
+  FSession := aSession;
   VTIG_EventClear;
   VTIG_ResetSelect( 'settings' );
   FSize  := Point( 80, 25 );
@@ -348,7 +350,7 @@ begin
                   Configuration.AccessInteger( 'screen_width' )^  := Width;
                   Configuration.AccessInteger( 'screen_height' )^ := Height;
                 end;
-                DRL.Reconfigure;
+                FSession.Reconfigure;
               end;
             end
             else
@@ -369,7 +371,7 @@ begin
                     else if FModValue >= (IO.Modules.CoreModules.Size+1)
                       then Value := FModCurrent
                       else Value := IO.Modules.CoreModules[FModValue-1].ID;
-                    if ( DRL.State = DSMenu ) and ( Value <> '' ) and ( Value <> CoreModuleID ) then
+                    if ( FSession.State = DSMenu ) and ( Value <> '' ) and ( Value <> CoreModuleID ) then
                     begin
                       FRestart := Value;
                     end;
@@ -393,7 +395,7 @@ begin
                     end;
                     if FState = SETTINGSVIEW_DISPLAY then
                     begin
-                      DRL.Reconfigure;
+                      FSession.Reconfigure;
                       if (ID = 'tile_multi') and ( Access^ = 2 ) then
                          FWarning := 'Do note that the x1.5 multiplier is an accessability option, created mostly for SteamDeck readability - the pixel art will be distorted in this setting, and small artifacts may appear!';
                     end;
@@ -686,7 +688,7 @@ end;
 
 procedure TSettingsView.Reconfigure;
 begin
-  DRL.Reconfigure;
+  FSession.Reconfigure;
 end;
 
 end.

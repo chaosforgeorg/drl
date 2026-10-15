@@ -483,8 +483,8 @@ function generator.generate_barrels()
 	
 
 	for i=1,count/2 do
-		level:drop_item( cell1, barrel_coord(), true )
-		level:drop_item( cell2, barrel_coord(), true )
+		level:drop_item( cell1, barrel_coord() )
+		level:drop_item( cell2, barrel_coord() )
 	end
 end
 
