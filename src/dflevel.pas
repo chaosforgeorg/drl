@@ -23,6 +23,10 @@ TLevel = class(TLuaMapNode)
     procedure Init( aTable : TLuaTable; aIndex : Integer; aDifficulty : Byte );
     procedure InitializeParticles( aEngine : TParticleEngine );
     procedure BindPlayer( aPlayer : TPlayer );
+    procedure BindRunStatus( aStatus : TRunStatus );
+    // Actions and AI may continue: the run is undecided and the player has not
+    // been killed. Read at the moment of the check.
+    function IsActive : Boolean;
     procedure AfterGeneration;
     procedure Enter;
     procedure RecalcFluids;
@@ -141,6 +145,7 @@ TLevel = class(TLuaMapNode)
     function  getItem( const coord : TCoord2D ) : TItem; override;
   private
     FPlayer        : TPlayer; // Borrowed from Session; nil before/after a run.
+    FRunStatus     : TRunStatus; // Borrowed from Session, which outlives the level.
     FData          : TGameData;
     FMap           : TMap;
     FIndex         : Integer;
@@ -177,6 +182,7 @@ TLevel = class(TLuaMapNode)
     function getSpriteBottom( Index : TCoord2D ): TSprite;
   public
     property Player    : TPlayer                    read FPlayer;
+    property RunStatus : TRunStatus                 read FRunStatus;
     property Perks     : TPerks                     read FPerks;
     property Data      : TGameData                  read FData;
     property Markers   : TMarkerStore               read FMarkers;
@@ -216,7 +222,7 @@ implementation
 
 uses math, typinfo,
      vgenerics, vluatools, vdebug, vmath,
-     drlbase, drlio, drlhudviews;
+     drlio, drlhudviews;
 
 type TProcessedUIDList = specialize TGArray<TUID>;
 
@@ -423,6 +429,16 @@ end;
 procedure TLevel.BindPlayer( aPlayer : TPlayer );
 begin
   FPlayer := aPlayer;
+end;
+
+procedure TLevel.BindRunStatus( aStatus : TRunStatus );
+begin
+  FRunStatus := aStatus;
+end;
+
+function TLevel.IsActive : Boolean;
+begin
+  Exit( FRunStatus.Undecided and ( not FPlayer.Killed ) );
 end;
 
 procedure TLevel.InitializeParticles( aEngine : TParticleEngine );
@@ -1333,7 +1349,7 @@ procedure TLevel.UpdateKillState;
 var iEnemiesLeft       : Integer;
     iUniqueEnemiesLeft : Integer;
 begin
-  if not ( DRL.State in [ DSPlaying, DSEnding ] ) or DRL.GameWon then Exit;
+  if not FRunStatus.Undecided then Exit;
 
   iEnemiesLeft       := EnemiesLeft();
   if ( iEnemiesLeft < 4 ) and ( not ( LF_NOBEINGREVEAL in FFlags ) ) then
@@ -1387,7 +1403,7 @@ var iNode : TNode;
 begin
   FActiveBeing := nil;
   Inc(FLTime);
-  FPerks.OnTick;
+  FPerks.OnTick( FPlayer.Statistics.GameTime );
   FPlayer.Statistics.OnTick;
 
   CallHook( Hook_OnTick,[ FLTime ] );
@@ -1401,8 +1417,8 @@ begin
 
   NukeTick;
 
-  // Finish this tick's effects before finalizing a death or victory.
-  if DRL.State in [ DSPlaying, DSEnding ] then
+  // Passive effects finish this step, also after a death or victory in it.
+  if FRunStatus.State = DSPlaying then
   begin
     for iNode in Self do
     begin
@@ -1412,12 +1428,12 @@ begin
         FActiveBeing := TBeing(iNode);
         FActiveBeing.Tick( FPlayer.Statistics.GameTime );
       end;
-      if not ( DRL.State in [ DSPlaying, DSEnding ] ) then Break;
+      if FRunStatus.State <> DSPlaying then Break;
     end;
     FActiveBeing := nil;
   end;
 
-  if DRL.State = DSPlaying then
+  if IsActive then
   begin
     for iNode in Self do
     begin
@@ -1429,12 +1445,12 @@ begin
               FActiveBeing := TBeing(iNode);
               FActiveBeing.Action;
             end;
-      if DRL.State <> DSPlaying then Break;
+      if not IsActive then Break;
     end;
   end;
   FActiveBeing := nil;
 
-  if DRL.State = DSPlaying then
+  if IsActive then
     FActiveBeing := FPlayer;
 end;
 
@@ -1454,7 +1470,7 @@ begin
     else
     begin
       FPlayer.Statistics.Increase('levels_nuked');
-      if DRL.State in [ DSNextLevel, DSSaving ] then
+      if FRunStatus.State in [ DSNextLevel, DSSaving ] then
       begin
         IO.Msg('Right in the nick of time!');
         IO.RunLayer( TMoreLayer.Create( False ) );
@@ -1821,8 +1837,8 @@ begin
   try
     if iState.IsTable(2)
       then iItem := iState.ToObject(2) as TItem
-      else iItem := TItem.Create( iState.ToId( iLevel.Context.Lua, 2 ), iLevel.Context, iState.ToBoolean( 4, False ) );
-    iLevel.DropItem( iItem, iState.ToPosition(3), iState.ToBoolean( 5, False ), iState.ToBoolean( 6, False ) );
+      else iItem := TItem.Create( iState.ToId( iLevel.Context.Lua, 2 ), iLevel.Context );
+    iLevel.DropItem( iItem, iState.ToPosition(3), iState.ToBoolean( 4, False ), iState.ToBoolean( 5, False ) );
     iState.Push( iItem );
   except
     on EPlacementException do
@@ -2124,20 +2140,6 @@ begin
   Exit( 0 );
 end;
 
-function lua_level_post_generate( L : Plua_State ) : Integer; cdecl;
-var iState : TLuaGameStack;
-    iLevel : TLevel;
-begin
-  iState.Init( L );
-  IO.MsgUpdate;
-  iLevel := iState.ToObject( 1 ) as TLevel;
-  iLevel.AfterGeneration;
-  DRL.EnterLevel( iLevel );
-  iLevel.CalculateVision( iLevel.FPlayer.Position, iLevel.FPlayer.Vision );
-  iLevel.FPlayer.PreAction;
-  Exit( 0 );
-end;
-
 function lua_level_get_enemies_left(L: Plua_State): Integer; cdecl;
 var iState : TLuaGameStack;
     iLevel : TLevel;
@@ -2199,7 +2201,7 @@ begin
   Result := 1;
 end;
 
-const lua_level_lib : array[0..26] of luaL_Reg = (
+const lua_level_lib : array[0..25] of luaL_Reg = (
       ( name : 'drop_item';  func : @lua_level_drop_item),
       ( name : 'drop_being'; func : @lua_level_drop_being),
       ( name : 'respawn';    func : @lua_level_respawn),
@@ -2219,7 +2221,6 @@ const lua_level_lib : array[0..26] of luaL_Reg = (
       ( name : 'add_blood';          func : @lua_level_add_blood),
       ( name : 'damage_tile';func : @lua_level_damage_tile),
       ( name : 'push_item';  func : @lua_level_push_item),
-      ( name : 'post_generate'; func : @lua_level_post_generate),
       ( name : 'get_enemies_left'; func : @lua_level_get_enemies_left),
       ( name : 'is_passable_ext'; func : @lua_level_is_passable_ext),
       ( name : 'add_perk';      func : @lua_level_add_perk),

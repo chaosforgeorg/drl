@@ -1225,7 +1225,7 @@ You can rest easy knowing that you're Boss. Yet at the last level you sensed som
 			end,
 			OnEnterLevel = function( self, l, lid )
 				if not ARCHANGEL and l % 3 == 0 and self.explevel < 25 then
-					self:level_up()
+					game.level_up()
 				end
 				if lid == "tower_of_babel" then
 					level.map[coord(77,19)] = "stairs"

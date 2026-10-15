@@ -26,12 +26,6 @@ ColoredInventory = true
 -- the "@" sign (it's a control char). This setting overrides the one above!
 --AlwaysName       = ""
 
--- Setting to false will turn off music during gameplay
-GameMusic        = true
-
--- Setting to false will turn off sounds during gameplay
-GameSound        = true
-
 -- Setting to true will turn on enhancements for blind people playing
 -- DRL using a screen reader. Yes, some do.
 BlindMode        = false

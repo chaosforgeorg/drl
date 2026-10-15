@@ -239,7 +239,7 @@ function level:flood_items( params )
 		local id = self:roll_item_list( list )
 		if id then
 			local where = level:random_empty_coord{ EF_NOITEMS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN }
-			self:drop_item( id, where, true )
+			self:drop_ammo( id, where )
 			amount = amount - 1
 		end
 	end
@@ -362,26 +362,39 @@ function level:summon(t,opt)
 	return last_being
 end
 
+-- Drops a new item, applying the difficulty ammo multiplier if it is ammo
+-- (see item.new_ammo). Without a position nothing is created.
+function level:drop_ammo( id, pos, nohazard, anim )
+	if pos == nil then return end
+	return self:drop_item( item.new_ammo( id ), pos, nohazard, anim )
+end
+
 -- Overrides LuaMapNode API!
 function level:drop(iid,count)
 	if type(iid) == "string" then iid = items[iid].nid end
 	local last_item = nil
 	for i=1,count or 1 do
-		last_item = self:drop_item(iid,level:random_empty_coord{ EF_NOITEMS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN }, true, true, true )
+		last_item = self:drop_ammo(iid,level:random_empty_coord{ EF_NOITEMS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN }, true, true )
 	end
 	return last_item
 end
 
-function level:area_drop(where,iid,count,onfloor,appear)
-	if type(iid) == "string" then iid = items[iid].nid end
-	onfloor = onfloor or false
+local function area_drop( self, drop, where, iid, count, appear )
 	local last_item = nil
 	for i=1,count or 1 do
 		local pos = level:random_empty_coord( { EF_NOITEMS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN }, where )
 		if not pos then break end
-		last_item = self:drop_item(iid,pos,onfloor,true,appear or false)
+		last_item = drop( self, iid, pos, true, appear or false )
 	end
 	return last_item
+end
+
+function level:area_drop( where, iid, count, appear )
+	return area_drop( self, self.drop_item, where, iid, count, appear )
+end
+
+function level:area_drop_ammo( where, iid, count, appear )
+	return area_drop( self, self.drop_ammo, where, iid, count, appear )
 end
 
 function level:drop_item_ext( item, c )
@@ -403,7 +416,7 @@ function level:drop_item_ext( item, c )
 		assert( items[id], "item "..id.." not defined!" ) 
 		id = items[id].nid
 	end
-	local new_item = self:drop_item(id,c)
+	local new_item = self:drop_ammo(id,c)
 	if type(item) == "table" then
 		for k,v in pairs(item) do
 			if type(k) == "string" then
@@ -515,17 +528,17 @@ function level:drop_items( what )
 		if i.itype == ITEMTYPE_RANGED and (not i.flags[ IF_NOUNLOAD ]) then
 			local ammo = i.ammo
 			i.ammo = 0
-			local ia = self:drop_item( items[ i.ammoid ].id, what.position, true, true, true )
+			local ia = self:drop_item( items[ i.ammoid ].id, what.position, true, true )
 			ia.amount = ammo
 		end
-		self:drop_item( i, what.position, true, true, true )
+		self:drop_item( i, what.position, true, true )
 	end
 end
 
-function level:drop_ammo( what )
+function level:drop_carried_ammo( what )
 	for i in what:children("item") do
 		if i.itype == ITEMTYPE_AMMO then
-			self:drop_item( i, what.position, true, true, true )
+			self:drop_item( i, what.position, true, true )
 		end
 	end
 end

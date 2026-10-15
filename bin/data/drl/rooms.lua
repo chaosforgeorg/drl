@@ -88,7 +88,7 @@ function drl.register_rooms()
 				pick = pick - entry[1]
 				if pick <= 0 then
 					local amount = math.random( entry[3], entry[4] )
-					level:area_drop( room, entry[2], amount, true )
+					level:area_drop_ammo( room, entry[2], amount )
 					return true
 				end
 			end
@@ -210,7 +210,7 @@ function drl.register_rooms()
 						sboots = 0.25,
 					},
 				}
-				level:drop_item( item, pos, true )
+				level:drop_ammo( item, pos )
 			end
 
 			generator.scatter_blood(vault,nil,30)

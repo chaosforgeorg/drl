@@ -18,9 +18,12 @@ type TDRLConfig = class(TLuaConfig)
   destructor Destroy; override;
 private
   FColorOverrides : TColorOverrides;
+  FSoundEngine    : AnsiString;
   procedure ReadColorOverride( aKey, aValue : Variant );
 public
   property ColorOverrides : TColorOverrides read FColorOverrides;
+  // Resolved sound engine: 'FMOD', 'SDL' or 'NONE'.
+  property SoundEngine    : AnsiString      read FSoundEngine;
 end;
 
 
@@ -41,12 +44,10 @@ begin
   Option_Graphics         := Configure('Graphics',Option_Graphics);
   Option_Blending         := Configure('Blending',Option_Blending);
   Option_SaveOnCrash      := Configure('SaveOnCrash',Option_SaveOnCrash);
-  Option_SoundEngine      := Configure('SoundEngine',Option_SoundEngine);
+  FSoundEngine            := Configure('SoundEngine','DEFAULT');
 
   Option_HighASCII        := Configure('AllowHighAscii',Option_HighASCII);
   Option_AlwaysName       := Configure('AlwaysName',Option_AlwaysName);
-  Option_Music            := Configure('GameMusic',Option_Music);
-  Option_Sound            := Configure('GameSound',Option_Sound);
   Option_BlindMode        := Configure('BlindMode',Option_BlindMode);
   Option_ClearMessages    := Configure('ClearMessages',Option_ClearMessages);// TODO : Reimplement
   Option_MorePrompt       := Configure('MorePrompt',Option_MorePrompt);
@@ -76,26 +77,11 @@ begin
   if ForcePlayerName <> '' then
     Option_AlwaysName := ForcePlayerName;
 
-  if ForceNoAudio then
-  begin
-    Option_Sound := False;
-    Option_Music := False;
-    Option_SoundEngine := 'NONE';
-  end;
-
-  if (not Option_Music) and (not Option_Sound) then Option_SoundEngine := 'NONE';
-  if Option_SoundEngine = 'DEFAULT' then
-     Option_SoundEngine := {$IFDEF WINDOWS}'FMOD'{$ELSE}'SDL'{$ENDIF};
-  if (Option_SoundEngine <> 'FMOD') and (Option_SoundEngine <> 'SDL') then
-     Option_SoundEngine := 'NONE';
-  if Option_SoundEngine = 'NONE' then
-  begin
-    Option_Music     := False;
-    Option_Sound     := False;
-    SoundVersion     := False;
-  end
-  else
-    SoundVersion     := True;
+  if ForceNoAudio then FSoundEngine := 'NONE';
+  if FSoundEngine = 'DEFAULT' then
+     FSoundEngine := {$IFDEF WINDOWS}'FMOD'{$ELSE}'SDL'{$ENDIF};
+  if (FSoundEngine <> 'FMOD') and (FSoundEngine <> 'SDL') then
+     FSoundEngine := 'NONE';
 
   // synchro
   if ForceConsole or ForceGraphics then

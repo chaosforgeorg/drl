@@ -17,7 +17,7 @@ register_level "spiders_lair"
 				self:drop("scglobe")
 				self:drop("pcell")
 
-				self:drop_item("bfg9000", coord(41,10), true, true, true )
+				self:drop_item("bfg9000", coord(41,10), true, true )
 				self.status = 1
 				if CHALLENGE == "challenge_aohu" then
 					player:add_medal("everyspider")

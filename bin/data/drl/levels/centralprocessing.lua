@@ -9,7 +9,7 @@ register_level "central_processing"
 
 	runtime = {
 		OnTick = function ( self )
-			local platform_up = (core.game_time() % 500 > 249)
+			local platform_up = (game.time() % 500 > 249)
 			if not self.data.platform:contains(player.position) then
 				if not self.data.platform_up and platform_up then
 					self:transmute( "wall", "floor", self.data.platform)
@@ -37,7 +37,7 @@ register_level "central_processing"
 				for iCoord in self.data.trap6P.coords(self.data.trap6P) do
 					self.map[iCoord] = "gwall"
 				end
-				self.data.trap6_expiry = core.game_time() + 300
+				self.data.trap6_expiry = game.time() + 300
 				self.data.trap6_triggered = true
 				self:play_sound("door.close", self.data.door4_coord)
 				self:transmute( "wall", "floor", self.data.trap61)
@@ -46,7 +46,7 @@ register_level "central_processing"
 				self:transmute( "wall", "floor", self.data.trap64)
 				self:transmute( "wall", "floor", self.data.trap65)
 			end
-			if self.data.trap6_expiry > 0 and core.game_time() > self.data.trap6_expiry then
+			if self.data.trap6_expiry > 0 and game.time() > self.data.trap6_expiry then
 				self:transmute( "gwall", "floor", self.data.trap6P )
 				self.data.trap6_expiry = 0
 				self:play_sound("door.open", self.data.door4_coord)

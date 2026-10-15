@@ -43,12 +43,12 @@ register_level "hells_armory"
 					end
 				end
 
-				self:drop_item(reward1,coord(4,9), true, true, true)
-				self:drop_item(reward2,coord(4,11), true, true, true)
+				self:drop_item(reward1,coord(4,9), true, true)
+				self:drop_item(reward2,coord(4,11), true, true)
 
 				local id = core.get_unknown_assembly( 1 )
 				if id then
-					local item = self:drop_item("schematic_1",coord(42,10), true, true, true)
+					local item = self:drop_item("schematic_1",coord(42,10), true, true)
 					local ma   = mod_arrays[id]
 					item.ammo  = ma.nid
 					item.name  = ma.name.." schematics"

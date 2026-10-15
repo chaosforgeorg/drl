@@ -77,7 +77,6 @@ TBeing = class(TThing,IPathQuery)
     // True once Kill has started, the being was discarded or its HP is depleted.
     function Dying : Boolean;
     procedure Remove( Node : TNode ); override;
-    function ASCIIMoreCode : AnsiString; virtual;
     function GetVisualOverlay : TThing;
 
     // Actions
@@ -174,8 +173,12 @@ TBeing = class(TThing,IPathQuery)
     property KnockBacked  : Boolean read FKnockBacked  write FKnockBacked;
     property SilentAction : Boolean read FSilentAction write FSilentAction;
     property MeleeAttack  : Boolean read FMeleeAttack;
+    // Death accepted after the veto hooks; Dying also covers discard and
+    // depleted HP while the hooks decide.
+    property Killed       : Boolean read FDying;
 
-    property OverlayUntil : QWord   read FOverlayUntil;
+    // Presentation time until which the pain sprite shows; written by IO.
+    property OverlayUntil : QWord   read FOverlayUntil write FOverlayUntil;
   published
 
     property can_dual_wield       : Boolean read canDualWield;
@@ -209,9 +212,8 @@ implementation
 
 uses math,
      vlualibrary, vluaentitynode, vdebug, vluatools, vcolor, vvector,
-     dfplayer, dflevel, dfmap, drlhooks, drlbase, drlio, drllua;
+     dfplayer, dflevel, dfmap, drlhooks, drlio, drllua;
 
-const PAIN_DURATION = 500;
 
 function TBeing.getStrayChance( aDefender : TBeing; aWeapon : TItem ) : Byte;
 var iMiss   : Integer;
@@ -369,7 +371,9 @@ begin
 
   FVisionRadius := VisionBaseValue + aTable.getInteger('vision');
 
-  Flags[ BF_WALKSOUND ] := ( IO.Audio.ResolveSoundID( [ FID+'.hoof', FSoundID+'.hoof' ] ) <> 0 );
+  // Cached once: moves are frequent. Mute must not affect it; it is checked
+  // at playback.
+  Flags[ BF_WALKSOUND ] := ( IO.Audio.FindSoundID( [ FID+'.hoof', FSoundID+'.hoof' ] ) <> 0 );
 
   FHPMax := FHP;
   FHPNom := FHP;
@@ -492,7 +496,7 @@ begin
        begin
             if not SendMissile( aTarget, aGun, aAltFire, iSeqBase+(iCount-1)*aGun.MisDelay*3, iCount-1 ) then Exit;
        end;
-    if DRL.State <> DSPlaying then Exit;
+    if not iLevel.IsActive then Exit;
   end;
 end;
 
@@ -553,11 +557,6 @@ begin
     if Node is TItem then
       FInv.ClearSlot( Node as TItem );
   inherited Remove( Node );
-end;
-
-function TBeing.ASCIIMoreCode : AnsiString;
-begin
-  Exit( ID );
 end;
 
 function TBeing.GetVisualOverlay : TThing;
@@ -1409,7 +1408,7 @@ var iLevel       : TLevel;
     iSecond      : Boolean;
     iTargetBeing : TBeing;
 begin
-  if DRL.State <> DSPlaying then Exit( False );
+  if not TLevel( Parent ).IsActive then Exit( False );
   if aTarget = FPosition then Exit( False );
   if aGun = nil then Exit( False );
 
@@ -1463,14 +1462,16 @@ begin
   else
     HandleShots( aTarget, aGun, iShots, aAlt, aDelay );
 
-  if not ( DRL.State in [ DSPlaying, DSNextLevel ] ) then Exit( False );
+  // Follow-up hooks also run when the shots requested a level exit.
+  if not ( iLevel.IsActive or ( ( iLevel.RunStatus.State = DSNextLevel )
+    and ( not iLevel.RunStatus.GameWon ) and ( not iLevel.Player.Killed ) ) ) then Exit( False );
   if Dead then Exit( False );
   FTargetPos := aTarget;
   if aGun.Dead then aGun := nil;
 
-  if aGun <> nil then aGun.CallHook( Hook_OnFired, [ Self, iSecond, DRL.State <> DSPlaying ] );
+  if aGun <> nil then aGun.CallHook( Hook_OnFired, [ Self, iSecond, not iLevel.IsActive ] );
   if Dead then Exit( False );
-  CallHook( Hook_OnFired, [ aGun, iSecond, DRL.State <> DSPlaying ] );
+  CallHook( Hook_OnFired, [ aGun, iSecond, not iLevel.IsActive ] );
   if Dead then Exit( False );
 
   if aGun <> nil then
@@ -1607,7 +1608,7 @@ begin
     aKiller.CallHook( Hook_OnKill, [ Self, aWeapon, iMeleeKill ] );
   end;
 
-  if ( DRL.State in [ DSPlaying, DSEnding ] ) and ( not DRL.GameWon ) then
+  if iLevel.RunStatus.Undecided then
     iLevel.CallHook( Hook_OnKill,[ Self, aKiller, aWeapon, iMeleeKill, aOverkill ] );
 
   if not aOverkill and not ( CF_BLOCKMOVE in iLevel.Data.Cells[ iLevel.Floor[ FPosition ] ].Flags ) then
@@ -1846,7 +1847,7 @@ begin
     // Apply damage
     if not ( BF_ILLUSION in FFlags ) then
       aTarget.ApplyDamage( iDamage, Target_Torso, iDamageType, aWeapon, 0 );
-    if ( DRL.State <> DSPlaying ) or Dead then Exit;
+    if ( not iLevel.IsActive ) or Dead then Exit;
   end;
 
   if ( aWeapon <> nil ) and aWeapon.Dead then aWeapon := nil;
@@ -2113,7 +2114,7 @@ begin
     else begin
       CallHook( Hook_OnAttacked, [ iActive, aSource ] );
       // TODO: handle Delay?
-      FOverlayUntil := Max( FOverlayUntil, IO.Time + aDelay + PAIN_DURATION );
+      IO.ShowPain( Self, aDelay );
     end;
 end;
 
@@ -2195,7 +2196,7 @@ var iGameRNG    : TRNG;
     iCoverValue : Integer;
     iExplosion  : TExplosionData;
 begin
-  if DRL.State <> DSPlaying then Exit( False );
+  if not TLevel( Parent ).IsActive then Exit( False );
   if aItem = nil then Exit( False );
   if not aItem.isWeapon then Exit( False );
   if FHP <= 0 then Exit( False );

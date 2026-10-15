@@ -46,11 +46,14 @@ type TPlayer = class(TBeing)
   procedure PostAction;
   function GetMultiMoveInput : TInputKey;
   procedure LevelEnter;
-  procedure doUpgradeTrait;
+  // Level-up steps. Session presents the advance and runs the trait choice
+  // between them, calling the level-up hooks in order.
+  function LevelUpPending : Boolean;
+  procedure AdvanceLevel;
+  procedure UpgradeTrait( aTrait : Byte );
   procedure RegisterKill( const aKilledID : AnsiString; aKiller : TBeing; aWeapon : TItem; aUnique : Boolean );
   procedure RemoveKill( aBeing : TBeing );
   procedure ApplyDamage( aDamage : LongInt; aTarget : TBodyTarget; aDamageType : TDamageType; aSource : TItem; aDelay : Integer ); override;
-  procedure LevelUp;
   procedure AddExp( aAmount : LongInt );
   procedure CalculateScore( aDifficulty : Integer; aGameWon : Boolean );
   destructor Destroy; override;
@@ -58,7 +61,6 @@ type TPlayer = class(TBeing)
   procedure AddHistory( const aHistory : Ansistring );
   class procedure RegisterLuaAPI( aLua : TLua );
   procedure UpdateVisual;
-  function ASCIIMoreCode : AnsiString; override;
   function RunPath( const aCoord : TCoord2D ) : Boolean;
   procedure ExamineNPC;
   procedure ExamineItem;
@@ -104,14 +106,12 @@ published
   property EnemiesInVision : Word       read FEnemiesInVision;
 end;
 
-// Borrowed alias of the active session's player.
-var Player : TPlayer;
 
 implementation
 
 uses math, variants,
      vuid, vioevent, vgenerics, vcolor, vdebug,
-     dfmap, dflevel, drlhooks, drlio, drlspritemap, drlbase, drllua, drlinventory, drlhudviews;
+     dfmap, dflevel, drlhooks, drlio, drlspritemap, drllua, drlinventory;
 
 constructor TPlayer.Create( aContext : TNodeContext; aGameRNG : TRNG );
 begin
@@ -297,18 +297,19 @@ begin
   GetBonusMul *= FTraits.GetBonusMul( aHook, aParams );
 end;
 
-procedure TPlayer.LevelUp;
+function TPlayer.LevelUpPending : Boolean;
+begin
+  Exit( ( not Dying ) and ( FExpLevel < MaxPlayerLevel - 1 ) and ( FExp >= ExpTable[ FExpLevel + 1 ] ) );
+end;
+
+procedure TPlayer.AdvanceLevel;
 begin
   Inc( FExpLevel );
-  IO.Blink( LightBlue, 100 );
+end;
 
-  IO.Msg( 'You advance to level %d!', [ FExpLevel ] );
-  IO.RunLayer( TMoreLayer.Create( False ) );
-
-  if not CallHookCheck( Hook_OnPreLevelUp, [ FExpLevel ] ) then Exit;
-  IO.BloodSlideDown( 20 );
-  doUpgradeTrait();
-  CallHook( Hook_OnLevelUp, [ FExpLevel ] );
+procedure TPlayer.UpgradeTrait( aTrait : Byte );
+begin
+  FTraits.Upgrade( FKlass, aTrait );
 end;
 
 procedure TPlayer.AddExp( aAmount : LongInt );
@@ -384,7 +385,7 @@ begin
   TLevel(Parent).CallHook( FPosition, Self, CellHook_OnEnter );
 
   MasterDodge := False;
-  if DRL.State <> DSPlaying then Exit( False );
+  if not TLevel( Parent ).IsActive then Exit( False );
   FLastPos := FPosition;
   FMeleeAttack := False;
   Exit( True );
@@ -438,34 +439,12 @@ begin
   FEnemiesInVision := iLevel.GetEnemiesVisible;
   if FEnemiesInVision > 0 then
     FMultiMove.Stop;
-
-  if FMultiMove.Active then
-  begin
-    if IO.CommandEventPending then
-    begin
-      IO.Msg('Stop.');
-      FMultiMove.Stop;
-      IO.ClearEventBuffer;
-    end
-    else
-    begin
-      if not GraphicsVersion then
-        IO.Delay( Option_RunDelay );
-    end;
-  end;
-
-  CallHook(Hook_OnPreAction,[]);
 end;
 
 procedure TPlayer.PostAction;
 begin
-  if not Dying then
-    if FExpLevel < MaxPlayerLevel - 1 then
-      while FExp >= ExpTable[ FExpLevel + 1 ] do
-        LevelUp;
-
   CallHook(Hook_OnPostAction,[]);
-  if DRL.State <> DSPlaying then Exit;
+  if not TLevel( Parent ).IsActive then Exit;
   FLastTurnDodge := False;
   UpdateVisual;
 end;
@@ -570,7 +549,6 @@ var iLevel   : TLevel;
 begin
   if FDying then Exit;
   iLevel := TLevel(Parent);
-  if DRL.State <> DSPlaying then Exit;
 
   for iSlot in TEqSlot do
     if FInv.Slot[ iSlot ] <> nil then
@@ -587,9 +565,8 @@ begin
   end;
 
   FDying := True;
-  DRL.SetState( DSEnding );
 
-  if DRL.GameWon then
+  if iLevel.RunStatus.GameWon then
     SetKilledBy( '', False )
   else if (FKilledBy = '') and (aKiller <> nil) then
   begin
@@ -696,21 +673,6 @@ begin
     FCSprite.SpriteID[0] := FContext.Lua.Get( ['beings', ID, 'sprite'], 0 ) + iSpMod;
 end;
 
-function TPlayer.ASCIIMoreCode : AnsiString;
-begin
-  if (Inv.Slot[efTorso] <> nil) and (IO.ASCII.Exists(Inv.Slot[efTorso].ID)) then
-    exit(Inv.Slot[efTorso].ID);
-  Exit('player');
-end;
-
-procedure TPlayer.doUpgradeTrait;
-var iTrait : Byte;
-begin
-  if DemoVersion and (ExpLevel > 7) then Exit;
-  iTrait := IO.ChooseTrait;
-  if iTrait <> 255 then FTraits.Upgrade( FKlass, iTrait );
-end;
-
 procedure TPlayer.ResortStacks;
 var iItem  : TItem;
     iNode  : TNode;
@@ -771,26 +733,6 @@ begin
   iState.Init( L );
   iPlayer := iState.ToObject( 1 ) as TPlayer;
   iPlayer.ResortStacks;
-  Result := 0;
-end;
-
-function lua_player_choose_trait( L : PLua_State ) : Integer; cdecl;
-var iState  : TLuaGameStack;
-    iPlayer : TPlayer;
-begin
-  iState.Init( L );
-  iPlayer := iState.ToObject( 1 ) as TPlayer;
-  iPlayer.doUpgradeTrait();
-  Result := 0;
-end;
-
-function lua_player_level_up( L : PLua_State ) : Integer; cdecl;
-var iState  : TLuaGameStack;
-    iPlayer : TPlayer;
-begin
-  iState.Init( L );
-  iPlayer := iState.ToObject( 1 ) as TPlayer;
-  iPlayer.LevelUp();
   Result := 0;
 end;
 
@@ -861,7 +803,7 @@ begin
   Result := 1;
 end;
 
-const lua_player_lib : array[0..11] of luaL_Reg = (
+const lua_player_lib : array[0..9] of luaL_Reg = (
       ( name : 'add_exp';         func : @lua_player_add_exp),
       ( name : 'remove_kill';     func : @lua_player_remove_kill),
       ( name : 'add_trait';       func : @lua_player_add_trait),
@@ -869,8 +811,6 @@ const lua_player_lib : array[0..11] of luaL_Reg = (
       ( name : 'has_trait';       func : @lua_player_has_trait),
       ( name : 'get_trait_hist';  func : @lua_player_get_trait_hist),
       ( name : 'resort_stacks';   func : @lua_player_resort_stacks),
-      ( name : 'choose_trait';    func : @lua_player_choose_trait),
-      ( name : 'level_up';        func : @lua_player_level_up),
       ( name : 'quick_weapon';    func : @lua_player_quick_weapon),
       ( name : 'set_inv_size';    func : @lua_player_set_inv_size),
       ( name : nil;               func : nil; )

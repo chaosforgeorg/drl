@@ -72,6 +72,21 @@ type TMenuResult = class
   procedure Reset;
 end;
 
+type TDRLState = ( DSStart,   DSMenu,       DSLoading, DSCrashLoading,
+                  DSPlaying, DSEnding,   DSSaving,  DSNextLevel,
+                  DSQuit,    DSFinished );
+
+// Run control owned by the Session and borrowed by its level, which only
+// reads it. Player death and victory are recorded during an action; the
+// Session enters DSEnding at its own control points.
+type TRunStatus = class
+  State   : TDRLState;
+  GameWon : Boolean;
+
+  // Play continues and no victory is recorded yet.
+  function Undecided : Boolean;
+end;
+
 type THOFRankEntry = record
   ID    : Ansistring;
   Value : Integer;
@@ -88,7 +103,6 @@ const
   DemoVersion     : Boolean = False;
   ForceShop       : Boolean = False;
   GraphicsVersion : Boolean = True;
-  SoundVersion    : Boolean = True;
   ForceNoAudio    : Boolean = False;
   ForceConsole    : Boolean = False;
   ForceGraphics   : Boolean = False;
@@ -142,7 +156,6 @@ const
   Setting_HideHints         : Boolean = False;
   Setting_EmptyConfirm      : Boolean = False;
   Setting_UnlockAll         : Boolean = False;
-  Setting_MenuSound         : Boolean = False;
   Setting_WaitSound         : Boolean = True;
   Setting_MouseEdgePan      : Boolean = False;
   Setting_Mouse             : Boolean = True;
@@ -156,13 +169,9 @@ const
   Setting_AnimationBlending : Boolean = True;
   Setting_AutoTarget        : Boolean = True;
   Setting_GroupMessages     : Boolean = True;
-  Setting_MusicVolume       : Byte = 25;
-  Setting_SoundVolume       : Byte = 25;
 
 const
   Option_HighASCII        : Boolean = {$IFDEF WINDOWS}True{$ELSE}False{$ENDIF};
-  Option_Music            : Boolean = False;
-  Option_Sound            : Boolean = False;
   Option_BlindMode        : Boolean = False;
   Option_ClearMessages    : Boolean = False;
   Option_MorePrompt       : Boolean = True;
@@ -182,7 +191,6 @@ const
   Option_Graphics         : string = 'TILES';
   Option_Blending         : Boolean = False;
   Option_SaveOnCrash      : Boolean = True;
-  Option_SoundEngine      : string = 'DEFAULT';
   Option_AlwaysName       : string = '';
   Option_TimeStamp        : string = 'yyyy/mm/dd hh:nn:ss';
   Option_PlayerBackups    : DWord = 7;
@@ -486,6 +494,11 @@ begin
 end;
 
 { TMenuResult }
+
+function TRunStatus.Undecided : Boolean;
+begin
+  Exit( ( State = DSPlaying ) and ( not GameWon ) );
+end;
 
 constructor TMenuResult.Create;
 begin

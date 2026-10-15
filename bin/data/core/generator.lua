@@ -46,7 +46,7 @@ function generator.scatter_item(scatter_area,good,item_id,count)
 	for _ = 1, count do
 		local c = level:random_empty_coord({ EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM, EF_NOLIQUID }, scatter_area )
 		if level:get_cell(c) == good then
-			level:drop_item( item_id, c, true )
+			level:drop_item( item_id, c )
 		end
 	end
 end
@@ -75,7 +75,7 @@ function generator.scatter_cross_item(scatter_area,good,item_id,count)
 			if c then
 				if test( coord( c.x-1, c.y ) ) and test( coord( c.x+1, c.y ) ) and
 					test( coord( c.x, c.y-1 ) ) and test( coord( c.x, c.y+1 ) ) then
-					level:drop_item( id, c, true )
+					level:drop_item( id, c )
 					return true
 				end
 			end	
@@ -1044,6 +1044,15 @@ function generator.remove_needless_doors()
 	end
 end
 
+-- Places a copy of the item at c1 on c2, keeping its amount (for example
+-- difficulty-scaled ammo).
+function generator.mirror_item( c1, c2 )
+	local item = level:get_item( c1 )
+	if not item then return end
+	local copy = level:drop_item( item.id, c2 )
+	if copy then copy.amount = item.amount end
+end
+
 function generator.mirror_horizontally( y_value, x_start )
 	core.log("generator.mirror_horizontally()")
 	local x_start = x_start or 1
@@ -1052,10 +1061,7 @@ function generator.mirror_horizontally( y_value, x_start )
 			local c1 = coord( x, y )
 			local c2 = coord( x, 2 * y_value - y )
 			level:set_cell( c2, level:get_cell( c1 ) )
-			local item = level:get_item( c1 )
-			if item then
-				level:drop_item( item.id, c2 )
-			end
+			generator.mirror_item( c1, c2 )
 			level:copy_lflags( c1, c2 )
 		end
 	end
@@ -1069,10 +1075,8 @@ function generator.mirror_vertically( x_value, y_start )
 			local c1 = coord( x, y )
 			local c2 = coord( 2 * x_value - x, y )
 			level:set_cell( c2, level:get_cell( c1 ) )
-			local item = level:get_item( c1 )
-			if item then
-				level:drop_item( item.id, c2 )
-			end
+			generator.mirror_item( c1, c2 )
+			level:copy_lflags( c1, c2 )
 		end
 	end
 end

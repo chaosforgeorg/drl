@@ -17,7 +17,6 @@ type
 
 TDRLLua = class(TLua)
        constructor Create( aModules : TDRLModules; const aDataPath : AnsiString ); reintroduce;
-       procedure OnError(const ErrorString : Ansistring); override;
        procedure RegisterPlayer(Thing: TThing);
        function HookName( aHook : Byte ) : AnsiString;
        destructor Destroy; override;
@@ -41,36 +40,9 @@ implementation
 
 uses typinfo, variants,
      vdebug, vluastate, vluatools, vluadungen, vluaentitynode, vluatype, vtextures, vtigstyle, vparticleengine,
-     dfplayer, dflevel, drlhooks, dfhof, drlbase, drlio, drlgfxio, drlspritemap;
+     dfplayer, dflevel, drlhooks, dfhof, drlio, drlgfxio, drlspritemap;
 
 var SpriteSheetCounter : Integer = -1;
-
-function lua_statistics_get(L: Plua_State): Integer; cdecl;
-var State : TLuaGameStack;
-begin
-  State.Init(L);
-  Player.Statistics.Update( Player );
-  // Unused parameter #1 is self
-  State.Push( Player.Statistics[ State.ToString( 2 ) ] );
-  Result := 1;
-end;
-
-function lua_statistics_set(L: Plua_State): Integer; cdecl;
-var State : TLuaGameStack;
-begin
-  State.Init(L);
-  // Unused parameter #1 is self
-  Player.Statistics.Assign( State.ToString( 2 ), State.ToInteger( 3 ) );
-  Result := 0;
-end;
-
-function lua_statistics_inc(L: Plua_State): Integer; cdecl;
-var State : TLuaGameStack;
-begin
-  State.Init(L);
-  Player.Statistics.Increase( State.ToString( 1 ), State.ToInteger( 2 ) );
-  Result := 0;
-end;
 
 function lua_statistics_get_date(L: Plua_State): Integer; cdecl;
 var State : TLuaGameStack;
@@ -155,14 +127,6 @@ end;
 
 // ************************************************************************ //
 // ************************************************************************ //
-
-function lua_core_game_time(L: Plua_State): Integer; cdecl;
-var State : TLuaGameStack;
-begin
-  State.Init(L);
-  State.Push(Player.Statistics.GameTime);
-  Result := 1;
-end;
 
 function lua_core_time_ms(L: Plua_State): Integer; cdecl;
 var State : TLuaGameStack;
@@ -390,17 +354,6 @@ begin
   until (FindNext(iSearchRec) <> 0);
 end;
 
-procedure TDRLLua.OnError(const ErrorString : Ansistring);
-begin
-  if (IO <> nil) and ( DRL.State in [ DSPlaying, DSEnding ] ) then
-  begin
-    IO.ErrorReport( ErrorString );
-  end
-  else
-    raise ELuaException.Create('LuaError: '+ErrorString);
-  Log('LuaError: '+ErrorString);
-end;
-
 procedure TDRLLua.RegisterPlayer(Thing: TThing);
 begin
   SetValue('player',Thing);
@@ -432,8 +385,7 @@ begin
   FreeMem(PP);
 end;
 
-const lua_statistics_lib : array[0..2] of luaL_Reg = (
-    ( name : 'inc';        func : @lua_statistics_inc),
+const lua_statistics_lib : array[0..1] of luaL_Reg = (
     ( name : 'get_date';   func : @lua_statistics_get_date),
     ( name : nil;          func : nil; )
 );
@@ -514,9 +466,8 @@ begin
   Result := 0;
 end;
 
-const lua_core_lib : array[0..9] of luaL_Reg = (
+const lua_core_lib : array[0..8] of luaL_Reg = (
     ( name : 'add_to_cell_set';func : @lua_core_add_to_cell_set),
-    ( name : 'game_time';      func : @lua_core_game_time),
     ( name : 'time_ms';        func : @lua_core_time_ms),
     ( name : 'visual_random';  func : @lua_core_visual_random),
 
@@ -555,8 +506,6 @@ begin
   RegisterAreaFull( Raw, NewArea( NewCoord2D(1,1), NewCoord2D(MaxX,MaxY) ) );
   RegisterWeightTableClass( Raw );
 
-  ErrorFunc := @OnError;
-  
   SetValue('WINDOWSVERSION', {$IFDEF WINDOWS}1{$ELSE}0{$ENDIF});
   SetValue('GRAPHICSVERSION',GraphicsVersion);
   SetValue('GODMODE',        GodMode);
@@ -566,11 +515,9 @@ begin
   TDRLIO.RegisterLuaAPI( FStack );
 
   Register( 'statistics', lua_statistics_lib );
-  RegisterMetaTable('statistics',@lua_statistics_get, @lua_statistics_set );
 
   Register( 'player_data', @lua_player_data_lib );
   Register( 'core', lua_core_lib );
-  TDRLSession.RegisterLuaAPI( Self );
 
   FStack.RegisterEnumValues( TypeInfo(TParticleFlag) );
   FStack.RegisterEnumValues( TypeInfo(TItemType) );

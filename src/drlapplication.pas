@@ -37,6 +37,7 @@ type TDRLRuntime = class( TRLRuntime )
     procedure ReleaseSession;
     procedure SafeCallModuleHook( aHook : Byte; const aParams : array of Const );
     procedure UnloadGameData;
+    procedure LuaError( const aMessage : AnsiString );
   protected
     function CreateIO : TIORL; override;
     function CreateLua : TLua; override;
@@ -172,29 +173,37 @@ begin
   end;
   if TDRLIO(IO).Session = FSession then
     TDRLIO(IO).Session := nil;
-  if drlbase.DRL = FSession then
-    drlbase.DRL := nil;
   FreeAndNil(FSession);
 end;
 
 function TDRLRuntime.CreateIO : TIORL;
 begin
   if GraphicsVersion then
-    Result := TDRLGFXIO.Create
+    Result := TDRLGFXIO.Create( Self.Configuration as TDRLConfiguration )
   else
-    Result := TDRLTextIO.Create;
+    Result := TDRLTextIO.Create( Self.Configuration as TDRLConfiguration );
 end;
 
 function TDRLRuntime.CreateLua : TLua;
 begin
   Result := TDRLLua.Create( FModules, Paths.DataPath );
+  Result.ErrorFunc := @LuaError;
+end;
+
+// Lua errors during a run are reported in game; elsewhere they abort.
+procedure TDRLRuntime.LuaError( const aMessage : AnsiString );
+begin
+  if FSession.State in [ DSPlaying, DSEnding ] then
+    TDRLIO(IO).ErrorReport( aMessage )
+  else
+    raise ELuaException.Create( 'LuaError: ' + aMessage );
+  Log( 'LuaError: ' + aMessage );
 end;
 
 procedure TDRLRuntime.CreateSession( aInitializeData : Boolean );
 begin
   FSession := TDRLSession.Create( Self, FModules, FStore, FData, Paths );
   TDRLIO(IO).Session := FSession;
-  drlbase.DRL := FSession;
   if not aInitializeData then Exit;
   TDRLLua( FLua ).BindNodeContext( FSession.Context );
   FSession.InitializeLevel;
@@ -235,7 +244,7 @@ begin
   TDRLIO(IO).Initialize;
   TDRLIO(IO).LoadStart;
   FProfileTimeStart := MSecNow();
-  TDRLIO(IO).Configure(Config);
+  TDRLIO(IO).Configure(Config, False);
   TDRLIO(IO).Reconfigure(Config);
 
   {$IFDEF WINDOWS}
@@ -275,6 +284,8 @@ begin
   TDRLLua( FLua ).BindNodeContext( FSession.Context );
   FData.RegisterLuaAPI( FLua );
   RegisterStoreLuaAPI( FLua, FStore );
+  // Runtime outlives Lua; the callbacks resolve the Session active at each call.
+  TDRLSession.RegisterLuaAPI( FLua, @FSession );
   TDRLLua( FLua ).ReadWad( FHelp, FModErrors );
   if GodMode then RegisterDebugConsole( VKEY_F1 );
   FLua.CallDefaultResult := True;
@@ -365,7 +376,6 @@ begin
   Setting_GamepadRumble      := drlconfiguration.Configuration.GetBoolean('enable_rumble');
   Setting_MouseEdgePan       := drlconfiguration.Configuration.GetBoolean('mouse_edge_pan');
   Setting_UnlockAll          := drlconfiguration.Configuration.GetBoolean('unlock_all');
-  Setting_MenuSound          := drlconfiguration.Configuration.GetBoolean('menu_sound');
   Setting_WaitSound          := drlconfiguration.Configuration.GetBoolean('wait_sound');
   Setting_GroupMessages      := drlconfiguration.Configuration.GetBoolean('group_messages');
   Setting_ItemDropAnimation  := drlconfiguration.Configuration.GetBoolean('item_drop_animation');

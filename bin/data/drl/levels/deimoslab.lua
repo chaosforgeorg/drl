@@ -29,13 +29,13 @@ register_level "deimos_lab"
 
 				local reward1,reward2 = generator.roll_pair{ "umod_sniper","umod_firestorm","umod_nano","umod_onyx","ucarmor" }
 				local reward3         = table.random_pick{"mod_power","mod_agility","mod_bulk","mod_tech"}
-				self:drop_item(reward3,coord(37,10), true, true, true)
-				self:drop_item(reward2,coord(42,11), true, true, true)
-				self:drop_item(reward1,coord(37,11), true, true, true)
+				self:drop_item(reward3,coord(37,10), true, true)
+				self:drop_item(reward2,coord(42,11), true, true)
+				self:drop_item(reward1,coord(37,11), true, true)
 
 				local id = core.get_unknown_assembly( 1 )
 				if id then
-					local item = self:drop_item("schematic_1",coord(42,10), true, true, true)
+					local item = self:drop_item("schematic_1",coord(42,10), true, true)
 					local ma   = mod_arrays[id]
 					item.ammo  = ma.nid
 					item.name  = ma.name.." schematics"

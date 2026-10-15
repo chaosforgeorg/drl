@@ -57,7 +57,7 @@ type TPerks = class( TVObject )
   function  GetDescription( aID : Integer ) : AnsiString;
   procedure Add( aPerk : Integer; aDuration : LongInt = -1 );
   function  Remove( aPerk : Integer; aSilent : Boolean = False ) : Boolean;
-  procedure OnTick;
+  procedure OnTick( aTime : LongInt );
   function  IsActive( aPerk : Integer ) : Boolean;
   function  getTime( aPerk : Integer ) : Integer;
   procedure Clear;
@@ -86,7 +86,7 @@ end;
 implementation
 
 uses sysutils, math,
-     drlhooks, drllua, dfbeing, dfplayer;
+     drlhooks, drllua, dfbeing;
 
 procedure TPerkDefinitions.RegisterPerk( aLua : TLua; aID : Integer );
 begin
@@ -279,7 +279,7 @@ begin
   Exit( False );
 end;
 
-procedure TPerks.OnTick;
+procedure TPerks.OnTick( aTime : LongInt );
 var iBeing : TBeing;
     i      : Integer;
     iTime  : LongInt;
@@ -304,7 +304,7 @@ begin
         iTime := Time;
       end
       else if Time < 0 then
-        iTime := Player.Statistics.GameTime
+        iTime := aTime
       else
         Continue;
       if Hook_OnTick10 in FHooks then

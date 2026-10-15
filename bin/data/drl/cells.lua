@@ -418,7 +418,7 @@ function drl.register_cells()
 				if being:is_perk("running") then damage = damage / 2 end
 				if not fully_resisted then
 					ui.msg("Argh!!! Acid!")
-					if core.game_time() % 3 == 0 then
+					if game.time() % 3 == 0 then
 						being:play_sound("hit")
 					end
 				end
@@ -452,7 +452,7 @@ function drl.register_cells()
 				if being:is_perk("running") then damage = damage / 2 end
 				if not fully_resisted then
 					ui.msg("Argh!!! Lava!")
-					if core.game_time() % 3 == 0 then
+					if game.time() % 3 == 0 then
 						being:play_sound("hit")
 					end
 				end
@@ -487,7 +487,7 @@ function drl.register_cells()
 			if being:is_perk("running") then damage = damage / 2 end
 			if not fully_resisted then
 				ui.msg("Argh!!! Blood!")
-				if core.game_time() % 3 == 0 then
+				if game.time() % 3 == 0 then
 					being:play_sound("hit")
 				end
 			end
@@ -561,7 +561,7 @@ function drl.register_cells()
 				if math.random(5) == 1 then
 					item_spawn = {"pammo","pshell"}
 				end
-				level:drop_item( table.random_pick( item_spawn ), c, true, true, true )
+				level:drop_ammo( table.random_pick( item_spawn ), c, true, true )
 			end
 		end,
 	}
@@ -586,7 +586,7 @@ function drl.register_cells()
 				if math.random(5) == 1 then
 					item_spawn = {"barmor","pboots","lmed"}
 				end
-				level:drop_item( table.random_pick( item_spawn ), c, true, true, true )
+				level:drop_ammo( table.random_pick( item_spawn ), c, true, true )
 			end
 		end,
 	}

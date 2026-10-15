@@ -392,7 +392,7 @@ begin
     if VTIG_Selectable( TextShowHighscore ) then IO.PushLayer( TPagedView.Create( FHOF.GetPagedScoreReport ) );
     if VTIG_Selectable( TextShowPlayer )    then IO.PushLayer( TPagedView.Create( FHOF.GetPagedPlayerReport ) );
     if VTIG_Selectable( TextHelp )          then IO.PushLayer( THelpView.Create( IO, FSession.Context.Lua, FHelp, CoreModuleID ) );
-    if VTIG_Selectable( TextSettings )      then IO.PushLayer( TSettingsView.Create );
+    if VTIG_Selectable( TextSettings )      then IO.PushLayer( TSettingsView.Create( FSession ) );
     if FJHCLink then
     begin
       if VTIG_Selectable( TextJHC ) then
@@ -920,16 +920,14 @@ end;
 
 procedure TMainMenuView.OnCancel;
 begin
-  if (not Option_Sound) or (not Setting_MenuSound) then Exit;
-  if IO.Audio.SampleExists('menu.cancel') then IO.Audio.PlaySound('menu.cancel');
+  IO.Audio.PlayMenuSound('menu.cancel');
 end;
 
 procedure SoundCallback( aEvent : TTIGSoundEvent; aParam : Pointer );
 begin
-  if (not Option_Sound) or (not Setting_MenuSound) then Exit;
   case aEvent of
-    VTIG_SOUND_CHANGE : if IO.Audio.SampleExists('menu.change') then IO.Audio.PlaySound('menu.change');
-    VTIG_SOUND_ACCEPT : if IO.Audio.SampleExists('menu.pick')   then IO.Audio.PlaySound('menu.pick');
+    VTIG_SOUND_CHANGE : IO.Audio.PlayMenuSound('menu.change');
+    VTIG_SOUND_ACCEPT : IO.Audio.PlayMenuSound('menu.pick');
   end;
 end;
 

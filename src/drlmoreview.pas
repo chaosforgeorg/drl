@@ -51,8 +51,14 @@ begin
   FBeing    := aBeing;
   FDesc     := FBeing.Context.Lua.Get(['beings',FBeing.ID,'desc']);
   FASCII    := '';
+  // The player is drawn by worn torso armour when it has its own art.
   if not ModuleOption_FullBeingDescription then
-    FASCII := FBeing.ASCIIMoreCode;
+    if not FBeing.IsPlayer then
+      FASCII := FBeing.ID
+    else if ( FBeing.Inv.Slot[ efTorso ] <> nil ) and IO.ASCII.Exists( FBeing.Inv.Slot[ efTorso ].ID ) then
+      FASCII := FBeing.Inv.Slot[ efTorso ].ID
+    else
+      FASCII := 'player';
   FSize      := Point( 80, 25 );
   for i := Low( FTexts ) to High( FTexts ) do
     FTexts[i] := nil;

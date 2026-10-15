@@ -11,6 +11,7 @@ uses vapp, vnode, vutil, vuid, viotypes, vrltools, vlua, vioevent, vstoreinterfa
      dflevel, dfdata, dfhof, dfplayer, dfitem, drlhooks, drllua, drlcommand, drlkeybindings, drlmodule, drlgamedata;
 
 type TDRLSession = class;
+     PDRLSession = ^TDRLSession;
 
 // TTargeting
 //
@@ -32,9 +33,6 @@ public
   property List : TAutoTarget read FList;
 end;
 
-type TDRLState = ( DSStart,   DSMenu,       DSLoading, DSCrashLoading,
-                  DSPlaying, DSEnding,   DSSaving,  DSNextLevel,
-                  DSQuit,    DSFinished );
 type TDRLSessionResult = ( DSR_Quit, DSR_Played, DSR_ReloadData );
 
 // TDRLSession
@@ -51,7 +49,7 @@ type TDRLSession = class(TVObject)
        procedure Reset;
        procedure Reconfigure;
        procedure SetSessionHooks( aSessionHooks : TFlags );
-       class procedure RegisterLuaAPI( aLua : TLua );
+       class procedure RegisterLuaAPI( aLua : TLua; aActive : PDRLSession );
        function LoadSaveFile : Boolean;
        procedure WriteSaveFile( aCrash : Boolean );
        function SaveExists : Boolean;
@@ -84,6 +82,12 @@ type TDRLSession = class(TVObject)
        procedure SetPlayer( aPlayer : TPlayer );
        procedure ReleaseLevel;
        procedure ReleasePlayer;
+       procedure PostRegenerateLevel;
+       procedure LevelUpPlayer;
+       procedure PlayerPreAction;
+       procedure ChoosePlayerTrait;
+       procedure ApplyOutcome;
+       function ContinuePlaying : Boolean;
        procedure Apply( aResult : TMenuResult );
        procedure HardQuit;
        procedure HandlePlayerViewSwap;
@@ -99,8 +103,10 @@ type TDRLSession = class(TVObject)
        function PrepareGameSeed( aRequestedSeed : Cardinal ) : Cardinal;
        procedure RegisterChallengeRuntimes;
        function GetGameRNG : TRNG;
+       function GetState : TDRLState;
+       function GetGameWon : Boolean;
      private
-       FState           : TDRLState;
+       FStatus          : TRunStatus;
        FLevel           : TLevel;
        FPlayer          : TPlayer;
        FUIDStore        : TUIDStore;
@@ -126,7 +132,6 @@ type TDRLSession = class(TVObject)
        FSChallenge      : AnsiString;
        FArchAngel       : Boolean;
        FReloadData      : Boolean;
-       FGameWon         : Boolean;
        FCrashSave       : Boolean;
        FData            : TGameData;
        FGameSeed        : Cardinal;
@@ -134,7 +139,7 @@ type TDRLSession = class(TVObject)
        FRuntime         : TRLRuntime;
        FPaths           : TGamePaths;
      public
-       property GameWon : Boolean read FGameWon;
+       property GameWon : Boolean read GetGameWon;
        property Difficulty : Byte read FDifficulty;
        property Challenge  : Ansistring read FChallenge;
        property SChallenge : Ansistring read FSChallenge;
@@ -146,7 +151,7 @@ type TDRLSession = class(TVObject)
        property Modules : TDRLModules read FModules;
        property Level : TLevel read FLevel;
        property Player : TPlayer read FPlayer;
-       property State : TDRLState read FState;
+       property State : TDRLState read GetState;
        property Targeting : TTargeting read FTargeting;
        property GameSeed : Cardinal read FGameSeed;
        property SeededGame : Boolean read FSeededGame;
@@ -155,13 +160,11 @@ type TDRLSession = class(TVObject)
        property Paths : TGamePaths read FPaths;
      end;
 
-var DRL : TDRLSession;
-
 
 implementation
 
 uses {$IFDEF WINDOWS}windows,{$ELSE}unix,{$ENDIF} classes, sysutils, zstream,
-     vbindings, vdebug, vstream, vtig, vluagamestack,
+     vbindings, vdebug, vstream, vtig, vlualibrary, vluagamestack,
      dfmap, dfbeing, drlio, drlgfxio, drlspritemap { remove }, drlplayerview, drlingamemenuview, drlhelpview, drlassemblyview, drlpagedview, drlrankupview, drlmainmenuview, drlhudviews, drlmessagesview, drlapplication, drlcontrollerbindings;
 
 const PAD_REPEAT_START = 400;
@@ -245,9 +248,9 @@ end;
 procedure TDRLSession.SetState( aNewState : TDRLState );
 var iWasPlaying : Boolean;
 begin
-  if ( FState = aNewState ) then Exit;
-  iWasPlaying := FState = DSPlaying;
-  FState := aNewState;
+  if ( FStatus.State = aNewState ) then Exit;
+  iWasPlaying := FStatus.State = DSPlaying;
+  FStatus.State := aNewState;
   if iWasPlaying then
   begin
     FQueueCommand := TCommand.Create( COMMAND_NONE );
@@ -255,16 +258,30 @@ begin
   end;
 end;
 
+// Death and victory are recorded during an action. Session ends play at its
+// control points, outside the action, so the current step finishes first.
+procedure TDRLSession.ApplyOutcome;
+begin
+  if ( FStatus.State in [ DSPlaying, DSNextLevel ] )
+    and ( FStatus.GameWon or FPlayer.Killed ) then
+    SetState( DSEnding );
+end;
+
+function TDRLSession.ContinuePlaying : Boolean;
+begin
+  ApplyOutcome;
+  Exit( FStatus.State = DSPlaying );
+end;
+
 procedure TDRLSession.WinGame;
 begin
-  if FGameWon then Exit;
-  FGameWon := True;
-  SetState( DSEnding );
+  FStatus.GameWon := True;
 end;
 
 procedure TDRLSession.ExitLevel( aFade : Boolean; aFadeTime : Single );
 begin
-  if FState in [ DSSaving, DSEnding ] then Exit;
+  if FStatus.State in [ DSSaving, DSEnding ] then Exit;
+  if FStatus.GameWon or FPlayer.Killed then Exit;
   if aFade then IO.FadeOut( aFadeTime, True );
   SetState( DSNextLevel );
 end;
@@ -274,7 +291,7 @@ begin
   FPlayer.Statistics.Update( FPlayer );
   if FContext.Lua.Defined( [CoreModuleID, 'RunAwards'] ) then
     FContext.Lua.ProtectedCall( [CoreModuleID, 'RunAwards'], [NoPlayerRecord] );
-  FPlayer.CalculateScore( FDifficulty, FGameWon );
+  FPlayer.CalculateScore( FDifficulty, FStatus.GameWon );
   RecordResult;
 end;
 
@@ -312,6 +329,7 @@ constructor TDRLSession.Create( aRuntime : TRLRuntime; aModules : TDRLModules;
 begin
   FRuntime := aRuntime;
   FContext := TNodeContext.Create( aRuntime.Lua, nil );
+  FStatus  := TRunStatus.Create;
   FModules := aModules;
   FStore := aStore;
   FPaths := aPaths;
@@ -331,6 +349,7 @@ procedure TDRLSession.SetLevel( aLevel : TLevel );
 begin
   FLevel := aLevel;
   FLevel.BindPlayer( FPlayer );
+  FLevel.BindRunStatus( FStatus );
   if GraphicsVersion
     then FLevel.InitializeParticles( TDRLGFXIO(IO).ParticleEngine )
     else FLevel.InitializeParticles( nil );
@@ -351,20 +370,28 @@ end;
 procedure TDRLSession.SetPlayer( aPlayer : TPlayer );
 begin
   FPlayer := aPlayer;
-  dfplayer.Player := FPlayer;
   FLevel.BindPlayer( FPlayer );
 end;
 
 procedure TDRLSession.ReleasePlayer;
 begin
   if FLevel <> nil then FLevel.BindPlayer( nil );
-  dfplayer.Player := nil;
   FreeAndNil( FPlayer );
 end;
 
 function TDRLSession.GetGameRNG : TRNG;
 begin
   Result := FRuntime.GameRNG;
+end;
+
+function TDRLSession.GetState : TDRLState;
+begin
+  Exit( FStatus.State );
+end;
+
+function TDRLSession.GetGameWon : Boolean;
+begin
+  Exit( FStatus.GameWon );
 end;
 
 procedure TDRLSession.SetSessionHooks( aSessionHooks : TFlags );
@@ -380,9 +407,9 @@ begin
   begin
     FStore.IncStat( 'drl_kills', FPlayer.FKills.Count );
     if FPlayer.HP <= 0 then FStore.IncStat( 'drl_deaths' );
-    if FGameWon then FStore.IncStat( 'drl_wins' );
+    if FStatus.GameWon then FStore.IncStat( 'drl_wins' );
   end;
-  iRuntime.HOF.Add( FPlayer, FDifficulty, FGameWon,
+  iRuntime.HOF.Add( FPlayer, FDifficulty, FStatus.GameWon,
     FChallenge, FLevel.Abbr );
   iRuntime.SaveProfile;
 end;
@@ -444,7 +471,7 @@ begin
   FSChallenge := '';
   FArchAngel  := False;
   FReloadData := False;
-  FGameWon    := False;
+  FStatus.GameWon    := False;
   FCrashSave  := False;
   FSeededGame := False;
 
@@ -505,6 +532,40 @@ begin
   CallHook( Hook_OnCreateLevel, [] );
 end;
 
+// Completes a god-mode regeneration started by ResetLevel.
+procedure TDRLSession.PostRegenerateLevel;
+begin
+  IO.MsgUpdate;
+  FLevel.AfterGeneration;
+  EnterLevel( FLevel );
+  FLevel.CalculateVision( FPlayer.Position, FPlayer.Vision );
+  PlayerPreAction;
+end;
+
+// One player level-up: the player advances, the advance is presented, then
+// the trait choice runs between the pre- and post-level-up hooks.
+procedure TDRLSession.LevelUpPlayer;
+begin
+  FPlayer.AdvanceLevel;
+  IO.Blink( LightBlue, 100 );
+  IO.Msg( 'You advance to level %d!', [ FPlayer.ExpLevel ] );
+  IO.RunLayer( TMoreLayer.Create( False ) );
+
+  if not FPlayer.CallHookCheck( Hook_OnPreLevelUp, [ FPlayer.ExpLevel ] ) then Exit;
+  IO.BloodSlideDown( 20 );
+  ChoosePlayerTrait;
+  FPlayer.CallHook( Hook_OnLevelUp, [ FPlayer.ExpLevel ] );
+end;
+
+// Runs the trait view and applies the pick; cancelling applies nothing.
+procedure TDRLSession.ChoosePlayerTrait;
+var iTrait : Byte;
+begin
+  if DemoVersion and ( FPlayer.ExpLevel > 7 ) then Exit;
+  iTrait := IO.ChooseTrait;
+  if iTrait <> 255 then FPlayer.UpgradeTrait( iTrait );
+end;
+
 procedure TDRLSession.EnterLevel( aLevel : TLevel );
 begin
   aLevel.Enter;
@@ -530,18 +591,39 @@ begin
       FPlayer.AddHistory( 'He left @1 as soon as possible.' );
   end;
 
-  if FState = DSNextLevel then IO.MsgReset;
+  // Exit hooks may win the game; keep their final messages.
+  ApplyOutcome;
+  if FStatus.State = DSNextLevel then IO.MsgReset;
 end;
 
 procedure TDRLSession.AdvanceTime;
 begin
-  if FState <> DSPlaying then Exit;
+  if not ContinuePlaying then Exit;
   // Each batch includes at least one step, also on fresh level entry.
   repeat
     FLevel.Tick;
-  until ( FState <> DSPlaying ) or ( FPlayer.SCount > 5000 );
-  if FState = DSPlaying then
+  until ( not ContinuePlaying ) or ( FPlayer.SCount > 5000 );
+  if FStatus.State = DSPlaying then
     CRASHMODE := False;
+end;
+
+// The player's pre-action steps, with the multi-move interruption between
+// them: a pending key stops the move; console mode paces each step.
+procedure TDRLSession.PlayerPreAction;
+begin
+  FPlayer.PreAction;
+  if FPlayer.MultiMove.Active then
+  begin
+    if IO.CommandEventPending then
+    begin
+      IO.Msg('Stop.');
+      FPlayer.MultiMove.Stop;
+      IO.ClearEventBuffer;
+    end
+    else if not GraphicsVersion then
+      IO.Delay( Option_RunDelay );
+  end;
+  FPlayer.CallHook( Hook_OnPreAction, [] );
 end;
 
 procedure TDRLSession.PreAction;
@@ -554,7 +636,7 @@ begin
   FPlayer.UpdateVisual;
   if GraphicsVersion then
     (IO as TDRLGFXIO).UpdateMinimap;
-  FPlayer.PreAction;
+  PlayerPreAction;
   FTargeting.Update( FPlayer.Vision );
   IO.SetAutoTarget( FTargeting.List.Current );
   if ( FPlayerView <> nil ) and (not FPlayer.DamagedLastTurn) and (FPlayer.EnemiesInVision < 1) then
@@ -1003,7 +1085,7 @@ begin
   if not ( FPlayerView as TPlayerView ).TakeSwapRequest( iSlot ) then Exit;
   iItem := FPlayer.Inv.Slot[ iSlot ];
   if ( iItem = nil ) or iItem.CallHookCheck( Hook_OnUnequipCheck, [ FPlayer, False ] ) then
-    if State = DSPlaying then
+    if ContinuePlaying then
       ( FPlayerView as TPlayerView ).InitSwapMode( iSlot );
   if FPlayerView <> nil then
     ( FPlayerView as TPlayerView ).FinishPending;
@@ -1020,7 +1102,7 @@ begin
   if iItem <> nil then
   begin
     if not iItem.CallHookCheck( Hook_OnUnequipCheck, [ FPlayer, False ] ) then Exit( False );
-    if State <> DSPlaying then Exit( False );
+    if not ContinuePlaying then Exit( False );
   end;
 
   if not ( aCommand.Command in [ COMMAND_FIRE, COMMAND_ALTFIRE, COMMAND_RELOAD ] ) then
@@ -1042,12 +1124,14 @@ except
     CRASHMODE := True;
   end;
 end;
-  if State <> DSPlaying then Exit( False );
+  if not ContinuePlaying then Exit( False );
+  while FPlayer.LevelUpPending do
+    LevelUpPlayer;
   FPlayer.PostAction;
-  if State <> DSPlaying then Exit( False );
+  if not ContinuePlaying then Exit( False );
   IO.Focus( FPlayer.Position );
   FPlayer.DamagedLastTurn := False;
-  while (FPlayer.SCount < 5000) and ( State = DSPlaying ) do
+  while (FPlayer.SCount < 5000) and ContinuePlaying do
   begin
     FLevel.CalculateVision( FPlayer.Position, FPlayer.Vision );
     AdvanceTime;
@@ -1154,7 +1238,7 @@ begin
       if FPlayer.Inv.Slot[ efWeapon ] <> nil then
       begin
         if not FPlayer.Inv.Slot[ efWeapon ].CallHookCheck( Hook_OnUnequipCheck, [ FPlayer, False ] ) then Exit( False );
-        if State <> DSPlaying then Exit( False );
+        if not ContinuePlaying then Exit( False );
       end;
       IO.PushLayer( TScrollSwapLayer.Create( Self ) );
     end;
@@ -1168,7 +1252,7 @@ var iTarget      : TCoord2D;
     iRepeatDelay : DWord;
 begin
   Result := False;
-  if ( State <> DSPlaying ) or IO.IsModal
+  if ( not ContinuePlaying ) or IO.IsModal
     or ( not IO.ControllerActionHeld( CONTROLLER_MOVE ) ) then
   begin
     FPadMoveActive := False;
@@ -1227,7 +1311,7 @@ begin
   end;
   FPadMoveNext := IO.Time + iRepeatDelay;
   // A nested prompt may have consumed the release while handling the command.
-  FPadMoveActive := ( State = DSPlaying )
+  FPadMoveActive := ContinuePlaying
     and ( not IO.IsModal )
     and IO.ControllerActionHeld( CONTROLLER_MOVE )
     and ( FPlayer.EnemiesInVision = 0 )
@@ -1463,7 +1547,7 @@ begin
     IO.RunLayer( TMainMenuView.Create(
       Self, TDRLRuntime( FRuntime ).HOF, TDRLRuntime( FRuntime ).Help, TDRLRuntime( FRuntime ).ModErrors ), True );
   end;
-  if FState <> DSQuit then
+  if FStatus.State <> DSQuit then
   begin
   IO.LoadStop;
 
@@ -1472,7 +1556,7 @@ begin
   FArchAngel     := False;
   FChallenge     := '';
   FSChallenge    := '';
-  FGameWon       := False;
+  FStatus.GameWon       := False;
   NoPlayerRecord := False;
   NoScoreRecord  := False;
 
@@ -1586,7 +1670,7 @@ begin
     FTargeting.Clear;
     PreAction;
 
-    while ( State = DSPlaying ) do
+    while ContinuePlaying do
     begin
       // No callback is running between loop iterations.
       FContext.FlushDestroyed;
@@ -1614,7 +1698,7 @@ begin
         Continue;
       end;
 
-      while ( not IO.Driver.EventPending ) and ( State = DSPlaying )
+      while ( not IO.Driver.EventPending ) and ContinuePlaying
         and ( FQueueCommand.Command = COMMAND_NONE ) and ( not IO.MsgPending ) do
       begin
         if FPadMoveActive and ( IO.Time >= FPadMoveNext ) then
@@ -1627,7 +1711,7 @@ begin
         FLastFrameTime := IO.Driver.GetMs;
         IO.Driver.Sleep(10);
       end;
-      if State <> DSPlaying then Break;
+      if not ContinuePlaying then Break;
       if ( FQueueCommand.Command <> COMMAND_NONE ) or IO.MsgPending then Continue;
 
       // Guarantee a render slice even when events arrive faster than we can drain them
@@ -1640,7 +1724,7 @@ begin
         FLastFrameTime := IO.Driver.GetMs;
       end;
 
-      if State <> DSPlaying then Break;
+      if not ContinuePlaying then Break;
       if ( FQueueCommand.Command <> COMMAND_NONE ) or IO.MsgPending then Continue;
       if not IO.Driver.PollEvent( iEvent ) then continue;
       if IO.OnEvent( iEvent ) then Continue;
@@ -1652,7 +1736,7 @@ begin
            else HardQuit;
       end;
 
-      if State <> DSPlaying then Break;
+      if not ContinuePlaying then Break;
 
       if iEvent.EType = VEVENT_MOUSEDOWN then HandleMouseEvent( iEvent );
       if iEvent.EType = VEVENT_KEYDOWN   then HandleKeyEvent( iEvent );
@@ -1686,7 +1770,7 @@ begin
     IO.ClearAnimations;
     if State <> DSSaving then
     begin
-      if ( State = DSNextLevel ) or ( ( State = DSFinished ) and FGameWon ) then
+      if ( State = DSNextLevel ) or ( ( State = DSFinished ) and FStatus.GameWon ) then
         FPlayer.Score := FPlayer.Score + 1000;
       if State = DSFinished then
         FinishGame
@@ -1727,7 +1811,7 @@ begin
   // The ending hook may confirm the outcome over the finished level.
   if State = DSFinished then
   begin
-    if FGameWon then
+    if FStatus.GameWon then
     begin
       ShowEnding;
       IO.FadeLevel( 1.0 );
@@ -1852,7 +1936,7 @@ begin
       FLevel.Particles.BindUIDs( FUIDStore );
       FContext.BindUIDs( FUIDStore );
       FContext.Lua.Context.BindUIDs( FUIDStore );
-      FGameWon         := iStream.ReadByte <> 0;
+      FStatus.GameWon         := iStream.ReadByte <> 0;
       FDifficulty      := iStream.ReadByte;
       FChallenge       := iStream.ReadAnsiString;
       FArchAngel       := iStream.ReadByte <> 0;
@@ -1944,7 +2028,7 @@ begin
   Stream.WriteAnsiString( VersionModuleSave );
   Stream.WriteAnsiString( FModules.ModString );
   FUIDStore.WriteToStream( Stream );
-  if FGameWon   then Stream.WriteByte( 1 ) else Stream.WriteByte( 0 );
+  if FStatus.GameWon   then Stream.WriteByte( 1 ) else Stream.WriteByte( 0 );
   Stream.WriteByte( FDifficulty );
   Stream.WriteAnsiString( FChallenge );
   if FArchAngel then Stream.WriteByte( 1 ) else Stream.WriteByte( 0 );
@@ -1990,13 +2074,21 @@ begin
   end;
   FreeAndNil( FUIDStore );
   FreeAndNil( FContext );
+  FreeAndNil( FStatus );
   Log('DRL destroyed.');
   inherited Destroy;
 end;
 
+// Session-bound native callbacks capture the owner's current-session slot as
+// upvalue 1, so functions cached by Lua always act on the active Session.
+function ActiveSession( L : PLua_State ) : TDRLSession; inline;
+begin
+  Exit( PDRLSession( lua_touserdata( L, lua_upvalueindex( 1 ) ) )^ );
+end;
+
 function lua_game_win( L : PLua_State ) : Integer; cdecl;
 begin
-  DRL.WinGame;
+  ActiveSession( L ).WinGame;
   Result := 0;
 end;
 
@@ -2004,49 +2096,124 @@ function lua_game_has_won( L : PLua_State ) : Integer; cdecl;
 var iState : TLuaGameStack;
 begin
   iState.Init( L );
-  iState.Push( DRL.GameWon );
+  iState.Push( ActiveSession( L ).GameWon );
   Result := 1;
 end;
 
 function lua_game_is_playing( L : PLua_State ) : Integer; cdecl;
-var iState : TLuaGameStack;
+var iState   : TLuaGameStack;
+    iSession : TDRLSession;
 begin
   iState.Init( L );
-  iState.Push( DRL.State = DSPlaying );
+  iSession := ActiveSession( L );
+  // The level exists whenever the run is playing.
+  iState.Push( ( iSession.State = DSPlaying ) and iSession.FLevel.IsActive );
   Result := 1;
 end;
 
 function lua_game_exit( L : PLua_State ) : Integer; cdecl;
-var iState : TLuaGameStack;
+var iState   : TLuaGameStack;
+    iSession : TDRLSession;
 begin
   iState.Init( L );
   if not ( iState.IsNil( 1 ) or iState.IsNumber( 1 ) ) then
     iState.Error( 'game.exit - expected a level index or nil!' );
-  DRL.ExitLevel( iState.IsNumber( 2 ), iState.ToFloat( 2, 0.0 ) );
-  DRL.FPlayer.SCount := 4000;
+  iSession := ActiveSession( L );
+  iSession.ExitLevel( iState.IsNumber( 2 ), iState.ToFloat( 2, 0.0 ) );
+  iSession.FPlayer.SCount := 4000;
   if iState.IsNumber( 1 ) then
-    DRL.FPlayer.Level_Index := iState.ToInteger( 1 ) - 1;
+    iSession.FPlayer.Level_Index := iState.ToInteger( 1 ) - 1;
   Result := 0;
 end;
 
 function lua_game_reset_level( L : PLua_State ) : Integer; cdecl;
 begin
-  DRL.ResetLevel;
+  ActiveSession( L ).ResetLevel;
   Result := 0;
 end;
 
-const lua_game_lib : array[0..5] of luaL_Reg = (
-  ( name : 'win';        func : @lua_game_win ),
-  ( name : 'exit';       func : @lua_game_exit ),
-  ( name : 'has_won';    func : @lua_game_has_won ),
-  ( name : 'is_playing'; func : @lua_game_is_playing ),
-  ( name : 'reset_level';func : @lua_game_reset_level ),
+function lua_game_post_regenerate( L : PLua_State ) : Integer; cdecl;
+begin
+  ActiveSession( L ).PostRegenerateLevel;
+  Result := 0;
+end;
+
+function lua_game_level_up( L : PLua_State ) : Integer; cdecl;
+begin
+  ActiveSession( L ).LevelUpPlayer;
+  Result := 0;
+end;
+
+function lua_game_choose_trait( L : PLua_State ) : Integer; cdecl;
+begin
+  ActiveSession( L ).ChoosePlayerTrait;
+  Result := 0;
+end;
+
+function lua_statistics_get( L : PLua_State ) : Integer; cdecl;
+var iState  : TLuaGameStack;
+    iPlayer : TPlayer;
+begin
+  iState.Init( L );
+  iPlayer := ActiveSession( L ).FPlayer;
+  iPlayer.Statistics.Update( iPlayer );
+  // Unused parameter #1 is self
+  iState.Push( iPlayer.Statistics[ iState.ToString( 2 ) ] );
+  Result := 1;
+end;
+
+function lua_statistics_set( L : PLua_State ) : Integer; cdecl;
+var iState : TLuaGameStack;
+begin
+  iState.Init( L );
+  // Unused parameter #1 is self
+  ActiveSession( L ).FPlayer.Statistics.Assign( iState.ToString( 2 ), iState.ToInteger( 3 ) );
+  Result := 0;
+end;
+
+function lua_statistics_inc( L : PLua_State ) : Integer; cdecl;
+var iState : TLuaGameStack;
+begin
+  iState.Init( L );
+  ActiveSession( L ).FPlayer.Statistics.Increase( iState.ToString( 1 ), iState.ToInteger( 2 ) );
+  Result := 0;
+end;
+
+function lua_game_time( L : PLua_State ) : Integer; cdecl;
+var iState : TLuaGameStack;
+begin
+  iState.Init( L );
+  iState.Push( ActiveSession( L ).FPlayer.Statistics.GameTime );
+  Result := 1;
+end;
+
+const lua_game_lib : array[0..9] of luaL_Reg = (
+  ( name : 'win';             func : @lua_game_win ),
+  ( name : 'exit';            func : @lua_game_exit ),
+  ( name : 'has_won';         func : @lua_game_has_won ),
+  ( name : 'is_playing';      func : @lua_game_is_playing ),
+  ( name : 'reset_level';     func : @lua_game_reset_level ),
+  ( name : 'post_regenerate'; func : @lua_game_post_regenerate ),
+  ( name : 'level_up';        func : @lua_game_level_up ),
+  ( name : 'choose_trait';    func : @lua_game_choose_trait ),
+  ( name : 'time';            func : @lua_game_time ),
+  ( name : nil;               func : nil )
+);
+
+const lua_statistics_lib : array[0..1] of luaL_Reg = (
+  ( name : 'inc';        func : @lua_statistics_inc ),
   ( name : nil;         func : nil )
 );
 
-class procedure TDRLSession.RegisterLuaAPI( aLua : TLua );
+class procedure TDRLSession.RegisterLuaAPI( aLua : TLua; aActive : PDRLSession );
 begin
-  aLua.Register( 'game', lua_game_lib );
+  // aActive is borrowed from the owner and must outlive the Lua state.
+  lua_pushlightuserdata( aLua.Raw, aActive );
+  aLua.Register( 'game', lua_game_lib, 1 );
+  lua_pushlightuserdata( aLua.Raw, aActive );
+  aLua.Register( 'statistics', lua_statistics_lib, 1 );
+  lua_pushlightuserdata( aLua.Raw, aActive );
+  aLua.RegisterMetaTable( 'statistics', @lua_statistics_get, @lua_statistics_set, 1 );
 end;
 
 end.

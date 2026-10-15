@@ -69,7 +69,7 @@ function being:acquire( what, count )
 			end
 		end
 		if drop or not self.inv:add( it ) then
-			if not level:drop_item( it, self.position, true, true, true ) then
+			if not level:drop_item( it, self.position, true, true ) then
 				ok = false
 			end
 		end
