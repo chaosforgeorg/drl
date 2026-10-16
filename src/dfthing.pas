@@ -66,7 +66,7 @@ implementation
 
 uses typinfo, variants,
      vdebug, vtig,
-     drlgamedata, dflevel, drlio, drllua, drlspritemap;
+     drlgamedata, dflevel, drllua, drlspritemap;
 
 constructor TThing.Create( const aID : AnsiString; aContext : TNodeContext );
 begin
@@ -107,14 +107,16 @@ begin
 end;
 
 function TThing.PlaySound( const aSoundID : string; aPosition : TCoord2D; aDelay : Integer = 0 ) : Boolean;
-var iSoundID : Word;
+var iSoundID      : Word;
+    iPresentation : IDRLPresentation;
 begin
+  iPresentation := TLevel( GetLevel ).Presentation;
   if FSoundID = ''
-    then iSoundID := IO.Audio.ResolveSoundID( [ FID+'.'+aSoundID, aSoundID ] )
-    else iSoundID := IO.Audio.ResolveSoundID( [ FID+'.'+aSoundID, FSoundID+'.'+aSoundID, aSoundID ] );
+    then iSoundID := iPresentation.ResolveSoundID( [ FID+'.'+aSoundID, aSoundID ] )
+    else iSoundID := iPresentation.ResolveSoundID( [ FID+'.'+aSoundID, FSoundID+'.'+aSoundID, aSoundID ] );
 
   if iSoundID = 0 then Exit( False );
-  IO.PlaySound( iSoundID, aPosition, aDelay );
+  iPresentation.PlaySound( iSoundID, aPosition, aDelay );
   Exit( True );
 end;
 

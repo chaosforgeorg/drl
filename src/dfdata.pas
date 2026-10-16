@@ -263,6 +263,34 @@ type TCellSet = set of Byte;
        Sprite     : TSprite;
      end;
 
+// Sounds and queued visual effects for the level and its entities, on top of
+// messages and the presentation RNG. Implemented by IO and borrowed by the
+// level; entities reach it through the level, so they present only while on it.
+type IDRLPresentation = interface( IRLPresentation )
+  function ResolveSoundID( const aResolveIDs : array of AnsiString ) : Word;
+  procedure PlaySound( aSoundID : Word; aCoord : TCoord2D; aDelay : DWord = 0 );
+  // Presentation time until which a pain sprite shows when hit after aDelay.
+  function PainUntil( aDelay : Integer ) : QWord;
+  procedure Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0 );
+  procedure PulseBlood( aValue : Single );
+  procedure Explosion( aDelay : Integer; aWhere : TCoord2D; aData : TExplosionData );
+  procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ); overload;
+  procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single ); overload;
+  procedure addMoveAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aWipeBump : Boolean; aFinishBeforeNext : Boolean = False );
+  procedure addBumpAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aAmount : Single );
+  procedure addScreenMoveAnimation( aDuration : DWord; aTo : TCoord2D );
+  procedure addCellAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aValue : Integer );
+  procedure addItemAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aValue : Integer );
+  procedure addKillAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aSprite : TSprite; aReverse : Boolean = False );
+  procedure addMissileAnimation( aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aColor : Byte; aPic : Char; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False; aTrailNID : Word = 0 );
+  procedure addMarkAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aColor : Byte; aPic : Char );
+  procedure addFXAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite );
+  procedure addParticleBurstAnimation( aDelay : DWord; aEmitterID : Word; aPosition : TCoord2D;
+    aDirection : TDirection; aCount : Word; aDistanceScale, aSpreadScale : Single );
+  procedure addSoundAnimation( aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord );
+  procedure addRumbleAnimation( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord );
+end;
+
 function NewSprite( ID : DWord ) : TSprite;
 function NewSprite( ID : DWord; Color : TColor ) : TSprite;
 function isDecalBloodId( aID : DWord ) : Boolean;

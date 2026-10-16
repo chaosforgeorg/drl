@@ -111,7 +111,7 @@ implementation
 
 uses math, variants,
      vuid, vioevent, vgenerics, vcolor, vdebug,
-     dfmap, dflevel, drlhooks, drlio, drlspritemap, drllua, drlinventory;
+     dfmap, dflevel, drlhooks, drlspritemap, drllua, drlinventory;
 
 constructor TPlayer.Create( aContext : TNodeContext; aGameRNG : TRNG );
 begin
@@ -328,11 +328,11 @@ begin
     FDamagedLastTurn := True;
     if ( aDamage >= Max( FHPMax div 3, 10 ) ) then
     begin
-      IO.Blink( Red, 100 );
-      IO.addRumbleAnimation( aDelay, $6000, $4000, 250 );
+      TLevel( Parent ).Presentation.Blink( Red, 100 );
+      TLevel( Parent ).Presentation.addRumbleAnimation( aDelay, $6000, $4000, 250 );
     end
     else
-      IO.addRumbleAnimation( aDelay, $4000, $2000, 100 );
+      TLevel( Parent ).Presentation.addRumbleAnimation( aDelay, $4000, $2000, 100 );
 
     FKills.DamageTaken;
   end;
@@ -433,7 +433,7 @@ begin
   if iLevel.Item[ FPosition ] <> nil then
   begin
     if not FMultiMove.IsPath then
-      IO.Msg( iLevel.Item[ FPosition ].GetGroundDesc( True ) );
+      iLevel.Presentation.Msg( iLevel.Item[ FPosition ].GetGroundDesc( True ) );
   end;
 
   FEnemiesInVision := iLevel.GetEnemiesVisible;
@@ -475,9 +475,9 @@ begin
     with iLevel.Being[iWhere] do
     begin
       Inc(iCount);
-      IO.Msg('You see '+ GetName(false) + ' (' + WoundStatus + ') ' + BlindCoord(iWhere-Self.FPosition)+'.');
+      iLevel.Presentation.Msg('You see '+ GetName(false) + ' (' + WoundStatus + ') ' + BlindCoord(iWhere-Self.FPosition)+'.');
     end;
-  if iCount = 0 then IO.Msg('There are no monsters in sight.');
+  if iCount = 0 then iLevel.Presentation.Msg('There are no monsters in sight.');
 end;
 
 procedure TPlayer.ExamineItem;
@@ -493,9 +493,9 @@ begin
       with iLevel.Item[iWhere] do
       begin
         Inc(iCount);
-        IO.Msg('You see '+ GetName(false) + ' ' + BlindCoord(iWhere-Self.FPosition)+'.');
+        iLevel.Presentation.Msg('You see '+ GetName(false) + ' ' + BlindCoord(iWhere-Self.FPosition)+'.');
       end;
-  if iCount = 0 then IO.Msg('There are no items in sight.');
+  if iCount = 0 then iLevel.Presentation.Msg('There are no items in sight.');
 end;
 
 procedure TPlayer.NextLevelIndex;
@@ -581,7 +581,7 @@ begin
      then iLevel.playSound( 'gib',FPosition )
      else PlaySound( 'die' );
 
-  IO.addKillAnimation( 1000, aDelay, Self );
+  iLevel.Presentation.addKillAnimation( 1000, aDelay, FUID, Sprite );
   if NukeActivated > 0 then
   begin
     NukeActivated := 1;

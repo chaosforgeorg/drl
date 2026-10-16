@@ -42,8 +42,8 @@ type
     procedure addBumpAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aAmount : Single ); override;
     procedure addScreenMoveAnimation( aDuration : DWord; aTo : TCoord2D ); override;
     procedure addCellAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aValue : Integer ); override;
-    procedure addItemAnimation( aDuration : DWord; aDelay : DWord; aItem : TThing; aValue : Integer ); override;
-    procedure addKillAnimation( aDuration : DWord; aDelay : DWord; aBeing : TThing; aReverse : Boolean = False ); override;
+    procedure addItemAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aValue : Integer ); override;
+    procedure addKillAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aSprite : TSprite; aReverse : Boolean = False ); override;
     procedure addMissileAnimation( aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aColor : Byte; aPic : Char; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False; aTrailNID : Word = 0 ); override;
     procedure addMarkAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aColor : Byte; aPic : Char ); override;
     procedure addFXAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite ); override;
@@ -511,17 +511,17 @@ begin
   FAnimations.addAnimation( TGFXCellAnimation.Create( TLevel( FLevel ), aDuration, aDelay, aCoord, aSprite, aValue ) );
 end;
 
-procedure TDRLGFXIO.addItemAnimation( aDuration : DWord; aDelay : DWord; aItem : TThing; aValue : Integer );
+procedure TDRLGFXIO.addItemAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aValue : Integer );
 begin
   if not ( Session.State in [ DSPlaying, DSEnding ] ) then Exit;
-  FAnimations.addAnimation( TGFXItemAnimation.Create( aItem.Context.UIDs, aDuration, aDelay, aItem.UID, aValue ) );
+  FAnimations.addAnimation( TGFXItemAnimation.Create( FLevel.Context.UIDs, aDuration, aDelay, aUID, aValue ) );
 end;
 
-procedure TDRLGFXIO.addKillAnimation( aDuration : DWord; aDelay : DWord; aBeing : TThing; aReverse : Boolean = False );
+procedure TDRLGFXIO.addKillAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aSprite : TSprite; aReverse : Boolean = False );
 begin
   if not ( Session.State in [ DSPlaying, DSEnding ] ) then Exit;
-  if SF_PAINANIM in aBeing.Sprite.Flags then
-    FAnimations.addAnimation( TGFXKillAnimation.Create( TLevel( FLevel ), aDuration, aDelay, aBeing.UID, aReverse ) );
+  if SF_PAINANIM in aSprite.Flags then
+    FAnimations.addAnimation( TGFXKillAnimation.Create( TLevel( FLevel ), aDuration, aDelay, aUID, aReverse ) );
 end;
 
 

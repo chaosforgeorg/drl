@@ -177,8 +177,8 @@ TBeing = class(TThing,IPathQuery)
     // depleted HP while the hooks decide.
     property Killed       : Boolean read FDying;
 
-    // Presentation time until which the pain sprite shows; written by IO.
-    property OverlayUntil : QWord   read FOverlayUntil write FOverlayUntil;
+    // Presentation time until which the pain sprite shows.
+    property OverlayUntil : QWord   read FOverlayUntil;
   published
 
     property can_dual_wield       : Boolean read canDualWield;
@@ -212,7 +212,7 @@ implementation
 
 uses math,
      vlualibrary, vluaentitynode, vdebug, vluatools, vcolor, vvector,
-     dfplayer, dflevel, dfmap, drlhooks, drlio, drllua;
+     dfplayer, dflevel, dfmap, drlhooks, drllua;
 
 
 function TBeing.getStrayChance( aDefender : TBeing; aWeapon : TItem ) : Byte;
@@ -425,7 +425,7 @@ begin
               * aShotgun.GetBonusMul( Hook_getDamageMul, [ False, aAltFire, iBeing ] );
 
   if isPlayer then
-    IO.addScreenShakeAnimation( 200+aShots*100, 0, Clampf( iDamage.max / 10, 2.0, 10.0 ), NewDirection( FPosition, aTarget ) );
+    TLevel( Parent ).Presentation.addScreenShakeAnimation( 200+aShots*100, 0, Clampf( iDamage.max / 10, 2.0, 10.0 ), NewDirection( FPosition, aTarget ) );
   for iCount := 1 to aShots do
   begin
     // Separate blasts are presented 150ms apart.
@@ -780,7 +780,7 @@ begin
   end;
 
   if iIsPack and iItem.Dead and IsPlayer then
-    IO.Msg( 'Your %s is depleted.', [iAmmoName] );
+    TLevel( Parent ).Presentation.Msg( 'Your %s is depleted.', [iAmmoName] );
   
   Exit( True );
 end;
@@ -927,7 +927,7 @@ begin
   if BF_IMPATIENT in FFlags then
     if iItem.isUsable then
       begin
-        if isPlayer then IO.Msg('No time to waste.');
+        if isPlayer then TLevel( Parent ).Presentation.Msg('No time to waste.');
         if iItem.isPack then Exit( ActionUse( iItem, FPosition ) );
         Exit( Fail( 'You must use that from the ground!', [] ) );
       end;
@@ -956,7 +956,7 @@ begin
   if not CallHookCheck( Hook_OnPickupCheck, [ iItem ] ) then Exit( False );
   if not iItem.CallHookCheck( Hook_OnPickupCheck, [ Self ] ) then Exit( False );
   iItem.PlaySound('pickup', FPosition );
-  if isPlayer then IO.Msg('You picked up %s.',[iItem.GetName(false)]);
+  if isPlayer then TLevel( Parent ).Presentation.Msg('You picked up %s.',[iItem.GetName(false)]);
   Inv.Add(iItem);
   CallHook( Hook_OnPickup, [iItem] );
   if aApplyCost then
@@ -1160,8 +1160,8 @@ begin
   begin
     iVisualTime := Ceil( VisualTime( iMoveCost, AnimationSpeedMove ) * aVisualMultiplier );
     if isPlayer then
-      IO.addScreenMoveAnimation( iVisualTime, aTarget );
-    IO.addMoveAnimation( iVisualTime, 0, FUID, Position, aTarget, Sprite, True, isPlayer and ( aMoveCost = 0 ) );
+      TLevel( Parent ).Presentation.addScreenMoveAnimation( iVisualTime, aTarget );
+    TLevel( Parent ).Presentation.addMoveAnimation( iVisualTime, 0, FUID, Position, aTarget, Sprite, True, isPlayer and ( aMoveCost = 0 ) );
   end;
   Displace( aTarget );
   if aMoveCost = -1
@@ -1175,8 +1175,6 @@ end;
 function TBeing.ActionWait : Boolean;
 begin
   Dec( FSpeedCount, 1000 );
-  if IsPlayer and Setting_WaitSound then
-    IO.Audio.PlaySound( 'wait', 50 );
   Result := True;
 end;
 
@@ -1221,7 +1219,7 @@ end;
 function TBeing.Fail ( const aText: AnsiString; const aParams: array of const ): Boolean;
 begin
   if FSilentAction then Exit( False );
-  if IsPlayer then IO.Msg( aText, aParams );
+  if IsPlayer then TLevel( Parent ).Presentation.Msg( aText, aParams );
   Exit( False );
 end;
 
@@ -1229,7 +1227,7 @@ function TBeing.Success ( const aText : AnsiString; const aParams : array of con
 begin
   if aCost <> 0 then Dec( FSpeedCount, aCost );
   if FSilentAction then Exit( True );
-  if IsPlayer then IO.Msg( aText, aParams );
+  if IsPlayer then TLevel( Parent ).Presentation.Msg( aText, aParams );
   Exit( True );
 end;
 
@@ -1244,8 +1242,8 @@ procedure TBeing.Emote ( const aPlayerText, aBeingText : AnsiString; const aPara
 begin
   if FSilentAction then Exit;
   if IsPlayer
-    then IO.Msg( aPlayerText, aParams )
-    else if isVisible then IO.Msg( Capitalized(GetName(true))+' '+aBeingText, aParams );
+    then TLevel( Parent ).Presentation.Msg( aPlayerText, aParams )
+    else if isVisible then TLevel( Parent ).Presentation.Msg( Capitalized(GetName(true))+' '+aBeingText, aParams );
 end;
 
 function TBeing.GetName(known : boolean) : string;
@@ -1332,7 +1330,7 @@ begin
     if iLevel.AnimationVisible( FPosition, Self ) or iLevel.AnimationVisible( LastMove, Self ) then
     begin
       iVisualMult := ( 100.0 / FSpeed ) * ( iMoveCost / 1000.0 ) * aVisualMultiplier;
-      IO.addMoveAnimation( Ceil( iVisualMult * 100 ), 0, FUID,Position,LastMove,Sprite, True, False );
+      iLevel.Presentation.addMoveAnimation( Ceil( iVisualMult * 100 ), 0, FUID,Position,LastMove,Sprite, True, False );
     end;
   Displace( FMovePos );
   if BF_WALKSOUND in FFlags then
@@ -1448,9 +1446,9 @@ begin
   if isPlayer then
   begin
     if aGun.Flags[ IF_SHOTGUN ] then
-      IO.addRumbleAnimation( aDelay, $2000, $8000, 100 )
+      iLevel.Presentation.addRumbleAnimation( aDelay, $2000, $8000, 100 )
     else
-      IO.addRumbleAnimation( aDelay, $1000, $6000, 50 )
+      iLevel.Presentation.addRumbleAnimation( aDelay, $1000, $6000, 50 )
   end;
 
 
@@ -1646,11 +1644,11 @@ begin
   end;
 
   if aOverkill then
-    playSound( 'gib', IO.VisualRNG.RLongInt( 400 ) )
+    playSound( 'gib', iLevel.Presentation.VisualRNG.RLongInt( 400 ) )
   else
-    playSound( 'die', IO.VisualRNG.RLongInt( 400 ) );
+    playSound( 'die', iLevel.Presentation.VisualRNG.RLongInt( 400 ) );
 
-  IO.addKillAnimation( 400, aDelay, Self );
+  iLevel.Presentation.addKillAnimation( 400, aDelay, FUID, Sprite );
 
   if not (BF_NOEXP in FFlags) then iLevel.Player.AddExp(FExpValue);
 
@@ -1717,12 +1715,12 @@ begin
 
     if iLevel.AnimationVisible( Position, Self ) then
     begin
-      IO.addBumpAnimation( VisualTime( iAttackCost, AnimationSpeedAttack ), 0, FUID, iPosition, aWhere, Sprite, 0.5 );
+      iLevel.Presentation.addBumpAnimation( VisualTime( iAttackCost, AnimationSpeedAttack ), 0, FUID, iPosition, aWhere, Sprite, 0.5 );
       // Melee FX animation - weapon sprite takes priority, fallback to attacker's melsprite
       if ( iWeapon <> nil ) and ( iWeapon.MelSprite.SpriteID[0] > 0 ) then
-        IO.addFXAnimation( VisualTime( iAttackCost, iWeapon.MelSprite.Frames * iWeapon.MelSprite.Frametime ), 0, aWhere, iWeapon.MelSprite )
+        iLevel.Presentation.addFXAnimation( VisualTime( iAttackCost, iWeapon.MelSprite.Frames * iWeapon.MelSprite.Frametime ), 0, aWhere, iWeapon.MelSprite )
       else if FMelSprite.SpriteID[0] > 0 then
-        IO.addFXAnimation( VisualTime( iAttackCost, FMelSprite.Frames * FMelSprite.Frametime ), 0, aWhere, FMelSprite );
+        iLevel.Presentation.addFXAnimation( VisualTime( iAttackCost, FMelSprite.Frames * FMelSprite.Frametime ), 0, aWhere, FMelSprite );
     end;
 
     if not ( BF_ILLUSION in FFlags ) then
@@ -1793,12 +1791,12 @@ begin
   begin
     // Bump animation only on first attack
     if not aSecond then
-      IO.addBumpAnimation( VisualTime( iAttackCost, AnimationSpeedAttack ), 0, FUID, Position, aTarget.Position, Sprite, 0.5 );
+      iLevel.Presentation.addBumpAnimation( VisualTime( iAttackCost, AnimationSpeedAttack ), 0, FUID, Position, aTarget.Position, Sprite, 0.5 );
     // Melee FX animation - weapon sprite takes priority, fallback to attacker's melsprite
     if ( aWeapon <> nil ) and ( aWeapon.MelSprite.SpriteID[0] > 0 ) then
-      IO.addFXAnimation( VisualTime( iAttackCost, aWeapon.MelSprite.Frames * aWeapon.MelSprite.Frametime ) div Iif( aSecond, 2, 1 ), Iif( aSecond, VisualTime( iAttackCost, aWeapon.MelSprite.Frames * aWeapon.MelSprite.Frametime ) div 2, 0 ), aTarget.Position, aWeapon.MelSprite )
+      iLevel.Presentation.addFXAnimation( VisualTime( iAttackCost, aWeapon.MelSprite.Frames * aWeapon.MelSprite.Frametime ) div Iif( aSecond, 2, 1 ), Iif( aSecond, VisualTime( iAttackCost, aWeapon.MelSprite.Frames * aWeapon.MelSprite.Frametime ) div 2, 0 ), aTarget.Position, aWeapon.MelSprite )
     else if FMelSprite.SpriteID[0] > 0 then
-      IO.addFXAnimation( VisualTime( iAttackCost, FMelSprite.Frames * FMelSprite.Frametime ) div Iif( aSecond, 2, 1 ), Iif( aSecond, VisualTime( iAttackCost, FMelSprite.Frames * FMelSprite.Frametime ) div 2, 0 ), aTarget.Position, FMelSprite );
+      iLevel.Presentation.addFXAnimation( VisualTime( iAttackCost, FMelSprite.Frames * FMelSprite.Frametime ) div Iif( aSecond, 2, 1 ), Iif( aSecond, VisualTime( iAttackCost, FMelSprite.Frames * FMelSprite.Frametime ) div 2, 0 ), aTarget.Position, FMelSprite );
   end;
 
   if iDualAttack or aSecond
@@ -1823,23 +1821,23 @@ begin
     if Roll( iGameRNG, 12 + iToHit ) < 0 then
     begin
       if IsPlayer then iResult := ' miss ' else iResult := ' misses ';
-      if isVisible then IO.Msg( Capitalized(iName) + iResult + iDefenderName + '.' );
+      if isVisible then iLevel.Presentation.Msg( Capitalized(iName) + iResult + iDefenderName + '.' );
       iMissed := True;
     end;
 
   if not iMissed then
   begin
-    if ( aWeapon <> nil ) then IO.addSoundAnimation( Iif( aSecond, 100, 30 ), aTarget.Position, IO.Audio.ResolveSoundID(['flesh_blade_hit']) );
+    if ( aWeapon <> nil ) then iLevel.Presentation.addSoundAnimation( Iif( aSecond, 100, 30 ), aTarget.Position, iLevel.Presentation.ResolveSoundID(['flesh_blade_hit']) );
     // Damage roll
     iDamage := rollMeleeDamage( aWeapon, aTarget );
 
     // Shake
     if isPlayer or aTarget.IsPlayer then
-      IO.addScreenShakeAnimation( 150, Iif( aSecond, 50, 0 ), Clampf( iDamage / 4, 3.0, 10.0 ), NewDirection( FPosition, aTarget.FPosition ) );
+      iLevel.Presentation.addScreenShakeAnimation( 150, Iif( aSecond, 50, 0 ), Clampf( iDamage / 4, 3.0, 10.0 ), NewDirection( FPosition, aTarget.FPosition ) );
 
     // Hit message
     if IsPlayer then iResult := ' hit ' else iResult := ' hits ';
-    if isVisible then IO.Msg( Capitalized(iName) + iResult + iDefenderName + '.' );
+    if isVisible then iLevel.Presentation.Msg( Capitalized(iName) + iResult + iDefenderName + '.' );
 
     // Apply damage
     if not ( BF_ILLUSION in FFlags ) then
@@ -2033,13 +2031,13 @@ begin
     if (iArmor.Durability = 0) and (not iArmor.Flags[ IF_NODESTROY ]) then
     begin
       if IsPlayer then
-        if aTarget = Target_Torso then IO.Msg('Your '+iArmor.Name+' is completely destroyed!')
-                                  else IO.Msg('Your '+iArmor.Name+' are completely destroyed!');
+        if aTarget = Target_Torso then iLevel.Presentation.Msg('Your '+iArmor.Name+' is completely destroyed!')
+                                  else iLevel.Presentation.Msg('Your '+iArmor.Name+' are completely destroyed!');
       iArmor.Discard;
     end
     else if IsPlayer and ( iProtection <> iArmor.GetProtection ) then
-      if aTarget = Target_Torso then IO.Msg('Your '+iArmor.Name+' is damaged!')
-                                else IO.Msg('Your '+iArmor.Name+' are damaged!');
+      if aTarget = Target_Torso then iLevel.Presentation.Msg('Your '+iArmor.Name+' is damaged!')
+                                else iLevel.Presentation.Msg('Your '+iArmor.Name+' are damaged!');
 
   end;
   if iResist >= 100 then Exit;
@@ -2091,11 +2089,11 @@ begin
   begin
     TPlayer( Self ).Statistics.OnDamage( Self, aDamage );
     if ( aTarget = Target_Feet )
-      then IO.PulseBlood( 1.0 )
+      then iLevel.Presentation.PulseBlood( 1.0 )
       else
       begin
         if aDamage > (FHPMax div 5) then
-          IO.PulseBlood( Clampf( 4.0 * ( aDamage / FHPMax ), 0.5, 2.0 ) );
+          iLevel.Presentation.PulseBlood( Clampf( 4.0 * ( aDamage / FHPMax ), 0.5, 2.0 ) );
       end;
   end;
 
@@ -2104,13 +2102,13 @@ begin
     if FContext.Lua.Defined( [ CoreModuleID, 'GetDeathMessage' ] ) then
     begin
       iDeathMessage := FContext.Lua.ProtectedCall( [ CoreModuleID, 'GetDeathMessage' ], [ Self, isVisible ] );
-      if iDeathMessage <> '' then IO.Msg( iDeathMessage );
+      if iDeathMessage <> '' then iLevel.Presentation.Msg( iDeathMessage );
     end;
   if FHP <= 0
     then Kill( Min( aDamage div 2, 15), (aDamage >= iOverKillValue) or iForceOverkill, iActive, aSource, aDelay )
     else begin
       CallHook( Hook_OnAttacked, [ iActive, aSource ] );
-      IO.ShowPain( Self, aDelay );
+      FOverlayUntil := Max( FOverlayUntil, iLevel.Presentation.PainUntil( aDelay ) );
     end;
 end;
 
@@ -2214,8 +2212,8 @@ begin
     end;
       
   case aItem.MisColor of
-    MULTIYELLOW : case IO.VisualRNG.RLongInt( 3 ) of 0 : iColor := LightGreen; 1 : iColor := White;  2 : iColor := Yellow; end;
-    MULTIBLUE   : case IO.VisualRNG.RLongInt( 3 ) of 0 : iColor := LightBlue;  1 : iColor := White;  2 : iColor := Blue;   end;
+    MULTIYELLOW : case iLevel.Presentation.VisualRNG.RLongInt( 3 ) of 0 : iColor := LightGreen; 1 : iColor := White;  2 : iColor := Yellow; end;
+    MULTIBLUE   : case iLevel.Presentation.VisualRNG.RLongInt( 3 ) of 0 : iColor := LightBlue;  1 : iColor := White;  2 : iColor := Blue;   end;
   else
     iColor := aItem.MisColor;
   end;
@@ -2290,14 +2288,14 @@ begin
 
       if ( iCoverValue >= 10 ) or ( iGameRNG.RLongInt( 10 ) < iCoverValue ) then
       begin
-        if iDodged then IO.Msg('You dodge!');
+        if iDodged then iLevel.Presentation.Msg('You dodge!');
 
         if aItem.Flags[ IF_DESTRUCTIVE ]
           then iLevel.DamageTile( iCoord, iDamage * 2, aItem.DamageType )
           else iLevel.DamageTile( iCoord, iDamage, aItem.DamageType );
 
         if iLevel.isVisible( iCoord ) then
-          IO.Msg('Boom!');
+          iLevel.Presentation.Msg('Boom!');
         iCoord := iOldCoord;
         iHit   := True;
         Break;
@@ -2334,15 +2332,15 @@ begin
       begin
         if iLevel.Being[ iCoord ] is TPlayer
           then iDirectHit := True
-          else if iDodged then IO.Msg('You dodge!');
+          else if iDodged then iLevel.Presentation.Msg('You dodge!');
         if iLevel.isVisible( iCoord ) then
             if iBeing.IsPlayer then
             begin
               iFireDesc := FContext.Lua.Get(['items',aItem.NID,'hitdesc'], '');
               if iFireDesc = '' then iFireDesc := 'You are hit!';
-              IO.Msg( Capitalized( iFireDesc ) );
+              iLevel.Presentation.Msg( Capitalized( iFireDesc ) );
             end
-            else IO.Msg('The missile hits '+iBeing.GetName(true)+'.');
+            else iLevel.Presentation.Msg('The missile hits '+iBeing.GetName(true)+'.');
 
         if iRadius = 0 then
         begin
@@ -2383,7 +2381,7 @@ begin
 
     if ( iSteps >= iMaxRange ) or aItem.Flags[ IF_INSTANTHIT ] then
     begin
-      if iDodged then IO.Msg('You dodge!');
+      if iDodged then iLevel.Presentation.Msg('You dodge!');
       break;
     end;
 
@@ -2402,9 +2400,9 @@ begin
 
   if ( not aItem.Flags[ IF_SERIESSOUND ] ) or ( aShotCount = 0 ) then
   begin
-    iSound  := IO.Audio.ResolveSoundID([aItem.ID+'.fire',aItem.SoundID+'.fire','fire']);
+    iSound  := iLevel.Presentation.ResolveSoundID([aItem.ID+'.fire',aItem.SoundID+'.fire','fire']);
     if iSound <> 0 then
-      IO.addSoundAnimation( aSequence, iSource, iSound );
+      iLevel.Presentation.addSoundAnimation( aSequence, iSource, iSound );
   end;
 
   iSprite := aItem.MisSprite;
@@ -2421,11 +2419,11 @@ begin
       iDuration := (iSource - iMisslePath.Current).LargerLength * iDelay;
       iMarkSeq  := iDuration + aSequence;
     end;
-    IO.addMissileAnimation( iDuration, aSequence,iSource,iMisslePath.Current,iColor,aItem.MisASCII,iDelay,iSprite,aItem.Flags[ IF_RAYGUN ],aItem.MissTrail);
+    iLevel.Presentation.addMissileAnimation( iDuration, aSequence,iSource,iMisslePath.Current,iColor,aItem.MisASCII,iDelay,iSprite,aItem.Flags[ IF_RAYGUN ],aItem.MissTrail);
     if iHit and iLevel.isVisible( iMisslePath.Current ) then
     begin
-      IO.addSoundAnimation( iMarkSeq, iMisslePath.Current, IO.Audio.ResolveSoundID([Iif( iIsHit, 'flesh_bullet_hit', 'concrete_bullet_hit' )]) );
-      IO.addMarkAnimation(199, iMarkSeq, iMisslePath.Current, aItem.HitSprite, Iif( iIsHit, LightRed, LightGray ), '*' );
+      iLevel.Presentation.addSoundAnimation( iMarkSeq, iMisslePath.Current, iLevel.Presentation.ResolveSoundID([Iif( iIsHit, 'flesh_bullet_hit', 'concrete_bullet_hit' )]) );
+      iLevel.Presentation.addMarkAnimation(199, iMarkSeq, iMisslePath.Current, aItem.HitSprite, Iif( iIsHit, LightRed, LightGray ), '*' );
     end;
   end;
 
@@ -2445,7 +2443,7 @@ begin
 
     iExplosion            := aItem.Explosion;
     iExplosion.Range      := iRadius;
-    if IO.Audio.GetSampleID(aItem.ID+'.explode') > 0
+    if iLevel.Presentation.ResolveSoundID( [ aItem.ID+'.explode' ] ) > 0
       then iExplosion.SoundID := aItem.ID
       else iExplosion.SoundID := Iif( aItem.SoundID <> '', aItem.SoundID, 'explode' );
     iExplosion.Damage     := iRoll;
@@ -2471,7 +2469,7 @@ begin
   if FBloodBoots > 0 then Dec( FBloodBoots );
   if FBloodBoots = 0 then Exit;
   iLevel.Blood( FPosition );
-  iLevel.BloodDecal( FPosition, NewDirection( 0 ), IO.VisualRNG.RLongInt( 1, 2 ), 0.4 );
+  iLevel.BloodDecal( FPosition, NewDirection( 0 ), iLevel.Presentation.VisualRNG.RLongInt( 1, 2 ), 0.4 );
 end;
 
 procedure TBeing.Knockback( aDir : TDirection; aStrength : Single );
@@ -2508,11 +2506,11 @@ begin
     if GraphicsVersion then
     begin
       if isPlayer then
-        IO.addScreenMoveAnimation(100, iKnock );
+        iLevel.Presentation.addScreenMoveAnimation(100, iKnock );
       if iLevel.AnimationVisible( FPosition, Self ) or iLevel.AnimationVisible( iKnock, Self ) then
-        IO.addMoveAnimation( 100, 0, FUID, Position, iKnock, Sprite, True, True, True );
+        iLevel.Presentation.addMoveAnimation( 100, 0, FUID, Position, iKnock, Sprite, True, True, True );
       if isPlayer then
-        IO.addScreenShakeAnimation( 400, 0, Clampf( iStrength * 1.0, 2.0, 10.0 ) );
+        iLevel.Presentation.addScreenShakeAnimation( 400, 0, Clampf( iStrength * 1.0, 2.0, 10.0 ) );
     end;
     Displace( iKnock );
     HandlePostDisplace;
@@ -3215,7 +3213,7 @@ begin
   if GraphicsVersion then
     if Thing is TBeing then
       if Thing is TPlayer then
-        IO.addScreenMoveAnimation(Distance(Thing.Position,Target)*10,Target);
+        TLevel( Thing.Parent ).Presentation.addScreenMoveAnimation(Distance(Thing.Position,Target)*10,Target);
   Thing.Displace(Target);
   Result := 0;
 end;
@@ -3407,7 +3405,7 @@ begin
   iAmount := iState.ToFloat( 3, 0.5 );
   with iBeing do
     if TLevel( iBeing.Parent ).AnimationVisible( Position, iBeing ) then
-      IO.addBumpAnimation( VisualTime( iState.ToInteger( 4, 1000 ) ) , 0, UID, Position, iCoord, Sprite, iAmount );
+      TLevel( iBeing.Parent ).Presentation.addBumpAnimation( VisualTime( iState.ToInteger( 4, 1000 ) ) , 0, UID, Position, iCoord, Sprite, iAmount );
 end;
 
 function lua_being_send_missile( L: Plua_State ): Integer; cdecl;

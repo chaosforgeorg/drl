@@ -24,6 +24,7 @@ TLevel = class(TLuaMapNode)
     procedure InitializeParticles( aEngine : TParticleEngine );
     procedure BindPlayer( aPlayer : TPlayer );
     procedure BindRunStatus( aStatus : TRunStatus );
+    procedure BindPresentation( aPresentation : IDRLPresentation );
     // Actions and AI may continue: the run is undecided and the player has not
     // been killed. Read at the moment of the check.
     function IsActive : Boolean;
@@ -146,6 +147,7 @@ TLevel = class(TLuaMapNode)
   private
     FPlayer        : TPlayer; // Borrowed from Session; nil before/after a run.
     FRunStatus     : TRunStatus; // Borrowed from Session, which outlives the level.
+    FPresentation  : IDRLPresentation; // Borrowed from IO, which outlives the level.
     FData          : TGameData;
     FMap           : TMap;
     FIndex         : Integer;
@@ -183,6 +185,7 @@ TLevel = class(TLuaMapNode)
   public
     property Player    : TPlayer                    read FPlayer;
     property RunStatus : TRunStatus                 read FRunStatus;
+    property Presentation : IDRLPresentation       read FPresentation;
     property Perks     : TPerks                     read FPerks;
     property Data      : TGameData                  read FData;
     property Markers   : TMarkerStore               read FMarkers;
@@ -221,8 +224,7 @@ TLevel = class(TLuaMapNode)
 implementation
 
 uses math, typinfo,
-     vgenerics, vluatools, vdebug, vmath,
-     drlio;
+     vgenerics, vluatools, vdebug, vmath;
 
 type TProcessedUIDList = specialize TGArray<TUID>;
 
@@ -234,7 +236,7 @@ begin
 
     if IsString('welcome') then
     begin
-      IO.Msg( GetString('welcome') );
+      FPresentation.Msg( GetString('welcome') );
       FFeeling := GetString('welcome');
     end;
     FStatus := 0;
@@ -292,17 +294,17 @@ end;
 
 procedure TLevel.playSound( const aSoundID: DWord; aCoord : TCoord2D; aDelay : DWord = 0 );
 begin
-  IO.PlaySound(aSoundID, aCoord, aDelay);
+  FPresentation.PlaySound(aSoundID, aCoord, aDelay);
 end;
 
 procedure TLevel.playSound(const SoundID: string; coord : TCoord2D; aDelay : DWord = 0 );
 begin
-  IO.PlaySound(IO.Audio.ResolveSoundID([SoundID]), coord, aDelay );
+  FPresentation.PlaySound(FPresentation.ResolveSoundID([SoundID]), coord, aDelay );
 end;
 
 procedure TLevel.playSound(const BaseID, SoundID: string; coord : TCoord2D );
 begin
-  IO.PlaySound(IO.Audio.ResolveSoundID([BaseID+'.'+SoundID,SoundID]), coord );
+  FPresentation.PlaySound(FPresentation.ResolveSoundID([BaseID+'.'+SoundID,SoundID]), coord );
 end;
 
 function TLevel.GetEnemiesVisible : Word;
@@ -434,6 +436,11 @@ end;
 procedure TLevel.BindRunStatus( aStatus : TRunStatus );
 begin
   FRunStatus := aStatus;
+end;
+
+procedure TLevel.BindPresentation( aPresentation : IDRLPresentation );
+begin
+  FPresentation := aPresentation;
 end;
 
 function TLevel.IsActive : Boolean;
@@ -978,7 +985,7 @@ var iC          : TCoord2D;
 begin
   if not isProperCoord( aCoord ) then Exit;
 
-  IO.Explosion( aDelay, aCoord, aData );
+  FPresentation.Explosion( aDelay, aCoord, aData );
 
   iProcessed := TProcessedUIDList.Create;
   try
@@ -1114,9 +1121,9 @@ begin
           iProcessed.Push( iBeingUID );
           if iBeing.isVisible then
           begin
-            if iDmg > 10 then IO.addMarkAnimation( 199, aDelay, iTC, iHSprite, Red, '*' )
-              else if iDmg > 4 then IO.addMarkAnimation( 199, aDelay, iTC, iHSprite, LightRed, '*' )
-                else IO.addMarkAnimation( 199, aDelay, iTC, iHSprite, LightGray, '*' );
+            if iDmg > 10 then FPresentation.addMarkAnimation( 199, aDelay, iTC, iHSprite, Red, '*' )
+              else if iDmg > 4 then FPresentation.addMarkAnimation( 199, aDelay, iTC, iHSprite, LightRed, '*' )
+                else FPresentation.addMarkAnimation( 199, aDelay, iTC, iHSprite, LightGray, '*' );
           end;
           if iKnock > 0 then
           begin
@@ -1128,7 +1135,7 @@ begin
 
         DamageTile( iTC, iDmg, aDamageType, False );
         if isVisible( iTC ) and ( not isShotPassable( iTC ) ) then
-          IO.addMarkAnimation( 199, aDelay, iTC, iHSprite, LightGray,'*' );
+          FPresentation.addMarkAnimation( 199, aDelay, iTC, iHSprite, LightGray,'*' );
       end;
   finally
     FreeAndNil( iProcessed );
@@ -1164,7 +1171,7 @@ begin
   for iItem in iBeing.Inv do
     iItem.Flags[ IF_NODROP ] := True;
   if BeingVisible( aCoord, iBeing ) or BeingExplored( aCoord, iBeing ) then
-    IO.addKillAnimation( 1000, 0, iBeing, True );
+    FPresentation.addKillAnimation( 1000, 0, iBeing.UID, iBeing.Sprite, True );
   Exit( iBeing );
 end;
 
@@ -1237,15 +1244,15 @@ begin
     for iCount := 1 to Min( aAmount, 20 ) do
     begin
       repeat
-        case IO.VisualRNG.RLongInt( 5 ) of
+        case FPresentation.VisualRNG.RLongInt( 5 ) of
           0..1 : iCoord := aPosition;
           2..3 : iCoord := aPosition + aFrom;
-          4    : iCoord := aPosition + NewCoord2D( IO.VisualRNG.RLongInt( 3 ) - 1, IO.VisualRNG.RLongInt( 3 ) - 1 );
+          4    : iCoord := aPosition + NewCoord2D( FPresentation.VisualRNG.RLongInt( 3 ) - 1, FPresentation.VisualRNG.RLongInt( 3 ) - 1 );
         end;
       until isProperCoord( iCoord );
       Blood( iCoord );
     end;
-  iAmount := Clamp( aAmount + IO.VisualRNG.RLongInt( aAmount ), 1, 12 );
+  iAmount := Clamp( aAmount + FPresentation.VisualRNG.RLongInt( aAmount ), 1, 12 );
   if GraphicsVersion and aSpray and isVisible( aPosition ) and ( HARDEMITTER_BLOOD <> 0 ) then
   begin
     iParticleAmount := iAmount * 2;
@@ -1257,7 +1264,7 @@ begin
       iDistanceScale := 1.0;
       iSpreadScale   := 2.0;
     end;
-    IO.addParticleBurstAnimation( aDelay, HARDEMITTER_BLOOD, aPosition, aFrom,
+    FPresentation.addParticleBurstAnimation( aDelay, HARDEMITTER_BLOOD, aPosition, aFrom,
       iParticleAmount, iDistanceScale, iSpreadScale );
   end
   else
@@ -1278,10 +1285,10 @@ begin
     if not isProperCoord( aCoord ) then Exit( 0 );
     iCell := FData.Cells[ CellBottom[ aCoord ] ];
     if ( CF_BLOCKMOVE in iCell.Flags ) then Exit( 0 );
-    Exit( HARDSPRITE_DECAL_WALL_BLOOD[1 + IO.VisualRNG.RLongInt( 3 )] );
+    Exit( HARDSPRITE_DECAL_WALL_BLOOD[1 + FPresentation.VisualRNG.RLongInt( 3 )] );
   end;
   if aFloorSprite <> 0 then Exit( aFloorSprite );
-  Exit( HARDSPRITE_DECAL_BLOOD[1 + IO.VisualRNG.RLongInt( 3 )] );
+  Exit( HARDSPRITE_DECAL_BLOOD[1 + FPresentation.VisualRNG.RLongInt( 3 )] );
 end;
 
 procedure TLevel.BloodDecal( aPosition : TCoord2D; aFrom : TDirection; aAmount : LongInt; aRange : Single );
@@ -1298,8 +1305,8 @@ var iCount    : Integer;
   function RandomNorm : Single;
   var iU1, iU2 : Single;
   begin
-    repeat iU1 := IO.VisualRNG.RFloat until iU1 <> 0.0;
-    iU2 := IO.VisualRNG.RFloat;
+    repeat iU1 := FPresentation.VisualRNG.RFloat until iU1 <> 0.0;
+    iU2 := FPresentation.VisualRNG.RFloat;
     RandomNorm := Sqrt( -2.0 * Ln( iU1 ) ) * Cos( 2.0 * Pi * iU2 );
   end;
 
@@ -1367,7 +1374,7 @@ begin
     if (not (LF_RESPAWN in FFlags)) and ( EnemiesLeft() = 0 ) then
     begin
       if not HasHook( Hook_OnKillAll ) then
-        IO.Msg('You feel relatively safe now.');
+        FPresentation.Msg('You feel relatively safe now.');
       FEmpty := True;
       if ( not ( LF_NOITEMREVEAL in FFlags ) ) then
         Include( FFlags, LF_ITEMSVISIBLE );
@@ -1465,9 +1472,9 @@ begin
     if (FPlayer.NukeActivated <> 0) then
     begin
       iNuke := FPlayer.NukeActivated;
-      if (iNuke <= 100)   then begin if (iNuke mod 10  = 0) then IO.Msg('Warning! Explosion in %d seconds!',[FPlayer.NukeActivated div 10]); end else
-      if (iNuke <= 10*60) then begin if (iNuke mod 100 = 0) then IO.Msg('Warning! Explosion in %d seconds!',[FPlayer.NukeActivated div 10]); end else
-      if (iNuke mod (10*60) = 0) then IO.Msg('Warning! Explosion in %d minutes!',[FPlayer.NukeActivated div 600]);
+      if (iNuke <= 100)   then begin if (iNuke mod 10  = 0) then FPresentation.Msg('Warning! Explosion in %d seconds!',[FPlayer.NukeActivated div 10]); end else
+      if (iNuke <= 10*60) then begin if (iNuke mod 100 = 0) then FPresentation.Msg('Warning! Explosion in %d seconds!',[FPlayer.NukeActivated div 10]); end else
+      if (iNuke mod (10*60) = 0) then FPresentation.Msg('Warning! Explosion in %d minutes!',[FPlayer.NukeActivated div 600]);
     end
     else
     begin
@@ -1501,11 +1508,11 @@ begin
     Explosion( iCount*200, RandomCoord( [ EF_NOBLOCK ] ),iExplosion, nil, NewDirection(0) );
     if iCount mod 2 = 0 then
     begin
-      IO.Blink( LightRed, 50, (iCount-1) * 200 );
-      IO.Blink( White,    50, (iCount-1) * 200 + 50 );
+      FPresentation.Blink( LightRed, 50, (iCount-1) * 200 );
+      FPresentation.Blink( White,    50, (iCount-1) * 200 + 50 );
     end;
   end;
-  IO.Blink(White,2000,2000);
+  FPresentation.Blink(White,2000,2000);
   FArea.ForAllCells( @NukeCell );
 end;
 
@@ -1706,7 +1713,7 @@ function TLevel.PushItem( aWho : TBeing; aWhat : TItem; aFrom, aTo : TCoord2D ) 
 var iItemOld : TItem;
 begin
   if ( aWho = nil ) or ( aWhat = nil ) or ( aWhat.Position <> aFrom ) then Exit( False );
-  IO.addMoveAnimation( aWho.VisualTime( aWho.getMoveCost, AnimationSpeedPush ), 0, aWhat.UID, aFrom, aTo, aWhat.Sprite, False, False );
+  FPresentation.addMoveAnimation( aWho.VisualTime( aWho.getMoveCost, AnimationSpeedPush ), 0, aWhat.UID, aFrom, aTo, aWhat.Sprite, False, False );
   iItemOld := Item[ aTo ];
   SetItem( aTo, aWhat );
   SetItem( aFrom, nil );
@@ -1853,7 +1860,7 @@ begin
   iLevel := iState.ToObject(1) as TLevel;
   if iState.IsString(3)
     then iLevel.playSound( iState.ToString(2), iState.ToString(3), iState.ToPosition(4) )
-    else iLevel.playSound( IO.Audio.ResolveSoundID( [iState.ToString(2)] ), iState.ToPosition(3), iState.ToInteger(4,0) );
+    else iLevel.playSound( iState.ToString(2), iState.ToPosition(3), iState.ToInteger(4,0) );
   Result := 0;
 end;
 
@@ -1952,7 +1959,7 @@ begin
   if iLevel.isVisible( iCoord ) then
   begin
     iSprite := iLevel.GetSpriteTop( iCoord );
-    IO.addCellAnimation( iSprite.Frametime * Abs( iValue ), 0, iCoord, iSprite, iValue );
+    iLevel.Presentation.addCellAnimation( iSprite.Frametime * Abs( iValue ), 0, iCoord, iSprite, iValue );
   end;
   Result := 0;
 end;
@@ -1969,7 +1976,7 @@ begin
   iItem  := State.ToObject(2) as TItem;
   iValue := State.ToInteger(3);
   if iLevel.isVisible( iItem.Position ) then
-    IO.addItemAnimation( iItem.Sprite.Frametime * Abs( iValue ), 0, iItem, iValue );
+    iLevel.Presentation.addItemAnimation( iItem.Sprite.Frametime * Abs( iValue ), 0, iItem.UID, iValue );
   Result := 0;
 end;
 

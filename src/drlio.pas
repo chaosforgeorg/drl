@@ -35,7 +35,7 @@ type TASCIIImageMap       = specialize TGObjectHashMap<TIOStringArray>;
 type TStringHashMap       = specialize TGHashMap< AnsiString >;
 
 // Architectural boundary: adapts shared roguelike presentation mechanics to DRL policy and its active session.
-type TDRLIO = class( TIORL )
+type TDRLIO = class( TIORL, IDRLPresentation )
   constructor Create( aSettings : TDRLConfiguration ); reintroduce;
   procedure Reset; virtual;
   procedure SetSeed( aCardinal : LongInt );
@@ -57,6 +57,7 @@ type TDRLIO = class( TIORL )
   procedure LoadStop;
   procedure Update( aMSec : DWord ); override;
   procedure PlaySound( aSoundID : Word; aCoord : TCoord2D; aDelay : DWord = 0 );
+  function ResolveSoundID( const aResolveIDs : array of AnsiString ) : Word;
 
   function EventToUIInput( const aEvent : TIOEvent ) : Integer; override;
   function CommandEventPending : Boolean;
@@ -83,8 +84,8 @@ type TDRLIO = class( TIORL )
   procedure addBumpAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aAmount : Single ); virtual;
   procedure addScreenMoveAnimation( aDuration : DWord; aTo : TCoord2D ); virtual;
   procedure addCellAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aValue : Integer ); virtual;
-  procedure addItemAnimation( aDuration : DWord; aDelay : DWord; aItem : TThing; aValue : Integer ); virtual;
-  procedure addKillAnimation( aDuration : DWord; aDelay : DWord; aBeing : TThing; aReverse : Boolean = False ); virtual;
+  procedure addItemAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aValue : Integer ); virtual;
+  procedure addKillAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aSprite : TSprite; aReverse : Boolean = False ); virtual;
   procedure addMissileAnimation( aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aColor : Byte; aPic : Char; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False; aTrailNID : Word = 0 ); virtual; abstract;
   procedure addMarkAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aColor : Byte; aPic : Char ); reintroduce; virtual; abstract;
   procedure addFXAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite ); virtual;
@@ -94,8 +95,7 @@ type TDRLIO = class( TIORL )
   procedure addRumbleAnimation( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord ); virtual;
   procedure Explosion( aDelay : Integer; aWhere : TCoord2D; aData : TExplosionData ); reintroduce; virtual;
   procedure PulseBlood( aValue : Single ); virtual;
-  // Shows the being's pain sprite for a while after the given animation delay.
-  procedure ShowPain( aBeing : TBeing; aDelay : Integer );
+  function PainUntil( aDelay : Integer ) : QWord;
 
   class procedure RegisterLuaAPI( State : TLuaStack ); reintroduce;
 
@@ -279,12 +279,12 @@ begin
 
 end;
 
-procedure TDRLIO.addItemAnimation( aDuration : DWord; aDelay : DWord; aItem : TThing; aValue : Integer );
+procedure TDRLIO.addItemAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aValue : Integer );
 begin
 
 end;
 
-procedure TDRLIO.addKillAnimation( aDuration : DWord; aDelay : DWord; aBeing : TThing; aReverse : Boolean = False );
+procedure TDRLIO.addKillAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aSprite : TSprite; aReverse : Boolean = False );
 begin
 
 end;
@@ -364,10 +364,10 @@ begin
 
 end;
 
-procedure TDRLIO.ShowPain( aBeing : TBeing; aDelay : Integer );
+function TDRLIO.PainUntil( aDelay : Integer ) : QWord;
 const PAIN_DURATION = 500;
 begin
-  aBeing.OverlayUntil := Max( aBeing.OverlayUntil, FTime + aDelay + PAIN_DURATION );
+  Exit( FTime + aDelay + PAIN_DURATION );
 end;
 
 {
@@ -1137,6 +1137,11 @@ procedure TDRLIO.PlaySound( aSoundID : Word; aCoord : TCoord2D; aDelay : DWord )
 begin
   if ( FSession = nil ) or ( FSession.Player = nil ) then Exit;
   FAudio.PlaySound( aSoundID, aCoord, FSession.Player.Position, aDelay );
+end;
+
+function TDRLIO.ResolveSoundID( const aResolveIDs : array of AnsiString ) : Word;
+begin
+  Exit( FAudio.ResolveSoundID( aResolveIDs ) );
 end;
 
 function TDRLIO.EventToUIInput( const aEvent : TIOEvent ) : Integer;

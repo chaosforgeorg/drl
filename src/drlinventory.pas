@@ -55,7 +55,7 @@ TInventory = class( TVObject )
 
 implementation
 
-uses vmath, vlua, drlio, drlkeybindings, dfplayer;
+uses vmath, vlua, drlkeybindings, dfplayer, dflevel;
 
 { TInventoryEnumerator }
 
@@ -256,7 +256,7 @@ begin
     if not aItem.CallHookCheck( Hook_OnEquipCheck,[FOwner] ) then Exit( False );
   iItem := FSlots[aItem.eqSlot];
   if (iItem <> nil) and ( not iItem.CallHookCheck( Hook_OnUnequipCheck, [FOwner, False] ) ) then Exit( False );
-  IO.Msg('You wear/wield : '+aItem.GetName(false));
+  TLevel( FOwner.GetLevel ).Presentation.Msg( 'You wear/wield : '+aItem.GetName(false) );
   Wear( aItem );
   Exit( True );
 end;
@@ -269,7 +269,7 @@ begin
     if not aItem.CallHookCheck( Hook_OnEquipCheck,[FOwner] ) then Exit( False );
   iItem := FSlots[aSlot];
   if (iItem <> nil) and ( not iItem.CallHookCheck( Hook_OnUnequipCheck, [FOwner, False] ) ) then Exit( False );
-  IO.Msg('You wear/wield : '+aItem.GetName(false));
+  TLevel( FOwner.GetLevel ).Presentation.Msg( 'You wear/wield : '+aItem.GetName(false) );
   setSlot( aSlot, aItem );
   Exit( True );
 end;

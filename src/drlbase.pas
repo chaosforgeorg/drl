@@ -350,6 +350,7 @@ begin
   FLevel := aLevel;
   FLevel.BindPlayer( FPlayer );
   FLevel.BindRunStatus( FStatus );
+  FLevel.BindPresentation( TDRLIO( IO ) );
   if GraphicsVersion
     then FLevel.InitializeParticles( TDRLGFXIO(IO).ParticleEngine )
     else FLevel.InitializeParticles( nil );
@@ -1111,6 +1112,8 @@ begin
   if aCommand.Command = COMMAND_NONE then
     Exit( False );
   IO.MsgUpDate;
+  if ( aCommand.Command = COMMAND_WAIT ) and Setting_WaitSound then
+    IO.Audio.PlaySound( 'wait', 50 );
 try
   FPlayer.HandleCommand( aCommand );
 except
