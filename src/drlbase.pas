@@ -1533,11 +1533,11 @@ var iRank       : THOFRank;
     iScript     : Ansistring;
     iReport     : TPagedReport;
     iMemorial   : TIOStringArray;
-    iEnterNuke  : Boolean;
+    iEnterNuke  : Word;
     iCrashIndex : Integer;
-    iEpisodeSeed : Cardinal;
-    iLevelSeed   : Cardinal;
-    iLevelInfo   : TLuaTable;
+    iEpisodeSeed: Cardinal;
+    iLevelSeed  : Cardinal;
+    iLevelInfo  : TLuaTable;
 begin
   Result := DSR_Quit;
   iResult    := TMenuResult.Create;
@@ -1610,16 +1610,15 @@ begin
   FPlayer.Statistics.StartTimer;
   try
   repeat
-    iEnterNuke := False;
+    iEnterNuke := 0;
     if State <> DSLoading then
     begin
-      iEnterNuke := False;
       if (FPlayer.NukeActivated > 0) then
       begin
         FPlayer.Score := FPlayer.Score + 1000;
         FPlayer.Statistics.Increase('levels_nuked');
+        iEnterNuke := FPlayer.NukeActivated;
         FPlayer.NukeActivated := 0;
-        iEnterNuke := True;
       end;
 
       FPlayer.Statistics.Update( FPlayer );
@@ -1655,8 +1654,9 @@ begin
     IO.FadeIn( True );
     IO.Audio.PlayMusic( Iif( FLevel.Music_ID <> '', FLevel.Music_ID, FLevel.ID ) );
 
-    if iEnterNuke then
+    if iEnterNuke > 0 then
     begin
+      if iEnterNuke = 1 then IO.Msg('Right in the nick of time!');
       IO.Msg('You hear a gigantic explosion above!');
       IO.addScreenShakeAnimation( 1000, 100, 7 );
       IO.addRumbleAnimation( 0, $8000, $4000, 300 );

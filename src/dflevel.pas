@@ -222,7 +222,7 @@ implementation
 
 uses math, typinfo,
      vgenerics, vluatools, vdebug, vmath,
-     drlio, drlhudviews;
+     drlio;
 
 type TProcessedUIDList = specialize TGArray<TUID>;
 
@@ -1457,6 +1457,8 @@ end;
 procedure TLevel.NukeTick;
 var iNuke : DWord;
 begin
+  // A pending exit or save escapes the nuke; the level change accounts for it.
+  if FRunStatus.State <> DSPlaying then Exit;
   if FPlayer.NukeActivated <> 0 then
   begin
     Dec(FPlayer.NukeActivated);
@@ -1470,13 +1472,6 @@ begin
     else
     begin
       FPlayer.Statistics.Increase('levels_nuked');
-      if FRunStatus.State in [ DSNextLevel, DSSaving ] then
-      begin
-        IO.Msg('Right in the nick of time!');
-        IO.RunLayer( TMoreLayer.Create( False ) );
-        Exit;
-      end;
-
       Include( FFlags, LF_NUKED );
 
       NukeRun;
