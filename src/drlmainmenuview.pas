@@ -162,7 +162,7 @@ begin
   FMode       := aInitial;
   FResult     := aResult;
   FSaveExists := False;
-  FJHCLink    := (CoreModuleID = 'drl') and ( not IO.Store.IsSteam );
+  FJHCLink    := (CoreModuleID = 'drl') and ( not FSession.Store.IsSteam );
   if (not FJHCLink) and DemoVersion then
     FJHCLink := True;
   FArrayCType := nil;
@@ -284,7 +284,7 @@ begin
             FName[0] := #0;
             IO.Driver.StartTextInput;
             if IO.IsGamepad then
-              IO.Store.StartText( 'Enter name', 30 );
+              FSession.Store.StartText( 'Enter name', 30 );
             FMode := MAINMENU_NAME;
           end;
       end;
@@ -486,7 +486,7 @@ begin
         FSeedInvalid := False;
         IO.Console.ShowCursor;
         IO.Driver.StartTextInput;
-        if IO.IsGamepad then IO.Store.StartText( 'Enter seed', 6 );
+        if IO.IsGamepad then FSession.Store.StartText( 'Enter seed', 6 );
         FMode := MAINMENU_SEED;
       end;
     end
@@ -535,7 +535,7 @@ begin
       FSeedInvalid := not iAccepted;
     end;
 
-    if (not iAccepted) and IO.Store.GetText( iStoreText, @iStoreCancel ) then
+    if (not iAccepted) and FSession.Store.GetText( iStoreText, @iStoreCancel ) then
     begin
       if iStoreCancel
         then iCancelled := True
@@ -547,7 +547,7 @@ begin
           begin
             StrPLCopy( @FSeed[0], iStoreText, High( FSeed ) );
             VTIG_ResetInput( 'mainmenu_seed' );
-            if IO.IsGamepad then IO.Store.StartText( 'Enter seed', 6, iStoreText );
+            if IO.IsGamepad then FSession.Store.StartText( 'Enter seed', 6, iStoreText );
           end;
         end;
     end;
@@ -607,7 +607,7 @@ begin
     VTIG_Text('Save game version : {!'+SaveVersionModule+'}' );
     VTIG_Text('This game version : {!'+VersionModuleSave+'}' );
     VTIG_Text('');
-    if IO.Store.IsSteam
+    if FSession.Store.IsSteam
       then VTIG_Text('You can try to download the direct previous version from {!Steam} Betas tab and finish the game, or delete the save file now.')
       else VTIG_Text('You can try downloading the previous version from the web and finish the game, or delete the save file now.');
   end
@@ -615,7 +615,7 @@ begin
   begin
     VTIG_Text('Save file uses different mods!');
     VTIG_Text('Save file IDs : {!'+SaveModString+'}' );
-    VTIG_Text('Current IDs   : {!'+IO.Modules.ModString+'}' );
+    VTIG_Text('Current IDs   : {!'+FSession.Modules.ModString+'}' );
     VTIG_Text('');
     VTIG_Text('You can exit the game and try to match the mods or delete the save file now.');
   end;
@@ -671,7 +671,7 @@ begin
     IO.Console.HideCursor;
     FMode := MAINMENU_DONE;
   end;
-  if IO.Store.GetText( iStoreText, @iStoreCancel ) then
+  if FSession.Store.GetText( iStoreText, @iStoreCancel ) then
   begin
     IO.Driver.StopTextInput;
     IO.Console.HideCursor;

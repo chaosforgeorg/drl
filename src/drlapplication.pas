@@ -148,16 +148,14 @@ begin
   FModules := TDRLModules.Create(Paths.DataPath, aModulesFile);
   FModules.ScanModules;
   FModErrors := TStringGArray.Create;
-  TDRLIO(IO).Modules := FModules;
-  TDRLIO(IO).Store := FStore;
+  TDRLIO(IO).BindStore( FStore );
 end;
 
 destructor TDRLRuntime.Destroy;
 begin
   ReleaseSession;
   UnloadGameData;
-  TDRLIO(IO).Modules := nil;
-  TDRLIO(IO).Store := nil;
+  TDRLIO(IO).BindStore( nil );
   FreeAndNil(FModErrors);
   FreeAndNil(FModules);
   inherited Destroy;
@@ -224,7 +222,7 @@ begin
   ForceRestart := '';
   CoreModuleID := FModules.Validate(CoreModuleID);
   if CoreModuleID = '' then
-    TDRLIO(IO).RunModuleChoice;
+    TDRLIO(IO).RunModuleChoice( FModules.CoreModules );
 
   if not DirectoryExists(Paths.WritePath + 'user') then
     CreateDir(Paths.WritePath + 'user');
@@ -247,7 +245,7 @@ begin
 
   FData := TGameData.Create;
   CreateSession( False );
-  TDRLIO(IO).Initialize;
+  TDRLIO(IO).Initialize( FModules.CoreModule );
   TDRLIO(IO).LoadStart;
   FProfileTimeStart := MSecNow();
   TDRLIO(IO).Configure(Config, False);

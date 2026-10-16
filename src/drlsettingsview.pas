@@ -151,12 +151,12 @@ begin
         FResolutions[i] := IntToStr( Width ) + 'x' + IntToStr( Height )
   end;
 
-  SetLength( FModules, IO.Modules.CoreModules.Size + 1 );
+  SetLength( FModules, FSession.Modules.CoreModules.Size + 1 );
   FModCurrent := Configuration.GetString('default_module');
   FModules[0] := 'Ask on launch';
   FModValue := -1;
-  for i := 1 to IO.Modules.CoreModules.Size do
-    with IO.Modules.CoreModules[i-1] do
+  for i := 1 to FSession.Modules.CoreModules.Size do
+    with FSession.Modules.CoreModules[i-1] do
     begin
       if FModCurrent = ID then
         FModValue := i;
@@ -165,7 +165,7 @@ begin
   if FModCurrent = '' then FModValue := 0;
   if FModValue = -1 then
   begin
-    FModValue := IO.Modules.CoreModules.Size + 1;
+    FModValue := FSession.Modules.CoreModules.Size + 1;
     SetLength( FModules, FModValue + 1 );
     FModules[FModValue] := FModCurrent+' (missing)';
   end;
@@ -368,9 +368,9 @@ begin
                   with iEntry as TStringConfigurationEntry do
                   begin
                     if FModValue = 0 then Value := ''
-                    else if FModValue >= (IO.Modules.CoreModules.Size+1)
+                    else if FModValue >= (FSession.Modules.CoreModules.Size+1)
                       then Value := FModCurrent
-                      else Value := IO.Modules.CoreModules[FModValue-1].ID;
+                      else Value := FSession.Modules.CoreModules[FModValue-1].ID;
                     if ( FSession.State = DSMenu ) and ( Value <> '' ) and ( Value <> CoreModuleID ) then
                     begin
                       FRestart := Value;

@@ -8,7 +8,7 @@ unit drltextio;
 interface
 
 uses vrltools, vtextmap, vioevent, viotypes, vluamapnode,
-     drlio, dfdata, dflevel, drlconfiguration;
+     drlio, dfdata, dflevel, drlconfiguration, drlmodule;
 
 // TDRLTextIO
 //
@@ -17,7 +17,7 @@ uses vrltools, vtextmap, vioevent, viotypes, vluamapnode,
 type TDRLTextIO = class( TDRLIO, ITextMap )
     constructor Create( aSettings : TDRLConfiguration ); reintroduce;
     procedure Reset; override;
-    procedure Initialize; override;
+    procedure Initialize( aCoreModule : TDRLModule ); override;
     destructor Destroy; override;
     procedure Update( aMSec : DWord ); override;
     function OnEvent( const aEvent : TIOEvent ) : Boolean; override;
@@ -80,7 +80,7 @@ begin
   FTargetRange  := 0;
 end;
 
-procedure TDRLTextIO.Initialize;
+procedure TDRLTextIO.Initialize( aCoreModule : TDRLModule );
 var iRenderer : TIOConsoleRenderer;
 begin
   {$IFDEF WINDOWS}
@@ -203,7 +203,7 @@ begin
   {$ENDIF}
   inherited Initialize( iRenderer );
   inherited RunLauncherLayer( aLayer );
-  inherited Initialize( nil );
+  inherited Initialize( TIOConsoleRenderer( nil ) );
   Reset;
 end;
 

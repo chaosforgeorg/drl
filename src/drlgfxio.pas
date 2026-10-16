@@ -8,7 +8,7 @@ unit drlgfxio;
 interface
 uses vglquadrenderer, vgltypes, vluaconfig, vioevent, viotypes, vimage,
      vrltools, vutil, vtextures, vvector, vbitmapfont, vio, vparticleengine, vluamapnode,
-     drlio, drlspritemap, drlanimation, drlminimap, dfdata, dfthing, dflevel, drlconfig, drlconfiguration;
+     drlio, drlspritemap, drlanimation, drlminimap, dfdata, dfthing, dflevel, drlconfig, drlconfiguration, drlmodule;
 
 type
 
@@ -22,7 +22,7 @@ type
     procedure Reset; override;
     procedure SetLevel( aLevel : TLuaMapNode ); override;
     procedure EnterLevel( aCoord : TCoord2D ); override;
-    procedure Initialize; override;
+    procedure Initialize( aCoreModule : TDRLModule ); override;
     // Finish module uploads and GPU warm-up while the loading screen is active.
     procedure PrepareGraphics;
     procedure Reconfigure( aConfig : TLuaConfig ); override;
@@ -151,7 +151,7 @@ uses {$IFDEF WINDOWS}windows,{$ENDIF}
      vdebug, vlog, vmath, vdf, vgl3library, vuid, vvision, vrandom,
      vglimage, vsdlio, vcolor, vglconsole, vioconsole,
      vtig, vtigstyle, vtigio,
-     dfitem, drlcontrollerbindings, drlmodule;
+     dfitem, drlcontrollerbindings;
 
 
 procedure TDRLGFXIO.RecalculateScaling( aInitialize : Boolean );
@@ -320,7 +320,7 @@ begin
   Exit( TBitmapFont.CreateFromGrid( iFontTexture, 32, 256-32, 32 ) );
 end;
 
-procedure TDRLGFXIO.Initialize;
+procedure TDRLGFXIO.Initialize( aCoreModule : TDRLModule );
 var iCoreData   : TVDataFile;
     iImage      : TImage;
     iFontTexture: TTextureID;
@@ -333,7 +333,7 @@ var iCoreData   : TVDataFile;
     iModule     : TDRLModule;
 begin
   FGPDetected := Store.IsSteamDeck;
-  iModule     := Modules.CoreModule;
+  iModule     := aCoreModule;
   iReadRaw    := not iModule.Path.EndsWith('.wad');
   if iReadRaw then
   begin
@@ -1243,7 +1243,7 @@ begin
   VTIG_PushStyle( @iTIGStyle );
   inherited RunLauncherLayer( aLayer );
   VTIG_PopStyle;
-  inherited Initialize( nil );
+  inherited Initialize( TIOConsoleRenderer( nil ) );
   Reset;
 end;
 

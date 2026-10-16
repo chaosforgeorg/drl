@@ -39,7 +39,8 @@ type TDRLIO = class( TIORL, IDRLPresentation )
   constructor Create( aSettings : TDRLConfiguration ); reintroduce;
   procedure Reset; virtual;
   procedure SetSeedText( const aText : AnsiString );
-  procedure Initialize; virtual; abstract;
+  // Sets up rendering; graphics mode loads its fonts from the core module.
+  procedure Initialize( aCoreModule : TDRLModule ); virtual; abstract;
   procedure Initialize( iRenderer : TIOConsoleRenderer );
   procedure Reconfigure( aConfig : TLuaConfig ); virtual;
   procedure Configure( aConfig : TDRLConfig; aReload : Boolean ); overload; virtual;
@@ -64,6 +65,8 @@ type TDRLIO = class( TIORL, IDRLPresentation )
 
   procedure SetHint( const aText : AnsiString );
   // Animations and the level view follow the run state; nil without a Session.
+  // The runtime's store; IO pumps its platform callbacks each update.
+  procedure BindStore( aStore : TStoreInterface );
   procedure BindRunStatus( aStatus : TRunStatus );
   // The Session's auto-target list; nil without a Session.
   procedure BindAutoTarget( aList : TAutoTarget );
@@ -130,7 +133,7 @@ type TDRLIO = class( TIORL, IDRLPresentation )
   procedure SetTarget( aTarget : TCoord2D; aColor : Byte; aRange : Byte ); virtual; abstract;
   procedure SetAutoTarget( aTarget : TCoord2D ); virtual;
   function ResolveSub( const aID : Ansistring ) : Ansistring;
-  procedure RunModuleChoice;
+  procedure RunModuleChoice( aModules : TModuleList );
   // Returns True when the player chooses to continue with outdated mods.
   function RunModuleAPIWarning( aModules : TModuleList ) : Boolean;
 private
@@ -149,8 +152,7 @@ protected
   FMTarget     : TCoord2D;
   FLastTarget  : TCoord2D;
   FASCII       : TASCIIImageMap;
-  FModules     : TDRLModules;
-  FStore       : TStoreInterface;
+  FStore       : TStoreInterface; // Borrowed from the runtime.
   FSShotPath   : AnsiString;
   FRunStatus   : TRunStatus; // Borrowed from the Session, released with it.
   FAutoTarget  : TAutoTarget; // Borrowed from the Session, released with it.
@@ -185,8 +187,7 @@ public
   property HintStatus   : AnsiString      read FHintStatus  write FHintStatus;
   property Time         : QWord           read FTime;
   property NarrowMode   : Boolean         read FNarrowMode;
-  property Modules      : TDRLModules     read FModules write FModules;
-  property Store        : TStoreInterface read FStore write FStore;
+  property Store        : TStoreInterface read FStore;
   // Folder for F9/F10 screenshots; empty until the module's user paths exist.
   property SShotPath    : AnsiString      read FSShotPath write FSShotPath;
   property RunStatus    : TRunStatus      read FRunStatus;
@@ -1022,6 +1023,11 @@ begin
   end;
 end;
 
+procedure TDRLIO.BindStore( aStore : TStoreInterface );
+begin
+  FStore := aStore;
+end;
+
 procedure TDRLIO.BindRunStatus( aStatus : TRunStatus );
 begin
   FRunStatus := aStatus;
@@ -1504,9 +1510,9 @@ begin
   RunLayer( aLayer, True );
 end;
 
-procedure TDRLIO.RunModuleChoice;
+procedure TDRLIO.RunModuleChoice( aModules : TModuleList );
 begin
-  RunLauncherLayer( TModuleChoiceView.Create );
+  RunLauncherLayer( TModuleChoiceView.Create( aModules ) );
 end;
 
 function TDRLIO.RunModuleAPIWarning( aModules : TModuleList ) : Boolean;

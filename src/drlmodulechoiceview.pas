@@ -9,10 +9,11 @@ interface
 uses viotypes, vutil, drlio, dfdata, drlmodule;
 
 type TModuleChoiceView = class( TIOLayer )
-  constructor Create;
+  constructor Create( aModules : TModuleList );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsModal : Boolean; override;
 protected
+  FModules : TModuleList;
 end;
 
 type TModuleAPIWarningView = class( TIOLayer )
@@ -28,8 +29,9 @@ implementation
 
 uses vtig;
 
-constructor TModuleChoiceView.Create;
+constructor TModuleChoiceView.Create( aModules : TModuleList );
 begin
+  FModules  := aModules;
   FFinished := False;
 end;
 
@@ -43,7 +45,7 @@ begin
   VTIG_BeginWindow( 'DRL module choice', 'core_module_choice', Point( 40, -1 ) );
   VTIG_Text( 'Select core module to run' );
   VTIG_Ruler;
-  for iModule in IO.Modules.CoreModules do
+  for iModule in FModules do
      if VTIG_Selectable( iModule.Name ) then
        iResult := iModule.ID;
   VTIG_Ruler;
