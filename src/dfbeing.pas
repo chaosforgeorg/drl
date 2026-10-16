@@ -371,10 +371,6 @@ begin
 
   FVisionRadius := VisionBaseValue + aTable.getInteger('vision');
 
-  // Cached once: moves are frequent. Mute must not affect it; it is checked
-  // at playback.
-  Flags[ BF_WALKSOUND ] := ( IO.Audio.FindSoundID( [ FID+'.hoof', FSoundID+'.hoof' ] ) <> 0 );
-
   FHPMax := FHP;
   FHPNom := FHP;
   FSpeedCount := 900 + aGameRNG.RLongInt( 90 );

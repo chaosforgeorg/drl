@@ -1369,7 +1369,7 @@ function drl.register_beings()
 		danger       = 40,
 		weight       = 0,
 		xp           = 1000,
-		flags        = { BF_CHARGE, BF_ENVIROSAFE ,BF_HUNTING },
+		flags        = { BF_CHARGE, BF_ENVIROSAFE ,BF_HUNTING, BF_WALKSOUND },
 		ai_type      = "angel_ai",
 
 		desc            = "Why doesn't a BFG work when you really need it? As if from a half-forgotten nightmare, you encounter the harbinger of death...",
@@ -1408,7 +1408,7 @@ function drl.register_beings()
 		min_lev      = 70,
 		danger       = 30,
 		weight       = 1,
-		flags        = { BF_OPENDOORS, BF_ENVIROSAFE, BF_SELFIMMUNE, BF_KNOCKIMMUNE },
+		flags        = { BF_OPENDOORS, BF_ENVIROSAFE, BF_SELFIMMUNE, BF_KNOCKIMMUNE, BF_WALKSOUND },
 		ai_type      = "cyberdemon_ai",
 
 		desc            = "Monster and machine, combined. Equipped with a rocket launcher, this nightmare is the worst thing you can find in Hell. Or at least that is what you hope...",
@@ -1465,7 +1465,7 @@ function drl.register_beings()
 		corpse       = true,
 		danger       = 50,
 		weight       = 0,
-		flags        = { BF_ENVIROSAFE, BF_SELFIMMUNE, BF_KNOCKIMMUNE },
+		flags        = { BF_ENVIROSAFE, BF_SELFIMMUNE, BF_KNOCKIMMUNE, BF_WALKSOUND },
 		ai_type      = "mastermind_ai",
 
 		desc            = "You guess the Arachnotrons had to come from somewhere. Hi, mom. She doesn't have a plasma gun, so thank heaven for small favors. Instead, she has a super-chaingun.",
