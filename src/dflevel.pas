@@ -1098,6 +1098,9 @@ begin
     for iTC in NewArea( iC, iSpread ) do
       SendShotGunBeam( aSource, iTC );
 
+    // A wide spread can overlap the firing tile.
+    LightFlag[ aSource, lfDamage ] := False;
+
     for iTC in FArea do
       if LightFlag[ iTC, lfDamage ] then
       begin
