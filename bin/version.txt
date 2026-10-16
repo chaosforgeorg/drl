@@ -8,6 +8,7 @@ GHD#056 [new] -- UI - movement and melee animation blending (can be turned off i
 GHJ#502 [mod] -- Game - difficulty ammo multipliers applied more consistently
 GHJ#483 [mod] -- Game - all levers will now have a message
 GHJ#483 [mod] -- Game - explosion levers will only target barrels
+GHJ#500 [fix] -- Game - made the Jackhammer feel and sound better
 GHJ#483 [fix] -- Game - fixed explosion levers
 GHJ#468 [fix] -- Game - extended auto-target range will only highlight enemies that can be hit
 GHD#348 [fix] -- Visual - possible fix for windows DPI scaling

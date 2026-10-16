@@ -414,6 +414,7 @@ var iDual      : Boolean;
     iDamage    : TDiceRoll;
     iDamageType: TDamageType;
     iBeing     : TBeing;
+    iDelay     : DWord;
 begin
   Assert( aShotGun <> nil );
   Assert( aShotGun.Flags[ IF_SHOTGUN ] );
@@ -431,12 +432,14 @@ begin
     IO.addScreenShakeAnimation( 200+aShots*100, 0, Clampf( iDamage.max / 10, 2.0, 10.0 ), NewDirection( FPosition, aTarget ) );
   for iCount := 1 to aShots do
   begin
-    if not iDual then aShotGun.PlaySound( 'fire', FPosition );
+    // Separate blasts are presented 150ms apart.
+    iDelay := 0;
+    if (not iDual) and (aShotGun.Shots > 1) then iDelay := ( iCount - 1 ) * 150;
+    if not iDual then aShotGun.PlaySound( 'fire', FPosition, iDelay );
     iDamageType := aShotGun.DamageType;
     if (BF_ARMYDEAD in FFlags) and (iDamageType = DAMAGE_SHARPNEL) then iDamageType := Damage_IgnoreArmor;
-    TLevel(Parent).ShotGun( FPosition, aTarget, iDamage, iDamageMul, iDamageType, aShotgun );
+    TLevel(Parent).ShotGun( FPosition, aTarget, iDamage, iDamageMul, iDamageType, aShotgun, iDelay );
     if Dead then Exit;
-    if (not iDual) and (aShotGun.Shots > 1) then IO.Delay(30);
   end;
 end;
 
@@ -1734,9 +1737,7 @@ begin
   begin
     FMeleeAttack := False;
     if Result and aMoveOnKill and ( iPosition = Position ) and ( TryMove( aWhere ) = MoveOk ) then
-      ActionMove( aWhere, 1.0, 0 )
-    else if IsPlayer and ( ( not GraphicsVersion ) or ( not Setting_AnimationBlending ) ) then
-      IO.WaitForAnimation( False );
+      ActionMove( aWhere, 1.0, 0 );
   end;
 end;
 
@@ -2113,7 +2114,6 @@ begin
     then Kill( Min( aDamage div 2, 15), (aDamage >= iOverKillValue) or iForceOverkill, iActive, aSource, aDelay )
     else begin
       CallHook( Hook_OnAttacked, [ iActive, aSource ] );
-      // TODO: handle Delay?
       IO.ShowPain( Self, aDelay );
     end;
 end;
@@ -3411,10 +3411,7 @@ begin
   iAmount := iState.ToFloat( 3, 0.5 );
   with iBeing do
     if TLevel( iBeing.Parent ).AnimationVisible( Position, iBeing ) then
-    begin
       IO.addBumpAnimation( VisualTime( iState.ToInteger( 4, 1000 ) ) , 0, UID, Position, iCoord, Sprite, iAmount );
-      if iBeing.IsPlayer then IO.WaitForAnimation;
-    end;
 end;
 
 function lua_being_send_missile( L: Plua_State ): Integer; cdecl;

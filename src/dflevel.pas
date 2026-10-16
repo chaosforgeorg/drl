@@ -74,7 +74,7 @@ TLevel = class(TLuaMapNode)
     procedure DropCorpse( aCoord : TCoord2D; CellID : Byte );
     function DamageTile( aCoord : TCoord2D; aDamage : Integer; aDamageType : TDamageType; aFloor : Boolean = True ) : Boolean;
     procedure Explosion( aDelay : Integer; aCoord : TCoord2D; aData : TExplosionData; aItem : TItem; aKnockback : TDirection; aDirectHit : Boolean = False; aDamageMult : Single = 1.0 );
-    procedure Shotgun( aSource, aTarget : TCoord2D; aDamage : TDiceRoll; aDamageMul : Single; aDamageType : TDamageType; aItem : TItem );
+    procedure Shotgun( aSource, aTarget : TCoord2D; aDamage : TDiceRoll; aDamageMul : Single; aDamageType : TDamageType; aItem : TItem; aDelay : DWord );
     function Respawn( aCoord : TCoord2D ) : TBeing; overload;
     procedure Respawn( aChance : byte ); overload;
     function isEyeContact( const a : TLuaEntityNode; b : TCoord2D ) : boolean; override; overload;
@@ -1048,7 +1048,7 @@ begin
   end;
 end;
 
-procedure TLevel.Shotgun( aSource, aTarget : TCoord2D; aDamage : TDiceRoll; aDamageMul : Single; aDamageType : TDamageType; aItem : TItem );
+procedure TLevel.Shotgun( aSource, aTarget : TCoord2D; aDamage : TDiceRoll; aDamageMul : Single; aDamageType : TDamageType; aItem : TItem; aDelay : DWord );
 var iDiff,iC : TCoord2D;
     iTC      : TCoord2D;
     iDist    : Single;
@@ -1114,21 +1114,21 @@ begin
           iProcessed.Push( iBeingUID );
           if iBeing.isVisible then
           begin
-            if iDmg > 10 then IO.addMarkAnimation( 199, 0, iTC, iHSprite, Red, '*' )
-              else if iDmg > 4 then IO.addMarkAnimation( 199, 0, iTC, iHSprite, LightRed, '*' )
-                else IO.addMarkAnimation( 199, 0, iTC, iHSprite, LightGray, '*' );
+            if iDmg > 10 then IO.addMarkAnimation( 199, aDelay, iTC, iHSprite, Red, '*' )
+              else if iDmg > 4 then IO.addMarkAnimation( 199, aDelay, iTC, iHSprite, LightRed, '*' )
+                else IO.addMarkAnimation( 199, aDelay, iTC, iHSprite, LightGray, '*' );
           end;
           if iKnock > 0 then
           begin
             iDir.CreateSmooth( aSource, iTC );
             iBeing.Knockback( iDir, iDmg / iKnock );
           end;
-          iBeing.ApplyDamage( iDmg, Target_Torso, aDamageType, aItem, 0 );
+          iBeing.ApplyDamage( iDmg, Target_Torso, aDamageType, aItem, aDelay );
         end;
-        
+
         DamageTile( iTC, iDmg, aDamageType, False );
         if isVisible( iTC ) and ( not isShotPassable( iTC ) ) then
-          IO.addMarkAnimation( 199, 0, iTC, iHSprite, LightGray,'*' );
+          IO.addMarkAnimation( 199, aDelay, iTC, iHSprite, LightGray,'*' );
       end;
   finally
     FreeAndNil( iProcessed );
