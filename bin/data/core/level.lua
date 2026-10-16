@@ -3,7 +3,7 @@ function level:flood_tile( pos, cell, destroy )
 	if not cell_data.flags[ CF_CRITICAL ] then
 		level:set_cell_and_hp( pos, cell )
 		if destroy then 
-			if cell_data.OnDestroy then cell_data.OnDestroy(pos) end
+			if not cell_data.flags[ CF_LIQUID ] and cell_data.OnDestroy then cell_data.OnDestroy(pos) end
 			level:try_destroy_item( pos )
 		end
 	end

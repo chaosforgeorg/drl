@@ -34,6 +34,7 @@ type TCell = class
   BlDesc      : AnsiString;
   DR          : Byte;
   HP          : Byte;
+  AffectedBy  : TDamageType;
   Flags       : TFlags;
   Hooks       : TCellHooks;
   MoveCost    : Single;
@@ -121,6 +122,7 @@ begin
     iCell.BlDesc    := getString('blname');
     iCell.DR        := getInteger('armor');
     iCell.HP        := getInteger('hp');
+    iCell.AffectedBy := TDamageType( getInteger( 'affected_by', Ord( Damage_None ) ) );
     iCell.Flags     := getFlags('flags');
     iCell.bloodto   := getString('bloodto');
     iCell.destroyto := getString('destroyto');

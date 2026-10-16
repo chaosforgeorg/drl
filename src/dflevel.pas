@@ -861,6 +861,18 @@ begin
       iFeature.Discard;
     end;
   end;
+
+  iCellID := Cell[ aCoord ];
+  if ( aDamage > 0 ) and ( FData.Cells[ iCellID ].AffectedBy <> Damage_None ) and
+    ( FData.Cells[ iCellID ].AffectedBy = aDamageType ) and ( HitPoints[ aCoord ] > 0 ) then
+  begin
+    HitPoints[ aCoord ] := Max( 0, HitPoints[ aCoord ] - aDamage );
+    if HitPoints[ aCoord ] = 0 then
+    begin
+      Result := True;
+      CallHook( aCoord, iCellID, CellHook_OnDestroy );
+    end;
+  end;
 end;
 
 
