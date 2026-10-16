@@ -27,7 +27,6 @@ type TThing = class( TLuaEntityNode )
   function GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single; virtual;
   function GetSprite : TSprite; virtual;
   function GetLevel : TLuaMapNode;
-  function GetDrawPosition : TVec2i;
   function GetPerkList : TPerkList;
   function GetPerkLabel( aID : Integer ) : AnsiString;
   function GetPerkDescription( aID : Integer ) : AnsiString;
@@ -66,7 +65,7 @@ implementation
 
 uses typinfo, variants,
      vdebug, vtig,
-     drlgamedata, dflevel, drllua, drlspritemap;
+     drlgamedata, dflevel, drllua;
 
 constructor TThing.Create( const aID : AnsiString; aContext : TNodeContext );
 begin
@@ -189,15 +188,6 @@ begin
   while ( iNode <> nil ) and ( not ( iNode is TLuaMapNode ) ) do
     iNode := iNode.Parent;
   Result := TLuaMapNode( iNode );
-end;
-
-function TThing.GetDrawPosition : TVec2i;
-var iSize : Word;
-begin
-  if ( FDrawPosition.X <> 0 ) or ( FDrawPosition.Y <> 0 ) then
-    Exit( FDrawPosition );
-  iSize := SpriteMap.GetGridSize;
-  Result.Init( ( FPosition.X - 1 ) * iSize, ( FPosition.Y - 1 ) * iSize );
 end;
 
 function TThing.GetPerkList : TPerkList;

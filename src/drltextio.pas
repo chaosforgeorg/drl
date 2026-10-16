@@ -326,7 +326,8 @@ begin
     Exit( IOGylph( iItem.Picture, GetColor( DarkGray, aCoord, True ) ) );
 
   iVisible  := iLevel.isVisible( aCoord );
-  iExplored := iLevel.CellExplored( aCoord );
+  // Blind mode shows no remembered map.
+  iExplored := iLevel.CellExplored( aCoord, not Option_BlindMode );
   iCell     := iLevel.Cell[ aCoord ];
 
   iColor   := LightGray;

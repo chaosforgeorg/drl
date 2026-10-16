@@ -66,7 +66,7 @@ implementation
 
 uses math,
      vluatable,
-     dfdata, dfthing, drlio, drlspritemap;
+     dfdata, dfthing, drlspritemap;
 
 function FlagsToParticleFlags( const aFlags : TFlags ) : TParticleFlags;
 var i : Byte;
@@ -318,9 +318,9 @@ begin
   for iParticle := 1 to aCount do
   begin
     iBurstData := iData^;
-    iArc := aArcScale.Random( IO.VisualRNG );
-    iScale := aDistanceScale.Random( IO.VisualRNG );
-    iSpeed := iData^.SpeedRange.Random( IO.VisualRNG );
+    iArc := aArcScale.Random( FEngine.RNG );
+    iScale := aDistanceScale.Random( FEngine.RNG );
+    iSpeed := iData^.SpeedRange.Random( FEngine.RNG );
     iBurstData.PositionOffset.Z := iData^.PositionOffset.Z * iArc;
     iBurstData.AccelRange.Min.Z := iData^.AccelRange.Min.Z * iArc;
     iBurstData.AccelRange.Max.Z := iData^.AccelRange.Max.Z * iArc;
@@ -330,7 +330,7 @@ begin
     if iScale > 0 then
       iParticleDirection.Z := iDirection.Z * iArc / iScale;
     if Length( aDecalSprites ) > 0 then
-      iBurstData.DecalSprite := aDecalSprites[ IO.VisualRNG.RLongInt( Length( aDecalSprites ) ) ];
+      iBurstData.DecalSprite := aDecalSprites[ FEngine.RNG.RLongInt( Length( aDecalSprites ) ) ];
     FEngine.SpawnBurst( @iBurstData, aWorldPos, iParticleDirection, 1 );
   end;
 end;
@@ -362,9 +362,11 @@ begin
 end;
 
 procedure TParticleStore.UpdateBindings( aUpdatePositions : Boolean );
-var i     : Integer;
-    iNode : TVObject;
-    iDraw : TVec2i;
+var i      : Integer;
+    iNode  : TVObject;
+    iThing : TThing;
+    iDraw  : TVec2i;
+    iSize  : Word;
 begin
   for i := FBindingCount - 1 downto 0 do
   begin
@@ -384,8 +386,15 @@ begin
     end
     else if aUpdatePositions and ( iNode is TThing ) and ( FBindings[i].PoolIndex >= 0 ) then
     begin
-      FEngine.EmitSetVisible( FBindings[i].PoolIndex, TThing( iNode ).isVisible );
-      iDraw := TThing( iNode ).GetDrawPosition;
+      iThing := TThing( iNode );
+      FEngine.EmitSetVisible( FBindings[i].PoolIndex, iThing.isVisible );
+      // Move animations set the drawn position; otherwise the thing is drawn on its cell.
+      iDraw := iThing.DrawPosition;
+      if ( iDraw.X = 0 ) and ( iDraw.Y = 0 ) then
+      begin
+        iSize := SpriteMap.GetGridSize;
+        iDraw.Init( ( iThing.Position.X - 1 ) * iSize, ( iThing.Position.Y - 1 ) * iSize );
+      end;
       FEngine.EmitSetPosition( FBindings[i].PoolIndex,
         Vec3f( iDraw.X / SpriteMap.Engine.Scale + 16.0, iDraw.Y / SpriteMap.Engine.Scale + 16.0, 0 ) );
     end;

@@ -40,8 +40,9 @@ TLevel = class(TLuaMapNode)
      
     function blocksVision( const aCoord : TCoord2D ) : boolean; override;
 	
-	{ Determines if the cell is explored by the player. }
-	function CellExplored( coord : TCoord2D ) : boolean;
+	{ Determines if the cell is known to the player; aMemory includes cells
+	  explored earlier, not only sensed ones. }
+	function CellExplored( coord : TCoord2D; aMemory : Boolean = True ) : boolean;
 	
 	{ Determine if the coord has an item visible to the player. }
 	function ItemVisible( coord: TCoord2D; aItem: TItem ) : boolean;
@@ -681,11 +682,11 @@ begin
     end;
 end;
 
-function TLevel.CellExplored( coord: TCoord2D ): boolean;
+function TLevel.CellExplored( coord: TCoord2D; aMemory : Boolean ): boolean;
 begin
   if FPlayer.Flags[ BF_DARKNESS ] and not isVisible( coord ) then Exit(False);
   if FPlayer.Flags[ BF_STAIRSENSE ] and (CF_STAIRSENSE in FData.Cells[ GetCell(coord) ].Flags) then Exit(True);
-  if Option_BlindMode and not GraphicsVersion then Exit(False);
+  if not aMemory then Exit(False);
   Exit(isExplored( coord ));
 end;
 
@@ -1939,8 +1940,7 @@ var State : TLuaGameStack;
 begin
   State.Init(L);
   Level := State.ToObject(1) as TLevel;
-  if GraphicsVersion then
-    Level.RecalcFluids;
+  Level.RecalcFluids;
   Exit( 0 );
 end;
 
