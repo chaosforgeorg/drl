@@ -202,7 +202,7 @@ end;
 
 procedure TDRLRuntime.CreateSession( aInitializeData : Boolean );
 begin
-  FSession := TDRLSession.Create( Self, FModules, FStore, FData, Paths );
+  FSession := TDRLSession.Create( Self, TDRLIO( IO ), FModules, FStore, FData, Paths );
   TDRLIO(IO).BindRunStatus( FSession.RunStatus );
   TDRLIO(IO).BindAutoTarget( FSession.Targeting.List );
   if not aInitializeData then Exit;
