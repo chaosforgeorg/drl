@@ -38,7 +38,7 @@ type TStringHashMap       = specialize TGHashMap< AnsiString >;
 type TDRLIO = class( TIORL, IDRLPresentation )
   constructor Create( aSettings : TDRLConfiguration ); reintroduce;
   procedure Reset; virtual;
-  procedure SetSeed( aCardinal : LongInt );
+  procedure SetSeedText( const aText : AnsiString );
   procedure Initialize; virtual; abstract;
   procedure Initialize( iRenderer : TIOConsoleRenderer );
   procedure Reconfigure( aConfig : TLuaConfig ); virtual;
@@ -127,7 +127,6 @@ type TDRLIO = class( TIORL, IDRLPresentation )
   procedure RenderUIBackgroundBlock( aUL, aBR : TIOPoint; aOpacity : Single = 0.85; aZ : Integer = 0 ); virtual;
   procedure RenderUIBackground( aTexture : TTextureID; aZ : Integer = 0 ); virtual;
   procedure FullLook( aThing : TThing );
-  function ChooseTrait : Byte;
   procedure SetTarget( aTarget : TCoord2D; aColor : Byte; aRange : Byte ); virtual; abstract;
   procedure SetAutoTarget( aTarget : TCoord2D ); virtual;
   function ResolveSub( const aID : Ansistring ) : Ansistring;
@@ -626,13 +625,6 @@ begin
   end;
 end;
 
-function TDRLIO.ChooseTrait : Byte;
-begin
-  RunLayer( TPlayerView.CreateTrait( FSession ), True );
-  if FRunStatus.State <> DSPlaying then Exit( 255 );
-  Exit( TPlayerView.TraitPick );
-end;
-
 procedure TDRLIO.SetAutoTarget( aTarget : TCoord2D );
 begin
   FHintTarget := Level.GetTargetDescription( Player, aTarget );
@@ -849,17 +841,9 @@ begin
              else UI.Msg('Screenshot created.');}
 end;
 
-procedure TDRLIO.SetSeed( aCardinal : LongInt );
-var iChallengeText : AnsiString;
+procedure TDRLIO.SetSeedText( const aText : AnsiString );
 begin
-  FSeedHUDText := ' ' + FSession.Context.Lua.Get([ 'diff', FSession.Difficulty, 'code' ]);
-  iChallengeText := '';
-  if FSession.Challenge <> '' then
-    iChallengeText += Copy( FSession.Context.Lua.Get([ 'chal', FSession.Challenge, 'abbr' ]), 3, MaxInt );
-  if FSession.SChallenge <> '' then
-    iChallengeText += Copy( FSession.Context.Lua.Get([ 'chal', FSession.SChallenge, 'abbr' ]), 3, MaxInt );
-  if iChallengeText <> '' then FSeedHUDText += '{r' + iChallengeText + '}';
-  FSeedHUDText += IntToStr( aCardinal );
+  FSeedHUDText   := aText;
   FSeedHUDOffset := -2-VTIG_Length( FSeedHUDText );
 end;
 
@@ -1489,16 +1473,6 @@ begin
   Result := 1;
 end;
 
-function lua_ui_save_and_quit(L: Plua_State): Integer; cdecl;
-var iState : TLuaGameStack;
-begin
-  iState.Init(L);
-  ForceShop := iState.ToBoolean(1);
-  IO.FadeOut(0.5);
-  IO.Session.SetState( DSSaving );
-  Result := 0;
-end;
-
 function lua_ui_get_target(L: Plua_State): Integer; cdecl;
 var iState : TLuaGameStack;
 begin
@@ -1507,15 +1481,7 @@ begin
   Result := 1;
 end;
 
-function lua_ui_reset_auto_target(L: Plua_State): Integer; cdecl;
-var iState : TLuaGameStack;
-begin
-  iState.Init(L);
-  IO.Session.ResetAutoTarget;
-  Result := 0;
-end;
-
-const lua_ui_lib : array[0..20] of luaL_Reg = (
+const lua_ui_lib : array[0..18] of luaL_Reg = (
       ( name : 'msg';           func : @lua_ui_msg ),
       ( name : 'msg_clear';     func : @lua_ui_msg_clear ),
       ( name : 'msg_enter';     func : @lua_ui_msg_enter ),
@@ -1533,8 +1499,6 @@ const lua_ui_lib : array[0..20] of luaL_Reg = (
       ( name : 'update_styles';     func : @lua_ui_update_styles ),
       ( name : 'is_pad';            func : @lua_ui_is_pad ),
       ( name : 'get_rank';          func : @lua_ui_get_rank ),
-      ( name : 'save_and_quit';     func : @lua_ui_save_and_quit ),
-      ( name : 'reset_auto_target'; func : @lua_ui_reset_auto_target ),
       ( name : 'get_target';        func : @lua_ui_get_target ),
       ( name : nil;          func : nil; )
 );

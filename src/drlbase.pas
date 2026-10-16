@@ -101,6 +101,7 @@ type TDRLSession = class(TVObject)
        procedure LeaveLevel;
        procedure CreatePlayer( aResult : TMenuResult );
        function PrepareGameSeed( aRequestedSeed : Cardinal ) : Cardinal;
+       function SeedHUDText : AnsiString;
        procedure RegisterChallengeRuntimes;
        function GetGameRNG : TRNG;
        function GetState : TDRLState;
@@ -566,7 +567,9 @@ procedure TDRLSession.ChoosePlayerTrait;
 var iTrait : Byte;
 begin
   if DemoVersion and ( FPlayer.ExpLevel > 7 ) then Exit;
-  iTrait := IO.ChooseTrait;
+  IO.RunLayer( TPlayerView.CreateTrait( Self ), True );
+  if FStatus.State <> DSPlaying then Exit;
+  iTrait := TPlayerView.TraitPick;
   if iTrait <> 255 then FPlayer.UpgradeTrait( iTrait );
 end;
 
@@ -1515,6 +1518,21 @@ begin
   Exit( False );
 end;
 
+// HUD label: difficulty code, highlighted challenge abbreviations and the seed.
+function TDRLSession.SeedHUDText : AnsiString;
+var iChallengeText : AnsiString;
+begin
+  Result := ' ' + FContext.Lua.Get([ 'diff', FDifficulty, 'code' ]);
+  iChallengeText := '';
+  if FChallenge <> '' then
+    iChallengeText += Copy( FContext.Lua.Get([ 'chal', FChallenge, 'abbr' ]), 3, MaxInt );
+  if FSChallenge <> '' then
+    iChallengeText += Copy( FContext.Lua.Get([ 'chal', FSChallenge, 'abbr' ]), 3, MaxInt );
+  if iChallengeText <> '' then Result += '{r' + iChallengeText + '}';
+  // Seeds are entered as signed numbers.
+  Result += IntToStr( LongInt( FGameSeed ) );
+end;
+
 function TDRLSession.PrepareGameSeed( aRequestedSeed : Cardinal ) : Cardinal;
 begin
   FGameSeed := aRequestedSeed;
@@ -1602,7 +1620,7 @@ begin
   end;
 
   FContext.Lua.SetValue('GAME_SEED', FGameSeed);
-  IO.SetSeed( FGameSeed );
+  IO.SetSeedText( SeedHUDText );
 
   if (not(State in [DSLoading, DSCrashLoading])) then
   begin
@@ -2193,17 +2211,35 @@ begin
   Result := 1;
 end;
 
-const lua_game_lib : array[0..9] of luaL_Reg = (
-  ( name : 'win';             func : @lua_game_win ),
-  ( name : 'exit';            func : @lua_game_exit ),
-  ( name : 'has_won';         func : @lua_game_has_won ),
-  ( name : 'is_playing';      func : @lua_game_is_playing ),
-  ( name : 'reset_level';     func : @lua_game_reset_level ),
-  ( name : 'post_regenerate'; func : @lua_game_post_regenerate ),
-  ( name : 'level_up';        func : @lua_game_level_up ),
-  ( name : 'choose_trait';    func : @lua_game_choose_trait ),
-  ( name : 'time';            func : @lua_game_time ),
-  ( name : nil;               func : nil )
+function lua_game_save_and_quit( L : PLua_State ) : Integer; cdecl;
+var iState : TLuaGameStack;
+begin
+  iState.Init( L );
+  ForceShop := iState.ToBoolean( 1 );
+  IO.FadeOut( 0.5 );
+  ActiveSession( L ).SetState( DSSaving );
+  Result := 0;
+end;
+
+function lua_game_reset_auto_target( L : PLua_State ) : Integer; cdecl;
+begin
+  ActiveSession( L ).ResetAutoTarget;
+  Result := 0;
+end;
+
+const lua_game_lib : array[0..11] of luaL_Reg = (
+  ( name : 'win';               func : @lua_game_win ),
+  ( name : 'exit';              func : @lua_game_exit ),
+  ( name : 'has_won';           func : @lua_game_has_won ),
+  ( name : 'is_playing';        func : @lua_game_is_playing ),
+  ( name : 'reset_level';       func : @lua_game_reset_level ),
+  ( name : 'post_regenerate';   func : @lua_game_post_regenerate ),
+  ( name : 'level_up';          func : @lua_game_level_up ),
+  ( name : 'choose_trait';      func : @lua_game_choose_trait ),
+  ( name : 'time';              func : @lua_game_time ),
+  ( name : 'save_and_quit';     func : @lua_game_save_and_quit ),
+  ( name : 'reset_auto_target'; func : @lua_game_reset_auto_target ),
+  ( name : nil;                 func : nil )
 );
 
 const lua_statistics_lib : array[0..1] of luaL_Reg = (

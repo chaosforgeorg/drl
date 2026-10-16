@@ -550,7 +550,7 @@ end;
 
 destructor TSettingsView.Destroy;
 begin
-  Configuration.Write( IO.Session.Paths.SettingsPath );
+  Configuration.Write( FSession.Paths.SettingsPath );
   inherited Destroy;
 end;
 
