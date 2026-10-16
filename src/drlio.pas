@@ -65,6 +65,8 @@ type TDRLIO = class( TIORL, IDRLPresentation )
   procedure SetHint( const aText : AnsiString );
   // Animations and the level view follow the run state; nil without a Session.
   procedure BindRunStatus( aStatus : TRunStatus );
+  // The Session's auto-target list; nil without a Session.
+  procedure BindAutoTarget( aList : TAutoTarget );
 
   procedure Focus( aCoord: TCoord2D ); virtual;
   procedure FinishTargeting; virtual;
@@ -149,6 +151,7 @@ protected
   FStore       : TStoreInterface;
   FSession     : TDRLSession;
   FRunStatus   : TRunStatus; // Borrowed from the Session, released with it.
+  FAutoTarget  : TAutoTarget; // Borrowed from the Session, released with it.
 
   FHudEnabled  : Boolean;
   FTargeting   : Boolean;
@@ -184,6 +187,7 @@ public
   property Store        : TStoreInterface read FStore write FStore;
   property Session      : TDRLSession     read FSession write FSession;
   property RunStatus    : TRunStatus      read FRunStatus;
+  property AutoTarget   : TAutoTarget     read FAutoTarget;
   function GetPlayer : TPlayer;
   function GetLevel : TLevel;
   // The Session's player and level, set through SetPlayer and SetLevel.
@@ -1008,7 +1012,7 @@ begin
 
   if ( Level <> nil ) and ( Level.Boss <> 0 ) then
   begin
-    iBoss := FSession.UIDs.Get( Level.Boss ) as TBeing;
+    iBoss := Level.Context.UIDs.Get( Level.Boss ) as TBeing;
     if iBoss <> nil then
     begin
       VTIG_FreeLabel( iBoss.Name, Point( 40 - Ceil(Length( iBoss.Name ) / 2), 3 ), iCBold );
@@ -1035,6 +1039,11 @@ end;
 procedure TDRLIO.BindRunStatus( aStatus : TRunStatus );
 begin
   FRunStatus := aStatus;
+end;
+
+procedure TDRLIO.BindAutoTarget( aList : TAutoTarget );
+begin
+  FAutoTarget := aList;
 end;
 
 function TDRLIO.GetPlayer : TPlayer;
@@ -1132,9 +1141,9 @@ begin
 
   if ControllerActionHeld( CONTROLLER_MODIFIER_ALT )
     and ( FRunStatus <> nil ) and ( FRunStatus.State = DSPlaying )
-    and (FTargeting or ( not isModal)) and ( FLastTarget <> FSession.Targeting.List.Current ) then
+    and (FTargeting or ( not isModal)) and ( FLastTarget <> FAutoTarget.Current ) then
     begin
-      FLastTarget := FSession.Targeting.List.Current;
+      FLastTarget := FAutoTarget.Current;
       if (FLastTarget.X * FLastTarget.Y <> 0) and (FLastTarget <> Player.Position) then
         LookDescription(FLastTarget);
     end;
@@ -1494,7 +1503,7 @@ function lua_ui_get_target(L: Plua_State): Integer; cdecl;
 var iState : TLuaGameStack;
 begin
   iState.Init(L);
-  iState.PushCoord( IO.Session.Targeting.List.Current );
+  iState.PushCoord( IO.AutoTarget.Current );
   Result := 1;
 end;
 

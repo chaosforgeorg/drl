@@ -664,11 +664,10 @@ begin
 
   Include( iSprite.Flags, SF_COSPLAY );
   if iLevel.isVisible( aTarget ) then
-    with Session.Targeting do
     begin
-      iFirst := List.Current;
+      iFirst := FAutoTarget.Current;
       repeat
-        iCoord := List.Next;
+        iCoord := FAutoTarget.Next;
         if ( iCoord <> Player.Position ) and ( iCoord <> aTarget ) then
           Trace( iCoord, False );
       until iCoord = iFirst;
@@ -850,7 +849,7 @@ begin
     if FTargeting
       then SpriteMap.Marker := SpriteMap.Target + FGPLeftDir
       else if ControllerActionHeld( CONTROLLER_MODIFIER_ALT )
-        then SpriteMap.Marker := Session.Targeting.List.Current + FGPLeftDir
+        then SpriteMap.Marker := FAutoTarget.Current + FGPLeftDir
         else SpriteMap.Marker := Player.Position + FGPLeftDir;
   end
   else
@@ -1106,7 +1105,7 @@ begin
       iItem := nil;
       with Player.FQuickSlots[ i ] do
       begin
-             if UID <> 0 then iItem := Session.UIDs[ UID ] as TItem
+             if UID <> 0 then iItem := Player.Context.UIDs[ UID ] as TItem
         else if ID <> '' then iItem := Player.Inv.Find( ID );
       end;
       if iItem <> nil then

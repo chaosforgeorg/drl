@@ -175,6 +175,7 @@ begin
   begin
     TDRLIO(IO).Session := nil;
     TDRLIO(IO).BindRunStatus( nil );
+    TDRLIO(IO).BindAutoTarget( nil );
   end;
   FreeAndNil(FSession);
 end;
@@ -208,6 +209,7 @@ begin
   FSession := TDRLSession.Create( Self, FModules, FStore, FData, Paths );
   TDRLIO(IO).Session := FSession;
   TDRLIO(IO).BindRunStatus( FSession.RunStatus );
+  TDRLIO(IO).BindAutoTarget( FSession.Targeting.List );
   if not aInitializeData then Exit;
   TDRLLua( FLua ).BindNodeContext( FSession.Context );
   FSession.InitializeLevel;
