@@ -57,7 +57,7 @@ uses sysutils,
      vcursesio, vcursesconsole,
      {$ENDIF}
      vioconsole, vtig, vvision, vutil,
-     drlbase, drlanimation,
+     drlanimation,
      dfbeing, dfitem;
 
 constructor TDRLTextIO.Create( aSettings : TDRLConfiguration );

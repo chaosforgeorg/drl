@@ -8,7 +8,7 @@ unit drlio;
 interface
 uses {$IFDEF WINDOWS}windows,{$ENDIF} classes, sysutils,
      vluagamestack, vio, vbindings, viorl, vrltools, vluaconfig, vglquadrenderer, vstoreinterface, vtextures, vtigstyle, vluastack, viotypes, vioevent, vioconsole, vgenerics, vutil,
-     dfdata, dfthing, dfbeing, dfplayer, dflevel, drlspritemap, drlaudio, drlkeybindings, drlbase, drlcontrollerbindings, drlloadingview, drlmodule,
+     dfdata, dfthing, dfbeing, dfplayer, dflevel, drlspritemap, drlaudio, drlkeybindings, drlcontrollerbindings, drlloadingview, drlmodule,
      drlconfig, drlconfiguration;
 
 const TIG_EV_NONE      = 0;
@@ -47,7 +47,7 @@ type TDRLIO = class( TIORL, IDRLPresentation )
   procedure FadeLevel( aFadeTime : Single = 0.0 );
   procedure PreUpdate; override;
   destructor Destroy; override;
-  procedure Screenshot( aBB : Boolean );
+  procedure Screenshot;
 
   procedure EventMore;
 
@@ -137,8 +137,7 @@ protected
   procedure UpdateStyles;
   procedure ExplosionMark( aCoord : TCoord2D; aColor : Byte; aDuration : DWord; aDelay : DWord ); virtual; abstract;
   procedure DrawHud; virtual;
-  function ScreenShotCallback( aEvent : TIOEvent ) : Boolean;
-  function BBScreenShotCallback( aEvent : TIOEvent ) : Boolean;
+  function ScreenshotCallback( aEvent : TIOEvent ) : Boolean;
 protected
   FAudio       : TDRLAudio;
   FTime        : QWord;
@@ -148,7 +147,7 @@ protected
   FASCII       : TASCIIImageMap;
   FModules     : TDRLModules;
   FStore       : TStoreInterface;
-  FSession     : TDRLSession;
+  FSShotPath   : AnsiString;
   FRunStatus   : TRunStatus; // Borrowed from the Session, released with it.
   FAutoTarget  : TAutoTarget; // Borrowed from the Session, released with it.
 
@@ -184,7 +183,8 @@ public
   property NarrowMode   : Boolean         read FNarrowMode;
   property Modules      : TDRLModules     read FModules write FModules;
   property Store        : TStoreInterface read FStore write FStore;
-  property Session      : TDRLSession     read FSession write FSession;
+  // Folder for F9/F10 screenshots; empty until the module's user paths exist.
+  property SShotPath    : AnsiString      read FSShotPath write FSShotPath;
   property RunStatus    : TRunStatus      read FRunStatus;
   property AutoTarget   : TAutoTarget     read FAutoTarget;
   function GetPlayer : TPlayer;
@@ -767,8 +767,8 @@ begin
   inherited Configure( aConfig );
   // TODO : configurable
 
-  FIODriver.RegisterInterrupt( VKEY_F9, @ScreenShotCallback );
-  FIODriver.RegisterInterrupt( VKEY_F10, @BBScreenShotCallback );
+  FIODriver.RegisterInterrupt( VKEY_F9, @ScreenshotCallback );
+  FIODriver.RegisterInterrupt( VKEY_F10, @ScreenshotCallback );
 
   if Option_MessageBuffer < 20 then Option_MessageBuffer := 20;
   FAudio.Configure( aConfig, aReload );
@@ -811,25 +811,25 @@ begin
   inherited Destroy;
 end;
 
-procedure TDRLIO.Screenshot ( aBB : Boolean );
+procedure TDRLIO.Screenshot;
 var iFName : AnsiString;
     iName  : AnsiString;
     iExt   : AnsiString;
     iCount : DWord;
 begin
-  if FSession = nil then Exit;
+  if FSShotPath = '' then Exit;
   if GraphicsVersion
      then iExt := '.png'
      else iExt := '.txt';
 
   iName := 'DRL';
   if Player <> nil then iName := Player.Name;
-  if not DirectoryExists( FSession.Paths.ModuleUserPath + 'screenshot' ) then CreateDir( FSession.Paths.ModuleUserPath + 'screenshot' );
-  iFName := FSession.Paths.ModuleUserPath + 'screenshot'+PathDelim+ToProperFilename('['+FormatDateTime(Option_TimeStamp,Now)+'] '+iName)+iExt;
+  if not DirectoryExists( FSShotPath ) then CreateDir( FSShotPath );
+  iFName := FSShotPath+PathDelim+ToProperFilename('['+FormatDateTime(Option_TimeStamp,Now)+'] '+iName)+iExt;
   iCount := 1;
   while FileExists(iFName) do
   begin
-    iFName := FSession.Paths.ModuleUserPath + 'screenshot'+PathDelim+ToProperFilename('['+FormatDateTime(Option_TimeStamp,Now)+'] '+iName)+'-'+IntToStr(iCount)+iExt;
+    iFName := FSShotPath+PathDelim+ToProperFilename('['+FormatDateTime(Option_TimeStamp,Now)+'] '+iName)+'-'+IntToStr(iCount)+iExt;
     Inc(iCount);
   end;
 
@@ -837,8 +837,6 @@ begin
   if GraphicsVersion
     then CaptureScreen( iFName )
     else SaveConsoleTextDump( iFName );
-    {  if aBB then UI.Msg('BB Screenshot created.')
-             else UI.Msg('Screenshot created.');}
 end;
 
 procedure TDRLIO.SetSeedText( const aText : AnsiString );
@@ -1045,15 +1043,9 @@ begin
   FHint       := aText;
 end;
 
-function TDRLIO.ScreenShotCallback ( aEvent : TIOEvent ) : Boolean;
+function TDRLIO.ScreenshotCallback ( aEvent : TIOEvent ) : Boolean;
 begin
-  ScreenShot( False );
-  Exit(True);
-end;
-
-function TDRLIO.BBScreenShotCallback ( aEvent : TIOEvent ) : Boolean;
-begin
-  ScreenShot( True );
+  Screenshot;
   Exit(True);
 end;
 

@@ -171,12 +171,8 @@ begin
     IO.Clear;
     TDRLIO(IO).ClearAnimations;
   end;
-  if TDRLIO(IO).Session = FSession then
-  begin
-    TDRLIO(IO).Session := nil;
-    TDRLIO(IO).BindRunStatus( nil );
-    TDRLIO(IO).BindAutoTarget( nil );
-  end;
+  TDRLIO(IO).BindRunStatus( nil );
+  TDRLIO(IO).BindAutoTarget( nil );
   FreeAndNil(FSession);
 end;
 
@@ -207,7 +203,6 @@ end;
 procedure TDRLRuntime.CreateSession( aInitializeData : Boolean );
 begin
   FSession := TDRLSession.Create( Self, FModules, FStore, FData, Paths );
-  TDRLIO(IO).Session := FSession;
   TDRLIO(IO).BindRunStatus( FSession.RunStatus );
   TDRLIO(IO).BindAutoTarget( FSession.Targeting.List );
   if not aInitializeData then Exit;
@@ -239,6 +234,7 @@ begin
   FPaths.ModuleUserPath := iModulePath;
   if not DirectoryExists(iModulePath + 'screenshot') then
     CreateDir(iModulePath + 'screenshot');
+  TDRLIO(IO).SShotPath := iModulePath + 'screenshot';
   if not DirectoryExists(iModulePath + 'mortem') then
     CreateDir(iModulePath + 'mortem');
   if not DirectoryExists(iModulePath + 'backup') then
