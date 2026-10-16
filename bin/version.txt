@@ -3,6 +3,7 @@ GHJ#501 [new] -- Visual - blood splatter, blood decals
 GHJ#492 [new] -- Visual - better edges between different fluids
 GHJ#492 [new] -- Visual - better edges of destroyed walls
 GHJ#467 [new] -- Game - removed old Chainfire and replaced with JHC spooling
+GHJ#503 [new] -- Game - list of active mods in mortem
 GHD#364 [new] -- UI - you can rebind UI controls (up/down/escape/etc)
 GHD#056 [new] -- UI - movement and melee animation blending (can be turned off in options)
 GHJ#502 [mod] -- Game - difficulty ammo multipliers applied more consistently

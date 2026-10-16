@@ -13,12 +13,13 @@ type TDRLModule = class
     Name         : Ansistring;
     Path         : Ansistring;
     BaseRequired : AnsiString;
-    BaseVersion  : Ansistring;
+    APIVersion   : Ansistring;
     WorkshopID   : AnsiString;
     LoadPriority : Integer;
     SaveVersion  : Integer;
     SaveAgnostic : Boolean;
     IsBase       : Boolean;
+    HasScript    : Boolean; // Has main.lua; data-only modules don't use the Lua API.
 
     Source       : ( DRLMWAD, DRLMSOURCE, DRLMSTEAM );
     Hooks        : TFlags;
@@ -44,15 +45,17 @@ TDRLModules = class(TVObject)
   function GetModuleInfo( const aModuleID : Ansistring ) : TDRLModule;
   destructor Destroy; override;
 private
-  FModules       : TModuleArray;
-  FModuleMap     : TModuleHash;
-  FCoreModules   : TModuleList;
-  FActiveModules : TModuleList;
-  FCoreModule    : TDRLModule;
-  FCoreModuleID  : Ansistring;
-  FModString     : Ansistring;
-  FDataPath      : AnsiString;
-  FModulesFile   : AnsiString;
+  FModules         : TModuleArray;
+  FModuleMap       : TModuleHash;
+  FCoreModules     : TModuleList;
+  FActiveModules   : TModuleList;
+  FOutdatedModules : TModuleList;
+  FCoreModule      : TDRLModule;
+  FCoreModuleID    : Ansistring;
+  FModString       : Ansistring;
+  FAPIVersion      : Ansistring;
+  FDataPath        : AnsiString;
+  FModulesFile     : AnsiString;
 private
   function ReadMetaFromModule( aLua : TLuaState; aOverride : Boolean;
     const aExpectedID : AnsiString = '';
@@ -64,11 +67,15 @@ private
   procedure ReadMetaFromSteamFolder( aLua : TLuaState; const aPath : Ansistring );
   procedure ScanExternalModules( aLua : TLuaState );
 public
-  property ActiveModules : TModuleList read FActiveModules;
-  property CoreModules   : TModuleList read FCoreModules;
-  property CoreModule    : TDRLModule  read FCoreModule;
-  property CoreModuleID  : Ansistring  read FCoreModuleID;
-  property ModString     : Ansistring  read FModString;
+  property ActiveModules   : TModuleList read FActiveModules;
+  // Active non-base scripted modules whose api_version is missing or older than APIVersion.
+  property OutdatedModules : TModuleList read FOutdatedModules;
+  property CoreModules     : TModuleList read FCoreModules;
+  property CoreModule      : TDRLModule  read FCoreModule;
+  property CoreModuleID    : Ansistring  read FCoreModuleID;
+  property ModString       : Ansistring  read FModString;
+  // Module API version declared by the core module's meta.
+  property APIVersion      : Ansistring  read FAPIVersion;
 end;
 
 implementation
@@ -78,6 +85,49 @@ uses sysutils, variants, vluatable, vdf, vstoreinterface, dfdata;
 function TDRLModule.IsBaseLoading : Boolean;
 begin
   Exit( ( ID = 'core' ) or IsBase );
+end;
+
+// Compares "x.y.za" style versions segment by segment: numbers numerically,
+// then any letter suffix ( "4" < "4a" < "4b" ). Missing segments count as 0.
+function CompareVersions( const aLeft, aRight : Ansistring ) : Integer;
+var iLeftPos     : Integer;
+    iRightPos    : Integer;
+    iLeftNumber  : Integer;
+    iRightNumber : Integer;
+    iLeftSuffix  : Ansistring;
+    iRightSuffix : Ansistring;
+
+  procedure ReadSegment( const aVersion : Ansistring; var aPos : Integer;
+    out aNumber : Integer; out aSuffix : Ansistring );
+  begin
+    aNumber := 0;
+    aSuffix := '';
+    while ( aPos <= Length( aVersion ) ) and ( aVersion[aPos] in ['0'..'9'] ) do
+    begin
+      aNumber := aNumber * 10 + Ord( aVersion[aPos] ) - Ord( '0' );
+      Inc( aPos );
+    end;
+    while ( aPos <= Length( aVersion ) ) and ( aVersion[aPos] <> '.' ) do
+    begin
+      aSuffix += aVersion[aPos];
+      Inc( aPos );
+    end;
+    Inc( aPos );
+  end;
+
+begin
+  iLeftPos  := 1;
+  iRightPos := 1;
+  while ( iLeftPos <= Length( aLeft ) ) or ( iRightPos <= Length( aRight ) ) do
+  begin
+    ReadSegment( aLeft,  iLeftPos,  iLeftNumber,  iLeftSuffix );
+    ReadSegment( aRight, iRightPos, iRightNumber, iRightSuffix );
+    if iLeftNumber <> iRightNumber then
+      Exit( iLeftNumber - iRightNumber );
+    Result := CompareStr( iLeftSuffix, iRightSuffix );
+    if Result <> 0 then Exit;
+  end;
+  Exit( 0 );
 end;
 
 function DRLModuleCompare( const A, B : TDRLModule ) : Integer;
@@ -94,11 +144,13 @@ begin
   FModulesFile := aModulesFile;
   FModules       := TModuleArray.Create( True );
   FModuleMap     := TModuleHash.Create;
-  FActiveModules := TModuleList.Create;
-  FCoreModules   := TModuleList.Create;
-  FCoreModule    := nil;
-  FCoreModuleID  := '';
-  FModString     := '';
+  FActiveModules   := TModuleList.Create;
+  FOutdatedModules := TModuleList.Create;
+  FCoreModules     := TModuleList.Create;
+  FCoreModule      := nil;
+  FCoreModuleID    := '';
+  FModString       := '';
+  FAPIVersion      := '';
 end;
 
 procedure TDRLModules.ScanModules;
@@ -113,7 +165,9 @@ begin
   FModuleMap.Clear;
   FCoreModules.Clear;
   FActiveModules.Clear;
+  FOutdatedModules.Clear;
   FCoreModule := nil;
+  FAPIVersion := '';
   iLua := nil;
   try
     iLua := TLuaState.Create;
@@ -190,7 +244,12 @@ begin
   FCoreModuleID := aCoreModuleID;
   FCoreModule   := nil;
   FModString    := '';
+  FAPIVersion   := '';
   FActiveModules.Clear;
+  FOutdatedModules.Clear;
+
+  if FModuleMap[ 'core' ] <> nil then
+    FAPIVersion := FModuleMap[ 'core' ].APIVersion;
 
   for iModule in FModules do
     if ( ( iModule.BaseRequired = aCoreModuleID ) or ( iModule.BaseRequired = '' ) )
@@ -198,6 +257,9 @@ begin
     begin
       FActiveModules.Push( iModule );
       if iModule.IsBase then FCoreModule := iModule;
+      if ( not iModule.IsBaseLoading ) and iModule.HasScript
+      and ( ( iModule.APIVersion = '' ) or ( CompareVersions( iModule.APIVersion, FAPIVersion ) < 0 ) ) then
+        FOutdatedModules.Push( iModule );
       if ( not iModule.IsBase ) and ( not iModule.SaveAgnostic ) then
       begin
         if FModString <> '' then FModString += ' ';
@@ -222,7 +284,7 @@ begin
     try
       iModule.ID           := GetString( 'id' );
       iModule.Name         := GetString( 'name', iModule.ID );
-      iModule.BaseVersion  := GetString( 'base_version', '' );
+      iModule.APIVersion   := GetString( 'api_version', '' );
       iModule.Path         := '';
       iModule.BaseRequired := GetString( 'base_required', '' );
       iModule.WorkshopID   := GetString( 'workshop_id', '' );
@@ -286,8 +348,9 @@ begin
       iModule := ReadMetaFromModule( aLua, aOverride );
       if iModule <> nil then
       begin
-        iModule.Path   := aPath;
-        iModule.Source := DRLMWAD;
+        iModule.Path      := aPath;
+        iModule.Source    := DRLMWAD;
+        iModule.HasScript := iData.FileExists( 'main.lua' );
       end;
     end;
   finally
@@ -310,8 +373,9 @@ begin
     );
     if iModule <> nil then
     begin
-      iModule.Path   := aPath;
-      iModule.Source := DRLMSOURCE;
+      iModule.Path      := aPath;
+      iModule.Source    := DRLMSOURCE;
+      iModule.HasScript := FileExists( aPath + 'main.lua' );
     end;
   end;
 end;
@@ -376,6 +440,7 @@ end;
 
 procedure TDRLModules.ReadMetaFromSteamFolder( aLua : TLuaState; const aPath : Ansistring );
 var iModule : TDRLModule;
+    iData   : TVDataFile;
 begin
   Log( LOGINFO, 'found Workshop path "%s"...', [aPath] );
   if FileExists( aPath + 'meta.lua' ) then
@@ -384,12 +449,20 @@ begin
     iModule := ReadMetaFromModule( aLua, False );
     if iModule <> nil then
     begin
-      iModule.Path   := aPath;
-      iModule.Source := DRLMSTEAM;
+      iModule.Path      := aPath;
+      iModule.Source    := DRLMSTEAM;
+      iModule.HasScript := FileExists( aPath + 'main.lua' );
       if FileExists( aPath + iModule.ID + '.wad' ) then
       begin
         Log( LOGINFO, 'Workshop module "%s" registered as WAD module.', [iModule.ID] );
         iModule.Path := aPath + iModule.ID + '.wad';
+        iData := TVDataFile.Create( iModule.Path );
+        try
+          iData.DKKey := LoveLace;
+          iModule.HasScript := iData.FileExists( 'main.lua' );
+        finally
+          iData.Free;
+        end;
       end;
     end;
   end;
@@ -407,6 +480,7 @@ end;
 destructor TDRLModules.Destroy;
 begin
   FreeAndNil( FActiveModules );
+  FreeAndNil( FOutdatedModules );
   FreeAndNil( FCoreModules );
   FreeAndNil( FModuleMap );
   FreeAndNil( FModules );

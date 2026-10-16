@@ -36,8 +36,8 @@ type TDRLTextIO = class( TDRLIO, ITextMap )
     procedure SetTarget( aTarget : TCoord2D; aColor : Byte; aRange : Byte ); override;
     procedure SetAutoTarget( aTarget : TCoord2D ); override;
 
-    procedure RunModuleChoice; override;
   protected
+    procedure RunLauncherLayer( aLayer : TIOLayer ); override;
     procedure ExplosionMark( aCoord : TCoord2D; aColor : Byte; aDuration : DWord; aDelay : DWord ); override;
     procedure DrawHud; override;
   protected
@@ -193,7 +193,7 @@ begin
   end;
 end;
 
-procedure TDRLTextIO.RunModuleChoice;
+procedure TDRLTextIO.RunLauncherLayer( aLayer : TIOLayer );
 var iRenderer : TIOConsoleRenderer;
 begin
   {$IFDEF WINDOWS}
@@ -202,7 +202,7 @@ begin
   iRenderer := TCursesConsoleRenderer.Create( 80, 25, [VIO_CON_BGCOLOR, VIO_CON_CURSOR] );
   {$ENDIF}
   inherited Initialize( iRenderer );
-  inherited RunModuleChoice;
+  inherited RunLauncherLayer( aLayer );
   inherited Initialize( nil );
   Reset;
 end;

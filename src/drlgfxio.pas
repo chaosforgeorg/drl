@@ -76,8 +76,8 @@ type
     procedure FadeReset; override;
     procedure FadeWait; override;
 
-    procedure RunModuleChoice; override;
  protected
+    procedure RunLauncherLayer( aLayer : TIOLayer ); override;
     procedure DrawHUD; override;
     function ReadDefaultFont : TBitmapFont;
     procedure ExplosionMark( aCoord : TCoord2D; aColor : Byte; aDuration : DWord; aDelay : DWord ); override;
@@ -1222,7 +1222,7 @@ begin
   );
 end;
 
-procedure TDRLGFXIO.RunModuleChoice;
+procedure TDRLGFXIO.RunLauncherLayer( aLayer : TIOLayer );
 var iRenderer : TGLConsoleRenderer;
     iTIGStyle : TTIGStyle;
 begin
@@ -1241,7 +1241,7 @@ begin
   DeviceChanged;
   iTIGStyle.Color[ VTIG_SELECTED_BACKGROUND_COLOR ] := DarkGray;
   VTIG_PushStyle( @iTIGStyle );
-  inherited RunModuleChoice;
+  inherited RunLauncherLayer( aLayer );
   VTIG_PopStyle;
   inherited Initialize( nil );
   Reset;

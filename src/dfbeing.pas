@@ -2109,6 +2109,8 @@ begin
     else begin
       CallHook( Hook_OnAttacked, [ iActive, aSource ] );
       FOverlayUntil := Max( FOverlayUntil, iLevel.Presentation.PainUntil( aDelay ) );
+      // Survivors report HP damage after resolution, with no continuation.
+      CallHook( Hook_OnDamageReceived, [ aDamage, aSource, iActive, Byte( aDamageType ) ] );
     end;
 end;
 

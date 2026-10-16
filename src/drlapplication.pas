@@ -41,7 +41,7 @@ type TDRLRuntime = class( TRLRuntime )
   protected
     function CreateIO : TIORL; override;
     function CreateLua : TLua; override;
-    procedure PrepareGameData; override;
+    function PrepareGameData : Boolean; override;
     procedure InitializeGameData; override;
     function RunGame : TVRunResult; override;
     procedure ShutdownGameData; override;
@@ -211,9 +211,9 @@ begin
   FSession.SetSessionHooks( FSessionHooks );
 end;
 
-// Phase order: select module and paths; create an initial session shell;
-// prepare IO/configuration, then non-Lua data owners.
-procedure TDRLRuntime.PrepareGameData;
+// Phase order: select module and paths; confirm outdated mods; create an
+// initial session shell; prepare IO/configuration, then non-Lua data owners.
+function TDRLRuntime.PrepareGameData : Boolean;
 var iModulePath : AnsiString;
 begin
   if ForceRestart <> '' then
@@ -241,6 +241,10 @@ begin
     CreateDir(iModulePath + 'backup');
 
   FModules.ActivateModules(CoreModuleID);
+  if ( FModules.OutdatedModules.Size > 0 )
+  and ( not TDRLIO(IO).RunModuleAPIWarning( FModules.OutdatedModules ) ) then
+    Exit( False );
+
   FData := TGameData.Create;
   CreateSession( False );
   TDRLIO(IO).Initialize;
@@ -275,6 +279,7 @@ begin
   TDRLIO(IO).Configure(Config, True);
   FSessionHooks := [];
   FHelp := THelp.Create;
+  Result := True;
 end;
 
 // Phase order: publish Lua; load hooks and module data; then prepare

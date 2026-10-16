@@ -81,8 +81,9 @@ const
   Hook_getLabel        = 67; // Perk
   Hook_getDescription  = 68; // Perk
   Hook_OnCreateLevel   = 69; // Module, Challenge
+  Hook_OnDamageReceived= 70; // Trait, Being, Perk
 
-  HookAmount           = 70;
+  HookAmount           = 71;
 
 const AllHooks      : TFlags = [ 0..HookAmount-1 ] - [ 40, 41 ];
 
@@ -112,7 +113,7 @@ const HookNames : array[ 0..HookAmount-1 ] of AnsiString = (
       'getGibMul',
       'OnUnequipCheck',
       'OnDrop', 'OnCanAct',
-      'getLabel', 'getDescription', 'OnCreateLevel'
+      'getLabel', 'getDescription', 'OnCreateLevel', 'OnDamageReceived'
       );
 
 function LoadHooks( aLua : TLua; const aTable : array of Const ) : TFlags;
@@ -162,7 +163,7 @@ initialization
 // Prototype masks; perks load their hooks independently.
 BeingHooks   := [ Hook_OnCreate, Hook_OnAction, Hook_OnAttacked, Hook_OnUseActive,
   Hook_OnDie, Hook_OnDieCheck, Hook_OnPickup, Hook_OnDamage, Hook_OnReceiveDamage,
-  Hook_OnAct, Hook_OnCanAct, Hook_OnEnterLevel ];
+  Hook_OnDamageReceived, Hook_OnAct, Hook_OnCanAct, Hook_OnEnterLevel ];
 FullInvHooks := [ Hook_OnPreAction, Hook_OnPostAction, Hook_OnTick ];
 NoInventoryHooks := [ Hook_OnPickup ];
 SessionHooks := [ Hook_OnCreateLevel,

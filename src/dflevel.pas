@@ -1047,7 +1047,10 @@ begin
           if (aData.ContentID <> 0) and isEmpty( iC, [ EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM ] ) then
           begin
             if (iDamage > 20) or ((efRandomContent in aData.Flags) and (FGameRNG.RLongInt( 2 ) = 1)) then
-              Cell[iC] := aData.ContentID;
+            begin
+              Cell[iC]      := aData.ContentID;
+              HitPoints[iC] := FData.Cells[ aData.ContentID ].HP;
+            end;
           end;
         end;
     if aData.ContentID <> 0 then RecalcFluids;
@@ -1105,6 +1108,9 @@ begin
   try
     for iTC in NewArea( iC, iSpread ) do
       SendShotGunBeam( aSource, iTC );
+
+    // A wide spread can overlap the firing tile.
+    LightFlag[ aSource, lfDamage ] := False;
 
     for iTC in FArea do
       if LightFlag[ iTC, lfDamage ] then
