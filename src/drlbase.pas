@@ -152,6 +152,7 @@ type TDRLSession = class(TVObject)
        property Level : TLevel read FLevel;
        property Player : TPlayer read FPlayer;
        property State : TDRLState read GetState;
+       property RunStatus : TRunStatus read FStatus;
        property Targeting : TTargeting read FTargeting;
        property GameSeed : Cardinal read FGameSeed;
        property SeededGame : Boolean read FSeededGame;

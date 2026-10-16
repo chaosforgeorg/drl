@@ -172,7 +172,10 @@ begin
     TDRLIO(IO).ClearAnimations;
   end;
   if TDRLIO(IO).Session = FSession then
+  begin
     TDRLIO(IO).Session := nil;
+    TDRLIO(IO).BindRunStatus( nil );
+  end;
   FreeAndNil(FSession);
 end;
 
@@ -204,6 +207,7 @@ procedure TDRLRuntime.CreateSession( aInitializeData : Boolean );
 begin
   FSession := TDRLSession.Create( Self, FModules, FStore, FData, Paths );
   TDRLIO(IO).Session := FSession;
+  TDRLIO(IO).BindRunStatus( FSession.RunStatus );
   if not aInitializeData then Exit;
   TDRLLua( FLua ).BindNodeContext( FSession.Context );
   FSession.InitializeLevel;

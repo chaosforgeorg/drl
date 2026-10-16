@@ -63,6 +63,8 @@ type TDRLIO = class( TIORL, IDRLPresentation )
   function CommandEventPending : Boolean;
 
   procedure SetHint( const aText : AnsiString );
+  // Animations and the level view follow the run state; nil without a Session.
+  procedure BindRunStatus( aStatus : TRunStatus );
 
   procedure Focus( aCoord: TCoord2D ); virtual;
   procedure FinishTargeting; virtual;
@@ -146,6 +148,7 @@ protected
   FModules     : TDRLModules;
   FStore       : TStoreInterface;
   FSession     : TDRLSession;
+  FRunStatus   : TRunStatus; // Borrowed from the Session, released with it.
 
   FHudEnabled  : Boolean;
   FTargeting   : Boolean;
@@ -180,6 +183,7 @@ public
   property Modules      : TDRLModules     read FModules write FModules;
   property Store        : TStoreInterface read FStore write FStore;
   property Session      : TDRLSession     read FSession write FSession;
+  property RunStatus    : TRunStatus      read FRunStatus;
 
   // Textmode only
   property TargetEnabled : Boolean        read FTargetEnabled write FTargetEnabled;
@@ -236,7 +240,7 @@ end;
 
 procedure TDRLIO.WaitForAnimation( aStrict : Boolean = True );
 begin
-  if ( FSession = nil ) or not ( FSession.State in [ DSPlaying, DSEnding ] ) then
+  if ( FRunStatus = nil ) or not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then
   begin
     if MsgPending then MsgUpdate;
     Exit;
@@ -616,7 +620,7 @@ end;
 function TDRLIO.ChooseTrait : Byte;
 begin
   RunLayer( TPlayerView.CreateTrait( FSession ), True );
-  if FSession.State <> DSPlaying then Exit( 255 );
+  if FRunStatus.State <> DSPlaying then Exit( 255 );
   Exit( TPlayerView.TraitPick );
 end;
 
@@ -1023,6 +1027,11 @@ begin
   end;
 end;
 
+procedure TDRLIO.BindRunStatus( aStatus : TRunStatus );
+begin
+  FRunStatus := aStatus;
+end;
+
 procedure TDRLIO.SetHint ( const aText : AnsiString ) ;
 begin
   FHint       := aText;
@@ -1092,7 +1101,7 @@ end;
 function TDRLIO.GetHeartbeatVolume : Integer;
 var iPlayer : TBeing;
 begin
-  if ( FSession = nil ) or ( FSession.State <> DSPlaying ) then Exit( 0 );
+  if ( FRunStatus = nil ) or ( FRunStatus.State <> DSPlaying ) then Exit( 0 );
   iPlayer := FSession.Player;
   if ( iPlayer = nil ) or iPlayer.Dying or ( iPlayer.HP * 2 >= iPlayer.HPMax ) then Exit( 0 );
   Result := Round( 200.0 * ( iPlayer.HPMax - 2 * iPlayer.HP ) / Max( iPlayer.HPMax - 2, 1 ) );
@@ -1107,7 +1116,7 @@ begin
     FStore.Update;
 
   if ControllerActionHeld( CONTROLLER_MODIFIER_ALT )
-    and (FSession <> nil) and ( FSession.State = DSPlaying )
+    and ( FRunStatus <> nil ) and ( FRunStatus.State = DSPlaying )
     and (FTargeting or ( not isModal)) and ( FLastTarget <> FSession.Targeting.List.Current ) then
     begin
       FLastTarget := FSession.Targeting.List.Current;
@@ -1290,7 +1299,7 @@ function lua_ui_plot_screen(L: Plua_State): Integer; cdecl;
 var iState : TLuaGameStack;
 begin
   iState.Init(L);
-  if ( IO.Session <> nil ) and ( IO.Session.State = DSFinished ) then
+  if ( IO.RunStatus <> nil ) and ( IO.RunStatus.State = DSFinished ) then
     IO.FadeLevel( 1.0 );
   IO.RunLayer( TPlotView.Create( iState.ToString(1), iState.ToIOColor(2), iState.ToString(3,'') ), True );
   Result := 0;
