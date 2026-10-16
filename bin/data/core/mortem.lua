@@ -310,3 +310,19 @@ function mortem.append_messages( lines )
 		if msg then table.insert( lines, " ".. msg ) end
 	end
 end
+
+function mortem.append_mods( lines, header )
+	local mods = {}
+	for _, module in ipairs( core.modules ) do
+		if not module.base then
+			table.insert( mods, "  "..( module.name or module.id ) )
+		end
+	end
+	if #mods == 0 then return end
+	table.insert( lines, header )
+	table.insert( lines, "" )
+	for _, mod in ipairs( mods ) do
+		table.insert( lines, mod )
+	end
+	table.insert( lines, "" )
+end

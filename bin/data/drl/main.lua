@@ -596,6 +596,7 @@ function drl.GenerateMemorial()
 		end
 		table.insert( lines, "" )
 	end
+	mortem.append_mods( lines, "{r-- {yMods} ------------------------------------------------------} " )
 	table.insert( lines, "{r--------------------------------------------------------------} " )
 	return table.concat( lines, "\n" ) .. "\n"
 end

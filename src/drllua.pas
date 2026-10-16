@@ -223,6 +223,27 @@ var iProgBase    : DWord;
     Log( LOGINFO, 'EXPECTED ENGINE VERSION: '+VersionEngineExpected );
     Log( LOGINFO, 'BASE MODULE VERSION: '+VersionModule );
   end;
+  procedure RegisterActiveModules;
+  var iIndex : Integer;
+  begin
+    lua_getglobal( Raw, 'core' );
+    lua_createtable( Raw, FModules.ActiveModules.Size, 0 );
+    iIndex := 0;
+    for iModule in FModules.ActiveModules do
+    begin
+      Inc( iIndex );
+      lua_createtable( Raw, 0, 3 );
+      lua_pushstring( Raw, PChar( iModule.ID ) );
+      lua_setfield( Raw, -2, 'id' );
+      lua_pushstring( Raw, PChar( iModule.Name ) );
+      lua_setfield( Raw, -2, 'name' );
+      lua_pushboolean( Raw, iModule.IsBaseLoading );
+      lua_setfield( Raw, -2, 'base' );
+      lua_rawseti( Raw, -2, iIndex );
+    end;
+    lua_setfield( Raw, -2, 'modules' );
+    lua_pop( Raw, 1 );
+  end;
 
 begin
   VersionEngine         := '';
@@ -234,6 +255,7 @@ begin
   IO.LoadStart;
   iProgBase := IO.LoadCurrent;
   IO.LoadProgress(iProgBase);
+  RegisterActiveModules;
 
   for iModule in FModules.ActiveModules do
   begin
