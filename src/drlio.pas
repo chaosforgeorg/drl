@@ -127,10 +127,14 @@ type TDRLIO = class( TIORL )
   procedure SetTarget( aTarget : TCoord2D; aColor : Byte; aRange : Byte ); virtual; abstract;
   procedure SetAutoTarget( aTarget : TCoord2D ); virtual;
   function ResolveSub( const aID : Ansistring ) : Ansistring;
-  procedure RunModuleChoice; virtual;
+  procedure RunModuleChoice;
+  // Returns True when the player chooses to continue with outdated mods.
+  function RunModuleAPIWarning( aModules : TModuleList ) : Boolean;
 private
   function GetHeartbeatVolume : Integer;
 protected
+  // Runs a modal launch-time layer before IO is initialized.
+  procedure RunLauncherLayer( aLayer : TIOLayer ); virtual;
   procedure UpdateStyles;
   procedure ExplosionMark( aCoord : TCoord2D; aColor : Byte; aDuration : DWord; aDelay : DWord ); virtual; abstract;
   procedure DrawHud; virtual;
@@ -1503,9 +1507,19 @@ const lua_ui_lib : array[0..20] of luaL_Reg = (
       ( name : nil;          func : nil; )
 );
 
+procedure TDRLIO.RunLauncherLayer( aLayer : TIOLayer );
+begin
+  RunLayer( aLayer, True );
+end;
+
 procedure TDRLIO.RunModuleChoice;
 begin
-  RunLayer( TModuleChoiceView.Create, True );
+  RunLauncherLayer( TModuleChoiceView.Create );
+end;
+
+function TDRLIO.RunModuleAPIWarning( aModules : TModuleList ) : Boolean;
+begin
+  RunLauncherLayer( TModuleAPIWarningView.Create( aModules, @Result ) );
 end;
 
 class procedure TDRLIO.RegisterLuaAPI( State : TLuaStack );

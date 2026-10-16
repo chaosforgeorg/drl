@@ -23,7 +23,8 @@ begin
   Writeln( iMeta, 'meta = {' );
   Writeln( iMeta, '  id            = "' + aModule.ID + '",');
   Writeln( iMeta, '  name          = "' + aModule.Name + '",');
-  Writeln( iMeta, '  base_version  = "' + aModule.BaseVersion + '",');
+  if aModule.APIVersion <> '' then
+    Writeln( iMeta, '  api_version   = "' + aModule.APIVersion + '",');
   Writeln( iMeta, '  base_required = "' + aModule.BaseRequired + '",');
   Writeln( iMeta, '  workshop_id   = "' + aModule.WorkshopID + '",');
   Writeln( iMeta, '  load_priority = ' + IntToStr( aModule.LoadPriority )+ ',');

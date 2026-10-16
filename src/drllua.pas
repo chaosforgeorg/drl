@@ -255,19 +255,12 @@ begin
   IO.LoadStart;
   iProgBase := IO.LoadCurrent;
   IO.LoadProgress(iProgBase);
+  SetValue( 'VERSION_MODULE_API', FModules.APIVersion );
   RegisterActiveModules;
 
   for iModule in FModules.ActiveModules do
   begin
     iData := nil;
-
-    if ( not iModule.IsBase ) and ( iModule.BaseVersion <> '' ) then
-      if iModule.BaseVersion <> VersionModuleSave then
-      begin
-        aModErrors.Push('Error   : Mod "'+iModule.ID+'" version mismatch!');
-        aModErrors.Push('Expects : '+iModule.BaseVersion);
-        aModErrors.Push('');
-      end;
 
     if iModule.Path.EndsWith( '.wad' ) then
     begin
