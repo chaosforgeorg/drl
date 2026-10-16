@@ -209,8 +209,8 @@ begin
     SetMinimapScale( FMiniScale );
 
   SpriteMap.Recalculate;
-  if ( FSession <> nil ) and ( FSession.Player <> nil ) then
-    SpriteMap.NewShift := SpriteMap.ShiftValue( FSession.Player.Position );
+  if Player <> nil then
+    SpriteMap.NewShift := SpriteMap.ShiftValue( Player.Position );
 
   if FFontMult <> iOldFontMult then
   begin
@@ -474,14 +474,14 @@ begin
           then Animations.Delete( iCount )
           else Inc( iCount );
       until iCount >= Animations.Size;
-  FAnimations.AddAnimation( TGFXMoveAnimation.Create( TLevel( FLevel ), aDuration, aDelay, aUID, aFrom, aTo, aSprite, aBeing, 0.0, aFinishBeforeNext ),
+  FAnimations.AddAnimation( TGFXMoveAnimation.Create( Level, aDuration, aDelay, aUID, aFrom, aTo, aSprite, aBeing, 0.0, aFinishBeforeNext ),
     Setting_AnimationBlending and aBeing and ( not aWipeBump ) );
 end;
 
 procedure TDRLGFXIO.addBumpAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aAmount : Single );
 begin
   if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
-  FAnimations.AddAnimation( TGFXBumpAnimation.Create( TLevel( FLevel ), aDuration, aDelay, aUID,
+  FAnimations.AddAnimation( TGFXBumpAnimation.Create( Level, aDuration, aDelay, aUID,
     aFrom, aTo, aSprite, True, aAmount ), Setting_AnimationBlending );
 end;
 
@@ -508,7 +508,7 @@ end;
 procedure TDRLGFXIO.addCellAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aValue : Integer );
 begin
   if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
-  FAnimations.addAnimation( TGFXCellAnimation.Create( TLevel( FLevel ), aDuration, aDelay, aCoord, aSprite, aValue ) );
+  FAnimations.addAnimation( TGFXCellAnimation.Create( Level, aDuration, aDelay, aCoord, aSprite, aValue ) );
 end;
 
 procedure TDRLGFXIO.addItemAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aValue : Integer );
@@ -521,7 +521,7 @@ procedure TDRLGFXIO.addKillAnimation( aDuration : DWord; aDelay : DWord; aUID : 
 begin
   if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
   if SF_PAINANIM in aSprite.Flags then
-    FAnimations.addAnimation( TGFXKillAnimation.Create( TLevel( FLevel ), aDuration, aDelay, aUID, aReverse ) );
+    FAnimations.addAnimation( TGFXKillAnimation.Create( Level, aDuration, aDelay, aUID, aReverse ) );
 end;
 
 
@@ -531,7 +531,7 @@ procedure TDRLGFXIO.addMissileAnimation(aDuration: DWord; aDelay: DWord; aSource
 begin
   if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
   FAnimations.addAnimation(
-    TGFXMissileAnimation.Create( TLevel( FLevel ), aDuration, aDelay, aSource,
+    TGFXMissileAnimation.Create( Level, aDuration, aDelay, aSource,
       aTarget, aDrawDelay, aSprite, aRay, aTrailNID ) );
 end;
 
@@ -556,7 +556,7 @@ begin
   if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
   if ( aEmitterID = 0 ) or ( aCount = 0 ) then Exit;
   FAnimations.AddAnimation( TGFXParticleBurstAnimation.Create(
-    TLevel( FLevel ).Particles, aDelay, aEmitterID, aPosition, aDirection, aCount, aDistanceScale, aSpreadScale ) );
+    Level.Particles, aDelay, aEmitterID, aPosition, aDirection, aCount, aDistanceScale, aSpreadScale ) );
 end;
 
 procedure TDRLGFXIO.addSoundAnimation(aDelay: DWord; aPosition: TCoord2D; aSoundID: DWord);
@@ -588,7 +588,7 @@ end;
 
 procedure TDRLGFXIO.SetTarget( aTarget : TCoord2D; aColor : Byte; aRange : Byte );
 begin
-  SpriteMap.SetTarget( aTarget, NewColor( aColor ), FSession.Player )
+  SpriteMap.SetTarget( aTarget, NewColor( aColor ), Player )
 end;
 
 procedure TDRLGFXIO.SetAutoTarget( aTarget : TCoord2D );
@@ -603,7 +603,7 @@ var iLevel  : TLevel;
       iFinalize : Boolean;
   begin
     iFinalize := False;
-    iRay.Init( aT, FSession.Player.Position );
+    iRay.Init( aT, Player.Position );
     repeat
       iRay.Next;
       if iRay.Done or ( not iLevel.isProperCoord( iRay.Current ) ) then Break;
@@ -630,7 +630,7 @@ var iLevel  : TLevel;
   var iTargetLine : TAssistedRay;
       iCurrent    : TCoord2D;
   begin
-    iTargetLine.Init( iLevel, FSession.Player.Position, aTarget, Distance( FSession.Player.Position, aTarget ), FSession.Player.Vision, FSession.Player.GetVisionMap );
+    iTargetLine.Init( iLevel, Player.Position, aTarget, Distance( Player.Position, aTarget ), Player.Vision, Player.GetVisionMap );
     repeat
       iTargetLine.Next;
       iCurrent := iTargetLine.Current;
@@ -650,13 +650,13 @@ var iLevel  : TLevel;
 
 begin
   inherited SetAutoTarget( aTarget );
-  SpriteMap.SetAutoTarget( FSession.Player.Position, aTarget );
+  SpriteMap.SetAutoTarget( Player.Position, aTarget );
 
   if ( FRunStatus.State <> DSPlaying ) then Exit;
-  iLevel := Session.Level;
+  iLevel := Level;
   if ( iLevel = nil )              then Exit;
   iLevel.Markers.Wipe(0);
-  if ( aTarget = FSession.Player.Position ) or ( not iLevel.isProperCoord( aTarget ) ) then Exit;
+  if ( aTarget = Player.Position ) or ( not iLevel.isProperCoord( aTarget ) ) then Exit;
   FillChar( iSprite, SizeOf( iSprite ), 0 );
   iSprite.SpriteID[0] := HARDSPRITE_SHIELD;
   iSprite.Frames      := HARDSPRITE_SHIELD_COUNT;
@@ -669,7 +669,7 @@ begin
       iFirst := List.Current;
       repeat
         iCoord := List.Next;
-        if ( iCoord <> FSession.Player.Position ) and ( iCoord <> aTarget ) then
+        if ( iCoord <> Player.Position ) and ( iCoord <> aTarget ) then
           Trace( iCoord, False );
       until iCoord = iFirst;
       Trace( aTarget, True );
@@ -683,14 +683,14 @@ const RangeX = 9;
       RangeY = 7;
 begin
   inherited Focus( aCoord );
-  if FTargeting and (not FMCursor.Active) and ( aCoord <> FSession.Player.Position ) then
+  if FTargeting and (not FMCursor.Active) and ( aCoord <> Player.Position ) then
   begin
-    iDiff := aCoord - FSession.Player.Position;
+    iDiff := aCoord - Player.Position;
     if iDiff.X > RangeX then iDiff.X -= RangeX else if iDiff.X < -RangeX then iDiff.X += RangeX else iDiff.X := 0;
     if iDiff.Y > RangeY then iDiff.Y -= RangeY else if iDiff.Y < -RangeY then iDiff.Y += RangeY else iDiff.Y := 0;
     if ( iDiff.X <> 0 ) or ( iDiff.Y <> 0 ) then
     begin
-      SpriteMap.NewShift := SpriteMap.ShiftValue( FSession.Player.Position + iDiff );
+      SpriteMap.NewShift := SpriteMap.ShiftValue( Player.Position + iDiff );
     end;
   end;
 end;
@@ -706,7 +706,7 @@ end;
 procedure TDRLGFXIO.FinishTargeting;
 begin
   inherited FinishTargeting;
-  SpriteMap.NewShift := SpriteMap.ShiftValue( FSession.Player.Position );
+  SpriteMap.NewShift := SpriteMap.ShiftValue( Player.Position );
 end;
 
 function TDRLGFXIO.GetPadLDir     : TCoord2D;
@@ -829,13 +829,13 @@ begin
   if (not isModal) and (( FGPRight.X <> 0.0 ) or (FGPRight.Y <> 0.0 )) then
   begin
     FGPCamera := Minf( FGPCamera + aMSec * 0.005, Maxf( Abs(FGPRight.X), Abs(FGPRight.Y) ) );
-    iActive := SpriteMap.ShiftValue( FSession.Player.Position );
+    iActive := SpriteMap.ShiftValue( Player.Position );
     iMax    := Vec2i( FIODriver.GetSizeX div 2, FIODriver.GetSizeX div 2 );
     SpriteMap.NewShift := Clamp( iActive + Round(FGPRight * Vec2f(iMax).Scaled(FGPCamera)) , SpriteMap.MinShift, SpriteMap.MaxShift );
   end
   else if FGPCamera > 0.0 then
   begin
-    SpriteMap.NewShift := SpriteMap.ShiftValue( FSession.Player.Position );
+    SpriteMap.NewShift := SpriteMap.ShiftValue( Player.Position );
     FGPCamera := 0.0;
   end;
   }
@@ -851,7 +851,7 @@ begin
       then SpriteMap.Marker := SpriteMap.Target + FGPLeftDir
       else if ControllerActionHeld( CONTROLLER_MODIFIER_ALT )
         then SpriteMap.Marker := Session.Targeting.List.Current + FGPLeftDir
-        else SpriteMap.Marker := FSession.Player.Position + FGPLeftDir;
+        else SpriteMap.Marker := Player.Position + FGPLeftDir;
   end
   else
     SpriteMap.Marker := NewCoord2D(-1,-1);
@@ -874,10 +874,10 @@ begin
   begin
     if FTIGConsoleView = nil then
        FConsole.HideCursor;
-    //if not UI.AnimationsRunning then SpriteMap.NewShift := SpriteMap.ShiftValue( FSession.Player.Position );
+    //if not UI.AnimationsRunning then SpriteMap.NewShift := SpriteMap.ShiftValue( Player.Position );
 
-    SpriteMap.Update( aMSec, FProjection, FSession.Player.Flags[ BF_DARKNESS ] );
-    TLevel( FLevel ).Particles.Update( aMSec * 0.001 );
+    SpriteMap.Update( aMSec, FProjection, Player.Flags[ BF_DARKNESS ] );
+    Level.Particles.Update( aMSec * 0.001 );
     FParticleEngine.Render( SpriteMap.Engine );
     FAnimations.Draw;
     glEnable( GL_DEPTH_TEST );
@@ -913,8 +913,8 @@ begin
     begin
       iBloodValue := 0;
 
-      if FSession.Player.HP < (FSession.Player.HPMax div 3) then
-        iBloodValue += ( 0.8 - ( FSession.Player.HP / (FSession.Player.HPMax div 2) ) ) + Sin( (FTime / 1000)*5 ) * 0.2;
+      if Player.HP < (Player.HPMax div 3) then
+        iBloodValue += ( 0.8 - ( Player.HP / (Player.HPMax div 2) ) ) + Sin( (FTime / 1000)*5 ) * 0.2;
 
       if iBloodValue > 0.0 then
         iBloodTarget := Maxf( iBloodValue, FBloodValueTarget );
@@ -977,8 +977,8 @@ begin
   SetMinimapScale(FMiniScale);
   DeviceChanged;
   SpriteMap.Recalculate;
-  if ( FSession <> nil ) and ( FSession.Player <> nil ) then
-    SpriteMap.NewShift := SpriteMap.ShiftValue( FSession.Player.Position );
+  if Player <> nil then
+    SpriteMap.NewShift := SpriteMap.ShiftValue( Player.Position );
 end;
 
 function TDRLGFXIO.FullScreenCallback ( aEvent : TIOEvent ) : Boolean;
@@ -1072,42 +1072,42 @@ var i       : Byte;
     iPoint  : vutil.TPoint;
     iCoord  : TCoord2D;
 begin
-  if (FSession.Player <> nil) and (Session.Level <> nil) and (not isModal)
+  if ( Player <> nil ) and ( Level <> nil ) and (not isModal)
     and (FMCursor <> nil) and FMCursor.Active and FIODriver.GetMousePos( iPoint )
     and AnimationsBlockingFinished then
   begin
     iCoord := SpriteMap.DevicePointToCoord( iPoint );
-    if Session.Level.isProperCoord( iCoord ) then
-      if Session.Level.isVisible(iCoord) and ( Session.Level.Being[ iCoord ] <> nil )
+    if Level.isProperCoord( iCoord ) then
+      if Level.isVisible(iCoord) and ( Level.Being[ iCoord ] <> nil )
         then
         begin
-          FHintOverlay := FSession.Level.GetTargetDescription( FSession.Player, iCoord );
-          FHintStatus  := Session.Level.Being[ iCoord ].GetPerkSummary;
+          FHintOverlay := Level.GetTargetDescription( Player, iCoord );
+          FHintStatus  := Level.Being[ iCoord ].GetPerkSummary;
         end
         else
         begin
-          FHintOverlay := Session.Level.GetLookDescription(iCoord);
+          FHintOverlay := Level.GetLookDescription(iCoord);
           FHintStatus  := '';
         end;
   end;
 
   inherited DrawHUD;
-  if FSession.Player = nil then Exit;
+  if Player = nil then Exit;
 
   if IsGamepad and ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
     and ( not isModal ) then
   begin
     iPosY := 4;
     iPosX := 2;
-    if FSession.Player.Position.X < 20 then
+    if Player.Position.X < 20 then
       iPosX := 40;
     for i := 1 to 4 do
     begin
       iItem := nil;
-      with FSession.Player.FQuickSlots[ i ] do
+      with Player.FQuickSlots[ i ] do
       begin
              if UID <> 0 then iItem := Session.UIDs[ UID ] as TItem
-        else if ID <> '' then iItem := FSession.Player.Inv.Find( ID );
+        else if ID <> '' then iItem := Player.Inv.Find( ID );
       end;
       if iItem <> nil then
       begin
@@ -1144,7 +1144,7 @@ end;
 procedure TDRLGFXIO.UpdateMinimap;
 begin
   if ( FRunStatus <> nil ) and ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then
-    FMinimap.Redraw( TLevel( FLevel ) );
+    FMinimap.Redraw( Level );
 end;
 
 procedure TDRLGFXIO.SetMinimapScale ( aScale : Byte ) ;

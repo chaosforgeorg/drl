@@ -150,8 +150,8 @@ procedure TDRLTextIO.addMissileAnimation(aDuration: DWord; aDelay: DWord; aSourc
 begin
   if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
   if aRay
-    then FTextMap.AddAnimation( TTextRayAnimation.Create( Session.Level, aSource, aTarget, IOGylph( aPic, aColor ), aDuration, aDelay, FSession.Player.Vision ) )
-    else FTextMap.AddAnimation( TTextBulletAnimation.Create( Session.Level, aSource, aTarget, IOGylph( aPic, aColor ), aDuration, aDelay, FSession.Player.Vision ) );
+    then FTextMap.AddAnimation( TTextRayAnimation.Create( Level, aSource, aTarget, IOGylph( aPic, aColor ), aDuration, aDelay, Player.Vision ) )
+    else FTextMap.AddAnimation( TTextBulletAnimation.Create( Level, aSource, aTarget, IOGylph( aPic, aColor ), aDuration, aDelay, Player.Vision ) );
 end;
 
 procedure TDRLTextIO.addMarkAnimation(aDuration: DWord; aDelay: DWord;
@@ -232,12 +232,12 @@ begin
 
   if FTargetEnabled then
   begin
-    iLevel := Session.Level;
-    if ( FSession.Player.Position <> FTarget ) then
+    iLevel := Level;
+    if ( Player.Position <> FTarget ) then
     begin
       iColor := Green;
-      iTargetRange := Distance( FSession.Player.Position, FTarget );
-      iTargetLine.Init( iLevel, FSession.Player.Position, FTarget, iTargetRange, FSession.Player.Vision, FSession.Player.GetVisionMap );
+      iTargetRange := Distance( Player.Position, FTarget );
+      iTargetLine.Init( iLevel, Player.Position, FTarget, iTargetRange, Player.Vision, Player.GetVisionMap );
       repeat
         iTargetLine.Next;
         iCurrent := iTargetLine.Current;
@@ -274,7 +274,7 @@ var iLevel : TLevel;
         COLOR_LAVA  : if iAlternate then aAtr := YELLOW   else aAtr := RED;
         COLOR_BLOOD : if iAlternate then aAtr := LIGHTRED else aAtr := RED;
         COLOR_MUD   : if iAlternate then aAtr := YELLOW   else aAtr := BROWN;
-        MULTIPORTAL : case (( FSession.Player.Statistics.GameTime div 10 ) mod 3) of
+        MULTIPORTAL : case (( Player.Statistics.GameTime div 10 ) mod 3) of
                         0 : aAtr := LIGHTMAGENTA;
                         1 : aAtr := MAGENTA;
                         2 : aAtr := WHITE;
@@ -308,7 +308,7 @@ var iColor    : TIOColor;
     iItem     : TItem;
     iBeing    : TBeing;
 begin
-  iLevel   := TLevel( FLevel );
+  iLevel   := Level;
   iBeing   := iLevel.Being[ aCoord ];
 
   if iLevel.BeingVisible( aCoord, iBeing ) or iLevel.BeingExplored( aCoord, iBeing) then

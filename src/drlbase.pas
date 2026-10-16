@@ -373,11 +373,13 @@ procedure TDRLSession.SetPlayer( aPlayer : TPlayer );
 begin
   FPlayer := aPlayer;
   FLevel.BindPlayer( FPlayer );
+  IO.SetPlayer( FPlayer );
 end;
 
 procedure TDRLSession.ReleasePlayer;
 begin
   if FLevel <> nil then FLevel.BindPlayer( nil );
+  IO.SetPlayer( nil );
   FreeAndNil( FPlayer );
 end;
 
