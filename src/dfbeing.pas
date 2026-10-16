@@ -2115,6 +2115,8 @@ begin
       CallHook( Hook_OnAttacked, [ iActive, aSource ] );
       // TODO: handle Delay?
       IO.ShowPain( Self, aDelay );
+      // Survivors report HP damage after resolution, with no continuation.
+      CallHook( Hook_OnDamageReceived, [ aDamage, aSource, iActive, Byte( aDamageType ) ] );
     end;
 end;
 

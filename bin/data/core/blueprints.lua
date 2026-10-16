@@ -63,6 +63,7 @@ core.register_blueprint "trait"
 	OnFired         = { false, core.TFUNC },
 	OnDamage        = { false, core.TFUNC },
 	OnReceiveDamage = { false, core.TFUNC },
+	OnDamageReceived= { false, core.TFUNC }, -- HP lost, source, attacker, damage type
 	OnEnterLevel    = { false, core.TFUNC },
 	OnCanDualWield  = { false, core.TFUNC },
 	OnCanMaxDamage  = { false, core.TFUNC },
@@ -235,6 +236,7 @@ core.register_blueprint "perk"
 	OnDieCheck     = { false, core.TFUNC }, -- Being, Item
 	OnCanMaxDamage = { false, core.TFUNC }, -- Being, Item
 	OnReceiveDamage= { false, core.TFUNC }, -- Being, Item
+	OnDamageReceived = { false, core.TFUNC }, -- Being, Item: HP lost, source, attacker, damage type
 	OnUnequipCheck = { false, core.TFUNC }, -- Item
 	OnEquip        = { false, core.TFUNC }, -- Item
 	OnUnequip      = { false, core.TFUNC }, -- Item
@@ -313,6 +315,7 @@ core.register_blueprint "being"
 	OnAct           = { false, core.TFUNC },
 	OnCanAct        = { false, core.TFUNC },
 	OnReceiveDamage = { false, core.TFUNC },
+	OnDamageReceived= { false, core.TFUNC }, -- HP lost, source, attacker, damage type
 }
 
 core.register_blueprint "being_group_entry"
