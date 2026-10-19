@@ -208,6 +208,7 @@ core.register_blueprint "perk"
 	OnPickup       = { false, core.TFUNC }, -- Being, Item
 	OnDrop         = { false, core.TFUNC }, -- Item
 	OnAct          = { false, core.TFUNC }, -- Being, Item
+	OnCanAct       = { false, core.TFUNC }, -- Being
 	OnDestroy      = { false, core.TFUNC }, -- Item
 	OnPickupCheck  = { false, core.TFUNC }, -- Being, Item
 	OnUse          = { false, core.TFUNC }, -- Item
@@ -295,6 +296,7 @@ core.register_blueprint "being"
 	is_group    = false,
 	properties  = { false, core.TTABLE },
 	perks       = { false, core.TARRAY( core.TSTRING ) },
+	runtime     = { false, core.TTABLE },
 	resist      = { false, core.TTABLE },
 
 	desc            = { true,  core.TSTRING },
@@ -304,18 +306,9 @@ core.register_blueprint "being"
 	weapon = { false, core.TANY },
 
 	OnCreate        = { false, core.TFUNC },
-	OnEnterLevel    = { false, core.TFUNC }, -- Player
 	OnAction        = { false, core.TFUNC },
 	OnAttacked      = { false, core.TFUNC },
-	OnDie           = { false, core.TFUNC },
-	OnDieCheck      = { false, core.TFUNC },
-	OnPickup        = { false, core.TFUNC },
 	OnUseActive     = { false, core.TFUNC },
-	OnDamage        = { false, core.TFUNC },
-	OnAct           = { false, core.TFUNC },
-	OnCanAct        = { false, core.TFUNC },
-	OnReceiveDamage = { false, core.TFUNC },
-	OnDamageReceived= { false, core.TFUNC }, -- HP lost, source, attacker, damage type
 }
 
 core.register_blueprint "being_group_entry"

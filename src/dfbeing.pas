@@ -517,8 +517,6 @@ end;
 function TBeing.GetBonus( aHook : Byte; const aParams : array of Const ) : Integer;
 begin
   GetBonus := inherited GetBonus( aHook, aParams );
-  if aHook in FHooks then
-    GetBonus += FContext.Lua.ProtectedRunHook( Self, HookNames[ aHook ], aParams );
   if FInv <> nil then
     GetBonus += FInv.GetBonus( aHook, aParams );
 end;
@@ -526,8 +524,6 @@ end;
 function TBeing.GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single;
 begin
   GetBonusMul := inherited GetBonusMul( aHook, aParams );
-  if aHook in FHooks then
-    GetBonusMul *= FContext.Lua.ProtectedRunHook( Self, HookNames[ aHook ], aParams );
   if FInv <> nil then
     GetBonusMul *= FInv.GetBonusMul( aHook, aParams );
 end;

@@ -384,6 +384,13 @@ local function add_properties( self, properties )
 end
 
 register_being         = core.register_storage( "beings", "being", function( bp )
+		local runtime_id
+		if bp.runtime and next( bp.runtime ) then
+			runtime_id = "perk_being_"..bp.id
+			register_perk( runtime_id )( bp.runtime )
+			bp.runtime = runtime_id
+		end
+
 		bp.name_plural = bp.name_plural or bp.name.."s"
 		bp.tags        = table.toset( bp.tags )
 
@@ -468,6 +475,8 @@ register_being         = core.register_storage( "beings", "being", function( bp 
 			-- Explicit parent constructors must not reapply defaults or perks.
 			if self.__proto == bp then
 				add_properties( self, bp.properties )
+				-- Runtime hooks precede other perks, as prototype hooks did.
+				if runtime_id then self:add_perk( runtime_id ) end
 				add_perks( self, bp.perks )
 			end
 		end
