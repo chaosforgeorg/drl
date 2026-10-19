@@ -178,8 +178,8 @@ begin
   FTarget        := aTarget;
   FTargetRange   := aRange;
   if FLayers.IsEmpty then
-    IO.Console.ShowCursor;
-  IO.Console.MoveCursor( aTarget.x+1, aTarget.y+2 );
+    FConsole.ShowCursor;
+  FConsole.MoveCursor( aTarget.x+1, aTarget.y+2 );
 end;
 
 procedure TDRLTextIO.SetAutoTarget( aTarget : TCoord2D );
@@ -188,8 +188,8 @@ begin
   if not FTargetEnabled then
   begin
     if FLayers.IsEmpty then
-      IO.Console.ShowCursor;
-    IO.Console.MoveCursor( aTarget.x+1, aTarget.y+2 );
+      FConsole.ShowCursor;
+    FConsole.MoveCursor( aTarget.x+1, aTarget.y+2 );
   end;
 end;
 
@@ -218,7 +218,7 @@ var iColor      : TIOColor;
   var iPos        : TIOPoint;
   begin
     iPos := Point( aCoord.x + 1, aCoord.y + 2 );
-    if aChar = ' ' then aChar := IO.Console.GetChar( iPos.X, iPos.Y );
+    if aChar = ' ' then aChar := FConsole.GetChar( iPos.X, iPos.Y );
     iPos := Point( iPos.X - 1, iPos.Y - 1 );
     if StatusEffect = StatusInvert
        then VTIG_FreeChar( aChar, iPos, Black, LightGray )

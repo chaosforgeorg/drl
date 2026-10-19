@@ -571,7 +571,7 @@ begin
   if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
   if (not Setting_GamepadRumble) or (not IsGamepad ) then Exit;
   if aDelay = 0
-    then IO.Driver.Rumble( aLow, aHigh, aDuration )
+    then FIODriver.Rumble( aLow, aHigh, aDuration )
     else FAnimations.addAnimation( TRumbleEventAnimation.Create( aDelay, aLow, aHigh, aDuration ) );
 end;
 
@@ -761,9 +761,9 @@ var iTime : DWord;
 begin
   if FFadeDirection < 0 then
   begin
-    iTime := IO.Driver.GetMs;
-    while ( FFadeAlpha > 0.0 ) and ( IO.Driver.GetMs - iTime < 3000 ) do
-      IO.Delay(5);
+    iTime := FIODriver.GetMs;
+    while ( FFadeAlpha > 0.0 ) and ( FIODriver.GetMs - iTime < 3000 ) do
+      Delay(5);
   end;
 end;
 
@@ -1202,14 +1202,14 @@ begin
 
   if (iImage.RawX / iImage.RawY) > (iSize.X / iSize.Y) then
   begin
-    iSz.X  := iImage.RawX * (IO.Driver.GetSizeY / iImage.RawY);
-    iMin.X := ( IO.Driver.GetSizeX - iSz.X ) / 2;
+    iSz.X  := iImage.RawX * (FIODriver.GetSizeY / iImage.RawY);
+    iMin.X := ( FIODriver.GetSizeX - iSz.X ) / 2;
     iMax.X := iMin.X + iSz.X;
   end
   else
   begin
-    iSz.Y  := iImage.RawY * (IO.Driver.GetSizeX / iImage.RawX);
-    iMin.Y := ( IO.Driver.GetSizeY - iSz.Y ) / 2;
+    iSz.Y  := iImage.RawY * (FIODriver.GetSizeX / iImage.RawX);
+    iMin.Y := ( FIODriver.GetSizeY - iSz.Y ) / 2;
     iMax.Y := iMin.Y + iSz.Y;
   end;
 

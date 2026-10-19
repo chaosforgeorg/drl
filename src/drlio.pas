@@ -330,7 +330,7 @@ end;
 procedure TDRLIO.addRumbleAnimation( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord );
 begin
   if (not Setting_GamepadRumble) or (not IsGamepad ) then Exit;
-    IO.Driver.Rumble( aLow, aHigh, aDuration );
+    FIODriver.Rumble( aLow, aHigh, aDuration );
 end;
 
 procedure TDRLIO.Explosion( aDelay : Integer; aWhere: TCoord2D; aData : TExplosionData );
@@ -345,9 +345,9 @@ begin
 
   if aData.SoundID <> '' then
   begin
-    iSound := IO.Audio.ResolveSoundID([aData.SoundID+'.explode',aData.SoundID,'explode']);
+    iSound := FAudio.ResolveSoundID([aData.SoundID+'.explode',aData.SoundID,'explode']);
     if iSound <> 0 then
-      IO.addSoundAnimation( aDelay, aWhere, iSound );
+      addSoundAnimation( aDelay, aWhere, iSound );
   end;
 
   if aData.Range > 0 then
@@ -382,7 +382,7 @@ begin
   end;
 
   if not iVisible then if aData.Range > 3 then
-    IO.Msg( 'You hear an explosion!' );
+    Msg( 'You hear an explosion!' );
 end;
 
 procedure TDRLIO.PulseBlood( aValue : Single );
@@ -417,7 +417,7 @@ begin
   t := 1;
   repeat
     Inc(t);
-    IO.Delay(DelayTime);
+    Delay(DelayTime);
     for cn := 1 to 80 do MoveColumn(cn);
   until t = 25;
   for vx := 1 to 80 do for vy := 1 to 25 do VideoBuf^[(vx-1)+(vy-1)*ScreenSizeX] := NewScreen[vy,vx];
