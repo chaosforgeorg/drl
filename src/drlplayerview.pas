@@ -45,7 +45,7 @@ end;
 
 type TTraitViewArray = specialize TGArray< TTraitViewEntry >;
 
-type TPlayerView = class( TIOLayer )
+type TPlayerView = class( TDRLLayer )
   constructor Create( aSession : TDRLSession; aInitialState : TPlayerViewState = PLAYERVIEW_INVENTORY );
   constructor CreateTrait( aSession : TDRLSession );
   constructor CreateInitialTrait( aSession : TDRLSession; aKlass : Byte );
@@ -62,6 +62,7 @@ protected
   function MarkQSlot( aItem : TItem; aValue : Byte ) : Boolean;
   function QSlotChar( aQSlot : Byte ) : Char;
   procedure Initialize;
+  procedure Setup; override;
   procedure UpdateInventory( aActive : Boolean );
   procedure UpdateEquipment( aActive : Boolean );
   procedure UpdateCharacter( aActive : Boolean );
@@ -171,6 +172,11 @@ begin
   end;
 end;
 
+procedure TPlayerView.Setup;
+begin
+  if IO.NarrowMode then FSize := Point( 76, 25 );
+end;
+
 procedure TPlayerView.Initialize;
 begin
   FCompactStyle := TIGStylePadless;
@@ -186,7 +192,6 @@ begin
   VTIG_ResetScroll( 'character' );
   FState       := PLAYERVIEW_INVENTORY;
   FSize        := Point( 80, 25 );
-  if IO.NarrowMode then FSize := Point( 76, 25 );
   FInv         := nil;
   FEq          := nil;
   FTraits      := nil;

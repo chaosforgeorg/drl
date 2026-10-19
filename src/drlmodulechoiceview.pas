@@ -8,7 +8,7 @@ unit drlmodulechoiceview;
 interface
 uses viotypes, vutil, drlio, dfdata, drlmodule;
 
-type TModuleChoiceView = class( TIOLayer )
+type TModuleChoiceView = class( TDRLLayer )
   constructor Create( aModules : TModuleList );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsModal : Boolean; override;
@@ -16,7 +16,7 @@ protected
   FModules : TModuleList;
 end;
 
-type TModuleAPIWarningView = class( TIOLayer )
+type TModuleAPIWarningView = class( TDRLLayer )
   constructor Create( aModules : TModuleList; aContinue : PBoolean );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsModal : Boolean; override;

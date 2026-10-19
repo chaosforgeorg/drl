@@ -28,7 +28,7 @@ end;
 
 type TMainMenuEntryArray = specialize TGArray< TMainMenuEntry >;
 
-type TMainMenuView = class( TIOLayer )
+type TMainMenuView = class( TDRLLayer )
   constructor Create( aSession : TDRLSession; aHOF : THOF; aHelp : THelp; aModErrors : TStringGArray;
     aInitial : TMainMenuViewMode = MAINMENU_FIRST; aResult : TMenuResult = nil );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
@@ -53,6 +53,7 @@ protected
   procedure UpdateChallenge;
   procedure CancelNewGame;
   procedure OnCancel;
+  procedure Setup; override;
   procedure SetSoundCallback;
   procedure ResetSoundCallback;
   procedure ReloadArrays;
@@ -95,7 +96,7 @@ implementation
 
 uses math, sysutils,
      vutil, vtig, vtigio, vgltypes, vlua, vluavalue,
-     drlgfxio, drlplayerview, drlhelpview, drlsettingsview, drlpagedview;
+     drlgfxio, drlaudio, drlplayerview, drlhelpview, drlsettingsview, drlpagedview;
 
 var ChallengeType : array[1..4] of TMainMenuEntry =
 ((
@@ -209,16 +210,17 @@ begin
     FIntro2 := AnsiString( iLua.ProtectedCall( [CoreModuleID,'GetLogoText'], [] ) );
   end;
 
-  if GraphicsVersion then
-  begin
-    FBGTexture   := (IO as TDRLGFXIO).Textures.TextureID['background'];
-    FLogoTexture := (IO as TDRLGFXIO).Textures.TextureID[AnsiString( iLua.ProtectedCall( [CoreModuleID,'GetLogoTexture'], [] ) )];
-  end;
-
   if FMode = MAINMENU_MENU then
   begin
     FSaveExists := FSession.SaveExists;
   end;
+end;
+
+procedure TMainMenuView.Setup;
+begin
+  if not GraphicsVersion then Exit;
+  FBGTexture   := (IO as TDRLGFXIO).Textures.TextureID['background'];
+  FLogoTexture := (IO as TDRLGFXIO).Textures.TextureID[AnsiString( FSession.Context.Lua.ProtectedCall( [CoreModuleID,'GetLogoTexture'], [] ) )];
 end;
 
 procedure TMainMenuView.Update( aDTime : Integer; aActive : Boolean );
@@ -391,7 +393,7 @@ begin
       end;
     if VTIG_Selectable( TextShowHighscore ) then IO.PushLayer( TPagedView.Create( FHOF.GetPagedScoreReport ) );
     if VTIG_Selectable( TextShowPlayer )    then IO.PushLayer( TPagedView.Create( FHOF.GetPagedPlayerReport ) );
-    if VTIG_Selectable( TextHelp )          then IO.PushLayer( THelpView.Create( IO, FSession.Context.Lua, FHelp, CoreModuleID ) );
+    if VTIG_Selectable( TextHelp )          then IO.PushLayer( THelpView.Create( FSession.Context.Lua, FHelp, CoreModuleID ) );
     if VTIG_Selectable( TextSettings )      then IO.PushLayer( TSettingsView.Create( FSession ) );
     if FJHCLink then
     begin
@@ -926,19 +928,21 @@ end;
 procedure SoundCallback( aEvent : TTIGSoundEvent; aParam : Pointer );
 begin
   case aEvent of
-    VTIG_SOUND_CHANGE : IO.Audio.PlayMenuSound('menu.change');
-    VTIG_SOUND_ACCEPT : IO.Audio.PlayMenuSound('menu.pick');
+    VTIG_SOUND_CHANGE : TDRLAudio( aParam ).PlayMenuSound('menu.change');
+    VTIG_SOUND_ACCEPT : TDRLAudio( aParam ).PlayMenuSound('menu.pick');
   end;
 end;
 
 procedure TMainMenuView.SetSoundCallback;
 begin
+  VTIG_GetIOState.SoundParameter := IO.Audio;
   VTIG_GetIOState.SoundCallback := @SoundCallback;
 end;
 
 procedure TMainMenuView.ResetSoundCallback;
 begin
   VTIG_GetIOState.SoundCallback := nil;
+  VTIG_GetIOState.SoundParameter := nil;
 end;
 
 

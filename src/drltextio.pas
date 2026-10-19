@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drltextio;
 interface
 
-uses vrltools, vtextmap, vioevent, viotypes, vluamapnode,
+uses vrltools, vtextmap, vioevent, vio, viotypes, vluamapnode,
      drlio, dfdata, dflevel, drlconfiguration, drlmodule;
 
 // TDRLTextIO

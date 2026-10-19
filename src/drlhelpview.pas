@@ -8,8 +8,8 @@ unit drlhelpview;
 interface
 uses vutil, viotypes, vlua, drlio, drlhelp, dfdata;
 
-type THelpView = class( TIOLayer )
-  constructor Create( aIO : TDRLIO; aLua : TLua; aHelp : THelp; const aModuleID : AnsiString );
+type THelpView = class( TDRLLayer )
+  constructor Create( aLua : TLua; aHelp : THelp; const aModuleID : AnsiString );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
@@ -18,7 +18,6 @@ protected
   procedure UpdateRead;
   procedure UpdateMenu;
 protected
-  FIO      : TDRLIO;
   FMode    : ( HELPVIEW_MENU, HELPVIEW_READ, HELPVIEW_DONE );
   FCurrent : Byte;
   FSize    : TPoint;
@@ -31,13 +30,12 @@ implementation
 
 uses sysutils, vtig;
 
-constructor THelpView.Create( aIO : TDRLIO; aLua : TLua; aHelp : THelp; const aModuleID : AnsiString );
+constructor THelpView.Create( aLua : TLua; aHelp : THelp; const aModuleID : AnsiString );
 var iTable : TLuaTable;
 begin
   VTIG_EventClear;
   VTIG_ResetSelect( 'help_view' );
 
-  FIO      := aIO;
   FSize    := Point( 80, 25 );
   FMode    := HELPVIEW_MENU;
   FCurrent := 0;
@@ -113,7 +111,7 @@ begin
 
   VTIG_Ruler;
 
-  if FIO.IsGamepad then
+  if IO.IsGamepad then
   begin
     VTIG_Text('Select help topic above. Quick controls primer:');
     VTIG_Text('');

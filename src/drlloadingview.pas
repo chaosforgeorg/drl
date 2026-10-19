@@ -6,7 +6,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlloadingview;
 interface
-uses vutil, viotypes, dfdata;
+uses vutil, vio, viotypes, dfdata;
        
 type TLoadingView = class( TIOLayer )
   constructor Create( aMax : DWord );
@@ -23,7 +23,7 @@ end;
 
 implementation
 
-uses sysutils, math, vtig, drlio, drlgfxio, vgltypes;
+uses sysutils, math, vtig, drlgfxio, vgltypes;
 
 constructor TLoadingView.Create( aMax : DWord );
 begin
@@ -44,7 +44,7 @@ begin
   if FMax = 0 then Exit;
   if GraphicsVersion then
   begin
-    with IO as TDRLGFXIO do
+    with Owner as TDRLGFXIO do
     begin
       iSize.Init( Driver.GetSizeX, Driver.GetSizeY );
       iStep.Init( iSize.X div 15, iSize.Y div 15 );

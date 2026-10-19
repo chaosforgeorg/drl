@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlbase;
 interface
 
-uses vapp, vnode, vutil, vuid, viotypes, vrltools, vlua, vioevent, vstoreinterface, vrandom, vrlapp,
+uses vapp, vnode, vutil, vuid, vio, viotypes, vrltools, vlua, vioevent, vstoreinterface, vrandom, vrlapp,
      dflevel, dfdata, dfhof, dfplayer, dfitem, drlhooks, drllua, drlcommand, drlkeybindings, drlmodule, drlgamedata, drlio;
 
 type TDRLSession = class;
@@ -1464,7 +1464,7 @@ begin
       INPUT_TARGETNEXT : begin FIO.SetAutoTarget( FTargeting.List.Next ); Exit; end;
       INPUT_ESCAPE     : begin ResetAutoTarget; FIO.PushLayer( TInGameMenuView.Create( Self, TDRLRuntime( FRuntime ).HOF, TDRLRuntime( FRuntime ).Help ) ); Exit; end;
       INPUT_QUIT       : begin FIO.PushLayer( TAbandonView.Create( Self ) ); Exit; end;
-      INPUT_HELP       : begin FIO.PushLayer( THelpView.Create( FIO, FContext.Lua, TDRLRuntime( FRuntime ).Help, CoreModuleID ) ); Exit; end;
+      INPUT_HELP       : begin FIO.PushLayer( THelpView.Create( FContext.Lua, TDRLRuntime( FRuntime ).Help, CoreModuleID ) ); Exit; end;
       INPUT_LOOKMODE   : begin FIO.PushLayer( TLookModeView.Create( FLevel, FPlayer ) ); Exit; end;
       INPUT_PLAYERINFO : begin FPlayerView := FIO.PushLayer( TPlayerView.Create( Self, PLAYERVIEW_CHARACTER ) ); Exit; end;
       INPUT_INVENTORY  : begin FPlayerView := FIO.PushLayer( TPlayerView.Create( Self, PLAYERVIEW_INVENTORY ) ); Exit; end;
@@ -1476,7 +1476,7 @@ begin
       INPUT_LEGACYDROP : begin FPlayerView := FIO.PushLayer( TPlayerView.CreateCommand( Self, COMMAND_DROP ) ); Exit; end;
       INPUT_UNLOAD     : begin HandleUnloadCommand( nil ); Exit; end;
 
-      INPUT_MESSAGES   : begin FIO.PushLayer( TMessagesView.Create( FIO, FIO.MsgGetRecent ) ); Exit; end;
+      INPUT_MESSAGES   : begin FIO.PushLayer( TMessagesView.Create( FIO.MsgGetRecent ) ); Exit; end;
 
       INPUT_HARDQUIT   : begin HardQuit; Exit; end;
 

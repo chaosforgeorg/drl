@@ -8,12 +8,15 @@ unit drlplotview;
 interface
 uses vutil, viotypes, vtextures, drlio, dfdata;
 
-type TPlotView = class( TIOLayer )
+type TPlotView = class( TDRLLayer )
   constructor Create( const aMessage : AnsiString; aColor : DWord; const aBackground : Ansistring = '' );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsModal : Boolean; override;
 protected
+  procedure Setup; override;
+protected
   FMessage   : AnsiString;
+  FBGName    : AnsiString;
   FBoost     : Boolean;
   FPosition  : DWord;
   FTime      : DWord;
@@ -29,7 +32,6 @@ uses vtig, drlgfxio;
 constructor TPlotView.Create( const aMessage : AnsiString; aColor : DWord; const aBackground : Ansistring = '' );
 begin
   VTIG_EventClear;
-  FSize      := Point( 80, IO.Console.SizeY );
   FFinished  := False;
   FPosition  := 0;
   FTime      := 0;
@@ -37,11 +39,17 @@ begin
   FColor     := aColor;
   FBoost     := False;
   FBGTexture := 0;
-  if GraphicsVersion and ( aBackground <> '' ) then
-    with (IO as TDRLGFXIO) do
-      if Textures.Exists(aBackground)
-         then FBGTexture := (IO as TDRLGFXIO).Textures.TextureID[aBackground]
-         else Log( LOGERROR, 'Texture not found - "'+aBackground+'"');
+  FBGName    := aBackground;
+end;
+
+procedure TPlotView.Setup;
+begin
+  FSize := Point( 80, IO.Console.SizeY );
+  if GraphicsVersion and ( FBGName <> '' ) then
+    with ( IO as TDRLGFXIO ) do
+      if Textures.Exists( FBGName )
+         then FBGTexture := Textures.TextureID[ FBGName ]
+         else Log( LOGERROR, 'Texture not found - "'+FBGName+'"' );
 end;
 
 procedure TPlotView.Update( aDTime : Integer; aActive : Boolean );

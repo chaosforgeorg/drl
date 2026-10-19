@@ -6,15 +6,16 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlhudviews;
 interface
-uses vutil, viotypes, vgenerics, vcolor, vioevent, vrltools,
-     dfdata, dfitem, dflevel, dfbeing, dfplayer, drlkeybindings, drlhooks, drlbase;
+uses vutil, vio, viotypes, vgenerics, vcolor, vioevent, vrltools,
+     dfdata, dfitem, dflevel, dfbeing, dfplayer, drlkeybindings, drlhooks, drlbase, drlio;
 
-type TLookModeView = class( TIOLayer )
+type TLookModeView = class( TDRLLayer )
   constructor Create( aLevel : TLevel; aBeing : TBeing );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsModal : Boolean; override;
   function HandleInput( aInput : Integer ) : Boolean; override;
 protected
+  procedure Setup; override;
   procedure UpdateTarget;
 protected
   FLevel    : TLevel;
@@ -72,7 +73,7 @@ protected
   FLength   : Byte;
 end;
 
-type TTargetModeView = class( TIOLayer )
+type TTargetModeView = class( TDRLLayer )
   constructor Create( aSession : TDRLSession; aItem : TItem; aCommand : Byte;
     aActionName : AnsiString; aRange : Byte; aLimitRange : Boolean );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
@@ -80,6 +81,7 @@ type TTargetModeView = class( TIOLayer )
   function HandleInput( aInput : Integer ) : Boolean; override;
   function HandleEvent( const aEvent : TIOEvent ) : Boolean; override;
 protected
+  procedure Setup; override;
   procedure ConfirmTarget;
   function MoveTarget( aNew : TCoord2D ) : Boolean;
   procedure Finalize;
@@ -100,12 +102,14 @@ end;
 
 type TScrollItemArray = specialize TGArray< TItem >;
 
-type TScrollSwapLayer = class( TIOLayer )
+type TScrollSwapLayer = class( TDRLLayer )
   constructor Create( aSession : TDRLSession );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsModal : Boolean; override;
   function HandleInput( aInput : Integer ) : Boolean; override;
   destructor Destroy; override;
+protected
+  procedure Setup; override;
 protected
   FSession  : TDRLSession; // Borrowed; the view is released before Session.
   FIndex    : Integer;
@@ -116,7 +120,7 @@ implementation
 
 uses sysutils,
      vtig, vvision,
-     drlio, drlcommand, drlcontrollerbindings, drlspritemap;
+     drlcommand, drlcontrollerbindings, drlspritemap;
 
 constructor TLookModeView.Create( aLevel : TLevel; aBeing : TBeing );
 begin
@@ -124,6 +128,10 @@ begin
   FBeing  := aBeing;
   FFirst  := True;
   FTarget := FBeing.Position;
+end;
+
+procedure TLookModeView.Setup;
+begin
   IO.Targeting := True;
 end;
 
@@ -320,7 +328,11 @@ begin
   FColor        := Green;
   FItem         := aItem;
   FCommand      := aCommand;
-  IO.Targeting  := True;
+end;
+
+procedure TTargetModeView.Setup;
+begin
+  IO.Targeting := True;
 end;
 
 procedure TTargetModeView.Update( aDTime : Integer; aActive : Boolean );
@@ -541,15 +553,21 @@ begin
 
     if FArray.Size <= 1 then
     begin
-      if FArray.Size = 0
-        then IO.Msg('You have no weapons!')
-        else IO.Msg('You have no other weapons!');
       FFinished := True;
       Exit;
     end;
   end;
   FIndex := 1;
   if FSession.Player.Inv.Slot[ efWeapon ] = nil then FIndex := 0;
+end;
+
+// With nothing to swap to, the layer only reports why.
+procedure TScrollSwapLayer.Setup;
+begin
+  if FArray.Size > 1 then Exit;
+  if FArray.Size = 0
+    then IO.Msg('You have no weapons!')
+    else IO.Msg('You have no other weapons!');
 end;
 
 procedure TScrollSwapLayer.Update( aDTime : Integer; aActive : Boolean );

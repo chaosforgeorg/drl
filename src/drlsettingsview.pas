@@ -37,7 +37,7 @@ const SETTINGSVIEW_KEYS : set of TSettingsViewState = [
   SETTINGSVIEW_UIKEYBOARD
 ];
 
-type TSettingsView = class( TIOLayer )
+type TSettingsView = class( TDRLLayer )
   constructor Create( aSession : TDRLSession );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
@@ -45,6 +45,7 @@ type TSettingsView = class( TIOLayer )
   function HandleEvent( const aEvent : TIOEvent ) : Boolean; override;
   destructor Destroy; override;
 protected
+  procedure Setup; override;
   procedure Reconfigure;
   procedure Reset( aGroup : TConfigurationGroup );
   procedure KeyCapture( aBindings : TBindingCatalog;
@@ -117,7 +118,7 @@ const CSub : array[ 1..13 ] of record State : TSettingsViewState; Select, Desc :
 );
 
 constructor TSettingsView.Create( aSession : TDRLSession );
-var i, iCount : Integer;
+var i : Integer;
 begin
   inherited Create;
   FSession := aSession;
@@ -141,16 +142,6 @@ begin
   FRestart             := '';
 
 
-  if GraphicsVersion then
-  begin
-    iCount := Min( 17, IO.Driver.DisplayModes.Size );
-    SetLength( FResolutions, iCount + 1);
-    FResolutions[0] := 'Automatic';
-    for i := 1 to iCount do
-      with IO.Driver.DisplayModes[i-1] do
-        FResolutions[i] := IntToStr( Width ) + 'x' + IntToStr( Height )
-  end;
-
   SetLength( FModules, FSession.Modules.CoreModules.Size + 1 );
   FModCurrent := Configuration.GetString('default_module');
   FModules[0] := 'Ask on launch';
@@ -169,6 +160,19 @@ begin
     SetLength( FModules, FModValue + 1 );
     FModules[FModValue] := FModCurrent+' (missing)';
   end;
+end;
+
+// The resolution list comes from the owning IO's display modes.
+procedure TSettingsView.Setup;
+var i, iCount : Integer;
+begin
+  if not GraphicsVersion then Exit;
+  iCount := Min( 17, IO.Driver.DisplayModes.Size );
+  SetLength( FResolutions, iCount + 1);
+  FResolutions[0] := 'Automatic';
+  for i := 1 to iCount do
+    with IO.Driver.DisplayModes[i-1] do
+      FResolutions[i] := IntToStr( Width ) + 'x' + IntToStr( Height )
 end;
 
 procedure TSettingsView.Update( aDTime : Integer; aActive : Boolean );

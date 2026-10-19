@@ -202,6 +202,15 @@ public
   property TargetEnabled : Boolean        read FTargetEnabled write FTargetEnabled;
 end;
 
+// Base for layers that use DRL's IO; IO is the owner, set when the layer is
+// pushed, so it is available from Setup on.
+type TDRLLayer = class( TIOLayer )
+protected
+  function GetIO : TDRLIO;
+public
+  property IO : TDRLIO read GetIO;
+end;
+
 var IO : TDRLIO;
 
 procedure EmitCrashInfo( const aInfo : AnsiString; aInGame : Boolean  );
@@ -1021,6 +1030,11 @@ begin
     VTIG_FreeLabel( FMessages.Content[ -i ], Point(iOffset,2-i), iCurrent );
     VTIG_HighColor := False;
   end;
+end;
+
+function TDRLLayer.GetIO : TDRLIO;
+begin
+  Exit( TDRLIO( FLayerOwner ) );
 end;
 
 procedure TDRLIO.BindStore( aStore : TStoreInterface );

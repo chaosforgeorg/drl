@@ -6,15 +6,16 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlmoreview;
 interface
-uses vutil, viotypes, drlio, dfdata, dfbeing, dfitem, drlhooks;
+uses vutil, vio, viotypes, drlio, dfdata, dfbeing, dfitem, drlhooks;
 
-type TMoreBeingView = class( TIOLayer )
+type TMoreBeingView = class( TDRLLayer )
   constructor Create( aBeing : TBeing );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsModal : Boolean; override;
   destructor Destroy; override;
 protected
   procedure ReadTexts;
+  procedure Setup; override;
 protected
   FSize     : TPoint;
   FBeing    : TBeing;
@@ -51,14 +52,6 @@ begin
   FBeing    := aBeing;
   FDesc     := FBeing.Context.Lua.Get(['beings',FBeing.ID,'desc']);
   FASCII    := '';
-  // The player is drawn by worn torso armour when it has its own art.
-  if not ModuleOption_FullBeingDescription then
-    if not FBeing.IsPlayer then
-      FASCII := FBeing.ID
-    else if ( FBeing.Inv.Slot[ efTorso ] <> nil ) and IO.ASCII.Exists( FBeing.Inv.Slot[ efTorso ].ID ) then
-      FASCII := FBeing.Inv.Slot[ efTorso ].ID
-    else
-      FASCII := 'player';
   FSize      := Point( 80, 25 );
   for i := Low( FTexts ) to High( FTexts ) do
     FTexts[i] := nil;
@@ -67,6 +60,18 @@ begin
     FSize      := Point( 60, 25 );
     ReadTexts;
   end;
+end;
+
+// The player is drawn by worn torso armour when it has its own art.
+procedure TMoreBeingView.Setup;
+begin
+  if ModuleOption_FullBeingDescription then Exit;
+  if not FBeing.IsPlayer then
+    FASCII := FBeing.ID
+  else if ( FBeing.Inv.Slot[ efTorso ] <> nil ) and IO.ASCII.Exists( FBeing.Inv.Slot[ efTorso ].ID ) then
+    FASCII := FBeing.Inv.Slot[ efTorso ].ID
+  else
+    FASCII := 'player';
 end;
 
 procedure TMoreBeingView.ReadTexts;

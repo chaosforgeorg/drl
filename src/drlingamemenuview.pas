@@ -9,7 +9,7 @@ interface
 uses viotypes,
      dfhof, drlio, drlconfirmview, dfdata, drlhelp, drlbase;
 
-type TInGameMenuView = class( TIOLayer )
+type TInGameMenuView = class( TDRLLayer )
   constructor Create( aSession : TDRLSession; aHOF : THOF; aHelp : THelp );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
@@ -58,7 +58,7 @@ begin
   end;
   if VTIG_Selectable( 'Help' ) then
   begin
-    IO.PushLayer( THelpView.Create( IO, FSession.Context.Lua, FHelp, CoreModuleID ) );
+    IO.PushLayer( THelpView.Create( FSession.Context.Lua, FHelp, CoreModuleID ) );
     FFinished := True;
   end;
   if VTIG_Selectable( 'Settings' ) then
@@ -68,7 +68,7 @@ begin
   end;
   if VTIG_Selectable( 'Message history' ) then
   begin
-    IO.PushLayer( TMessagesView.Create( IO, IO.MsgGetRecent ) );
+    IO.PushLayer( TMessagesView.Create( IO.MsgGetRecent ) );
     FFinished := True;
   end;
   if VTIG_Selectable( 'Assemblies' ) then

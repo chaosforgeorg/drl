@@ -8,12 +8,11 @@ unit drlmessagesview;
 interface
 uses vutil, viotypes, vmessages, drlio, dfdata;
 
-type TMessagesView = class( TIOLayer )
-  constructor Create( aIO : TDRLIO; aContent : TMessageBuffer );
+type TMessagesView = class( TDRLLayer )
+  constructor Create( aContent : TMessageBuffer );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsModal : Boolean; override;
 protected
-  FIO       : TDRLIO;
   FContent  : TMessageBuffer;
   FSize     : TPoint;
   FFirst    : Boolean;
@@ -23,11 +22,10 @@ implementation
 
 uses sysutils, vtig;
 
-constructor TMessagesView.Create( aIO : TDRLIO; aContent : TMessageBuffer );
+constructor TMessagesView.Create( aContent : TMessageBuffer );
 begin
   VTIG_EventClear;
   FSize      := Point( 80, 25 );
-  FIO        := aIO;
   FContent   := aContent;
   FFinished  := False;
   FFirst     := True;
@@ -45,7 +43,7 @@ begin
         VTIG_Text( FContent[i] );
   VTIG_Scrollbar( FFirst );
 
-  if FIO.IsGamepad
+  if IO.IsGamepad
     then VTIG_End('{l<{!{$input_up},{$input_down}}> scroll, <{!{$input_ok},{$input_escape}}> continue}')
     else VTIG_End('{l<{!{$input_up},{$input_down},{$input_pgup},{$input_pgdn}}> scroll, <{!{$input_ok},{$input_escape}}> continue}');
 
