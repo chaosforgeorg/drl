@@ -73,6 +73,11 @@ type TDRLIO = class( TIORL, IDRLPresentation )
 
   procedure Focus( aCoord: TCoord2D ); virtual;
   procedure FinishTargeting; virtual;
+  // Map-view operations; the console IO has no map view to change.
+  procedure SetLookTarget( aTarget : TCoord2D ); virtual;
+  procedure ToggleGrid; virtual;
+  // The map cell under a device point; off the map without a map view.
+  function DevicePointToCoord( aPoint : TPoint ) : TCoord2D; virtual;
 
   procedure LookDescription( aWhere : TCoord2D );
 
@@ -81,7 +86,7 @@ type TDRLIO = class( TIORL, IDRLPresentation )
 
   procedure ASCIILoader( aStream : TStream; aName : Ansistring; aSize : DWord );
 
-  procedure BloodSlideDown( aDelayTime : Word );
+  procedure BloodSlideDown( aDelayTime : Word ); virtual;
 
   procedure WaitForAnimation( aStrict : Boolean = True ); virtual;
   procedure Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0); virtual; abstract;
@@ -223,7 +228,7 @@ implementation
 
 uses math, video, dateutils,
      vsound, vlualibrary, vluastate, vuid, vlog, vdebug, vmath, vsdlio, vglconsole, vtig, vtigio, vvector,
-     dfitem, dfhof, drluibindings, drlmoreview, drlchoiceview, drlmodulechoiceview, drlhudviews, drlplotview, drlplayerview, drlspritemap;
+     dfitem, dfhof, drluibindings, drlmoreview, drlchoiceview, drlmodulechoiceview, drlhudviews, drlplotview, drlplayerview;
 
 {
 procedure OutPutRestore;
@@ -246,10 +251,6 @@ var Temp  : TGFXScreen;
     vx,vy : byte;
 }
 begin
-  if GraphicsVersion then
-    if Player <> nil then
-      SpriteMap.NewShift := SpriteMap.ShiftValue( Player.Position );
-
 {
   for vx := 1 to 80 do for vy := 1 to 25 do Temp [vy,vx] := VideoBuf^[(vx-1)+(vy-1)*ScreenSizeX];
   OutputRestore;
@@ -1186,7 +1187,7 @@ begin
     if not Setting_Mouse then Exit( Integer( INPUT_NONE ) );
     if Level <> nil then
     begin
-      FMTarget := SpriteMap.DevicePointToCoord( aEvent.MouseMove.Pos );
+      FMTarget := DevicePointToCoord( aEvent.MouseMove.Pos );
       if Level.isProperCoord( FMTarget ) then
         Exit( Integer( INPUT_MMOVE ) );
     end;
@@ -1196,7 +1197,7 @@ begin
     if not Setting_Mouse then Exit( Integer( INPUT_NONE ) );
     if Level <> nil then
     begin
-      FMTarget := SpriteMap.DevicePointToCoord( aEvent.Mouse.Pos );
+      FMTarget := DevicePointToCoord( aEvent.Mouse.Pos );
       if Level.isProperCoord( FMTarget ) then
       begin
         case aEvent.Mouse.Button of
@@ -1251,8 +1252,20 @@ begin
   FHintOverlay := '';
   FConsole.HideCursor;
   FTargeting := False;
-  if SpriteMap <> nil then SpriteMap.ClearTarget;
   FTargetEnabled := False;
+end;
+
+procedure TDRLIO.SetLookTarget( aTarget : TCoord2D );
+begin
+end;
+
+procedure TDRLIO.ToggleGrid;
+begin
+end;
+
+function TDRLIO.DevicePointToCoord( aPoint : TPoint ) : TCoord2D;
+begin
+  Exit( NewCoord2D( 0, 0 ) );
 end;
 
 procedure TDRLIO.LookDescription(aWhere: TCoord2D);

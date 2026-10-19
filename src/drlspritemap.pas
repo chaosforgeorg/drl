@@ -147,7 +147,6 @@ public
   property Target : TCoord2D read FTarget;
 end;
 
-var SpriteMap : TDRLSpriteMap = nil;
 
 implementation
 

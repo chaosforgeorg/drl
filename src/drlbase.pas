@@ -168,7 +168,7 @@ implementation
 
 uses {$IFDEF WINDOWS}windows,{$ELSE}unix,{$ENDIF} classes, sysutils, zstream,
      vbindings, vdebug, vstream, vtig, vlualibrary, vluagamestack,
-     dfmap, dfbeing, drlgfxio, drlspritemap { remove }, drlplayerview, drlingamemenuview, drlhelpview, drlassemblyview, drlpagedview, drlrankupview, drlmainmenuview, drlhudviews, drlmessagesview, drlapplication, drlcontrollerbindings;
+     dfmap, dfbeing, drlgfxio, drlplayerview, drlingamemenuview, drlhelpview, drlassemblyview, drlpagedview, drlrankupview, drlmainmenuview, drlhudviews, drlmessagesview, drlapplication, drlcontrollerbindings;
 
 const PAD_REPEAT_START = 400;
       PAD_REPEAT       = 100;
@@ -1166,7 +1166,7 @@ var iAlt     : Boolean;
     iButton  : TIOMouseButton;
 begin
   if not Setting_Mouse then Exit( False );
-  FIO.MTarget := SpriteMap.DevicePointToCoord( aEvent.Mouse.Pos );
+  FIO.MTarget := FIO.DevicePointToCoord( aEvent.Mouse.Pos );
   if Level.isProperCoord( FIO.MTarget ) then
   begin
     iButton  := aEvent.Mouse.Button;
@@ -1492,7 +1492,7 @@ begin
 
       INPUT_EXAMINENPC   : begin FPlayer.ExamineNPC; Exit; end;
       INPUT_EXAMINEITEM  : begin FPlayer.ExamineItem; Exit; end;
-      INPUT_TOGGLEGRID   : begin if GraphicsVersion then SpriteMap.ToggleGrid; Exit; end;
+      INPUT_TOGGLEGRID   : begin FIO.ToggleGrid; Exit; end;
       INPUT_SOUNDTOGGLE  : begin FIO.Audio.ToggleSound; Exit; end;
       INPUT_MUSICTOGGLE  : begin FIO.Audio.ToggleMusic( Iif( FLevel.Music_ID <> '', FLevel.Music_ID, FLevel.ID ) ); Exit; end;
     end;

@@ -2,7 +2,7 @@
 unit drlparticles;
 interface
 uses classes, sysutils,
-     vlua, vvector, vobject, vcolor, vutil, vrltools, vparticleengine, vlualibrary, vuid;
+     vlua, vvector, vobject, vcolor, vutil, vrltools, vparticleengine, vlualibrary, vuid, vspriteengine;
 
 type
   // Module data, borrowed by each level's particle store.
@@ -27,7 +27,8 @@ type
     constructor Create( aUIDs : TUIDStore );
     procedure BindUIDs( aUIDs : TUIDStore );
     procedure Initialize( aEmitters : TEmitterData; aEngine : TParticleEngine );
-    procedure Update( aDeltaSec : Single );
+    // Moves bound emitters to their things' drawn positions in aSprites.
+    procedure Update( aDeltaSec : Single; aSprites : TSpriteEngine );
     procedure Reset;
     // Clear floor effects, retaining bindings and emitter timing for surviving entities.
     procedure Clear;
@@ -57,7 +58,8 @@ type
 
     function  FindBinding( aNID : Word; aUID : TUID ) : Integer;
     procedure RemoveBinding( aIndex : Integer );
-    procedure UpdateBindings( aUpdatePositions : Boolean );
+    // Drops bindings of destroyed things; with aSprites, also places the emitters.
+    procedure UpdateBindings( aSprites : TSpriteEngine );
   public
     property Engine : TParticleEngine read FEngine;
   end;
@@ -66,7 +68,7 @@ implementation
 
 uses math,
      vluatable,
-     dfdata, dfthing, drlspritemap;
+     dfdata, dfthing;
 
 function FlagsToParticleFlags( const aFlags : TFlags ) : TParticleFlags;
 var i : Byte;
@@ -101,10 +103,10 @@ begin
   FEngine := aEngine;
 end;
 
-procedure TParticleStore.Update( aDeltaSec : Single );
+procedure TParticleStore.Update( aDeltaSec : Single; aSprites : TSpriteEngine );
 begin
   if FEngine = nil then Exit;
-  UpdateBindings( True );
+  UpdateBindings( aSprites );
   FEngine.Update( aDeltaSec );
 end;
 
@@ -119,7 +121,7 @@ procedure TParticleStore.Clear;
 var iEmitters : array of Integer;
     i         : Integer;
 begin
-  UpdateBindings( False );
+  UpdateBindings( nil );
   if FEngine = nil then Exit;
   SetLength( iEmitters, FBindingCount );
   for i := 0 to FBindingCount - 1 do
@@ -361,7 +363,7 @@ begin
     end;
 end;
 
-procedure TParticleStore.UpdateBindings( aUpdatePositions : Boolean );
+procedure TParticleStore.UpdateBindings( aSprites : TSpriteEngine );
 var i      : Integer;
     iNode  : TVObject;
     iThing : TThing;
@@ -384,7 +386,7 @@ begin
         FEngine.EmitKill( FBindings[i].PoolIndex );
       RemoveBinding( i );
     end
-    else if aUpdatePositions and ( iNode is TThing ) and ( FBindings[i].PoolIndex >= 0 ) then
+    else if ( aSprites <> nil ) and ( iNode is TThing ) and ( FBindings[i].PoolIndex >= 0 ) then
     begin
       iThing := TThing( iNode );
       FEngine.EmitSetVisible( FBindings[i].PoolIndex, iThing.isVisible );
@@ -392,11 +394,11 @@ begin
       iDraw := iThing.DrawPosition;
       if ( iDraw.X = 0 ) and ( iDraw.Y = 0 ) then
       begin
-        iSize := SpriteMap.GetGridSize;
+        iSize := aSprites.Grid.X;
         iDraw.Init( ( iThing.Position.X - 1 ) * iSize, ( iThing.Position.Y - 1 ) * iSize );
       end;
       FEngine.EmitSetPosition( FBindings[i].PoolIndex,
-        Vec3f( iDraw.X / SpriteMap.Engine.Scale + 16.0, iDraw.Y / SpriteMap.Engine.Scale + 16.0, 0 ) );
+        Vec3f( iDraw.X / aSprites.Scale + 16.0, iDraw.Y / aSprites.Scale + 16.0, 0 ) );
     end;
   end;
 end;
@@ -405,7 +407,7 @@ end;
 
 procedure TParticleStore.WriteToStream( aStream : TStream );
 begin
-  UpdateBindings( False );
+  UpdateBindings( nil );
   aStream.WriteWord( FBindingCount );
   if FBindingCount > 0 then
     aStream.Write( FBindings[0], FBindingCount * SizeOf( TEmitterBinding ) );
@@ -424,7 +426,7 @@ begin
   FBindingCount := iCount;
   for i := 0 to FBindingCount - 1 do
     FBindings[i].PoolIndex := -1;
-  UpdateBindings( False );
+  UpdateBindings( nil );
   if FEngine = nil then Exit;
   for i := 0 to FBindingCount - 1 do
   begin

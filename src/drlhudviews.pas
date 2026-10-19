@@ -6,7 +6,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlhudviews;
 interface
-uses vutil, vio, viotypes, vgenerics, vcolor, vioevent, vrltools,
+uses vutil, vio, viotypes, vgenerics, vioevent, vrltools,
      dfdata, dfitem, dflevel, dfbeing, dfplayer, drlkeybindings, drlhooks, drlbase, drlio;
 
 type TLookModeView = class( TDRLLayer )
@@ -120,7 +120,7 @@ implementation
 
 uses sysutils,
      vtig, vvision,
-     drlcommand, drlcontrollerbindings, drlspritemap;
+     drlcommand, drlcontrollerbindings;
 
 constructor TLookModeView.Create( aLevel : TLevel; aBeing : TBeing );
 begin
@@ -160,7 +160,7 @@ begin
     Exit( True );
   end;
 
-  if (iInput = INPUT_TOGGLEGRID) and GraphicsVersion then SpriteMap.ToggleGrid;
+  if iInput = INPUT_TOGGLEGRID then IO.ToggleGrid;
   if iInput in [ INPUT_MMOVE, INPUT_MRIGHT, INPUT_MLEFT ] then FTarget := IO.MTarget;
   iLevel := FLevel;
   if iInput = INPUT_MORESELF then
@@ -191,7 +191,7 @@ begin
   FFirst := False;
   IO.Focus( FTarget );
   IO.LookDescription( FTarget );
-  if SpriteMap <> nil then SpriteMap.SetTarget( FTarget, NewColor( White ) );
+  IO.SetLookTarget( FTarget );
 end;
 
 constructor TDirectionQueryLayer.Create( aAllowAlt : Boolean );
@@ -359,7 +359,7 @@ begin
     Exit( True );
   end;
 
-  if (iInput = INPUT_TOGGLEGRID) and GraphicsVersion then SpriteMap.ToggleGrid;
+  if iInput = INPUT_TOGGLEGRID then IO.ToggleGrid;
   if iInput = INPUT_TARGETNEXT then
   begin
     FTarget := FSession.Targeting.List.Next;
