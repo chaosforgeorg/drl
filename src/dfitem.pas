@@ -240,7 +240,7 @@ begin
   if Ammo = 0 then FProps.Ammo := FProps.AmmoMax;
 
   FProps.Damage     := NewDiceRoll( aTable.getInteger('damage_dice',0), aTable.getInteger('damage_sides',0), aTable.getInteger('damage_bonus',0) );
-  FProps.DamageType := TDamageType( aTable.getInteger('damagetype',0) );
+  FProps.DamageType := TDamageType( aTable.getInteger( 'damagetype', Ord( Damage_Bullet ) ) );
 
   FProps.Acc         := aTable.getInteger('acc',0);
   FProps.UseTime     := aTable.getInteger('usetime',10);

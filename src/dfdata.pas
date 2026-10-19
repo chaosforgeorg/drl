@@ -129,7 +129,7 @@ type
     TBodyTarget     = ( Target_Internal, Target_Torso, Target_Feet );
     TEqSlot         = ( efTorso, efWeapon, efBoots, efWeapon2, efRelic );
     TStatusEffect   = ( StatusNormal, StatusInvert, StatusRed, StatusGreen, StatusBlue, StatusCyan, StatusMagenta, StatusYellow, StatusGray, StatusWhite );
-    TDamageType     = ( Damage_Bullet, Damage_Melee, Damage_Pierce, Damage_Sharpnel, Damage_Acid, Damage_Fire, Damage_Cold, Damage_Poison, Damage_Plasma, Damage_SPlasma, Damage_IgnoreArmor );
+    TDamageType     = ( Damage_None, Damage_Bullet, Damage_Melee, Damage_Pierce, Damage_Sharpnel, Damage_Acid, Damage_Fire, Damage_Cold, Damage_Poison, Damage_Plasma, Damage_SPlasma, Damage_IgnoreArmor );
     TExplosionFlag  = ( efSelfHalf, efSelfKnockback, efSelfSafe, efAfterBlink, efChain, efRandomContent, efNoDistanceDrop, efAlwaysVisible );
     TResistance     = ( Resist_Bullet, Resist_Melee, Resist_Shrapnel, Resist_Acid, Resist_Fire, Resist_Plasma, Resist_Cold, Resist_Poison, Resist_Pierce );
 
@@ -564,6 +564,7 @@ end;
 function DamageTypeName( aDamageType : TDamageType ) : Ansistring;
 begin
   case aDamageType of
+    Damage_None    : Exit('none');
     Damage_Bullet  : Exit('bullet');
     Damage_Melee   : Exit('melee');
     Damage_Sharpnel: Exit('shred');

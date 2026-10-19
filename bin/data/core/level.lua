@@ -1,9 +1,9 @@
 function level:flood_tile( pos, cell, destroy )
 	local cell_data = cells[ level:get_cell( pos ) ]
 	if not cell_data.flags[ CF_CRITICAL ] then
-		level:set_cell( pos, cell )
+		level:set_cell_and_hp( pos, cell )
 		if destroy then 
-			if cell_data.OnDestroy then cell_data.OnDestroy(pos) end
+			if not cell_data.flags[ CF_LIQUID ] and cell_data.OnDestroy then cell_data.OnDestroy(pos) end
 			level:try_destroy_item( pos )
 		end
 	end
@@ -21,7 +21,7 @@ end
 function level:destroy_to( c, cell_id, opt_style )
 	local cell = cells[ level.map[ c ] ]
 	if not cell.flags[ CF_NOCHANGE ] then
-		level.map[ c ] = cell_id
+		level:set_cell_and_hp( c, cell_id )
 		if opt_style and opt_style > 0 then
 			level:set_raw_style( c, opt_style - 1 )
 		end

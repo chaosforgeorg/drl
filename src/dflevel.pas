@@ -225,7 +225,7 @@ TLevel = class(TLuaMapNode)
 implementation
 
 uses math, typinfo,
-     vgenerics, vluatools, vdebug, vmath;
+     vlualibrary, vgenerics, vluatools, vdebug, vmath;
 
 type TProcessedUIDList = specialize TGArray<TUID>;
 
@@ -859,6 +859,18 @@ begin
         for iNode in iFeature do
           DropItem( iNode as TItem, aCoord, False, True );
       iFeature.Discard;
+    end;
+  end;
+
+  iCellID := Cell[ aCoord ];
+  if ( aDamage > 0 ) and ( FData.Cells[ iCellID ].AffectedBy <> Damage_None ) and
+    ( FData.Cells[ iCellID ].AffectedBy = aDamageType ) and ( HitPoints[ aCoord ] > 0 ) then
+  begin
+    HitPoints[ aCoord ] := Max( 0, HitPoints[ aCoord ] - aDamage );
+    if HitPoints[ aCoord ] = 0 then
+    begin
+      Result := True;
+      CallHook( aCoord, iCellID, CellHook_OnDestroy );
     end;
   end;
 end;
@@ -1940,6 +1952,57 @@ begin
   Result := 0;
 end;
 
+function lua_level_set_cell_and_hp( L : Plua_State ) : Integer; cdecl;
+var iState  : TLuaMapStack;
+    iLevel  : TLevel;
+    iCoord  : TCoord2D;
+    iCellID : Byte;
+begin
+  iState.Init( L );
+  iLevel := iState.Map as TLevel;
+  if lua_isnumber( L, 2 ) then
+  begin
+    iCoord  := NewCoord2D( iState.ToInteger( 2 ), iState.ToInteger( 3 ) );
+    iCellID := iState.ToID( iLevel.Context.Lua, 4 );
+  end
+  else
+  begin
+    iCoord  := iState.ToPosition( 2 );
+    iCellID := iState.ToID( iLevel.Context.Lua, 3 );
+  end;
+  iLevel.PutCell( iCoord, iCellID );
+  iLevel.HitPoints[ iCoord ] := iLevel.FData.Cells[ iCellID ].HP;
+  Result := 0;
+end;
+
+function lua_level_transmute_and_hp( L : Plua_State ) : Integer; cdecl;
+var iState  : TLuaMapStack;
+    iLevel  : TLevel;
+    iFrom   : TFlags;
+    iTo     : Byte;
+    iHP     : Byte;
+    iArea   : TArea;
+    iCoord  : TCoord2D;
+    iResult : Integer;
+begin
+  iState.Init( L );
+  iLevel  := iState.Map as TLevel;
+  iFrom   := iState.ToCellSet( 2 );
+  iTo     := iState.ToCell( 3 );
+  iArea   := iState.ToOptionalArea( 4 );
+  iHP     := iLevel.FData.Cells[ iTo ].HP;
+  iResult := 0;
+  for iCoord in iArea do
+    if iLevel.GetCell( iCoord ) in iFrom then
+    begin
+      Inc( iResult );
+      iLevel.PutCell( iCoord, iTo );
+      iLevel.HitPoints[ iCoord ] := iHP;
+    end;
+  iState.Push( iResult );
+  Exit( 1 );
+end;
+
 function lua_level_recalc_fluids(L: Plua_State): Integer; cdecl;
 var State : TLuaGameStack;
     Level : TLevel;
@@ -2209,13 +2272,15 @@ begin
   Result := 1;
 end;
 
-const lua_level_lib : array[0..25] of luaL_Reg = (
+const lua_level_lib : array[0..27] of luaL_Reg = (
       ( name : 'drop_item';  func : @lua_level_drop_item),
       ( name : 'drop_being'; func : @lua_level_drop_being),
       ( name : 'respawn';    func : @lua_level_respawn),
       ( name : 'play_sound'; func : @lua_level_play_sound),
       ( name : 'nuke';       func : @lua_level_nuke),
       ( name : 'explosion';  func : @lua_level_explosion),
+      ( name : 'set_cell_and_hp'; func : @lua_level_set_cell_and_hp),
+      ( name : 'transmute_and_hp'; func : @lua_level_transmute_and_hp),
       ( name : 'recalc_fluids';func : @lua_level_recalc_fluids),
       ( name : 'animate_cell'; func : @lua_level_animate_cell),
       ( name : 'animate_item'; func : @lua_level_animate_item),
