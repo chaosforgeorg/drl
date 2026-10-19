@@ -8,7 +8,7 @@ unit drlgfxio;
 interface
 uses vglquadrenderer, vgltypes, vluaconfig, vioevent, viotypes, vimage,
      vrltools, vutil, vtextures, vvector, vbitmapfont, vio, vparticleengine, vluamapnode, vlua, vdf,
-     drlio, drlspritemap, drlanimation, drlminimap, dfdata, dfthing, dflevel, drlconfig, drlconfiguration, drlmodule;
+     drlio, drlspritemapbase, drlspritemap, drlanimation, drlminimap, dfdata, dfthing, dflevel, drlconfig, drlconfiguration, drlmodule;
 
 type
 

@@ -9,7 +9,7 @@ interface
 uses
   classes, sysutils, math,
   vnode, vuid, vutil, vcolor, vmath, vvector, vrltools, vvision, vanimation, vrandom, viotypes, vglquadrenderer,
-  dfdata, dflevel, drlparticles, drlio, drlspritemap;
+  dfdata, dflevel, drlparticles, drlio, drlspritemapbase, drlspritemap;
 
 type TAnimation        = vanimation.TAnimation;
      TAnimationManager = vanimation.TAnimations;
@@ -18,15 +18,25 @@ type TAnimation        = vanimation.TAnimation;
 
 // Base for animations drawn through the graphics IO's sprite map.
 TGFXAnimation = class(TAnimation)
+  constructor Create( aSpriteMap : TSpriteMap; aDuration : DWord; aDelay : DWord; aUID : TUID );
+protected
+  FSpriteMap : TSpriteMap; // Borrowed from the graphics IO, which owns its animations.
+end;
+
+{ TGFXLevelAnimation }
+
+// Base for animations that also draw level content (lighting, beings,
+// doodads) through DRL's sprite map.
+TGFXLevelAnimation = class(TGFXAnimation)
   constructor Create( aSpriteMap : TDRLSpriteMap; aDuration : DWord; aDelay : DWord; aUID : TUID );
 protected
-  FSpriteMap : TDRLSpriteMap; // Borrowed from the graphics IO, which owns its animations.
+  FLevelMap : TDRLSpriteMap; // The same map as FSpriteMap, typed for level drawing.
 end;
 
 { TGFXMissileAnimation }
 
 TGFXMissileAnimation = class(TGFXAnimation)
-  constructor Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False; aTrailNID : Word = 0 );
+  constructor Create( aSpriteMap : TSpriteMap; aLevel : TLevel; aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False; aTrailNID : Word = 0 );
   procedure OnUpdate( aTime : DWord ); override;
   procedure OnDraw; override;
   destructor Destroy; override;
@@ -55,7 +65,7 @@ end;}
 { TGFXMarkAnimation }
 
 TGFXMarkAnimation = class(TGFXAnimation)
-  constructor Create( aSpriteMap : TDRLSpriteMap; aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite );
+  constructor Create( aSpriteMap : TSpriteMap; aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite );
   procedure OnDraw; override;
 private
   FSprite : TSprite;
@@ -65,7 +75,7 @@ end;
 { TGFXFXAnimation }
 
 TGFXFXAnimation = class(TGFXAnimation)
-  constructor Create( aSpriteMap : TDRLSpriteMap; aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite );
+  constructor Create( aSpriteMap : TSpriteMap; aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite );
   procedure OnDraw; override;
 private
   FSprite : TSprite;
@@ -75,7 +85,7 @@ end;
 { TGFXExplodeMarkAnimation }
 
 TGFXExplodeMarkAnimation = class(TGFXAnimation)
-  constructor Create( aSpriteMap : TDRLSpriteMap; aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aColor : Byte );
+  constructor Create( aSpriteMap : TSpriteMap; aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aColor : Byte );
   procedure OnDraw; override;
 private
   FCoord    : TCoord2D;
@@ -136,7 +146,7 @@ end;
 
 { TGFXMoveAnimation }
 
-TGFXMoveAnimation = class(TGFXAnimation)
+TGFXMoveAnimation = class(TGFXLevelAnimation)
   constructor Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aPartial : Single = 0.0; aFinishBeforeNext : Boolean = False );
   procedure OnStart; override;
   procedure OnDraw; override;
@@ -172,7 +182,7 @@ end;
 { TGFXScreenMoveAnimation }
 
 TGFXScreenMoveAnimation = class(TGFXAnimation)
-  constructor Create( aSpriteMap : TDRLSpriteMap; aDuration : DWord; aTo : TCoord2D );
+  constructor Create( aSpriteMap : TSpriteMap; aDuration : DWord; aTo : TCoord2D );
   class function Update( aDuration : DWord; aTo : TCoord2D ) : Boolean;
   procedure OnUpdate( aTime : DWord ); override;
   procedure OnDraw; override;
@@ -185,7 +195,7 @@ protected
 end;
 
 
-TGFXCellAnimation = class(TGFXAnimation)
+TGFXCellAnimation = class(TGFXLevelAnimation)
   constructor Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aValue : Integer );
   procedure OnStart; override;
   procedure OnDraw; override;
@@ -199,7 +209,7 @@ private
 end;
 
 TGFXItemAnimation = class(TGFXAnimation)
-  constructor Create( aSpriteMap : TDRLSpriteMap; aUIDs : TUIDStore; aDuration : DWord; aDelay : DWord; aUID : TUID; aValue : Integer );
+  constructor Create( aSpriteMap : TSpriteMap; aUIDs : TUIDStore; aDuration : DWord; aDelay : DWord; aUID : TUID; aValue : Integer );
   procedure OnStart; override;
   procedure OnDraw; override;
   destructor Destroy; override;
@@ -209,7 +219,7 @@ private
   FValue  : Integer;
 end;
 
-TGFXKillAnimation = class(TGFXAnimation)
+TGFXKillAnimation = class(TGFXLevelAnimation)
   constructor Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aDuration : DWord; aDelay : DWord; aUID : TUID; aReverse : Boolean = False );
   procedure OnStart; override;
   procedure OnDraw; override;
@@ -230,7 +240,7 @@ end;
 { TGFXScreenShakeAnimation }
 
 TGFXScreenShakeAnimation = class(TGFXAnimation)
-  constructor Create( aSpriteMap : TDRLSpriteMap; aRNG : TRNG; aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection );
+  constructor Create( aSpriteMap : TSpriteMap; aRNG : TRNG; aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection );
   class function Update( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ) : Boolean;
   procedure OnUpdate( aTime : DWord ); override;
   procedure OnDraw; override;
@@ -252,15 +262,23 @@ uses vlog, vdebug,
 
 { TGFXAnimation }
 
-constructor TGFXAnimation.Create( aSpriteMap : TDRLSpriteMap; aDuration : DWord; aDelay : DWord; aUID : TUID );
+constructor TGFXAnimation.Create( aSpriteMap : TSpriteMap; aDuration : DWord; aDelay : DWord; aUID : TUID );
 begin
   inherited Create( aDuration, aDelay, aUID );
   FSpriteMap := aSpriteMap;
 end;
 
+{ TGFXLevelAnimation }
+
+constructor TGFXLevelAnimation.Create( aSpriteMap : TDRLSpriteMap; aDuration : DWord; aDelay : DWord; aUID : TUID );
+begin
+  inherited Create( aSpriteMap, aDuration, aDelay, aUID );
+  FLevelMap := aSpriteMap;
+end;
+
 { TGFXMissileAnimation }
 
-constructor TGFXMissileAnimation.Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aDuration : DWord; aDelay : DWord; aSource, aTarget: TCoord2D; aDrawDelay: Word; aSprite : TSprite;
+constructor TGFXMissileAnimation.Create( aSpriteMap : TSpriteMap; aLevel : TLevel; aDuration : DWord; aDelay : DWord; aSource, aTarget: TCoord2D; aDrawDelay: Word; aSprite : TSprite;
   aRay : Boolean; aTrailNID : Word );
 var iSize : Word;
 begin
@@ -361,7 +379,7 @@ end;}
 
 { TGFXMarkAnimation }
 
-constructor TGFXMarkAnimation.Create( aSpriteMap : TDRLSpriteMap; aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite );
+constructor TGFXMarkAnimation.Create( aSpriteMap : TSpriteMap; aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite );
 begin
   inherited Create( aSpriteMap, aDuration, aDelay, 0 );
   FCoord  := aCoord;
@@ -375,7 +393,7 @@ end;
 
 { TGFXFXAnimation }
 
-constructor TGFXFXAnimation.Create( aSpriteMap : TDRLSpriteMap; aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite );
+constructor TGFXFXAnimation.Create( aSpriteMap : TSpriteMap; aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite );
 begin
   inherited Create( aSpriteMap, aDuration, aDelay, 0 );
   FCoord    := aCoord;
@@ -397,7 +415,7 @@ end;
 
 { TGFXExplodeMarkAnimation }
 
-constructor TGFXExplodeMarkAnimation.Create( aSpriteMap : TDRLSpriteMap; aDuration : DWord; aDelay : DWord; aCoord: TCoord2D; aColor: Byte );
+constructor TGFXExplodeMarkAnimation.Create( aSpriteMap : TSpriteMap; aDuration : DWord; aDelay : DWord; aCoord: TCoord2D; aColor: Byte );
 var c1, c2, c3 : Byte;
 begin
   inherited Create( aSpriteMap, Max( aDuration, 1 ), aDelay, 0 );
@@ -530,8 +548,8 @@ begin
 
   if aBeing then
   begin
-    FLightStart := Iif( aLevel.isVisible(aFrom), FSpriteMap.VariableLight( aFrom, 30 ), 0 );
-    FLightEnd   := Iif( aLevel.isVisible(aTo),   FSpriteMap.VariableLight( aTo, 30 ), 0 );
+    FLightStart := Iif( aLevel.isVisible(aFrom), FLevelMap.VariableLight( aFrom, 30 ), 0 );
+    FLightEnd   := Iif( aLevel.isVisible(aTo),   FLevelMap.VariableLight( aTo, 30 ), 0 );
 
     iBeing := FUIDs.Get( FUID ) as TThing;
 
@@ -542,7 +560,7 @@ begin
     end;
   end;
 
-  iSize := FSpriteMap.GetGridSize;
+  iSize := FLevelMap.GetGridSize;
   FSource.Init( (aFrom.X - 1)*iSize,(aFrom.Y - 1)*iSize);
   FTarget.Init( (aTo.X   - 1)*iSize,(aTo.Y   - 1)*iSize);
   if aPartial > 0.0 then
@@ -648,12 +666,12 @@ begin
       if iBeing <> nil
         then
         begin
-          FSpriteMap.PushSpriteBeing( FPosition, FSpriteMap.GetBeingSprite( iBeing ), iLight );
-          FSpriteMap.PushBeingOverlay( FPosition, iBeing, iLight );
+          FLevelMap.PushSpriteBeing( FPosition, FLevelMap.GetBeingSprite( iBeing ), iLight );
+          FLevelMap.PushBeingOverlay( FPosition, iBeing, iLight );
         end
-        else FSpriteMap.PushSpriteBeing( FPosition, FSprite, iLight );
+        else FLevelMap.PushSpriteBeing( FPosition, FSprite, iLight );
     end
-    else FSpriteMap.PushSpriteItem( FPosition, FSprite, iLight );
+    else FLevelMap.PushSpriteItem( FPosition, FSprite, iLight );
 end;
 
 destructor TGFXMoveAnimation.Destroy;
@@ -670,7 +688,7 @@ end;
 
 { TGFXScreenMoveAnimation }
 
-constructor TGFXScreenMoveAnimation.Create( aSpriteMap : TDRLSpriteMap; aDuration : DWord; aTo: TCoord2D );
+constructor TGFXScreenMoveAnimation.Create( aSpriteMap : TSpriteMap; aDuration : DWord; aTo: TCoord2D );
 begin
   inherited Create( aSpriteMap, aDuration, 0, 0 );
   FSource   := FSpriteMap.Shift;
@@ -745,7 +763,7 @@ begin
   end
   else
     iSprite.SpriteID[0] += ( FValue - iSegment ) * DRL_COLS;
-  FSpriteMap.PushSpriteDoodad( FCoord, iSprite );
+  FLevelMap.PushSpriteDoodad( FCoord, iSprite );
 end;
 
 destructor TGFXCellAnimation.Destroy;
@@ -755,7 +773,7 @@ begin
   inherited Destroy;
 end;
 
-constructor TGFXItemAnimation.Create( aSpriteMap : TDRLSpriteMap; aUIDs : TUIDStore; aDuration : DWord; aDelay : DWord; aUID : TUID; aValue : Integer );
+constructor TGFXItemAnimation.Create( aSpriteMap : TSpriteMap; aUIDs : TUIDStore; aDuration : DWord; aDelay : DWord; aUID : TUID; aValue : Integer );
 var iThing : TThing;
 begin
   inherited Create( aSpriteMap, aDuration, aDelay, aUID );
@@ -835,8 +853,8 @@ begin
     iPlayerHack := 1;
     if iBeing.SpriteMod > 0 then iPlayerHack := 2;
   end;
-  FPosition.Init( (iBeing.Position.X - 1)*FSpriteMap.GetGridSize,(iBeing.Position.Y - 1)*FSpriteMap.GetGridSize);
-  FLight      := Iif( FLevel.isVisible(iBeing.Position), FSpriteMap.VariableLight( iBeing.Position, 30 ), 0 );
+  FPosition.Init( (iBeing.Position.X - 1)*FLevelMap.GetGridSize,(iBeing.Position.Y - 1)*FLevelMap.GetGridSize);
+  FLight      := Iif( FLevel.isVisible(iBeing.Position), FLevelMap.VariableLight( iBeing.Position, 30 ), 0 );
 
   iCols := DRL_COLS;
   if SF_LARGE in FSprite.Flags then iCols *= 2;
@@ -879,7 +897,7 @@ begin
   iPosition := FPosition;
   iBeing    := FLevel.Context.UIDs.Get( FUID ) as TBeing;
   if iBeing <> nil then
-    iPosition.Init( (iBeing.Position.X - 1)*FSpriteMap.GetGridSize,(iBeing.Position.Y - 1)*FSpriteMap.GetGridSize);
+    iPosition.Init( (iBeing.Position.X - 1)*FLevelMap.GetGridSize,(iBeing.Position.Y - 1)*FLevelMap.GetGridSize);
   if ( not FReverse ) and ( FLeadDelay > 0 ) then
   begin
     if FTime <= FLeadDelay then
@@ -894,7 +912,7 @@ begin
   else
     iSegment := Min( ( FTime * FCount ) div FDuration, FCount - 1 );
   iSprite.SpriteID[0] := FSprites[iSegment];
-  FSpriteMap.PushSpriteBeing( iPosition, iSprite, FLight );
+  FLevelMap.PushSpriteBeing( iPosition, iSprite, FLight );
 end;
 
 destructor TGFXKillAnimation.Destroy;
@@ -910,7 +928,7 @@ begin
     FLevel.LightFlag[ FCoord, LFCORPSING ] := False;
   inherited Destroy;
 end;
-constructor TGFXScreenShakeAnimation.Create( aSpriteMap : TDRLSpriteMap; aRNG : TRNG; aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection );
+constructor TGFXScreenShakeAnimation.Create( aSpriteMap : TSpriteMap; aRNG : TRNG; aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection );
 begin
   inherited Create( aSpriteMap, aDuration, aDelay, 0 );
   FStrength   := aStrength;
