@@ -98,7 +98,7 @@ register_level "hells_armory"
 					for x = 6,7 do
 						for y = 9,11 do
 							level.map[ coord(x,y) ] = "floor"
-							level:add_blood( coord(x,y), core.visual_random(3) )
+							level:add_blood( coord(x,y), ui.visual_random(3) )
 						end
 					end
 					local b = level:drop_being("shambler",coord(6,10))

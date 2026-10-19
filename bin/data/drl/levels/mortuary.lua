@@ -112,7 +112,7 @@ XX.XX
 		generator.place_tile( translation, center, 36,8 )
 
 		for c in area.FULL_SHRINKED:coords() do
-			level:add_blood( c, core.visual_random(3) )
+			level:add_blood( c, ui.visual_random(3) )
 		end
 
 		local corpses = {

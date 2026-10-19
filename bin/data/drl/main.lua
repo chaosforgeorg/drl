@@ -722,7 +722,7 @@ Major changes since last version (see {yversion.txt} for full list)
 end
 
 function drl.OnWinGame()
-	core.play_music("victory")
+	ui.play_music("victory")
 	if kills.get("jc") > 0 then
 		drl.plot_outro_final()
 	elseif player.level_index >= 24 then
@@ -859,7 +859,7 @@ function drl.GetQuitMessage()
 		"Go ahead and leave. See if I care.",
 		"Ya know. Next time ya gonna come here, I'm gonna toast ya."
 	}
-	return messages[core.visual_random(#(messages))]
+	return messages[ui.visual_random(#(messages))]
 end
 
 function drl.GetItemMax( id )

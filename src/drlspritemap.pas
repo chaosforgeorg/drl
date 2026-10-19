@@ -8,8 +8,8 @@ unit drlspritemap;
 interface
 uses classes, sysutils, math,
      vutil, vgltypes, vrltools, vgenerics, vvector, vcolor, vglquadrenderer, vglprogram,
-     vglfullscreentriangle, vnode, vspriteengine, vtextures, vglframebuffer,
-     dfdata, dfbeing, dflevel;
+     vglfullscreentriangle, vnode, vspriteengine, vtextures, vglframebuffer, vanimation, vuid,
+     dfdata, dfbeing, dflevel, drlio;
 
 // TODO : remove
 const SpriteCellRow = 16;
@@ -26,11 +26,12 @@ const DRL_Z_FX     = 16000;
       DRL_Z_LARGE  = DRL_Z_LAYER * 5;
 
 type TDRLMouseCursor = class( TVObject )
-  constructor Create;
+  constructor Create( aTextures : TTextureManager );
   procedure SetTextureID( aTexture : TTextureID; aSize : DWord );
   procedure Draw( aPoint : TPoint; aTicks : DWord; aTarget : TGLQuadList );
   procedure Reset;
 private
+  FTextures  : TTextureManager; // Borrowed from the graphics IO, which owns the cursor.
   FTextureID : TTextureID;
   FSize      : DWord;
   FActive    : Boolean;
@@ -50,12 +51,15 @@ type
 { TDRLSpriteMap }
 
  TDRLSpriteMap = class( TVObject )
-  constructor Create( aFramebuffer : TVec2i );
+  // The graphics IO owns the map and everything it borrows.
+  constructor Create( aIO : TDRLIO; aTextures : TTextureManager; aCursor : TDRLMouseCursor;
+    aAnimations : TAnimations; aFramebuffer : TVec2i );
   procedure Reset;
   // Called after module resources are loaded, before level rendering begins.
   procedure WarmUp;
   procedure SetLevel( aLevel : TLevel );
-  procedure Recalculate;
+  // Called by the graphics IO whenever its scaling changes, before rendering.
+  procedure Recalculate( aTileScale : Single; aFontMult : Byte; aScaledScreen : TGLVec2i );
   procedure Update( aTime : DWord; aProjection : TMatrix44; aDarkness : Boolean );
   procedure Draw;
   function DevicePointToCoord( aPoint : TPoint ) : TCoord2D;
@@ -77,6 +81,10 @@ type
   destructor Destroy; override;
   function GetBeingSprite( aBeing : TBeing ) : TSprite;
 private
+  FIO             : TDRLIO;
+  FTextures       : TTextureManager;
+  FCursor         : TDRLMouseCursor;
+  FAnimations     : TAnimations;
   FLevel          : TLevel;
   FGridActive     : Boolean;
   FMaxShift       : TVec2i;
@@ -126,6 +134,8 @@ private
   function GetSprite( aCell, aStyle : Byte ) : TSprite;
   procedure DrawMarker;
   function GetEmissive( aSprite : TSprite ) : TColor;
+  // Position of a being while it is moving; False when it is not.
+  function GetMovePosition( aUID : TUID; var aPosition : TVec2i ) : Boolean;
 public
   property Engine : TSpriteEngine read FSpriteEngine;
   property MaxShift : TVec2i read FMaxShift;
@@ -141,9 +151,8 @@ var SpriteMap : TDRLSpriteMap = nil;
 
 implementation
 
-uses vmath, viotypes, vvision, vgl3library, vuid,
-     drlio, drlgfxio,
-     dfmap, dfthing, dfitem, drlcontrollerbindings,
+uses vmath, viotypes, vvision, vgl3library,
+     dfmap, dfthing, dfitem, drlanimation, drlcontrollerbindings,
      drlmarkers, drldecals;
 
 function SpritePartSetFill( aPart : TSpritePart ) : TSpritePartSet;
@@ -176,9 +185,10 @@ end;
 
 { TDRLMouseCursor }
 
-constructor TDRLMouseCursor.Create;
+constructor TDRLMouseCursor.Create( aTextures : TTextureManager );
 begin
   inherited Create;
+  FTextures := aTextures;
   Reset;
 end;
 
@@ -199,7 +209,7 @@ begin
     TVec2i.Create(aPoint.x+FSize,aPoint.y+FSize),
     iColor,
     TVec2f.Create(0,0), TVec2f.Create(1,1),
-    (IO as TDRLGFXIO).Textures[ FTextureID ].GLTexture
+    FTextures[ FTextureID ].GLTexture
     );
 end;
 
@@ -281,8 +291,13 @@ VVerticBlurFragmentShader : Ansistring =
 
 { TDRLSpriteMap }
 
-constructor TDRLSpriteMap.Create( aFramebuffer : TVec2i );
+constructor TDRLSpriteMap.Create( aIO : TDRLIO; aTextures : TTextureManager; aCursor : TDRLMouseCursor;
+  aAnimations : TAnimations; aFramebuffer : TVec2i );
 begin
+  FIO         := aIO;
+  FTextures   := aTextures;
+  FCursor     := aCursor;
+  FAnimations := aAnimations;
   FTargeting := False;
   FTargetList := TCoord2DArray.Create();
   //FOldTargetList := TCoord2DArray.Create();
@@ -325,30 +340,30 @@ begin
   FSpriteEngine.WarmUp( [FFramebuffer, nil] );
 end;
 
-procedure TDRLSpriteMap.Recalculate;
-var iIO : TDRLGFXIO;
+procedure TDRLSpriteMap.Recalculate( aTileScale : Single; aFontMult : Byte; aScaledScreen : TGLVec2i );
+var iDriver : TIODriver;
 begin
-  iIO := (IO as TDRLGFXIO);
-  FSpriteEngine.SetScale( iIO.TileScale );
+  iDriver := FIO.Driver;
+  FSpriteEngine.SetScale( aTileScale );
   FMinShift := Vec2i(0,0);
   FMaxShift := Vec2i(
-    Max(FSpriteEngine.Grid.X*MAXX-iIO.Driver.GetSizeX,0),
-    Max(FSpriteEngine.Grid.Y*MAXY-iIO.Driver.GetSizeY,0)
+    Max(FSpriteEngine.Grid.X*MAXX-iDriver.GetSizeX,0),
+    Max(FSpriteEngine.Grid.Y*MAXY-iDriver.GetSizeY,0)
   );
 
-  if IO.Driver.GetSizeY > 20*FSpriteEngine.Grid.Y then
+  if iDriver.GetSizeY > 20*FSpriteEngine.Grid.Y then
   begin
-    FMinShift.Y := -( IO.Driver.GetSizeY - 20*FSpriteEngine.Grid.Y ) div 2;
+    FMinShift.Y := -( iDriver.GetSizeY - 20*FSpriteEngine.Grid.Y ) div 2;
     FMaxShift.Y := FMinShift.Y;
   end
   else
   begin
-    FMinShift.Y := FMinShift.Y - 18*iIO.FontMult*2;
-    FMaxShift.Y := FMaxShift.Y + 18*iIO.FontMult*3;
+    FMinShift.Y := FMinShift.Y - 18*aFontMult*2;
+    FMaxShift.Y := FMaxShift.Y + 18*aFontMult*3;
   end;
-  FFramebuffer.Resize( iIO.Driver.GetSizeX, iIO.Driver.GetSizeY );
-  FHBFramebuffer.Resize( iIO.ScaledScreen.X, iIO.ScaledScreen.Y );
-  FVBFramebuffer.Resize( iIO.ScaledScreen.X, iIO.ScaledScreen.Y );
+  FFramebuffer.Resize( iDriver.GetSizeX, iDriver.GetSizeY );
+  FHBFramebuffer.Resize( aScaledScreen.X, aScaledScreen.Y );
+  FVBFramebuffer.Resize( aScaledScreen.X, aScaledScreen.Y );
 
   FPostProgram.Bind;
     FPostProgram.SetUniformi( 'utexture', 0 );
@@ -357,19 +372,19 @@ begin
     if Setting_Glow
       then FPostProgram.SetUniformi( 'toggle_glow', 1 )
       else FPostProgram.SetUniformi( 'toggle_glow', 0 );
-    FPostProgram.SetUniformf( 'screen_size', IO.Driver.GetSizeX, IO.Driver.GetSizeY );
+    FPostProgram.SetUniformf( 'screen_size', iDriver.GetSizeX, iDriver.GetSizeY );
   FPostProgram.UnBind;
 
   FHBlurProgram.Bind;
     FHBlurProgram.SetUniformi( 'utexture', 0 );
-    FHBlurProgram.SetUniformf( 'screen_size', iIO.ScaledScreen.X, iIO.ScaledScreen.Y );
+    FHBlurProgram.SetUniformf( 'screen_size', aScaledScreen.X, aScaledScreen.Y );
   FHBlurProgram.UnBind;
 
   FVBlurProgram.Bind;
     FVBlurProgram.SetUniformi( 'utexture', 0 );
-    FVBlurProgram.SetUniformf( 'screen_size', iIO.ScaledScreen.X, iIO.ScaledScreen.Y );
+    FVBlurProgram.SetUniformf( 'screen_size', aScaledScreen.X, aScaledScreen.Y );
   FVBlurProgram.UnBind;
-  glViewport( 0, 0, iIO.Driver.GetSizeX, iIO.Driver.GetSizeY );
+  glViewport( 0, 0, iDriver.GetSizeX, iDriver.GetSizeY );
 end;
 
 procedure TDRLSpriteMap.SetLevel( aLevel : TLevel );
@@ -382,13 +397,11 @@ procedure TDRLSpriteMap.Update( aTime : DWord; aProjection : TMatrix44; aDarknes
 var iUIDs     : TUIDStore;
     iShift    : Single;
     iPixel    : Integer;
-    iIO       : TDRLGFXIO;
     iMark     : TMarker;
     iTarget   : TBeing;
     iPosition : TVec2i;
 begin
   iUIDs := FLevel.Context.UIDs;
-  iIO := IO as TDRLGFXIO;
   FShift := FNewShift;
   {$PUSH}
   {$Q-}
@@ -396,10 +409,10 @@ begin
   {$POP}
 
   // Technically this should smooth out fluids -_-
-  FFluidTime := IO.Driver.GetMs*0.0001;
+  FFluidTime := FIO.Driver.GetMs*0.0001;
   iShift     := FFluidTime - Floor( FFluidTime );
-  iPixel     := Floor( iShift * ( 32*iIO.TileScale ) );
-  iShift     := iPixel / ( 32*iIO.TileScale );
+  iPixel     := Floor( iShift * ( 32*FSpriteEngine.Scale ) );
+  iShift     := iPixel / ( 32*FSpriteEngine.Scale );
   FFluidX := 1-iShift;
   FFluidY := iShift;
   ApplyEffect;
@@ -422,7 +435,7 @@ begin
       begin
         iPosition := Vec2i( iTarget.Position.X-1, iTarget.Position.Y-1 ) * FSpriteEngine.Grid;
         if iTarget.AnimCount > 0 then
-          iIO.getUIDPosition( iTarget.UID, iPosition );
+          GetMovePosition( iTarget.UID, iPosition );
         PushSpriteFX( iPosition, iMark.Sprite, FTimer, -1 );
       end;
     end;
@@ -448,7 +461,7 @@ begin
   MarkerSprite.SpriteID[0] := HARDSPRITE_HIGHLIGHT;
   MarkerSprite.Color := ColorBlack;
   MarkerSprite.Color.A := 127;
-  if IO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT ) or IO.Targeting then
+  if FIO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT ) or FIO.Targeting then
   begin
     MarkerSprite.Color.R := Floor(50*(Sin( FFluidTime*50 )+1)+100);
     MarkerSprite.Color.G := MarkerSprite.Color.R;
@@ -466,7 +479,7 @@ begin
     else
       MarkerSprite.Color.G := Floor(50*(Sin( FFluidTime*50 )+1)+100);
   end;
-  SpriteMap.PushSpriteFX( FMarker, MarkerSprite );
+  PushSpriteFX( FMarker, MarkerSprite );
 end;
 
 function TDRLSpriteMap.GetEmissive( aSprite : TSprite ) : TColor;
@@ -476,10 +489,22 @@ begin
   if Result.A = 0 then Result.A := 255;
 end;
 
+function TDRLSpriteMap.GetMovePosition( aUID : TUID; var aPosition : TVec2i ) : Boolean;
+var iAnimation : TAnimation;
+begin
+  for iAnimation in FAnimations.Animations do
+    if ( iAnimation.UID = aUID ) and ( iAnimation.Delay = 0 ) then
+      if iAnimation is TGFXMoveAnimation then
+      begin
+        aPosition := ( iAnimation as TGFXMoveAnimation ).LastPosition;
+        Exit( True );
+      end;
+  Exit( False );
+end;
+
 procedure TDRLSpriteMap.Draw;
 var iPoint   : TPoint;
     iCoord   : TCoord2D;
-    iIO      : TDRLGFXIO;
 const TargetSprite : TSprite = (
   Color     : (R:0;G:0;B:0;A:255);
   OverColor : (R:0;G:0;B:0;A:0);
@@ -494,10 +519,9 @@ const TargetSprite : TSprite = (
 
 begin
   TargetSprite.SpriteID[0] := HARDSPRITE_SELECT;
-  iIO := IO as TDRLGFXIO;
   FSpriteEngine.Position := FShift + FOffset;
 
-  if iIO.MCursor.Active and iIO.Driver.GetMousePos( iPoint ) then
+  if FCursor.Active and FIO.Driver.GetMousePos( iPoint ) then
   begin
     iCoord := DevicePointToCoord( iPoint );
     if FLevel.isProperCoord( iCoord ) then
@@ -507,7 +531,7 @@ begin
         TargetSprite.Color.G := Floor(100*(Sin( FFluidTime*50 )+1)+50)
       else
         TargetSprite.Color.R := Floor(100*(Sin( FFluidTime*50 )+1)+50);
-      SpriteMap.PushSpriteFX( iCoord, TargetSprite );
+      PushSpriteFX( iCoord, TargetSprite );
     end;
   end;
 
@@ -541,7 +565,7 @@ begin
 
       glEnable( GL_BLEND );
 
-      glViewport( 0, 0, iIO.Driver.GetSizeX, iIO.Driver.GetSizeY );
+      glViewport( 0, 0, FIO.Driver.GetSizeX, FIO.Driver.GetSizeY );
     end;
 
     FPostProgram.Bind;
@@ -997,7 +1021,7 @@ begin
   iSprite := aBeing.Sprite;
   iSprite.SpriteID[0] := iOverlay.Sprite.SpriteID[0];
 
-  if ( aBeing.OverlayUntil > IO.Time ) and ( SF_PAINANIM in iSprite.Flags ) then
+  if ( aBeing.OverlayUntil > FIO.Time ) and ( SF_PAINANIM in iSprite.Flags ) then
   begin
     if SF_LARGE in iSprite.Flags then
       iSprite.SpriteID[0] += DRL_COLS * 2 * iSprite.Frames
@@ -1062,7 +1086,7 @@ end;
 function TDRLSpriteMap.ShiftValue ( aFocus : TCoord2D ) : TVec2i;
 const YFactor = 6;
 begin
-  if ( FMaxShift.X - FMinShift.X ) > 2 * IO.Driver.GetSizeX
+  if ( FMaxShift.X - FMinShift.X ) > 2 * FIO.Driver.GetSizeX
     then ShiftValue.X := S3Interpolate(FMinShift.X,FMaxShift.X, (aFocus.X-2)/(MAXX-3))
     else ShiftValue.X := S5Interpolate(FMinShift.X,FMaxShift.X, (aFocus.X-2)/(MAXX-3));
   if FMaxShift.Y - FMinShift.Y > 4* FSpriteEngine.Grid.Y then
@@ -1152,15 +1176,15 @@ end;
 procedure TDRLSpriteMap.ApplyEffect;
 begin
   case StatusEffect of
-    StatusRed    : FLutTexture := (IO as TDRLGFXIO).Textures['lut_berserk'].GLTexture;
-    StatusGreen  : FLutTexture := (IO as TDRLGFXIO).Textures['lut_enviro'].GLTexture;
-    StatusBlue   : FLutTexture := (IO as TDRLGFXIO).Textures['lut_stealth'].GLTexture;
-    StatusInvert : FLutTexture := (IO as TDRLGFXIO).Textures['lut_iddqd'].GLTexture;
-    StatusMagenta: FLutTexture := (IO as TDRLGFXIO).Textures['lut_rage'].GLTexture;
+    StatusRed    : FLutTexture := FTextures['lut_berserk'].GLTexture;
+    StatusGreen  : FLutTexture := FTextures['lut_enviro'].GLTexture;
+    StatusBlue   : FLutTexture := FTextures['lut_stealth'].GLTexture;
+    StatusInvert : FLutTexture := FTextures['lut_iddqd'].GLTexture;
+    StatusMagenta: FLutTexture := FTextures['lut_rage'].GLTexture;
     else
     begin
       if Setting_Glow
-        then FLutTexture := (IO as TDRLGFXIO).Textures['lut_clear'].GLTexture
+        then FLutTexture := FTextures['lut_clear'].GLTexture
         else FLutTexture := 0;
     end;
   end;
@@ -1470,7 +1494,7 @@ var iDMinX     : Word;
 begin
   iMixFluids := not FLevel.Flags[ LF_SHARPFLUID ];
   iDMinX := FShift.X div FSpriteEngine.Grid.X + 1;
-  iDMaxX := Min(FShift.X div FSpriteEngine.Grid.X + (IO.Driver.GetSizeX div FSpriteEngine.Grid.X + 1),MAXX);
+  iDMaxX := Min(FShift.X div FSpriteEngine.Grid.X + (FIO.Driver.GetSizeX div FSpriteEngine.Grid.X + 1),MAXX);
 
   for iY := 1 to MAXY do
     for iX := iDMinX to iDMaxX do
@@ -1565,7 +1589,7 @@ var iDMinX   : Word;
     iSprite  : TSprite;
 begin
   iDMinX := FShift.X div FSpriteEngine.Grid.X + 1;
-  iDMaxX := Min(FShift.X div FSpriteEngine.Grid.X + (IO.Driver.GetSizeX div FSpriteEngine.Grid.X + 1),MAXX);
+  iDMaxX := Min(FShift.X div FSpriteEngine.Grid.X + (FIO.Driver.GetSizeX div FSpriteEngine.Grid.X + 1),MAXX);
 
   for iY := 1 to MAXY do
     for iX := iDMinX to iDMaxX do
@@ -1686,7 +1710,7 @@ begin
       iBeing := FLevel.Being[FAutoTarget];
       iV     := Vec2i( FAutoTarget.X-1, FAutoTarget.Y-1 ) * FSpriteEngine.Grid;
       if ( iBeing <> nil ) and ( iBeing.AnimCount > 0 ) then
-         (IO as TDRLGFXIO).getUIDPosition( iBeing.UID, iV );
+         GetMovePosition( iBeing.UID, iV );
       if ( iBeing <> nil ) and ( iBeing.isVisible or ( iBeing.AnimCount > 0 ) ) 
         then PushTarget( HARDSPRITE_SELECT, iV, NewColor( Yellow ), 1.0 + iBeing.TargetSize * 0.1 )
         else PushTarget( HARDSPRITE_SELECT, iV, NewColor( Yellow ), 1.0 );
@@ -1756,7 +1780,7 @@ function TDRLSpriteMap.GetBeingSprite( aBeing : TBeing ) : TSprite;
 begin
   Assert( Assigned( aBeing ) );
   Result := aBeing.Sprite;
-  if (aBeing.OverlayUntil > IO.Time) and (SF_PAINANIM in Result.Flags) then
+  if (aBeing.OverlayUntil > FIO.Time) and (SF_PAINANIM in Result.Flags) then
   begin
     if SF_LARGE in Result.Flags then
       Result.SpriteID[0] += DRL_COLS * 2 * Result.Frames

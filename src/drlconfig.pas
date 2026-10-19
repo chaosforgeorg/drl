@@ -29,7 +29,7 @@ end;
 
 implementation
 
-uses dfdata, drlio;
+uses dfdata;
 
 
 { TDRLConfig }
@@ -100,7 +100,6 @@ begin
       else GraphicsVersion := False;
   end;
 
-  TDRLIO.RegisterLuaAPI( FStack );
   if aReload then EntryFeed( 'Colors', @ReadColorOverride );
 end;
 

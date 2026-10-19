@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drltextio;
 interface
 
-uses vrltools, vtextmap, vioevent, vio, viotypes, vluamapnode,
+uses vrltools, vtextmap, vioevent, vio, viotypes, vluamapnode, vlua,
      drlio, dfdata, dflevel, drlconfiguration, drlmodule;
 
 // TDRLTextIO
@@ -35,6 +35,7 @@ type TDRLTextIO = class( TDRLIO, ITextMap )
     function GetGylph( const aCoord : TCoord2D ) : TIOGylph;
     procedure SetTarget( aTarget : TCoord2D; aColor : Byte; aRange : Byte ); override;
     procedure SetAutoTarget( aTarget : TCoord2D ); override;
+    procedure RegisterLuaAPI( aLua : TLua ); override;
 
   protected
     procedure RunLauncherLayer( aLayer : TIOLayer ); override;
@@ -46,6 +47,8 @@ type TDRLTextIO = class( TDRLIO, ITextMap )
 
     FTarget         : TCoord2D;
     FTargetRange    : Byte;
+    // Sprite sheets have no textures in text mode; only their IDs are issued.
+    FSpriteSheets   : Integer;
   end;
 
 implementation
@@ -56,13 +59,14 @@ uses sysutils,
      {$ELSE}
      vcursesio, vcursesconsole,
      {$ENDIF}
-     vioconsole, vtig, vvision, vutil,
+     vioconsole, vtig, vvision, vutil, vlualibrary, vluagamestack,
      drlanimation,
      dfbeing, dfitem;
 
 constructor TDRLTextIO.Create( aSettings : TDRLConfiguration );
 begin
-  FTextMap  := nil;
+  FTextMap      := nil;
+  FSpriteSheets := -1;
   {$IFDEF WINDOWS}
   FIODriver := TTextIODriver.Create( 80, 25 );
   {$ELSE}
@@ -96,6 +100,39 @@ destructor TDRLTextIO.Destroy;
 begin
   FreeAndNil( FTextMap );
   inherited Destroy;
+end;
+
+{$HINTS OFF} // To supress Hint: Parameter "x" not found
+
+function lua_ui_texture_upload(L: Plua_State): Integer; cdecl;
+begin
+  Result := 0;
+end;
+
+{$HINTS ON}
+
+function lua_ui_register_sprite_sheet(L: Plua_State): Integer; cdecl;
+var iState : TLuaGameStack;
+    iIO    : TDRLTextIO;
+begin
+  iState.Init(L);
+  iIO := TDRLTextIO( lua_touserdata( L, lua_upvalueindex( 1 ) ) );
+  Inc( iIO.FSpriteSheets );
+  iState.Push( Integer( iIO.FSpriteSheets * 100000 ) );
+  Result := 1;
+end;
+
+const lua_ui_text_lib : array[0..2] of luaL_Reg = (
+      ( name : 'texture_upload';        func : @lua_ui_texture_upload),
+      ( name : 'register_sprite_sheet'; func : @lua_ui_register_sprite_sheet),
+      ( name : nil;                     func : nil; )
+);
+
+procedure TDRLTextIO.RegisterLuaAPI( aLua : TLua );
+begin
+  inherited RegisterLuaAPI( aLua );
+  lua_pushlightuserdata( aLua.Raw, Self );
+  aLua.Register( 'ui', lua_ui_text_lib, 1 );
 end;
 
 procedure TDRLTextIO.Update( aMSec : DWord );
@@ -164,7 +201,7 @@ end;
 procedure TDRLTextIO.addSoundAnimation(aDelay: DWord; aPosition: TCoord2D; aSoundID: DWord);
 begin
   if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
-  FTextMap.AddAnimation( TSoundEventAnimation.Create( aDelay, aPosition, aSoundID ) )
+  FTextMap.AddAnimation( TSoundEventAnimation.Create( Self, aDelay, aPosition, aSoundID ) )
 end;
 
 procedure TDRLTextIO.ExplosionMark( aCoord : TCoord2D; aColor : Byte; aDuration : DWord; aDelay : DWord );

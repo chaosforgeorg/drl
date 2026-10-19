@@ -306,7 +306,7 @@ register_level "hells_arena"
 		generator.scatter_put( area( 5,3,68,15 ), translation, table.random_pick( column ), "floor",8+math.random(8))
 		for c in level:each( "water" ) do
 			level.map[ c ] = "floor"
-			level:add_blood( c, core.visual_random(3) )
+			level:add_blood( c, ui.visual_random(3) )
 		end
 		generator.scatter_blood(area.FULL_SHRINKED,"floor",100)
 		level.data.drop_zone = level.data.drop_zone or area.FULL_SHRINKED

@@ -8,8 +8,8 @@ unit drlanimation;
 interface
 uses
   classes, sysutils, math,
-  vnode, vuid, vutil, vcolor, vmath, vvector, vrltools, vvision, vanimation,
-  dfdata, dflevel, drlparticles;
+  vnode, vuid, vutil, vcolor, vmath, vvector, vrltools, vvision, vanimation, vrandom, viotypes, vglquadrenderer,
+  dfdata, dflevel, drlparticles, drlio;
 
 type TAnimation        = vanimation.TAnimation;
      TAnimationManager = vanimation.TAnimations;
@@ -78,9 +78,10 @@ end;
 { TSoundEventAnimation }
 
 TSoundEventAnimation = class(TAnimation)
-  constructor Create( aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord );
+  constructor Create( aIO : TDRLIO; aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord );
   procedure OnStart; override;
 private
+  FIO       : TDRLIO; // Borrowed from IO, which owns its animations.
   FPosition : TCoord2D;
   FSoundID  : DWord;
 end;
@@ -104,18 +105,21 @@ end;
 { TGFXBlinkAnimation }
 
 TGFXBlinkAnimation = class(TAnimation)
-  constructor Create( aDuration : DWord; aDelay : DWord; aColor : Word );
+  constructor Create( aSheet : TGLQuadList; aDriver : TIODriver; aDuration : DWord; aDelay : DWord; aColor : Word );
   procedure OnDraw; override;
 private
+  FSheet    : TGLQuadList; // Borrowed from the graphics IO, which owns its animations.
+  FDriver   : TIODriver;   // Borrowed from the graphics IO.
   FGColor   : TColor;
 end;
 
 { TRumbleEventAnimation }
 
 TRumbleEventAnimation = class(TAnimation)
-  constructor Create( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord );
+  constructor Create( aDriver : TIODriver; aDelay : DWord; aLow, aHigh : Word; aDuration : DWord );
   procedure OnStart; override;
 private
+  FDriver : TIODriver; // Borrowed from IO, which owns its animations.
   FLow    : Word;
   FHigh   : Word;
   FDur    : DWord;
@@ -217,7 +221,7 @@ end;
 { TGFXScreenShakeAnimation }
 
 TGFXScreenShakeAnimation = class(TAnimation)
-  constructor Create( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection );
+  constructor Create( aRNG : TRNG; aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection );
   class function Update( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ) : Boolean;
   procedure OnUpdate( aTime : DWord ); override;
   procedure OnDraw; override;
@@ -234,9 +238,9 @@ end;
 
 implementation
 
-uses viotypes, vlog, vdebug,
+uses vlog, vdebug,
      dfbeing, dfthing,
-     drlgfxio, drlio, drlspritemap;
+     drlspritemap;
 
 { TGFXMissileAnimation }
 
@@ -413,9 +417,10 @@ end;
 
 { TSoundEventAnimation }
 
-constructor TSoundEventAnimation.Create( aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord );
+constructor TSoundEventAnimation.Create( aIO : TDRLIO; aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord );
 begin
   inherited Create( 1, aDelay, 0 );
+  FIO       := aIO;
   FPosition := aPosition;
   FSoundID  := aSoundID;
   FBlocking := False;
@@ -423,7 +428,7 @@ end;
 
 procedure TSoundEventAnimation.OnStart;
 begin
-  IO.PlaySound( FSoundID, FPosition );
+  FIO.PlaySound( FSoundID, FPosition );
 end;
 
 { TGFXParticleBurstAnimation }
@@ -456,24 +461,26 @@ end;
 
 { TGFXBlinkAnimation }
 
-constructor TGFXBlinkAnimation.Create( aDuration : DWord; aDelay : DWord; aColor: Word );
+constructor TGFXBlinkAnimation.Create( aSheet : TGLQuadList; aDriver : TIODriver; aDuration : DWord; aDelay : DWord; aColor : Word );
 begin
   inherited Create( aDuration, aDelay, 0 );
+  FSheet    := aSheet;
+  FDriver   := aDriver;
   FGColor   := NewColor( aColor );
   FBlocking := False;
 end;
 
 procedure TGFXBlinkAnimation.OnDraw;
 begin
-  if GraphicsVersion then
-    (IO as TDRLGFXIO).PostSheet.PushColoredQuad( TVec2i.Create(0,0), TVec2i.Create(IO.Driver.GetSizeX,IO.Driver.GetSizeY), TVec4f.Create(FGColor.R,FGColor.G,FGColor.B,0.7) );
+  FSheet.PushColoredQuad( TVec2i.Create(0,0), TVec2i.Create(FDriver.GetSizeX,FDriver.GetSizeY), TVec4f.Create(FGColor.R,FGColor.G,FGColor.B,0.7) );
 end;
 
 { TRumbleEventAnimation }
 
-constructor TRumbleEventAnimation.Create( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord );
+constructor TRumbleEventAnimation.Create( aDriver : TIODriver; aDelay : DWord; aLow, aHigh : Word; aDuration : DWord );
 begin
   inherited Create( 1, aDelay, 0 );
+  FDriver   := aDriver;
   FLow      := aLow;
   FHigh     := aHigh;
   FDur      := aDuration;
@@ -482,7 +489,7 @@ end;
 
 procedure TRumbleEventAnimation.OnStart;
 begin
-  IO.Driver.Rumble( FLow, FHigh, FDur );
+  FDriver.Rumble( FLow, FHigh, FDur );
 end;
 
 
@@ -888,12 +895,12 @@ begin
     FLevel.LightFlag[ FCoord, LFCORPSING ] := False;
   inherited Destroy;
 end;
-constructor TGFXScreenShakeAnimation.Create( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection );
+constructor TGFXScreenShakeAnimation.Create( aRNG : TRNG; aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection );
 begin
   inherited Create( aDuration, aDelay, 0 );
   FStrength   := aStrength;
-  FFrequencyX := 0.05 + 0.8 * IO.VisualRNG.RFloat;
-  FFrequencyY := 0.05 + 0.8 * IO.VisualRNG.RFloat;
+  FFrequencyX := 0.05 + 0.8 * aRNG.RFloat;
+  FFrequencyY := 0.05 + 0.8 * aRNG.RFloat;
   FDirection  := aDirection;
   FBlocking   := False;
 end;

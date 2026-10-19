@@ -128,7 +128,7 @@ function generator.scatter_blood(scatter_area,good,count)
 	if type(good) == "string" then good = cells[good].nid end
 	for c = 1, count do
 		local c = scatter_area:random_coord()
-		if not good or level:get_cell(c) == good then level:add_blood( c, core.visual_random(3) ) end
+		if not good or level:get_cell(c) == good then level:add_blood( c, ui.visual_random(3) ) end
 	end
 end
 
@@ -196,7 +196,7 @@ function generator.place_dungen_tile( code, tile_object, tile_pos )
 			if tile_entry.blood then
 				local blood = tile_entry.blood
 				if type(blood) == "table" then
-					blood = blood[1] + core.visual_random(blood[2]-blood[1]+1) - 1
+					blood = blood[1] + ui.visual_random(blood[2]-blood[1]+1) - 1
 				end
 				level:add_blood( p, blood )
 			end

@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlgfxio;
 interface
 uses vglquadrenderer, vgltypes, vluaconfig, vioevent, viotypes, vimage,
-     vrltools, vutil, vtextures, vvector, vbitmapfont, vio, vparticleengine, vluamapnode,
+     vrltools, vutil, vtextures, vvector, vbitmapfont, vio, vparticleengine, vluamapnode, vlua, vdf,
      drlio, drlspritemap, drlanimation, drlminimap, dfdata, dfthing, dflevel, drlconfig, drlconfiguration, drlmodule;
 
 type
@@ -23,8 +23,10 @@ type
     procedure SetLevel( aLevel : TLuaMapNode ); override;
     procedure EnterLevel( aCoord : TCoord2D ); override;
     procedure Initialize( aCoreModule : TDRLModule ); override;
-    // Finish module uploads and GPU warm-up while the loading screen is active.
-    procedure PrepareGraphics;
+    procedure PrepareGraphics; override;
+    procedure RegisterLuaAPI( aLua : TLua ); override;
+    procedure LoadGraphics( aData : TVDataFile ); override; overload;
+    procedure LoadGraphics( const aPath : AnsiString ); override; overload;
     procedure Reconfigure( aConfig : TLuaConfig ); override;
     procedure Configure( aConfig : TDRLConfig; aReload : Boolean ); override; overload;
     procedure Update( aMSec : DWord ); override;
@@ -51,7 +53,6 @@ type
       aDirection : TDirection; aCount : Word; aDistanceScale, aSpreadScale : Single ); override;
     procedure addSoundAnimation( aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord ); override;
     procedure addRumbleAnimation( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord ); override;
-    function getUIDPosition( aUID : TUID; var aPosition : TVec2i ) : Boolean;
     procedure PulseBlood( aValue : Single ); override;
 
     procedure DeviceChanged;
@@ -148,7 +149,7 @@ implementation
 
 uses {$IFDEF WINDOWS}windows,{$ENDIF}
      classes, sysutils, math,
-     vdebug, vlog, vmath, vdf, vgl3library, vuid, vvision, vrandom,
+     vdebug, vlog, vmath, vgl3library, vuid, vvision, vrandom, vlualibrary, vluagamestack,
      vglimage, vsdlio, vcolor, vglconsole, vioconsole,
      vtig, vtigstyle, vtigio,
      dfitem, drlcontrollerbindings;
@@ -208,7 +209,7 @@ begin
   if FMiniScale <> iOldMiniScale then
     SetMinimapScale( FMiniScale );
 
-  SpriteMap.Recalculate;
+  SpriteMap.Recalculate( FTileScale, FFontMult, FScaledScreen );
   if Player <> nil then
     SpriteMap.NewShift := SpriteMap.ShiftValue( Player.Position );
 
@@ -253,16 +254,16 @@ begin
   end;
 
   FTextures  := TTextureManager.Create( Option_Blending );
-  SpriteMap  := TDRLSpriteMap.Create( Vec2i( iWidth, iHeight ) );
   TSDLIODriver( FIODriver ).ShowMouse( False );
 
-  FMCursor   := TDRLMouseCursor.Create;
+  FMCursor   := TDRLMouseCursor.Create( FTextures );
   FQuadSheet := TGLQuadList.Create;
   FTextSheet := TGLQuadList.Create;
   FPostSheet := TGLQuadList.Create;
   FQuadRenderer := TGLQuadRenderer.Create;
 
   FAnimations := TAnimationManager.Create;
+  SpriteMap   := TDRLSpriteMap.Create( Self, FTextures, FMCursor, FAnimations, Vec2i( iWidth, iHeight ) );
   FMinimap    := TMinimap.Create;
   inherited Create( aSettings );
   FParticleEngine := TParticleEngine.Create( VisualRNG );
@@ -272,6 +273,81 @@ procedure TDRLGFXIO.PrepareGraphics;
 begin
   FTextures.Upload;
   SpriteMap.WarmUp;
+end;
+
+procedure TDRLGFXIO.LoadGraphics( aData : TVDataFile );
+begin
+  aData.RegisterLoader( FILETYPE_IMAGE, @FTextures.LoadTextureCallback );
+  aData.Load( 'graphics' );
+end;
+
+procedure TDRLGFXIO.LoadGraphics( const aPath : AnsiString );
+begin
+  FTextures.LoadTextureFolder( aPath );
+end;
+
+function LuaGFXIO( L : PLua_State ) : TDRLGFXIO; inline;
+begin
+  Exit( TDRLGFXIO( lua_touserdata( L, lua_upvalueindex( 1 ) ) ) );
+end;
+
+function lua_ui_texture_upload(L: Plua_State): Integer; cdecl;
+var State    : TLuaGameStack;
+    iTexture : TTexture;
+begin
+  State.Init(L);
+  iTexture := LuaGFXIO( L ).FTextures.Textures[ State.ToString(1) ];
+  if iTexture = nil then State.Error( 'Texture not found: '+State.ToString(1) );
+  if State.IsBoolean( 2 ) and State.ToBoolean( 2 ) then iTexture.Blend := True;
+  if State.IsBoolean( 3 ) and State.ToBoolean( 3 ) then iTexture.is3D  := True;
+  if iTexture.GLTexture = 0
+    then iTexture.Upload
+    else Log( LOGWARN, 'Texture redefinition: '+State.ToString(1) );
+  Result := 0;
+end;
+
+function lua_ui_register_sprite_sheet(L: Plua_State): Integer; cdecl;
+var State     : TLuaGameStack;
+    iTextures : TTextureManager;
+    iNormal   : TTexture;
+    iCosplay  : TTexture;
+    iGlow     : TTexture;
+    iEmissive : TTexture;
+
+  function LoadTexture( aIndex : Integer ) : TTexture;
+  begin
+    if not State.IsString( aIndex ) then Exit( nil );
+    LoadTexture := iTextures.Textures[ State.ToString( aIndex ) ];
+    if LoadTexture = nil then State.Error( 'register_sprite_sheet - texture not found : "'+State.ToString( aIndex )+'"!');
+    if LoadTexture.GLTexture = 0 then
+      LoadTexture.Upload;
+    if LoadTexture.Size.X * LoadTexture.Size.Y = 0 then State.Error( 'register_sprite_sheet - texture malformed : "'+State.ToString( aIndex )+'"!');
+  end;
+
+begin
+  State.Init(L);
+  iTextures := LuaGFXIO( L ).FTextures;
+  iNormal   := LoadTexture( 1 );
+  iCosplay  := LoadTexture( 2 );
+  iGlow     := LoadTexture( 3 );
+  iEmissive := LoadTexture( 4 );
+  if iNormal = nil then State.Error( 'Bad parameters passes to register_sprite_sheet!');
+  // Optional sixth argument declares support for procedural sprite transitions.
+  State.Push( Integer( SpriteMap.Engine.Add( iNormal, iCosplay, iEmissive, iGlow, State.ToInteger( 5 ), State.ToBoolean( 6, False ) ) * 100000 ) );
+  Result := 1;
+end;
+
+const lua_ui_gfx_lib : array[0..2] of luaL_Reg = (
+      ( name : 'texture_upload';        func : @lua_ui_texture_upload),
+      ( name : 'register_sprite_sheet'; func : @lua_ui_register_sprite_sheet),
+      ( name : nil;                     func : nil; )
+);
+
+procedure TDRLGFXIO.RegisterLuaAPI( aLua : TLua );
+begin
+  inherited RegisterLuaAPI( aLua );
+  lua_pushlightuserdata( aLua.Raw, Self );
+  aLua.Register( 'ui', lua_ui_gfx_lib, 1 );
 end;
 
 procedure TDRLGFXIO.Reset;
@@ -288,7 +364,6 @@ begin
   FGPDetected    := False;
 
   FLoading := nil;
-  IO := Self;
 
   FVPadding := 0;
   FFontMult := 1;
@@ -449,7 +524,7 @@ end;
 procedure TDRLGFXIO.Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0);
 begin
   if Setting_Flash then
-    FAnimations.AddAnimation( TGFXBlinkAnimation.Create(aDuration,aDelay,aColor) );
+    FAnimations.AddAnimation( TGFXBlinkAnimation.Create( FPostSheet, FIODriver, aDuration, aDelay, aColor ) );
 end;
 
 procedure TDRLGFXIO.addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection );
@@ -457,7 +532,7 @@ begin
   if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
   if Setting_ScreenShake then
     if not TGFXScreenShakeAnimation.Update( aDuration, aDelay, aStrength, aDirection ) then
-      FAnimations.addAnimation( TGFXScreenShakeAnimation.Create( aDuration, aDelay, aStrength, aDirection ) );
+      FAnimations.addAnimation( TGFXScreenShakeAnimation.Create( FVisualRNG, aDuration, aDelay, aStrength, aDirection ) );
 end;
 
 procedure TDRLGFXIO.addMoveAnimation ( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aWipeBump : Boolean; aFinishBeforeNext : Boolean );
@@ -483,19 +558,6 @@ begin
   if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
   FAnimations.AddAnimation( TGFXBumpAnimation.Create( Level, aDuration, aDelay, aUID,
     aFrom, aTo, aSprite, True, aAmount ), Setting_AnimationBlending );
-end;
-
-function TDRLGFXIO.getUIDPosition( aUID : TUID; var aPosition : TVec2i ) : Boolean;
-var iAnimation : TAnimation;
-begin
-  for iAnimation in FAnimations.Animations do
-    if ( iAnimation.UID = aUID ) and ( iAnimation.Delay = 0 ) then
-      if iAnimation is TGFXMoveAnimation then
-      begin
-        aPosition := ( iAnimation as TGFXMoveAnimation ).LastPosition;
-        Exit( True );
-      end;
-  Exit( False );
 end;
 
 procedure TDRLGFXIO.addScreenMoveAnimation(aDuration: DWord; aTo: TCoord2D);
@@ -563,7 +625,7 @@ procedure TDRLGFXIO.addSoundAnimation(aDelay: DWord; aPosition: TCoord2D; aSound
 begin
   if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
   if aSoundID > 0 then
-    FAnimations.addAnimation( TSoundEventAnimation.Create( aDelay, aPosition, aSoundID ) )
+    FAnimations.addAnimation( TSoundEventAnimation.Create( Self, aDelay, aPosition, aSoundID ) )
 end;
 
 procedure TDRLGFXIO.addRumbleAnimation( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord );
@@ -572,7 +634,7 @@ begin
   if (not Setting_GamepadRumble) or (not IsGamepad ) then Exit;
   if aDelay = 0
     then FIODriver.Rumble( aLow, aHigh, aDuration )
-    else FAnimations.addAnimation( TRumbleEventAnimation.Create( aDelay, aLow, aHigh, aDuration ) );
+    else FAnimations.addAnimation( TRumbleEventAnimation.Create( FIODriver, aDelay, aLow, aHigh, aDuration ) );
 end;
 
 procedure TDRLGFXIO.PulseBlood( aValue : Single );
@@ -975,7 +1037,7 @@ begin
   TGLConsoleRenderer( FConsole ).HideCursor;
   SetMinimapScale(FMiniScale);
   DeviceChanged;
-  SpriteMap.Recalculate;
+  SpriteMap.Recalculate( FTileScale, FFontMult, FScaledScreen );
   if Player <> nil then
     SpriteMap.NewShift := SpriteMap.ShiftValue( Player.Position );
 end;

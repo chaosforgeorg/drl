@@ -7,8 +7,8 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlio;
 interface
 uses {$IFDEF WINDOWS}windows,{$ENDIF} classes, sysutils,
-     vluagamestack, vio, vbindings, viorl, vrltools, vluaconfig, vglquadrenderer, vstoreinterface, vtextures, vtigstyle, vluastack, viotypes, vioevent, vioconsole, vgenerics, vutil,
-     dfdata, dfthing, dfbeing, dfplayer, dflevel, drlspritemap, drlaudio, drlkeybindings, drlcontrollerbindings, drlloadingview, drlmodule,
+     vluagamestack, vio, vbindings, viorl, vrltools, vluaconfig, vglquadrenderer, vstoreinterface, vtextures, vtigstyle, vlua, viotypes, vioevent, vioconsole, vgenerics, vutil, vdf,
+     dfdata, dfthing, dfbeing, dfplayer, dflevel, drlaudio, drlkeybindings, drlcontrollerbindings, drlloadingview, drlmodule,
      drlconfig, drlconfiguration;
 
 const TIG_EV_NONE      = 0;
@@ -104,7 +104,13 @@ type TDRLIO = class( TIORL, IDRLPresentation )
   procedure PulseBlood( aValue : Single ); virtual;
   function PainUntil( aDelay : Integer ) : QWord;
 
-  class procedure RegisterLuaAPI( State : TLuaStack ); reintroduce;
+  // IO outlives Lua; its natives capture it as upvalue 1.
+  procedure RegisterLuaAPI( aLua : TLua ); virtual;
+  // Module graphics, from a WAD or a module folder; graphics IO only.
+  procedure LoadGraphics( aData : TVDataFile ); virtual; overload;
+  procedure LoadGraphics( const aPath : AnsiString ); virtual; overload;
+  // Finish module uploads and GPU warm-up while the loading screen is active.
+  procedure PrepareGraphics; virtual;
 
   function PushLayer( aLayer : TIOLayer ) : TIOLayer; override;
   procedure PreAction;
@@ -211,20 +217,13 @@ public
   property IO : TDRLIO read GetIO;
 end;
 
-var IO : TDRLIO;
-
 procedure EmitCrashInfo( const aInfo : AnsiString; aInGame : Boolean  );
 
 implementation
 
 uses math, video, dateutils,
-     vsound, vlua, vuid, vlog, vdebug, vmath, vsdlio, vglconsole, vtig, vtigio, vvector,
-     dfitem, dfhof, drluibindings, drlmoreview, drlchoiceview, drlmodulechoiceview, drlhudviews, drlplotview, drlplayerview;
-
-function TIGSubCallback( const aID : Ansistring ) : Ansistring;
-begin
-  Exit( IO.ResolveSub( aID ) );
-end;
+     vsound, vlualibrary, vluastate, vuid, vlog, vdebug, vmath, vsdlio, vglconsole, vtig, vtigio, vvector,
+     dfitem, dfhof, drluibindings, drlmoreview, drlchoiceview, drlmodulechoiceview, drlhudviews, drlplotview, drlplayerview, drlspritemap;
 
 {
 procedure OutPutRestore;
@@ -463,7 +462,6 @@ procedure TDRLIO.Reset;
 begin
   MsgClear;
   Clear;
-  IO := Self;
   VTIG_Shutdown;
   VTIGDefaultStyle := FTIGDefault;
   FLoading := nil;
@@ -488,7 +486,7 @@ procedure TDRLIO.Initialize( iRenderer : TIOConsoleRenderer );
 begin
   inherited Initialize( iRenderer );
   if iRenderer = nil then Exit;
-  VTIG_SetSubCallback( @TIGSubCallback );
+  VTIG_SetSubCallback( @ResolveSub );
   UpdateStyles;
   iRenderer.Clear;
   iRenderer.HideCursor;
@@ -821,7 +819,6 @@ begin
   FreeAndNil( FASCII );
   FreeAndNil( FKeySubMap );
   FreeAndNil( FPadSubMap );
-  IO := nil;
   inherited Destroy;
 end;
 
@@ -1290,12 +1287,17 @@ end;
 
 (**************************** LUA UI *****************************)
 
+function LuaIO( L : PLua_State ) : TDRLIO; inline;
+begin
+  Exit( TDRLIO( lua_touserdata( L, lua_upvalueindex( 1 ) ) ) );
+end;
+
 function lua_ui_set_hint(L: Plua_State): Integer; cdecl;
 var State : TLuaGameStack;
 begin
   State.Init(L);
   if not Setting_HideHints then
-    IO.SetHint( State.ToString( 1 ) );
+    LuaIO( L ).SetHint( State.ToString( 1 ) );
   Result := 0;
 end;
 
@@ -1303,7 +1305,7 @@ end;
 
 function lua_ui_blood_slide(L: Plua_State): Integer; cdecl;
 begin
-  IO.BloodSlideDown(20);
+  LuaIO( L ).BloodSlideDown(20);
   Result := 0;
 end;
 
@@ -1313,17 +1315,19 @@ function lua_ui_blink(L: Plua_State): Integer; cdecl;
 var State : TLuaGameStack;
 begin
   State.Init(L);
-  IO.Blink( State.ToInteger(1), State.ToInteger(2), State.ToInteger(3));
+  LuaIO( L ).Blink( State.ToInteger(1), State.ToInteger(2), State.ToInteger(3));
   Result := 0;
 end;
 
 function lua_ui_plot_screen(L: Plua_State): Integer; cdecl;
 var iState : TLuaGameStack;
+    iIO    : TDRLIO;
 begin
   iState.Init(L);
-  if ( IO.RunStatus <> nil ) and ( IO.RunStatus.State = DSFinished ) then
-    IO.FadeLevel( 1.0 );
-  IO.RunLayer( TPlotView.Create( iState.ToString(1), iState.ToIOColor(2), iState.ToString(3,'') ), True );
+  iIO := LuaIO( L );
+  if ( iIO.RunStatus <> nil ) and ( iIO.RunStatus.State = DSFinished ) then
+    iIO.FadeLevel( 1.0 );
+  iIO.RunLayer( TPlotView.Create( iState.ToString(1), iState.ToIOColor(2), iState.ToString(3,'') ), True );
   Result := 0;
 end;
 
@@ -1331,24 +1335,26 @@ function lua_ui_msg(L: Plua_State): Integer; cdecl;
 var State : TLuaGameStack;
 begin
   State.Init(L);
-  IO.Msg(State.ToString(1));
+  LuaIO( L ).Msg(State.ToString(1));
   Result := 0;
 end;
 
 function lua_ui_msg_clear(L: Plua_State): Integer; cdecl;
 begin
-  IO.MsgReset();
+  LuaIO( L ).MsgReset();
   Result := 0;
 end;
 
 function lua_ui_msg_enter(L: Plua_State): Integer; cdecl;
 var State : TLuaGameStack;
+    iIO   : TDRLIO;
 begin
   State.Init(L);
   if State.StackSize = 0 then Exit(0);
-  IO.Msg(State.ToString(1));
-  IO.RunLayer( TMoreLayer.Create( False ) );
-  IO.MsgUpDate;
+  iIO := LuaIO( L );
+  iIO.Msg(State.ToString(1));
+  iIO.RunLayer( TMoreLayer.Create( False ) );
+  iIO.MsgUpDate;
   Result := 0;
 end;
 
@@ -1360,11 +1366,11 @@ begin
   State.Init(L);
   if State.StackSize = 0 then Exit(0);
   Idx := State.ToInteger(1)+1;
-  if Idx > IO.MsgGetRecent.Size then
+  if Idx > LuaIO( L ).MsgGetRecent.Size then
     State.PushNil
   else
   begin
-    Msg := IO.MsgGetRecent[-Idx];
+    Msg := LuaIO( L ).MsgGetRecent[-Idx];
     if Msg <> '' then
       State.Push( Msg )
     else
@@ -1421,7 +1427,7 @@ begin
     finally
       Free;
     end;
-  IO.RunLayer( iView );
+  LuaIO( L ).RunLayer( iView );
   State.PushVariant(TChoiceView.Result);
   Result := 1;
 end;
@@ -1463,13 +1469,13 @@ function lua_ui_set_narrow_mode(L: Plua_State): Integer; cdecl;
 var iState : TLuaGameStack;
 begin
   iState.Init(L);
-  IO.FNarrowMode := iState.ToBoolean(1);
+  LuaIO( L ).FNarrowMode := iState.ToBoolean(1);
   Result := 0;
 end;
 
 function lua_ui_update_styles(L: Plua_State): Integer; cdecl;
 begin
-  IO.UpdateStyles;
+  LuaIO( L ).UpdateStyles;
   Result := 0;
 end;
 
@@ -1477,7 +1483,7 @@ function lua_ui_is_pad(L: Plua_State): Integer; cdecl;
 var iState : TLuaGameStack;
 begin
   iState.Init(L);
-  iState.Push( IO.IsGamepad );
+  iState.Push( LuaIO( L ).IsGamepad );
   Result := 1;
 end;
 
@@ -1493,11 +1499,32 @@ function lua_ui_get_target(L: Plua_State): Integer; cdecl;
 var iState : TLuaGameStack;
 begin
   iState.Init(L);
-  iState.PushCoord( IO.AutoTarget.Current );
+  iState.PushCoord( LuaIO( L ).AutoTarget.Current );
   Result := 1;
 end;
 
-const lua_ui_lib : array[0..18] of luaL_Reg = (
+function lua_ui_play_music(L: Plua_State): Integer; cdecl;
+var State : TLuaGameStack;
+begin
+  State.Init(L);
+  LuaIO( L ).Audio.PlayMusic(State.ToString(1));
+  Result := 0;
+end;
+
+function lua_ui_time_ms(L: Plua_State): Integer; cdecl;
+var State : TLuaGameStack;
+begin
+  State.Init(L);
+  State.Push( LongInt(LuaIO( L ).Driver.GetMs) );
+  Result := 1;
+end;
+
+function lua_ui_visual_random(L: Plua_State): Integer; cdecl;
+begin
+  Exit( vlua_rng_random( L, LuaIO( L ).VisualRNG ) );
+end;
+
+const lua_ui_lib : array[0..21] of luaL_Reg = (
       ( name : 'msg';           func : @lua_ui_msg ),
       ( name : 'msg_clear';     func : @lua_ui_msg_clear ),
       ( name : 'msg_enter';     func : @lua_ui_msg_enter ),
@@ -1516,6 +1543,9 @@ const lua_ui_lib : array[0..18] of luaL_Reg = (
       ( name : 'is_pad';            func : @lua_ui_is_pad ),
       ( name : 'get_rank';          func : @lua_ui_get_rank ),
       ( name : 'get_target';        func : @lua_ui_get_target ),
+      ( name : 'time_ms';           func : @lua_ui_time_ms ),
+      ( name : 'visual_random';     func : @lua_ui_visual_random ),
+      ( name : 'play_music';        func : @lua_ui_play_music ),
       ( name : nil;          func : nil; )
 );
 
@@ -1534,9 +1564,22 @@ begin
   RunLauncherLayer( TModuleAPIWarningView.Create( aModules, @Result ) );
 end;
 
-class procedure TDRLIO.RegisterLuaAPI( State : TLuaStack );
+procedure TDRLIO.RegisterLuaAPI( aLua : TLua );
 begin
-  State.Register( 'ui', lua_ui_lib );
+  lua_pushlightuserdata( aLua.Raw, Self );
+  aLua.Register( 'ui', lua_ui_lib, 1 );
+end;
+
+procedure TDRLIO.LoadGraphics( aData : TVDataFile );
+begin
+end;
+
+procedure TDRLIO.LoadGraphics( const aPath : AnsiString );
+begin
+end;
+
+procedure TDRLIO.PrepareGraphics;
+begin
 end;
 
 procedure EmitCrashInfo ( const aInfo : AnsiString; aInGame : Boolean ) ;

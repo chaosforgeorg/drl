@@ -9,7 +9,7 @@ interface
 
 uses sysutils, classes,
      vluagamestack, vlua, vlualibrary, vrltools, vutil, vdf, viotypes, vnode,
-     dfitem, dfbeing, dfthing, dfdata, drlmodule, drlhelp;
+     dfitem, dfbeing, dfthing, dfdata, drlmodule, drlhelp, drlio;
 
 type
 
@@ -21,7 +21,7 @@ TDRLLua = class(TLua)
        function HookName( aHook : Byte ) : AnsiString;
        destructor Destroy; override;
        // Load content after Runtime owns Lua and the Session context is bound.
-       procedure ReadWad( aHelp : THelp; aModErrors : TStringGArray );
+       procedure ReadWad( aIO : TDRLIO; aHelp : THelp; aModErrors : TStringGArray );
        procedure BindNodeContext( aContext : TNodeContext );
      private
        procedure LoadFiles( const aDirectory : AnsiString; aLoader : TVDFLoader; aWildcard : AnsiString = '*' );
@@ -39,10 +39,8 @@ TDRLLua = class(TLua)
 implementation
 
 uses typinfo, variants,
-     vdebug, vluastate, vluatools, vluadungen, vluaentitynode, vluatype, vtextures, vtigstyle, vparticleengine,
-     dfplayer, dflevel, drlhooks, dfhof, drlio, drlgfxio, drlspritemap;
-
-var SpriteSheetCounter : Integer = -1;
+     vdebug, vluatools, vluadungen, vluaentitynode, vluatype, vtigstyle, vparticleengine,
+     dfplayer, dflevel, drlhooks, dfhof;
 
 function lua_statistics_get_date(L: Plua_State): Integer; cdecl;
 var State : TLuaGameStack;
@@ -117,80 +115,8 @@ begin
   Result := 1;
 end;
 
-function lua_core_play_music(L: Plua_State): Integer; cdecl;
-var State : TLuaGameStack;
-begin
-  State.Init(L);
-  IO.Audio.PlayMusic(State.ToString(1));
-  Result := 0;
-end;
-
 // ************************************************************************ //
 // ************************************************************************ //
-
-function lua_core_time_ms(L: Plua_State): Integer; cdecl;
-var State : TLuaGameStack;
-begin
-  State.Init(L);
-  State.Push( LongInt(IO.Driver.GetMs) );
-  Result := 1;
-end;
-
-function lua_core_visual_random(L: Plua_State): Integer; cdecl;
-begin
-  Exit( vlua_rng_random( L, IO.VisualRNG ) );
-end;
-
-function lua_core_texture_upload(L: Plua_State): Integer; cdecl;
-var State    : TLuaGameStack;
-    iTexture : TTexture;
-begin
-  State.Init(L);
-  if not GraphicsVersion then Exit( 0 );
-  iTexture := (IO as TDRLGFXIO).Textures.Textures[ State.ToString(1) ];
-  if iTexture = nil then State.Error( 'Texture not found: '+State.ToString(1) );
-  if State.IsBoolean( 2 ) and State.ToBoolean( 2 ) then iTexture.Blend := True;
-  if State.IsBoolean( 3 ) and State.ToBoolean( 3 ) then iTexture.is3D  := True;
-  if iTexture.GLTexture = 0
-    then iTexture.Upload
-    else Log( LOGWARN, 'Texture redefinition: '+State.ToString(1) );
-  Result := 0;
-end;
-
-function lua_core_register_sprite_sheet(L: Plua_State): Integer; cdecl;
-var State     : TLuaGameStack;
-    iNormal   : TTexture;
-    iCosplay  : TTexture;
-    iGlow     : TTexture;
-    iEmissive : TTexture;
-
-  function LoadTexture( aIndex : Integer ) : TTexture;
-  begin
-    if not State.IsString( aIndex ) then Exit( nil );
-    LoadTexture := (IO as TDRLGFXIO).Textures.Textures[ State.ToString( aIndex ) ];
-    if LoadTexture = nil then State.Error( 'register_sprite_sheet - texture not found : "'+State.ToString( aIndex )+'"!');
-    if LoadTexture.GLTexture = 0 then
-      LoadTexture.Upload;
-    if LoadTexture.Size.X * LoadTexture.Size.Y = 0 then State.Error( 'register_sprite_sheet - texture malformed : "'+State.ToString( aIndex )+'"!');
-  end;
-
-begin
-  State.Init(L);
-  if not GraphicsVersion then
-  begin
-    Inc( SpriteSheetCounter );
-    State.Push( Integer( SpriteSheetCounter * 100000 ) );
-    Exit( 1 );
-  end;
-  iNormal   := LoadTexture( 1 );
-  iCosplay  := LoadTexture( 2 );
-  iGlow     := LoadTexture( 3 );
-  iEmissive := LoadTexture( 4 );
-  if iNormal = nil then State.Error( 'Bad parameters passes to register_sprite_sheet!');
-  // Optional sixth argument declares support for procedural sprite transitions.
-  State.Push( Integer( SpriteMap.Engine.Add( iNormal, iCosplay, iEmissive, iGlow, State.ToInteger( 5 ), State.ToBoolean( 6, False ) ) * 100000 ) );
-  Result := 1;
-end;
 
 function lua_core_set_vision_base_value(L: Plua_State): Integer; cdecl;
 var State : TLuaGameStack;
@@ -200,7 +126,7 @@ begin
   Result := 0;
 end;
 
-procedure TDRLLua.ReadWad( aHelp : THelp; aModErrors : TStringGArray );
+procedure TDRLLua.ReadWad( aIO : TDRLIO; aHelp : THelp; aModErrors : TStringGArray );
 var iProgBase    : DWord;
     iModule      : TDRLModule;
     iData        : TVDataFile;
@@ -252,9 +178,9 @@ begin
   VersionModule         := '';
   VersionModuleSave     := '';
   DemoVersion           := False;
-  IO.LoadStart;
-  iProgBase := IO.LoadCurrent;
-  IO.LoadProgress(iProgBase);
+  aIO.LoadStart;
+  iProgBase := aIO.LoadCurrent;
+  aIO.LoadProgress(iProgBase);
   SetValue( 'VERSION_MODULE_API', FModules.APIVersion );
   RegisterActiveModules;
 
@@ -283,14 +209,10 @@ begin
       end;
       iData.RegisterLoader( FILETYPE_RAW, @aHelp.StreamLoader );
       iData.Load('help');
-      iData.RegisterLoader( FILETYPE_RAW, @IO.ASCIILoader );
+      iData.RegisterLoader( FILETYPE_RAW, @aIO.ASCIILoader );
       iData.Load('ascii');
-      if GraphicsVersion then
-      begin
-        iData.RegisterLoader(FILETYPE_IMAGE ,@((IO as TDRLGFXIO).Textures.LoadTextureCallback));
-        iData.Load('graphics');
-      end;
-      IO.Audio.LoadBindingDataFile( iData, 'audio.lua', FDataPath );
+      aIO.LoadGraphics( iData );
+      aIO.Audio.LoadBindingDataFile( iData, 'audio.lua', FDataPath );
       FOpenData.Push( iData );
     end
     else
@@ -312,11 +234,10 @@ begin
           end;
         end;
         LoadFiles( iModule.Path + 'help', @aHelp.StreamLoader, '*.hlp' );
-        LoadFiles( iModule.Path + 'ascii', @IO.ASCIILoader, '*.asc' );
-        if GraphicsVersion then
-          (IO as TDRLGFXIO).Textures.LoadTextureFolder( iModule.Path + 'graphics' );
+        LoadFiles( iModule.Path + 'ascii', @aIO.ASCIILoader, '*.asc' );
+        aIO.LoadGraphics( iModule.Path + 'graphics' );
         // temporary hack, remove once drllq and drlhq are modules
-        IO.Audio.LoadBindingFile( iModule.Path + 'audio.lua', iModule.Path );
+        aIO.Audio.LoadBindingFile( iModule.Path + 'audio.lua', iModule.Path );
       except
         on E : Exception do
         begin
@@ -338,9 +259,9 @@ begin
       SetupBase;
   end;
 
-  IO.LoadProgress(iProgBase + 50);
-  IO.Audio.Load;
-  IO.LoadProgress( 100 );
+  aIO.LoadProgress(iProgBase + 50);
+  aIO.Audio.Load;
+  aIO.LoadProgress( 100 );
 
   ModuleOption_KlassAchievements    := Get( ['core','options','klass_achievements'], False );
   ModuleOption_NewMenu              := Get( ['core','options','new_menu'], False );
@@ -481,15 +402,8 @@ begin
   Result := 0;
 end;
 
-const lua_core_lib : array[0..8] of luaL_Reg = (
-    ( name : 'add_to_cell_set';func : @lua_core_add_to_cell_set),
-    ( name : 'time_ms';        func : @lua_core_time_ms),
-    ( name : 'visual_random';  func : @lua_core_visual_random),
-
-    ( name : 'play_music';func : @lua_core_play_music),
-
-    ( name : 'texture_upload';        func : @lua_core_texture_upload),
-    ( name : 'register_sprite_sheet'; func : @lua_core_register_sprite_sheet),
+const lua_core_lib : array[0..3] of luaL_Reg = (
+    ( name : 'add_to_cell_set';       func : @lua_core_add_to_cell_set),
     ( name : 'set_vision_base_value'; func : @lua_core_set_vision_base_value),
     ( name : 'callback';              func : @lua_core_callback),
 
@@ -527,7 +441,6 @@ begin
   SetValue( 'BASE_MODULE_LOADING', False );
 
   for Count := 0 to 15 do SetValue(ColorNames[Count],Count);
-  TDRLIO.RegisterLuaAPI( FStack );
 
   Register( 'statistics', lua_statistics_lib );
 
