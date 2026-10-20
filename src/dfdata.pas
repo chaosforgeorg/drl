@@ -152,20 +152,11 @@ const
 const
   Option_InvFullDrop      : Boolean = False;
   Option_MortemArchive    : Boolean = False;
-  Option_MenuReturn       : Boolean = False;
-  Option_SoundEquipPickup : Boolean = False;
-  Option_ColoredInventory : Boolean = True;
-  Option_LockBreak        : Boolean = True;
-  Option_LockClose        : Boolean = True;
-  Option_ForceRaw         : Boolean = True;
-  Option_MaxRun           : DWord = 100;
-  Option_MaxWait          : DWord = 20;
-  Option_RunDelay         : Byte = 0;
   Option_Graphics         : string = 'TILES';
-  Option_Blending         : Boolean = False;
-  Option_SaveOnCrash      : Boolean = True;
   Option_AlwaysName       : string = '';
-  Option_TimeStamp        : string = 'yyyy/mm/dd hh:nn:ss';
+
+// Date and time format in mortem and screenshot file names.
+const FileTimeStamp = 'yyyy/mm/dd hh:nn:ss';
 
 // Knockback of explosions whose definition leaves it out.
 const DefaultExplosionKnockback = 8;
@@ -236,6 +227,8 @@ type IDRLPresentation = interface( IRLPresentation )
   procedure PulseBlood( aValue : Single );
   // Whether the level's decals are drawn; placing them draws visual randomness.
   function ShowsDecals : Boolean;
+  // Sound ID an item plays when equipped: 'pickup' or 'reload'.
+  function EquipSound : AnsiString;
   procedure Explosion( aDelay : Integer; aWhere : TCoord2D; aData : TExplosionData );
   procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ); overload;
   procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single ); overload;

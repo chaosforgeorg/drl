@@ -8,7 +8,7 @@ unit drlio;
 interface
 uses {$IFDEF WINDOWS}windows,{$ENDIF} classes, sysutils,
      vluagamestack, vio, vbindings, viorl, vrltools, vluaconfig, vglquadrenderer, vstoreinterface, vtextures, vtigstyle, vlua, viotypes, vioevent, vioconsole, vgenerics, vutil, vdf,
-     dfdata, dfthing, dfbeing, dfplayer, dflevel, drlaudio, drlkeybindings, drlcontrollerbindings, drlloadingview, drlmodule,
+     dfdata, dfthing, dfitem, dfbeing, dfplayer, dflevel, drlaudio, drlkeybindings, drlcontrollerbindings, drlloadingview, drlmodule,
      drlconfig, drlconfiguration;
 
 const TIG_EV_NONE      = 0;
@@ -56,7 +56,9 @@ end;
 // Presentation options from config.lua; IO copies them from each loaded
 // config, which the runtime replaces on every data load.
 type TIOOptions = record
-  HighASCII      : Boolean;
+  HighASCII        : Boolean;
+  SoundEquipPickup : Boolean;
+  ColoredInventory : Boolean;
 end;
 
 // Architectural boundary: adapts shared roguelike presentation mechanics to DRL policy and its active session.
@@ -106,6 +108,8 @@ type TDRLIO = class( TIORL, IDRLPresentation )
   // Map-view operations; the console IO has no map view to change.
   procedure SetLookTarget( aTarget : TCoord2D ); virtual;
   procedure ToggleGrid; virtual;
+  // Paces one step of a multi-move; the console shows each step.
+  procedure PaceMultiMove; virtual;
   // The map cell under a device point; off the map without a map view.
   function DevicePointToCoord( aPoint : TPoint ) : TCoord2D; virtual;
 
@@ -138,6 +142,9 @@ type TDRLIO = class( TIORL, IDRLPresentation )
   procedure Explosion( aDelay : Integer; aWhere : TCoord2D; aData : TExplosionData ); reintroduce; virtual;
   procedure PulseBlood( aValue : Single ); virtual;
   function ShowsDecals : Boolean; virtual;
+  function EquipSound : AnsiString;
+  // Menu colour of an item, light gray when inventory colouring is off.
+  function ItemMenuColor( aItem : TItem ) : Byte;
   function PainUntil( aDelay : Integer ) : QWord;
 
   // IO outlives Lua; its natives capture it as upvalue 1.
@@ -270,7 +277,10 @@ implementation
 
 uses math, video, dateutils,
      vsound, vlualibrary, vluastate, vuid, vlog, vdebug, vmath, vsdlio, vglconsole, vtig, vtigio, vvector,
-     dfitem, drluibindings, drlmoreview, drlchoiceview, drlmodulechoiceview, drlhudviews, drlplotview, drlplayerview;
+     drluibindings, drlmoreview, drlchoiceview, drlmodulechoiceview, drlhudviews, drlplotview, drlplayerview;
+
+// Messages kept in the message history.
+const MessageBufferSize = 100;
 
 {
 procedure OutPutRestore;
@@ -442,6 +452,18 @@ begin
   Exit( False );
 end;
 
+function TDRLIO.EquipSound : AnsiString;
+begin
+  if FOptions.SoundEquipPickup then Exit( 'pickup' );
+  Exit( 'reload' );
+end;
+
+function TDRLIO.ItemMenuColor( aItem : TItem ) : Byte;
+begin
+  if not FOptions.ColoredInventory then Exit( LightGray );
+  Exit( aItem.MenuColor );
+end;
+
 function TDRLIO.PainUntil( aDelay : Integer ) : QWord;
 const PAIN_DURATION = 500;
 begin
@@ -501,7 +523,7 @@ begin
   FMsgQueue := True;
   FLoading  := nil;
   FAudio    := TDRLAudio.Create( FVisualRNG, aSettings );
-  InitializeMessages( 2, 77, @EventMore, aConfig.MessageBuffer );
+  InitializeMessages( 2, 77, @EventMore, MessageBufferSize );
   Messages.GroupMultiple := FSettings.GroupMessages;
   inherited Configure( aConfig );
   FASCII    := TASCIIImageMap.Create( True );
@@ -685,7 +707,7 @@ begin
   else if aThing is TItem then
   begin
     FConsole.HideCursor;
-    PushLayer( TMoreItemView.Create( TItem(aThing) ) );
+    PushLayer( TMoreItemView.Create( TItem(aThing), ItemMenuColor( TItem(aThing) ) ) );
   end;
 end;
 
@@ -867,7 +889,9 @@ end;
 
 procedure TDRLIO.ReadOptions( aConfig : TDRLConfig );
 begin
-  FOptions.HighASCII      := aConfig.HighASCII;
+  FOptions.HighASCII        := aConfig.HighASCII;
+  FOptions.SoundEquipPickup := aConfig.SoundEquipPickup;
+  FOptions.ColoredInventory := aConfig.ColoredInventory;
 end;
 
 procedure TDRLIO.RunLayer( aLayer : TIOLayer; aHideHUD : Boolean );
@@ -917,11 +941,11 @@ begin
   iName := 'DRL';
   if Player <> nil then iName := Player.Name;
   if not DirectoryExists( FSShotPath ) then CreateDir( FSShotPath );
-  iFName := FSShotPath+PathDelim+ToProperFilename('['+FormatDateTime(Option_TimeStamp,Now)+'] '+iName)+iExt;
+  iFName := FSShotPath+PathDelim+ToProperFilename('['+FormatDateTime(FileTimeStamp,Now)+'] '+iName)+iExt;
   iCount := 1;
   while FileExists(iFName) do
   begin
-    iFName := FSShotPath+PathDelim+ToProperFilename('['+FormatDateTime(Option_TimeStamp,Now)+'] '+iName)+'-'+IntToStr(iCount)+iExt;
+    iFName := FSShotPath+PathDelim+ToProperFilename('['+FormatDateTime(FileTimeStamp,Now)+'] '+iName)+'-'+IntToStr(iCount)+iExt;
     Inc(iCount);
   end;
 
@@ -1265,9 +1289,9 @@ function TDRLIO.EventToUIInput( const aEvent : TIOEvent ) : Integer;
 var iAction : TBindingAction;
 begin
   if ( aEvent.EType = VEVENT_SYSTEM ) and ( aEvent.System.Code = VIO_SYSEVENT_QUIT ) then
-    if Option_LockClose
-       then Exit( Integer( INPUT_QUIT ) )
-       else Exit( Integer( INPUT_HARDQUIT ) );
+    if GodMode
+       then Exit( Integer( INPUT_HARDQUIT ) )
+       else Exit( Integer( INPUT_QUIT ) );
   if (aEvent.EType = VEVENT_MOUSEMOVE) then
   begin
     if Level <> nil then
@@ -1339,6 +1363,10 @@ begin
 end;
 
 procedure TDRLIO.ToggleGrid;
+begin
+end;
+
+procedure TDRLIO.PaceMultiMove;
 begin
 end;
 
@@ -1676,7 +1704,7 @@ begin
     iErrorMessage := 'DRL crashed!'#10#10'Reason : '+aInfo+#10#10
      +'If this reason doesn''t seem your fault, please submit a bug report at http://forum.chaosforge.org/'#10
      +'Be sure to include the last entries in your error.log that will get created once you hit OK.'
-     +Iff(aInGame and Option_SaveOnCrash,#10'DRL will also attempt to save your game, so you may continue on the next level.');
+     +Iff(aInGame and not GodMode,#10'DRL will also attempt to save your game, so you may continue on the next level.');
     MessageBox( 0, PChar(iErrorMessage),
      'DRL - Fatal Error!', MB_OK or MB_ICONERROR );
   end
@@ -1694,7 +1722,7 @@ begin
     Writeln('If this reason doesn''t seem your fault, please submit a bug report at' );
     Writeln('http://forum.chaosforge.org/, be sure to include the last entries in');
     Writeln('your error.log that will get created once you hit Enter.');
-    if aInGame and Option_SaveOnCrash then
+    if aInGame and not GodMode then
     begin
       Writeln( 'DRL will also attempt to save your game, so you may continue on' );
       Writeln( 'the next level.' );

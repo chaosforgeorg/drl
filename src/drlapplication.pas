@@ -146,7 +146,7 @@ begin
   inherited Create(aPaths, aConfiguration);
   FStore := TStoreInterface.CreateDefault;
   FStore.SuppressProgress := GodMode;
-  FModules := TDRLModules.Create(Paths.DataPath, aModulesFile);
+  FModules := TDRLModules.Create( Paths.DataPath, GodMode, aModulesFile );
   FModules.ScanModules( FStore );
   FModErrors := TStringGArray.Create;
   IO.BindStore( FStore );
@@ -261,19 +261,14 @@ begin
   IO.Reconfigure(Config);
 
   {$IFDEF WINDOWS}
-  if not GraphicsVersion then
+  if ( not GraphicsVersion ) and ( not GodMode ) then
   begin
-    if Option_LockBreak then
-    begin
-      SetConsoleCtrlHandler(nil, False);
-      SetConsoleCtrlHandler(@ConsoleEventProc, True);
-    end;
-    if Option_LockClose then
-    begin
-      ConsoleHandle := FindWindow(nil, PChar(ConsoleTitle));
-      RemoveMenu(GetSystemMenu(ConsoleHandle, False), SC_CLOSE, MF_GRAYED);
-      DrawMenuBar(ConsoleHandle);
-    end;
+    // Ctrl-C and the console close button would end the game without saving.
+    SetConsoleCtrlHandler(nil, False);
+    SetConsoleCtrlHandler(@ConsoleEventProc, True);
+    ConsoleHandle := FindWindow(nil, PChar(ConsoleTitle));
+    RemoveMenu(GetSystemMenu(ConsoleHandle, False), SC_CLOSE, MF_GRAYED);
+    DrawMenuBar(ConsoleHandle);
   end;
   {$ENDIF}
 
@@ -350,8 +345,7 @@ begin
   iFirstSession := True;
   repeat
     iSessionResult := FSession.Run( iFirstSession );
-    if (ForceRestart <> '') or (iSessionResult in [DSR_Quit, DSR_ReloadData]) or
-       (not Option_MenuReturn) then
+    if (ForceRestart <> '') or (iSessionResult in [DSR_Quit, DSR_ReloadData]) then
       Break;
     ReleaseSession;
     CreateSession( True );

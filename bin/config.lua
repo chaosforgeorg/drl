@@ -30,48 +30,14 @@ ColoredInventory = true
 -- swapping.
 SoundEquipPickup = false
 
--- (ASCII Only) Sets the delay value when running. Value is in milliseconds. Set to 0 for no delay.
-RunDelay         = 20
-
 -- Handles what should be done in case of trying to unwield an item when inventory
 -- is full : if set to false will ask the player if he wants to drop it. If set
 -- to true will drop it without questions.
 InvFullDrop      = false
 
--- Messages held in the message buffer.
-MessageBuffer    = 100
-
 -- If set to true will archive EVERY mortem.txt produced in the mortem subfolder.
 -- The amount of files can get big after a while :)
 MortemArchive    = true
-
--- If set to false DRL will quit on death and quitting. Normally it will go back
--- to the main menu.
-MenuReturn       = true
-
--- Defines the maximum repeat for the run command. Setting it to larger than 80
--- basically means no limit.
-MaxRun           = 100
-
--- Defines the maximum repeat for the run command when waiting.
-MaxWait          = 20
-
--- Windows only - disables Ctrl-C/Ctrl-Break closing of program. 
--- true by default.
-LockBreak        = true
-
--- Windows only - Disables closing of DRL by console close button. 
--- true by default.
-LockClose        = true
-
--- Mortem and screenshot timestamp format
--- Format : http://www.freepascal.org/docs-html/rtl/sysutils/formatchars.html
--- note that / and : will be converted to "-" due to filesystem issues
-TimeStamp        = "yyyy/mm/dd hh:nn:ss"
-
--- Controls whether the game will attempt to save the game on crash, set to false
--- to turn this off
-SaveOnCrash      = true
 
 -- Message coloring system. Remove or comment out the Messages
 -- table to turn it off. Use basic color names available in

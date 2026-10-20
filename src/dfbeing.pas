@@ -128,6 +128,7 @@ TBeing = class(TThing,IPathQuery)
   protected
     procedure LuaLoad( aTable : TLuaTable; aGameRNG : TRNG ); reintroduce;
     // private
+    procedure PlayEquipSound( aItem : TItem );
     function FireRanged( aTarget : TCoord2D; aGun : TItem; aAlt : Boolean = False; aDelay : Integer = 0 ) : Boolean;
     function getAmmoItem( Weapon : TItem ) : TItem;
     procedure HandleShotgunFire( aTarget : TCoord2D; aShotGun : TItem; aAltFire : Boolean; aShots : DWord );
@@ -594,13 +595,16 @@ begin
 
   Inv.Wear( iWeapon );
 
-  if Option_SoundEquipPickup
-    then iWeapon.PlaySound( 'pickup', FPosition )
-    else iWeapon.PlaySound( 'reload', FPosition );
+  PlayEquipSound( iWeapon );
 
   if not ( BF_QUICKSWAP in FFlags )
      then Exit( Success( 'You prepare the %s!',[ iWeapon.Name ], getWearCost(iWeapon) ) )
      else Exit( Success( 'You prepare the %s instantly!',[ iWeapon.Name ] ) );
+end;
+
+procedure TBeing.PlayEquipSound( aItem : TItem );
+begin
+  aItem.PlaySound( TLevel( Parent ).Presentation.EquipSound, FPosition );
 end;
 
 function TBeing.ActionSwapWeapon : boolean;
@@ -611,9 +615,7 @@ begin
   Inv.EqSwap( efWeapon, efWeapon2 );
 
   if Inv.Slot[ efWeapon ] <> nil then
-    if Option_SoundEquipPickup
-      then Inv.Slot[ efWeapon ].PlaySound( 'pickup', FPosition )
-      else Inv.Slot[ efWeapon ].PlaySound( 'reload', FPosition );
+    PlayEquipSound( Inv.Slot[ efWeapon ] );
 
   if ( BF_QUICKSWAP in FFlags ) or ( canDualWield )
     then Exit( Success( 'You swap your weapons instantly!',[] ) )
@@ -682,9 +684,7 @@ begin
   if not FInv.Contains( aItem ) then Exit( False );
   iWeapon := aItem.isEqWeapon;
 
-  if Option_SoundEquipPickup
-    then aItem.PlaySound( 'pickup', FPosition )
-    else aItem.PlaySound( 'reload', FPosition );
+  PlayEquipSound( aItem );
 
   if FInv.DoWear( aItem ) then
   begin
@@ -704,9 +704,7 @@ begin
   if not FInv.Contains( aItem ) then Exit( False );
   iWeapon := aItem.isEqWeapon;
 
-  if Option_SoundEquipPickup
-    then aItem.PlaySound( 'pickup', FPosition )
-    else aItem.PlaySound( 'reload', FPosition );
+  PlayEquipSound( aItem );
 
   if FInv.DoWear( aItem, aSlot ) then
   begin

@@ -141,6 +141,9 @@ type TDRLSession = class(TVObject)
        FSChallenge      : AnsiString;
        FArchAngel       : Boolean;
        FReloadData      : Boolean;
+       // Set by the hard quit command: the process ends instead of returning
+       // to the main menu.
+       FHardQuit        : Boolean;
        FCrashSave       : Boolean;
        FData            : TGameData;
        FGameSeed        : Cardinal;
@@ -453,7 +456,7 @@ begin
       if Option_MortemArchive then
       begin
         iMortemPath := FPaths.ModuleUserPath + 'mortem' + PathDelim
-          + ToProperFilename( '[' + FormatDateTime( Option_TimeStamp, Now ) + '] ' + FPlayer.Name ) + '.txt';
+          + ToProperFilename( '[' + FormatDateTime( FileTimeStamp, Now ) + '] ' + FPlayer.Name ) + '.txt';
         Log( 'Writing mortem...: ' + iMortemPath );
         try
           iMortemList.SaveToFile( iMortemPath );
@@ -489,6 +492,7 @@ begin
   FSChallenge := '';
   FArchAngel  := False;
   FReloadData := False;
+  FHardQuit   := False;
   FStatus.GameWon    := False;
   FCrashSave  := False;
   FSeededGame := False;
@@ -640,8 +644,8 @@ begin
       FPlayer.MultiMove.Stop;
       FIO.ClearEventBuffer;
     end
-    else if not GraphicsVersion then
-      FIO.Delay( Option_RunDelay );
+    else
+      FIO.PaceMultiMove;
   end;
   FPlayer.CallHook( Hook_OnPreAction, [] );
 end;
@@ -1439,7 +1443,7 @@ end;
 procedure TDRLSession.HardQuit;
 begin
   FIO.FadeReset;
-  Option_MenuReturn := False;
+  FHardQuit := True;
   SetState( DSQuit );
 end;
 
@@ -1776,9 +1780,10 @@ begin
 
       if (iEvent.EType = VEVENT_SYSTEM) and (iEvent.System.Code = VIO_SYSEVENT_QUIT) then
       begin
-        if Option_LockClose
-           then FIO.PushLayer( TAbandonView.Create( Self, False ) )
-           else HardQuit;
+        // God mode quits outright when the window closes.
+        if GodMode
+           then HardQuit
+           else FIO.PushLayer( TAbandonView.Create( Self, False ) );
       end;
 
       if not ContinuePlaying then Break;
@@ -1831,7 +1836,8 @@ begin
   begin
     EmitCrashInfo( e.Message, True );
     EXCEPTEMMITED := True;
-    if Option_SaveOnCrash and ((FPlayer.Statistics['crash_count'] = 0) or{thelaptop: Vengeance is MINE} (FDifficulty < DIFF_NIGHTMARE)) then
+    // God mode does not save on a crash.
+    if (not GodMode) and ((FPlayer.Statistics['crash_count'] = 0) or{thelaptop: Vengeance is MINE} (FDifficulty < DIFF_NIGHTMARE)) then
     begin
       try
         iCrashIndex := FContext.Lua.Get( [ 'player', '__props', 'crash_index' ], 0 );
@@ -1897,7 +1903,9 @@ begin
   FIO.BloodSlideDown(20);
   ReleasePlayer;
 
-  if FReloadData and Option_MenuReturn then
+  if FHardQuit then
+    Result := DSR_Quit
+  else if FReloadData then
     Result := DSR_ReloadData;
   end;
   FreeAndNil( iResult );

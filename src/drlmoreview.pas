@@ -27,7 +27,8 @@ protected
 end;
 
 type TMoreItemView = class( TIOLayer )
-  constructor Create( aItem : TItem );
+  // aColor is the title colour, resolved by IO from the inventory options.
+  constructor Create( aItem : TItem; aColor : Byte );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsModal : Boolean; override;
   destructor Destroy; override;
@@ -246,7 +247,7 @@ end;
 
 { TMoreItemView }
 
-constructor TMoreItemView.Create( aItem : TItem );
+constructor TMoreItemView.Create( aItem : TItem; aColor : Byte );
 var i : Integer;
 begin
   VTIG_ResetScroll( 'more_item_view' );
@@ -255,7 +256,7 @@ begin
   FItem     := aItem;
   FDesc     := FItem.Context.Lua.Get(['items',FItem.ID,'desc']);
   FSize     := Point( 60, 25 );
-  FTitle    := '{'+VTIG_ColorChar( FItem.MenuColor ) + FItem.GetInvName + '}';
+  FTitle    := '{'+VTIG_ColorChar( aColor ) + FItem.GetInvName + '}';
   for i := Low( FTexts ) to High( FTexts ) do
     FTexts[i] := nil;
   ReadTexts;

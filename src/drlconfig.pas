@@ -17,18 +17,20 @@ type TDRLConfig = class(TLuaConfig)
   constructor Create( const aFileName : AnsiString; aReload : Boolean );
   destructor Destroy; override;
 private
-  FColorOverrides  : TColorOverrides;
-  FSoundEngine     : AnsiString;
-  FHighASCII       : Boolean;
-  FMessageBuffer   : DWord;
+  FColorOverrides   : TColorOverrides;
+  FSoundEngine      : AnsiString;
+  FHighASCII        : Boolean;
+  FSoundEquipPickup : Boolean;
+  FColoredInventory : Boolean;
   procedure ReadColorOverride( aKey, aValue : Variant );
 public
-  property ColorOverrides  : TColorOverrides read FColorOverrides;
+  property ColorOverrides   : TColorOverrides read FColorOverrides;
   // Resolved sound engine: 'FMOD', 'SDL' or 'NONE'.
-  property SoundEngine     : AnsiString      read FSoundEngine;
+  property SoundEngine      : AnsiString      read FSoundEngine;
   // Presentation options read by IO.
-  property HighASCII       : Boolean         read FHighASCII;
-  property MessageBuffer   : DWord           read FMessageBuffer;
+  property HighASCII        : Boolean         read FHighASCII;
+  property SoundEquipPickup : Boolean         read FSoundEquipPickup;
+  property ColoredInventory : Boolean         read FColoredInventory;
 end;
 
 
@@ -47,27 +49,14 @@ begin
   LoadMain( aFileName );
 
   Option_Graphics         := Configure('Graphics',Option_Graphics);
-  Option_Blending         := Configure('Blending',Option_Blending);
-  Option_SaveOnCrash      := Configure('SaveOnCrash',Option_SaveOnCrash);
   FSoundEngine            := Configure('SoundEngine','DEFAULT');
 
   FHighASCII              := Configure('AllowHighAscii',{$IFDEF WINDOWS}True{$ELSE}False{$ENDIF});
   Option_AlwaysName       := Configure('AlwaysName',Option_AlwaysName);
   Option_InvFullDrop      := Configure('InvFullDrop',Option_InvFullDrop);
   Option_MortemArchive    := Configure('MortemArchive',Option_MortemArchive);
-  Option_MenuReturn       := Configure('MenuReturn',Option_MenuReturn);
-  Option_SoundEquipPickup := Configure('SoundEquipPickup',Option_SoundEquipPickup);
-  Option_ColoredInventory := Configure('ColoredInventory',Option_ColoredInventory);
-  Option_LockBreak        := Configure('LockBreak',Option_LockBreak);
-  Option_LockClose        := Configure('LockClose',Option_LockClose);
-  Option_TimeStamp        := Configure('TimeStamp',Option_TimeStamp);
-
-  Option_RunDelay         := Configure('RunDelay',Option_RunDelay);
-  FMessageBuffer          := Configure('MessageBuffer',100);
-
-  Option_MaxRun           := Configure('MaxRun',Option_MaxRun);
-  Option_MaxWait          := Configure('MaxWait',Option_MaxWait);
-  Option_ForceRaw         := Configure('ForceRaw',GodMode);
+  FSoundEquipPickup       := Configure('SoundEquipPickup',False);
+  FColoredInventory       := Configure('ColoredInventory',True);
 
   if ForcePlayerName <> '' then
     Option_AlwaysName := ForcePlayerName;

@@ -17,6 +17,7 @@ uses vrltools, vtextmap, vioevent, vio, viotypes, vluamapnode, vlua,
 type TDRLTextIO = class( TDRLIO, ITextMap )
     constructor Create( aSettings : TDRLConfiguration; aConfig : TDRLConfig ); reintroduce;
     procedure Reset; override;
+    procedure PaceMultiMove; override;
     procedure Initialize( aCoreModule : TDRLModule ); override;
     destructor Destroy; override;
     procedure Update( aMSec : DWord ); override;
@@ -66,6 +67,8 @@ uses sysutils,
 // How a being sensed only by Intuition is drawn.
 const IntuitionChar  = '*';
       IntuitionColor = LightMagenta;
+      // Milliseconds each multi-move step shows for.
+      MultiMoveDelay = 20;
 
 constructor TDRLTextIO.Create( aSettings : TDRLConfiguration; aConfig : TDRLConfig );
 begin
@@ -86,6 +89,11 @@ begin
   inherited Reset;
   FTarget.Create(0,0);
   FTargetRange  := 0;
+end;
+
+procedure TDRLTextIO.PaceMultiMove;
+begin
+  Delay( MultiMoveDelay );
 end;
 
 procedure TDRLTextIO.Initialize( aCoreModule : TDRLModule );

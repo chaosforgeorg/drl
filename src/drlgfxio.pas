@@ -259,7 +259,7 @@ begin
     Log('-------');
   end;
 
-  FTextures  := TTextureManager.Create( Option_Blending );
+  FTextures  := TTextureManager.Create( False );
   TSDLIODriver( FIODriver ).ShowMouse( False );
 
   FMCursor   := TDRLMouseCursor.Create( FTextures );
@@ -444,7 +444,7 @@ begin
     FreeAndNil( iStream );
     FreeAndNil( iCoreData );
   end;
-  iFontTexture := FTextures.AddImage( iFontName, iImage, Option_Blending );
+  iFontTexture := FTextures.AddImage( iFontName, iImage, False );
   FTextures[ iFontTexture ].Image.SubstituteColor( ColorBlack, ColorZero );
   FTextures[ iFontTexture ].Upload;
 
@@ -1211,7 +1211,7 @@ begin
       end;
       if iItem <> nil then
       begin
-        VTIG_FreeLabel( '[{!{0}}] {1}', vutil.Point(iPosX,iPosY), [ PadQSlotChar[ i ], iItem.GetInvName ], iItem.MenuColor );
+        VTIG_FreeLabel( '[{!{0}}] {1}', vutil.Point(iPosX,iPosY), [ PadQSlotChar[ i ], iItem.GetInvName ], ItemMenuColor( iItem ) );
         Inc( iPosY );
       end;
     end;

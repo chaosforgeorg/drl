@@ -37,7 +37,8 @@ type
 { TDRLModules }
 
 TDRLModules = class(TVObject)
-  constructor Create( const aDataPath : AnsiString;
+  // aFolderOverride lets a module folder replace a WAD module of the same ID.
+  constructor Create( const aDataPath : AnsiString; aFolderOverride : Boolean;
     const aModulesFile : AnsiString = '' );
   // aStore lists subscribed Steam Workshop modules; borrowed for the scan.
   procedure ScanModules( aStore : TStoreInterface );
@@ -57,6 +58,7 @@ private
   FAPIVersion      : Ansistring;
   FDataPath        : AnsiString;
   FModulesFile     : AnsiString;
+  FFolderOverride  : Boolean;
 private
   function ReadMetaFromModule( aLua : TLuaState; aOverride : Boolean;
     const aExpectedID : AnsiString = '';
@@ -138,11 +140,12 @@ begin
   Exit( CompareStr( A.ID, B.ID ) );
 end;
 
-constructor TDRLModules.Create( const aDataPath : AnsiString;
+constructor TDRLModules.Create( const aDataPath : AnsiString; aFolderOverride : Boolean;
   const aModulesFile : AnsiString );
 begin
-  FDataPath    := aDataPath;
-  FModulesFile := aModulesFile;
+  FDataPath       := aDataPath;
+  FModulesFile    := aModulesFile;
+  FFolderOverride := aFolderOverride;
   FModules       := TModuleArray.Create( True );
   FModuleMap     := TModuleHash.Create;
   FActiveModules   := TModuleList.Create;
@@ -183,7 +186,7 @@ begin
     begin
       repeat
         if (iInfo.Attr and faDirectory <> 0) and (iInfo.Name <> '.') and (iInfo.Name <> '..') then
-          ReadMetaFromFolder( iLua,FDataPath + 'data' + PathDelim + iInfo.Name + PathDelim, Option_ForceRaw );
+          ReadMetaFromFolder( iLua,FDataPath + 'data' + PathDelim + iInfo.Name + PathDelim, FFolderOverride );
       until FindNext(iInfo) <> 0;
     end;
     FindClose(iInfo);

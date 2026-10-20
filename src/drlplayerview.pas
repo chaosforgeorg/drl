@@ -740,7 +740,7 @@ begin
   if Length( iEntry.Name ) > 47 then iEntry.Name := Copy(iEntry.Name, 1, 47 );
   iEntry.Stats := aItem.GetInvStatsList;
   iEntry.Perks := aItem.GetPerkSummary( True );
-  iEntry.Color := aItem.MenuColor;
+  iEntry.Color := IO.ItemMenuColor( aItem );
   iEntry.QSlot := 0;
 
   iEntry.Desc  := aItem.Context.Lua.Get(['items',aItem.ID,'desc'], '');

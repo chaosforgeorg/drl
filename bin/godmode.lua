@@ -25,11 +25,6 @@ dofile "config.lua"
 
 SoundEngine = "DEFAULT"
 
-LockBreak        = false
-LockClose        = false
-SaveOnCrash      = false
-ForceRaw         = true
-
 Keytable = {}
 
 -- God commands
