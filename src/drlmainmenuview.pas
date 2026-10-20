@@ -279,7 +279,7 @@ begin
       else
       begin
         FResult.Trait := TPlayerView.TraitPick;
-        if (Option_AlwaysName <> '') or Setting_AlwaysRandomName
+        if (Option_AlwaysName <> '') or FSession.UserConfig.GetBoolean( 'always_random_name' )
           then FMode := MAINMENU_DONE
           else begin
             IO.Console.ShowCursor;
@@ -1002,13 +1002,15 @@ begin
 end;
 
 procedure TMainMenuView.ReloadArrays;
-var iLua : TLua;
-    iEntry : TMainMenuEntry;
-    iTable : TLuaTable;
-    iCount : Word;
-    iSkill : Integer;
+var iLua       : TLua;
+    iEntry     : TMainMenuEntry;
+    iTable     : TLuaTable;
+    iCount     : Word;
+    iSkill     : Integer;
+    iUnlockAll : Boolean;
 begin
   iLua := FSession.Context.Lua;
+  iUnlockAll := FSession.UserConfig.GetBoolean( 'unlock_all' );
   if FArrayCType = nil then FArrayCType := TMainMenuEntryArray.Create;
   if FArrayDiff  = nil then FArrayDiff  := TMainMenuEntryArray.Create;
   if FArrayKlass = nil then FArrayKlass := TMainMenuEntryArray.Create;
@@ -1018,9 +1020,9 @@ begin
 
   iSkill := FHOF.GetRank('skill');
 
-  ChallengeType[1].Allow := (iSkill > 0) or (GodMode) or (Setting_UnlockAll);
-  ChallengeType[2].Allow := (iSkill > 3) or (GodMode) or (Setting_UnlockAll);
-  ChallengeType[3].Allow := (iSkill > 4) or (GodMode) or (Setting_UnlockAll);
+  ChallengeType[1].Allow := (iSkill > 0) or (GodMode) or (iUnlockAll);
+  ChallengeType[2].Allow := (iSkill > 3) or (GodMode) or (iUnlockAll);
+  ChallengeType[3].Allow := (iSkill > 4) or (GodMode) or (iUnlockAll);
   FArrayCType.Push( ChallengeType[1] );
   FArrayCType.Push( ChallengeType[2] );
   FArrayCType.Push( ChallengeType[3] );
@@ -1030,7 +1032,7 @@ begin
   begin
     iEntry.Allow := True;
     if (FResult.Challenge <> '') and (not GetBoolean( 'challenge' )) then Continue;
-    if GetInteger('req_skill',0) > iSkill then iEntry.Allow := Setting_UnlockAll;
+    if GetInteger('req_skill',0) > iSkill then iEntry.Allow := iUnlockAll;
     iEntry.Name := GetString('name');
     iEntry.Desc := GetString('desc','');
     iEntry.Extra:= GetString('desc_unlock','');
@@ -1068,8 +1070,10 @@ var iLua : TLua;
     iChallenges : array of Byte;
     iEntry      : TMainMenuEntry;
     iValue      : TLuaValue;
+    iUnlockAll  : Boolean;
 begin
   iLua := FSession.Context.Lua;
+  iUnlockAll := FSession.UserConfig.GetBoolean( 'unlock_all' );
   VTIG_EventClear;
   VTIG_ResetSelect( 'challenges_view' );
 
@@ -1136,7 +1140,7 @@ begin
       iEntry.ID    := GetString('id');
       iEntry.NID   := iChallenges[iCount];
       iEntry.Req   := GetInteger(iPrefix+'rank',0);
-      iEntry.Allow := (FHOF.GetRank('skill') >= iEntry.Req) or (GodMode) or (Setting_UnlockAll);
+      iEntry.Allow := (FHOF.GetRank('skill') >= iEntry.Req) or (GodMode) or (iUnlockAll);
       FArrayChal.Push( iEntry );
     finally
       Free;

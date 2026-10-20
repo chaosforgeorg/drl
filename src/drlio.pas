@@ -1057,7 +1057,7 @@ begin
     then VTIG_FreeLabel( ' '+FHintOverlay+' ', Point( iOffset-VTIG_Length( FHintOverlay ), 2 ), Yellow )
     else if ( (FHint <> '') and ( not FSettings.HideHints ) and ( not GraphicsVersion ) )
       then VTIG_FreeLabel( ' '+FHint+' ', Point( iOffset-VTIG_Length( FHint ), 2 ), Yellow )
-      else if (FHintTarget <> '') and Setting_AutoTarget
+      else if FHintTarget <> ''
         then VTIG_FreeLabel( ' '+FHintTarget+' ', Point( iOffset-VTIG_Length( FHintTarget ), 2 ), Brown );
 
   if GraphicsVersion and ( FHintStatus <> '' ) and ( ( FHintOverlay <> '' ) or ( FHintTarget <> '' ) ) then

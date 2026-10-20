@@ -8,7 +8,10 @@ unit drlbase;
 interface
 
 uses vapp, vnode, vutil, vuid, vio, viotypes, vrltools, vlua, vioevent, vstoreinterface, vrandom, vrlapp,
-     dflevel, dfdata, dfhof, dfplayer, dfitem, drlhooks, drllua, drlcommand, drlkeybindings, drlmodule, drlgamedata, drlio;
+     dflevel, dfdata, dfhof, dfplayer, dfitem, drlhooks, drllua, drlcommand, drlkeybindings, drlmodule, drlgamedata, drlconfiguration, drlio;
+
+// Where a fire command takes its target from.
+type TFireTarget = ( FireManual, FireAuto, FireMouse );
 
 type TDRLSession = class;
      PDRLSession = ^TDRLSession;
@@ -41,9 +44,12 @@ type TDRLSessionResult = ( DSR_Quit, DSR_Played, DSR_ReloadData );
 // state, targeting, gameplay input, progression, and the save payload. Module
 // and data-generation policy belongs to TDRLRuntime.
 type TDRLSession = class(TVObject)
-       constructor Create( aRuntime : TRLRuntime; aIO : TDRLIO; aModules : TDRLModules;
+       // aUserConfig is borrowed from the runtime, which outlives the Session.
+       constructor Create( aRuntime : TRLRuntime; aIO : TDRLIO; aUserConfig : TDRLConfiguration; aModules : TDRLModules;
          aStore : TStoreInterface; aData : TGameData; const aPaths : TGamePaths );
        procedure InitializeLevel;
+       // Starts a directional run with the player's run-over-items setting.
+       procedure StartRun( aDir : TDirection );
        procedure EnterLevel( aLevel : TLevel );
        procedure ResetLevel;
        procedure Reset;
@@ -67,7 +73,9 @@ type TDRLSession = class(TVObject)
        function HandleActionCommand( aInput : TInputKey ) : Boolean;
        function HandleActionCommand( aTarget : TCoord2D; aFlag : Byte ) : Boolean;
        function HandleMoveCommand( aInput : TInputKey; aAlt : Boolean ) : Boolean;
-       function HandleFireCommand( aAlt : Boolean; aMouse : Boolean; aAuto : Boolean; aPad : Boolean ) : Boolean;
+       function HandleFireCommand( aAlt : Boolean; aTarget : TFireTarget ) : Boolean;
+       // Pad fire with a melee weapon attacks the stick direction or an adjacent auto-target.
+       function HandlePadFireCommand( aAlt : Boolean ) : Boolean;
        function HandleUsableCommand( aItem : TItem ) : Boolean;
        function HandleSwapWeaponCommand : Boolean;
        function HandlePickupCommand( aAlt : Boolean ) : Boolean;
@@ -139,6 +147,7 @@ type TDRLSession = class(TVObject)
        FSeededGame      : Boolean;
        FRuntime         : TRLRuntime;
        FIO              : TDRLIO; // Borrowed from the runtime, which outlives the Session.
+       FUserConfig      : TDRLConfiguration; // Borrowed from the runtime.
        FPaths           : TGamePaths;
      public
        property GameWon : Boolean read GetGameWon;
@@ -150,6 +159,7 @@ type TDRLSession = class(TVObject)
        property Context : TNodeContext read FContext;
        property UIDs : TUIDStore read FUIDStore;
        property Store : TStoreInterface read FStore;
+       property UserConfig : TDRLConfiguration read FUserConfig;
        property Modules : TDRLModules read FModules;
        property Level : TLevel read FLevel;
        property Player : TPlayer read FPlayer;
@@ -327,11 +337,12 @@ begin
   {$ENDIF}
 end;
 
-constructor TDRLSession.Create( aRuntime : TRLRuntime; aIO : TDRLIO; aModules : TDRLModules;
+constructor TDRLSession.Create( aRuntime : TRLRuntime; aIO : TDRLIO; aUserConfig : TDRLConfiguration; aModules : TDRLModules;
   aStore : TStoreInterface; aData : TGameData; const aPaths : TGamePaths );
 begin
   FRuntime := aRuntime;
   FIO      := aIO;
+  FUserConfig := aUserConfig;
   FContext := TNodeContext.Create( aRuntime.Lua, nil );
   FStatus  := TRunStatus.Create;
   FModules := aModules;
@@ -665,7 +676,7 @@ begin
 
     if FPlayer.EnemiesInVision > 0
       then FIO.Msg( 'Can''t multi-move, there are enemies present.',[] )
-      else FPlayer.MultiMove.Start( iDir );
+      else StartRun( iDir );
     Exit;
   end;
 
@@ -673,10 +684,10 @@ begin
     Exit( HandleMoveCommand( aInput, False ) );
 
   case aInput of
-    INPUT_FIRE       : Exit( HandleFireCommand( False, False, Setting_AutoTarget, False ) );
-    INPUT_ALTFIRE    : Exit( HandleFireCommand( True, False, Setting_AutoTarget, False ) );
-    INPUT_TARGET     : Exit( HandleFireCommand( False, False, False, False ) );
-    INPUT_ALTTARGET  : Exit( HandleFireCommand( True, False, False, False ) );
+    INPUT_FIRE       : Exit( HandleFireCommand( False, FireAuto ) );
+    INPUT_ALTFIRE    : Exit( HandleFireCommand( True, FireAuto ) );
+    INPUT_TARGET     : Exit( HandleFireCommand( False, FireManual ) );
+    INPUT_ALTTARGET  : Exit( HandleFireCommand( True, FireManual ) );
     INPUT_ACTION     : Exit( HandleActionCommand( INPUT_ACTION ) );
     INPUT_LEGACYOPEN : Exit( HandleActionCommand( INPUT_LEGACYOPEN ) );
     INPUT_LEGACYCLOSE: Exit( HandleActionCommand( INPUT_LEGACYCLOSE ) );
@@ -796,6 +807,11 @@ begin
   Exit( False );
 end;
 
+procedure TDRLSession.StartRun( aDir : TDirection );
+begin
+  FPlayer.MultiMove.Start( aDir, not FUserConfig.GetBoolean( 'run_over_items' ) );
+end;
+
 function TDRLSession.HandleMoveCommand( aInput : TInputKey; aAlt : Boolean ) : Boolean;
 var iDir        : TDirection;
     iTarget     : TCoord2D;
@@ -855,7 +871,7 @@ begin
   Exit( False );
 end;
 
-function TDRLSession.HandleFireCommand( aAlt : Boolean; aMouse : Boolean; aAuto : Boolean; aPad : Boolean ) : Boolean;
+function TDRLSession.HandleFireCommand( aAlt : Boolean; aTarget : TFireTarget ) : Boolean;
 var iTarget     : TCoord2D;
     iItem       : TItem;
     iFireTitle  : AnsiString;
@@ -884,7 +900,7 @@ begin
 
   if not aAlt then
   begin
-    if (not aMouse) and (not aAuto) and iItem.isMelee then
+    if ( aTarget = FireManual ) and iItem.isMelee then
     begin
       FIO.PushLayer( TMeleeDirView.Create( Self ) );
       Exit( False );
@@ -892,41 +908,30 @@ begin
 
     if (not iItem.isRanged) then
     begin
-      if aPad then
-      begin
-        iTarget := FTargeting.List.Current;
-        if FIO.GetPadLDir.NotZero then 
-          iTarget := FPlayer.Position + FIO.GetPadLDir;
-        if Distance( FPlayer.Position, iTarget ) = 1 then
-          Exit( HandleCommand( TCommand.Create( COMMAND_MELEE, iTarget, FData.Rules.MeleeMoveOnKill ) ) );
-      end;
       FIO.Msg( 'You have no ranged weapon.' );
       Exit( False );
     end;
   end
   else
-  begin
-    if ( not iItem.Flags[ IF_ALTTARGET ] ) then aAuto := False;
-    if iItem.Flags[ IF_ALTMANUAL ]         then aAuto := False;
-  end;
+    // Alternate fire that needs or forbids a chosen target ignores the auto-target.
+    if ( aTarget = FireAuto ) and ( ( not iItem.Flags[ IF_ALTTARGET ] ) or iItem.Flags[ IF_ALTMANUAL ] ) then
+      aTarget := FireManual;
   if not FPlayer.CallHookCheck( Hook_OnUseCheck, [ iItem, aAlt ] ) then Exit( False );
   if not iItem.CallHookCheck( Hook_OnUseCheck, [FPlayer,aAlt] ) then Exit( False );
 
   if aAlt then
   begin
     if iItem.isMelee and iItem.Flags[ IF_ALTTARGET ] then
-    begin
-      if aMouse then
-        iTarget  := FIO.MTarget
-      else if aAuto then
-        iTarget := FTargeting.List.Current
-      else
-      begin
-        iRange      := iItem.Range;
-        iLimitRange := iItem.Flags[ IF_EXACTHIT ];
-        iFireTitle  := 'Choose target ('+iItem.GetAltFireName+'):';
+      case aTarget of
+        FireMouse  : iTarget := FIO.MTarget;
+        FireAuto   : iTarget := FTargeting.List.Current;
+        FireManual :
+          begin
+            iRange      := iItem.Range;
+            iLimitRange := iItem.Flags[ IF_EXACTHIT ];
+            iFireTitle  := 'Choose target ('+iItem.GetAltFireName+'):';
+          end;
       end;
-    end;
   end;
 
   if iItem.isRanged then
@@ -941,7 +946,7 @@ begin
 
     if iEmpty then
     begin
-      if Setting_EmptyConfirm then
+      if FUserConfig.GetBoolean( 'empty_confirm' ) then
         FIO.PushLayer( TMoreLayer.Create( False ) );
       Exit( False );
     end;
@@ -950,25 +955,28 @@ begin
     if iRange = 0 then iRange := FPlayer.Vision;
 
     iLimitRange := (not iItem.Flags[ IF_SHOTGUN ]) and iItem.Flags[ IF_EXACTHIT ];
-    if aMouse or aAuto then
-    begin
-      if aMouse
-        then iTarget := FIO.MTarget
-        else iTarget := FTargeting.List.Current;
+    case aTarget of
+      FireMouse,
+      FireAuto :
+        begin
+          if aTarget = FireMouse
+            then iTarget := FIO.MTarget
+            else iTarget := FTargeting.List.Current;
 
-      if iLimitRange then
-        if Distance( FPlayer.Position, iTarget ) > iRange then
-          Exit( FPlayer.Fail( 'Out of range!', [] ) );
-    end
-    else
-    begin
-      iFireTitle := 'Choose fire target:';
-      if aAlt then
-      begin
-        if iItem.Flags[ IF_ALTTARGET ]
-          then iFireTitle := 'Fire target ({L'+iItem.GetAltFireName+'}):'
-          else begin iFireTitle := ''; iTarget := FPlayer.Position; end;
-      end;
+          if iLimitRange then
+            if Distance( FPlayer.Position, iTarget ) > iRange then
+              Exit( FPlayer.Fail( 'Out of range!', [] ) );
+        end;
+      FireManual :
+        begin
+          iFireTitle := 'Choose fire target:';
+          if aAlt then
+          begin
+            if iItem.Flags[ IF_ALTTARGET ]
+              then iFireTitle := 'Fire target ({L'+iItem.GetAltFireName+'}):'
+              else begin iFireTitle := ''; iTarget := FPlayer.Position; end;
+          end;
+        end;
     end;
   end;
 
@@ -984,7 +992,7 @@ begin
     Exit( False );
   end;
 
-  if aAuto then
+  if aTarget = FireAuto then
   begin
     if FTargeting.List.Current = FPlayer.Position then
     begin
@@ -996,6 +1004,25 @@ begin
   end;
 
   Exit( HandleCommand( TCommand.Create( iCommand, iTarget, iItem ) ) )
+end;
+
+function TDRLSession.HandlePadFireCommand( aAlt : Boolean ) : Boolean;
+var iItem   : TItem;
+    iTarget : TCoord2D;
+begin
+  iItem := FPlayer.Inv.Slot[ efWeapon ];
+  if ( not aAlt ) and ( iItem <> nil ) and iItem.isWeapon and ( not iItem.isRanged ) then
+  begin
+    iTarget := FTargeting.List.Current;
+    if FIO.GetPadLDir.NotZero then
+      iTarget := FPlayer.Position + FIO.GetPadLDir;
+    if Distance( FPlayer.Position, iTarget ) = 1 then
+    begin
+      FIO.MsgUpdate;
+      Exit( HandleCommand( TCommand.Create( COMMAND_MELEE, iTarget, FData.Rules.MeleeMoveOnKill ) ) );
+    end;
+  end;
+  Exit( HandleFireCommand( aAlt, FireAuto ) );
 end;
 
 function TDRLSession.HandleUsableCommand( aItem : TItem ) : Boolean;
@@ -1233,11 +1260,7 @@ begin
           else Exit( HandleCommand( TCommand.Create( COMMAND_RELOAD ) ) );
       end
       else if (FPlayer.Inv.Slot[ efWeapon ] <> nil) and (FPlayer.Inv.Slot[ efWeapon ].isRanged) then
-      begin
-        if iAlt
-          then Exit( HandleFireCommand( True, True, False, False ) )
-          else Exit( HandleFireCommand( False, True, False, False ) );
-      end
+        Exit( HandleFireCommand( iAlt, FireMouse ) )
       else Exit( HandleCommand( TCommand.Create( COMMAND_MELEE,
         FPlayer.Position + NewDirectionSmooth( FPlayer.Position, FIO.MTarget )
       ) ) );
@@ -1365,7 +1388,7 @@ begin
                               Exit( HandleCommand( TCommand.Create( COMMAND_USE, iItem ) ) );
                             Exit( HandlePickupCommand( FIO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT ) ) )
                           end;
-    CONTROLLER_FIRE : Exit( HandleFireCommand( FIO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT ), False, True, True ) );
+    CONTROLLER_FIRE : Exit( HandlePadFireCommand( FIO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT ) ) );
     CONTROLLER_RELOAD : Exit( HandleCommand( TCommand.Create(
       Iif(
         FIO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT ),
@@ -1485,7 +1508,7 @@ begin
         FPlayer.MultiMove.Stop;
         if FPlayer.EnemiesInVision > 0
           then FIO.Msg( 'Can''t multi-move, there are enemies present.',[] )
-          else FIO.PushLayer( TRunModeView.Create( FPlayer ) );
+          else FIO.PushLayer( TRunModeView.Create( Self ) );
         Exit;
       end;
 
@@ -1625,7 +1648,7 @@ begin
 
   if (not(State in [DSLoading, DSCrashLoading])) then
   begin
-    if ( not Setting_NoIntro ) and FContext.Lua.Defined( [ CoreModuleID, 'ShowIntro' ] ) then
+    if ( not FUserConfig.GetBoolean( 'skip_intro' ) ) and FContext.Lua.Defined( [ CoreModuleID, 'ShowIntro' ] ) then
       FContext.Lua.ProtectedCall( [ CoreModuleID, 'ShowIntro' ], [] );
     GameRNG.SetSeed( iEpisodeSeed );
     CallHook( Hook_OnCreateWorld, [QWord( iEpisodeSeed )] );
@@ -1903,7 +1926,7 @@ begin
   if Option_AlwaysName <> '' then
     FPlayer.Name := Option_AlwaysName
   else
-    if (Setting_AlwaysRandomName) or (aResult.Name = '')
+    if aResult.Name = ''
       then FPlayer.Name := FContext.Lua.ProtectedCall([CoreModuleID,'GetRandomName'],[])
       else FPlayer.Name := aResult.Name;
 

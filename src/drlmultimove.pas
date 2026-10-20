@@ -11,18 +11,21 @@ uses classes, vnode, vrltools, vpath, drlkeybindings;
 type TMultiMove = class( TVObject )
   constructor Create;
   procedure Stop;
-  procedure Start( const aDir : TDirection );
+  // A directional run; with aStopOnItems it stops on cells holding items.
+  procedure Start( const aDir : TDirection; aStopOnItems : Boolean );
   procedure Start( aPath : TPathfinder );
   function IsRepeat : Boolean;
   function IsPath   : Boolean;
   function CalculateInput( const aPosition : TCoord2D ) : TInputKey;
 private
-  FActive   : Boolean;
-  FCount    : Word;
-  FPath     : TPathFinder;
-  FDir      : TDirection;
+  FActive      : Boolean;
+  FCount       : Word;
+  FPath        : TPathFinder;
+  FDir         : TDirection;
+  FStopOnItems : Boolean;
 public
-  property Active : Boolean read FActive;
+  property Active      : Boolean read FActive;
+  property StopOnItems : Boolean read FStopOnItems;
 end;
 
 implementation
@@ -45,20 +48,22 @@ begin
   FPath   := nil;
 end;
 
-procedure TMultiMove.Start( const aDir : TDirection ) ;
+procedure TMultiMove.Start( const aDir : TDirection; aStopOnItems : Boolean );
 begin
-  FActive := True;
-  FCount  := 0;
-  FDir    := aDir;
-  FPath   := nil;
+  FActive      := True;
+  FCount       := 0;
+  FDir         := aDir;
+  FStopOnItems := aStopOnItems;
+  FPath        := nil;
 end;
 
 procedure TMultiMove.Start( aPath : TPathfinder );
 begin
-  FCount      := 0;
-  FActive     := True;
-  FPath       := aPath;
-  FPath.Start := FPath.Start.Child;
+  FCount       := 0;
+  FActive      := True;
+  FPath        := aPath;
+  FStopOnItems := False;
+  FPath.Start  := FPath.Start.Child;
 end;
 
 function TMultiMove.IsRepeat : Boolean;
