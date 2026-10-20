@@ -180,9 +180,9 @@ end;
 function TDRLRuntime.CreateIO : TIORL;
 begin
   if GraphicsVersion then
-    Result := TDRLGFXIO.Create( Self.Configuration as TDRLConfiguration )
+    Result := TDRLGFXIO.Create( Self.Configuration as TDRLConfiguration, Config )
   else
-    Result := TDRLTextIO.Create( Self.Configuration as TDRLConfiguration );
+    Result := TDRLTextIO.Create( Self.Configuration as TDRLConfiguration, Config );
 end;
 
 function TDRLRuntime.CreateLua : TLua;
@@ -300,6 +300,9 @@ begin
   RegisterStoreLuaAPI( FLua, FStore );
   // Runtime outlives Lua; the callbacks resolve the Session active at each call.
   TDRLSession.RegisterLuaAPI( FLua, @FSession );
+  // Natives register before scripts run: the core module guards globals.
+  FHOF := THOF.Create( FLua, Paths );
+  FHOF.RegisterLuaAPI( FLua );
   TDRLLua( FLua ).ReadWad( IO, FHelp, FModErrors );
   FData.LoadRules( FLua );
   if GodMode then RegisterDebugConsole( VKEY_F1 );
@@ -311,8 +314,6 @@ begin
 
   if GodMode and FileExists(Paths.WritePath + 'god.lua') then
     FLua.LoadFile(Paths.WritePath + 'god.lua');
-  FHOF := THOF.Create( FLua, Paths );
-  FHOF.RegisterLuaAPI( FLua );
   FSession.InitializeLevel;
 
   HARDSPRITE_HIGHLIGHT    := FLua.Get('HARDSPRITE_HIGHLIGHT');

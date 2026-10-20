@@ -76,6 +76,10 @@ implementation
 uses math, sysutils, strutils, variants,
      vluatable, vlualibrary, vluagamestack, vdebug, vtig, vutil, vrltools;
 
+// Old copies of player.wad and score.wad kept, at most one per day.
+const PlayerBackups = 7;
+      ScoreBackups  = 7;
+
 function THOF.GetBadgeCount( aBadgeLevel : DWord ): DWord;
 var iCount   : DWord;
     iCounter : DWord;
@@ -737,7 +741,7 @@ begin
   if iScorePath = '' then iScorePath := aPaths.ModuleUserPath;
   FScore := TScoreFile.Create( iScorePath + ScoreFile, MaxHOFEntries );
   FScore.SetCRC( '344ef'+{ModuleID+}'3321', '738af'+{ModuleID+}'92-5' );
-  FScore.SetBackup( iScorePath+'backup'+PathDelim, Option_ScoreBackups );
+  FScore.SetBackup( iScorePath+'backup'+PathDelim, ScoreBackups );
   FScore.Lock;
   try
     FScore.Load;
@@ -747,7 +751,7 @@ begin
 
   FPlayerInfo := TVXMLDataFile.Create( aPaths.ModuleUserPath + PlayerFile, 'player' );
   FPlayerInfo.SetCRC( '344ef'+{ModuleID+}'3321', '738af'+{ModuleID+}'92-5' );
-  FPlayerInfo.SetBackup(  aPaths.ModuleUserPath + 'backup'+PathDelim, Option_PlayerBackups );
+  FPlayerInfo.SetBackup(  aPaths.ModuleUserPath + 'backup'+PathDelim, PlayerBackups );
   FPlayerInfo.Load;
 
 end;

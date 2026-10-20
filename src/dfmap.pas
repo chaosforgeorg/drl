@@ -190,7 +190,6 @@ begin
     Free;
   end;
 
-  if (not Option_HighASCII) then iCell.PicChr := iCell.PicLow;
 
   iCell.LightColor[0] := Config.ColorOverrides.Get( iColorID + '_light', iCell.LightColor[0] );
   iCell.DarkColor := Config.ColorOverrides.Get( iColorID + '_dark', iCell.DarkColor );

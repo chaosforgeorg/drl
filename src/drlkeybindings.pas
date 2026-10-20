@@ -89,8 +89,6 @@ type TInputKey = (
   INPUT_SOUNDTOGGLE,
   INPUT_MUSICTOGGLE,
   INPUT_TOGGLEGRID,
-  INPUT_EXAMINENPC,
-  INPUT_EXAMINEITEM,
 
   // Legacy keybindings
   INPUT_LEGACYOPEN,
@@ -195,8 +193,6 @@ const KeyInfo : array[TInputKey] of TBindingInfo = (
     ( Action: Ord(INPUT_SOUNDTOGGLE)    ; ID: 'input_soundtoggle'    ; Group: 'keybindings_helper'  ; Default: 0                               ; Name: 'Sound toggle'          ; Description: 'Quickly toggle sound on and off.' ),
     ( Action: Ord(INPUT_MUSICTOGGLE)    ; ID: 'input_musictoggle'    ; Group: 'keybindings_helper'  ; Default: 0                               ; Name: 'Music toggle'          ; Description: 'Quickly toggle music on and off.' ),
     ( Action: Ord(INPUT_TOGGLEGRID)     ; ID: 'input_togglegrid'     ; Group: 'keybindings_helper'  ; Default: 0                               ; Name: 'Toggle grid visibility'; Description: 'Toggle visibility of helper grid overlay.' ),
-    ( Action: Ord(INPUT_EXAMINENPC)     ; ID: 'input_examinenpc'     ; Group: 'keybindings_helper'  ; Default: 0                               ; Name: 'Examine NPCs'          ; Description: '(blind mode) List in message box all visible NPCs.' ),
-    ( Action: Ord(INPUT_EXAMINEITEM)    ; ID: 'input_examineitem'    ; Group: 'keybindings_helper'  ; Default: 0                               ; Name: 'Examine Items'         ; Description: '(blind mode) List in message box all visible Items.' ),
 
     // Legacy keybindings
     ( Action: Ord(INPUT_LEGACYOPEN)     ; ID: 'input_legacyopen'     ; Group: 'keybindings_legacy'  ; Default: 0                               ; Name: 'Open door'             ; Description: 'Dedicated open door key. Action key is the default method.' ),

@@ -18,7 +18,7 @@ type
 // animation backend. Gameplay policy belongs outside this adapter.
 
  TDRLGFXIO = class( TDRLIO )
-    constructor Create( aSettings : TDRLConfiguration ); reintroduce;
+    constructor Create( aSettings : TDRLConfiguration; aConfig : TDRLConfig ); reintroduce;
     procedure Reset; override;
     procedure SetLevel( aLevel : TLuaMapNode ); override;
     procedure EnterLevel( aCoord : TCoord2D ); override;
@@ -226,7 +226,7 @@ begin
   end;
 end;
 
-constructor TDRLGFXIO.Create( aSettings : TDRLConfiguration );
+constructor TDRLGFXIO.Create( aSettings : TDRLConfiguration; aConfig : TDRLConfig );
 var iSDLFlags   : TSDLIOFlags;
     iMode       : TIODisplayMode;
     iWidth      : Integer;
@@ -271,7 +271,7 @@ begin
   FAnimations := TAnimationManager.Create;
   FSpriteMap  := TDRLSpriteMap.Create( Self, FTextures, FMCursor, FAnimations, Vec2i( iWidth, iHeight ) );
   FMinimap    := TMinimap.Create;
-  inherited Create( aSettings );
+  inherited Create( aSettings, aConfig );
   FParticleEngine := TParticleEngine.Create( VisualRNG );
   FSpriteMap.Glow := FSettings.Glow;
   TSDLIODriver( FIODriver ).MouseSupport := FSettings.Mouse;

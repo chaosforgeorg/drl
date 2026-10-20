@@ -49,13 +49,21 @@ type TIOSettings = record
   GamepadRumble     : Boolean;
   WaitSound         : Boolean;
   GroupMessages     : Boolean;
+  MorePrompt        : Boolean;
   HideHints         : Boolean;
+end;
+
+// Presentation options from config.lua; IO copies them from each loaded
+// config, which the runtime replaces on every data load.
+type TIOOptions = record
+  HighASCII      : Boolean;
 end;
 
 // Architectural boundary: adapts shared roguelike presentation mechanics to DRL policy and its active session.
 type TDRLIO = class( TIORL, IDRLPresentation )
-  // aSettings is borrowed from the runtime, which outlives IO.
-  constructor Create( aSettings : TDRLConfiguration ); reintroduce;
+  // aSettings is borrowed from the runtime, which outlives IO; aConfig is the
+  // Lua config at construction, replaced later through Configure.
+  constructor Create( aSettings : TDRLConfiguration; aConfig : TDRLConfig ); reintroduce;
   procedure Reset; virtual;
   procedure SetSeedText( const aText : AnsiString );
   // Sets up rendering; graphics mode loads its fonts from the core module.
@@ -173,6 +181,7 @@ type TDRLIO = class( TIORL, IDRLPresentation )
 private
   function GetHeartbeatVolume : Integer;
   procedure LoadSettings;
+  procedure ReadOptions( aConfig : TDRLConfig );
 protected
   // Runs a modal launch-time layer before IO is initialized.
   procedure RunLauncherLayer( aLayer : TIOLayer ); virtual;
@@ -188,6 +197,7 @@ protected
   FAudio       : TDRLAudio;
   FUserConfig  : TDRLConfiguration; // Borrowed from the runtime, which outlives IO.
   FSettings    : TIOSettings;
+  FOptions     : TIOOptions;
   FTime        : QWord;
   FLoading     : TLoadingView;
   FMTarget     : TCoord2D;
@@ -222,6 +232,7 @@ public
   property KeyCode      : TIOKeyCode      read FKeyCode    write FKeyCode;
   property Audio        : TDRLAudio       read FAudio;
   property Settings     : TIOSettings     read FSettings;
+  property Options      : TIOOptions      read FOptions;
   property MTarget      : TCoord2D        read FMTarget    write FMTarget;
   property ASCII        : TASCIIImageMap  read FASCII;
   property HintOverlay  : AnsiString      read FHintOverlay write FHintOverlay;
@@ -480,18 +491,19 @@ end;
 
 { TDRLIO }
 
-constructor TDRLIO.Create( aSettings : TDRLConfiguration );
+constructor TDRLIO.Create( aSettings : TDRLConfiguration; aConfig : TDRLConfig );
 begin
   inherited Create( FIODriver, nil );
   FUserConfig := aSettings;
   LoadSettings;
+  ReadOptions( aConfig );
 
   FMsgQueue := True;
   FLoading  := nil;
   FAudio    := TDRLAudio.Create( FVisualRNG, aSettings );
-  InitializeMessages( 2, 77, @EventMore, Option_MessageBuffer );
+  InitializeMessages( 2, 77, @EventMore, aConfig.MessageBuffer );
   Messages.GroupMultiple := FSettings.GroupMessages;
-  inherited Configure( dfdata.Config );
+  inherited Configure( aConfig );
   FASCII    := TASCIIImageMap.Create( True );
 
   FIODriver.SetTitle('DRL','DRL');
@@ -706,6 +718,7 @@ begin
   FSettings.GamepadRumble     := FUserConfig.GetBoolean( 'enable_rumble' );
   FSettings.WaitSound         := FUserConfig.GetBoolean( 'wait_sound' );
   FSettings.GroupMessages     := FUserConfig.GetBoolean( 'group_messages' );
+  FSettings.MorePrompt        := FUserConfig.GetBoolean( 'more_prompt' );
   FSettings.HideHints         := FUserConfig.GetBoolean( 'hide_hints' );
 end;
 
@@ -840,16 +853,21 @@ end;
 procedure TDRLIO.Configure ( aConfig : TDRLConfig; aReload : Boolean ) ;
 begin
   inherited Configure( aConfig );
+  ReadOptions( aConfig );
   // TODO : configurable
 
   FIODriver.RegisterInterrupt( VKEY_F9, @ScreenshotCallback );
   FIODriver.RegisterInterrupt( VKEY_F10, @ScreenshotCallback );
 
-  if Option_MessageBuffer < 20 then Option_MessageBuffer := 20;
   FAudio.Configure( aConfig, aReload );
 
-  if Option_MessageColoring then
+  if aConfig.TableExists( 'Messages' ) then
     aConfig.EntryFeed( 'Messages', @FMessages.AddHighlightCallback );
+end;
+
+procedure TDRLIO.ReadOptions( aConfig : TDRLConfig );
+begin
+  FOptions.HighASCII      := aConfig.HighASCII;
 end;
 
 procedure TDRLIO.RunLayer( aLayer : TIOLayer; aHideHUD : Boolean );
@@ -1148,7 +1166,7 @@ end;
 procedure TDRLIO.EventMore;
 var iHudEnabled : Boolean;
 begin
-  if not Option_MorePrompt then Exit;
+  if not FSettings.MorePrompt then Exit;
   iHudEnabled := FHudEnabled;
   FHudEnabled := True;
   WaitForLayer( PushLayer( TMoreLayer.Create( True ) ) );
@@ -1333,7 +1351,6 @@ procedure TDRLIO.LookDescription(aWhere: TCoord2D);
 var LookDesc : string;
 begin
   LookDesc := Level.GetLookDescription( aWhere );
-  if Option_BlindMode then LookDesc += ' | '+BlindCoord( aWhere - Player.Position );
   if Level.isVisible(aWhere) and (Level.Being[aWhere] <> nil) then
   begin
     if isGamepad

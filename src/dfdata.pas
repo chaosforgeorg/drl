@@ -150,11 +150,6 @@ const
   COMMAND_SKIP     = 250;
 
 const
-  Option_HighASCII        : Boolean = {$IFDEF WINDOWS}True{$ELSE}False{$ENDIF};
-  Option_BlindMode        : Boolean = False;
-  Option_ClearMessages    : Boolean = False;
-  Option_MorePrompt       : Boolean = True;
-  Option_MessageColoring  : Boolean = False;
   Option_InvFullDrop      : Boolean = False;
   Option_MortemArchive    : Boolean = False;
   Option_MenuReturn       : Boolean = False;
@@ -163,7 +158,6 @@ const
   Option_LockBreak        : Boolean = True;
   Option_LockClose        : Boolean = True;
   Option_ForceRaw         : Boolean = True;
-  Option_MessageBuffer    : DWord = 100;
   Option_MaxRun           : DWord = 100;
   Option_MaxWait          : DWord = 20;
   Option_RunDelay         : Byte = 0;
@@ -172,10 +166,6 @@ const
   Option_SaveOnCrash      : Boolean = True;
   Option_AlwaysName       : string = '';
   Option_TimeStamp        : string = 'yyyy/mm/dd hh:nn:ss';
-  Option_PlayerBackups    : DWord = 7;
-  Option_ScoreBackups     : DWord = 7;
-  Option_IntuitionColor   : Byte = LIGHTGRAY;
-  Option_IntuitionChar    : Char = '.';
 
 // Knockback of explosions whose definition leaves it out.
 const DefaultExplosionKnockback = 8;
@@ -370,7 +360,6 @@ function ItemTypeSetFromFlags( const aFlags : TFlags ) : TItemTypeSet;
 function ExplosionFlagsFromFlags( const aFlags : TFlags ) : TExplosionFlags;
 function MSecNow : Comp;
 function DurationString( aSeconds : int64 ) : Ansistring;
-function BlindCoord( const where : TCoord2D ) : string;
 function SlotName(slot : TEqSlot) : string;
 function DamageTypeName( aDamageType : TDamageType ) : Ansistring;
 function ReadSprite( aTable : TLuaTable; var aSprite : TSprite ) : Boolean;
@@ -552,17 +541,6 @@ begin
   end;
 end;
 
-
-function BlindCoord( const where : TCoord2D ) : string;
-begin
-  BlindCoord := '[';
-  if where.y > 0 then BlindCoord += IntToStr(where.y)+'s';
-  if where.y < 0 then BlindCoord += IntToStr(-where.y)+'n';
-  if where.x > 0 then BlindCoord += IntToStr(where.x)+'e';
-  if where.x < 0 then BlindCoord += IntToStr(-where.x)+'w';
-  if (where.x = 0) and (where.y = 0) then BlindCoord += 'here';
-  BlindCoord += ']';
-end;
 
 function GetPropValueFixed(Instance: TObject; const PropName: Ansistring;
   PreferStrings: Boolean): Variant;

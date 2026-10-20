@@ -179,6 +179,10 @@ begin
     .SetName('Group messages')
     .SetDescription('Group repeated messages into (x{^3}) combos to save on doing "more...".')
     ;
+  iGroup.AddToggle( 'more_prompt', True )
+    .SetName('More prompt')
+    .SetDescription('Set to {!Disabled} to not wait for confirmation when too many messages are printed in a turn. Useful for speedrunning.')
+    ;
   iGroup.AddToggle( 'unlock_all', False )
     .SetName('Unlock all unlocks')
     .SetDescription('For returning players so they don''t have to unlock everything again. Otherwise a cheat!')

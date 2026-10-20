@@ -62,8 +62,6 @@ type TPlayer = class(TBeing)
   class procedure RegisterLuaAPI( aLua : TLua );
   procedure UpdateVisual;
   function RunPath( const aCoord : TCoord2D ) : Boolean;
-  procedure ExamineNPC;
-  procedure ExamineItem;
   procedure NextLevelIndex;
   function GetSprite: TSprite; override;
   function GetPerkEffect : TStatusEffect;
@@ -461,41 +459,6 @@ begin
   FStatistics.OnLevelEnter;
 
   FTargetPos.Create(0,0);
-end;
-
-procedure TPlayer.ExamineNPC;
-var iLevel : TLevel;
-    iWhere : TCoord2D;
-    iCount : Word;
-begin
-  iLevel := TLevel(Parent);
-  iCount := 0;
-  for iWhere in iLevel.Area do
-    if iLevel.isVisible(iWhere) and ( iLevel.Being[iWhere] <> nil ) and (iWhere <> FPosition) then
-    with iLevel.Being[iWhere] do
-    begin
-      Inc(iCount);
-      iLevel.Presentation.Msg('You see '+ GetName(false) + ' (' + WoundStatus + ') ' + BlindCoord(iWhere-Self.FPosition)+'.');
-    end;
-  if iCount = 0 then iLevel.Presentation.Msg('There are no monsters in sight.');
-end;
-
-procedure TPlayer.ExamineItem;
-var iLevel : TLevel;
-    iWhere : TCoord2D;
-    iCount : Word;
-begin
-  iLevel := TLevel(Parent);
-  iCount := 0;
-  for iWhere in iLevel.Area do
-    if iLevel.isVisible(iWhere) then
-      if iLevel.Item[iWhere] <> nil then
-      with iLevel.Item[iWhere] do
-      begin
-        Inc(iCount);
-        iLevel.Presentation.Msg('You see '+ GetName(false) + ' ' + BlindCoord(iWhere-Self.FPosition)+'.');
-      end;
-  if iCount = 0 then iLevel.Presentation.Msg('There are no items in sight.');
 end;
 
 procedure TPlayer.NextLevelIndex;

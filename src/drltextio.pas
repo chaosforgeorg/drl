@@ -8,14 +8,14 @@ unit drltextio;
 interface
 
 uses vrltools, vtextmap, vioevent, vio, viotypes, vluamapnode, vlua,
-     drlio, dfdata, dflevel, drlconfiguration, drlmodule;
+     drlio, dfdata, dflevel, drlconfig, drlconfiguration, drlmodule;
 
 // TDRLTextIO
 //
 // Architectural boundary: owns the concrete text rendering and animation
 // backend. Gameplay policy belongs outside this adapter.
 type TDRLTextIO = class( TDRLIO, ITextMap )
-    constructor Create( aSettings : TDRLConfiguration ); reintroduce;
+    constructor Create( aSettings : TDRLConfiguration; aConfig : TDRLConfig ); reintroduce;
     procedure Reset; override;
     procedure Initialize( aCoreModule : TDRLModule ); override;
     destructor Destroy; override;
@@ -63,7 +63,11 @@ uses sysutils,
      drlanimation,
      dfbeing, dfitem;
 
-constructor TDRLTextIO.Create( aSettings : TDRLConfiguration );
+// How a being sensed only by Intuition is drawn.
+const IntuitionChar  = '*';
+      IntuitionColor = LightMagenta;
+
+constructor TDRLTextIO.Create( aSettings : TDRLConfiguration; aConfig : TDRLConfig );
 begin
   FTextMap      := nil;
   FSpriteSheets := -1;
@@ -74,7 +78,7 @@ begin
   {$ENDIF}
   if (FIODriver.GetSizeX < 80) or (FIODriver.GetSizeY < 25) then
     raise EIOException.Create('Too small console available, resize your console to 80x25!');
-  inherited Create( aSettings );
+  inherited Create( aSettings, aConfig );
 end;
 
 procedure TDRLTextIO.Reset;
@@ -176,7 +180,7 @@ end;
 procedure TDRLTextIO.Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0 );
 var iChr : Char;
 begin
-  if Option_HighASCII then iChr := Chr(219) else iChr := '#';
+  if FOptions.HighASCII then iChr := Chr(219) else iChr := '#';
   if FSettings.Flash then
     FTextMap.AddAnimation( TTextBlinkAnimation.Create( IOGylph( iChr, aColor ), aDuration, aDelay ) );
 end;
@@ -337,6 +341,7 @@ var iLevel : TLevel;
   end;
 var iColor    : TIOColor;
     iChar     : Char;
+    iPic      : Char;
     iCell     : DWord;
     iStyle    : Integer;
     iVisible  : Boolean;
@@ -352,7 +357,7 @@ begin
     Exit( IOGylph( iBeing.Picture, GetColor( iBeing.Color, aCoord, True ) ) );
 
   if iLevel.BeingIntuited( aCoord, iBeing ) then
-    Exit( IOGylph( Option_IntuitionChar, GetColor( Option_IntuitionColor, aCoord, True ) ) );
+    Exit( IOGylph( IntuitionChar, GetColor( IntuitionColor, aCoord, True ) ) );
 
   iItem    := iLevel.Item[ aCoord ];
 
@@ -363,19 +368,19 @@ begin
     Exit( IOGylph( iItem.Picture, GetColor( DarkGray, aCoord, True ) ) );
 
   iVisible  := iLevel.isVisible( aCoord );
-  // Blind mode shows no remembered map.
-  iExplored := iLevel.CellExplored( aCoord, not Option_BlindMode );
+  iExplored := iLevel.CellExplored( aCoord );
   iCell     := iLevel.Cell[ aCoord ];
 
   iColor   := LightGray;
   iChar    := ' ';
+  if FOptions.HighASCII
+    then iPic := iLevel.Data.Cells[ iCell ].PicChr
+    else iPic := iLevel.Data.Cells[ iCell ].PicLow;
   with iLevel.Data.Cells[ iCell ] do
-  if PicChr <> ' ' then
+  if iPic <> ' ' then
   begin
     if iVisible or iExplored then
-      if Option_HighASCII
-        then iChar := PicChr
-        else iChar := PicLow;
+      iChar := iPic;
     if iVisible then
     begin
       iBlood := iLevel.LightFlag[ aCoord, LFBLOOD ] and (BloodColor <> 0);

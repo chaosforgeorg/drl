@@ -26,18 +26,6 @@ ColoredInventory = true
 -- the "@" sign (it's a control char). This setting overrides the one above!
 --AlwaysName       = ""
 
--- Setting to true will turn on enhancements for blind people playing
--- DRL using a screen reader. Yes, some do.
-BlindMode        = false
-
--- Setting to true will make old messages disappear from the screen 
--- (useful in BlindMode)
-ClearMessages    = false
-
--- Setting to false will prevent DRL from waiting for confirmation
--- when too many messages are printed in a turn. Usefull for Speedrunning.
-MorePrompt       = true
-
 -- If set to true, pickup sound will be used for quickkeys and weapon
 -- swapping.
 SoundEquipPickup = false
@@ -53,20 +41,9 @@ InvFullDrop      = false
 -- Messages held in the message buffer.
 MessageBuffer    = 100
 
--- Sets wether message coloring will be enabled. Needs [messages] section.
-MessageColoring  = true
-
 -- If set to true will archive EVERY mortem.txt produced in the mortem subfolder.
 -- The amount of files can get big after a while :)
 MortemArchive    = true
-
--- Sets the amount of player.wad backups. Set 0 to turn off. At most one backup
--- is held for a given day.
-PlayerBackups    = 7
-
--- Sets the amount of score.wad backups. Set 0 to turn off.  At most one backup
--- is held for a given day.
-ScoreBackups     = 7
 
 -- If set to false DRL will quit on death and quitting. Normally it will go back
 -- to the main menu.
@@ -87,12 +64,6 @@ LockBreak        = true
 -- true by default.
 LockClose        = true
 
--- Sets the color of intuition effect for beings
-IntuitionColor   = LIGHTMAGENTA
-
--- Sets the char of intuition effect for beings
-IntuitionChar    = "*"
-
 -- Mortem and screenshot timestamp format
 -- Format : http://www.freepascal.org/docs-html/rtl/sysutils/formatchars.html
 -- note that / and : will be converted to "-" due to filesystem issues
@@ -102,8 +73,8 @@ TimeStamp        = "yyyy/mm/dd hh:nn:ss"
 -- to turn this off
 SaveOnCrash      = true
 
--- Message coloring system. Works only if MessageColoring
--- variable is set to true. Use basic color names available in 
+-- Message coloring system. Remove or comment out the Messages
+-- table to turn it off. Use basic color names available in
 -- colors.lua.
 -- As for the string, it's case sensitive, but you may use
 -- the wildcard characters * and ?.

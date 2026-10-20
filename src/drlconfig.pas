@@ -17,13 +17,18 @@ type TDRLConfig = class(TLuaConfig)
   constructor Create( const aFileName : AnsiString; aReload : Boolean );
   destructor Destroy; override;
 private
-  FColorOverrides : TColorOverrides;
-  FSoundEngine    : AnsiString;
+  FColorOverrides  : TColorOverrides;
+  FSoundEngine     : AnsiString;
+  FHighASCII       : Boolean;
+  FMessageBuffer   : DWord;
   procedure ReadColorOverride( aKey, aValue : Variant );
 public
-  property ColorOverrides : TColorOverrides read FColorOverrides;
+  property ColorOverrides  : TColorOverrides read FColorOverrides;
   // Resolved sound engine: 'FMOD', 'SDL' or 'NONE'.
-  property SoundEngine    : AnsiString      read FSoundEngine;
+  property SoundEngine     : AnsiString      read FSoundEngine;
+  // Presentation options read by IO.
+  property HighASCII       : Boolean         read FHighASCII;
+  property MessageBuffer   : DWord           read FMessageBuffer;
 end;
 
 
@@ -46,12 +51,8 @@ begin
   Option_SaveOnCrash      := Configure('SaveOnCrash',Option_SaveOnCrash);
   FSoundEngine            := Configure('SoundEngine','DEFAULT');
 
-  Option_HighASCII        := Configure('AllowHighAscii',Option_HighASCII);
+  FHighASCII              := Configure('AllowHighAscii',{$IFDEF WINDOWS}True{$ELSE}False{$ENDIF});
   Option_AlwaysName       := Configure('AlwaysName',Option_AlwaysName);
-  Option_BlindMode        := Configure('BlindMode',Option_BlindMode);
-  Option_ClearMessages    := Configure('ClearMessages',Option_ClearMessages);// TODO : Reimplement
-  Option_MorePrompt       := Configure('MorePrompt',Option_MorePrompt);
-  Option_MessageColoring  := Configure('MessageColoring',Option_MessageColoring);
   Option_InvFullDrop      := Configure('InvFullDrop',Option_InvFullDrop);
   Option_MortemArchive    := Configure('MortemArchive',Option_MortemArchive);
   Option_MenuReturn       := Configure('MenuReturn',Option_MenuReturn);
@@ -61,14 +62,8 @@ begin
   Option_LockClose        := Configure('LockClose',Option_LockClose);
   Option_TimeStamp        := Configure('TimeStamp',Option_TimeStamp);
 
-  Option_PlayerBackups    := Configure('PlayerBackups',Option_PlayerBackups);
-  Option_ScoreBackups     := Configure('ScoreBackups',Option_ScoreBackups);
-
   Option_RunDelay         := Configure('RunDelay',Option_RunDelay);
-  Option_MessageBuffer    := Configure('MessageBuffer',Option_MessageBuffer);
-
-  Option_IntuitionColor   := Configure('IntuitionColor',Option_IntuitionColor);
-  Option_IntuitionChar    := AnsiString(Configure('IntuitionChar',Option_IntuitionChar))[1];
+  FMessageBuffer          := Configure('MessageBuffer',100);
 
   Option_MaxRun           := Configure('MaxRun',Option_MaxRun);
   Option_MaxWait          := Configure('MaxWait',Option_MaxWait);

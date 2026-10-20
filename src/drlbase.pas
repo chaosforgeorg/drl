@@ -849,7 +849,6 @@ begin
          iItem := Level.Item[ iTarget ];
          if Assigned( iItem ) and iItem.HasHook( Hook_OnAct ) then
            Exit( HandleCommand( TCommand.Create( COMMAND_ACTION, iTarget ) ) );
-         if Option_Blindmode then FIO.Msg( 'You bump into a wall.' );
          Exit( False );
        end;
      MoveBeing :
@@ -1512,8 +1511,6 @@ begin
         Exit;
       end;
 
-      INPUT_EXAMINENPC   : begin FPlayer.ExamineNPC; Exit; end;
-      INPUT_EXAMINEITEM  : begin FPlayer.ExamineItem; Exit; end;
       INPUT_TOGGLEGRID   : begin FIO.ToggleGrid; Exit; end;
       INPUT_SOUNDTOGGLE  : begin FIO.Audio.ToggleSound; Exit; end;
       INPUT_MUSICTOGGLE  : begin FIO.Audio.ToggleMusic( Iif( FLevel.Music_ID <> '', FLevel.Music_ID, FLevel.ID ) ); Exit; end;
