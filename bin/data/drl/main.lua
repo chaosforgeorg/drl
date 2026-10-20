@@ -206,6 +206,25 @@ function drl.register_base_data()
 		},
 	}
 
+	register_perk "active_running"
+	{
+		OnUseActive = function( self )
+			if self:is_perk( "berserk" ) then return false end
+			if self:is_perk( "tired" ) then
+				ui.msg( "Too tired to do that right now.")
+				return false
+			end
+			if self:is_perk( "running" ) then
+				self:remove_perk( "running", false )
+				return false
+			else
+				self:add_perk( "running", self.RUNNING_TIME * 10 )
+				self.scount = self.scount - 100
+				return true
+			end
+		end,
+	}
+
 	register_being "soldier"
 	{
 		name         = "soldier",
@@ -238,6 +257,8 @@ function drl.register_base_data()
 			TECH_BONUS   = 0,
 		},
 
+		perks = { "active_running" },
+
 		runtime = {
 			OnEnterLevel = function( self )
 				self:remove_perk( "running", true )
@@ -255,22 +276,6 @@ function drl.register_base_data()
 					if firstmsg then ui.msg( "\""..firstmsg.."\"" ) end
 					core.callback( i, "OnFirstPickup", self )
 					self:add_found_item( i.id )
-				end
-			end,
-
-			OnUseActive = function( self )
-				if self:is_perk( "berserk" ) then return false end
-				if self:is_perk( "tired" ) then
-					ui.msg( "Too tired to do that right now.")
-					return false
-				end
-				if self:is_perk( "running" ) then
-					self:remove_perk( "running", false )
-					return false
-				else
-					self:add_perk( "running", self.RUNNING_TIME * 10 )
-					self.scount = self.scount - 100
-					return true
 				end
 			end,
 		},
