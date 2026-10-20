@@ -659,7 +659,7 @@ begin
   begin
     FPlayer.MultiMove.Stop;
     iDir    := InputDirection( aInput );
-    if ModuleOption_MeleeMoveOnKill and ( aInput <> INPUT_RUNWAIT ) then
+    if FData.Rules.MeleeMoveOnKill and ( aInput <> INPUT_RUNWAIT ) then
       if ( FPlayer.TryMove( FPlayer.Position + iDir ) in [ MoveBeing, MoveBlock ] )
         then Exit( HandleMoveCommand( aInput, True ) );
 
@@ -847,7 +847,7 @@ begin
          end;
          if iBeing.Flags[ BF_FRIENDLY ]
            then Exit( HandleCommand( TCommand.Create( COMMAND_SWAPPOSITION, iTarget ) ) )
-           else Exit( HandleCommand( TCommand.Create( COMMAND_MELEE, iTarget, ModuleOption_MeleeMoveOnKill and (not aAlt) ) ) );
+           else Exit( HandleCommand( TCommand.Create( COMMAND_MELEE, iTarget, FData.Rules.MeleeMoveOnKill and (not aAlt) ) ) );
        end;
      MoveDoor  : Exit( HandleCommand( TCommand.Create( COMMAND_ACTION, iTarget ) ) );
      MoveOk    : Exit( HandleCommand( TCommand.Create( COMMAND_MOVE, iTarget ) ) );
@@ -898,7 +898,7 @@ begin
         if FIO.GetPadLDir.NotZero then 
           iTarget := FPlayer.Position + FIO.GetPadLDir;
         if Distance( FPlayer.Position, iTarget ) = 1 then
-          Exit( HandleCommand( TCommand.Create( COMMAND_MELEE, iTarget, ModuleOption_MeleeMoveOnKill ) ) );
+          Exit( HandleCommand( TCommand.Create( COMMAND_MELEE, iTarget, FData.Rules.MeleeMoveOnKill ) ) );
       end;
       FIO.Msg( 'You have no ranged weapon.' );
       Exit( False );

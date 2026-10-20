@@ -231,15 +231,6 @@ begin
   aIO.Audio.Load;
   aIO.LoadProgress( 100 );
 
-  ModuleOption_KlassAchievements    := Get( ['core','options','klass_achievements'], False );
-  ModuleOption_NewMenu              := Get( ['core','options','new_menu'], False );
-  ModuleOption_MeleeMoveOnKill      := Get( ['core','options','melee_move_on_kill'], False );
-  ModuleOption_FullBeingDescription := Get( ['core','options','full_being_description'], False );
-  ModuleOption_PercentHealth        := Get( ['core','options','percent_health'], False );
-  ModuleOption_RelicSlot            := Get( ['core','options','relic_slot'], False );
-  ModuleOption_NewFloorLayout       := Get( ['core','options','new_floor_layout'], False );
-  ModuleOption_ResistCap            := Get( ['core','options','resist_cap'], 95 );
-
   if ModdedGame then Log( LOGINFO, 'Game is modded.');
 end;
 

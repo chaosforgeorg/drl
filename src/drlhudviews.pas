@@ -262,7 +262,7 @@ end;
 
 constructor TMeleeDirView.Create( aSession : TDRLSession );
 begin
-  inherited Create( ModuleOption_MeleeMoveOnKill );
+  inherited Create( aSession.Data.Rules.MeleeMoveOnKill );
   FSession := aSession;
   FPrompt := 'Melee attack';
 end;
@@ -270,7 +270,7 @@ end;
 procedure TMeleeDirView.Finalize( aDir : TDirection );
 begin
   if aDir.code <> DIR_CENTER then
-    FSession.QueueCommand( TCommand.Create( COMMAND_MELEE, FSession.Player.Position + aDir, ModuleOption_MeleeMoveOnKill and ( not FAlt ) ) );
+    FSession.QueueCommand( TCommand.Create( COMMAND_MELEE, FSession.Player.Position + aDir, FSession.Data.Rules.MeleeMoveOnKill and ( not FAlt ) ) );
 end;
 
 constructor TActionDirView.Create( aSession : TDRLSession; aAction : Ansistring; aFlag : Byte );

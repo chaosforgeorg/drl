@@ -708,7 +708,7 @@ begin
     FMode := MAINMENU_KLASS;
     Exit;
   end;
-  if ModuleOption_NewMenu then
+  if FSession.Data.Rules.NewMenu then
   begin
     iLines := 13;
     if FArrayDiff[FArrayDiff.Size-1].Allow then iLines -= 2;

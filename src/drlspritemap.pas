@@ -1054,9 +1054,11 @@ var iDMinX     : Word;
     iColor     : TColor;
     iMixFluids : Boolean;
     iMixedWall : Boolean;
+    iNewLayout : Boolean;
 
 begin
   iMixFluids := not FLevel.Flags[ LF_SHARPFLUID ];
+  iNewLayout := FLevel.Data.Rules.NewFloorLayout;
   iDMinX := FShift.X div FSpriteEngine.Grid.X + 1;
   iDMaxX := Min(FShift.X div FSpriteEngine.Grid.X + (FDriver.GetSizeX div FSpriteEngine.Grid.X + 1),MAXX);
 
@@ -1094,7 +1096,7 @@ begin
             if SF_HASALTEDGE2 in iFSpr.Flags then
               if SF_USEALTEDGE2 in iSpr.Flags then
                 iFSpr.SpriteID[0] += 2*DRL_COLS;
-            if ModuleOption_NewFloorLayout 
+            if iNewLayout
               then PushFloorTerrainNewLayout( iCoord, iFSpr, iZ + DRL_Z_ENVIRO, FLevel.Rotation[iCoord] )
               else
               begin

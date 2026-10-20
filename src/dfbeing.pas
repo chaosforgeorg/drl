@@ -1880,7 +1880,7 @@ var iResist : LongInt;
 begin
   iResist := GetLuaProperty( ['resist',aResistance], 0 );
   if iResist >= 100 then Exit( 100 );
-  if isPlayer and ( aTarget <> Target_Feet ) then iResist := Min( ModuleOption_ResistCap, iResist );
+  if isPlayer and ( aTarget <> Target_Feet ) then iResist := Min( TLevel( Parent ).Data.Rules.ResistCap, iResist );
   getTotalResistance := iResist;
   if aTarget = Target_Internal then Exit;
 
@@ -1902,7 +1902,7 @@ begin
   iResist += GetBonus( Hook_getResistBonus, [ aResistance, Integer( aTarget ) ] );
 
   getTotalResistance += iResist;
-  getTotalResistance := Min( ModuleOption_ResistCap, getTotalResistance );
+  getTotalResistance := Min( TLevel( Parent ).Data.Rules.ResistCap, getTotalResistance );
 end;
 
 procedure TBeing.ApplyDamage( aDamage : LongInt; aTarget : TBodyTarget; aDamageType : TDamageType; aSource : TItem; aDelay : Integer );

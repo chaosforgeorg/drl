@@ -944,7 +944,7 @@ begin
 
     VTIG_FreeLabel( 'A:',                                 iPos + Point(28,0), iCNormal );
     VTIG_FreeLabel( Player.Name,                          iPos + Point(1,0),  NameColor(iHPP) );
-    if ModuleOption_PercentHealth then
+    if Level.Data.Rules.PercentHealth then
     begin
       VTIG_FreeLabel( 'Health:      Exp:   /      W:',      iPos + Point(1,1),  iCNormal );
       VTIG_FreeLabel( IntToStr(iHPP)+'%',                   iPos + Point(9,1),  Red );

@@ -198,16 +198,8 @@ const
   Option_IntuitionColor   : Byte = LIGHTGRAY;
   Option_IntuitionChar    : Char = '.';
 
-var
-  ModuleOption_KlassAchievements         : Boolean = False;
-  ModuleOption_NewMenu                   : Boolean = False;
-  ModuleOption_MeleeMoveOnKill           : Boolean = False;
-  ModuleOption_FullBeingDescription      : Boolean = False;
-  ModuleOption_PercentHealth             : Boolean = False;
-  ModuleOption_RelicSlot                 : Boolean = False;
-  ModuleOption_NewFloorLayout            : Boolean = False;
-  ModuleOption_ResistCap                 : Integer = 95;
-  ModuleOption_DefaultExplosionKnockback : Integer = 8;
+// Knockback of explosions whose definition leaves it out.
+const DefaultExplosionKnockback = 8;
 
 var
   HARDSPRITE_HIGHLIGHT        : DWord = 0;
@@ -910,7 +902,7 @@ begin
   aExplosion.Range      := aTable.getInteger('range',0);
   aExplosion.Delay      := aTable.getInteger('delay',0);
   aExplosion.Color      := aTable.getInteger('color',0);
-  aExplosion.Knockback  := aTable.GetInteger('knockback',ModuleOption_DefaultExplosionKnockback);
+  aExplosion.Knockback  := aTable.GetInteger('knockback',DefaultExplosionKnockback);
   aExplosion.SoundID    := aTable.getString('sound_id','');
   aExplosion.Flags      := ExplosionFlagsFromFlags( aTable.getFlags('flags',[]) );
   aExplosion.Damage     := NewDiceRoll( aTable.getString('damage','') );

@@ -629,7 +629,7 @@ begin
       iPX := FluidFlag( iC.ifInc(+1, 0), 8 );
       iValue := iNX + iPX + iNY + iPY;
 
-      if ModuleOption_NewFloorLayout then
+      if FData.Rules.NewFloorLayout then
       begin
         if ( iNX + iNY = 0 ) then iValue += FluidFlag( iC.ifInc(-1,-1), 16 );
         if ( iNX + iPY = 0 ) then iValue += FluidFlag( iC.ifInc(-1,+1), 32 );

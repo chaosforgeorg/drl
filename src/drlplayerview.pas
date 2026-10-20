@@ -794,7 +794,7 @@ begin
 
   for iSlot := Low(TEqSlot) to High(TEqSlot) do
   begin
-    if (iSlot = efRelic) and (not ModuleOption_RelicSlot) then Continue;
+    if (iSlot = efRelic) and (not FSession.Data.Rules.RelicSlot) then Continue;
     if FPlayer.Inv.Slot[iSlot] <> nil
       then PushItem( FPlayer.Inv.Slot[iSlot], FEq )
       else

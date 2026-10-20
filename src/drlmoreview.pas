@@ -22,6 +22,8 @@ protected
   FDesc     : Ansistring;
   FASCII    : Ansistring;
   FTexts    : array[0..6] of TStringGArray;
+  // The module's full_being_description rule, read from the being's level.
+  FFull     : Boolean;
 end;
 
 type TMoreItemView = class( TIOLayer )
@@ -41,7 +43,7 @@ end;
 
 implementation
 
-uses math, sysutils, vlua, vtig, drlperk;
+uses math, sysutils, vlua, vtig, dflevel, drlgamedata, drlperk;
 
 constructor TMoreBeingView.Create( aBeing : TBeing );
 var i : Integer;
@@ -51,11 +53,12 @@ begin
   FFinished := False;
   FBeing    := aBeing;
   FDesc     := FBeing.Context.Lua.Get(['beings',FBeing.ID,'desc']);
+  FFull     := TLevel( FBeing.Parent ).Data.Rules.FullBeingDescription;
   FASCII    := '';
   FSize      := Point( 80, 25 );
   for i := Low( FTexts ) to High( FTexts ) do
     FTexts[i] := nil;
-  if ModuleOption_FullBeingDescription then
+  if FFull then
   begin
     FSize      := Point( 60, 25 );
     ReadTexts;
@@ -65,7 +68,7 @@ end;
 // The player is drawn by worn torso armour when it has its own art.
 procedure TMoreBeingView.Setup;
 begin
-  if ModuleOption_FullBeingDescription then Exit;
+  if FFull then Exit;
   if not FBeing.IsPlayer then
     FASCII := FBeing.ID
   else if ( FBeing.Inv.Slot[ efTorso ] <> nil ) and IO.ASCII.Exists( FBeing.Inv.Slot[ efTorso ].ID ) then
@@ -178,7 +181,7 @@ procedure TMoreBeingView.Update( aDTime : Integer; aActive : Boolean );
 var iString : Ansistring;
     iCount  : Integer;
 begin
-  if not ModuleOption_FullBeingDescription then
+  if not FFull then
   begin
     VTIG_PushStyle(@TIGStylePadless);
     VTIG_BeginWindow(FBeing.name, 'more_being_view', FSize );

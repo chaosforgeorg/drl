@@ -303,6 +303,7 @@ begin
   // Runtime outlives Lua; the callbacks resolve the Session active at each call.
   TDRLSession.RegisterLuaAPI( FLua, @FSession );
   TDRLLua( FLua ).ReadWad( IO, FHelp, FModErrors );
+  FData.LoadRules( FLua );
   if GodMode then RegisterDebugConsole( VKEY_F1 );
   FLua.CallDefaultResult := True;
   FSessionHooks := LoadHooks( FLua, [CoreModuleID], SessionHooks );
