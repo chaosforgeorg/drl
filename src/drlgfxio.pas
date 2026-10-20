@@ -54,6 +54,7 @@ type
     procedure addSoundAnimation( aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord ); override;
     procedure addRumbleAnimation( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord ); override;
     procedure PulseBlood( aValue : Single ); override;
+    function ShowsDecals : Boolean; override;
 
     procedure DeviceChanged;
     function DeviceCoordToConsoleCoord( aCoord : TIOPoint ) : TIOPoint; override;
@@ -648,6 +649,11 @@ procedure TDRLGFXIO.PulseBlood( aValue : Single );
 begin
   if Setting_BloodPulse and ( aValue > FBloodValueTarget ) then
     FBloodValueTarget := aValue;
+end;
+
+function TDRLGFXIO.ShowsDecals : Boolean;
+begin
+  Exit( True );
 end;
 
 procedure TDRLGFXIO.ExplosionMark( aCoord : TCoord2D; aColor : Byte; aDuration : DWord; aDelay : DWord );

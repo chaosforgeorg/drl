@@ -273,6 +273,8 @@ type IDRLPresentation = interface( IRLPresentation )
   function PainUntil( aDelay : Integer ) : QWord;
   procedure Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0 );
   procedure PulseBlood( aValue : Single );
+  // Whether the level's decals are drawn; placing them draws visual randomness.
+  function ShowsDecals : Boolean;
   procedure Explosion( aDelay : Integer; aWhere : TCoord2D; aData : TExplosionData );
   procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ); overload;
   procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single ); overload;

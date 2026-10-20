@@ -1272,7 +1272,7 @@ begin
       Blood( iCoord );
     end;
   iAmount := Clamp( aAmount + FPresentation.VisualRNG.RLongInt( aAmount ), 1, 12 );
-  if GraphicsVersion and aSpray and isVisible( aPosition ) and ( HARDEMITTER_BLOOD <> 0 ) then
+  if aSpray and isVisible( aPosition ) and ( HARDEMITTER_BLOOD <> 0 ) then
   begin
     iParticleAmount := iAmount * 2;
     iDistanceScale  := 0.66;
@@ -1339,7 +1339,7 @@ var iCount    : Integer;
   end;
 
 begin
-  if ( not GraphicsVersion ) or ( HARDSPRITE_DECAL_BLOOD[1] = 0 ) then Exit;
+  if ( not FPresentation.ShowsDecals ) or ( HARDSPRITE_DECAL_BLOOD[1] = 0 ) then Exit;
   iRange := Clampf( aAmount / 3.0, 0.75, 2.5 ) * aRange;
   iOrigin := aPosition;
   // Direct wall stains approach the exposed face from the cell below.

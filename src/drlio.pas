@@ -107,6 +107,7 @@ type TDRLIO = class( TIORL, IDRLPresentation )
   procedure addRumbleAnimation( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord ); virtual;
   procedure Explosion( aDelay : Integer; aWhere : TCoord2D; aData : TExplosionData ); reintroduce; virtual;
   procedure PulseBlood( aValue : Single ); virtual;
+  function ShowsDecals : Boolean; virtual;
   function PainUntil( aDelay : Integer ) : QWord;
 
   // IO outlives Lua; its natives capture it as upvalue 1.
@@ -388,6 +389,11 @@ end;
 procedure TDRLIO.PulseBlood( aValue : Single );
 begin
 
+end;
+
+function TDRLIO.ShowsDecals : Boolean;
+begin
+  Exit( False );
 end;
 
 function TDRLIO.PainUntil( aDelay : Integer ) : QWord;
