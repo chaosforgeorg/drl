@@ -39,12 +39,11 @@ function drl.register_traits()
 
 		runtime = {
 			getDodgeBonus = function( self )
-				return self.trait_hellrunner * 10
+				return self:get_trait( "hellrunner" ) * 10
 			end,
 		},
 
 		OnPick = function (self)
-			player:upgrade_trait( "trait_hellrunner" )
 			self.movetime   = self.movetime - 15
 		end,
 	}
@@ -73,13 +72,9 @@ function drl.register_traits()
 
 		runtime = {
 			getDamageBonus = function ( self, weapon, is_melee, alt )
-				return self.trait_bitch
+				return self:get_trait( "bitch" )
 			end,
 		},
-
-		OnPick = function (being)
-			player:upgrade_trait( "trait_bitch" )
-		end,
 	}
 
 	register_trait "gun"
@@ -92,22 +87,18 @@ function drl.register_traits()
 		runtime = {
 			getDamageBonus = function ( self, weapon, is_melee, alt )
 				if weapon and weapon.group == "pistol" then
-					return self.trait_gun * 3
+					return self:get_trait( "gun" ) * 3
 				end
 				return 0
 			end,
 
 			getFireCostBonus = function ( self, weapon, is_melee, alt )
 				if weapon and weapon.group == "pistol" then
-					return self.trait_gun * 10
+					return self:get_trait( "gun" ) * 10
 				end
 				return 0
 			end,
 		},
-
-		OnPick = function (being)
-			player:upgrade_trait( "trait_gun" )
-		end,
 	}
 
 	register_trait "reloader"
@@ -144,22 +135,18 @@ function drl.register_traits()
 		runtime = {
 			getToHitBonus = function ( self, weapon, is_melee, alt )
 				if ( weapon and weapon.itype == ITEMTYPE_MELEE ) or is_melee then
-					return self.trait_brute * 2
+					return self:get_trait( "brute" ) * 2
 				end
 				return 0
 			end,
 
 			getDamageBonus = function ( self, weapon, is_melee, alt )
 				if ( weapon and weapon.itype == ITEMTYPE_MELEE ) or is_melee then
-					return self.trait_brute * 3
+					return self:get_trait( "brute" ) * 3
 				end
 				return 0
 			end,
 		},
-
-		OnPick = function (being)
-			player:upgrade_trait( "trait_brute" )
-		end,
 	}
 
 	register_trait "juggler"
@@ -246,9 +233,6 @@ function drl.register_traits()
 				return false
 			end,
 		},
-
-		OnPick = function (being)
-		end,
 	}
 
 	register_trait "dodgemaster"
@@ -326,12 +310,11 @@ function drl.register_traits()
 
 		runtime = {
 			getBodyBonus = function ( self )
-				return self.trait_badass
+				return self:get_trait( "badass" )
 			end,
 		},
 
 		OnPick = function (self)
-			player:upgrade_trait( "trait_badass" )
 			self.hpdecaymax = self.hpdecaymax + 50
 		end,
 	}
@@ -356,9 +339,6 @@ function drl.register_traits()
 				end
 			end,
 		},
-
-		OnPick = function (being)
-		end,
 	}
 
 	register_trait "triggerhappy"
@@ -372,15 +352,11 @@ function drl.register_traits()
 		runtime = {
 			getShotsBonus = function ( self, weapon, alt )
 				if weapon and ( weapon.shots > 2 or (weapon.shots > 1 and weapon.group ~= "pistol" and weapon.group ~= "shotgun")) then
-					return self.trait_triggerhappy
+					return self:get_trait( "triggerhappy" )
 				end
 				return 0
 			end,
 		},
-
-		OnPick = function (being)
-			player:upgrade_trait( "trait_triggerhappy" )
-		end,
 	}
 
 	register_trait "blademaster"
@@ -399,9 +375,6 @@ function drl.register_traits()
 				being.scount = 5001
 			end,
 		},
-
-		OnPick = function (being)
-		end,
 	}
 
 	register_trait "vampyre"
@@ -421,9 +394,6 @@ function drl.register_traits()
 				end
 			end,
 		},
-
-		OnPick = function (being)
-		end,
 	}
 
 	register_trait "malicious"
@@ -462,9 +432,6 @@ function drl.register_traits()
 				return 1.0
 			end,
 		},
-
-		OnPick = function (self)
-		end,
 	}
 
 	register_trait "bulletdance"
@@ -478,21 +445,21 @@ function drl.register_traits()
 		runtime = {
 			getShotsBonus = function ( self, weapon, alt )
 				if weapon and weapon.group == "pistol" and ( not alt ) and weapon.shots < 2 then
-					return self.trait_triggerhappy
+					return self:get_trait( "triggerhappy" )
 				end
 				return 0
 			end,
 
 			getFireCostBonus = function ( self, weapon, is_melee, alt )
 				if weapon and weapon.group == "pistol" and ( not alt ) and weapon.shots < 2 then
-					return -self.trait_triggerhappy * 50
+					return -self:get_trait( "triggerhappy" ) * 50
 				end
 				return 0
 			end,
 		},
 
 		OnPick = function (self)
-			assert( self:has_property( "trait_triggerhappy" ), "bulletdance can be picked without triggerhappy?" )
+			assert( self:has_trait( "triggerhappy" ), "bulletdance can be picked without triggerhappy?" )
 		end,
 	}
 
@@ -558,9 +525,6 @@ function drl.register_traits()
 				return false
 			end,
 		},
-
-		OnPick = function (being)
-		end,
 	}
 
 	--[[
@@ -582,9 +546,6 @@ function drl.register_traits()
 				end
 			end,
 		},
-
-		OnPick = function (being)
-		end,
 	}
 	--]]
 
@@ -654,9 +615,6 @@ function drl.register_traits()
 				return 1.0
 			end,
 		},
-
-		OnPick = function (being)
-		end,
 	}
 
 	register_trait "cateye"
@@ -696,9 +654,6 @@ function drl.register_traits()
 				return 1.0
 			end,
 		},
-
-		OnPick = function (being)
-		end,
 	}
 
 	register_trait "survivalist"

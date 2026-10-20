@@ -743,26 +743,6 @@ begin
   Result := 0;
 end;
 
-function lua_player_get_trait( L : PLua_State ) : Integer; cdecl;
-var iState  : TLuaGameStack;
-    iPlayer : TPlayer;
-begin
-  iState.Init( L );
-  iPlayer := iState.ToObject( 1 ) as TPlayer;
-  iState.Push( iPlayer.Traits[ iState.ToID( iPlayer.Context.Lua, 2 ) ] );
-  Result := 1;
-end;
-
-function lua_player_has_trait( L : PLua_State ) : Integer; cdecl;
-var iState  : TLuaGameStack;
-    iPlayer : TPlayer;
-begin
-  iState.Init( L );
-  iPlayer := iState.ToObject( 1 ) as TPlayer;
-  iState.Push( iPlayer.Traits[ iState.ToID( iPlayer.Context.Lua, 2 ) ] > 0 );
-  Result := 1;
-end;
-
 function lua_player_get_trait_hist( L : PLua_State ) : Integer; cdecl;
 var iState  : TLuaGameStack;
     iPlayer : TPlayer;
@@ -773,12 +753,10 @@ begin
   Result := 1;
 end;
 
-const lua_player_lib : array[0..9] of luaL_Reg = (
+const lua_player_lib : array[0..7] of luaL_Reg = (
       ( name : 'add_exp';         func : @lua_player_add_exp),
       ( name : 'remove_kill';     func : @lua_player_remove_kill),
       ( name : 'add_trait';       func : @lua_player_add_trait),
-      ( name : 'get_trait';       func : @lua_player_get_trait),
-      ( name : 'has_trait';       func : @lua_player_has_trait),
       ( name : 'get_trait_hist';  func : @lua_player_get_trait_hist),
       ( name : 'resort_stacks';   func : @lua_player_resort_stacks),
       ( name : 'quick_weapon';    func : @lua_player_quick_weapon),

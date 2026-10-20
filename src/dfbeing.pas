@@ -3450,7 +3450,30 @@ begin
   Result := 1;
 end;
 
-const lua_being_lib : array[0..40] of luaL_Reg = (
+// Only the player has traits.
+function lua_being_get_trait(L: Plua_State): Integer; cdecl;
+var iState : TLuaGameStack;
+    iBeing : TBeing;
+begin
+  iState.Init(L);
+  iBeing := iState.ToObject(1) as TBeing;
+  if iBeing is TPlayer
+    then iState.Push( TPlayer( iBeing ).Traits[ iState.ToStorageID( 2, 'traits' ) ] )
+    else iState.Push( 0 );
+  Result := 1;
+end;
+
+function lua_being_has_trait(L: Plua_State): Integer; cdecl;
+var iState : TLuaGameStack;
+    iBeing : TBeing;
+begin
+  iState.Init(L);
+  iBeing := iState.ToObject(1) as TBeing;
+  iState.Push( ( iBeing is TPlayer ) and ( TPlayer( iBeing ).Traits[ iState.ToStorageID( 2, 'traits' ) ] > 0 ) );
+  Result := 1;
+end;
+
+const lua_being_lib : array[0..42] of luaL_Reg = (
       ( name : 'kill';          func : @lua_being_kill),
       ( name : 'resurrect';     func : @lua_being_resurrect),
       ( name : 'apply_damage';  func : @lua_being_apply_damage),
@@ -3496,6 +3519,9 @@ const lua_being_lib : array[0..40] of luaL_Reg = (
       ( name : 'send_missile';  func : @lua_being_send_missile),
       ( name : 'get_last_position'; func : @lua_being_get_last_position),
       ( name : 'get_target';         func : @lua_being_get_target),
+
+      ( name : 'get_trait';     func : @lua_being_get_trait),
+      ( name : 'has_trait';     func : @lua_being_has_trait),
 
       ( name : nil;             func : nil; )
 );

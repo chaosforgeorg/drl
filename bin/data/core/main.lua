@@ -225,7 +225,7 @@ function register_klass_badge( id )
 			return ""
 		end
 		for _,k in ipairs(klasses) do
-			if k.OnCreate then
+			if k.available then
 				register_badge( k.id.."_"..id ) {
 					name = k.sname.." "..b.name,
 					desc = b.desc.." as "..k.sname,

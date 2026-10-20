@@ -23,6 +23,7 @@ type TTraits = class( TVObject )
   class function CanPickInitially( aLua : TLua; aTrait : Byte; aKlassID : Byte ) : Boolean; static;
 protected
   function Get( aTrait : Byte ) : Byte;
+  procedure CallOnPick( aTrait : Byte );
 protected
   FOwner    : TNode;
   FBlocked  : array[1..MAXTRAITS]      of Boolean;
@@ -44,7 +45,6 @@ var iOther, iValue : DWord;
     iReqLevel : Integer;
 begin
   if FBlocked[ aTrait ] then Exit( False );
-  if not FOwner.Context.Lua.Defined(['traits',aTrait,'OnPick']) then Exit( False );
 
   with FOwner.Context.Lua.GetTable(['klasses',aKlass,'trait',aTrait]) do
   try
@@ -106,7 +106,7 @@ begin
     FMaster := aTrait;
   end;
 
-  FOwner.Context.Lua.ProtectedCall( [ 'traits',aTrait,'OnPick' ], [ FOwner, FValues[ aTrait ] ] );
+  CallOnPick( aTrait );
 
   if (FValues[ aTrait ] = 1) and FOwner.Context.Lua.Defined(['klasses',aKlass,'trait',aTrait,'blocks']) then
   begin
@@ -128,13 +128,12 @@ procedure TTraits.Grant( aTrait : Byte );
 begin
   Inc( FValues[ aTrait ] );
   FBlocked[ aTrait ] := True;
-  FOwner.Context.Lua.ProtectedCall( [ 'traits',aTrait,'OnPick' ], [ FOwner, FValues[ aTrait ] ] );
+  CallOnPick( aTrait );
 end;
 
 class function TTraits.CanPickInitially( aLua : TLua; aTrait : Byte; aKlassID : Byte ): Boolean;
 begin
   CanPickInitially := True;
-  if not aLua.Defined(['traits',aTrait,'OnPick']) then Exit( False );
 
   // #5 ReqLevel
   with aLua.GetTable(['klasses',aKlassID,'trait',aTrait]) do
@@ -148,6 +147,13 @@ end;
 function TTraits.Get( aTrait : Byte ) : Byte;
 begin
   Exit( FValues[ aTrait ] );
+end;
+
+// OnPick runs once per rank gained and is optional.
+procedure TTraits.CallOnPick( aTrait : Byte );
+begin
+  if FOwner.Context.Lua.Defined( [ 'traits',aTrait,'OnPick' ] ) then
+    FOwner.Context.Lua.ProtectedCall( [ 'traits',aTrait,'OnPick' ], [ FOwner, FValues[ aTrait ] ] );
 end;
 
 constructor TTraits.Create( aOwner : TNode );

@@ -77,6 +77,7 @@ core.register_blueprint "klass"
 	char        = { true,  core.TSTRING },
 	desc        = { true,  core.TSTRING },
 	hidden      = { false, core.TBOOL, false },
+	available   = { false, core.TBOOL, true }, -- selectable in the klass menu
 	traits      = { true,  core.TARRAY("klass_trait") },
 	perks       = { false, core.TARRAY( core.TSTRING ) },
 	runtime     = { false, core.TTABLE },

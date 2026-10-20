@@ -1906,7 +1906,8 @@ begin
       then FPlayer.Name := FContext.Lua.ProtectedCall([CoreModuleID,'GetRandomName'],[])
       else FPlayer.Name := aResult.Name;
 
-  FContext.Lua.ProtectedCall(['klasses',FPlayer.Klass,'OnCreate'], [ FPlayer ] );
+  if FContext.Lua.Defined(['klasses',FPlayer.Klass,'OnCreate']) then
+    FContext.Lua.ProtectedCall(['klasses',FPlayer.Klass,'OnCreate'], [ FPlayer ] );
   CallHook(Hook_OnCreatePlayer,[]);
   FPlayer.Traits.Upgrade( FPlayer.Klass, aResult.Trait );
   FPlayer.UpdateVisual;
