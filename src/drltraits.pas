@@ -18,8 +18,6 @@ type TTraits = class( TVObject )
   function CallHook( aHook : Byte; const aParams : array of Const ) : Boolean;
   function CallHookCheck( aHook : Byte; const aParams : array of Const ) : Boolean;
   function CallHookCan( aHook : Byte; const aParams : array of Const ) : Boolean;
-  function GetBonus( aHook : Byte; const aParams : array of Const ) : Integer;
-  function GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single;
   function GetHistory : AnsiString;
   procedure Upgrade ( aKlass : Byte; aTrait : Byte ) ;
   procedure Grant( aTrait : Byte );
@@ -235,26 +233,6 @@ begin
       if FOwner.Context.Lua.ProtectedCall( [ 'traits', i, HookNames[aHook] ], ConcatConstArray( [FOwner], aParams ) ) then
         Exit( True );
   Exit( False );
-end;
-
-function TTraits.GetBonus( aHook : Byte; const aParams : array of Const ) : Integer;
-var i : Integer;
-begin
-  GetBonus := 0;
-  if not ( aHook in FHookMask ) then Exit( 0 );
-  for i := 1 to High(FHooks) do
-    if aHook in FHooks[i] then
-      GetBonus += FOwner.Context.Lua.ProtectedCall( [ 'traits', i, HookNames[aHook] ], ConcatConstArray( [FOwner], aParams ) );
-end;
-
-function TTraits.GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single;
-var i : Integer;
-begin
-  GetBonusMul := 1.0;
-  if not ( aHook in FHookMask ) then Exit( 1.0 );
-  for i := 1 to High(FHooks) do
-    if aHook in FHooks[i] then
-      GetBonusMul *= FOwner.Context.Lua.ProtectedCall( [ 'traits', i, HookNames[aHook] ], ConcatConstArray( [FOwner], aParams ) );
 end;
 
 

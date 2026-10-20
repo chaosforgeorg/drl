@@ -37,8 +37,6 @@ type TPlayer = class(TBeing)
   function CallHook( aHook : Byte; const aParams : array of Const ) : Boolean; override;
   function CallHookCheck( aHook : Byte; const aParams : array of Const ) : Boolean; override;
   function CallHookCan( aHook : Byte; const aParams : array of Const ) : Boolean; override;
-  function GetBonus( aHook : Byte; const aParams : array of Const ) : Integer; override;
-  function GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single; override;
   function HandleCommand( aCommand : TCommand ) : Boolean; override;
   function PlayerTick : Boolean;
   procedure HandlePostMove; override;
@@ -283,18 +281,6 @@ function TPlayer.CallHookCan( aHook : Byte; const aParams : array of Const ) : B
 begin
   if ( inherited CallHookCan( aHook, aParams ) ) then Exit ( true );
   Exit( FTraits.CallHookCan( aHook, aParams ) );
-end;
-
-function TPlayer.GetBonus( aHook : Byte; const aParams : array of Const ) : Integer;
-begin
-  GetBonus := inherited GetBonus( aHook, aParams );
-  GetBonus += FTraits.GetBonus( aHook, aParams );
-end;
-
-function TPlayer.GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single;
-begin
-  GetBonusMul := inherited GetBonusMul( aHook, aParams );
-  GetBonusMul *= FTraits.GetBonusMul( aHook, aParams );
 end;
 
 function TPlayer.LevelUpPending : Boolean;

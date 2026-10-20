@@ -52,12 +52,12 @@ core.register_blueprint "trait"
 	master          = { false, core.TBOOL,   false },
 	abbr            = { true,  core.TSTRING },
 	perks           = { false, core.TARRAY( core.TSTRING ) },
+	runtime         = { false, core.TTABLE },
 
 	OnPick          = { false, core.TFUNC },
 	OnPreAction     = { false, core.TFUNC },
 	OnPostAction    = { false, core.TFUNC },
 	OnUseActive     = { false, core.TFUNC },
-	OnActiveUsed    = { false, core.TFUNC },
 	OnPostMove      = { false, core.TFUNC },
 	OnKill          = { false, core.TFUNC },
 	OnFire          = { false, core.TFUNC },
@@ -68,19 +68,6 @@ core.register_blueprint "trait"
 	OnEnterLevel    = { false, core.TFUNC },
 	OnCanDualWield  = { false, core.TFUNC },
 	OnCanMaxDamage  = { false, core.TFUNC },
-
-	getDamageBonus   = { false, core.TFUNC },
-	getToHitBonus    = { false, core.TFUNC },
-	getShotsBonus    = { false, core.TFUNC },
-	getFireCostBonus = { false, core.TFUNC },
-	getDodgeBonus    = { false, core.TFUNC },
-	getBodyBonus     = { false, core.TFUNC },
-	getResistBonus   = { false, core.TFUNC },
-	getDamageMul     = { false, core.TFUNC },
-	getFireCostMul   = { false, core.TFUNC },
-	getAmmoCostMul   = { false, core.TFUNC },
-	getReloadCostMul = { false, core.TFUNC },
-	getGibMul        = { false, core.TFUNC },
 }
 
 core.register_blueprint "klass_trait"

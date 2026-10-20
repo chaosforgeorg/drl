@@ -49,7 +49,7 @@ const
   Hook_OnPreLevelUp    = 37;  // Perk (player)
   Hook_OnWinGame       = 38;  // Module, Challenge
   Hook_OnCreateWorld   = 39;  // Module, Challenge
-  Hook_OnActiveUsed    = 40;  // Trait, Perk (player)
+  Hook_OnActiveUsed    = 40;  // Perk (player)
   // Slot 41 is unused.
 
   // TODO: merge with above
@@ -62,20 +62,20 @@ const
   Hook_OnCanDualWield  = 48;   // Trait
   Hook_OnCanMaxDamage  = 49;   // Trait, Perk
 
-  Hook_getDamageBonus  = 50; // Trait, Perk
-  Hook_getToHitBonus   = 51; // Trait, Perk
-  Hook_getShotsBonus   = 52; // Trait, Perk
-  Hook_getFireCostBonus= 53; // Trait, Perk
+  Hook_getDamageBonus  = 50; // Perk
+  Hook_getToHitBonus   = 51; // Perk
+  Hook_getShotsBonus   = 52; // Perk
+  Hook_getFireCostBonus= 53; // Perk
   Hook_getDefenceBonus = 54; // Perk
-  Hook_getDodgeBonus   = 55; // Trait, Perk
+  Hook_getDodgeBonus   = 55; // Perk
   Hook_getMoveBonus    = 56; // Perk
-  Hook_getBodyBonus    = 57; // Trait, Perk
-  Hook_getResistBonus  = 58; // Trait, Perk
-  Hook_getDamageMul    = 59; // Trait, Perk
-  Hook_getFireCostMul  = 60; // Trait, Perk
-  Hook_getAmmoCostMul  = 61; // Trait, Perk
-  Hook_getReloadCostMul= 62; // Trait, Perk
-  Hook_getGibMul       = 63; // Trait, Perk
+  Hook_getBodyBonus    = 57; // Perk
+  Hook_getResistBonus  = 58; // Perk
+  Hook_getDamageMul    = 59; // Perk
+  Hook_getFireCostMul  = 60; // Perk
+  Hook_getAmmoCostMul  = 61; // Perk
+  Hook_getReloadCostMul= 62; // Perk
+  Hook_getGibMul       = 63; // Perk
   Hook_OnUnequipCheck  = 64;  // Perk (item)
   Hook_OnDrop          = 65; // Perk (item)
   Hook_OnCanAct        = 66; // Perk (being)

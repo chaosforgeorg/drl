@@ -37,12 +37,15 @@ function drl.register_traits()
 		desc   = "You're like a train on legs - not only do you move 15% faster for every level of this trait but you also get an extra 10% chance to dodge those pesky bullets coming your way.",
 		abbr = "HR",
 
+		runtime = {
+			getDodgeBonus = function( self )
+				return self.trait_hellrunner * 10
+			end,
+		},
+
 		OnPick = function (self)
 			player:upgrade_trait( "trait_hellrunner" )
 			self.movetime   = self.movetime - 15
-		end,
-		getDodgeBonus = function( self )
-			return self.trait_hellrunner * 10
 		end,
 	}
 
@@ -68,12 +71,14 @@ function drl.register_traits()
 		desc   = "You're the meanest, toughest bastard in your entire squad. You relish pain and enjoy dishing it out even more. Even demons know you by name, because with every level of this trait, you do 1 more damage than your average Marine.",
 		abbr   = "SoB",
 
+		runtime = {
+			getDamageBonus = function ( self, weapon, is_melee, alt )
+				return self.trait_bitch
+			end,
+		},
+
 		OnPick = function (being)
 			player:upgrade_trait( "trait_bitch" )
-		end,
-
-		getDamageBonus = function ( self, weapon, is_melee, alt )
-			return self.trait_bitch
 		end,
 	}
 
@@ -84,22 +89,24 @@ function drl.register_traits()
 		desc   = "You love your pistols. You clean them every day and make sure they are always in top condition. You know your pistols so well that for every level of this trait you can fire them 10% faster and deal 3 more damage.",
 		abbr   = "SoG",
 
+		runtime = {
+			getDamageBonus = function ( self, weapon, is_melee, alt )
+				if weapon and weapon.group == "pistol" then
+					return self.trait_gun * 3
+				end
+				return 0
+			end,
+
+			getFireCostBonus = function ( self, weapon, is_melee, alt )
+				if weapon and weapon.group == "pistol" then
+					return self.trait_gun * 10
+				end
+				return 0
+			end,
+		},
+
 		OnPick = function (being)
 			player:upgrade_trait( "trait_gun" )
-		end,
-
-		getDamageBonus = function ( self, weapon, is_melee, alt )
-			if weapon and weapon.group == "pistol" then
-				return self.trait_gun * 3
-			end
-			return 0
-		end,
-
-		getFireCostBonus = function ( self, weapon, is_melee, alt )
-			if weapon and weapon.group == "pistol" then
-				return self.trait_gun * 10
-			end
-			return 0
 		end,
 	}
 
@@ -134,22 +141,24 @@ function drl.register_traits()
 		desc   = "You don't need a gun - guns are for wusses! With each level of this trait you'll deal 3 more damage while bashing your enemies with your hands, knives, body parts, or whatever else is available. Also your melee accuracy increases by 2.",
 		abbr   = "Bru",
 
+		runtime = {
+			getToHitBonus = function ( self, weapon, is_melee, alt )
+				if ( weapon and weapon.itype == ITEMTYPE_MELEE ) or is_melee then
+					return self.trait_brute * 2
+				end
+				return 0
+			end,
+
+			getDamageBonus = function ( self, weapon, is_melee, alt )
+				if ( weapon and weapon.itype == ITEMTYPE_MELEE ) or is_melee then
+					return self.trait_brute * 3
+				end
+				return 0
+			end,
+		},
+
 		OnPick = function (being)
 			player:upgrade_trait( "trait_brute" )
-		end,
-
-		getToHitBonus = function ( self, weapon, is_melee, alt )
-			if ( weapon and weapon.itype == ITEMTYPE_MELEE ) or is_melee then
-				return self.trait_brute * 2
-			end
-			return 0
-		end,
-
-		getDamageBonus = function ( self, weapon, is_melee, alt )
-			if ( weapon and weapon.itype == ITEMTYPE_MELEE ) or is_melee then
-				return self.trait_brute * 3
-			end
-			return 0
 		end,
 	}
 
@@ -309,12 +318,15 @@ function drl.register_traits()
 		author = "Malek",
 		abbr   = "Bad",
 
+		runtime = {
+			getBodyBonus = function ( self )
+				return self.trait_badass
+			end,
+		},
+
 		OnPick = function (self)
 			player:upgrade_trait( "trait_badass" )
 			self.hpdecaymax = self.hpdecaymax + 50
-		end,
-		getBodyBonus = function ( self )
-			return self.trait_badass
 		end,
 	}
 
@@ -349,17 +361,18 @@ function drl.register_traits()
 		author = "Kornel",
 		abbr   = "TH",
 
+		runtime = {
+			getShotsBonus = function ( self, weapon, alt )
+				if weapon and ( weapon.shots > 2 or (weapon.shots > 1 and weapon.group ~= "pistol" and weapon.group ~= "shotgun")) then
+					return self.trait_triggerhappy
+				end
+				return 0
+			end,
+		},
+
 		OnPick = function (being)
 			player:upgrade_trait( "trait_triggerhappy" )
 		end,
-
-		getShotsBonus = function ( self, weapon, alt )
-			if weapon and ( weapon.shots > 2 or (weapon.shots > 1 and weapon.group ~= "pistol" and weapon.group ~= "shotgun")) then
-				return self.trait_triggerhappy
-			end
-			return 0
-		end,
-
 	}
 
 	register_trait "blademaster"
@@ -409,6 +422,28 @@ function drl.register_traits()
 		abbr   = "MMB",
 		master = true,
 
+		runtime = {
+			getResistBonus = function ( self, resist, target )
+				local wp = self.eq.prepared
+				if wp and wp:get_property( "BLADE", false ) then
+					return ({
+						bullet = 50,
+						shrapnel = 50,
+						fire = 50,
+						melee = 75,
+					})[ resist ] or 0
+				end
+				return 0
+			end,
+
+			getDamageMul = function( self, weapon, is_melee, alt )
+				if weapon and weapon:get_property( "BLADE", false ) then
+					return 2.0
+				end
+				return 1.0
+			end,
+		},
+
 		OnPick = function (self)
 		end,
 
@@ -418,27 +453,6 @@ function drl.register_traits()
 			end
 			return false
 		end,
-
-		getResistBonus = function ( self, resist, target )
-			local wp = self.eq.prepared
-			if wp and wp:get_property( "BLADE", false ) then
-				return ({
-					bullet = 50,
-					shrapnel = 50,
-					fire = 50,
-					melee = 75,
-				})[ resist ] or 0
-			end
-			return 0
-		end,
-
-		getDamageMul = function( self, weapon, is_melee, alt )
-			if weapon and weapon:get_property( "BLADE", false ) then
-				return 2.0
-			end
-			return 1.0
-		end,
-		
 	}
 
 	register_trait "bulletdance"
@@ -449,24 +463,25 @@ function drl.register_traits()
 		abbr   = "MBD",
 		master = true,
 
+		runtime = {
+			getShotsBonus = function ( self, weapon, alt )
+				if weapon and weapon.group == "pistol" and ( not alt ) and weapon.shots < 2 then
+					return self.trait_triggerhappy
+				end
+				return 0
+			end,
+
+			getFireCostBonus = function ( self, weapon, is_melee, alt )
+				if weapon and weapon.group == "pistol" and ( not alt ) and weapon.shots < 2 then
+					return -self.trait_triggerhappy * 50
+				end
+				return 0
+			end,
+		},
+
 		OnPick = function (self)
 			assert( self:has_property( "trait_triggerhappy" ), "bulletdance can be picked without triggerhappy?" )
 		end,
-
-		getShotsBonus = function ( self, weapon, alt )
-			if weapon and weapon.group == "pistol" and ( not alt ) and weapon.shots < 2 then
-				return self.trait_triggerhappy
-			end
-			return 0
-		end,
-
-		getFireCostBonus = function ( self, weapon, is_melee, alt )
-			if weapon and weapon.group == "pistol" and ( not alt ) and weapon.shots < 2 then
-				return -self.trait_triggerhappy * 50
-			end
-			return 0
-		end,
-
 	}
 
 	register_trait "gunkata"
@@ -478,6 +493,19 @@ function drl.register_traits()
 		abbr   = "MGK",
 		master = true,
 
+		runtime = {
+			getFireCostMul = function( self, weapon, is_melee, alt )
+				if weapon and weapon.group == "pistol" then
+					if player.lastturndodge then
+						return 0.1
+					elseif player.last_command == COMMAND_MOVE then
+						return 0.5
+					end
+				end
+				return 1.0
+			end,
+		},
+
 		OnPick = function (self)
 			self:add_property( "kata_reload", false )
 		end,
@@ -486,16 +514,6 @@ function drl.register_traits()
 			if weapon and weapon.group == "pistol" then
 				self.kata_reload = true
 			end
-		end,
-		getFireCostMul = function( self, weapon, is_melee, alt )
-			if weapon and weapon.group == "pistol" then
-				if player.lastturndodge then
-					return 0.1
-				elseif player.last_command == COMMAND_MOVE then
-					return 0.5
-				end
-			end
-			return 1.0
 		end,
 		OnPostAction = function ( self )
 			if self.kata_reload then
@@ -509,7 +527,6 @@ function drl.register_traits()
 				self.scount = sc
 			end
 		end,
-
 	}
 
 	register_trait "sharpshooter"
@@ -576,14 +593,16 @@ function drl.register_traits()
 		abbr   = "MSh",
 		master = true,
 
-		OnPick = function (being) end,
+		runtime = {
+			getFireCostBonus = function ( self, weapon, is_melee, alt )
+				if weapon and weapon.group == "shotgun" then
+					return 67
+				end
+				return 0
+			end,
+		},
 
-		getFireCostBonus = function ( self, weapon, is_melee, alt )
-			if weapon and weapon.group == "shotgun" then
-				return 67
-			end
-			return 0
-		end,
+		OnPick = function (being) end,
 	}
 
 	register_trait "fireangel"
@@ -610,14 +629,16 @@ function drl.register_traits()
 		abbr   = "MAc",
 		master = true,
 
-		OnPick = function (being)
-		end,
+		runtime = {
+			getAmmoCostMul = function( self, weapon, alt, shots )
+				if weapon and weapon:is_perk( "perk_spool" ) then
+					return 1.0 / shots
+				end
+				return 1.0
+			end,
+		},
 
-		getAmmoCostMul = function( self, weapon, alt, shots )
-			if weapon and weapon:is_perk( "perk_spool" ) then
-				return 1.0 / shots
-			end
-			return 1.0
+		OnPick = function (being)
 		end,
 	}
 
@@ -642,22 +663,24 @@ function drl.register_traits()
 		abbr   = "MEn",
 		master = true,
 
+		runtime = {
+			getResistBonus = function ( self, resist, target )
+				if self:is_perk( "spool_1" ) or self:is_perk( "spool_2" ) then
+					return 50
+				end
+				return 0
+			end,
+
+			getAmmoCostMul = function( self, weapon, alt, shots )
+				if weapon and weapon:is_perk( "perk_spool" )
+				and ( self:is_perk( "spool_1" ) or self:is_perk( "spool_2" ) ) then
+					return 1.0 / shots
+				end
+				return 1.0
+			end,
+		},
+
 		OnPick = function (being)
-		end,
-
-		getResistBonus = function ( self, resist, target )
-			if self:is_perk( "spool_1" ) or self:is_perk( "spool_2" ) then
-				return 50
-			end
-			return 0
-		end,
-
-		getAmmoCostMul = function( self, weapon, alt, shots )
-			if weapon and weapon:is_perk( "perk_spool" )
-			and ( self:is_perk( "spool_1" ) or self:is_perk( "spool_2" ) ) then
-				return 1.0 / shots
-			end
-			return 1.0
 		end,
 	}
 

@@ -96,9 +96,18 @@ local function add_perks( self, perks )
 end
 
 register_trait = core.register_storage( "traits", "trait", function( trait )
-	if trait.perks and #trait.perks > 0 then
+	local runtime_id
+	if trait.runtime and next( trait.runtime ) then
+		runtime_id = "perk_trait_"..trait.id
+		register_perk( runtime_id )( trait.runtime )
+		trait.runtime = runtime_id
+	end
+	if runtime_id or (trait.perks and #trait.perks > 0) then
 		local function OnPick( self, rank )
-			if rank == 1 then add_perks( self, trait.perks ) end
+			if rank == 1 then
+				if runtime_id then self:add_perk( runtime_id ) end
+				add_perks( self, trait.perks )
+			end
 		end
 		trait.OnPick = core.create_seq_function( OnPick, trait.OnPick )
 	end
