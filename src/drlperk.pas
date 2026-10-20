@@ -39,9 +39,10 @@ end;
 
 type TPerkList = specialize TGArray< TPerk >;
 
-type TPerkExpiring = record
-  ID     : Integer;
-  Silent : Boolean;
+// Position of a running loop over the perk list; Expire keeps it valid.
+type TPerkCursor = record
+  Next : Integer;
+  Last : Integer;
 end;
 
 type TPerks = class( TVObject )
@@ -67,13 +68,11 @@ private
   FDefinitions     : TPerkDefinitions;
   FHooks           : TFlags;
   FList            : TPerkList;
-  FIterDepth       : Integer;
-  FExpireQueue     : array of TPerkExpiring;
-  procedure BeginIteration;
+  FCursors         : array of TPerkCursor;
+  FCursorCount     : Integer;
+  function  BeginIteration : Integer;
   procedure EndIteration;
-  procedure ExpireQueue( aPerk : Integer; aSilent : Boolean );
-  procedure FlushQueue;
-  procedure ExpireNow( aIndex : Integer; aSilent : Boolean );
+  function  NextEntry( aCursor : Integer; out aIndex : Integer ) : Boolean; inline;
   procedure UpdateHooks;
   procedure Expire( aIndex : Integer; aSilent : Boolean );
 public
@@ -117,7 +116,7 @@ begin
   FDefinitions := aDefinitions;
   FHooks := [];
   FList  := TPerkList.Create;
-  FIterDepth := 0;
+  FCursorCount := 0;
 end;
 
 constructor TPerks.CreateFromStream( aStream : TStream; aOwner : TNode; aDefinitions : TPerkDefinitions );
@@ -126,21 +125,36 @@ begin
   FOwner := aOwner;
   FDefinitions := aDefinitions;
   FList  := TPerkList.CreateFromStream( aStream );
-  FIterDepth := 0;
+  FCursorCount := 0;
   UpdateHooks;
 end;
 
-procedure TPerks.BeginIteration;
+// Loops visit the entries present when they begin; Expire adjusts every
+// active cursor, so callbacks may remove perks at any depth.
+function TPerks.BeginIteration : Integer;
 begin
-  Inc( FIterDepth );
+  if FCursorCount = Length( FCursors ) then
+    SetLength( FCursors, Max( 4, Length( FCursors ) * 2 ) );
+  FCursors[FCursorCount].Next := 0;
+  FCursors[FCursorCount].Last := FList.Size - 1;
+  Result := FCursorCount;
+  Inc( FCursorCount );
 end;
 
 procedure TPerks.EndIteration;
 begin
-  if FIterDepth = 0 then Exit;
-  Dec( FIterDepth );
-  if FIterDepth = 0 then
-    FlushQueue;
+  Dec( FCursorCount );
+end;
+
+function TPerks.NextEntry( aCursor : Integer; out aIndex : Integer ) : Boolean;
+begin
+  with FCursors[aCursor] do
+  begin
+    if Next > Last then Exit( False );
+    aIndex := Next;
+    Inc( Next );
+  end;
+  Exit( True );
 end;
 
 procedure TPerks.WriteToStream( aStream : TStream );
@@ -151,6 +165,7 @@ end;
 
 function TPerks.CallHook( aHook : Byte; const aParams : array of Const ) : Boolean;
 var i       : Integer;
+    iCursor : Integer;
     iTarget : TNode;
 begin
   CallHook := False;
@@ -159,9 +174,10 @@ begin
     iTarget := nil;
     if aHook = Hook_OnDamage then
       iTarget := TNode( aParams[0].VObject );
-    BeginIteration;
-    for i := 0 to FList.Size-1 do
-      if aHook in FDefinitions.Data[FList[i].ID].Hooks then
+    iCursor := BeginIteration;
+    try
+      while NextEntry( iCursor, i ) do
+        if aHook in FDefinitions.Data[FList[i].ID].Hooks then
         begin
           CallHook := True;
           FOwner.Context.Lua.ProtectedCall( [ 'perks',FList[i].ID, TDRLLua( FOwner.Context.Lua ).HookName(aHook) ], ConcatConstArray( [FOwner], aParams ) );
@@ -169,64 +185,90 @@ begin
           if FOwner.Dead then Break;
           if ( iTarget <> nil ) and iTarget.Dead then Break;
         end;
-    EndIteration;
+    finally
+      EndIteration;
+    end;
   end;
 end;
 
 function TPerks.CallHookCheck( aHook : Byte; const aParams : array of Const ) : Boolean;
-var i : Integer;
+var i       : Integer;
+    iCursor : Integer;
 begin
   Result := True;
   if aHook in FHooks then
   begin
-    BeginIteration;
-    for i := 0 to FList.Size-1 do
-      if aHook in FDefinitions.Data[FList[i].ID].Hooks then
-      begin
-        Result := FOwner.Context.Lua.ProtectedCall( [ 'perks',FList[i].ID, HookNames[aHook] ], ConcatConstArray( [FOwner], aParams ) );
-        if FOwner.Dead then Result := False;
-        if not Result then Break;
-      end;
-    EndIteration;
+    iCursor := BeginIteration;
+    try
+      while NextEntry( iCursor, i ) do
+        if aHook in FDefinitions.Data[FList[i].ID].Hooks then
+        begin
+          Result := FOwner.Context.Lua.ProtectedCall( [ 'perks',FList[i].ID, HookNames[aHook] ], ConcatConstArray( [FOwner], aParams ) );
+          if FOwner.Dead then Result := False;
+          if not Result then Break;
+        end;
+    finally
+      EndIteration;
+    end;
   end;
 end;
 
 function  TPerks.CallHookCan( aHook : Byte; const aParams : array of Const ) : Boolean;
-var i : Integer;
+var i       : Integer;
+    iCursor : Integer;
 begin
   Result := False;
   if aHook in FHooks then
   begin
-    BeginIteration;
-    for i := 0 to FList.Size-1 do
-      if aHook in FDefinitions.Data[FList[i].ID].Hooks then
-        if FOwner.Context.Lua.ProtectedCall( [ 'perks',FList[i].ID, HookNames[ aHook ] ], ConcatConstArray( [FOwner], aParams ) ) then
-        begin
-          Result := True;
-          Break;
-        end;
-    EndIteration;
+    iCursor := BeginIteration;
+    try
+      while NextEntry( iCursor, i ) do
+        if aHook in FDefinitions.Data[FList[i].ID].Hooks then
+          if FOwner.Context.Lua.ProtectedCall( [ 'perks',FList[i].ID, HookNames[ aHook ] ], ConcatConstArray( [FOwner], aParams ) ) then
+          begin
+            Result := True;
+            Break;
+          end;
+    finally
+      EndIteration;
+    end;
   end;
 end;
 
 function  TPerks.GetBonus( aHook : Byte; const aParams : array of Const ) : Integer;
-var i : Integer;
+var i       : Integer;
+    iCursor : Integer;
 begin
   GetBonus := 0;
   if aHook in FHooks then
-    for i := 0 to FList.Size-1 do
-      if aHook in FDefinitions.Data[FList[i].ID].Hooks then
-        GetBonus += FOwner.Context.Lua.ProtectedCall( [ 'perks',FList[i].ID, HookNames[ aHook ] ], ConcatConstArray( [FOwner], aParams ) );
+  begin
+    iCursor := BeginIteration;
+    try
+      while NextEntry( iCursor, i ) do
+        if aHook in FDefinitions.Data[FList[i].ID].Hooks then
+          GetBonus += FOwner.Context.Lua.ProtectedCall( [ 'perks',FList[i].ID, HookNames[ aHook ] ], ConcatConstArray( [FOwner], aParams ) );
+    finally
+      EndIteration;
+    end;
+  end;
 end;
 
 function  TPerks.GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single;
-var i : Integer;
+var i       : Integer;
+    iCursor : Integer;
 begin
   GetBonusMul := 1.0;
   if aHook in FHooks then
-    for i := 0 to FList.Size-1 do
-      if aHook in FDefinitions.Data[FList[i].ID].Hooks then
-        GetBonusMul *= FOwner.Context.Lua.ProtectedCall( [ 'perks',FList[i].ID, HookNames[ aHook ] ], ConcatConstArray( [FOwner], aParams ) );
+  begin
+    iCursor := BeginIteration;
+    try
+      while NextEntry( iCursor, i ) do
+        if aHook in FDefinitions.Data[FList[i].ID].Hooks then
+          GetBonusMul *= FOwner.Context.Lua.ProtectedCall( [ 'perks',FList[i].ID, HookNames[ aHook ] ], ConcatConstArray( [FOwner], aParams ) );
+    finally
+      EndIteration;
+    end;
+  end;
 end;
 
 function TPerks.GetDescription( aID : Integer ) : AnsiString;
@@ -280,9 +322,11 @@ begin
 end;
 
 procedure TPerks.OnTick( aTime : LongInt );
-var iBeing : TBeing;
-    i      : Integer;
-    iTime  : LongInt;
+var iBeing  : TBeing;
+    i       : Integer;
+    iCursor : Integer;
+    iTime   : LongInt;
+    iID     : Integer;
 
   function OwnerGone : Boolean;
   begin
@@ -294,39 +338,44 @@ begin
   iBeing := nil;
   if FOwner is TBeing then iBeing := TBeing( FOwner );
   if OwnerGone then Exit;
-  BeginIteration;
-  for i := 0 to FList.Size - 1 do
-    with FList[i] do
+  iCursor := BeginIteration;
+  try
+    while NextEntry( iCursor, i ) do
     begin
-      if Time > 0 then
+      if FList[i].Time > 0 then
       begin
         Dec( FList.Data^[i].Time );
-        iTime := Time;
+        iTime := FList[i].Time;
       end
-      else if Time < 0 then
+      else if FList[i].Time < 0 then
         iTime := aTime
       else
         Continue;
+      iID := FList[i].ID;
       if Hook_OnTick10 in FHooks then
         if iTime mod 10 = 0 then
-          if Hook_OnTick10 in FDefinitions.Data[ID].Hooks then
+          if Hook_OnTick10 in FDefinitions.Data[iID].Hooks then
           begin
-            FOwner.Context.Lua.ProtectedCall( [ 'perks', ID, 'OnTick10' ], [ FOwner, iTime div 10 ] );
+            FOwner.Context.Lua.ProtectedCall( [ 'perks', iID, 'OnTick10' ], [ FOwner, iTime div 10 ] );
             if OwnerGone then Break;
           end;
     end;
-  EndIteration;
-  // Flushing deferred removals can kill the owner.
+  finally
+    EndIteration;
+  end;
+  // A tick callback can kill the owner.
   if OwnerGone then Exit;
-  i := 0;
-  while i < FList.Size do
-    if FList[i].Time = 0
-      then
+  iCursor := BeginIteration;
+  try
+    while NextEntry( iCursor, i ) do
+      if FList[i].Time = 0 then
       begin
         Expire( i, False );
-        if OwnerGone then Exit;
-      end
-      else Inc(i);
+        if OwnerGone then Break;
+      end;
+  finally
+    EndIteration;
+  end;
 end;
 
 function  TPerks.IsActive( aPerk : Integer ) : Boolean;
@@ -358,83 +407,48 @@ begin
       FHooks += FDefinitions.Data[FList[i].ID].Hooks;
 end;
 
-procedure TPerks.ExpireQueue( aPerk : Integer; aSilent : Boolean );
-var i      : Integer;
-    iCount : Integer;
-begin
-  for i := 0 to Length( FExpireQueue ) - 1 do
-    if FExpireQueue[i].ID = aPerk then
-    begin
-      FExpireQueue[i].Silent := FExpireQueue[i].Silent and aSilent;
-      Exit;
-    end;
-
-  iCount := Length( FExpireQueue );
-  SetLength( FExpireQueue, iCount + 1 );
-  FExpireQueue[iCount].ID := aPerk;
-  FExpireQueue[iCount].Silent := aSilent;
-end;
-
-procedure TPerks.FlushQueue;
-var i       : Integer;
-    iIdx    : Integer;
-    iPerk   : Integer;
-    iSilent : Boolean;
-begin
-  // A dead owner runs no further perk callbacks.
-  while ( Length( FExpireQueue ) > 0 ) and ( not FOwner.Dead ) do
-  begin
-    iPerk   := FExpireQueue[0].ID;
-    iSilent := FExpireQueue[0].Silent;
-
-    for i := 1 to Length( FExpireQueue ) - 1 do
-      FExpireQueue[i - 1] := FExpireQueue[i];
-    SetLength( FExpireQueue, Length( FExpireQueue ) - 1 );
-
-    iIdx := -1;
-    for i := 0 to FList.Size - 1 do
-      if FList[i].ID = iPerk then
-      begin
-        iIdx := i;
-        Break;
-      end;
-
-    if iIdx >= 0 then
-      ExpireNow( iIdx, iSilent );
-  end;
-end;
-
-procedure TPerks.ExpireNow( aIndex : Integer; aSilent : Boolean );
-var iPerk : Integer;
+// Removal takes effect at once, also during iteration: active cursors
+// skip the deleted entry, and OnRemove runs after the perk is gone.
+procedure TPerks.Expire( aIndex : Integer; aSilent : Boolean );
+var i     : Integer;
+    iPerk : Integer;
 begin
   iPerk := FList[ aIndex ].ID;
   FList.Delete( aIndex );
+  for i := 0 to FCursorCount - 1 do
+    with FCursors[i] do
+    begin
+      if aIndex < Next then Dec( Next );
+      if aIndex <= Last then Dec( Last );
+    end;
   UpdateHooks;
+  // A dead owner runs no further perk callbacks.
+  if FOwner.Dead then Exit;
   if Hook_OnRemove in FDefinitions.Data[iPerk].Hooks then
     FOwner.Context.Lua.ProtectedCall( [ 'perks', iPerk, 'OnRemove' ], [FOwner, aSilent] );
 end;
 
-procedure TPerks.Expire( aIndex : Integer; aSilent : Boolean );
-begin
-  if FIterDepth > 0
-    then ExpireQueue( FList[ aIndex ].ID, aSilent )
-    else ExpireNow( aIndex, aSilent );
-end;
-
+// Removes the perks present on entry; perks their OnRemove callbacks add
+// are dropped without callbacks.
 procedure TPerks.Clear;
-var i : Integer;
+var i       : Integer;
+    iCursor : Integer;
 begin
   if FList.Size > 0 then
   begin
-    BeginIteration;
-    for i := 0 to FList.Size - 1 do
-      if Hook_OnRemove in FDefinitions.Data[FList[i].ID].Hooks then
-      begin
-        FOwner.Context.Lua.ProtectedCall( [ 'perks', FList[i].ID, 'OnRemove' ], [FOwner, True] );
-        if FOwner.Dead then Break;
-      end;
-    EndIteration;
+    iCursor := BeginIteration;
+    try
+      while NextEntry( iCursor, i ) do
+        Expire( i, True );
+    finally
+      EndIteration;
+    end;
     FList.Clear;
+    for i := 0 to FCursorCount - 1 do
+    begin
+      FCursors[i].Next := 0;
+      FCursors[i].Last := -1;
+    end;
   end;
   FHooks := [];
 end;
