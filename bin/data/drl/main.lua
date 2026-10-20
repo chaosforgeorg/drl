@@ -449,7 +449,7 @@ function drl.GenerateMemorial()
 
 	if not game_module then
 		local player_description = "level {!"..player.explevel.." "
-			..ranks.exp[ ui.get_rank("exp") + 1].name.." "..ranks.skill[ui.get_rank("skill") + 1].name
+			..ranks.exp[ player_data.get_rank("exp") + 1].name.." "..ranks.skill[player_data.get_rank("skill") + 1].name
 			.." "..klasses[player.klass].name.."},"
 		if string.len(player.name) <= 12 then
 			table.insert( lines, " {!"..player.name.."}, "..player_description )

@@ -40,7 +40,7 @@ implementation
 
 uses typinfo, variants,
      vdebug, vluatools, vluadungen, vluaentitynode, vluatype, vtigstyle, vparticleengine,
-     dfplayer, dflevel, drlhooks, dfhof;
+     dfplayer, dflevel, drlhooks;
 
 function lua_statistics_get_date(L: Plua_State): Integer; cdecl;
 var State : TLuaGameStack;
@@ -81,38 +81,6 @@ begin
     CELLSET_WALLS   : Include(CellWalls ,State.ToInteger(2));
   end;
   Result := 0;
-end;
-
-function lua_core_player_data_count( L : PLua_State ) : Integer; cdecl;
-var iState : TLuaGameStack;
-begin
-  iState.Init( L );
-  iState.Push( LongInt(HOF.GetCount( iState.ToString( 1 ) )) );
-  Result := 1;
-end;
-
-function lua_core_player_data_child_count( L : PLua_State ) : Integer; cdecl;
-var iState : TLuaGameStack;
-begin
-  iState.Init( L );
-  iState.Push( LongInt(HOF.GetChildCount( iState.ToString( 1 ) )) );
-  Result := 1;
-end;
-
-function lua_core_player_data_get_counted( L : PLua_State ) : Integer; cdecl;
-var iState : TLuaGameStack;
-begin
-  iState.Init( L );
-  iState.Push( LongInt(HOF.GetCounted( iState.ToString( 1 ), iState.ToString( 2 ), iState.ToString( 3 ) ) ) );
-  Result := 1;
-end;
-
-function lua_core_player_data_add_counted( L : PLua_State ) : Integer; cdecl;
-var iState : TLuaGameStack;
-begin
-  iState.Init( L );
-  iState.Push( Boolean(HOF.AddCounted( iState.ToString( 1 ), iState.ToString( 2 ), iState.ToString( 3 ), iState.ToInteger( 4,1 ) ) ) );
-  Result := 1;
 end;
 
 // ************************************************************************ //
@@ -326,14 +294,6 @@ const lua_statistics_lib : array[0..1] of luaL_Reg = (
     ( name : nil;          func : nil; )
 );
 
-const lua_player_data_lib : array[0..4] of luaL_Reg = (
-    ( name : 'count';       func : @lua_core_player_data_count),
-    ( name : 'child_count'; func : @lua_core_player_data_child_count),
-    ( name : 'get_counted'; func : @lua_core_player_data_get_counted),
-    ( name : 'add_counted'; func : @lua_core_player_data_add_counted),
-    ( name : nil;           func : nil; )
-);
-
 function lua_core_resolve_callback( L: Plua_State; aIndex : Integer ) : Integer;
 var iName : AnsiString;
     i, n  : Integer;
@@ -444,7 +404,6 @@ begin
 
   Register( 'statistics', lua_statistics_lib );
 
-  Register( 'player_data', @lua_player_data_lib );
   Register( 'core', lua_core_lib );
 
   FStack.RegisterEnumValues( TypeInfo(TParticleFlag) );

@@ -228,7 +228,7 @@ implementation
 
 uses math, video, dateutils,
      vsound, vlualibrary, vluastate, vuid, vlog, vdebug, vmath, vsdlio, vglconsole, vtig, vtigio, vvector,
-     dfitem, dfhof, drluibindings, drlmoreview, drlchoiceview, drlmodulechoiceview, drlhudviews, drlplotview, drlplayerview;
+     dfitem, drluibindings, drlmoreview, drlchoiceview, drlmodulechoiceview, drlhudviews, drlplotview, drlplayerview;
 
 {
 procedure OutPutRestore;
@@ -1500,14 +1500,6 @@ begin
   Result := 1;
 end;
 
-function lua_ui_get_rank( L : PLua_State ) : Integer; cdecl;
-var iState : TLuaGameStack;
-begin
-  iState.Init( L );
-  iState.Push( HOF.GetRank( iState.ToString( 1 ) ) );
-  Result := 1;
-end;
-
 function lua_ui_get_target(L: Plua_State): Integer; cdecl;
 var iState : TLuaGameStack;
 begin
@@ -1537,7 +1529,7 @@ begin
   Exit( vlua_rng_random( L, LuaIO( L ).VisualRNG ) );
 end;
 
-const lua_ui_lib : array[0..21] of luaL_Reg = (
+const lua_ui_lib : array[0..20] of luaL_Reg = (
       ( name : 'msg';           func : @lua_ui_msg ),
       ( name : 'msg_clear';     func : @lua_ui_msg_clear ),
       ( name : 'msg_enter';     func : @lua_ui_msg_enter ),
@@ -1554,7 +1546,6 @@ const lua_ui_lib : array[0..21] of luaL_Reg = (
       ( name : 'set_narrow_mode';   func : @lua_ui_set_narrow_mode ),
       ( name : 'update_styles';     func : @lua_ui_update_styles ),
       ( name : 'is_pad';            func : @lua_ui_is_pad ),
-      ( name : 'get_rank';          func : @lua_ui_get_rank ),
       ( name : 'get_target';        func : @lua_ui_get_target ),
       ( name : 'time_ms';           func : @lua_ui_time_ms ),
       ( name : 'visual_random';     func : @lua_ui_visual_random ),

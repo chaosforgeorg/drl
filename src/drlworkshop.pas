@@ -45,16 +45,17 @@ var iSteam   : TStoreInterface;
 begin
   Option_ForceRaw := not GodMode;
   iModules := nil;
+  iSteam   := nil;
   try
     Log(LOGINFO,'Request to publish mod '+aModID+'...' );
-    iSteam := TStoreInterface.Get;
+    iSteam := TStoreInterface.CreateDefault;
     if ( not iSteam.IsSteam ) or ( not iSteam.IsInitialized ) then
     begin
       Log( LOGERROR,'Can''t connect to steam, aborting.' );
       Exit;
     end;
     iModules := TDRLModules.Create(aDataPath);
-    iModules.ScanModules;
+    iModules.ScanModules( iSteam );
 
     iModule := iModules.GetModuleInfo( aModID );
     if iModule = nil then
@@ -95,6 +96,7 @@ begin
 
   finally
     FreeAndNil( iModules );
+    FreeAndNil( iSteam );
   end;
 end;
 

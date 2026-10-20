@@ -24,7 +24,7 @@ type TDRLRuntime = class( TRLRuntime )
   private
     FSession          : TDRLSession;
     FModules          : TDRLModules;
-    FStore            : TStoreInterface;
+    FStore            : TStoreInterface; // Owned; created once per process with the runtime.
     FData             : TGameData;
     FHelp             : THelp;
     FModErrors        : TStringGArray;
@@ -146,10 +146,10 @@ constructor TDRLRuntime.Create( const aPaths : TGamePaths;
 begin
   inherited Create(aPaths, aConfiguration);
   ApplyConfiguration;
-  FStore := TStoreInterface.Get;
+  FStore := TStoreInterface.CreateDefault;
   FStore.SuppressProgress := GodMode;
   FModules := TDRLModules.Create(Paths.DataPath, aModulesFile);
-  FModules.ScanModules;
+  FModules.ScanModules( FStore );
   FModErrors := TStringGArray.Create;
   IO.BindStore( FStore );
 end;
@@ -162,6 +162,8 @@ begin
   FreeAndNil(FModErrors);
   FreeAndNil(FModules);
   inherited Destroy;
+  // Lua and IO, released by inherited Destroy, borrow the store.
+  FreeAndNil(FStore);
 end;
 
 procedure TDRLRuntime.ReleaseSession;
@@ -225,7 +227,7 @@ var iModulePath : AnsiString;
 begin
   if ForceRestart <> '' then
   begin
-    FModules.ScanModules;
+    FModules.ScanModules( FStore );
     CoreModuleID := ForceRestart;
   end;
   ForceRestart := '';
@@ -312,7 +314,7 @@ begin
   if GodMode and FileExists(Paths.WritePath + 'god.lua') then
     FLua.LoadFile(Paths.WritePath + 'god.lua');
   FHOF := THOF.Create( FLua, Paths );
-  dfhof.HOF := FHOF;
+  FHOF.RegisterLuaAPI( FLua );
   FSession.InitializeLevel;
 
   HARDSPRITE_HIGHLIGHT    := FLua.Get('HARDSPRITE_HIGHLIGHT');
@@ -446,7 +448,6 @@ begin
     if FHOF <> nil then
       SaveProfile;
   finally
-    dfhof.HOF := nil;
     FreeAndNil( FHOF );
     FreeAndNil( FHelp );
   end;

@@ -6,7 +6,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlmodule;
 interface
-uses vluastate, vutil, vnode, vgenerics;
+uses vluastate, vutil, vnode, vgenerics, vstoreinterface;
 
 type TDRLModule = class
     ID           : Ansistring;
@@ -39,7 +39,8 @@ type
 TDRLModules = class(TVObject)
   constructor Create( const aDataPath : AnsiString;
     const aModulesFile : AnsiString = '' );
-  procedure ScanModules;
+  // aStore lists subscribed Steam Workshop modules; borrowed for the scan.
+  procedure ScanModules( aStore : TStoreInterface );
   function Validate( const aCoreModuleID : Ansistring ) : Ansistring;
   procedure ActivateModules( const aCoreModuleID : Ansistring );
   function GetModuleInfo( const aModuleID : Ansistring ) : TDRLModule;
@@ -80,7 +81,7 @@ end;
 
 implementation
 
-uses sysutils, variants, vluatable, vdf, vstoreinterface, dfdata;
+uses sysutils, variants, vluatable, vdf, dfdata;
 
 function TDRLModule.IsBaseLoading : Boolean;
 begin
@@ -153,11 +154,10 @@ begin
   FAPIVersion      := '';
 end;
 
-procedure TDRLModules.ScanModules;
+procedure TDRLModules.ScanModules( aStore : TStoreInterface );
 var iInfo   : TSearchRec;
     iModule : TDRLModule;
     iLua    : TLuaState;
-    iStore  : TStoreInterface;
     iSMods  : TModArray;
     iSMInfo : TModInfo;
 begin
@@ -190,10 +190,9 @@ begin
 
     ScanExternalModules( iLua );
 
-    iStore := TStoreInterface.Get;
-    if iStore.IsSteam and iStore.IsInitialized then
+    if aStore.IsSteam and aStore.IsInitialized then
     begin
-      iSMods := iStore.GetMods;
+      iSMods := aStore.GetMods;
       if iSMods <> nil then
       begin
         Log( 'found %d Steam Workshop mods.', [ iSMods.Size ] );

@@ -36,6 +36,9 @@ type THOF = class
   function AddCounted( const aRootID, aLeafID, aElementID : AnsiString; aAmount : DWord = 1 ) : Boolean;
   function GetCounted( const aRootID, aLeafID, aElementID : AnsiString ) : DWord;
   function GetRank( const aRankName : Ansistring ) : Integer;
+  // Registers player_data. The HOF and Lua belong to one data generation; no
+  // script runs between the owner freeing the HOF and releasing Lua.
+  procedure RegisterLuaAPI( aLua : TLua );
 private
   FLua        : TLua;
   FScore      : TScoreFile;
@@ -68,12 +71,10 @@ private
   procedure HandleAchievements( aStore : TStoreInterface; const aRankArray : Ansistring; aRankLevel : Integer );
 end;
 
-var HOF : THOF = nil; // Borrowed from Runtime by the native Lua callbacks.
-
 implementation
 
 uses math, sysutils, strutils, variants,
-     vluatable, vdebug, vtig, vutil, vrltools;
+     vluatable, vlualibrary, vluagamestack, vdebug, vtig, vutil, vrltools;
 
 function THOF.GetBadgeCount( aBadgeLevel : DWord ): DWord;
 var iCount   : DWord;
@@ -1105,6 +1106,66 @@ begin
         if aStore.SetAchievement( iAch ) then
           Log( LOGINFO, iAch+' awarded!');
   end;
+end;
+
+function LuaHOF( L : PLua_State ) : THOF; inline;
+begin
+  Exit( THOF( lua_touserdata( L, lua_upvalueindex( 1 ) ) ) );
+end;
+
+function lua_player_data_count( L : PLua_State ) : Integer; cdecl;
+var iState : TLuaGameStack;
+begin
+  iState.Init( L );
+  iState.Push( LongInt(LuaHOF( L ).GetCount( iState.ToString( 1 ) )) );
+  Result := 1;
+end;
+
+function lua_player_data_child_count( L : PLua_State ) : Integer; cdecl;
+var iState : TLuaGameStack;
+begin
+  iState.Init( L );
+  iState.Push( LongInt(LuaHOF( L ).GetChildCount( iState.ToString( 1 ) )) );
+  Result := 1;
+end;
+
+function lua_player_data_get_counted( L : PLua_State ) : Integer; cdecl;
+var iState : TLuaGameStack;
+begin
+  iState.Init( L );
+  iState.Push( LongInt(LuaHOF( L ).GetCounted( iState.ToString( 1 ), iState.ToString( 2 ), iState.ToString( 3 ) ) ) );
+  Result := 1;
+end;
+
+function lua_player_data_add_counted( L : PLua_State ) : Integer; cdecl;
+var iState : TLuaGameStack;
+begin
+  iState.Init( L );
+  iState.Push( Boolean(LuaHOF( L ).AddCounted( iState.ToString( 1 ), iState.ToString( 2 ), iState.ToString( 3 ), iState.ToInteger( 4,1 ) ) ) );
+  Result := 1;
+end;
+
+function lua_player_data_get_rank( L : PLua_State ) : Integer; cdecl;
+var iState : TLuaGameStack;
+begin
+  iState.Init( L );
+  iState.Push( LuaHOF( L ).GetRank( iState.ToString( 1 ) ) );
+  Result := 1;
+end;
+
+const lua_player_data_lib : array[0..5] of luaL_Reg = (
+    ( name : 'count';       func : @lua_player_data_count),
+    ( name : 'child_count'; func : @lua_player_data_child_count),
+    ( name : 'get_counted'; func : @lua_player_data_get_counted),
+    ( name : 'add_counted'; func : @lua_player_data_add_counted),
+    ( name : 'get_rank';    func : @lua_player_data_get_rank),
+    ( name : nil;           func : nil; )
+);
+
+procedure THOF.RegisterLuaAPI( aLua : TLua );
+begin
+  lua_pushlightuserdata( aLua.Raw, Self );
+  aLua.Register( 'player_data', lua_player_data_lib, 1 );
 end;
 
 end.
