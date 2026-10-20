@@ -12,7 +12,7 @@ const
   Hook_OnCreate        = 0;   // Being and Item
   Hook_OnAction        = 1;   // Being
   Hook_OnAttacked      = 2;   // Being
-  Hook_OnUseActive     = 3;   // Trait, Being
+  Hook_OnUseActive     = 3;   // Trait, Perk (player)
   Hook_OnDie           = 4;   // Perk (being)
   Hook_OnDieCheck      = 5;   // Perk (being, item)
   Hook_OnPickup        = 6;   // Perk (being, item)
@@ -49,7 +49,8 @@ const
   Hook_OnPreLevelUp    = 37;  // Perk (player)
   Hook_OnWinGame       = 38;  // Module, Challenge
   Hook_OnCreateWorld   = 39;  // Module, Challenge
-  // Slots 40 and 41 are unused.
+  Hook_OnActiveUsed    = 40;  // Trait, Perk (player)
+  // Slot 41 is unused.
 
   // TODO: merge with above
   Hook_OnPostMove      = 42;   // Trait, Perk
@@ -85,7 +86,7 @@ const
 
   HookAmount           = 71;
 
-const AllHooks      : TFlags = [ 0..HookAmount-1 ] - [ 40, 41 ];
+const AllHooks      : TFlags = [ 0..HookAmount-1 ] - [ 41 ];
 
 var   BeingHooks       : TFlags;
       FullInvHooks     : TFlags;
@@ -102,7 +103,7 @@ const HookNames : array[ 0..HookAmount-1 ] of AnsiString = (
       'OnHitBeing', 'OnReload', 'getGroundDesc', 'OnEquipCheck', 'OnAct', 'OnDestroy', 'OnEnter', 'OnEnterLevel',
       'OnFire', 'OnFired', 'OnExitLevel', 'OnTick', 'OnNuked',
       'OnLoad','OnStartGame','OnCreateBeing', 'OnCreatePlayer', 'OnLevelUp','OnPreLevelUp',
-      'OnWinGame', 'OnCreateWorld', '', '',
+      'OnWinGame', 'OnCreateWorld', 'OnActiveUsed', '',
 
       'OnPostMove', 'OnPreReload', 'OnDamage', 'OnReceiveDamage', 'OnPreAction', 'OnPostAction',
       'OnCanDualWield', 'OnCanMaxDamage',
@@ -161,7 +162,7 @@ end;
 initialization
 
 // Prototype masks; perks load their hooks independently.
-BeingHooks   := [ Hook_OnCreate, Hook_OnAction, Hook_OnAttacked, Hook_OnUseActive ];
+BeingHooks   := [ Hook_OnCreate, Hook_OnAction, Hook_OnAttacked ];
 FullInvHooks := [ Hook_OnPreAction, Hook_OnPostAction, Hook_OnTick ];
 NoInventoryHooks := [ Hook_OnPickup ];
 SessionHooks := [ Hook_OnCreateLevel,

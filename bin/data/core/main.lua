@@ -185,11 +185,18 @@ register_klass      = core.register_storage( "klasses", "klass", function(k)
 				end
 			end
 		end
-		if k.perks and #k.perks > 0 then
-			local function OnPick( self )
+		local runtime_id
+		if k.runtime and next( k.runtime ) then
+			runtime_id = "perk_klass_"..k.id
+			register_perk( runtime_id )( k.runtime )
+			k.runtime = runtime_id
+		end
+		if runtime_id or (k.perks and #k.perks > 0) then
+			local function OnCreate( self )
+				if runtime_id then self:add_perk( runtime_id ) end
 				add_perks( self, k.perks )
 			end
-			k.OnPick = core.create_seq_function( OnPick, k.OnPick )
+			k.OnCreate = core.create_seq_function( OnCreate, k.OnCreate )
 		end
 	end
 )
@@ -207,7 +214,7 @@ function register_klass_badge( id )
 			return ""
 		end
 		for _,k in ipairs(klasses) do
-			if k.OnPick then
+			if k.OnCreate then
 				register_badge( k.id.."_"..id ) {
 					name = k.sname.." "..b.name,
 					desc = b.desc.." as "..k.sname,

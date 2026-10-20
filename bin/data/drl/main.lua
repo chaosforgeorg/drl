@@ -257,6 +257,22 @@ function drl.register_base_data()
 					self:add_found_item( i.id )
 				end
 			end,
+
+			OnUseActive = function( self )
+				if self:is_perk( "berserk" ) then return false end
+				if self:is_perk( "tired" ) then
+					ui.msg( "Too tired to do that right now.")
+					return false
+				end
+				if self:is_perk( "running" ) then
+					self:remove_perk( "running", false )
+					return false
+				else
+					self:add_perk( "running", self.RUNNING_TIME * 10 )
+					self.scount = self.scount - 100
+					return true
+				end
+			end,
 		},
 
 		OnCreate = function(self)
@@ -269,25 +285,6 @@ function drl.register_base_data()
 			end
 
 			self:set_coscolor{ 0.8, 0.7, 0.7, 1.0 }
-		end,
-
-		OnUseActive = function( self )
-			if klasses[player.klass].OnUseActive then
-				return klasses[player.klass].OnUseActive( self )
-			end
-			if self:is_perk( "berserk" ) then return false end
-			if self:is_perk( "tired" ) then
-				ui.msg( "Too tired to do that right now.")
-				return false
-			end
-			if self:is_perk( "running" ) then
-				self:remove_perk( "running", false )
-				return false
-			else
-				self:add_perk( "running", self.RUNNING_TIME * 10 )
-				self.scount = self.scount - 100
-				return true
-			end
 		end,
 	}
 

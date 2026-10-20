@@ -22,6 +22,7 @@ type TTraits = class( TVObject )
   function GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single;
   function GetHistory : AnsiString;
   procedure Upgrade ( aKlass : Byte; aTrait : Byte ) ;
+  procedure Grant( aTrait : Byte );
   function CanPick( aKlass : Byte; aTrait : Byte; aCharLevel : Byte ): Boolean;
   class function CanPickInitially( aLua : TLua; aTrait : Byte; aKlassID : Byte ) : Boolean; static;
 protected
@@ -92,18 +93,14 @@ var i            : Byte;
 begin
   Inc( FValues[ aTrait ] );
 
-  iMax    := 1;
-  iMax12  := 1;
-  iMaster := False;
-  if aKlass > 0 then
-    with FOwner.Context.Lua.GetTable(['klasses',aKlass,'trait',aTrait]) do
-    try
-      iMax    := getInteger( 'max', 1 );
-      iMax12  := getInteger( 'max_12', iMax );
-      iMaster := getBoolean( 'master', False );
-    finally
-      Free;
-    end;
+  with FOwner.Context.Lua.GetTable(['klasses',aKlass,'trait',aTrait]) do
+  try
+    iMax    := getInteger( 'max', 1 );
+    iMax12  := getInteger( 'max_12', iMax );
+    iMaster := getBoolean( 'master', False );
+  finally
+    Free;
+  end;
 
   FHooks[ aTrait ] := LoadHooks( FOwner.Context.Lua, ['traits',aTrait] );
   FHookMask += FHooks[ aTrait ];
@@ -122,8 +119,6 @@ begin
 
   FOwner.Context.Lua.ProtectedCall( [ 'traits',aTrait,'OnPick' ], [ FOwner, FValues[ aTrait ] ] );
 
-  if aKlass = 0 then Exit;
-
   if (FValues[ aTrait ] = 1) and FOwner.Context.Lua.Defined(['klasses',aKlass,'trait',aTrait,'blocks']) then
   begin
     with FOwner.Context.Lua.GetTable(['klasses',aKlass,'trait',aTrait,'blocks']) do
@@ -137,6 +132,16 @@ begin
 
   Inc( FCount );
   FOrder[ FCount ] := aTrait;
+end;
+
+// Grants a rank outside klass progression; it is not recorded as a pick.
+procedure TTraits.Grant( aTrait : Byte );
+begin
+  Inc( FValues[ aTrait ] );
+  FHooks[ aTrait ] := LoadHooks( FOwner.Context.Lua, ['traits',aTrait] );
+  FHookMask += FHooks[ aTrait ];
+  FBlocked[ aTrait ] := True;
+  FOwner.Context.Lua.ProtectedCall( [ 'traits',aTrait,'OnPick' ], [ FOwner, FValues[ aTrait ] ] );
 end;
 
 class function TTraits.CanPickInitially( aLua : TLua; aTrait : Byte; aKlassID : Byte ): Boolean;

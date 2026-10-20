@@ -4,7 +4,6 @@ function drl.register_klasses()
 	{
 		name       = "Marine",
 		char       = "M",
-		core_trait = "trait_marine",
 
 		traits    = {
 			{ id = "ironman",    max = 3, max_12 = 5 },
@@ -36,7 +35,7 @@ function drl.register_klasses()
 
 		desc = "Marines are the backbone of the UAC, resilient and hardy. They start with 10 more health points, +10% fire/acid/plasma resistance and powerups they use have a +50% duration bonus (+25% on Nightmare).",
 
-		OnPick = function( being )
+		OnCreate = function( being )
 			if DIFFICULTY >= DIFF_NIGHTMARE then
 				being:add_property( "POWER_BONUS", 25 )
 			else
@@ -91,7 +90,7 @@ function drl.register_klasses()
 
 		desc = "Scouts are agile and have the best intel. They are generally 10% faster and inherently know the location of stairs on any given level.",
 
-		OnPick = function( being )
+		OnCreate = function( being )
 			being.flags[ BF_STAIRSENSE ] = true
 			being.speed = being.speed + 10
 
@@ -135,7 +134,7 @@ function drl.register_klasses()
 		},
 		desc = "Technicians are masters of equipment and tinkering. They use consumables almost instantly and can hack computer maps for tracking data. Only they can also mod some really unique tech.",
 
-		OnPick = function( being )
+		OnCreate = function( being )
 			being:add_property( "MAP_EXPERT" )
 			being:add_property( "MOD_EXPERT" )
 			being.usetime = 10 -- 1/10 of 100
@@ -176,7 +175,7 @@ function drl.register_klasses()
 
 		desc = "Soldiers are unnamed and unknown. You don't choose to be a soldier, you just are...",
 
-		OnPick = function( being )
+		OnCreate = function( being )
 			being.eq.weapon = "pistol"
 			being.inv:add( "ammo", { amount = 40 } )
 			being.inv:add( "smed" )

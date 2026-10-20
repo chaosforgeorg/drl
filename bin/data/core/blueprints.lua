@@ -57,6 +57,7 @@ core.register_blueprint "trait"
 	OnPreAction     = { false, core.TFUNC },
 	OnPostAction    = { false, core.TFUNC },
 	OnUseActive     = { false, core.TFUNC },
+	OnActiveUsed    = { false, core.TFUNC },
 	OnPostMove      = { false, core.TFUNC },
 	OnKill          = { false, core.TFUNC },
 	OnFire          = { false, core.TFUNC },
@@ -103,11 +104,10 @@ core.register_blueprint "klass"
 	desc        = { true,  core.TSTRING },
 	hidden      = { false, core.TBOOL, false },
 	traits      = { true,  core.TARRAY("klass_trait") },
-	core_trait  = { false, core.TIDIN("traits") },
 	perks       = { false, core.TARRAY( core.TSTRING ) },
+	runtime     = { false, core.TTABLE },
 
-	OnPick      = { false,  core.TFUNC },
-	OnUseActive = { false,  core.TFUNC },
+	OnCreate    = { false,  core.TFUNC },
 }
 
 core.register_blueprint "requirements"
@@ -225,6 +225,8 @@ core.register_blueprint "perk"
 	OnCreateBeing  = { false, core.TFUNC }, -- Level
 	OnExitLevel    = { false, core.TFUNC }, -- Level, Player, Item
 	OnPreLevelUp   = { false, core.TFUNC }, -- Player
+	OnUseActive    = { false, core.TFUNC }, -- Player
+	OnActiveUsed   = { false, core.TFUNC }, -- Player
 	OnLevelUp      = { false, core.TFUNC }, -- Player, Item
 	OnNuked        = { false, core.TFUNC }, -- Level
 	OnHitBeing     = { false, core.TFUNC }, -- Item
@@ -308,7 +310,6 @@ core.register_blueprint "being"
 	OnCreate        = { false, core.TFUNC },
 	OnAction        = { false, core.TFUNC },
 	OnAttacked      = { false, core.TFUNC },
-	OnUseActive     = { false, core.TFUNC },
 }
 
 core.register_blueprint "being_group_entry"

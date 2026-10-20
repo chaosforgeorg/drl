@@ -1187,7 +1187,9 @@ end;
 function TBeing.ActionActive : Boolean;
 begin
   if ( not isPlayer ) then Exit( False );
-  Exit( CallHookCheck( Hook_OnUseActive, [] ) );
+  if not CallHookCheck( Hook_OnUseActive, [] ) then Exit( False );
+  CallHook( Hook_OnActiveUsed, [] );
+  Exit( True );
 end;
 
 function TBeing.ActionAction( aTarget : TCoord2D ) : Boolean;

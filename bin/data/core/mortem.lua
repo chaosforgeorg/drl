@@ -167,7 +167,7 @@ function mortem.append_traits( lines )
 
 	for i = 1,traits.__counter do
 		local value = player:get_trait(i)
-		if value > 0 and traits[i].name ~= "" then
+		if value > 0 then
 			table.insert( lines, "    "..mortem.padded(traits[i].name,16).." (Level {!"..value.."})" )
 		end
 	end

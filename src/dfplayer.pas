@@ -769,7 +769,7 @@ begin
   iState.Init( L );
   iPlayer := iState.ToObject( 1 ) as TPlayer;
   iTrait := iState.ToID( iPlayer.Context.Lua, 2 );
-  iPlayer.Traits.Upgrade( 0, iTrait );
+  iPlayer.Traits.Grant( iTrait );
   Result := 0;
 end;
 
