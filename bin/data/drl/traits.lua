@@ -1,13 +1,5 @@
 function drl.register_traits()
 
-	register_trait "trait_marine"
-	{
-		name = "",
-		abbr = "",
-
-		OnPick = function (being) end,
-	}
-
 	register_trait "ironman"
 	{
 		name   = "Ironman",
@@ -45,12 +37,14 @@ function drl.register_traits()
 		desc   = "You're like a train on legs - not only do you move 15% faster for every level of this trait but you also get an extra 10% chance to dodge those pesky bullets coming your way.",
 		abbr = "HR",
 
+		runtime = {
+			getDodgeBonus = function( self )
+				return self:get_trait( "hellrunner" ) * 10
+			end,
+		},
+
 		OnPick = function (self)
-			player:upgrade_trait( "trait_hellrunner" )
 			self.movetime   = self.movetime - 15
-		end,
-		getDodgeBonus = function( self )
-			return self.trait_hellrunner * 10
 		end,
 	}
 
@@ -76,13 +70,11 @@ function drl.register_traits()
 		desc   = "You're the meanest, toughest bastard in your entire squad. You relish pain and enjoy dishing it out even more. Even demons know you by name, because with every level of this trait, you do 1 more damage than your average Marine.",
 		abbr   = "SoB",
 
-		OnPick = function (being)
-			player:upgrade_trait( "trait_bitch" )
-		end,
-
-		getDamageBonus = function ( self, weapon, is_melee, alt )
-			return self.trait_bitch
-		end,
+		runtime = {
+			getDamageBonus = function ( self, weapon, is_melee, alt )
+				return self:get_trait( "bitch" )
+			end,
+		},
 	}
 
 	register_trait "gun"
@@ -92,23 +84,21 @@ function drl.register_traits()
 		desc   = "You love your pistols. You clean them every day and make sure they are always in top condition. You know your pistols so well that for every level of this trait you can fire them 10% faster and deal 3 more damage.",
 		abbr   = "SoG",
 
-		OnPick = function (being)
-			player:upgrade_trait( "trait_gun" )
-		end,
+		runtime = {
+			getDamageBonus = function ( self, weapon, is_melee, alt )
+				if weapon and weapon.group == "pistol" then
+					return self:get_trait( "gun" ) * 3
+				end
+				return 0
+			end,
 
-		getDamageBonus = function ( self, weapon, is_melee, alt )
-			if weapon and weapon.group == "pistol" then
-				return self.trait_gun * 3
-			end
-			return 0
-		end,
-
-		getFireCostBonus = function ( self, weapon, is_melee, alt )
-			if weapon and weapon.group == "pistol" then
-				return self.trait_gun * 10
-			end
-			return 0
-		end,
+			getFireCostBonus = function ( self, weapon, is_melee, alt )
+				if weapon and weapon.group == "pistol" then
+					return self:get_trait( "gun" ) * 10
+				end
+				return 0
+			end,
+		},
 	}
 
 	register_trait "reloader"
@@ -142,23 +132,21 @@ function drl.register_traits()
 		desc   = "You don't need a gun - guns are for wusses! With each level of this trait you'll deal 3 more damage while bashing your enemies with your hands, knives, body parts, or whatever else is available. Also your melee accuracy increases by 2.",
 		abbr   = "Bru",
 
-		OnPick = function (being)
-			player:upgrade_trait( "trait_brute" )
-		end,
+		runtime = {
+			getToHitBonus = function ( self, weapon, is_melee, alt )
+				if ( weapon and weapon.itype == ITEMTYPE_MELEE ) or is_melee then
+					return self:get_trait( "brute" ) * 2
+				end
+				return 0
+			end,
 
-		getToHitBonus = function ( self, weapon, is_melee, alt )
-			if ( weapon and weapon.itype == ITEMTYPE_MELEE ) or is_melee then
-				return self.trait_brute * 2
-			end
-			return 0
-		end,
-
-		getDamageBonus = function ( self, weapon, is_melee, alt )
-			if ( weapon and weapon.itype == ITEMTYPE_MELEE ) or is_melee then
-				return self.trait_brute * 3
-			end
-			return 0
-		end,
+			getDamageBonus = function ( self, weapon, is_melee, alt )
+				if ( weapon and weapon.itype == ITEMTYPE_MELEE ) or is_melee then
+					return self:get_trait( "brute" ) * 3
+				end
+				return 0
+			end,
+		},
 	}
 
 	register_trait "juggler"
@@ -181,50 +169,52 @@ function drl.register_traits()
 		desc   = "You hate this place, you hate these stupid monsters, and you HATE that this is all happening to you. In fact you hate it so much that there's a chance that you'll fly into a berserk rage when you repeatedly smack someone in melee, or get hit hard enough. (NOTE: You do NOT get the healing effect of a Berserk Pack.)",
 		abbr   = "Ber",
 
-		OnPick = function (self)
-			self:add_property( "berserkerlimit", 0 )
-		end,
-
-		OnDamage = function ( self, target, damage, source, is_melee )
-			if is_melee then
-				if player.enemiesinvision > 0 then
-					if damage >= 10 then
-						self.berserkerlimit = self.berserkerlimit + 1
-						if self.berserkerlimit > 4 - math.min( math.floor( (player.enemiesinvision + 1) / 2), 3 ) then
-							level:play_sound( "bpack", "powerup", self.position )
-							ui.blink( RED, 50 )
-							if self:is_perk( "berserk" ) then
-								local berserk = self:get_perk_time( "berserk" )
-								if berserk > 0 then
-									local increase = 10 - math.min( math.floor( berserk / 5 ), 9 )
-									local add_amount = math.min( increase * 5, math.max( 0, 300 - berserk ) )
-									if add_amount > 0 then
-										self:add_perk( "berserk", add_amount )
+		runtime = {
+			OnDamage = function ( self, target, damage, source, is_melee )
+				if is_melee then
+					if player.enemiesinvision > 0 then
+						if damage >= 10 then
+							self.berserkerlimit = self.berserkerlimit + 1
+							if self.berserkerlimit > 4 - math.min( math.floor( (player.enemiesinvision + 1) / 2), 3 ) then
+								level:play_sound( "bpack", "powerup", self.position )
+								ui.blink( RED, 50 )
+								if self:is_perk( "berserk" ) then
+									local berserk = self:get_perk_time( "berserk" )
+									if berserk > 0 then
+										local increase = 10 - math.min( math.floor( berserk / 5 ), 9 )
+										local add_amount = math.min( increase * 5, math.max( 0, 300 - berserk ) )
+										if add_amount > 0 then
+											self:add_perk( "berserk", add_amount )
+										end
 									end
+								else
+									self:add_perk( "berserk", 100 )
 								end
-							else
-								self:add_perk( "berserk", 100 )
+								ui.msg("You're going berserk!")
+								self.berserkerlimit = 0
 							end
-							ui.msg("You're going berserk!")
-							self.berserkerlimit = 0
 						end
 					end
 				end
-			end
-		end,
+			end,
 
-		OnPreAction = function ( self )
-			if player.enemiesinvision < 1 and self.berserkerlimit > 0 then
-				self.berserkerlimit = self.berserkerlimit - 1
-			end
-		end,
+			OnPreAction = function ( self )
+				if player.enemiesinvision < 1 and self.berserkerlimit > 0 then
+					self.berserkerlimit = self.berserkerlimit - 1
+				end
+			end,
 
-		OnReceiveDamage = function ( self, damage, weapon, active )
-			if active == self then return end
-			if damage >= math.max( math.floor( self.hpmax / 3 ), 10 ) then
-				ui.msg("That hurt! You're going berserk!")
-				self:apply_timed_perk( "berserk", 100 )
-			end
+			OnReceiveDamage = function ( self, damage, weapon, active )
+				if active == self then return end
+				if damage >= math.max( math.floor( self.hpmax / 3 ), 10 ) then
+					ui.msg("That hurt! You're going berserk!")
+					self:apply_timed_perk( "berserk", 100 )
+				end
+			end,
+		},
+
+		OnPick = function (self)
+			self:add_property( "berserkerlimit", 0 )
 		end,
 	}
 
@@ -235,15 +225,14 @@ function drl.register_traits()
 		desc   = "You're the kind of guy for whom one is never enough. When you and your buddies cruised bars Earthside, you always had a beer in each hand and when you left, you left with two girls. Where you're going now there aren't beer or girls, but there are guns! This trait lets you wield two pistols at once, firing them as fast as one.",
 		abbr   = "DG",
 
-		OnPick = function (being)
-		end,
-
-		OnCanDualWield = function( self, weapon, weapon2 )
-			if weapon.group == "pistol" and weapon2.group == "pistol" then
-				return true
-			end
-			return false
-		end,
+		runtime = {
+			OnCanDualWield = function( self, weapon, weapon2 )
+				if weapon.group == "pistol" and weapon2.group == "pistol" then
+					return true
+				end
+				return false
+			end,
+		},
 	}
 
 	register_trait "dodgemaster"
@@ -267,6 +256,25 @@ function drl.register_traits()
 		author = "Derek",
 		abbr   = "Int",
 
+		runtime = {
+			OnEnterLevel = function (self)
+				level:reveal_powerups()
+			end,
+
+			OnPreAction = function (self)
+				if not self:has_property( "INTUITION_RANGE" ) then return end
+				for b in level:beings() do
+					b.flags[ BF_INTUITED ] = false
+				end
+				local range = self.vision + self.INTUITION_RANGE
+				for b in level:beings_in_range( self, range ) do
+					if not b:is_player() then
+						b.flags[ BF_INTUITED ] = true
+					end
+				end
+			end,
+		},
+
 		OnPick = function (being,lvl)
 			being:add_property( "LEVER_SENSE", lvl )
 			if lvl == 1 then
@@ -275,23 +283,6 @@ function drl.register_traits()
 				end
 			elseif lvl == 2 then
 				being:add_property( "INTUITION_RANGE", 2 )
-			end
-		end,
-
-		OnEnterLevel = function (self)
-			level:reveal_powerups()
-		end,
-
-		OnPreAction = function (self)
-			if not self:has_property( "INTUITION_RANGE" ) then return end
-			for b in level:beings() do
-				b.flags[ BF_INTUITED ] = false
-			end
-			local range = self.vision + self.INTUITION_RANGE
-			for b in level:beings_in_range( self, range ) do
-				if not b:is_player() then
-					b.flags[ BF_INTUITED ] = true
-				end
 			end
 		end,
 	}
@@ -317,12 +308,14 @@ function drl.register_traits()
 		author = "Malek",
 		abbr   = "Bad",
 
+		runtime = {
+			getBodyBonus = function ( self )
+				return self:get_trait( "badass" )
+			end,
+		},
+
 		OnPick = function (self)
-			player:upgrade_trait( "trait_badass" )
 			self.hpdecaymax = self.hpdecaymax + 50
-		end,
-		getBodyBonus = function ( self )
-			return self.trait_badass
 		end,
 	}
 
@@ -334,19 +327,18 @@ function drl.register_traits()
 		author = "Malek",
 		abbr   = "SM",
 
-		OnPick = function (being)
-		end,
-
-		OnPostMove = function( being )
-			local weapon = being.eq.weapon
-			if weapon and weapon.itype == ITEMTYPE_RANGED then
-				if weapon.ammo < weapon.ammomax then
-					if ( weapon.group == "shotgun" or weapon.group == "rocket" ) and (not weapon.flags[ IF_NOUNLOAD ]) then
-						being:reload()
+		runtime = {
+			OnPostMove = function( being )
+				local weapon = being.eq.weapon
+				if weapon and weapon.itype == ITEMTYPE_RANGED then
+					if weapon.ammo < weapon.ammomax then
+						if ( weapon.group == "shotgun" or weapon.group == "rocket" ) and (not weapon.flags[ IF_NOUNLOAD ]) then
+							being:reload()
+						end
 					end
 				end
-			end
-		end,
+			end,
+		},
 	}
 
 	register_trait "triggerhappy"
@@ -357,17 +349,14 @@ function drl.register_traits()
 		author = "Kornel",
 		abbr   = "TH",
 
-		OnPick = function (being)
-			player:upgrade_trait( "trait_triggerhappy" )
-		end,
-
-		getShotsBonus = function ( self, weapon, alt )
-			if weapon and ( weapon.shots > 2 or (weapon.shots > 1 and weapon.group ~= "pistol" and weapon.group ~= "shotgun")) then
-				return self.trait_triggerhappy
-			end
-			return 0
-		end,
-
+		runtime = {
+			getShotsBonus = function ( self, weapon, alt )
+				if weapon and ( weapon.shots > 2 or (weapon.shots > 1 and weapon.group ~= "pistol" and weapon.group ~= "shotgun")) then
+					return self:get_trait( "triggerhappy" )
+				end
+				return 0
+			end,
+		},
 	}
 
 	register_trait "blademaster"
@@ -379,14 +368,13 @@ function drl.register_traits()
 		abbr   = "MBm",
 		master = true,
 
-		OnPick = function (being)
-		end,
-
-		OnKill = function ( being, target, weapon, melee )
-			if ( not being ) or ( not melee ) then return end
-			ui.msg("Next!")
-			being.scount = 5001
-		end,
+		runtime = {
+			OnKill = function ( being, target, weapon, melee )
+				if ( not being ) or ( not melee ) then return end
+				ui.msg("Next!")
+				being.scount = 5001
+			end,
+		},
 	}
 
 	register_trait "vampyre"
@@ -398,15 +386,14 @@ function drl.register_traits()
 		abbr   = "MVm",
 		master = true,
 
-		OnPick = function (being)
-		end,
-
-		OnKill = function ( being, target, weapon, melee )
-			if ( not being ) or ( not melee ) or ( not target ) then return end
-			if being.hp < being.hpmax then
-				being.hp = math.min( being.hp + math.ceil(target.hpmax / 10), being.hpmax )
-			end
-		end,
+		runtime = {
+			OnKill = function ( being, target, weapon, melee )
+				if ( not being ) or ( not melee ) or ( not target ) then return end
+				if being.hp < being.hpmax then
+					being.hp = math.min( being.hp + math.ceil(target.hpmax / 10), being.hpmax )
+				end
+			end,
+		},
 	}
 
 	register_trait "malicious"
@@ -417,36 +404,34 @@ function drl.register_traits()
 		abbr   = "MMB",
 		master = true,
 
-		OnPick = function (self)
-		end,
+		runtime = {
+			OnCanDualWield = function( self, weapon, weapon2 )
+				if weapon:get_property( "BLADE", false ) and weapon2:get_property( "BLADE", false ) then
+					return true
+				end
+				return false
+			end,
 
-		OnCanDualWield = function( self, weapon, weapon2 )
-			if weapon:get_property( "BLADE", false ) and weapon2:get_property( "BLADE", false ) then
-				return true
-			end
-			return false
-		end,
+			getResistBonus = function ( self, resist, target )
+				local wp = self.eq.prepared
+				if wp and wp:get_property( "BLADE", false ) then
+					return ({
+						bullet = 50,
+						shrapnel = 50,
+						fire = 50,
+						melee = 75,
+					})[ resist ] or 0
+				end
+				return 0
+			end,
 
-		getResistBonus = function ( self, resist, target )
-			local wp = self.eq.prepared
-			if wp and wp:get_property( "BLADE", false ) then
-				return ({
-					bullet = 50,
-					shrapnel = 50,
-					fire = 50,
-					melee = 75,
-				})[ resist ] or 0
-			end
-			return 0
-		end,
-
-		getDamageMul = function( self, weapon, is_melee, alt )
-			if weapon and weapon:get_property( "BLADE", false ) then
-				return 2.0
-			end
-			return 1.0
-		end,
-		
+			getDamageMul = function( self, weapon, is_melee, alt )
+				if weapon and weapon:get_property( "BLADE", false ) then
+					return 2.0
+				end
+				return 1.0
+			end,
+		},
 	}
 
 	register_trait "bulletdance"
@@ -457,24 +442,25 @@ function drl.register_traits()
 		abbr   = "MBD",
 		master = true,
 
+		runtime = {
+			getShotsBonus = function ( self, weapon, alt )
+				if weapon and weapon.group == "pistol" and ( not alt ) and weapon.shots < 2 then
+					return self:get_trait( "triggerhappy" )
+				end
+				return 0
+			end,
+
+			getFireCostBonus = function ( self, weapon, is_melee, alt )
+				if weapon and weapon.group == "pistol" and ( not alt ) and weapon.shots < 2 then
+					return -self:get_trait( "triggerhappy" ) * 50
+				end
+				return 0
+			end,
+		},
+
 		OnPick = function (self)
-			assert( self:has_property( "trait_triggerhappy" ), "bulletdance can be picked without triggerhappy?" )
+			assert( self:has_trait( "triggerhappy" ), "bulletdance can be picked without triggerhappy?" )
 		end,
-
-		getShotsBonus = function ( self, weapon, alt )
-			if weapon and weapon.group == "pistol" and ( not alt ) and weapon.shots < 2 then
-				return self.trait_triggerhappy
-			end
-			return 0
-		end,
-
-		getFireCostBonus = function ( self, weapon, is_melee, alt )
-			if weapon and weapon.group == "pistol" and ( not alt ) and weapon.shots < 2 then
-				return -self.trait_triggerhappy * 50
-			end
-			return 0
-		end,
-
 	}
 
 	register_trait "gunkata"
@@ -486,38 +472,41 @@ function drl.register_traits()
 		abbr   = "MGK",
 		master = true,
 
+		runtime = {
+			OnKill = function (self, target, weapon, melee )
+				if weapon and weapon.group == "pistol" then
+					self.kata_reload = true
+				end
+			end,
+
+			getFireCostMul = function( self, weapon, is_melee, alt )
+				if weapon and weapon.group == "pistol" then
+					if player.lastturndodge then
+						return 0.1
+					elseif player.last_command == COMMAND_MOVE then
+						return 0.5
+					end
+				end
+				return 1.0
+			end,
+
+			OnPostAction = function ( self )
+				if self.kata_reload then
+					self.kata_reload = false
+					local sc = self.scount
+					if self.can_dual_wield then
+						self:action_dual_reload( self )
+					else
+						self:action_reload( self )
+					end
+					self.scount = sc
+				end
+			end,
+		},
+
 		OnPick = function (self)
 			self:add_property( "kata_reload", false )
 		end,
-
-		OnKill = function (self, target, weapon, melee )
-			if weapon and weapon.group == "pistol" then
-				self.kata_reload = true
-			end
-		end,
-		getFireCostMul = function( self, weapon, is_melee, alt )
-			if weapon and weapon.group == "pistol" then
-				if player.lastturndodge then
-					return 0.1
-				elseif player.last_command == COMMAND_MOVE then
-					return 0.5
-				end
-			end
-			return 1.0
-		end,
-		OnPostAction = function ( self )
-			if self.kata_reload then
-				self.kata_reload = false
-				local sc = self.scount
-				if self.can_dual_wield then
-					self:action_dual_reload( self )
-				else
-					self:action_reload( self )
-				end
-				self.scount = sc
-			end
-		end,
-
 	}
 
 	register_trait "sharpshooter"
@@ -528,15 +517,14 @@ function drl.register_traits()
 		abbr   = "MSs",
 		master = true,
 
-		OnPick = function (being)
-		end,
-
-		OnCanMaxDamage = function ( self, weapon, alt )
-			if weapon and ( weapon.group == "pistol" ) then
-				return true
-			end
-			return false
-		end,
+		runtime = {
+			OnCanMaxDamage = function ( self, weapon, alt )
+				if weapon and ( weapon.group == "pistol" ) then
+					return true
+				end
+				return false
+			end,
+		},
 	}
 
 	--[[
@@ -549,16 +537,15 @@ function drl.register_traits()
 		abbr   = "MRg",
 		master = true,
 
-		OnPick = function (being)
-		end,
-
-		OnTick = function (self, ticks)
-			if ticks % 10 == 0 then
-				if self.hp < 20 and self.hp < self.hpmax then
-					self.hp = self.hp + 1
+		runtime = {
+			OnTick = function (self, ticks)
+				if ticks % 10 == 0 then
+					if self.hp < 20 and self.hp < self.hpmax then
+						self.hp = self.hp + 1
+					end
 				end
-			end
-		end,
+			end,
+		},
 	}
 	--]]
 
@@ -584,14 +571,16 @@ function drl.register_traits()
 		abbr   = "MSh",
 		master = true,
 
-		OnPick = function (being) end,
+		runtime = {
+			getFireCostBonus = function ( self, weapon, is_melee, alt )
+				if weapon and weapon.group == "shotgun" then
+					return 67
+				end
+				return 0
+			end,
+		},
 
-		getFireCostBonus = function ( self, weapon, is_melee, alt )
-			if weapon and weapon.group == "shotgun" then
-				return 67
-			end
-			return 0
-		end,
+		OnPick = function (being) end,
 	}
 
 	register_trait "fireangel"
@@ -618,15 +607,14 @@ function drl.register_traits()
 		abbr   = "MAc",
 		master = true,
 
-		OnPick = function (being)
-		end,
-
-		getAmmoCostMul = function( self, weapon, alt, shots )
-			if weapon and weapon:is_perk( "perk_spool" ) then
-				return 1.0 / shots
-			end
-			return 1.0
-		end,
+		runtime = {
+			getAmmoCostMul = function( self, weapon, alt, shots )
+				if weapon and weapon:is_perk( "perk_spool" ) then
+					return 1.0 / shots
+				end
+				return 1.0
+			end,
+		},
 	}
 
 	register_trait "cateye"
@@ -650,23 +638,22 @@ function drl.register_traits()
 		abbr   = "MEn",
 		master = true,
 
-		OnPick = function (being)
-		end,
+		runtime = {
+			getResistBonus = function ( self, resist, target )
+				if self:is_perk( "spool_1" ) or self:is_perk( "spool_2" ) then
+					return 50
+				end
+				return 0
+			end,
 
-		getResistBonus = function ( self, resist, target )
-			if self:is_perk( "spool_1" ) or self:is_perk( "spool_2" ) then
-				return 50
-			end
-			return 0
-		end,
-
-		getAmmoCostMul = function( self, weapon, alt, shots )
-			if weapon and weapon:is_perk( "perk_spool" )
-			and ( self:is_perk( "spool_1" ) or self:is_perk( "spool_2" ) ) then
-				return 1.0 / shots
-			end
-			return 1.0
-		end,
+			getAmmoCostMul = function( self, weapon, alt, shots )
+				if weapon and weapon:is_perk( "perk_spool" )
+				and ( self:is_perk( "spool_1" ) or self:is_perk( "spool_2" ) ) then
+					return 1.0 / shots
+				end
+				return 1.0
+			end,
+		},
 	}
 
 	register_trait "survivalist"
@@ -706,24 +693,26 @@ function drl.register_traits()
 		abbr   = "MGr",
 		master = true,
 
-		OnPick = function (being)
-			being.RUNNING_TIME = math.floor( being.RUNNING_TIME * 1.5 )
-		end,
-
-		OnPostMove = function( being )
-			local weapon = being.eq.weapon
-			if weapon and weapon.itype == ITEMTYPE_RANGED then
-				if weapon.flags[ IF_NOAMMO ] or ( weapon.ammo > 0 and weapon.ammo > weapon.shotcost ) and (weapon.shots < 3) then
-					if being:is_perk( "running" ) then
-						local target = being:get_auto_target()
-						if target then
-							local scount = being.scount
-							being:action_fire( target, weapon )
-							being.scount = scount
+		runtime = {
+			OnPostMove = function( being )
+				local weapon = being.eq.weapon
+				if weapon and weapon.itype == ITEMTYPE_RANGED then
+					if weapon.flags[ IF_NOAMMO ] or ( weapon.ammo > 0 and weapon.ammo > weapon.shotcost ) and (weapon.shots < 3) then
+						if being:is_perk( "running" ) then
+							local target = being:get_auto_target()
+							if target then
+								local scount = being.scount
+								being:action_fire( target, weapon )
+								being.scount = scount
+							end
 						end
 					end
 				end
-			end
+			end,
+		},
+
+		OnPick = function (being)
+			being.RUNNING_TIME = math.floor( being.RUNNING_TIME * 1.5 )
 		end,
 	}
 

@@ -12,11 +12,11 @@ const
   Hook_OnCreate        = 0;   // Being and Item
   Hook_OnAction        = 1;   // Being
   Hook_OnAttacked      = 2;   // Being
-  Hook_OnUseActive     = 3;   // Trait, Being
-  Hook_OnDie           = 4;   // Being, Perk
-  Hook_OnDieCheck      = 5;   // Being, Perk
-  Hook_OnPickup        = 6;  // Being, Perk
-  Hook_OnPickupCheck   = 7;  // Perk (item)
+  Hook_OnUseActive     = 3;   // Perk (player)
+  Hook_OnDie           = 4;   // Perk (being)
+  Hook_OnDieCheck      = 5;   // Perk (being, item)
+  Hook_OnPickup        = 6;   // Perk (being, item)
+  Hook_OnPickupCheck   = 7;   // Perk (item)
   Hook_OnUse           = 8;   // Perk (item)
   Hook_OnUseCheck      = 9;   // Perk (item)
   Hook_OnAltFire       = 10;  // Perk (item)
@@ -26,18 +26,18 @@ const
   Hook_OnAdd           = 14;  // Perk
   Hook_OnRemove        = 15;  // Perk
   Hook_OnTick10        = 16;  // Perk
-  Hook_OnKill          = 17;  // Trait, Perk (item, being, level)
+  Hook_OnKill          = 17;  // Perk (item, being, level)
   Hook_OnKillAll       = 18;  // Perk (level)
   Hook_OnHitBeing      = 19;  // Perk (item)
   Hook_OnReload        = 20;  // Perk (item)
   Hook_getGroundDesc   = 21;  // Perk (item)
   Hook_OnEquipCheck    = 22;  // Perk (item)
-  Hook_OnAct           = 23;  // Being, Perk
+  Hook_OnAct           = 23;  // Perk (being, item)
   Hook_OnDestroy       = 24;  // Perk (item)
   Hook_OnEnter         = 25;  // Perk (item; separate from cell OnEnter)
-  Hook_OnEnterLevel    = 26;  // Being (player), Trait, Perk (level, player, item)
-  Hook_OnFire          = 27;  // Trait, Perk
-  Hook_OnFired         = 28;  // Trait, Perk
+  Hook_OnEnterLevel    = 26;  // Perk (level, player, item)
+  Hook_OnFire          = 27;  // Perk
+  Hook_OnFired         = 28;  // Perk
   Hook_OnExitLevel     = 29;  // Perk (level, player, item)
   Hook_OnTick          = 30;  // Perk (level, being, item)
   Hook_OnNuked         = 31;  // Perk (level)
@@ -49,43 +49,44 @@ const
   Hook_OnPreLevelUp    = 37;  // Perk (player)
   Hook_OnWinGame       = 38;  // Module, Challenge
   Hook_OnCreateWorld   = 39;  // Module, Challenge
-  // Slots 40 and 41 are unused.
+  Hook_OnActiveUsed    = 40;  // Perk (player)
+  // Slot 41 is unused.
 
   // TODO: merge with above
-  Hook_OnPostMove      = 42;   // Trait, Perk
+  Hook_OnPostMove      = 42;   // Perk
   Hook_OnPreReload     = 43;   // Perk (item)
-  Hook_OnDamage        = 44;   // Trait, Being, Perk
-  Hook_OnReceiveDamage = 45;   // Trait, Being, Perk
-  Hook_OnPreAction     = 46;   // Trait, Perk
-  Hook_OnPostAction    = 47;   // Trait, Perk
-  Hook_OnCanDualWield  = 48;   // Trait
-  Hook_OnCanMaxDamage  = 49;   // Trait, Perk
+  Hook_OnDamage        = 44;   // Perk
+  Hook_OnReceiveDamage = 45;   // Perk
+  Hook_OnPreAction     = 46;   // Perk
+  Hook_OnPostAction    = 47;   // Perk
+  Hook_OnCanDualWield  = 48;   // Perk (player)
+  Hook_OnCanMaxDamage  = 49;   // Perk
 
-  Hook_getDamageBonus  = 50; // Trait, Perk
-  Hook_getToHitBonus   = 51; // Trait, Perk
-  Hook_getShotsBonus   = 52; // Trait, Perk
-  Hook_getFireCostBonus= 53; // Trait, Perk
+  Hook_getDamageBonus  = 50; // Perk
+  Hook_getToHitBonus   = 51; // Perk
+  Hook_getShotsBonus   = 52; // Perk
+  Hook_getFireCostBonus= 53; // Perk
   Hook_getDefenceBonus = 54; // Perk
-  Hook_getDodgeBonus   = 55; // Trait, Perk
+  Hook_getDodgeBonus   = 55; // Perk
   Hook_getMoveBonus    = 56; // Perk
-  Hook_getBodyBonus    = 57; // Trait, Perk
-  Hook_getResistBonus  = 58; // Trait, Perk
-  Hook_getDamageMul    = 59; // Trait, Perk
-  Hook_getFireCostMul  = 60; // Trait, Perk
-  Hook_getAmmoCostMul  = 61; // Trait, Perk
-  Hook_getReloadCostMul= 62; // Trait, Perk
-  Hook_getGibMul       = 63; // Trait, Perk
+  Hook_getBodyBonus    = 57; // Perk
+  Hook_getResistBonus  = 58; // Perk
+  Hook_getDamageMul    = 59; // Perk
+  Hook_getFireCostMul  = 60; // Perk
+  Hook_getAmmoCostMul  = 61; // Perk
+  Hook_getReloadCostMul= 62; // Perk
+  Hook_getGibMul       = 63; // Perk
   Hook_OnUnequipCheck  = 64;  // Perk (item)
   Hook_OnDrop          = 65; // Perk (item)
-  Hook_OnCanAct        = 66; // Being
+  Hook_OnCanAct        = 66; // Perk (being)
   Hook_getLabel        = 67; // Perk
   Hook_getDescription  = 68; // Perk
   Hook_OnCreateLevel   = 69; // Module, Challenge
-  Hook_OnDamageReceived= 70; // Trait, Being, Perk
+  Hook_OnDamageReceived= 70; // Perk
 
   HookAmount           = 71;
 
-const AllHooks      : TFlags = [ 0..HookAmount-1 ] - [ 40, 41 ];
+const AllHooks      : TFlags = [ 0..HookAmount-1 ] - [ 41 ];
 
 var   BeingHooks       : TFlags;
       FullInvHooks     : TFlags;
@@ -102,7 +103,7 @@ const HookNames : array[ 0..HookAmount-1 ] of AnsiString = (
       'OnHitBeing', 'OnReload', 'getGroundDesc', 'OnEquipCheck', 'OnAct', 'OnDestroy', 'OnEnter', 'OnEnterLevel',
       'OnFire', 'OnFired', 'OnExitLevel', 'OnTick', 'OnNuked',
       'OnLoad','OnStartGame','OnCreateBeing', 'OnCreatePlayer', 'OnLevelUp','OnPreLevelUp',
-      'OnWinGame', 'OnCreateWorld', '', '',
+      'OnWinGame', 'OnCreateWorld', 'OnActiveUsed', '',
 
       'OnPostMove', 'OnPreReload', 'OnDamage', 'OnReceiveDamage', 'OnPreAction', 'OnPostAction',
       'OnCanDualWield', 'OnCanMaxDamage',
@@ -161,9 +162,7 @@ end;
 initialization
 
 // Prototype masks; perks load their hooks independently.
-BeingHooks   := [ Hook_OnCreate, Hook_OnAction, Hook_OnAttacked, Hook_OnUseActive,
-  Hook_OnDie, Hook_OnDieCheck, Hook_OnPickup, Hook_OnDamage, Hook_OnReceiveDamage,
-  Hook_OnDamageReceived, Hook_OnAct, Hook_OnCanAct, Hook_OnEnterLevel ];
+BeingHooks   := [ Hook_OnCreate, Hook_OnAction, Hook_OnAttacked ];
 FullInvHooks := [ Hook_OnPreAction, Hook_OnPostAction, Hook_OnTick ];
 NoInventoryHooks := [ Hook_OnPickup ];
 SessionHooks := [ Hook_OnCreateLevel,

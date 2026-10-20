@@ -1904,8 +1904,6 @@ begin
 end;
 
 procedure TDRLSession.CreatePlayer ( aResult : TMenuResult ) ;
-var iTraitID : AnsiString;
-    iTrait   : Byte;
 begin
   ReleasePlayer;
   FLevel.Particles.BindUIDs( nil );
@@ -1927,13 +1925,8 @@ begin
       then FPlayer.Name := FContext.Lua.ProtectedCall([CoreModuleID,'GetRandomName'],[])
       else FPlayer.Name := aResult.Name;
 
-  FContext.Lua.ProtectedCall(['klasses',FPlayer.Klass,'OnPick'], [ FPlayer ] );
-  iTraitID := FContext.Lua.Get(['klasses',FPlayer.Klass,'core_trait'],'' );
-  if iTraitID <> '' then
-  begin
-    iTrait := FContext.Lua.Get(['traits',iTraitID,'nid']);
-    FPlayer.Traits.Upgrade( 0, iTrait );
-  end;
+  if FContext.Lua.Defined(['klasses',FPlayer.Klass,'OnCreate']) then
+    FContext.Lua.ProtectedCall(['klasses',FPlayer.Klass,'OnCreate'], [ FPlayer ] );
   CallHook(Hook_OnCreatePlayer,[]);
   FPlayer.Traits.Upgrade( FPlayer.Klass, aResult.Trait );
   FPlayer.UpdateVisual;

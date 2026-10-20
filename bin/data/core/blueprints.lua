@@ -52,34 +52,9 @@ core.register_blueprint "trait"
 	master          = { false, core.TBOOL,   false },
 	abbr            = { true,  core.TSTRING },
 	perks           = { false, core.TARRAY( core.TSTRING ) },
+	runtime         = { false, core.TTABLE },
 
-	OnPick          = { false, core.TFUNC },
-	OnPreAction     = { false, core.TFUNC },
-	OnPostAction    = { false, core.TFUNC },
-	OnUseActive     = { false, core.TFUNC },
-	OnPostMove      = { false, core.TFUNC },
-	OnKill          = { false, core.TFUNC },
-	OnFire          = { false, core.TFUNC },
-	OnFired         = { false, core.TFUNC },
-	OnDamage        = { false, core.TFUNC },
-	OnReceiveDamage = { false, core.TFUNC },
-	OnDamageReceived= { false, core.TFUNC }, -- HP lost, source, attacker, damage type
-	OnEnterLevel    = { false, core.TFUNC },
-	OnCanDualWield  = { false, core.TFUNC },
-	OnCanMaxDamage  = { false, core.TFUNC },
-
-	getDamageBonus   = { false, core.TFUNC },
-	getToHitBonus    = { false, core.TFUNC },
-	getShotsBonus    = { false, core.TFUNC },
-	getFireCostBonus = { false, core.TFUNC },
-	getDodgeBonus    = { false, core.TFUNC },
-	getBodyBonus     = { false, core.TFUNC },
-	getResistBonus   = { false, core.TFUNC },
-	getDamageMul     = { false, core.TFUNC },
-	getFireCostMul   = { false, core.TFUNC },
-	getAmmoCostMul   = { false, core.TFUNC },
-	getReloadCostMul = { false, core.TFUNC },
-	getGibMul        = { false, core.TFUNC },
+	OnPick          = { false, core.TFUNC }, -- each rank gained
 }
 
 core.register_blueprint "klass_trait"
@@ -102,12 +77,12 @@ core.register_blueprint "klass"
 	char        = { true,  core.TSTRING },
 	desc        = { true,  core.TSTRING },
 	hidden      = { false, core.TBOOL, false },
+	available   = { false, core.TBOOL, true }, -- selectable in the klass menu
 	traits      = { true,  core.TARRAY("klass_trait") },
-	core_trait  = { false, core.TIDIN("traits") },
 	perks       = { false, core.TARRAY( core.TSTRING ) },
+	runtime     = { false, core.TTABLE },
 
-	OnPick      = { false,  core.TFUNC },
-	OnUseActive = { false,  core.TFUNC },
+	OnCreate    = { false,  core.TFUNC },
 }
 
 core.register_blueprint "requirements"
@@ -174,6 +149,7 @@ core.register_blueprint "perk"
 	weight         = { false, core.TNUMBER, 0 },
 	min_lev        = { false, core.TNUMBER, 0 },
 	min_diff       = { false, core.TNUMBER, 0 },
+	ordered        = { false, core.TBOOL, false }, -- dispatch in registration order; set for trait runtimes
 
 	-- TODO: decide whether to keep this (add bleeding etc) 
 	-- or change to different mechanism
@@ -208,6 +184,7 @@ core.register_blueprint "perk"
 	OnPickup       = { false, core.TFUNC }, -- Being, Item
 	OnDrop         = { false, core.TFUNC }, -- Item
 	OnAct          = { false, core.TFUNC }, -- Being, Item
+	OnCanAct       = { false, core.TFUNC }, -- Being
 	OnDestroy      = { false, core.TFUNC }, -- Item
 	OnPickupCheck  = { false, core.TFUNC }, -- Being, Item
 	OnUse          = { false, core.TFUNC }, -- Item
@@ -224,6 +201,8 @@ core.register_blueprint "perk"
 	OnCreateBeing  = { false, core.TFUNC }, -- Level
 	OnExitLevel    = { false, core.TFUNC }, -- Level, Player, Item
 	OnPreLevelUp   = { false, core.TFUNC }, -- Player
+	OnUseActive    = { false, core.TFUNC }, -- Player
+	OnActiveUsed   = { false, core.TFUNC }, -- Player
 	OnLevelUp      = { false, core.TFUNC }, -- Player, Item
 	OnNuked        = { false, core.TFUNC }, -- Level
 	OnHitBeing     = { false, core.TFUNC }, -- Item
@@ -235,6 +214,7 @@ core.register_blueprint "perk"
 	OnDamage       = { false, core.TFUNC }, -- Being, Item
 	OnDieCheck     = { false, core.TFUNC }, -- Being, Item
 	OnCanMaxDamage = { false, core.TFUNC }, -- Being, Item
+	OnCanDualWield = { false, core.TFUNC }, -- Player
 	OnReceiveDamage= { false, core.TFUNC }, -- Being, Item
 	OnDamageReceived = { false, core.TFUNC }, -- Being, Item: HP lost, source, attacker, damage type
 	OnUnequipCheck = { false, core.TFUNC }, -- Item
@@ -295,6 +275,7 @@ core.register_blueprint "being"
 	is_group    = false,
 	properties  = { false, core.TTABLE },
 	perks       = { false, core.TARRAY( core.TSTRING ) },
+	runtime     = { false, core.TTABLE },
 	resist      = { false, core.TTABLE },
 
 	desc            = { true,  core.TSTRING },
@@ -304,18 +285,8 @@ core.register_blueprint "being"
 	weapon = { false, core.TANY },
 
 	OnCreate        = { false, core.TFUNC },
-	OnEnterLevel    = { false, core.TFUNC }, -- Player
 	OnAction        = { false, core.TFUNC },
 	OnAttacked      = { false, core.TFUNC },
-	OnDie           = { false, core.TFUNC },
-	OnDieCheck      = { false, core.TFUNC },
-	OnPickup        = { false, core.TFUNC },
-	OnUseActive     = { false, core.TFUNC },
-	OnDamage        = { false, core.TFUNC },
-	OnAct           = { false, core.TFUNC },
-	OnCanAct        = { false, core.TFUNC },
-	OnReceiveDamage = { false, core.TFUNC },
-	OnDamageReceived= { false, core.TFUNC }, -- HP lost, source, attacker, damage type
 }
 
 core.register_blueprint "being_group_entry"

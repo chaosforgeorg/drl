@@ -497,9 +497,10 @@ begin
 end;
 
 procedure TPlayerView.UpdateEquipment( aActive : Boolean );
+const TraitRows = 9;
 var iEntry            : TItemViewEntry;
     iSelected,iY      : Integer;
-    iB, iA, iR, iK    : Integer;
+    iT, iR, iK        : Integer;
     iTot, iFeet, iTor : Integer;
     iCount            : Integer;
     iRes              : TResistance;
@@ -535,8 +536,7 @@ begin
     VTIG_EndGroup( True );
 
     iY := 10;
-    iB := 0;
-    iA := 0;
+    iT := 0;
     iR := 42;
     iK := 42;
     if IO.NarrowMode then
@@ -545,25 +545,17 @@ begin
       iK := 40;
     end;
 
-    VTIG_FreeLabel( 'Basic traits',    Point(0, iY) );
-    VTIG_FreeLabel( 'Advanced traits', Point(20,iY) );
-    VTIG_FreeLabel( 'Resistances',     Point(iR,iY) );
+    VTIG_FreeLabel( 'Traits',      Point(0, iY) );
+    VTIG_FreeLabel( 'Resistances', Point(iR,iY) );
 
+    // Traits in ID order, filling the left column first.
     for iCount := 1 to MAXTRAITS do
       if FPlayer.Traits[iCount] > 0 then
       begin
         iName := FSession.Context.Lua.Get(['traits',iCount,'name']);
-        if iName = '' then Continue;
-        if iCount < 10 then
-        begin
-          Inc( iB );
-          VTIG_FreeLabel( '{d'+Padded(iName,16) + '({!' + IntToStr(FPlayer.Traits[iCount])+ '})}', Point(0, iY+iB) );
-        end
-        else
-        begin
-          Inc( iA );
-          VTIG_FreeLabel( '{d'+Padded(iName,16) + '({!' + IntToStr(FPlayer.Traits[iCount])+ '})}', Point(20, iY+iA) );
-        end;
+        VTIG_FreeLabel( '{d'+Padded(iName,16) + '({!' + IntToStr(FPlayer.Traits[iCount])+ '})}',
+          Point( 20 * ( iT div TraitRows ), iY + 1 + iT mod TraitRows ) );
+        Inc( iT );
       end;
 
     for iRes := Low(TResistance) to High(TResistance) do

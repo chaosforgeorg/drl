@@ -96,9 +96,20 @@ local function add_perks( self, perks )
 end
 
 register_trait = core.register_storage( "traits", "trait", function( trait )
-	if trait.perks and #trait.perks > 0 then
+	local runtime_id
+	if trait.runtime and next( trait.runtime ) then
+		runtime_id = "perk_trait_"..trait.id
+		-- Trait hooks run in trait registration order, independent of pick order.
+		trait.runtime.ordered = true
+		register_perk( runtime_id )( trait.runtime )
+		trait.runtime = runtime_id
+	end
+	if runtime_id or (trait.perks and #trait.perks > 0) then
 		local function OnPick( self, rank )
-			if rank == 1 then add_perks( self, trait.perks ) end
+			if rank == 1 then
+				if runtime_id then self:add_perk( runtime_id ) end
+				add_perks( self, trait.perks )
+			end
 		end
 		trait.OnPick = core.create_seq_function( OnPick, trait.OnPick )
 	end
@@ -185,11 +196,18 @@ register_klass      = core.register_storage( "klasses", "klass", function(k)
 				end
 			end
 		end
-		if k.perks and #k.perks > 0 then
-			local function OnPick( self )
+		local runtime_id
+		if k.runtime and next( k.runtime ) then
+			runtime_id = "perk_klass_"..k.id
+			register_perk( runtime_id )( k.runtime )
+			k.runtime = runtime_id
+		end
+		if runtime_id or (k.perks and #k.perks > 0) then
+			local function OnCreate( self )
+				if runtime_id then self:add_perk( runtime_id ) end
 				add_perks( self, k.perks )
 			end
-			k.OnPick = core.create_seq_function( OnPick, k.OnPick )
+			k.OnCreate = core.create_seq_function( OnCreate, k.OnCreate )
 		end
 	end
 )
@@ -207,7 +225,7 @@ function register_klass_badge( id )
 			return ""
 		end
 		for _,k in ipairs(klasses) do
-			if k.OnPick then
+			if k.available then
 				register_badge( k.id.."_"..id ) {
 					name = k.sname.." "..b.name,
 					desc = b.desc.." as "..k.sname,
@@ -384,6 +402,13 @@ local function add_properties( self, properties )
 end
 
 register_being         = core.register_storage( "beings", "being", function( bp )
+		local runtime_id
+		if bp.runtime and next( bp.runtime ) then
+			runtime_id = "perk_being_"..bp.id
+			register_perk( runtime_id )( bp.runtime )
+			bp.runtime = runtime_id
+		end
+
 		bp.name_plural = bp.name_plural or bp.name.."s"
 		bp.tags        = table.toset( bp.tags )
 
@@ -468,6 +493,8 @@ register_being         = core.register_storage( "beings", "being", function( bp 
 			-- Explicit parent constructors must not reapply defaults or perks.
 			if self.__proto == bp then
 				add_properties( self, bp.properties )
+				-- Runtime hooks precede other perks, as prototype hooks did.
+				if runtime_id then self:add_perk( runtime_id ) end
 				add_perks( self, bp.perks )
 			end
 		end

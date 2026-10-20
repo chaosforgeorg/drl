@@ -407,15 +407,16 @@ function drl.register_beings()
 
 		desc            = "Pain, pain, pain - this is the only thing these monsters live by, and the only thing they deliver. Wait, look again - they also deliver lost souls!",
 
+		runtime = {
+			OnDie = function (self,overkill)
+				if not overkill then
+					for c=1,3 do self:spawn("lostsoul") end
+				end
+			end,
+		},
+
 		OnCreate = function (self)
 			self.spawnlist = { name = "lostsoul", count = 3 }
-		end,
-
-
-		OnDie = function (self,overkill)
-			if not overkill then
-				for c=1,3 do self:spawn("lostsoul") end
-			end
 		end,
 	}
 
@@ -969,14 +970,16 @@ function drl.register_beings()
 
 		desc            = "Pain, pain, pain, nightmare pain. Oh and nightmare souls...",
 
+		runtime = {
+			OnDie = function (self,overkill)
+				if not overkill then
+					for c=1,3 do self:spawn("nlostsoul") end
+				end
+			end,
+		},
+
 		OnCreate = function (self)
 			self.spawnlist = { name = "nlostsoul", count = 3 }
-		end,
-
-		OnDie = function (self,overkill)
-			if not overkill then
-				for c=1,3 do self:spawn("nlostsoul") end
-			end
 		end,
 	}
 
@@ -1332,6 +1335,15 @@ function drl.register_beings()
 
 		desc            = "Seems like the pain elementals' big momma!",
 
+		runtime = {
+			OnDie = function (self,overkill)
+				if not overkill then
+					for c=1,2 do self:spawn("pain") end
+					for c=1,6 do self:spawn("lostsoul") end
+				end
+			end,
+		},
+
 		OnCreate = function (self)
 			self.hpmax = self.hpmax + DIFFICULTY * DIFFICULTY * 5
 			self.hp = self.hpmax
@@ -1339,13 +1351,6 @@ function drl.register_beings()
 				{name = "lostsoul", count = 3},
 				{name = "pain",     count = 1},
 			}
-		end,
-
-		OnDie = function (self,overkill)
-			if not overkill then
-				for c=1,2 do self:spawn("pain") end
-				for c=1,6 do self:spawn("lostsoul") end
-			end
 		end,
 	}
 
@@ -1420,6 +1425,18 @@ function drl.register_beings()
 			IS_BOSS = false,
 		},
 
+		runtime = {
+			OnDie = function (self)
+				if self.IS_BOSS then
+					level:explosion( self.position, { range = 17, delay = 40, color = RED, sound_id = "barrel.explode", flags = {EFALWAYSVISIBLE} } )
+					ui.msg_enter("The Cyberdemon is dead!")
+					if not level.flags[ LF_NUKED ] and statistics.damage_on_level == 0 then
+						player:add_medal("cyberdemon1")
+					end
+				end
+			end,
+		},
+
 		OnCreate = function (self)
 			self.eq.weapon = "bazooka"
 			for i=1,4 do
@@ -1427,16 +1444,6 @@ function drl.register_beings()
 			end
 			self.hpmax = self.hpmax + DIFFICULTY * DIFFICULTY * 10
 			self.hp = self.hpmax
-		end,
-
-		OnDie = function (self)
-			if self.IS_BOSS then
-				level:explosion( self.position, { range = 17, delay = 40, color = RED, sound_id = "barrel.explode", flags = {EFALWAYSVISIBLE} } )
-				ui.msg_enter("The Cyberdemon is dead!")
-				if not level.flags[ LF_NUKED ] and statistics.damage_on_level == 0 then
-					player:add_medal("cyberdemon1")
-				end
-			end
 		end,
 	}
 
@@ -1491,19 +1498,21 @@ function drl.register_beings()
 			IS_BOSS = false,
 		},
 
+		runtime = {
+			OnDie = function (self)
+				if self.IS_BOSS then
+					level:explosion( self.position, { range = 17, delay = 40, color = RED, sound_id = "barrel.explode", flags = {EFALWAYSVISIBLE} } )
+					self.expvalue = 0
+					if not level.flags[ LF_NUKED ] and statistics.damage_on_level == 0 then
+						player:add_medal("mastermind1")
+					end
+				end
+			end,
+		},
+
 		OnCreate = function (self)
 			self.hpmax = self.hpmax + DIFFICULTY * DIFFICULTY * 10
 			self.hp = self.hpmax
-		end,
-
-		OnDie = function (self)
-			if self.IS_BOSS then
-				level:explosion( self.position, { range = 17, delay = 40, color = RED, sound_id = "barrel.explode", flags = {EFALWAYSVISIBLE} } )
-				self.expvalue = 0
-				if not level.flags[ LF_NUKED ] and statistics.damage_on_level == 0 then
-					player:add_medal("mastermind1")
-				end
-			end
 		end,
 	}
 
@@ -1538,6 +1547,20 @@ function drl.register_beings()
 			IS_BOSS = false,
 		},
 
+		runtime = {
+			OnDie = function (self)
+				if self.IS_BOSS then
+					level:explosion( self.position, { range = 17, delay = 40, color = BLUE, sound_id = "barrel.explode", flags = {EFALWAYSVISIBLE} } )
+					for b in level:beings() do
+						if not ( b:is_player() ) and b.id ~= "jc" then
+							b:kill()
+						end
+					end
+					ui.msg_enter("Congratulations! You defeated John Carmack!")
+				end
+			end,
+		},
+
 		OnCreate = function (self)
 			self.eq.weapon = "bazooka"
 			for i=1,3 do
@@ -1546,18 +1569,6 @@ function drl.register_beings()
 
 			self.hpmax = self.hpmax + DIFFICULTY * DIFFICULTY * 10
 			self.hp = self.hpmax
-		end,
-
-		OnDie = function (self)
-			if self.IS_BOSS then
-				level:explosion( self.position, { range = 17, delay = 40, color = BLUE, sound_id = "barrel.explode", flags = {EFALWAYSVISIBLE} } )
-				for b in level:beings() do
-					if not ( b:is_player() ) and b.id ~= "jc" then
-						b:kill()
-					end
-				end
-				ui.msg_enter("Congratulations! You defeated John Carmack!")
-			end
 		end,
 	}
 
@@ -1622,6 +1633,23 @@ function drl.register_beings()
 			IS_BOSS = false,
 		},
 
+		runtime = {
+			OnDie = function (self)
+				player:add_medal("dragonslayer2")
+				if CHALLENGE == "challenge_a100" then
+					level.map[ self.position ] = "stairs"
+				elseif self.IS_BOSS then
+					level:explosion( self.position, { range = 17, delay = 40, color = RED, sound_id = "barrel.explode", flags = {EFALWAYSVISIBLE} } )
+					for b in level:beings() do
+						if not ( b:is_player() ) and b.id ~= "apostle" then
+							b:kill()
+						end
+					end
+					ui.msg_enter("Congratulations! You defeated the Apostle!")
+				end
+			end,
+		},
+
 		OnCreate = function (self)
 			level.flags[ LF_NONUKE ] = true
 		end,
@@ -1639,21 +1667,6 @@ function drl.register_beings()
 			end
 			if math.random(10) == 1 then
 				self:play_sound("act")
-			end
-		end,
-
-		OnDie = function (self)
-			player:add_medal("dragonslayer2")
-			if CHALLENGE == "challenge_a100" then
-				level.map[ self.position ] = "stairs"
-			elseif self.IS_BOSS then
-				level:explosion( self.position, { range = 17, delay = 40, color = RED, sound_id = "barrel.explode", flags = {EFALWAYSVISIBLE} } )
-				for b in level:beings() do
-					if not ( b:is_player() ) and b.id ~= "apostle" then
-						b:kill()
-					end
-				end
-				ui.msg_enter("Congratulations! You defeated the Apostle!")
 			end
 		end,
 	}

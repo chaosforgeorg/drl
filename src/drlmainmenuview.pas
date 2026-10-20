@@ -1052,7 +1052,7 @@ begin
         iEntry.ID    := GetString('id');
         iEntry.Extra := '';
         iEntry.NID   := GetInteger('nid');
-        iEntry.Allow := IsFunction('OnPick');
+        iEntry.Allow := GetBoolean( 'available', True );
         iEntry.Req  := 0;
         FArrayKlass.Push( iEntry );
       end;

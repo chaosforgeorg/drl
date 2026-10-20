@@ -35,10 +35,6 @@ type TPlayer = class(TBeing)
   constructor CreateFromStream( aStream : TStream; aContext : TNodeContext; aPerkDefinitions : TPerkDefinitions ); override;
   procedure WriteToStream( Stream: TStream ); override;
   function CallHook( aHook : Byte; const aParams : array of Const ) : Boolean; override;
-  function CallHookCheck( aHook : Byte; const aParams : array of Const ) : Boolean; override;
-  function CallHookCan( aHook : Byte; const aParams : array of Const ) : Boolean; override;
-  function GetBonus( aHook : Byte; const aParams : array of Const ) : Integer; override;
-  function GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single; override;
   function HandleCommand( aCommand : TCommand ) : Boolean; override;
   function PlayerTick : Boolean;
   procedure HandlePostMove; override;
@@ -263,36 +259,10 @@ end;
 
 function TPlayer.CallHook( aHook : Byte; const aParams : array of Const ) : Boolean;
 begin
-  CallHook := FTraits.CallHook( aHook, aParams );
-  if inherited CallHook( aHook, aParams ) then
-    CallHook := True;
+  CallHook := inherited CallHook( aHook, aParams );
   if not ( aHook in NoInventoryHooks ) then
     if FInv.CallHook( aHook, aHook in FullInvHooks, aParams ) then
       CallHook := True;
-end;
-
-function TPlayer.CallHookCheck( aHook : Byte; const aParams : array of Const ) : Boolean;
-begin
-  if not ( inherited CallHookCheck( aHook, aParams ) ) then Exit ( False );
-  Exit( FTraits.CallHookCheck( aHook, aParams ) );
-end;
-
-function TPlayer.CallHookCan( aHook : Byte; const aParams : array of Const ) : Boolean;
-begin
-  if ( inherited CallHookCan( aHook, aParams ) ) then Exit ( true );
-  Exit( FTraits.CallHookCan( aHook, aParams ) );
-end;
-
-function TPlayer.GetBonus( aHook : Byte; const aParams : array of Const ) : Integer;
-begin
-  GetBonus := inherited GetBonus( aHook, aParams );
-  GetBonus += FTraits.GetBonus( aHook, aParams );
-end;
-
-function TPlayer.GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single;
-begin
-  GetBonusMul := inherited GetBonusMul( aHook, aParams );
-  GetBonusMul *= FTraits.GetBonusMul( aHook, aParams );
 end;
 
 function TPlayer.LevelUpPending : Boolean;
@@ -732,28 +702,8 @@ begin
   iState.Init( L );
   iPlayer := iState.ToObject( 1 ) as TPlayer;
   iTrait := iState.ToID( iPlayer.Context.Lua, 2 );
-  iPlayer.Traits.Upgrade( 0, iTrait );
+  iPlayer.Traits.Grant( iTrait );
   Result := 0;
-end;
-
-function lua_player_get_trait( L : PLua_State ) : Integer; cdecl;
-var iState  : TLuaGameStack;
-    iPlayer : TPlayer;
-begin
-  iState.Init( L );
-  iPlayer := iState.ToObject( 1 ) as TPlayer;
-  iState.Push( iPlayer.Traits[ iState.ToID( iPlayer.Context.Lua, 2 ) ] );
-  Result := 1;
-end;
-
-function lua_player_has_trait( L : PLua_State ) : Integer; cdecl;
-var iState  : TLuaGameStack;
-    iPlayer : TPlayer;
-begin
-  iState.Init( L );
-  iPlayer := iState.ToObject( 1 ) as TPlayer;
-  iState.Push( iPlayer.Traits[ iState.ToID( iPlayer.Context.Lua, 2 ) ] > 0 );
-  Result := 1;
 end;
 
 function lua_player_get_trait_hist( L : PLua_State ) : Integer; cdecl;
@@ -766,12 +716,10 @@ begin
   Result := 1;
 end;
 
-const lua_player_lib : array[0..9] of luaL_Reg = (
+const lua_player_lib : array[0..7] of luaL_Reg = (
       ( name : 'add_exp';         func : @lua_player_add_exp),
       ( name : 'remove_kill';     func : @lua_player_remove_kill),
       ( name : 'add_trait';       func : @lua_player_add_trait),
-      ( name : 'get_trait';       func : @lua_player_get_trait),
-      ( name : 'has_trait';       func : @lua_player_has_trait),
       ( name : 'get_trait_hist';  func : @lua_player_get_trait_hist),
       ( name : 'resort_stacks';   func : @lua_player_resort_stacks),
       ( name : 'quick_weapon';    func : @lua_player_quick_weapon),

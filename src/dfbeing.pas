@@ -517,8 +517,6 @@ end;
 function TBeing.GetBonus( aHook : Byte; const aParams : array of Const ) : Integer;
 begin
   GetBonus := inherited GetBonus( aHook, aParams );
-  if aHook in FHooks then
-    GetBonus += FContext.Lua.ProtectedRunHook( Self, HookNames[ aHook ], aParams );
   if FInv <> nil then
     GetBonus += FInv.GetBonus( aHook, aParams );
 end;
@@ -526,8 +524,6 @@ end;
 function TBeing.GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single;
 begin
   GetBonusMul := inherited GetBonusMul( aHook, aParams );
-  if aHook in FHooks then
-    GetBonusMul *= FContext.Lua.ProtectedRunHook( Self, HookNames[ aHook ], aParams );
   if FInv <> nil then
     GetBonusMul *= FInv.GetBonusMul( aHook, aParams );
 end;
@@ -1188,7 +1184,9 @@ end;
 function TBeing.ActionActive : Boolean;
 begin
   if ( not isPlayer ) then Exit( False );
-  Exit( CallHookCheck( Hook_OnUseActive, [] ) );
+  if not CallHookCheck( Hook_OnUseActive, [] ) then Exit( False );
+  CallHook( Hook_OnActiveUsed, [] );
+  Exit( True );
 end;
 
 function TBeing.ActionAction( aTarget : TCoord2D ) : Boolean;
@@ -3443,7 +3441,30 @@ begin
   Result := 1;
 end;
 
-const lua_being_lib : array[0..40] of luaL_Reg = (
+// Only the player has traits.
+function lua_being_get_trait(L: Plua_State): Integer; cdecl;
+var iState : TLuaGameStack;
+    iBeing : TBeing;
+begin
+  iState.Init(L);
+  iBeing := iState.ToObject(1) as TBeing;
+  if iBeing is TPlayer
+    then iState.Push( TPlayer( iBeing ).Traits[ iState.ToStorageID( 2, 'traits' ) ] )
+    else iState.Push( 0 );
+  Result := 1;
+end;
+
+function lua_being_has_trait(L: Plua_State): Integer; cdecl;
+var iState : TLuaGameStack;
+    iBeing : TBeing;
+begin
+  iState.Init(L);
+  iBeing := iState.ToObject(1) as TBeing;
+  iState.Push( ( iBeing is TPlayer ) and ( TPlayer( iBeing ).Traits[ iState.ToStorageID( 2, 'traits' ) ] > 0 ) );
+  Result := 1;
+end;
+
+const lua_being_lib : array[0..42] of luaL_Reg = (
       ( name : 'kill';          func : @lua_being_kill),
       ( name : 'resurrect';     func : @lua_being_resurrect),
       ( name : 'apply_damage';  func : @lua_being_apply_damage),
@@ -3489,6 +3510,9 @@ const lua_being_lib : array[0..40] of luaL_Reg = (
       ( name : 'send_missile';  func : @lua_being_send_missile),
       ( name : 'get_last_position'; func : @lua_being_get_last_position),
       ( name : 'get_target';         func : @lua_being_get_target),
+
+      ( name : 'get_trait';     func : @lua_being_get_trait),
+      ( name : 'has_trait';     func : @lua_being_has_trait),
 
       ( name : nil;             func : nil; )
 );

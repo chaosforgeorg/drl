@@ -206,6 +206,25 @@ function drl.register_base_data()
 		},
 	}
 
+	register_perk "active_running"
+	{
+		OnUseActive = function( self )
+			if self:is_perk( "berserk" ) then return false end
+			if self:is_perk( "tired" ) then
+				ui.msg( "Too tired to do that right now.")
+				return false
+			end
+			if self:is_perk( "running" ) then
+				self:remove_perk( "running", false )
+				return false
+			else
+				self:add_perk( "running", self.RUNNING_TIME * 10 )
+				self.scount = self.scount - 100
+				return true
+			end
+		end,
+	}
+
 	register_being "soldier"
 	{
 		name         = "soldier",
@@ -238,6 +257,29 @@ function drl.register_base_data()
 			TECH_BONUS   = 0,
 		},
 
+		perks = { "active_running" },
+
+		runtime = {
+			OnEnterLevel = function( self )
+				self:remove_perk( "running", true )
+				self:remove_perk( "tired", true )
+			end,
+
+			OnPickup = function(self,i)
+				if not self:has_found_item( i.id ) then
+					if i.flags[ IF_UNIQUE ] then
+						statistics.uniques_found = statistics.uniques_found + 1
+						self:add_history( 'On @1 he found the '..i.name..'!' )
+						ui.blink( LIGHTGREEN, 50 )
+					end
+					local firstmsg = i.__proto.firstmsg
+					if firstmsg then ui.msg( "\""..firstmsg.."\"" ) end
+					core.callback( i, "OnFirstPickup", self )
+					self:add_found_item( i.id )
+				end
+			end,
+		},
+
 		OnCreate = function(self)
 			if rawget(_G,"DIFFICULTY") then
 				self.hp    = 50
@@ -248,50 +290,6 @@ function drl.register_base_data()
 			end
 
 			self:set_coscolor{ 0.8, 0.7, 0.7, 1.0 }
-		end,
-
-		OnEnterLevel = function( self )
-			self:remove_perk( "running", true )
-			self:remove_perk( "tired", true )
-		end,
-
-		--These stubs exist so that modders can hijack them properly
-		OnAction   = function(self) return end,
-		OnAttacked = function(self) return end,
-		OnDie      = function(self, overkill) return end,
-		OnDieCheck = function(self, overkill) return true end,
-
-		OnPickup = function(self,i)
-			if not self:has_found_item( i.id ) then
-				if i.flags[ IF_UNIQUE ] then
-					statistics.uniques_found = statistics.uniques_found + 1
-					self:add_history( 'On @1 he found the '..i.name..'!' )
-					ui.blink( LIGHTGREEN, 50 )
-				end
-				local firstmsg = i.__proto.firstmsg
-				if firstmsg then ui.msg( "\""..firstmsg.."\"" ) end
-				core.callback( i, "OnFirstPickup", self )
-				self:add_found_item( i.id )
-			end
-		end,
-
-		OnUseActive = function( self )
-			if klasses[player.klass].OnUseActive then
-				return klasses[player.klass].OnUseActive( self )
-			end
-			if self:is_perk( "berserk" ) then return false end
-			if self:is_perk( "tired" ) then
-				ui.msg( "Too tired to do that right now.")
-				return false
-			end
-			if self:is_perk( "running" ) then
-				self:remove_perk( "running", false )
-				return false
-			else
-				self:add_perk( "running", self.RUNNING_TIME * 10 )
-				self.scount = self.scount - 100
-				return true
-			end
 		end,
 	}
 

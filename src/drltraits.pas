@@ -6,33 +6,29 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drltraits;
 interface
-uses classes, sysutils, vlua, vutil, vnode, dfdata, drlhooks;
+uses classes, sysutils, vlua, vnode, dfdata;
 
 const   MAXTRAITS  = 80;
         MAXKLASS   = 10;
 
+// Trait progression; trait behavior runs through the trait runtime perks.
 type TTraits = class( TVObject )
   constructor Create( aOwner : TNode );
   constructor CreateFromStream( aStream : TStream; aOwner : TNode ); reintroduce;
   procedure WriteToStream( aStream : TStream ); override;
-  function CallHook( aHook : Byte; const aParams : array of Const ) : Boolean;
-  function CallHookCheck( aHook : Byte; const aParams : array of Const ) : Boolean;
-  function CallHookCan( aHook : Byte; const aParams : array of Const ) : Boolean;
-  function GetBonus( aHook : Byte; const aParams : array of Const ) : Integer;
-  function GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single;
   function GetHistory : AnsiString;
   procedure Upgrade ( aKlass : Byte; aTrait : Byte ) ;
+  procedure Grant( aTrait : Byte );
   function CanPick( aKlass : Byte; aTrait : Byte; aCharLevel : Byte ): Boolean;
   class function CanPickInitially( aLua : TLua; aTrait : Byte; aKlassID : Byte ) : Boolean; static;
 protected
   function Get( aTrait : Byte ) : Byte;
+  procedure CallOnPick( aTrait : Byte );
 protected
   FOwner    : TNode;
   FBlocked  : array[1..MAXTRAITS]      of Boolean;
   FOrder    : array[1..MaxPlayerLevel] of Byte;
   FValues   : array[1..MAXTRAITS]      of Byte;
-  FHooks    : array[1..MAXTRAITS]      of TFlags;
-  FHookMask : TFlags;
   FCount    : Byte;
   FMaster   : Byte;
 public
@@ -42,8 +38,6 @@ end;
 
 implementation
 
-uses drllua;
-
 function TTraits.CanPick( aKlass : Byte; aTrait : Byte; aCharLevel : Byte ): Boolean;
 var iOther, iValue : DWord;
     iVariant : Variant;
@@ -51,7 +45,6 @@ var iOther, iValue : DWord;
     iReqLevel : Integer;
 begin
   if FBlocked[ aTrait ] then Exit( False );
-  if not FOwner.Context.Lua.Defined(['traits',aTrait,'OnPick']) then Exit( False );
 
   with FOwner.Context.Lua.GetTable(['klasses',aKlass,'trait',aTrait]) do
   try
@@ -59,7 +52,7 @@ begin
     iReqLevel := getInteger( 'reqlevel', 0 );
     if iReqLevel > 0 then iReqLevel += Self.FValues[ aTrait ] * 3;
     if aCharLevel < iReqLevel then Exit( False );
-	
+
     if IsTable('blocks') then
     begin
       with GetTable('blocks') do
@@ -70,7 +63,7 @@ begin
         Free;
       end;
     end;
-	
+
     if IsTable('requires') then
     for iTable in ITables('requires') do
     begin
@@ -92,21 +85,14 @@ var i            : Byte;
 begin
   Inc( FValues[ aTrait ] );
 
-  iMax    := 1;
-  iMax12  := 1;
-  iMaster := False;
-  if aKlass > 0 then
-    with FOwner.Context.Lua.GetTable(['klasses',aKlass,'trait',aTrait]) do
-    try
-      iMax    := getInteger( 'max', 1 );
-      iMax12  := getInteger( 'max_12', iMax );
-      iMaster := getBoolean( 'master', False );
-    finally
-      Free;
-    end;
-
-  FHooks[ aTrait ] := LoadHooks( FOwner.Context.Lua, ['traits',aTrait] );
-  FHookMask += FHooks[ aTrait ];
+  with FOwner.Context.Lua.GetTable(['klasses',aKlass,'trait',aTrait]) do
+  try
+    iMax    := getInteger( 'max', 1 );
+    iMax12  := getInteger( 'max_12', iMax );
+    iMaster := getBoolean( 'master', False );
+  finally
+    Free;
+  end;
 
   if FValues[ aTrait ] >= iMax12 then
     FBlocked[ aTrait ] := True;
@@ -120,9 +106,7 @@ begin
     FMaster := aTrait;
   end;
 
-  FOwner.Context.Lua.ProtectedCall( [ 'traits',aTrait,'OnPick' ], [ FOwner, FValues[ aTrait ] ] );
-
-  if aKlass = 0 then Exit;
+  CallOnPick( aTrait );
 
   if (FValues[ aTrait ] = 1) and FOwner.Context.Lua.Defined(['klasses',aKlass,'trait',aTrait,'blocks']) then
   begin
@@ -139,10 +123,17 @@ begin
   FOrder[ FCount ] := aTrait;
 end;
 
+// Grants a rank outside klass progression; it is not recorded as a pick.
+procedure TTraits.Grant( aTrait : Byte );
+begin
+  Inc( FValues[ aTrait ] );
+  FBlocked[ aTrait ] := True;
+  CallOnPick( aTrait );
+end;
+
 class function TTraits.CanPickInitially( aLua : TLua; aTrait : Byte; aKlassID : Byte ): Boolean;
 begin
   CanPickInitially := True;
-  if not aLua.Defined(['traits',aTrait,'OnPick']) then Exit( False );
 
   // #5 ReqLevel
   with aLua.GetTable(['klasses',aKlassID,'trait',aTrait]) do
@@ -158,6 +149,13 @@ begin
   Exit( FValues[ aTrait ] );
 end;
 
+// OnPick runs once per rank gained and is optional.
+procedure TTraits.CallOnPick( aTrait : Byte );
+begin
+  if FOwner.Context.Lua.Defined( [ 'traits',aTrait,'OnPick' ] ) then
+    FOwner.Context.Lua.ProtectedCall( [ 'traits',aTrait,'OnPick' ], [ FOwner, FValues[ aTrait ] ] );
+end;
+
 constructor TTraits.Create( aOwner : TNode );
 var iCount : Byte;
 begin
@@ -166,10 +164,8 @@ begin
   for iCount := 1 to High(FBlocked) do FBlocked[iCount] := False;
   for iCount := 1 to High(FValues)  do FValues[iCount] := 0;
   for iCount := 1 to High(FOrder)   do FOrder[iCount] := 0;
-  for iCount := 1 to High(FHooks)   do FHooks[iCount] := [];
   FCount  := 0;
   FMaster := 0;
-  FHookMask := [];
 end;
 
 constructor TTraits.CreateFromStream( aStream : TStream; aOwner : TNode );
@@ -180,8 +176,6 @@ begin
   aStream.Read( FBlocked,  SizeOf( FBlocked ) );
   aStream.Read( FOrder,    SizeOf( FOrder ) );
   aStream.Read( FCount,    SizeOf( FCount ) );
-  aStream.Read( FHooks,    SizeOf( FHooks ) );
-  aStream.Read( FHookMask, SizeOf( FHookMask ) );
   aStream.Read( FMaster,   SizeOf( FMaster ) );
 end;
 
@@ -192,66 +186,8 @@ begin
   aStream.Write( FBlocked,  SizeOf( FBlocked ) );
   aStream.Write( FOrder,    SizeOf( FOrder ) );
   aStream.Write( FCount,    SizeOf( FCount ) );
-  aStream.Write( FHooks,    SizeOf( FHooks ) );
-  aStream.Write( FHookMask, SizeOf( FHookMask ) );
   aStream.Write( FMaster,   SizeOf( FMaster ) );
 end;
-
-function TTraits.CallHook( aHook : Byte; const aParams : array of Const ) : Boolean;
-var i : Integer;
-begin
-  CallHook := False;
-  if not ( aHook in FHookMask ) then Exit;
-  for i := 1 to High(FHooks) do
-    if aHook in FHooks[i] then
-    begin
-      CallHook := True;
-      FOwner.Context.Lua.ProtectedCall( [ 'traits', i, TDRLLua( FOwner.Context.Lua ).HookName(aHook) ], ConcatConstArray( [FOwner], aParams ) )
-    end;
-end;
-
-function TTraits.CallHookCheck( aHook : Byte; const aParams : array of Const ) : Boolean;
-var i : Integer;
-begin
-  if not ( aHook in FHookMask ) then Exit( True );
-  for i := 1 to High(FHooks) do
-    if aHook in FHooks[i] then
-      if not FOwner.Context.Lua.ProtectedCall( [ 'traits', i, HookNames[aHook] ], ConcatConstArray( [FOwner], aParams ) ) then
-        Exit( False );
-  Exit( True );
-end;
-
-function TTraits.CallHookCan( aHook : Byte; const aParams : array of Const ) : Boolean;
-var i : Integer;
-begin
-  if not ( aHook in FHookMask ) then Exit( False );
-  for i := 1 to High(FHooks) do
-    if aHook in FHooks[i] then
-      if FOwner.Context.Lua.ProtectedCall( [ 'traits', i, HookNames[aHook] ], ConcatConstArray( [FOwner], aParams ) ) then
-        Exit( True );
-  Exit( False );
-end;
-
-function TTraits.GetBonus( aHook : Byte; const aParams : array of Const ) : Integer;
-var i : Integer;
-begin
-  GetBonus := 0;
-  if not ( aHook in FHookMask ) then Exit( 0 );
-  for i := 1 to High(FHooks) do
-    if aHook in FHooks[i] then
-      GetBonus += FOwner.Context.Lua.ProtectedCall( [ 'traits', i, HookNames[aHook] ], ConcatConstArray( [FOwner], aParams ) );
-end;
-
-function TTraits.GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single;
-var i : Integer;
-begin
-  GetBonusMul := 1.0;
-  if not ( aHook in FHookMask ) then Exit( 1.0 );
-  for i := 1 to High(FHooks) do
-    if aHook in FHooks[i] then
-      GetBonusMul *= FOwner.Context.Lua.ProtectedCall( [ 'traits', i, HookNames[aHook] ], ConcatConstArray( [FOwner], aParams ) );
-end;
-
 
 function TTraits.GetHistory: AnsiString;
 var iCount : Byte;
@@ -263,4 +199,3 @@ begin
 end;
 
 end.
-
