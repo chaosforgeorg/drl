@@ -35,8 +35,6 @@ type TPlayer = class(TBeing)
   constructor CreateFromStream( aStream : TStream; aContext : TNodeContext; aPerkDefinitions : TPerkDefinitions ); override;
   procedure WriteToStream( Stream: TStream ); override;
   function CallHook( aHook : Byte; const aParams : array of Const ) : Boolean; override;
-  function CallHookCheck( aHook : Byte; const aParams : array of Const ) : Boolean; override;
-  function CallHookCan( aHook : Byte; const aParams : array of Const ) : Boolean; override;
   function HandleCommand( aCommand : TCommand ) : Boolean; override;
   function PlayerTick : Boolean;
   procedure HandlePostMove; override;
@@ -263,24 +261,10 @@ end;
 
 function TPlayer.CallHook( aHook : Byte; const aParams : array of Const ) : Boolean;
 begin
-  CallHook := FTraits.CallHook( aHook, aParams );
-  if inherited CallHook( aHook, aParams ) then
-    CallHook := True;
+  CallHook := inherited CallHook( aHook, aParams );
   if not ( aHook in NoInventoryHooks ) then
     if FInv.CallHook( aHook, aHook in FullInvHooks, aParams ) then
       CallHook := True;
-end;
-
-function TPlayer.CallHookCheck( aHook : Byte; const aParams : array of Const ) : Boolean;
-begin
-  if not ( inherited CallHookCheck( aHook, aParams ) ) then Exit ( False );
-  Exit( FTraits.CallHookCheck( aHook, aParams ) );
-end;
-
-function TPlayer.CallHookCan( aHook : Byte; const aParams : array of Const ) : Boolean;
-begin
-  if ( inherited CallHookCan( aHook, aParams ) ) then Exit ( true );
-  Exit( FTraits.CallHookCan( aHook, aParams ) );
 end;
 
 function TPlayer.LevelUpPending : Boolean;

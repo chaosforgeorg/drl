@@ -99,6 +99,8 @@ register_trait = core.register_storage( "traits", "trait", function( trait )
 	local runtime_id
 	if trait.runtime and next( trait.runtime ) then
 		runtime_id = "perk_trait_"..trait.id
+		-- Trait hooks run in trait registration order, independent of pick order.
+		trait.runtime.ordered = true
 		register_perk( runtime_id )( trait.runtime )
 		trait.runtime = runtime_id
 	end

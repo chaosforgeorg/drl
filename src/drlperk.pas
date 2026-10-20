@@ -19,6 +19,7 @@ type TPerkData = record
   ColorExp   : Byte;
   StatusEff  : TStatusEffect;
   StatusStr  : DWord;
+  Ordered    : Boolean;
 end;
 
 type TPerkDataArray = array of TPerkData;
@@ -33,16 +34,19 @@ type TPerkDefinitions = class
 end;
 
 type TPerk = record
-  ID    : Integer;
-  Time  : Integer;
+  ID     : Integer;
+  Time   : Integer;
+  Serial : DWord;
 end;
 
 type TPerkList = specialize TGArray< TPerk >;
 
-// Position of a running loop over the perk list; Expire keeps it valid.
+// Position of a running loop over the perk list. Add and Expire keep Next
+// valid; entries added after the loop began have a higher Serial and are
+// skipped.
 type TPerkCursor = record
-  Next : Integer;
-  Last : Integer;
+  Next   : Integer;
+  Serial : DWord;
 end;
 
 type TPerks = class( TVObject )
@@ -70,6 +74,7 @@ private
   FList            : TPerkList;
   FCursors         : array of TPerkCursor;
   FCursorCount     : Integer;
+  FSerial          : DWord;
   function  BeginIteration : Integer;
   procedure EndIteration;
   function  NextEntry( aCursor : Integer; out aIndex : Integer ) : Boolean; inline;
@@ -102,6 +107,7 @@ begin
       ColorExp  := getInteger('color_expire',0);
       StatusEff := TStatusEffect( getInteger('status_effect',0) );
       StatusStr := getInteger('status_strength',0);
+      Ordered   := getBoolean('ordered',False);
     finally
       Free;
     end;
@@ -117,26 +123,31 @@ begin
   FHooks := [];
   FList  := TPerkList.Create;
   FCursorCount := 0;
+  FSerial := 0;
 end;
 
 constructor TPerks.CreateFromStream( aStream : TStream; aOwner : TNode; aDefinitions : TPerkDefinitions );
+var i : Integer;
 begin
   inherited CreateFromStream( aStream );
   FOwner := aOwner;
   FDefinitions := aDefinitions;
   FList  := TPerkList.CreateFromStream( aStream );
   FCursorCount := 0;
+  FSerial := 0;
+  for i := 0 to FList.Size - 1 do
+    FList.Data^[i].Serial := 0;
   UpdateHooks;
 end;
 
-// Loops visit the entries present when they begin; Expire adjusts every
-// active cursor, so callbacks may remove perks at any depth.
+// Loops visit the entries present when they begin; Add and Expire adjust
+// every active cursor, so callbacks may add and remove perks at any depth.
 function TPerks.BeginIteration : Integer;
 begin
   if FCursorCount = Length( FCursors ) then
     SetLength( FCursors, Max( 4, Length( FCursors ) * 2 ) );
-  FCursors[FCursorCount].Next := 0;
-  FCursors[FCursorCount].Last := FList.Size - 1;
+  FCursors[FCursorCount].Next   := 0;
+  FCursors[FCursorCount].Serial := FSerial;
   Result := FCursorCount;
   Inc( FCursorCount );
 end;
@@ -149,12 +160,13 @@ end;
 function TPerks.NextEntry( aCursor : Integer; out aIndex : Integer ) : Boolean;
 begin
   with FCursors[aCursor] do
-  begin
-    if Next > Last then Exit( False );
-    aIndex := Next;
-    Inc( Next );
-  end;
-  Exit( True );
+    while Next < FList.Size do
+    begin
+      aIndex := Next;
+      Inc( Next );
+      if FList.Data^[aIndex].Serial <= Serial then Exit( True );
+    end;
+  Exit( False );
 end;
 
 procedure TPerks.WriteToStream( aStream : TStream );
@@ -286,8 +298,9 @@ begin
 end;
 
 procedure TPerks.Add( aPerk : Integer; aDuration : LongInt );
-var i     : Integer;
-    iPerk : TPerk;
+var i      : Integer;
+    iIndex : Integer;
+    iPerk  : TPerk;
 begin
   if aDuration = 0 then Exit;
   if FList.Size > 0 then
@@ -300,9 +313,27 @@ begin
           else FList.Data^[i].Time += aDuration;  // extend timed
         Exit;
       end;
-  iPerk.ID   := aPerk;
-  iPerk.Time := aDuration;
-  FList.Push( iPerk );
+  Inc( FSerial );
+  iPerk.ID     := aPerk;
+  iPerk.Time   := aDuration;
+  iPerk.Serial := FSerial;
+  // Ordered perks dispatch in registration order among themselves.
+  iIndex := FList.Size;
+  if FDefinitions.Data[aPerk].Ordered then
+    for i := 0 to FList.Size - 1 do
+      if FDefinitions.Data[FList[i].ID].Ordered and ( FList[i].ID > aPerk ) then
+      begin
+        iIndex := i;
+        Break;
+      end;
+  if iIndex < FList.Size then
+  begin
+    FList.Insert( iIndex, iPerk );
+    for i := 0 to FCursorCount - 1 do
+      if iIndex < FCursors[i].Next then Inc( FCursors[i].Next );
+  end
+  else
+    FList.Push( iPerk );
   UpdateHooks;
   if Hook_OnAdd in FDefinitions.Data[aPerk].Hooks then
     FOwner.Context.Lua.ProtectedCall( [ 'perks', aPerk, 'OnAdd' ], [FOwner] );
@@ -344,8 +375,9 @@ begin
     begin
       if FList[i].Time > 0 then
       begin
-        Dec( FList.Data^[i].Time );
+        // OnTick10 sees the time remaining before this tick.
         iTime := FList[i].Time;
+        Dec( FList.Data^[i].Time );
       end
       else if FList[i].Time < 0 then
         iTime := aTime
@@ -416,11 +448,7 @@ begin
   iPerk := FList[ aIndex ].ID;
   FList.Delete( aIndex );
   for i := 0 to FCursorCount - 1 do
-    with FCursors[i] do
-    begin
-      if aIndex < Next then Dec( Next );
-      if aIndex <= Last then Dec( Last );
-    end;
+    if aIndex < FCursors[i].Next then Dec( FCursors[i].Next );
   UpdateHooks;
   // A dead owner runs no further perk callbacks.
   if FOwner.Dead then Exit;
@@ -445,10 +473,7 @@ begin
     end;
     FList.Clear;
     for i := 0 to FCursorCount - 1 do
-    begin
       FCursors[i].Next := 0;
-      FCursors[i].Last := -1;
-    end;
   end;
   FHooks := [];
 end;

@@ -12,7 +12,7 @@ const
   Hook_OnCreate        = 0;   // Being and Item
   Hook_OnAction        = 1;   // Being
   Hook_OnAttacked      = 2;   // Being
-  Hook_OnUseActive     = 3;   // Trait, Perk (player)
+  Hook_OnUseActive     = 3;   // Perk (player)
   Hook_OnDie           = 4;   // Perk (being)
   Hook_OnDieCheck      = 5;   // Perk (being, item)
   Hook_OnPickup        = 6;   // Perk (being, item)
@@ -26,7 +26,7 @@ const
   Hook_OnAdd           = 14;  // Perk
   Hook_OnRemove        = 15;  // Perk
   Hook_OnTick10        = 16;  // Perk
-  Hook_OnKill          = 17;  // Trait, Perk (item, being, level)
+  Hook_OnKill          = 17;  // Perk (item, being, level)
   Hook_OnKillAll       = 18;  // Perk (level)
   Hook_OnHitBeing      = 19;  // Perk (item)
   Hook_OnReload        = 20;  // Perk (item)
@@ -35,9 +35,9 @@ const
   Hook_OnAct           = 23;  // Perk (being, item)
   Hook_OnDestroy       = 24;  // Perk (item)
   Hook_OnEnter         = 25;  // Perk (item; separate from cell OnEnter)
-  Hook_OnEnterLevel    = 26;  // Trait, Perk (level, player, item)
-  Hook_OnFire          = 27;  // Trait, Perk
-  Hook_OnFired         = 28;  // Trait, Perk
+  Hook_OnEnterLevel    = 26;  // Perk (level, player, item)
+  Hook_OnFire          = 27;  // Perk
+  Hook_OnFired         = 28;  // Perk
   Hook_OnExitLevel     = 29;  // Perk (level, player, item)
   Hook_OnTick          = 30;  // Perk (level, being, item)
   Hook_OnNuked         = 31;  // Perk (level)
@@ -53,14 +53,14 @@ const
   // Slot 41 is unused.
 
   // TODO: merge with above
-  Hook_OnPostMove      = 42;   // Trait, Perk
+  Hook_OnPostMove      = 42;   // Perk
   Hook_OnPreReload     = 43;   // Perk (item)
-  Hook_OnDamage        = 44;   // Trait, Perk
-  Hook_OnReceiveDamage = 45;   // Trait, Perk
-  Hook_OnPreAction     = 46;   // Trait, Perk
-  Hook_OnPostAction    = 47;   // Trait, Perk
-  Hook_OnCanDualWield  = 48;   // Trait
-  Hook_OnCanMaxDamage  = 49;   // Trait, Perk
+  Hook_OnDamage        = 44;   // Perk
+  Hook_OnReceiveDamage = 45;   // Perk
+  Hook_OnPreAction     = 46;   // Perk
+  Hook_OnPostAction    = 47;   // Perk
+  Hook_OnCanDualWield  = 48;   // Perk (player)
+  Hook_OnCanMaxDamage  = 49;   // Perk
 
   Hook_getDamageBonus  = 50; // Perk
   Hook_getToHitBonus   = 51; // Perk
@@ -82,7 +82,7 @@ const
   Hook_getLabel        = 67; // Perk
   Hook_getDescription  = 68; // Perk
   Hook_OnCreateLevel   = 69; // Module, Challenge
-  Hook_OnDamageReceived= 70; // Trait, Perk
+  Hook_OnDamageReceived= 70; // Perk
 
   HookAmount           = 71;
 

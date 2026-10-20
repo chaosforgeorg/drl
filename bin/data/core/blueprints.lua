@@ -54,20 +54,7 @@ core.register_blueprint "trait"
 	perks           = { false, core.TARRAY( core.TSTRING ) },
 	runtime         = { false, core.TTABLE },
 
-	OnPick          = { false, core.TFUNC },
-	OnPreAction     = { false, core.TFUNC },
-	OnPostAction    = { false, core.TFUNC },
-	OnUseActive     = { false, core.TFUNC },
-	OnPostMove      = { false, core.TFUNC },
-	OnKill          = { false, core.TFUNC },
-	OnFire          = { false, core.TFUNC },
-	OnFired         = { false, core.TFUNC },
-	OnDamage        = { false, core.TFUNC },
-	OnReceiveDamage = { false, core.TFUNC },
-	OnDamageReceived= { false, core.TFUNC }, -- HP lost, source, attacker, damage type
-	OnEnterLevel    = { false, core.TFUNC },
-	OnCanDualWield  = { false, core.TFUNC },
-	OnCanMaxDamage  = { false, core.TFUNC },
+	OnPick          = { false, core.TFUNC }, -- each rank gained
 }
 
 core.register_blueprint "klass_trait"
@@ -161,6 +148,7 @@ core.register_blueprint "perk"
 	weight         = { false, core.TNUMBER, 0 },
 	min_lev        = { false, core.TNUMBER, 0 },
 	min_diff       = { false, core.TNUMBER, 0 },
+	ordered        = { false, core.TBOOL, false }, -- dispatch in registration order; set for trait runtimes
 
 	-- TODO: decide whether to keep this (add bleeding etc) 
 	-- or change to different mechanism
@@ -225,6 +213,7 @@ core.register_blueprint "perk"
 	OnDamage       = { false, core.TFUNC }, -- Being, Item
 	OnDieCheck     = { false, core.TFUNC }, -- Being, Item
 	OnCanMaxDamage = { false, core.TFUNC }, -- Being, Item
+	OnCanDualWield = { false, core.TFUNC }, -- Player
 	OnReceiveDamage= { false, core.TFUNC }, -- Being, Item
 	OnDamageReceived = { false, core.TFUNC }, -- Being, Item: HP lost, source, attacker, damage type
 	OnUnequipCheck = { false, core.TFUNC }, -- Item
