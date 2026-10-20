@@ -150,14 +150,6 @@ const
   COMMAND_SKIP     = 250;
 
 const
-  Setting_AlwaysRandomName  : Boolean = False;
-  Setting_NoIntro           : Boolean = False;
-  Setting_RunOverItems      : Boolean = False;
-  Setting_EmptyConfirm      : Boolean = False;
-  Setting_UnlockAll         : Boolean = False;
-  Setting_AutoTarget        : Boolean = True;
-
-const
   Option_HighASCII        : Boolean = {$IFDEF WINDOWS}True{$ELSE}False{$ENDIF};
   Option_BlindMode        : Boolean = False;
   Option_ClearMessages    : Boolean = False;

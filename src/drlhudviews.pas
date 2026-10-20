@@ -39,11 +39,11 @@ protected
 end;
 
 type TRunModeView = class( TDirectionQueryLayer )
-  constructor Create( aPlayer : TPlayer );
+  constructor Create( aSession : TDRLSession );
 protected
   procedure Finalize( aDir : TDirection ); override;
 protected
-  FPlayer : TPlayer; // Borrowed; the view is released before the player.
+  FSession : TDRLSession; // Borrowed; the view is released before Session.
 end;
 
 type TMeleeDirView = class( TDirectionQueryLayer )
@@ -248,16 +248,16 @@ begin
   end;
 end;
 
-constructor TRunModeView.Create( aPlayer : TPlayer );
+constructor TRunModeView.Create( aSession : TDRLSession );
 begin
   inherited Create( False );
-  FPlayer := aPlayer;
+  FSession := aSession;
   FPrompt := 'Run mode';
 end;
 
 procedure TRunModeView.Finalize( aDir : TDirection );
 begin
-  FPlayer.MultiMove.Start( aDir );
+  FSession.StartRun( aDir );
 end;
 
 constructor TMeleeDirView.Create( aSession : TDRLSession );

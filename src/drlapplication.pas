@@ -32,7 +32,6 @@ type TDRLRuntime = class( TRLRuntime )
     FDataLoaded       : Boolean;
     FHOF              : THOF;
     FProfileTimeStart : Comp;
-    procedure ApplyConfiguration;
     procedure CreateSession( aInitializeData : Boolean );
     procedure ReleaseSession;
     procedure SafeCallModuleHook( aHook : Byte; const aParams : array of Const );
@@ -145,7 +144,6 @@ constructor TDRLRuntime.Create( const aPaths : TGamePaths;
   var aConfiguration : TObject; const aModulesFile : AnsiString );
 begin
   inherited Create(aPaths, aConfiguration);
-  ApplyConfiguration;
   FStore := TStoreInterface.CreateDefault;
   FStore.SuppressProgress := GodMode;
   FModules := TDRLModules.Create(Paths.DataPath, aModulesFile);
@@ -211,7 +209,7 @@ end;
 
 procedure TDRLRuntime.CreateSession( aInitializeData : Boolean );
 begin
-  FSession := TDRLSession.Create( Self, IO, FModules, FStore, FData, Paths );
+  FSession := TDRLSession.Create( Self, IO, Self.Configuration as TDRLConfiguration, FModules, FStore, FData, Paths );
   IO.BindRunStatus( FSession.RunStatus );
   IO.BindAutoTarget( FSession.Targeting.List );
   if not aInitializeData then Exit;
@@ -308,7 +306,6 @@ begin
   FLua.CallDefaultResult := True;
   FSessionHooks := LoadHooks( FLua, [CoreModuleID], SessionHooks );
   SafeCallModuleHook(Hook_OnLoad, []);
-  ApplyConfiguration;
   IO.Reconfigure(Config);
   IO.PrepareGraphics;
 
@@ -376,15 +373,6 @@ begin
   IO.Reset;
 end;
 
-procedure TDRLRuntime.ApplyConfiguration;
-begin
-  Setting_AlwaysRandomName   := drlconfiguration.Configuration.GetBoolean('always_random_name');
-  Setting_NoIntro            := drlconfiguration.Configuration.GetBoolean('skip_intro');
-  Setting_RunOverItems       := drlconfiguration.Configuration.GetBoolean('run_over_items');
-  Setting_EmptyConfirm       := drlconfiguration.Configuration.GetBoolean('empty_confirm');
-  Setting_UnlockAll          := drlconfiguration.Configuration.GetBoolean('unlock_all');
-end;
-
 procedure TDRLRuntime.SaveProfile;
 var iSeconds : DWord;
 begin
@@ -395,7 +383,6 @@ end;
 
 procedure TDRLRuntime.Reconfigure;
 begin
-  ApplyConfiguration;
   IO.Reconfigure(Config);
 end;
 

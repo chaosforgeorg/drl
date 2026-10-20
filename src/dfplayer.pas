@@ -405,7 +405,7 @@ procedure TPlayer.HandlePostMove;
 begin
   inherited HandlePostMove;
   if FMultiMove.IsRepeat then
-    if RunStopNear or ((not Setting_RunOverItems) and (TLevel( Parent ).Item[ FPosition ] <> nil)) then
+    if RunStopNear or (FMultiMove.StopOnItems and (TLevel( Parent ).Item[ FPosition ] <> nil)) then
       FMultiMove.Stop;
 end;
 

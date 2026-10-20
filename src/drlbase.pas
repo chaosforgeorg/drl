@@ -8,7 +8,7 @@ unit drlbase;
 interface
 
 uses vapp, vnode, vutil, vuid, vio, viotypes, vrltools, vlua, vioevent, vstoreinterface, vrandom, vrlapp,
-     dflevel, dfdata, dfhof, dfplayer, dfitem, drlhooks, drllua, drlcommand, drlkeybindings, drlmodule, drlgamedata, drlio;
+     dflevel, dfdata, dfhof, dfplayer, dfitem, drlhooks, drllua, drlcommand, drlkeybindings, drlmodule, drlgamedata, drlconfiguration, drlio;
 
 type TDRLSession = class;
      PDRLSession = ^TDRLSession;
@@ -41,9 +41,12 @@ type TDRLSessionResult = ( DSR_Quit, DSR_Played, DSR_ReloadData );
 // state, targeting, gameplay input, progression, and the save payload. Module
 // and data-generation policy belongs to TDRLRuntime.
 type TDRLSession = class(TVObject)
-       constructor Create( aRuntime : TRLRuntime; aIO : TDRLIO; aModules : TDRLModules;
+       // aUserConfig is borrowed from the runtime, which outlives the Session.
+       constructor Create( aRuntime : TRLRuntime; aIO : TDRLIO; aUserConfig : TDRLConfiguration; aModules : TDRLModules;
          aStore : TStoreInterface; aData : TGameData; const aPaths : TGamePaths );
        procedure InitializeLevel;
+       // Starts a directional run with the player's run-over-items setting.
+       procedure StartRun( aDir : TDirection );
        procedure EnterLevel( aLevel : TLevel );
        procedure ResetLevel;
        procedure Reset;
@@ -139,6 +142,7 @@ type TDRLSession = class(TVObject)
        FSeededGame      : Boolean;
        FRuntime         : TRLRuntime;
        FIO              : TDRLIO; // Borrowed from the runtime, which outlives the Session.
+       FUserConfig      : TDRLConfiguration; // Borrowed from the runtime.
        FPaths           : TGamePaths;
      public
        property GameWon : Boolean read GetGameWon;
@@ -150,6 +154,7 @@ type TDRLSession = class(TVObject)
        property Context : TNodeContext read FContext;
        property UIDs : TUIDStore read FUIDStore;
        property Store : TStoreInterface read FStore;
+       property UserConfig : TDRLConfiguration read FUserConfig;
        property Modules : TDRLModules read FModules;
        property Level : TLevel read FLevel;
        property Player : TPlayer read FPlayer;
@@ -327,11 +332,12 @@ begin
   {$ENDIF}
 end;
 
-constructor TDRLSession.Create( aRuntime : TRLRuntime; aIO : TDRLIO; aModules : TDRLModules;
+constructor TDRLSession.Create( aRuntime : TRLRuntime; aIO : TDRLIO; aUserConfig : TDRLConfiguration; aModules : TDRLModules;
   aStore : TStoreInterface; aData : TGameData; const aPaths : TGamePaths );
 begin
   FRuntime := aRuntime;
   FIO      := aIO;
+  FUserConfig := aUserConfig;
   FContext := TNodeContext.Create( aRuntime.Lua, nil );
   FStatus  := TRunStatus.Create;
   FModules := aModules;
@@ -665,7 +671,7 @@ begin
 
     if FPlayer.EnemiesInVision > 0
       then FIO.Msg( 'Can''t multi-move, there are enemies present.',[] )
-      else FPlayer.MultiMove.Start( iDir );
+      else StartRun( iDir );
     Exit;
   end;
 
@@ -673,8 +679,8 @@ begin
     Exit( HandleMoveCommand( aInput, False ) );
 
   case aInput of
-    INPUT_FIRE       : Exit( HandleFireCommand( False, False, Setting_AutoTarget, False ) );
-    INPUT_ALTFIRE    : Exit( HandleFireCommand( True, False, Setting_AutoTarget, False ) );
+    INPUT_FIRE       : Exit( HandleFireCommand( False, False, True, False ) );
+    INPUT_ALTFIRE    : Exit( HandleFireCommand( True, False, True, False ) );
     INPUT_TARGET     : Exit( HandleFireCommand( False, False, False, False ) );
     INPUT_ALTTARGET  : Exit( HandleFireCommand( True, False, False, False ) );
     INPUT_ACTION     : Exit( HandleActionCommand( INPUT_ACTION ) );
@@ -794,6 +800,11 @@ begin
     FIO.Msg( 'You can''t do that!' );
   end;
   Exit( False );
+end;
+
+procedure TDRLSession.StartRun( aDir : TDirection );
+begin
+  FPlayer.MultiMove.Start( aDir, not FUserConfig.GetBoolean( 'run_over_items' ) );
 end;
 
 function TDRLSession.HandleMoveCommand( aInput : TInputKey; aAlt : Boolean ) : Boolean;
@@ -941,7 +952,7 @@ begin
 
     if iEmpty then
     begin
-      if Setting_EmptyConfirm then
+      if FUserConfig.GetBoolean( 'empty_confirm' ) then
         FIO.PushLayer( TMoreLayer.Create( False ) );
       Exit( False );
     end;
@@ -1485,7 +1496,7 @@ begin
         FPlayer.MultiMove.Stop;
         if FPlayer.EnemiesInVision > 0
           then FIO.Msg( 'Can''t multi-move, there are enemies present.',[] )
-          else FIO.PushLayer( TRunModeView.Create( FPlayer ) );
+          else FIO.PushLayer( TRunModeView.Create( Self ) );
         Exit;
       end;
 
@@ -1625,7 +1636,7 @@ begin
 
   if (not(State in [DSLoading, DSCrashLoading])) then
   begin
-    if ( not Setting_NoIntro ) and FContext.Lua.Defined( [ CoreModuleID, 'ShowIntro' ] ) then
+    if ( not FUserConfig.GetBoolean( 'skip_intro' ) ) and FContext.Lua.Defined( [ CoreModuleID, 'ShowIntro' ] ) then
       FContext.Lua.ProtectedCall( [ CoreModuleID, 'ShowIntro' ], [] );
     GameRNG.SetSeed( iEpisodeSeed );
     CallHook( Hook_OnCreateWorld, [QWord( iEpisodeSeed )] );
@@ -1903,7 +1914,7 @@ begin
   if Option_AlwaysName <> '' then
     FPlayer.Name := Option_AlwaysName
   else
-    if (Setting_AlwaysRandomName) or (aResult.Name = '')
+    if aResult.Name = ''
       then FPlayer.Name := FContext.Lua.ProtectedCall([CoreModuleID,'GetRandomName'],[])
       else FPlayer.Name := aResult.Name;
 

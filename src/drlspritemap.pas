@@ -1271,7 +1271,7 @@ begin
           Push( HARDSPRITE_MARK mod 100000, FTarget, ColorWhite, FTargetColor, ColorZero, FTargetColor, DRL_Z_FX );
     end
   else
-    if Setting_AutoTarget and ( FAutoTarget.X * FAutoTarget.Y <> 0 ) then
+    if FAutoTarget.X * FAutoTarget.Y <> 0 then
     begin
       iBeing := FLevel.Being[FAutoTarget];
       iV     := Vec2i( FAutoTarget.X-1, FAutoTarget.Y-1 ) * FSpriteEngine.Grid;
