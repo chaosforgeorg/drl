@@ -176,7 +176,7 @@ end;
 
 TGFXBumpAnimation = class(TGFXMoveAnimation)
   constructor Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D;
-    aSprite : TSprite; aBeing : Boolean; aAmount : Single );
+    aSprite : TSprite; aBeing : Boolean; aAmount : Single; aBlend : Boolean );
 end;
 
 { TGFXScreenMoveAnimation }
@@ -634,14 +634,14 @@ begin
 end;
 
 constructor TGFXBumpAnimation.Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aDuration : DWord; aDelay : DWord; aUID : TUID;
-  aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aAmount : Single );
+  aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aAmount : Single; aBlend : Boolean );
 begin
   inherited Create( aSpriteMap, aLevel, aDuration, aDelay, aUID, aFrom, aTo, aSprite, aBeing, aAmount );
   FReturnTarget := FSource;
   FLightReturn := FLightStart;
   FReturnDuration := aDuration;
   FDuration := aDuration * 2;
-  FBlocking := not Setting_AnimationBlending;
+  FBlocking := not aBlend;
 end;
 
 procedure TGFXMoveAnimation.OnStart;

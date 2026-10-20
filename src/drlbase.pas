@@ -1120,8 +1120,8 @@ begin
   if aCommand.Command = COMMAND_NONE then
     Exit( False );
   FIO.MsgUpDate;
-  if ( aCommand.Command = COMMAND_WAIT ) and Setting_WaitSound then
-    FIO.Audio.PlaySound( 'wait', 50 );
+  if aCommand.Command = COMMAND_WAIT then
+    FIO.PlayWaitSound;
 try
   FPlayer.HandleCommand( aCommand );
 except
@@ -1165,7 +1165,6 @@ function TDRLSession.HandleMouseEvent( aEvent : TIOEvent ) : Boolean;
 var iAlt     : Boolean;
     iButton  : TIOMouseButton;
 begin
-  if not Setting_Mouse then Exit( False );
   FIO.MTarget := FIO.DevicePointToCoord( aEvent.Mouse.Pos );
   if Level.isProperCoord( FIO.MTarget ) then
   begin

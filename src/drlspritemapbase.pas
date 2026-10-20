@@ -77,6 +77,7 @@ protected
   FVBlurProgram   : TGLProgram;
   FFullscreen     : TGLFullscreenTriangle;
   FLutTexture     : Cardinal;
+  FGlow           : Boolean;
 protected
   procedure PushSprite( aPos : TVec2i; const aSprite : TSprite; aLight : Byte; aZ : Integer );
   function GetSprite( aSprite : TSprite; aCoord : TCoord2D; aTime : Integer = -1 ) : TSprite; overload;
@@ -88,6 +89,8 @@ public
   property Shift : TVec2i read FShift;
   property NewShift : TVec2i read FNewShift write FNewShift;
   property Offset : TVec2i read FOffset write FOffset;
+  // Set by the owner before Recalculate.
+  property Glow : Boolean read FGlow write FGlow;
 end;
 
 implementation
@@ -256,7 +259,7 @@ begin
     FPostProgram.SetUniformi( 'utexture', 0 );
     FPostProgram.SetUniformi( 'ulut', 1 );
     FPostProgram.SetUniformi( 'ublur', 2 );
-    if Setting_Glow
+    if FGlow
       then FPostProgram.SetUniformi( 'toggle_glow', 1 )
       else FPostProgram.SetUniformi( 'toggle_glow', 0 );
     FPostProgram.SetUniformf( 'screen_size', FDriver.GetSizeX, FDriver.GetSizeY );
@@ -288,13 +291,13 @@ procedure TSpriteMap.Draw;
 begin
   FSpriteEngine.Position := FShift + FOffset;
 
-  if ( FLutTexture <> 0 ) or ( Setting_Glow ) then
+  if ( FLutTexture <> 0 ) or ( FGlow ) then
   begin
     FFramebuffer.BindAndClear;
     FSpriteEngine.Draw;
     FFramebuffer.UnBind;
 
-    if Setting_Glow then
+    if FGlow then
     begin
       glDisable( GL_BLEND );
 
@@ -426,7 +429,7 @@ begin
       then PushXY( iSpriteID, iSize, aPos, aSprite.OverColor, iCosColor, aSprite.GlowColor, GetEmissive( aSprite ), aZ )
       else PushXY( iSpriteID, iSize, aPos, NewColor( aLight, aLight, aLight ), iCosColor, aSprite.GlowColor, GetEmissive( aSprite ), aZ );
 
-    if ( not Setting_Glow ) and ( aSprite.GlowColor.A > 0 ) then
+    if ( not FGlow ) and ( aSprite.GlowColor.A > 0 ) then
     begin
       iCosColor := aSprite.GlowColor;
       iCosColor.A := 4;

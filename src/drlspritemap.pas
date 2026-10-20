@@ -747,7 +747,7 @@ begin
     StatusMagenta: FLutTexture := FTextures['lut_rage'].GLTexture;
     else
     begin
-      if Setting_Glow
+      if FGlow
         then FLutTexture := FTextures['lut_clear'].GLTexture
         else FLutTexture := 0;
     end;
@@ -1199,7 +1199,7 @@ begin
           iOff := 0;
           if iItem.Appear > 0 then
           begin
-            if ( iItem.Appear < 500 ) and Setting_ItemDropAnimation then
+            if ( iItem.Appear < 500 ) and FIO.Settings.ItemDropAnimation then
             begin
               iRange := 6.0 * FSpriteEngine.Scale;
               iItem.Appear := Min( iItem.Appear + aDTime, 500 );

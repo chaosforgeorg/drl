@@ -27,7 +27,6 @@ type
     procedure RegisterLuaAPI( aLua : TLua ); override;
     procedure LoadGraphics( aData : TVDataFile ); override; overload;
     procedure LoadGraphics( const aPath : AnsiString ); override; overload;
-    procedure Reconfigure( aConfig : TLuaConfig ); override;
     procedure Configure( aConfig : TDRLConfig; aReload : Boolean ); override; overload;
     procedure Update( aMSec : DWord ); override;
     function PushLayer( aLayer : TIOLayer ) : TIOLayer; override;
@@ -52,7 +51,6 @@ type
     procedure addParticleBurstAnimation( aDelay : DWord; aEmitterID : Word; aPosition : TCoord2D;
       aDirection : TDirection; aCount : Word; aDistanceScale, aSpreadScale : Single ); override;
     procedure addSoundAnimation( aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord ); override;
-    procedure addRumbleAnimation( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord ); override;
     procedure PulseBlood( aValue : Single ); override;
     function ShowsDecals : Boolean; override;
 
@@ -84,6 +82,8 @@ type
 
  protected
     procedure RunLauncherLayer( aLayer : TIOLayer ); override;
+    procedure DoReconfigure( aConfig : TLuaConfig ); override;
+    procedure QueueRumble( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord ); override;
     procedure DrawHUD; override;
     function ReadDefaultFont : TBitmapFont;
     procedure ExplosionMark( aCoord : TCoord2D; aColor : Byte; aDuration : DWord; aDelay : DWord ); override;
@@ -171,9 +171,9 @@ begin
   iHeight     := FIODriver.GetSizeY;
   iOldFontMult  := FFontMult;
   iOldMiniScale := FMiniScale;
-  FFontMult   := Configuration.GetInteger( 'font_multiplier' );
-  FTileMult   := Configuration.GetInteger( 'tile_multi' );
-  FMiniScale  := Configuration.GetInteger( 'minimap_multi' );
+  FFontMult   := FUserConfig.GetInteger( 'font_multiplier' );
+  FTileMult   := FUserConfig.GetInteger( 'tile_multi' );
+  FMiniScale  := FUserConfig.GetInteger( 'minimap_multi' );
 
   if FFontMult = 0 then
   begin
@@ -242,10 +242,10 @@ begin
     Logger.AddSink( TConsoleLogSink.Create( LOGDEBUG, True ) );
   end;
   {$ENDIF}
-  FFullscreen := Configuration.GetBoolean( 'fullscreen' );
+  FFullscreen := aSettings.GetBoolean( 'fullscreen' );
   if ForceWindowed then FFullscreen := False;
-  iWidth      := Configuration.GetInteger( 'screen_width' );
-  iHeight     := Configuration.GetInteger( 'screen_height' );
+  iWidth      := aSettings.GetInteger( 'screen_width' );
+  iHeight     := aSettings.GetInteger( 'screen_height' );
 
   iSDLFlags := [ SDLIO_OpenGL ];
   if FFullscreen then Include( iSDLFlags, SDLIO_Fullscreen );
@@ -273,6 +273,8 @@ begin
   FMinimap    := TMinimap.Create;
   inherited Create( aSettings );
   FParticleEngine := TParticleEngine.Create( VisualRNG );
+  FSpriteMap.Glow := FSettings.Glow;
+  TSDLIODriver( FIODriver ).MouseSupport := FSettings.Mouse;
 end;
 
 procedure TDRLGFXIO.PrepareGraphics;
@@ -466,32 +468,35 @@ begin
   SetMinimapScale( FMiniScale );
 end;
 
-procedure TDRLGFXIO.Reconfigure(aConfig: TLuaConfig);
+procedure TDRLGFXIO.DoReconfigure( aConfig : TLuaConfig );
 var iWidth   : Integer;
     iHeight  : Integer;
     iOpacity : Integer;
 begin
   FadeReset;
-  iWidth  := Configuration.GetInteger('screen_width');
-  iHeight := Configuration.GetInteger('screen_height');
-  iOpacity:= Configuration.GetInteger( 'minimap_opacity' );
+  FSpriteMap.Glow := FSettings.Glow;
+  iWidth  := FUserConfig.GetInteger('screen_width');
+  iHeight := FUserConfig.GetInteger('screen_height');
+  iOpacity:= FUserConfig.GetInteger( 'minimap_opacity' );
   FMinimap.SetOpacity( iOpacity );
   UpdateMinimap;
 
   if ( ( iWidth > 0 ) and ( iWidth <> FIODriver.GetSizeX ) ) or
      ( ( iHeight > 0 ) and ( iHeight <> FIODriver.GetSizeY ) ) or
-     ( ( not ForceWindowed) and  ( Configuration.GetBoolean('fullscreen') <> FFullscreen ) ) then
+     ( ( not ForceWindowed) and  ( FUserConfig.GetBoolean('fullscreen') <> FFullscreen ) ) then
   begin
-    FFullscreen := Configuration.GetBoolean('fullscreen');
+    FFullscreen := FUserConfig.GetBoolean('fullscreen');
     ResetVideoMode;
   end
   else
     RecalculateScaling( False );
   DeviceChanged;
   TGLConsoleRenderer( FConsole ).HideCursor;
-  TSDLIODriver(FIODriver).GamePadSupport := Store.IsSteamDeck or Configuration.GetBoolean( 'enable_gamepad' );
+  TSDLIODriver(FIODriver).GamePadSupport := Store.IsSteamDeck or FUserConfig.GetBoolean( 'enable_gamepad' );
+  TSDLIODriver(FIODriver).MouseSupport := FSettings.Mouse;
+  if not FSettings.Mouse then FMCursor.Active := False;
 
-  inherited Reconfigure(aConfig);
+  inherited DoReconfigure( aConfig );
 end;
 
 destructor TDRLGFXIO.Destroy;
@@ -531,14 +536,14 @@ end;
 
 procedure TDRLGFXIO.Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0);
 begin
-  if Setting_Flash then
+  if FSettings.Flash then
     FAnimations.AddAnimation( TGFXBlinkAnimation.Create( FPostSheet, FIODriver, aDuration, aDelay, aColor ) );
 end;
 
 procedure TDRLGFXIO.addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection );
 begin
   if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
-  if Setting_ScreenShake then
+  if FSettings.ScreenShake then
     if not TGFXScreenShakeAnimation.Update( aDuration, aDelay, aStrength, aDirection ) then
       FAnimations.addAnimation( TGFXScreenShakeAnimation.Create( FSpriteMap, FVisualRNG, aDuration, aDelay, aStrength, aDirection ) );
 end;
@@ -558,14 +563,14 @@ begin
           else Inc( iCount );
       until iCount >= Animations.Size;
   FAnimations.AddAnimation( TGFXMoveAnimation.Create( FSpriteMap, Level, aDuration, aDelay, aUID, aFrom, aTo, aSprite, aBeing, 0.0, aFinishBeforeNext ),
-    Setting_AnimationBlending and aBeing and ( not aWipeBump ) );
+    FSettings.AnimationBlending and aBeing and ( not aWipeBump ) );
 end;
 
 procedure TDRLGFXIO.addBumpAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aAmount : Single );
 begin
   if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
   FAnimations.AddAnimation( TGFXBumpAnimation.Create( FSpriteMap, Level, aDuration, aDelay, aUID,
-    aFrom, aTo, aSprite, True, aAmount ), Setting_AnimationBlending );
+    aFrom, aTo, aSprite, True, aAmount, FSettings.AnimationBlending ), FSettings.AnimationBlending );
 end;
 
 procedure TDRLGFXIO.addScreenMoveAnimation(aDuration: DWord; aTo: TCoord2D);
@@ -636,10 +641,9 @@ begin
     FAnimations.addAnimation( TSoundEventAnimation.Create( Self, aDelay, aPosition, aSoundID ) )
 end;
 
-procedure TDRLGFXIO.addRumbleAnimation( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord );
+procedure TDRLGFXIO.QueueRumble( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord );
 begin
   if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
-  if (not Setting_GamepadRumble) or (not IsGamepad ) then Exit;
   if aDelay = 0
     then FIODriver.Rumble( aLow, aHigh, aDuration )
     else FAnimations.addAnimation( TRumbleEventAnimation.Create( FIODriver, aDelay, aLow, aHigh, aDuration ) );
@@ -647,7 +651,7 @@ end;
 
 procedure TDRLGFXIO.PulseBlood( aValue : Single );
 begin
-  if Setting_BloodPulse and ( aValue > FBloodValueTarget ) then
+  if FSettings.BloodPulse and ( aValue > FBloodValueTarget ) then
     FBloodValueTarget := aValue;
 end;
 
@@ -817,7 +821,7 @@ end;
 
 procedure TDRLGFXIO.FadeIn( aForce : Boolean = False );
 begin
-  if not Setting_Fade then
+  if not FSettings.Fade then
   begin
     FadeReset;
     Exit;
@@ -830,7 +834,7 @@ end;
 
 procedure TDRLGFXIO.FadeOut( aTime : Single = 0.5; aWait : Boolean = False );
 begin
-  if not Setting_Fade then
+  if not FSettings.Fade then
   begin
     FadeReset;
     Exit;
@@ -898,9 +902,9 @@ begin
       FHintOverlay := '';
   end;
 
-  iMouse := Setting_Mouse and (FMCursor <> nil) and (FMCursor.Active) and FIODriver.GetMousePos( iMousePoint );
+  iMouse := (FMCursor <> nil) and (FMCursor.Active) and FIODriver.GetMousePos( iMousePoint );
 
-  if iMouse and (not FMouseLock) and (not isModal) and (Setting_MouseEdgePan) and (FGPCamera = 0.0) then
+  if iMouse and (not FMouseLock) and (not isModal) and (FSettings.MouseEdgePan) and (FGPCamera = 0.0) then
   begin
     iMousePos := Vec2i( iMousePoint.X, iMousePoint.Y );
     iMax      := Vec2i( FIODriver.GetSizeX, FIODriver.GetSizeY );
@@ -1002,7 +1006,7 @@ begin
   FQuadRenderer.Render( FQuadSheet );
   inherited Update( aMSec );
 
-  if Setting_BloodPulse then
+  if FSettings.BloodPulse then
   begin
     iBloodTarget := FBloodValueTarget;
     if iDrawLevel then
@@ -1062,8 +1066,8 @@ var iSDLFlags   : TSDLIOFlags;
     iHeight     : Integer;
 begin
   iSDLFlags := [ SDLIO_OpenGL ];
-  iWidth    := Configuration.GetInteger('screen_width');
-  iHeight   := Configuration.GetInteger('screen_height');
+  iWidth    := FUserConfig.GetInteger('screen_width');
+  iHeight   := FUserConfig.GetInteger('screen_height');
   if FFullscreen then Include( iSDLFlags, SDLIO_Fullscreen );
   TSDLIODriver(FIODriver).ResetVideoMode( iWidth, iHeight, 32, iSDLFlags );
   RecalculateScaling( True );
@@ -1123,7 +1127,7 @@ begin
 
   if iEvent.EType in [ VEVENT_MOUSEMOVE, VEVENT_MOUSEDOWN ] then
   begin
-    if ( FMCursor <> nil ) then FMCursor.Active := Setting_Mouse;
+    if ( FMCursor <> nil ) then FMCursor.Active := True;
     FLastMouseTime := FTime;
     FMouseLock     := False;
 
@@ -1220,7 +1224,7 @@ begin
   begin
     if ( FMCursor.Size = 0 ) and ( FTextures.Exists('cursor') ) then
       FMCursor.SetTextureID( FTextures.TextureID['cursor'], 32 );
-    FMCursor.Active := Setting_Mouse;
+    FMCursor.Active := FSettings.Mouse;
   end;
   Result := inherited PushLayer( aLayer );
 end;
@@ -1333,7 +1337,7 @@ begin
   iRenderer := TGLConsoleRenderer.Create( FIODriver, ReadDefaultFont, 80, 25, 0, [VIO_CON_CURSOR, VIO_CON_BGCOLOR, VIO_CON_EXTCOLOR ] );
   iRenderer.SetPositionScale( (FIODriver.GetSizeX - 80*10*FFontMult) div 2, 0, FLineSpace, FFontMult );
   iRenderer.GlyphStretch := True;
-  TSDLIODriver(FIODriver).GamePadSupport := Store.IsSteamDeck or Configuration.GetBoolean( 'enable_gamepad' );
+  TSDLIODriver(FIODriver).GamePadSupport := Store.IsSteamDeck or FUserConfig.GetBoolean( 'enable_gamepad' );
   inherited Initialize( iRenderer );
   DeviceChanged;
   iTIGStyle.Color[ VTIG_SELECTED_BACKGROUND_COLOR ] := DarkGray;

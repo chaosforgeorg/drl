@@ -34,15 +34,35 @@ const TIG_EV_NONE      = 0;
 type TASCIIImageMap       = specialize TGObjectHashMap<TIOStringArray>;
 type TStringHashMap       = specialize TGHashMap< AnsiString >;
 
+// User settings that change how the game is presented and controlled with
+// the mouse and gamepad; IO reloads them on every Reconfigure.
+type TIOSettings = record
+  Flash             : Boolean;
+  Glow              : Boolean;
+  Fade              : Boolean;
+  ScreenShake       : Boolean;
+  BloodPulse        : Boolean;
+  ItemDropAnimation : Boolean;
+  AnimationBlending : Boolean;
+  Mouse             : Boolean;
+  MouseEdgePan      : Boolean;
+  GamepadRumble     : Boolean;
+  WaitSound         : Boolean;
+  GroupMessages     : Boolean;
+  HideHints         : Boolean;
+end;
+
 // Architectural boundary: adapts shared roguelike presentation mechanics to DRL policy and its active session.
 type TDRLIO = class( TIORL, IDRLPresentation )
+  // aSettings is borrowed from the runtime, which outlives IO.
   constructor Create( aSettings : TDRLConfiguration ); reintroduce;
   procedure Reset; virtual;
   procedure SetSeedText( const aText : AnsiString );
   // Sets up rendering; graphics mode loads its fonts from the core module.
   procedure Initialize( aCoreModule : TDRLModule ); virtual; abstract;
   procedure Initialize( iRenderer : TIOConsoleRenderer );
-  procedure Reconfigure( aConfig : TLuaConfig ); virtual;
+  // Reloads the settings, then applies the configuration.
+  procedure Reconfigure( aConfig : TLuaConfig );
   procedure Configure( aConfig : TDRLConfig; aReload : Boolean ); overload; virtual;
   procedure RunLayer( aLayer : TIOLayer; aHideHUD : Boolean = False ); reintroduce;
   procedure FadeLevel( aFadeTime : Single = 0.0 );
@@ -59,6 +79,8 @@ type TDRLIO = class( TIORL, IDRLPresentation )
   procedure Update( aMSec : DWord ); override;
   procedure PlaySound( aSoundID : Word; aCoord : TCoord2D; aDelay : DWord = 0 );
   function ResolveSoundID( const aResolveIDs : array of AnsiString ) : Word;
+  // Acknowledges a wait command, if the player wants a sound for it.
+  procedure PlayWaitSound;
 
   function EventToUIInput( const aEvent : TIOEvent ) : Integer; override;
   function CommandEventPending : Boolean;
@@ -104,7 +126,7 @@ type TDRLIO = class( TIORL, IDRLPresentation )
   procedure addParticleBurstAnimation( aDelay : DWord; aEmitterID : Word; aPosition : TCoord2D;
     aDirection : TDirection; aCount : Word; aDistanceScale, aSpreadScale : Single ); virtual;
   procedure addSoundAnimation( aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord ); virtual; abstract;
-  procedure addRumbleAnimation( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord ); virtual;
+  procedure addRumbleAnimation( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord );
   procedure Explosion( aDelay : Integer; aWhere : TCoord2D; aData : TExplosionData ); reintroduce; virtual;
   procedure PulseBlood( aValue : Single ); virtual;
   function ShowsDecals : Boolean; virtual;
@@ -150,15 +172,22 @@ type TDRLIO = class( TIORL, IDRLPresentation )
   function RunModuleAPIWarning( aModules : TModuleList ) : Boolean;
 private
   function GetHeartbeatVolume : Integer;
+  procedure LoadSettings;
 protected
   // Runs a modal launch-time layer before IO is initialized.
   procedure RunLauncherLayer( aLayer : TIOLayer ); virtual;
+  // Applies the configuration once the settings are current.
+  procedure DoReconfigure( aConfig : TLuaConfig ); virtual;
+  // Rumbles now or after aDelay; called only when rumble is enabled and a gamepad is in use.
+  procedure QueueRumble( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord ); virtual;
   procedure UpdateStyles;
   procedure ExplosionMark( aCoord : TCoord2D; aColor : Byte; aDuration : DWord; aDelay : DWord ); virtual; abstract;
   procedure DrawHud; virtual;
   function ScreenshotCallback( aEvent : TIOEvent ) : Boolean;
 protected
   FAudio       : TDRLAudio;
+  FUserConfig  : TDRLConfiguration; // Borrowed from the runtime, which outlives IO.
+  FSettings    : TIOSettings;
   FTime        : QWord;
   FLoading     : TLoadingView;
   FMTarget     : TCoord2D;
@@ -192,6 +221,7 @@ protected
 public
   property KeyCode      : TIOKeyCode      read FKeyCode    write FKeyCode;
   property Audio        : TDRLAudio       read FAudio;
+  property Settings     : TIOSettings     read FSettings;
   property MTarget      : TCoord2D        read FMTarget    write FMTarget;
   property ASCII        : TASCIIImageMap  read FASCII;
   property HintOverlay  : AnsiString      read FHintOverlay write FHintOverlay;
@@ -330,8 +360,13 @@ end;
 
 procedure TDRLIO.addRumbleAnimation( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord );
 begin
-  if (not Setting_GamepadRumble) or (not IsGamepad ) then Exit;
-    FIODriver.Rumble( aLow, aHigh, aDuration );
+  if (not FSettings.GamepadRumble) or (not IsGamepad ) then Exit;
+  QueueRumble( aDelay, aLow, aHigh, aDuration );
+end;
+
+procedure TDRLIO.QueueRumble( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord );
+begin
+  FIODriver.Rumble( aLow, aHigh, aDuration );
 end;
 
 procedure TDRLIO.Explosion( aDelay : Integer; aWhere: TCoord2D; aData : TExplosionData );
@@ -448,12 +483,14 @@ end;
 constructor TDRLIO.Create( aSettings : TDRLConfiguration );
 begin
   inherited Create( FIODriver, nil );
+  FUserConfig := aSettings;
+  LoadSettings;
 
   FMsgQueue := True;
   FLoading  := nil;
   FAudio    := TDRLAudio.Create( FVisualRNG, aSettings );
   InitializeMessages( 2, 77, @EventMore, Option_MessageBuffer );
-  Messages.GroupMultiple := aSettings.GetBoolean( 'group_messages' );
+  Messages.GroupMultiple := FSettings.GroupMessages;
   inherited Configure( dfdata.Config );
   FASCII    := TASCIIImageMap.Create( True );
 
@@ -534,10 +571,6 @@ var iAction : TBindingAction;
     iInput  : TInputKey;
     iKey    : TIOKeyCode;
 begin
-  if ( aEvent.EType in [ VEVENT_MOUSEMOVE, VEVENT_MOUSEDOWN, VEVENT_MOUSEUP ] ) then
-    if not Setting_Mouse then
-      Exit( False );
-
   if ( aEvent.EType in [ VEVENT_KEYDOWN, VEVENT_KEYUP ] ) and
      ( not aEvent.Key.Repeated ) then
   begin
@@ -659,13 +692,36 @@ begin
     else Exit( FKeySubMap.Get(aID, '') );
 end;
 
+procedure TDRLIO.LoadSettings;
+begin
+  FSettings.Flash             := FUserConfig.GetBoolean( 'flashing_fx' );
+  FSettings.Glow              := FUserConfig.GetBoolean( 'glow_fx' );
+  FSettings.Fade              := FUserConfig.GetBoolean( 'fade_fx' );
+  FSettings.ScreenShake       := FUserConfig.GetBoolean( 'screen_shake' );
+  FSettings.BloodPulse        := FUserConfig.GetBoolean( 'pulse_fx' );
+  FSettings.ItemDropAnimation := FUserConfig.GetBoolean( 'item_drop_animation' );
+  FSettings.AnimationBlending := FUserConfig.GetBoolean( 'animation_blending' );
+  FSettings.Mouse             := FUserConfig.GetBoolean( 'enable_mouse' );
+  FSettings.MouseEdgePan      := FUserConfig.GetBoolean( 'mouse_edge_pan' );
+  FSettings.GamepadRumble     := FUserConfig.GetBoolean( 'enable_rumble' );
+  FSettings.WaitSound         := FUserConfig.GetBoolean( 'wait_sound' );
+  FSettings.GroupMessages     := FUserConfig.GetBoolean( 'group_messages' );
+  FSettings.HideHints         := FUserConfig.GetBoolean( 'hide_hints' );
+end;
+
 procedure TDRLIO.Reconfigure( aConfig : TLuaConfig );
+begin
+  LoadSettings;
+  DoReconfigure( aConfig );
+end;
+
+procedure TDRLIO.DoReconfigure( aConfig : TLuaConfig );
 var iAction    : TControllerAction;
     iPadString : AnsiString;
     procedure CtrlAssign( aWhat : TInputKey; aFrom : TInputKey );
     var iKey : TIOKeyCode;
     begin
-      iKey := Configuration.KeyBindings.ConfigurationValue( Ord( aFrom ) );
+      iKey := FUserConfig.KeyBindings.ConfigurationValue( Ord( aFrom ) );
       if iKey = 0 then Exit;
       if ( iKey and IOKeyCodeCtrlMask ) = 0
         then FGameBindings.BindKey( iKey + IOKeyCodeCtrlMask, Ord( aWhat ) )
@@ -684,13 +740,13 @@ var iAction    : TControllerAction;
     function GetUIKeyString( aWhat : TBindingAction ) : Ansistring;
     begin
       Exit( IOKeyCodeToStringShort(
-        Configuration.UIKeyBindings.ConfigurationValue( aWhat )
+        FUserConfig.UIKeyBindings.ConfigurationValue( aWhat )
       ) );
     end;
     function GetUIPadString( aWhat : TBindingAction ) : Ansistring;
     begin
       Exit( VPadButtonToStringShort(
-        Configuration.UIControllerBindings.GetButton( aWhat )
+        FUserConfig.UIControllerBindings.GetButton( aWhat )
       ) );
     end;
     function WithModifier( const aModifier, aBinding : Ansistring ) : Ansistring;
@@ -700,11 +756,11 @@ var iAction    : TControllerAction;
     end;
 begin
   FAudio.Reconfigure;
-  FMessages.GroupMultiple := Setting_GroupMessages;
+  FMessages.GroupMultiple := FSettings.GroupMessages;
   FGameBindings.Clear;
   if aConfig.TableExists('Keytable') then
     aConfig.LoadKeybindings(FGameBindings, 'Keytable');
-  FGameBindings.LoadKeys(Configuration.KeyBindings);
+  FGameBindings.LoadKeys(FUserConfig.KeyBindings);
 
   CtrlAssign( INPUT_TARGETLEFT,      INPUT_WALKLEFT );
   CtrlAssign( INPUT_TARGETRIGHT,     INPUT_WALKRIGHT );
@@ -715,18 +771,18 @@ begin
   CtrlAssign( INPUT_TARGETDOWNLEFT,  INPUT_WALKDOWNLEFT );
   CtrlAssign( INPUT_TARGETDOWNRIGHT, INPUT_WALKDOWNRIGHT );
 
-  Configuration.ControllerBindings.Validate;
-  FGameBindings.LoadPad( Configuration.ControllerBindings );
+  FUserConfig.ControllerBindings.Validate;
+  FGameBindings.LoadPad( FUserConfig.ControllerBindings );
 
   UIBindings.Clear;
-  UIBindings.LoadKeys( Configuration.UIKeyBindings );
-  Configuration.UIControllerBindings.Validate;
-  UIBindings.LoadPad( Configuration.UIControllerBindings );
-  if ( Configuration.UIControllerBindings.ConfigurationValue( VTIG_IE_LEFT ) =
+  UIBindings.LoadKeys( FUserConfig.UIKeyBindings );
+  FUserConfig.UIControllerBindings.Validate;
+  UIBindings.LoadPad( FUserConfig.UIControllerBindings );
+  if ( FUserConfig.UIControllerBindings.ConfigurationValue( VTIG_IE_LEFT ) =
        Ord( VPAD_BUTTON_DPAD_LEFT ) ) and
      ( UIBindings.ResolvePad( VPAD_BUTTON_LEFTSHOULDER ) = BINDING_NONE ) then
     UIBindings.BindPad( VPAD_BUTTON_LEFTSHOULDER, VTIG_IE_LEFT );
-  if ( Configuration.UIControllerBindings.ConfigurationValue( VTIG_IE_RIGHT ) =
+  if ( FUserConfig.UIControllerBindings.ConfigurationValue( VTIG_IE_RIGHT ) =
        Ord( VPAD_BUTTON_DPAD_RIGHT ) ) and
      ( UIBindings.ResolvePad( VPAD_BUTTON_RIGHTSHOULDER ) = BINDING_NONE ) then
     UIBindings.BindPad( VPAD_BUTTON_RIGHTSHOULDER, VTIG_IE_RIGHT );
@@ -999,7 +1055,7 @@ begin
 
   if FHintOverlay <> ''
     then VTIG_FreeLabel( ' '+FHintOverlay+' ', Point( iOffset-VTIG_Length( FHintOverlay ), 2 ), Yellow )
-    else if ( (FHint <> '') and ( not GraphicsVersion ) )
+    else if ( (FHint <> '') and ( not FSettings.HideHints ) and ( not GraphicsVersion ) )
       then VTIG_FreeLabel( ' '+FHint+' ', Point( iOffset-VTIG_Length( FHint ), 2 ), Yellow )
       else if (FHintTarget <> '') and Setting_AutoTarget
         then VTIG_FreeLabel( ' '+FHintTarget+' ', Point( iOffset-VTIG_Length( FHintTarget ), 2 ), Brown );
@@ -1007,7 +1063,7 @@ begin
   if GraphicsVersion and ( FHintStatus <> '' ) and ( ( FHintOverlay <> '' ) or ( FHintTarget <> '' ) ) then
     VTIG_FreeLabel( ' '+FHintStatus+' ', Point( iOffset-VTIG_Length( FHintStatus ), 3 ), Yellow );
   
-  if GraphicsVersion and ( FHint <> '' ) then
+  if GraphicsVersion and ( FHint <> '' ) and ( not FSettings.HideHints ) then
     VTIG_FreeLabel( ' '+FHint+' ', Point( 20, 4 ), Yellow );
 
   if ( Level <> nil ) and ( Level.Boss <> 0 ) then
@@ -1181,6 +1237,12 @@ begin
   Exit( FAudio.ResolveSoundID( aResolveIDs ) );
 end;
 
+procedure TDRLIO.PlayWaitSound;
+begin
+  if FSettings.WaitSound then
+    FAudio.PlaySound( 'wait', 50 );
+end;
+
 function TDRLIO.EventToUIInput( const aEvent : TIOEvent ) : Integer;
 var iAction : TBindingAction;
 begin
@@ -1190,7 +1252,6 @@ begin
        else Exit( Integer( INPUT_HARDQUIT ) );
   if (aEvent.EType = VEVENT_MOUSEMOVE) then
   begin
-    if not Setting_Mouse then Exit( Integer( INPUT_NONE ) );
     if Level <> nil then
     begin
       FMTarget := DevicePointToCoord( aEvent.MouseMove.Pos );
@@ -1200,7 +1261,6 @@ begin
   end;
   if aEvent.EType = VEVENT_MOUSEDOWN then
   begin
-    if not Setting_Mouse then Exit( Integer( INPUT_NONE ) );
     if Level <> nil then
     begin
       FMTarget := DevicePointToCoord( aEvent.Mouse.Pos );
@@ -1232,11 +1292,6 @@ var iEvent : TIOEvent;
 begin
   repeat
     if not FIODriver.PeekEvent( iEvent ) then Exit( False );
-    if ( not Setting_Mouse ) and ( iEvent.EType in [ VEVENT_MOUSEMOVE, VEVENT_MOUSEUP, VEVENT_MOUSEDOWN ] ) then
-    begin
-      FIODriver.PollEvent( iEvent );
-      Continue;
-    end;
     if not ( iEvent.EType in [ VEVENT_KEYDOWN, VEVENT_MOUSEDOWN, VEVENT_PADDOWN ] ) then
     begin
       FIODriver.PollEvent( iEvent );
@@ -1315,8 +1370,7 @@ function lua_ui_set_hint(L: Plua_State): Integer; cdecl;
 var State : TLuaGameStack;
 begin
   State.Init(L);
-  if not Setting_HideHints then
-    LuaIO( L ).SetHint( State.ToString( 1 ) );
+  LuaIO( L ).SetHint( State.ToString( 1 ) );
   Result := 0;
 end;
 

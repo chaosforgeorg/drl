@@ -177,7 +177,7 @@ procedure TDRLTextIO.Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWor
 var iChr : Char;
 begin
   if Option_HighASCII then iChr := Chr(219) else iChr := '#';
-  if Setting_Flash then
+  if FSettings.Flash then
     FTextMap.AddAnimation( TTextBlinkAnimation.Create( IOGylph( iChr, aColor ), aDuration, aDelay ) );
 end;
 
