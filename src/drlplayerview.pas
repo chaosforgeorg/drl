@@ -162,7 +162,7 @@ begin
   FCommandMode := aCommand;
   FScavenger   := aScavenger;
   FState       := PLAYERVIEW_INVENTORY;
-  ReadInv;
+  // ReadInv runs on the first update, after the layer has an IO owner.
   case aCommand of
     COMMAND_USE    : begin FAction := 'use';  FITitle := 'Choose item to use'; end;
     COMMAND_DROP   : begin FAction := 'drop'; FITitle := 'Choose item to drop'; end;
