@@ -1829,7 +1829,7 @@ begin
   else
   begin
     if iState.IsNil( 3 ) then Exit( 0 );
-    iBeing := iLevel.SpawnBeing( iState.ToId( iLevel.Context.Lua, 2 ), iState.ToCoord( 3 ), iRespawn );
+    iBeing := iLevel.SpawnBeing( iState.ToStorageID( 2, 'beings' ), iState.ToCoord( 3 ), iRespawn );
   end;
   iState.Push( iBeing );
   Result := 1;
@@ -1856,7 +1856,7 @@ begin
   try
     if iState.IsTable(2)
       then iItem := iState.ToObject(2) as TItem
-      else iItem := TItem.Create( iState.ToId( iLevel.Context.Lua, 2 ), iLevel.Context );
+      else iItem := TItem.Create( iState.ToStorageID( 2, 'items' ), iLevel.Context );
     iLevel.DropItem( iItem, iState.ToPosition(3), iState.ToBoolean( 4, False ), iState.ToBoolean( 5, False ) );
     iState.Push( iItem );
   except
@@ -1961,12 +1961,12 @@ begin
   if lua_isnumber( L, 2 ) then
   begin
     iCoord  := NewCoord2D( iState.ToInteger( 2 ), iState.ToInteger( 3 ) );
-    iCellID := iState.ToID( iLevel.Context.Lua, 4 );
+    iCellID := iState.ToStorageID( 4, 'cells' );
   end
   else
   begin
     iCoord  := iState.ToPosition( 2 );
-    iCellID := iState.ToID( iLevel.Context.Lua, 3 );
+    iCellID := iState.ToStorageID( 3, 'cells' );
   end;
   iLevel.PutCell( iCoord, iCellID );
   iLevel.HitPoints[ iCoord ] := iLevel.FData.Cells[ iCellID ].HP;
@@ -2236,7 +2236,7 @@ begin
   iState.Init(L);
   iLevel := iState.ToObject(1) as TLevel;
   if iLevel = nil then Exit( 0 );
-  iLevel.FPerks.Add( iState.ToId( iLevel.Context.Lua, 2 ), iState.ToInteger(3,-1) );
+  iLevel.FPerks.Add( iState.ToStorageID( 2, 'perks' ), iState.ToInteger(3,-1) );
   Result := 0;
 end;
 
@@ -2246,7 +2246,7 @@ var iState : TLuaGameStack;
 begin
   iState.Init(L);
   iLevel := iState.ToObject(1) as TLevel;
-  iState.Push( iLevel.FPerks.getTime( iState.ToId( iLevel.Context.Lua, 2 ) ) );
+  iState.Push( iLevel.FPerks.getTime( iState.ToStorageID( 2, 'perks' ) ) );
   Result := 1;
 end;
 
@@ -2256,7 +2256,7 @@ var iState : TLuaGameStack;
 begin
   iState.Init(L);
   iLevel := iState.ToObject(1) as TLevel;
-  iLevel.FPerks.Remove( iState.ToId( iLevel.Context.Lua, 2 ), iState.ToBoolean( 3, False ) );
+  iLevel.FPerks.Remove( iState.ToStorageID( 2, 'perks' ), iState.ToBoolean( 3, False ) );
   Result := 0;
 end;
 
@@ -2266,7 +2266,7 @@ var iState : TLuaGameStack;
 begin
   iState.Init(L);
   iLevel := iState.ToObject(1) as TLevel;
-  iState.Push( iLevel.FPerks.IsActive( iState.ToId( iLevel.Context.Lua, 2 ) ) );
+  iState.Push( iLevel.FPerks.IsActive( iState.ToStorageID( 2, 'perks' ) ) );
   Result := 1;
 end;
 

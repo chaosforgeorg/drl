@@ -3165,7 +3165,7 @@ var iState : TLuaGameStack;
 begin
   iState.Init(L);
   iBeing := iState.ToObject(1) as TBeing;
-  iNID   := iState.ToId( iBeing.Context.Lua, 2 );
+  iNID   := iState.ToStorageID( 2, 'items' );
   iState.Push( iBeing.Inv.CountAmount( iNID ) );
   Exit( 1 );
 end;
@@ -3178,7 +3178,7 @@ var iState  : TLuaGameStack;
 begin
   iState.Init(L);
   iBeing  := iState.ToObject(1) as TBeing;
-  iNID    := iState.ToId( iBeing.Context.Lua, 2 );
+  iNID    := iState.ToStorageID( 2, 'items' );
   iAmount := iState.ToInteger(3, 1);
   iState.Push( iBeing.Inv.RemoveAmount( iNID, iAmount ) );
   Exit( 1 );

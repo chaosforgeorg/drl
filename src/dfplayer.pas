@@ -701,7 +701,7 @@ var iState  : TLuaGameStack;
 begin
   iState.Init( L );
   iPlayer := iState.ToObject( 1 ) as TPlayer;
-  iTrait := iState.ToID( iPlayer.Context.Lua, 2 );
+  iTrait := iState.ToStorageID( 2, 'traits' );
   iPlayer.Traits.Grant( iTrait );
   Result := 0;
 end;

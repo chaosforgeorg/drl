@@ -634,7 +634,7 @@ var iState : TLuaGameStack;
 begin
   iState.Init( L );
   iLua := TDRLLua( TLuaContext.FromState( L ).Lua );
-  iItem := TItem.Create( iState.ToId( iLua, 1 ), iLua.NodeContext );
+  iItem := TItem.Create( iState.ToStorageID( 1, 'items' ), iLua.NodeContext );
   iState.Push(iItem);
   Result := 1;
 end;
