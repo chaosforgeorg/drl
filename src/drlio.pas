@@ -51,14 +51,14 @@ type TIOSettings = record
   GroupMessages     : Boolean;
   MorePrompt        : Boolean;
   HideHints         : Boolean;
+  EquipPickupSound  : Boolean;
+  ColoredInventory  : Boolean;
 end;
 
 // Presentation options from config.lua; IO copies them from each loaded
 // config, which the runtime replaces on every data load.
 type TIOOptions = record
-  HighASCII        : Boolean;
-  SoundEquipPickup : Boolean;
-  ColoredInventory : Boolean;
+  HighASCII      : Boolean;
 end;
 
 // Architectural boundary: adapts shared roguelike presentation mechanics to DRL policy and its active session.
@@ -454,13 +454,13 @@ end;
 
 function TDRLIO.EquipSound : AnsiString;
 begin
-  if FOptions.SoundEquipPickup then Exit( 'pickup' );
+  if FSettings.EquipPickupSound then Exit( 'pickup' );
   Exit( 'reload' );
 end;
 
 function TDRLIO.ItemMenuColor( aItem : TItem ) : Byte;
 begin
-  if not FOptions.ColoredInventory then Exit( LightGray );
+  if not FSettings.ColoredInventory then Exit( LightGray );
   Exit( aItem.MenuColor );
 end;
 
@@ -742,6 +742,8 @@ begin
   FSettings.GroupMessages     := FUserConfig.GetBoolean( 'group_messages' );
   FSettings.MorePrompt        := FUserConfig.GetBoolean( 'more_prompt' );
   FSettings.HideHints         := FUserConfig.GetBoolean( 'hide_hints' );
+  FSettings.EquipPickupSound  := FUserConfig.GetBoolean( 'equip_pickup_sound' );
+  FSettings.ColoredInventory  := FUserConfig.GetBoolean( 'colored_inventory' );
 end;
 
 procedure TDRLIO.Reconfigure( aConfig : TLuaConfig );
@@ -889,9 +891,7 @@ end;
 
 procedure TDRLIO.ReadOptions( aConfig : TDRLConfig );
 begin
-  FOptions.HighASCII        := aConfig.HighASCII;
-  FOptions.SoundEquipPickup := aConfig.SoundEquipPickup;
-  FOptions.ColoredInventory := aConfig.ColoredInventory;
+  FOptions.HighASCII := aConfig.HighASCII;
 end;
 
 procedure TDRLIO.RunLayer( aLayer : TIOLayer; aHideHUD : Boolean );

@@ -605,7 +605,7 @@ begin
         FState := PLAYERVIEW_DONE;
         if FPlayer.Inv.IsFull then
         begin
-          if Option_InvFullDrop
+          if FSession.UserConfig.GetBoolean( 'inv_full_drop' )
             then FSession.QueueCommand( TCommand.Create( COMMAND_DROP, FEq[iSelected].Item ) )
             else IO.PushLayer( TNoRoomConfirmView.Create( FSession, FEq[iSelected].Item ) );
         end

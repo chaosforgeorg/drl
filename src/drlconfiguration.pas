@@ -137,6 +137,10 @@ begin
     .SetName('Animation blending')
     .SetDescription('Blend unfinished movement and melee animations toward the latest action. Setting to {!Disabled} keeps each action separate.')
     ;
+  iGroup.AddToggle( 'colored_inventory', True )
+    .SetName('Colored inventory')
+    .SetDescription('Set to {!Disabled} to show inventory and equipment items without their colors.')
+    ;
 
   iGroup := AddGroup( 'audio' );
   iGroup.AddInteger( 'volume_sound', 70 )
@@ -161,11 +165,24 @@ begin
     .SetName('Wait sound')
     .SetDescription('Set to {!Disabled} to disable the wait action sound.')
     ;
+  iGroup.AddToggle( 'equip_pickup_sound', False )
+    .SetName('Pickup sound on equip')
+    .SetDescription('Set to {!Enabled} to play the pickup sound instead of the reload sound when equipping or swapping items.')
+    ;
 
   iGroup := AddGroup( 'gameplay' );
   iGroup.AddToggle( 'always_random_name', False )
     .SetName('Always random name')
     .SetDescription( 'Setting to {!Enabled} will skip name entry and always supply a random name.')
+    ;
+  // The --name command line option overrides it.
+  iGroup.AddString( 'always_name', '' )
+    .SetName('Always use name')
+    .SetDescription('Skip name entry and always use this name. Leave empty to be asked each game.')
+    ;
+  iGroup.AddToggle( 'mortem_archive', True )
+    .SetName('Archive mortems')
+    .SetDescription('Setting to {!Enabled} keeps a copy of every post-mortem in the mortem folder.')
     ;
   iGroup.AddToggle( 'hide_hints', False )
     .SetName('Hide hints')
@@ -192,6 +209,10 @@ begin
   iGroup.AddToggle( 'empty_confirm', False )
     .SetName('Confirm firing empty weapon')
     .SetDescription('Setting to {!Enabled} will make the game wait for confirmation if trying to fire an empty weapon')
+    ;
+  iGroup.AddToggle( 'inv_full_drop', False )
+    .SetName('Drop when inventory full')
+    .SetDescription('Setting to {!Enabled} drops an item taken off with a full inventory instead of asking.')
     ;
   iGroup.AddToggle( 'enable_mouse', True )
     .SetName('Mouse control')

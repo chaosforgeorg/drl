@@ -150,13 +150,13 @@ const
   COMMAND_SKIP     = 250;
 
 const
-  Option_InvFullDrop      : Boolean = False;
-  Option_MortemArchive    : Boolean = False;
-  Option_Graphics         : string = 'TILES';
-  Option_AlwaysName       : string = '';
+  Option_Graphics : string = 'TILES';
 
 // Date and time format in mortem and screenshot file names.
 const FileTimeStamp = 'yyyy/mm/dd hh:nn:ss';
+
+// Longest player name the name entries accept; longer ones break the settings layout.
+const MaxPlayerName = 20;
 
 // Knockback of explosions whose definition leaves it out.
 const DefaultExplosionKnockback = 8;

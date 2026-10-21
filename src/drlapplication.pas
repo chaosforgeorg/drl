@@ -497,10 +497,7 @@ end;
 procedure TDRLApplication.ApplyOptions;
 begin
   if HasOption('name') then
-  begin
     ForcePlayerName := GetOptionValue('name');
-    Option_AlwaysName := ForcePlayerName;
-  end;
   if HasOption('module') then
     CoreModuleID := GetOptionValue('module');
   if HasOption('modules-file') then

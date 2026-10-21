@@ -37,6 +37,9 @@ const SETTINGSVIEW_KEYS : set of TSettingsViewState = [
   SETTINGSVIEW_UIKEYBOARD
 ];
 
+// Longest text a string setting takes; the only one is a player name.
+const MaxTextEntry = MaxPlayerName;
+
 type TSettingsView = class( TDRLLayer )
   constructor Create( aSession : TDRLSession );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
@@ -50,6 +53,9 @@ protected
   procedure Reset( aGroup : TConfigurationGroup );
   procedure KeyCapture( aBindings : TBindingCatalog;
     aAction : TBindingAction; aSelected : Boolean );
+  // The text entry window over the settings; closes on accept or cancel.
+  procedure OpenTextEntry( aEntry : TStringConfigurationEntry );
+  procedure UpdateTextEntry;
   function CaptureControllerBindings : TControllerBindingCatalog;
   procedure ControllerCapture( aBindings : TControllerBindingCatalog;
     aAction : TBindingAction; aSelected : Boolean );
@@ -76,6 +82,8 @@ protected
   FModCurrent          : Ansistring;
   FWarning             : Ansistring;
   FRestart             : Ansistring;
+  FTextEntry           : TStringConfigurationEntry; // Being edited; nil when no entry window is open.
+  FTextBuffer          : array[0..MaxTextEntry] of Char;
 end;
 
 implementation
@@ -232,6 +240,12 @@ begin
     Exit;
   end;
 
+  if FTextEntry <> nil then
+  begin
+    UpdateTextEntry;
+    Exit;
+  end;
+
   iNext  := SETTINGSVIEW_DONE;
   iHover := nil;
   iGroup := nil;
@@ -380,6 +394,16 @@ begin
                       FRestart := Value;
                     end;
                   end;
+              end
+              else
+              if iEntry is TStringConfigurationEntry then
+              begin
+                with iEntry as TStringConfigurationEntry do
+                  if Value = ''
+                    then VTIG_InputField( 'None' )
+                    else VTIG_InputField( Copy( Value, 1, MaxTextEntry ) );
+                if ( iSelected = i ) and VTIG_EventConfirm then
+                  OpenTextEntry( TStringConfigurationEntry( iEntry ) );
               end
               else
               if iEntry is TIntegerConfigurationEntry then
@@ -687,6 +711,48 @@ begin
       iEntry.Reset
     else
       iBindings.SetKey( iAction, TIntegerConfigurationEntry( iEntry ).Default );
+  end;
+end;
+
+procedure TSettingsView.OpenTextEntry( aEntry : TStringConfigurationEntry );
+begin
+  FTextEntry := aEntry;
+  StrPLCopy( @FTextBuffer[0], aEntry.Value, High( FTextBuffer ) );
+  VTIG_ResetInput( 'settings_text' );
+  IO.Console.ShowCursor;
+  IO.Driver.StartTextInput;
+  if IO.IsGamepad then
+    FSession.Store.StartText( aEntry.Name, MaxTextEntry, aEntry.Value );
+end;
+
+// An accepted text replaces the entry's value; cancel keeps the old one.
+procedure TSettingsView.UpdateTextEntry;
+var iStoreText   : Ansistring;
+    iStoreCancel : Boolean;
+    iDone        : Boolean;
+begin
+  iDone := False;
+  VTIG_BeginWindow( FTextEntry.Name, 'settings_text', Point( 50, 8 ) );
+    VTIG_Text( FTextEntry.Description );
+    VTIG_Text( '' );
+    if VTIG_Input( @FTextBuffer[0], High( FTextBuffer ) + 1 ) then
+    begin
+      FTextEntry.Value := AnsiString( FTextBuffer );
+      iDone := True;
+    end;
+    if FSession.Store.GetText( iStoreText, @iStoreCancel ) then
+    begin
+      if not iStoreCancel then
+        FTextEntry.Value := iStoreText;
+      iDone := True;
+    end;
+  VTIG_End('{l<{!{$input_ok}}> accept, <{!{$input_escape}}> cancel}');
+
+  if iDone or VTIG_EventCancel then
+  begin
+    IO.Driver.StopTextInput;
+    IO.Console.HideCursor;
+    FTextEntry := nil;
   end;
 end;
 

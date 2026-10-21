@@ -87,7 +87,7 @@ protected
 
   FBGTexture   : TTextureID;
   FLogoTexture : TTextureID;
-  FName        : array[0..48] of Char;
+  FName        : array[0..MaxPlayerName] of Char;
   FSeed        : array[0..7] of Char;
   FSeedInvalid : Boolean;
 end;
@@ -279,14 +279,14 @@ begin
       else
       begin
         FResult.Trait := TPlayerView.TraitPick;
-        if (Option_AlwaysName <> '') or FSession.UserConfig.GetBoolean( 'always_random_name' )
+        if (FSession.FixedPlayerName <> '') or FSession.UserConfig.GetBoolean( 'always_random_name' )
           then FMode := MAINMENU_DONE
           else begin
             IO.Console.ShowCursor;
             FName[0] := #0;
             IO.Driver.StartTextInput;
             if IO.IsGamepad then
-              FSession.Store.StartText( 'Enter name', 30 );
+              FSession.Store.StartText( 'Enter name', MaxPlayerName );
             FMode := MAINMENU_NAME;
           end;
       end;
@@ -666,7 +666,7 @@ begin
   VTIG_PopStyle;
   VTIG_PushStyle( @TIGStyleColored );
   VTIG_Text('Type a name for your character');
-  if VTIG_Input(@FName[0],48) then
+  if VTIG_Input( @FName[0], MaxPlayerName + 1 ) then
   begin
     FResult.Name := AnsiString(FName);
     IO.Driver.StopTextInput;

@@ -20,8 +20,6 @@ private
   FColorOverrides   : TColorOverrides;
   FSoundEngine      : AnsiString;
   FHighASCII        : Boolean;
-  FSoundEquipPickup : Boolean;
-  FColoredInventory : Boolean;
   procedure ReadColorOverride( aKey, aValue : Variant );
 public
   property ColorOverrides   : TColorOverrides read FColorOverrides;
@@ -29,8 +27,6 @@ public
   property SoundEngine      : AnsiString      read FSoundEngine;
   // Presentation options read by IO.
   property HighASCII        : Boolean         read FHighASCII;
-  property SoundEquipPickup : Boolean         read FSoundEquipPickup;
-  property ColoredInventory : Boolean         read FColoredInventory;
 end;
 
 
@@ -52,14 +48,6 @@ begin
   FSoundEngine            := Configure('SoundEngine','DEFAULT');
 
   FHighASCII              := Configure('AllowHighAscii',{$IFDEF WINDOWS}True{$ELSE}False{$ENDIF});
-  Option_AlwaysName       := Configure('AlwaysName',Option_AlwaysName);
-  Option_InvFullDrop      := Configure('InvFullDrop',Option_InvFullDrop);
-  Option_MortemArchive    := Configure('MortemArchive',Option_MortemArchive);
-  FSoundEquipPickup       := Configure('SoundEquipPickup',False);
-  FColoredInventory       := Configure('ColoredInventory',True);
-
-  if ForcePlayerName <> '' then
-    Option_AlwaysName := ForcePlayerName;
 
   if ForceNoAudio then FSoundEngine := 'NONE';
   if FSoundEngine = 'DEFAULT' then

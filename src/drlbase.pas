@@ -50,6 +50,9 @@ type TDRLSession = class(TVObject)
        procedure InitializeLevel;
        // Starts a directional run with the player's run-over-items setting.
        procedure StartRun( aDir : TDirection );
+       // Name every new character takes: --name, else the always_name
+       // setting; empty when the player names the character.
+       function FixedPlayerName : AnsiString;
        procedure EnterLevel( aLevel : TLevel );
        procedure ResetLevel;
        procedure Reset;
@@ -453,7 +456,7 @@ begin
       end;
       iMortemList.SaveToFile( FPaths.ModuleUserPath + 'mortem.txt' );
 
-      if Option_MortemArchive then
+      if FUserConfig.GetBoolean( 'mortem_archive' ) then
       begin
         iMortemPath := FPaths.ModuleUserPath + 'mortem' + PathDelim
           + ToProperFilename( '[' + FormatDateTime( FileTimeStamp, Now ) + '] ' + FPlayer.Name ) + '.txt';
@@ -814,6 +817,12 @@ end;
 procedure TDRLSession.StartRun( aDir : TDirection );
 begin
   FPlayer.MultiMove.Start( aDir, not FUserConfig.GetBoolean( 'run_over_items' ) );
+end;
+
+function TDRLSession.FixedPlayerName : AnsiString;
+begin
+  if ForcePlayerName <> '' then Exit( ForcePlayerName );
+  Exit( FUserConfig.GetString( 'always_name' ) );
 end;
 
 function TDRLSession.HandleMoveCommand( aInput : TInputKey; aAlt : Boolean ) : Boolean;
@@ -1912,6 +1921,7 @@ begin
 end;
 
 procedure TDRLSession.CreatePlayer ( aResult : TMenuResult ) ;
+var iName : AnsiString;
 begin
   ReleasePlayer;
   FLevel.Particles.BindUIDs( nil );
@@ -1926,8 +1936,9 @@ begin
   FLevel.Place( FPlayer, NewCoord2D(4,4) );
   FPlayer.Klass := aResult.Klass;
 
-  if Option_AlwaysName <> '' then
-    FPlayer.Name := Option_AlwaysName
+  iName := FixedPlayerName;
+  if iName <> '' then
+    FPlayer.Name := iName
   else
     if aResult.Name = ''
       then FPlayer.Name := FContext.Lua.ProtectedCall([CoreModuleID,'GetRandomName'],[])
