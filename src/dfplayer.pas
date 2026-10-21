@@ -261,6 +261,10 @@ begin
 end;
 
 function TPlayer.CallHook( aHook : Byte; const aParams : array of Const ) : Boolean;
+// The picked up item gets its own OnPickup.
+const NoInventoryHooks : TFlags = [ Hook_OnPickup ];
+// These reach the whole inventory, not just the equipment.
+      FullInvHooks     : TFlags = [ Hook_OnTick, Hook_OnPreAction, Hook_OnPostAction ];
 begin
   CallHook := inherited CallHook( aHook, aParams );
   if not ( aHook in NoInventoryHooks ) then

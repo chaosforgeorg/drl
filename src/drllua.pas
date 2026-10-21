@@ -222,7 +222,7 @@ begin
 
     end;
     if RawDefined( iModule.ID ) then
-      iModule.Hooks := LoadHooks( Self, [ iModule.ID ], ModuleLoadHooks );
+      iModule.Hooks := LoadHooks( Self, [ iModule.ID ], [ Hook_OnLoad ] );
     if iModule.IsBase then
       SetupBase;
   end;
