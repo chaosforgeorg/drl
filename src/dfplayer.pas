@@ -74,6 +74,7 @@ private
   FKilledBy       : AnsiString;
   FKilledMelee    : Boolean;
   FLastTurnDodge  : Boolean;
+  FAim            : TCoord2D;
 
   FTraits         : TTraits;
   FStatistics     : TStatistics;
@@ -146,12 +147,14 @@ begin
   FPath           := TPathFinder.Create(Self);
   MasterDodge     := False;
   FLastTurnDodge  := False;
+  FAim.Create(0,0);
 
   TDRLLua( FContext.Lua ).RegisterPlayer( Self );
 end;
 
 function TPlayer.HandleCommand( aCommand : TCommand ) : Boolean;
 begin
+  FAim := aCommand.Aim;
   if aCommand.Command <> COMMAND_QUICKKEY then
     Exit( inherited HandleCommand( aCommand ) );
 
@@ -258,6 +261,10 @@ begin
 end;
 
 function TPlayer.CallHook( aHook : Byte; const aParams : array of Const ) : Boolean;
+// The picked up item gets its own OnPickup.
+const NoInventoryHooks : TFlags = [ Hook_OnPickup ];
+// These reach the whole inventory, not just the equipment.
+      FullInvHooks     : TFlags = [ Hook_OnTick, Hook_OnPreAction, Hook_OnPostAction ];
 begin
   CallHook := inherited CallHook( aHook, aParams );
   if not ( aHook in NoInventoryHooks ) then
@@ -701,9 +708,20 @@ var iState  : TLuaGameStack;
 begin
   iState.Init( L );
   iPlayer := iState.ToObject( 1 ) as TPlayer;
-  iTrait := iState.ToID( iPlayer.Context.Lua, 2 );
+  iTrait := iState.ToStorageID( 2, 'traits' );
   iPlayer.Traits.Grant( iTrait );
   Result := 0;
+end;
+
+// Auto-target recorded with the command being executed.
+function lua_player_get_aim( L : PLua_State ) : Integer; cdecl;
+var iState  : TLuaGameStack;
+    iPlayer : TPlayer;
+begin
+  iState.Init( L );
+  iPlayer := iState.ToObject( 1 ) as TPlayer;
+  iState.PushCoord( iPlayer.FAim );
+  Result := 1;
 end;
 
 function lua_player_get_trait_hist( L : PLua_State ) : Integer; cdecl;
@@ -716,10 +734,11 @@ begin
   Result := 1;
 end;
 
-const lua_player_lib : array[0..7] of luaL_Reg = (
+const lua_player_lib : array[0..8] of luaL_Reg = (
       ( name : 'add_exp';         func : @lua_player_add_exp),
       ( name : 'remove_kill';     func : @lua_player_remove_kill),
       ( name : 'add_trait';       func : @lua_player_add_trait),
+      ( name : 'get_aim';         func : @lua_player_get_aim),
       ( name : 'get_trait_hist';  func : @lua_player_get_trait_hist),
       ( name : 'resort_stacks';   func : @lua_player_resort_stacks),
       ( name : 'quick_weapon';    func : @lua_player_quick_weapon),

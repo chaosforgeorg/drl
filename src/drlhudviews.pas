@@ -483,7 +483,6 @@ begin
   else
   begin
     FSession.Targeting.OnTarget( FTarget, False );
-    FSession.Player.TargetPos := FTarget;
     FSession.QueueCommand( TCommand.Create( FCommand, FTarget, FItem ) );
   end;
 end;

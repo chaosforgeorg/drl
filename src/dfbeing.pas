@@ -166,7 +166,7 @@ TBeing = class(TThing,IPathQuery)
     FOverlayUntil  : QWord;
   public
     property Inv       : TInventory  read FInv       write FInv;
-    property TargetPos : TCoord2D    read FTargetPos write FTargetPos;
+    property TargetPos : TCoord2D    read FTargetPos;
     property LastPos   : TCoord2D    read FLastPos   write FLastPos;
     property LastMove  : TCoord2D    read FMovePos   write FMovePos;
 
@@ -275,7 +275,8 @@ begin
   FHPDecayMax := aStream.ReadWord();
 
   aStream.Read( FTimes,       SizeOf( FTimes ) );
-  aStream.Read( FLastCommand, SizeOf( FLastCommand ) );
+  // Only the command kind is kept; the rest refers to objects of this session.
+  FLastCommand := TCommand.Create( aStream.ReadByte() );
   aStream.Read( FAccuracy,    SizeOf( FAccuracy ) );
   aStream.Read( FStrength,    SizeOf( FStrength ) );
   aStream.Read( FSpriteMod,   SizeOf( FSpriteMod ) );
@@ -305,7 +306,7 @@ begin
   Stream.WriteWord( FHPDecayMax );
 
   Stream.Write( FTimes,       SizeOf( FTimes ) );
-  Stream.Write( FLastCommand, SizeOf( FLastCommand ) );
+  Stream.WriteByte( FLastCommand.Command );
   Stream.Write( FAccuracy,    SizeOf( FAccuracy ) );
   Stream.Write( FStrength,    SizeOf( FStrength ) );
   Stream.Write( FSpriteMod,   SizeOf( FSpriteMod ) );
@@ -1473,14 +1474,25 @@ begin
 end;
 
 procedure TBeing.Action;
+var iLevel : TLevel;
+    iLua   : TDRLLua;
 begin
+  iLevel := TLevel(Parent);
   FMeleeAttack := False;
-  TLevel(Parent).CallHook( FPosition, Self, CellHook_OnEnter );
+  iLevel.CallHook( FPosition, Self, CellHook_OnEnter );
   if Dead then Exit;
   LastPos := FPosition;
   CallHook(Hook_OnPreAction,[]);
   if Dead then Exit;
-  CallHook(Hook_OnAction,[]);
+  // The prototype OnAction is the AI, which may end the run; the being's
+  // perks act only while the run goes on.
+  if Hook_OnAction in FHooks then
+  begin
+    iLua := TDRLLua( FContext.Lua );
+    iLua.ProtectedRunHook( Self, iLua.HookName( Hook_OnAction ), [] );
+    if Dead then Exit;
+  end;
+  if ( FPerks <> nil ) and iLevel.IsActive then FPerks.CallHook( Hook_OnAction, [] );
   if Dead then Exit;
   CallHook(Hook_OnPostAction,[]);
   while FSpeedCount >= 5000 do Dec( FSpeedCount, 1000 );
@@ -3165,7 +3177,7 @@ var iState : TLuaGameStack;
 begin
   iState.Init(L);
   iBeing := iState.ToObject(1) as TBeing;
-  iNID   := iState.ToId( iBeing.Context.Lua, 2 );
+  iNID   := iState.ToStorageID( 2, 'items' );
   iState.Push( iBeing.Inv.CountAmount( iNID ) );
   Exit( 1 );
 end;
@@ -3178,7 +3190,7 @@ var iState  : TLuaGameStack;
 begin
   iState.Init(L);
   iBeing  := iState.ToObject(1) as TBeing;
-  iNID    := iState.ToId( iBeing.Context.Lua, 2 );
+  iNID    := iState.ToStorageID( 2, 'items' );
   iAmount := iState.ToInteger(3, 1);
   iState.Push( iBeing.Inv.RemoveAmount( iNID, iAmount ) );
   Exit( 1 );

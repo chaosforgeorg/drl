@@ -497,10 +497,11 @@ begin
 end;
 
 procedure TPlayerView.UpdateEquipment( aActive : Boolean );
-const TraitRows = 9;
+const TraitRows = 11;
 var iEntry            : TItemViewEntry;
     iSelected,iY      : Integer;
     iT, iR, iK        : Integer;
+    iWidth            : Integer;
     iTot, iFeet, iTor : Integer;
     iCount            : Integer;
     iRes              : TResistance;
@@ -548,13 +549,19 @@ begin
     VTIG_FreeLabel( 'Traits',      Point(0, iY) );
     VTIG_FreeLabel( 'Resistances', Point(iR,iY) );
 
-    // Traits in ID order, filling the left column first.
+    // Traits in ID order, filling the left column first. Up to two full-width
+    // columns fit; more columns share the space left of the resistances.
+    for iCount := 1 to MAXTRAITS do
+      if FPlayer.Traits[iCount] > 0 then
+        Inc( iT );
+    iWidth := Min( 20, iR div Max( 2, ( iT + TraitRows - 1 ) div TraitRows ) );
+    iT := 0;
     for iCount := 1 to MAXTRAITS do
       if FPlayer.Traits[iCount] > 0 then
       begin
         iName := FSession.Context.Lua.Get(['traits',iCount,'name']);
-        VTIG_FreeLabel( '{d'+Padded(iName,16) + '({!' + IntToStr(FPlayer.Traits[iCount])+ '})}',
-          Point( 20 * ( iT div TraitRows ), iY + 1 + iT mod TraitRows ) );
+        VTIG_FreeLabel( '{d'+Padded(iName,iWidth-4) + '({!' + IntToStr(FPlayer.Traits[iCount])+ '})}',
+          Point( iWidth * ( iT div TraitRows ), iY + 1 + iT mod TraitRows ) );
         Inc( iT );
       end;
 

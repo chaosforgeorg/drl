@@ -111,7 +111,7 @@ begin
     finally
       Free;
     end;
-    Hooks := LoadHooks( aLua, ['perks',aID] );
+    Hooks := LoadHooks( aLua, ['perks',aID], PerkHooks );
   end;
 end;
 
