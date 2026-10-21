@@ -23,8 +23,6 @@ public
   property UIControllerBindings : TControllerBindingCatalog read FUIControllerBindings;
 end;
 
-var Configuration : TDRLConfiguration;
-
 implementation
 
 uses SysUtils, drlkeybindings, drluibindings;

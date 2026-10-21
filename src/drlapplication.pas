@@ -97,22 +97,13 @@ type TDRLConfigurationState = class( TDRLConfiguration )
   private
     FLuaConfig : TDRLConfig;
   public
-    constructor Create;
     destructor Destroy; override;
     procedure ReplaceLuaConfig( aConfig : TDRLConfig );
     property LuaConfig : TDRLConfig read FLuaConfig;
   end;
 
-constructor TDRLConfigurationState.Create;
-begin
-  inherited Create;
-  drlconfiguration.Configuration := Self;
-end;
-
 destructor TDRLConfigurationState.Destroy;
 begin
-  if drlconfiguration.Configuration = Self then
-    drlconfiguration.Configuration := nil;
   FreeAndNil( FLuaConfig );
   inherited Destroy;
 end;

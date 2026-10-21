@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlsettingsview;
 interface
 uses vio, viotypes, vioevent, vconfiguration, vbindings, drlio, dfdata,
-     drlcontrollerbindings, drlbase;
+     drlcontrollerbindings, drlconfiguration, drlbase;
 
 type TSettingsViewState = (
   SETTINGSVIEW_GENERAL,
@@ -61,6 +61,7 @@ protected
     aAction : TBindingAction; aSelected : Boolean );
 protected
   FSession             : TDRLSession; // Borrowed; the view is released before Session.
+  FUserConfig          : TDRLConfiguration; // The Session's user settings, edited here.
   FState               : TSettingsViewState;
   FSize                : TIOPoint;
   FWSize               : TIOPoint;
@@ -89,7 +90,7 @@ end;
 implementation
 
 uses math, sysutils, vutil, vdebug, vtig, vtigio,
-     drlconfiguration, drluibindings;
+     drluibindings;
 
 const CStates : array[ TSettingsViewState ] of record Title, ID : Ansistring; end = (
    ( Title : 'Settings'; ID : 'general' ),
@@ -130,6 +131,7 @@ var i : Integer;
 begin
   inherited Create;
   FSession := aSession;
+  FUserConfig := aSession.UserConfig;
   VTIG_EventClear;
   VTIG_ResetSelect( 'settings' );
   FSize  := Point( 80, 25 );
@@ -151,7 +153,7 @@ begin
 
 
   SetLength( FModules, FSession.Modules.CoreModules.Size + 1 );
-  FModCurrent := Configuration.GetString('default_module');
+  FModCurrent := FUserConfig.GetString('default_module');
   FModules[0] := 'Ask on launch';
   FModValue := -1;
   for i := 1 to FSession.Modules.CoreModules.Size do
@@ -251,9 +253,9 @@ begin
   iGroup := nil;
 
   if CStates[ FState ].ID <> '' then
-    iGroup := Configuration.Group[ CStates[ FState ].ID ];
+    iGroup := FUserConfig.Group[ CStates[ FState ].ID ];
 
-  iMode := Configuration.CastInteger( 'display_mode' );
+  iMode := FUserConfig.CastInteger( 'display_mode' );
 
   VTIG_BeginWindow( CStates[ FState ].Title, 'settings', FSize );
     VTIG_BeginGroup( 18, True );
@@ -310,12 +312,12 @@ begin
             if iAction in CONTROLLER_BINDING_MENU_ACTIONS then
             begin
               ControllerCapture(
-                Configuration.ControllerBindings,
+                FUserConfig.ControllerBindings,
                 Ord( iAction ),
                 iSelected = i
               );
               if iSelected = i then
-                iHover := Configuration.CastInteger(
+                iHover := FUserConfig.CastInteger(
                   ControllerBindingInfo[ iAction ].ID
                 );
               Inc( i );
@@ -327,7 +329,7 @@ begin
             if iEntry.Name <> '' then
             begin
               ControllerCapture(
-                Configuration.UIControllerBindings,
+                FUserConfig.UIControllerBindings,
                 UIPadBindingInfo[ i ].Action,
                 iSelected = i
               );
@@ -338,9 +340,9 @@ begin
         else if FState in SETTINGSVIEW_KEYS then
         begin
           if FState = SETTINGSVIEW_UIKEYBOARD then
-            iBindings := Configuration.UIKeyBindings
+            iBindings := FUserConfig.UIKeyBindings
           else
-            iBindings := Configuration.KeyBindings;
+            iBindings := FUserConfig.KeyBindings;
           for iEntry in iGroup.Entries do
             if iEntry.Name <> '' then
             begin
@@ -359,14 +361,14 @@ begin
               begin
                 if iMode.Value = 0 then
                 begin
-                  Configuration.AccessInteger( 'screen_width' )^  := 0;
-                  Configuration.AccessInteger( 'screen_height' )^ := 0;
+                  FUserConfig.AccessInteger( 'screen_width' )^  := 0;
+                  FUserConfig.AccessInteger( 'screen_height' )^ := 0;
                 end
                 else
                 with IO.Driver.DisplayModes[ iMode.Value - 1 ] do
                 begin
-                  Configuration.AccessInteger( 'screen_width' )^  := Width;
-                  Configuration.AccessInteger( 'screen_height' )^ := Height;
+                  FUserConfig.AccessInteger( 'screen_width' )^  := Width;
+                  FUserConfig.AccessInteger( 'screen_height' )^ := Height;
                 end;
                 FSession.Reconfigure;
               end;
@@ -578,7 +580,7 @@ end;
 
 destructor TSettingsView.Destroy;
 begin
-  Configuration.Write( FSession.Paths.SettingsPath );
+  FUserConfig.Write( FSession.Paths.SettingsPath );
   inherited Destroy;
 end;
 
@@ -586,9 +588,9 @@ function TSettingsView.CaptureControllerBindings : TControllerBindingCatalog;
 begin
   case FState of
     SETTINGSVIEW_CONTROLLER:
-      Exit( Configuration.ControllerBindings );
+      Exit( FUserConfig.ControllerBindings );
     SETTINGSVIEW_UICONTROLLER:
-      Exit( Configuration.UIControllerBindings );
+      Exit( FUserConfig.UIControllerBindings );
   end;
   Exit( nil );
 end;
@@ -693,18 +695,18 @@ var iEntry    : TConfigurationEntry;
 begin
   if aGroup = nil then
   begin
-    for aGroup in Configuration.Groups do
+    for aGroup in FUserConfig.Groups do
       Reset( aGroup );
     Exit;
   end;
 
   for iEntry in aGroup.Entries do
   begin
-    iBindings := Configuration.KeyBindings;
+    iBindings := FUserConfig.KeyBindings;
     iAction := iBindings.ActionForID( iEntry.ID );
     if iAction = BINDING_NONE then
     begin
-      iBindings := Configuration.UIKeyBindings;
+      iBindings := FUserConfig.UIKeyBindings;
       iAction := iBindings.ActionForID( iEntry.ID );
     end;
     if iAction = BINDING_NONE then
