@@ -142,10 +142,10 @@ type TDRLIO = class( TIORL, IDRLPresentation )
   procedure Explosion( aDelay : Integer; aWhere : TCoord2D; aData : TExplosionData ); reintroduce; virtual;
   procedure PulseBlood( aValue : Single ); virtual;
   function ShowsDecals : Boolean; virtual;
-  // Reads the core module's HARDSPRITE_* and HARDEMITTER_BLOOD values after a data load.
-  procedure LoadHardSprites( aLua : TLua );
-  function IDRLPresentation.HardSprites = GetHardSprites;
-  function GetHardSprites : THardSprites;
+  // Reads ui.engine_sprites after a data load.
+  procedure LoadEngineSprites( aLua : TLua );
+  function IDRLPresentation.EngineSprites = GetEngineSprites;
+  function GetEngineSprites : TEngineSprites;
   function EquipSound : AnsiString;
   // Menu colour of an item, light gray when inventory colouring is off.
   function ItemMenuColor( aItem : TItem ) : Byte;
@@ -210,7 +210,7 @@ protected
   FUserConfig  : TDRLConfiguration; // Borrowed from the runtime, which outlives IO.
   FSettings    : TIOSettings;
   FOptions     : TIOOptions;
-  FHardSprites : THardSprites;
+  FEngine      : TEngineSprites;
   FEffect      : TStatusEffect;
   FTime        : QWord;
   FLoading     : TLoadingView;
@@ -247,7 +247,7 @@ public
   property Audio        : TDRLAudio       read FAudio;
   property Settings     : TIOSettings     read FSettings;
   property Options      : TIOOptions      read FOptions;
-  property HardSprites  : THardSprites    read FHardSprites;
+  property EngineSprites : TEngineSprites read FEngine;
   // Screen tint from the player's perks; the Session sets it before each action.
   property StatusEffect : TStatusEffect   read FEffect     write FEffect;
   property MTarget      : TCoord2D        read FMTarget    write FMTarget;
@@ -463,30 +463,32 @@ begin
   Exit( False );
 end;
 
-procedure TDRLIO.LoadHardSprites( aLua : TLua );
-var i : Integer;
+procedure TDRLIO.LoadEngineSprites( aLua : TLua );
+var iEmitter : AnsiString;
+    i        : Integer;
 begin
-  FHardSprites := Default( THardSprites );
-  FHardSprites.Highlight   := aLua.Get('HARDSPRITE_HIGHLIGHT');
-  FHardSprites.Expl        := aLua.Get('HARDSPRITE_EXPL');
-  FHardSprites.Select      := aLua.Get('HARDSPRITE_SELECT');
-  FHardSprites.Mark        := aLua.Get('HARDSPRITE_MARK');
-  FHardSprites.Grid        := aLua.Get('HARDSPRITE_GRID');
-  FHardSprites.Shield      := aLua.Get('HARDSPRITE_SHIELD');
-  FHardSprites.ShieldCount := aLua.Get('HARDSPRITE_SHIELD_COUNT');
-  if aLua.RawDefined('HARDEMITTER_BLOOD') then
-    FHardSprites.BloodEmitter := aLua.Get('HARDEMITTER_BLOOD', 0);
-  if aLua.RawDefined('HARDSPRITE_DECAL_BLOOD_1') then
-    for i := 0 to 3 do
-      FHardSprites.DecalBlood[i] := aLua.Get('HARDSPRITE_DECAL_BLOOD_'+IntToStr(i+1), 0);
-  if aLua.RawDefined('HARDSPRITE_DECAL_WALL_BLOOD_1') then
-    for i := 0 to 3 do
-      FHardSprites.DecalWallBlood[i] := aLua.Get('HARDSPRITE_DECAL_WALL_BLOOD_'+IntToStr(i+1), 0);
+  FEngine := Default( TEngineSprites );
+  FEngine.Highlight    := aLua.Get( ['ui','engine_sprites','highlight'], 0 );
+  FEngine.Select       := aLua.Get( ['ui','engine_sprites','select'], 0 );
+  FEngine.Mark         := aLua.Get( ['ui','engine_sprites','mark'], 0 );
+  FEngine.Grid         := aLua.Get( ['ui','engine_sprites','grid'], 0 );
+  FEngine.Explosion    := aLua.Get( ['ui','engine_sprites','explosion'], 0 );
+  FEngine.Shield       := aLua.Get( ['ui','engine_sprites','shield','sprite'], 0 );
+  FEngine.ShieldFrames := aLua.Get( ['ui','engine_sprites','shield','frames'], 1 );
+  for i := 0 to High( TDecalSprites ) do
+  begin
+    FEngine.BloodDecals[i]     := aLua.Get( ['ui','engine_sprites','blood_decals', i + 1], 0 );
+    FEngine.WallBloodDecals[i] := aLua.Get( ['ui','engine_sprites','wall_blood_decals', i + 1], 0 );
+  end;
+  // The emitter is named by ID; it is registered by the time data has loaded.
+  iEmitter := aLua.Get( ['ui','engine_sprites','blood_emitter'], '' );
+  if iEmitter <> '' then
+    FEngine.BloodEmitter := aLua.Get( ['emitters', iEmitter, 'nid'], 0 );
 end;
 
-function TDRLIO.GetHardSprites : THardSprites;
+function TDRLIO.GetEngineSprites : TEngineSprites;
 begin
-  Exit( FHardSprites );
+  Exit( FEngine );
 end;
 
 function TDRLIO.EquipSound : AnsiString;

@@ -137,6 +137,8 @@ TLevel = class(TLuaMapNode)
   private
     function GetCellRotationMask( aCell : TCoord2D ) : Byte;
     function GetCellDoorRotation( aCell : TCoord2D ) : Byte;
+    // Whether a landed particle's decal is one of the engine's blood decals.
+    function IsBloodDecal( aSprite : DWord ) : Boolean;
     function GetBloodDecalSprite( aCoord, aOrigin : TCoord2D; aFloorSprite : DWord = 0 ) : DWord;
     procedure AddDecal( const aPosition : TVec3f; aDecalSprite : DWord; const aOrigin : TVec3f );
     function CellToID( const aCell : Byte ) : AnsiString; override;
@@ -454,6 +456,15 @@ begin
   if aEngine <> nil then aEngine.DecalCallback := @AddDecal;
 end;
 
+function TLevel.IsBloodDecal( aSprite : DWord ) : Boolean;
+var iDecal : DWord;
+begin
+  if aSprite = 0 then Exit( False );
+  for iDecal in FPresentation.EngineSprites.BloodDecals do
+    if iDecal = aSprite then Exit( True );
+  Exit( False );
+end;
+
 procedure TLevel.AddDecal( const aPosition : TVec3f; aDecalSprite : DWord; const aOrigin : TVec3f );
 var iPos    : TVec2i;
     iCoord  : TCoord2D;
@@ -462,7 +473,7 @@ begin
   iPos.X := Round( aPosition.X ) + 16;
   iPos.Y := Round( aPosition.Y ) + 16;
   iCoord := NewCoord2D( ( iPos.X + 16 ) div 32, ( iPos.Y + 16 ) div 32 );
-  if isDecalBloodId( FPresentation.HardSprites.DecalBlood, aDecalSprite ) then
+  if IsBloodDecal( aDecalSprite ) then
   begin
     iOrigin := NewCoord2D( ( Round( aOrigin.X ) + 32 ) div 32,
       ( Round( aOrigin.Y ) + 32 ) div 32 );
@@ -1270,7 +1281,7 @@ begin
       Blood( iCoord );
     end;
   iAmount := Clamp( aAmount + FPresentation.VisualRNG.RLongInt( aAmount ), 1, 12 );
-  if aSpray and isVisible( aPosition ) and ( FPresentation.HardSprites.BloodEmitter <> 0 ) then
+  if aSpray and isVisible( aPosition ) and ( FPresentation.EngineSprites.BloodEmitter <> 0 ) then
   begin
     iParticleAmount := iAmount * 2;
     iDistanceScale  := 0.66;
@@ -1281,7 +1292,7 @@ begin
       iDistanceScale := 1.0;
       iSpreadScale   := 2.0;
     end;
-    FPresentation.addParticleBurstAnimation( aDelay, FPresentation.HardSprites.BloodEmitter, aPosition, aFrom,
+    FPresentation.addParticleBurstAnimation( aDelay, FPresentation.EngineSprites.BloodEmitter, aPosition, aFrom,
       iParticleAmount, iDistanceScale, iSpreadScale );
   end
   else
@@ -1302,10 +1313,10 @@ begin
     if not isProperCoord( aCoord ) then Exit( 0 );
     iCell := FData.Cells[ CellBottom[ aCoord ] ];
     if ( CF_BLOCKMOVE in iCell.Flags ) then Exit( 0 );
-    Exit( FPresentation.HardSprites.DecalWallBlood[1 + FPresentation.VisualRNG.RLongInt( 3 )] );
+    Exit( FPresentation.EngineSprites.WallBloodDecals[1 + FPresentation.VisualRNG.RLongInt( 3 )] );
   end;
   if aFloorSprite <> 0 then Exit( aFloorSprite );
-  Exit( FPresentation.HardSprites.DecalBlood[1 + FPresentation.VisualRNG.RLongInt( 3 )] );
+  Exit( FPresentation.EngineSprites.BloodDecals[1 + FPresentation.VisualRNG.RLongInt( 3 )] );
 end;
 
 procedure TLevel.BloodDecal( aPosition : TCoord2D; aFrom : TDirection; aAmount : LongInt; aRange : Single );
@@ -1337,7 +1348,7 @@ var iCount    : Integer;
   end;
 
 begin
-  if ( not FPresentation.ShowsDecals ) or ( FPresentation.HardSprites.DecalBlood[1] = 0 ) then Exit;
+  if ( not FPresentation.ShowsDecals ) or ( FPresentation.EngineSprites.BloodDecals[1] = 0 ) then Exit;
   iRange := Clampf( aAmount / 3.0, 0.75, 2.5 ) * aRange;
   iOrigin := aPosition;
   // Direct wall stains approach the exposed face from the cell below.

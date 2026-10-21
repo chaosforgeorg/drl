@@ -320,7 +320,7 @@ begin
     FLua.LoadFile(Paths.WritePath + 'god.lua');
   FSession.InitializeLevel;
 
-  IO.LoadHardSprites( FLua );
+  IO.LoadEngineSprites( FLua );
 
   FSession.SetSessionHooks( FSessionHooks );
   IO.LoadStop;

@@ -139,20 +139,20 @@ const DefaultExplosionKnockback = 8;
 
 type TDecalSprites = array[0..3] of DWord;
 
-// Sprite and emitter IDs the core module defines (HARDSPRITE_* and
-// HARDEMITTER_BLOOD) for engine-drawn markers and blood; zero where it defines
-// none. Read by IO once per data load.
-type THardSprites = record
-  Highlight      : DWord;
-  Expl           : DWord;
-  Select         : DWord;
-  Mark           : DWord;
-  Grid           : DWord;
-  Shield         : DWord;
-  ShieldCount    : DWord;
-  DecalBlood     : TDecalSprites;
-  DecalWallBlood : TDecalSprites;
-  BloodEmitter   : DWord;
+// What the engine draws by itself (target and selection markers, grid,
+// explosion mark, shield, blood), as the core module lists it in
+// ui.engine_sprites; zero where it lists nothing. IO reads it once per data load.
+type TEngineSprites = record
+  Highlight       : DWord;
+  Select          : DWord;
+  Mark            : DWord;
+  Grid            : DWord;
+  Explosion       : DWord;
+  Shield          : DWord;
+  ShieldFrames    : DWord;
+  BloodDecals     : TDecalSprites;
+  WallBloodDecals : TDecalSprites;
+  BloodEmitter    : DWord;
 end;
 
 const
@@ -209,7 +209,7 @@ type IDRLPresentation = interface( IRLPresentation )
   procedure PulseBlood( aValue : Single );
   // Whether the level's decals are drawn; placing them draws visual randomness.
   function ShowsDecals : Boolean;
-  function HardSprites : THardSprites;
+  function EngineSprites : TEngineSprites;
   // Sound ID an item plays when equipped: 'pickup' or 'reload'.
   function EquipSound : AnsiString;
   procedure Explosion( aDelay : Integer; aWhere : TCoord2D; aData : TExplosionData );
@@ -232,7 +232,6 @@ end;
 
 function NewSprite( ID : DWord ) : TSprite;
 function NewSprite( ID : DWord; Color : TColor ) : TSprite;
-function isDecalBloodId( const aDecals : TDecalSprites; aID : DWord ) : Boolean;
 
 const
   ActionCostPickUp = 1000;
@@ -642,15 +641,6 @@ begin
     5 : Exit( INPUT_WAIT );
     else Exit( INPUT_WAIT );
   end;
-end;
-
-function isDecalBloodId( const aDecals : TDecalSprites; aID : DWord ) : Boolean;
-begin
-  Result := ( aID <> 0 ) and
-    ( ( aID = aDecals[0] ) or
-      ( aID = aDecals[1] ) or
-      ( aID = aDecals[2] ) or
-      ( aID = aDecals[3] ) );
 end;
 
 function NewSprite ( ID : DWord ) : TSprite;

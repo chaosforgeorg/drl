@@ -632,7 +632,7 @@ begin
   if ( aEmitterID = 0 ) or ( aCount = 0 ) then Exit;
   FAnimations.AddAnimation( TGFXParticleBurstAnimation.Create(
     Level.Particles, aDelay, aEmitterID, aPosition, aDirection, aCount, aDistanceScale, aSpreadScale,
-    FHardSprites.DecalBlood ) );
+    FEngine.BloodDecals ) );
 end;
 
 procedure TDRLGFXIO.addSoundAnimation(aDelay: DWord; aPosition: TCoord2D; aSoundID: DWord);
@@ -663,7 +663,7 @@ end;
 
 procedure TDRLGFXIO.ExplosionMark( aCoord : TCoord2D; aColor : Byte; aDuration : DWord; aDelay : DWord );
 begin
-  FAnimations.AddAnimation( TGFXExplodeMarkAnimation.Create( FSpriteMap, aDuration, aDelay, aCoord, aColor, FHardSprites.Expl ) )
+  FAnimations.AddAnimation( TGFXExplodeMarkAnimation.Create( FSpriteMap, aDuration, aDelay, aCoord, aColor, FEngine.Explosion ) )
 end;
 
 procedure TDRLGFXIO.SetTarget( aTarget : TCoord2D; aColor : Byte; aRange : Byte );
@@ -699,7 +699,7 @@ var iLevel  : TLevel;
     if iFinalize then
     begin
       if aMain
-        then begin iSprite.Color := NewColor(0,160,0); iSprite.Frames := FHardSprites.ShieldCount; end
+        then begin iSprite.Color := NewColor(0,160,0); iSprite.Frames := FEngine.ShieldFrames; end
         else begin iSprite.Color := NewColor(64,64,64);iSprite.Frames := 1; end;
 
       iLevel.Markers.Add( iBlock, iSprite, 0 );
@@ -721,7 +721,7 @@ var iLevel  : TLevel;
       if not iLevel.isShotPassable( iCurrent ) then
       begin
         iSprite.Color  := NewColor(160,0,0);
-        iSprite.Frames := FHardSprites.ShieldCount;
+        iSprite.Frames := FEngine.ShieldFrames;
         iLevel.Markers.Add( iCurrent, iSprite, 0 );
         Exit;
       end;
@@ -738,8 +738,8 @@ begin
   iLevel.Markers.Wipe(0);
   if ( aTarget = Player.Position ) or ( not iLevel.isProperCoord( aTarget ) ) then Exit;
   FillChar( iSprite, SizeOf( iSprite ), 0 );
-  iSprite.SpriteID[0] := FHardSprites.Shield;
-  iSprite.Frames      := FHardSprites.ShieldCount;
+  iSprite.SpriteID[0] := FEngine.Shield;
+  iSprite.Frames      := FEngine.ShieldFrames;
   iSprite.FrameTime   := 125;
 
   Include( iSprite.Flags, SF_COSPLAY );
