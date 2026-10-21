@@ -462,7 +462,7 @@ begin
   iPos.X := Round( aPosition.X ) + 16;
   iPos.Y := Round( aPosition.Y ) + 16;
   iCoord := NewCoord2D( ( iPos.X + 16 ) div 32, ( iPos.Y + 16 ) div 32 );
-  if isDecalBloodId( aDecalSprite ) then
+  if isDecalBloodId( FPresentation.HardSprites.DecalBlood, aDecalSprite ) then
   begin
     iOrigin := NewCoord2D( ( Round( aOrigin.X ) + 32 ) div 32,
       ( Round( aOrigin.Y ) + 32 ) div 32 );
@@ -1270,7 +1270,7 @@ begin
       Blood( iCoord );
     end;
   iAmount := Clamp( aAmount + FPresentation.VisualRNG.RLongInt( aAmount ), 1, 12 );
-  if aSpray and isVisible( aPosition ) and ( HARDEMITTER_BLOOD <> 0 ) then
+  if aSpray and isVisible( aPosition ) and ( FPresentation.HardSprites.BloodEmitter <> 0 ) then
   begin
     iParticleAmount := iAmount * 2;
     iDistanceScale  := 0.66;
@@ -1281,7 +1281,7 @@ begin
       iDistanceScale := 1.0;
       iSpreadScale   := 2.0;
     end;
-    FPresentation.addParticleBurstAnimation( aDelay, HARDEMITTER_BLOOD, aPosition, aFrom,
+    FPresentation.addParticleBurstAnimation( aDelay, FPresentation.HardSprites.BloodEmitter, aPosition, aFrom,
       iParticleAmount, iDistanceScale, iSpreadScale );
   end
   else
@@ -1302,10 +1302,10 @@ begin
     if not isProperCoord( aCoord ) then Exit( 0 );
     iCell := FData.Cells[ CellBottom[ aCoord ] ];
     if ( CF_BLOCKMOVE in iCell.Flags ) then Exit( 0 );
-    Exit( HARDSPRITE_DECAL_WALL_BLOOD[1 + FPresentation.VisualRNG.RLongInt( 3 )] );
+    Exit( FPresentation.HardSprites.DecalWallBlood[1 + FPresentation.VisualRNG.RLongInt( 3 )] );
   end;
   if aFloorSprite <> 0 then Exit( aFloorSprite );
-  Exit( HARDSPRITE_DECAL_BLOOD[1 + FPresentation.VisualRNG.RLongInt( 3 )] );
+  Exit( FPresentation.HardSprites.DecalBlood[1 + FPresentation.VisualRNG.RLongInt( 3 )] );
 end;
 
 procedure TLevel.BloodDecal( aPosition : TCoord2D; aFrom : TDirection; aAmount : LongInt; aRange : Single );
@@ -1337,7 +1337,7 @@ var iCount    : Integer;
   end;
 
 begin
-  if ( not FPresentation.ShowsDecals ) or ( HARDSPRITE_DECAL_BLOOD[1] = 0 ) then Exit;
+  if ( not FPresentation.ShowsDecals ) or ( FPresentation.HardSprites.DecalBlood[1] = 0 ) then Exit;
   iRange := Clampf( aAmount / 3.0, 0.75, 2.5 ) * aRange;
   iOrigin := aPosition;
   // Direct wall stains approach the exposed face from the cell below.

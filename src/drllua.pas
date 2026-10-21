@@ -13,6 +13,18 @@ uses sysutils, classes,
 
 type
 
+// What ReadWad loaded: the core module's versions and demo flag, and whether
+// any other scripted module was loaded.
+TWadInfo = record
+  Engine         : AnsiString;
+  EngineSave     : AnsiString;
+  EngineExpected : AnsiString;
+  Module         : AnsiString;
+  ModuleSave     : AnsiString;
+  Demo           : Boolean;
+  Modded         : Boolean;
+end;
+
 { TDRLLua }
 
 TDRLLua = class(TLua)
@@ -27,13 +39,18 @@ TDRLLua = class(TLua)
        procedure BindNodeContext( aContext : TNodeContext );
      private
        procedure LoadFiles( const aDirectory : AnsiString; aLoader : TVDFLoader; aWildcard : AnsiString = '*' );
+       function GetCoreModuleID : AnsiString;
      private
        FOpenData    : TVDataFileArray;
        FModules     : TDRLModules;
        FDataPath    : AnsiString;
        FNodeContext : TNodeContext; // Borrowed from the active Session for Lua factories.
+       FInfo        : TWadInfo;
      public
        property NodeContext : TNodeContext read FNodeContext;
+       property Info        : TWadInfo     read FInfo;
+       // The active core module; its table holds the module's game hooks.
+       property CoreModuleID : AnsiString   read GetCoreModuleID;
      end;
 
 // published functions
@@ -88,14 +105,6 @@ end;
 // ************************************************************************ //
 // ************************************************************************ //
 
-function lua_core_set_vision_base_value(L: Plua_State): Integer; cdecl;
-var State : TLuaGameStack;
-begin
-  State.Init(L);
-  VisionBaseValue := State.ToInteger(1,8);
-  Result := 0;
-end;
-
 procedure TDRLLua.ReadWad( aIO : TDRLIO; aHelp : THelp; aModErrors : TStringGArray );
 var iProgBase    : DWord;
     iModule      : TDRLModule;
@@ -106,18 +115,18 @@ var iProgBase    : DWord;
   end;
   procedure SetupBase;
   begin
-    VersionEngine         := Get( 'VERSION_ENGINE' );
-    VersionEngineSave     := Get( 'VERSION_ENGINE_SAVE' );
-    VersionEngineExpected := Get( 'VERSION_ENGINE_EXPECTED' );
-    VersionModule         := Get( 'VERSION_MODULE' );
-    VersionModuleSave     := Get( 'VERSION_MODULE_SAVE' );
-    DemoVersion           := False;
+    FInfo.Engine         := Get( 'VERSION_ENGINE' );
+    FInfo.EngineSave     := Get( 'VERSION_ENGINE_SAVE' );
+    FInfo.EngineExpected := Get( 'VERSION_ENGINE_EXPECTED' );
+    FInfo.Module         := Get( 'VERSION_MODULE' );
+    FInfo.ModuleSave     := Get( 'VERSION_MODULE_SAVE' );
+    FInfo.Demo           := False;
     if RawDefined( 'DEMO' ) then
-      DemoVersion := Get( 'DEMO' );
+      FInfo.Demo := Get( 'DEMO' );
 
-    Log( LOGINFO, 'ENGINE VERSION: '+VersionEngine );
-    Log( LOGINFO, 'EXPECTED ENGINE VERSION: '+VersionEngineExpected );
-    Log( LOGINFO, 'BASE MODULE VERSION: '+VersionModule );
+    Log( LOGINFO, 'ENGINE VERSION: '+FInfo.Engine );
+    Log( LOGINFO, 'EXPECTED ENGINE VERSION: '+FInfo.EngineExpected );
+    Log( LOGINFO, 'BASE MODULE VERSION: '+FInfo.Module );
   end;
   procedure RegisterActiveModules;
   var iIndex : Integer;
@@ -142,12 +151,7 @@ var iProgBase    : DWord;
   end;
 
 begin
-  VersionEngine         := '';
-  VersionEngineSave     := '';
-  VersionEngineExpected := '';
-  VersionModule         := '';
-  VersionModuleSave     := '';
-  DemoVersion           := False;
+  FInfo := Default( TWadInfo );
   aIO.LoadStart;
   iProgBase := aIO.LoadCurrent;
   aIO.LoadProgress(iProgBase);
@@ -167,8 +171,8 @@ begin
         RegisterModule( iModule.ID, iData );
         if CheckID( iModule.ID ) then
         begin
-          if DemoVersion then Halt(0);
-          ModdedGame := True;
+          if FInfo.Demo then Halt(0);
+          FInfo.Modded := True;
         end;
         SetValue( 'BASE_MODULE_LOADING', iModule.IsBaseLoading );
         try
@@ -192,8 +196,8 @@ begin
         begin
           if CheckID( iModule.ID ) then
           begin
-            if DemoVersion then Continue;
-            ModdedGame := True;
+            if FInfo.Demo then Continue;
+            FInfo.Modded := True;
           end;
           RegisterModule( iModule.ID, iModule.Path );
           SetValue( 'BASE_MODULE_LOADING', iModule.IsBaseLoading );
@@ -211,7 +215,7 @@ begin
       except
         on E : Exception do
         begin
-          if ModdedGame then
+          if FInfo.Modded then
           begin
             aModErrors.Push('Error : Mod "'+iModule.ID+'" failed to load!');
             aModErrors.Push('Path  : '+iModule.Path);
@@ -233,7 +237,7 @@ begin
   aIO.Audio.Load;
   aIO.LoadProgress( 100 );
 
-  if ModdedGame then Log( LOGINFO, 'Game is modded.');
+  if FInfo.Modded then Log( LOGINFO, 'Game is modded.');
 end;
 
 procedure TDRLLua.LoadFiles( const aDirectory : AnsiString; aLoader : TVDFLoader; aWildcard : AnsiString = '*' );
@@ -355,13 +359,16 @@ begin
   Result := 0;
 end;
 
-const lua_core_lib : array[0..3] of luaL_Reg = (
-    ( name : 'add_to_cell_set';       func : @lua_core_add_to_cell_set),
-    ( name : 'set_vision_base_value'; func : @lua_core_set_vision_base_value),
-    ( name : 'callback';              func : @lua_core_callback),
-
-    ( name : nil;          func : nil; )
+const lua_core_lib : array[0..2] of luaL_Reg = (
+    ( name : 'add_to_cell_set'; func : @lua_core_add_to_cell_set),
+    ( name : 'callback';        func : @lua_core_callback),
+    ( name : nil;               func : nil; )
 );
+
+function TDRLLua.GetCoreModuleID : AnsiString;
+begin
+  Exit( FModules.CoreModuleID );
+end;
 
 procedure TDRLLua.BindNodeContext( aContext : TNodeContext );
 begin

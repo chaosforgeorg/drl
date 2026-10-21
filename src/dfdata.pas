@@ -11,16 +11,6 @@ uses classes, sysutils, idea,
      vlua, vgenerics, vcolor, vutil, vrltools, vtigstyle, vluatable, vioevent, vvector, vrandom,
      drlkeybindings;
 
-const CoreModuleID          : AnsiString = '';
-      VersionEngine         : Ansistring = '';
-      VersionEngineSave     : Ansistring = '';
-      VersionEngineExpected : Ansistring = '';
-      VersionModule         : Ansistring = '';
-      VersionModuleSave     : Ansistring = '';
-      SaveVersionEngine     : Ansistring = '';
-      SaveVersionModule     : Ansistring = '';
-      SaveModString         : Ansistring = '';
-
 const PlayerSafeZone = 6;
 
 type
@@ -97,25 +87,13 @@ type THOFRank = record
 end;
 
 const
-  DEBUG           : Boolean = False;
-  CRASHMODE       : Boolean = False;
-  EXCEPTEMMITED   : Boolean = False;
-  DemoVersion     : Boolean = False;
-  ForceShop       : Boolean = False;
   GraphicsVersion : Boolean = True;
   ForceNoAudio    : Boolean = False;
   ForceConsole    : Boolean = False;
   ForceGraphics   : Boolean = False;
   ForceWindowed   : Boolean = False;
   ForcePlayerName : AnsiString = '';
-  ModdedGame      : Boolean = False;
-  ForceRestart    : Ansistring = '';
-  VisionBaseValue : Byte = 8;
-
-  NoPlayerRecord : Boolean = False;
-  NoScoreRecord  : Boolean = False;
-
-  GodMode      : Boolean = False;
+  GodMode         : Boolean = False;
 
 const
   AnimationSpeedMove   = 135;
@@ -159,17 +137,23 @@ const MaxPlayerName = 20;
 // Knockback of explosions whose definition leaves it out.
 const DefaultExplosionKnockback = 8;
 
-var
-  HARDSPRITE_HIGHLIGHT        : DWord = 0;
-  HARDSPRITE_EXPL             : DWord = 0;
-  HARDSPRITE_SELECT           : DWord = 0;
-  HARDSPRITE_MARK             : DWord = 0;
-  HARDSPRITE_GRID             : DWord = 0;
-  HARDSPRITE_SHIELD           : DWord = 0;
-  HARDSPRITE_SHIELD_COUNT     : DWord = 0;
-  HARDSPRITE_DECAL_BLOOD      : array[0..3] of DWord = ( 0,0,0,0 );
-  HARDSPRITE_DECAL_WALL_BLOOD : array[0..3] of DWord = ( 0,0,0,0 );
-  HARDEMITTER_BLOOD           : DWord = 0;
+type TDecalSprites = array[0..3] of DWord;
+
+// Sprite and emitter IDs the core module defines (HARDSPRITE_* and
+// HARDEMITTER_BLOOD) for engine-drawn markers and blood; zero where it defines
+// none. Read by IO once per data load.
+type THardSprites = record
+  Highlight      : DWord;
+  Expl           : DWord;
+  Select         : DWord;
+  Mark           : DWord;
+  Grid           : DWord;
+  Shield         : DWord;
+  ShieldCount    : DWord;
+  DecalBlood     : TDecalSprites;
+  DecalWallBlood : TDecalSprites;
+  BloodEmitter   : DWord;
+end;
 
 const
 {$include ../bin/data/core/commands.lua}
@@ -225,6 +209,7 @@ type IDRLPresentation = interface( IRLPresentation )
   procedure PulseBlood( aValue : Single );
   // Whether the level's decals are drawn; placing them draws visual randomness.
   function ShowsDecals : Boolean;
+  function HardSprites : THardSprites;
   // Sound ID an item plays when equipped: 'pickup' or 'reload'.
   function EquipSound : AnsiString;
   procedure Explosion( aDelay : Integer; aWhere : TCoord2D; aData : TExplosionData );
@@ -247,7 +232,7 @@ end;
 
 function NewSprite( ID : DWord ) : TSprite;
 function NewSprite( ID : DWord; Color : TColor ) : TSprite;
-function isDecalBloodId( aID : DWord ) : Boolean;
+function isDecalBloodId( const aDecals : TDecalSprites; aID : DWord ) : Boolean;
 
 const
   ActionCostPickUp = 1000;
@@ -258,10 +243,6 @@ const
   ActionCostFire   = 1000;
 
   ActSoundChance    = 30;
-
-const
-
-  StatusEffect  : TStatusEffect = StatusNormal;
 
 const PACK_RELOAD = 100;
 
@@ -663,13 +644,13 @@ begin
   end;
 end;
 
-function isDecalBloodId( aID : DWord ) : Boolean;
+function isDecalBloodId( const aDecals : TDecalSprites; aID : DWord ) : Boolean;
 begin
   Result := ( aID <> 0 ) and
-    ( ( aID = HARDSPRITE_DECAL_BLOOD[0] ) or
-      ( aID = HARDSPRITE_DECAL_BLOOD[1] ) or
-      ( aID = HARDSPRITE_DECAL_BLOOD[2] ) or
-      ( aID = HARDSPRITE_DECAL_BLOOD[3] ) );
+    ( ( aID = aDecals[0] ) or
+      ( aID = aDecals[1] ) or
+      ( aID = aDecals[2] ) or
+      ( aID = aDecals[3] ) );
 end;
 
 function NewSprite ( ID : DWord ) : TSprite;

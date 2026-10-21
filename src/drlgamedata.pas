@@ -14,6 +14,8 @@ type TModuleRules = record
   RelicSlot            : Boolean;
   NewFloorLayout       : Boolean;
   ResistCap            : Integer;
+  // Vision radius every being adds its own vision to.
+  VisionBase           : Integer;
 end;
 
 type TGameData = class
@@ -49,6 +51,7 @@ begin
   FPerks    := TPerkDefinitions.Create;
   FEmitters := TEmitterData.Create;
   FRules.ResistCap := 95;
+  FRules.VisionBase := 8;
 end;
 
 procedure TGameData.LoadRules( aLua : TLua );
@@ -60,6 +63,7 @@ begin
   FRules.RelicSlot            := aLua.Get( ['core','options','relic_slot'], False );
   FRules.NewFloorLayout       := aLua.Get( ['core','options','new_floor_layout'], False );
   FRules.ResistCap            := aLua.Get( ['core','options','resist_cap'], 95 );
+  FRules.VisionBase           := aLua.Get( ['core','options','vision_base'], 8 );
 end;
 
 destructor TGameData.Destroy;

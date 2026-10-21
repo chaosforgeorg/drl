@@ -38,6 +38,14 @@ end;
 
 type TDRLSessionResult = ( DSR_Quit, DSR_Played, DSR_ReloadData );
 
+// Versions read from a save that stopped loading at a version check; empty
+// otherwise. The main menu shows them to explain a refused save.
+type TSaveVersions = record
+  Engine    : AnsiString;
+  Module    : AnsiString;
+  ModString : AnsiString;
+end;
+
 // TDRLSession
 //
 // Architectural boundary: owns one playthrough, including player and level
@@ -53,6 +61,9 @@ type TDRLSession = class(TVObject)
        // Name every new character takes: --name, else the always_name
        // setting; empty when the player names the character.
        function FixedPlayerName : AnsiString;
+       // Ends the Session at the main menu and reloads the data with aModuleID
+       // as the core module.
+       procedure RequestRestart( const aModuleID : AnsiString );
        procedure EnterLevel( aLevel : TLevel );
        procedure ResetLevel;
        procedure Reset;
@@ -147,6 +158,14 @@ type TDRLSession = class(TVObject)
        // Set by the hard quit command: the process ends instead of returning
        // to the main menu.
        FHardQuit        : Boolean;
+       // A player action raised and was reported; another before time next
+       // advances in play propagates instead.
+       FActionFailed    : Boolean;
+       FSaveMismatch    : TSaveVersions;
+       // Set by game.save_and_quit( true ) at the demo's end: the save is also kept
+       // as savedemo, and the store page opens once it is written.
+       FOpenStore       : Boolean;
+       FRestartModule   : AnsiString;
        FCrashSave       : Boolean;
        FData            : TGameData;
        FGameSeed        : Cardinal;
@@ -167,6 +186,9 @@ type TDRLSession = class(TVObject)
        property UIDs : TUIDStore read FUIDStore;
        property Store : TStoreInterface read FStore;
        property UserConfig : TDRLConfiguration read FUserConfig;
+       property SaveMismatch : TSaveVersions read FSaveMismatch;
+       // Core module to reload the data with once the Session ends; empty for none.
+       property RestartModule : AnsiString read FRestartModule;
        property Modules : TDRLModules read FModules;
        property Level : TLevel read FLevel;
        property Player : TPlayer read FPlayer;
@@ -248,7 +270,7 @@ end;
 procedure TDRLSession.CallHook( aHook : Byte; const aParams : array of Const );
 begin
   if aHook in FSessionHooks then
-    FContext.Lua.ProtectedCall( [ CoreModuleID, HookNames[ aHook ] ], aParams );
+    FContext.Lua.ProtectedCall( [ FModules.CoreModuleID, HookNames[ aHook ] ], aParams );
   if aHook in FChallengeHooks then
     FContext.Lua.ProtectedCall( [ 'chal', FChallenge, HookNames[ aHook ] ], aParams );
   if aHook in FSChallengeHooks then
@@ -262,7 +284,7 @@ begin
   if Hook_OnWinGame in FSChallengeHooks then
     if not FContext.Lua.ProtectedCall( [ 'chal', FSChallenge, HookNames[ Hook_OnWinGame ] ], [] ) then Exit;
   if Hook_OnWinGame in FSessionHooks then
-    FContext.Lua.ProtectedCall( [ CoreModuleID, HookNames[ Hook_OnWinGame ] ], [] );
+    FContext.Lua.ProtectedCall( [ FModules.CoreModuleID, HookNames[ Hook_OnWinGame ] ], [] );
 end;
 
 procedure TDRLSession.SetState( aNewState : TDRLState );
@@ -309,8 +331,8 @@ end;
 procedure TDRLSession.FinishGame;
 begin
   FPlayer.Statistics.Update( FPlayer );
-  if FContext.Lua.Defined( [CoreModuleID, 'RunAwards'] ) then
-    FContext.Lua.ProtectedCall( [CoreModuleID, 'RunAwards'], [NoPlayerRecord] );
+  if FContext.Lua.Defined( [FModules.CoreModuleID, 'RunAwards'] ) then
+    FContext.Lua.ProtectedCall( [FModules.CoreModuleID, 'RunAwards'], [] );
   FPlayer.CalculateScore( FDifficulty, FStatus.GameWon );
   RecordResult;
 end;
@@ -327,7 +349,7 @@ const JHCURL      = 'https://store.steampowered.com/app/3126530/Jupiter_Hell_Cla
 var iSteam : Boolean;
     iURL   : Ansistring;
 begin
-  iSteam := DemoVersion and FStore.IsInitialized;
+  iSteam := TDRLLua( FContext.Lua ).Info.Demo and FStore.IsInitialized;
   if iSteam and FStore.IsOverlayEnabled then
   begin
     FStore.OpenStorePage( JHCID );
@@ -449,7 +471,7 @@ begin
   iMortemList := TStringList.Create;
   try
     try
-      iMortemList.Text := FContext.Lua.ProtectedCall( [CoreModuleID, 'GenerateMemorial'], [] );
+      iMortemList.Text := FContext.Lua.ProtectedCall( [FModules.CoreModuleID, 'GenerateMemorial'], [] );
       Result := TIOStringArray.Create;
       for i := 0 to iMortemList.Count - 1 do
       begin
@@ -498,6 +520,7 @@ begin
   FArchAngel  := False;
   FReloadData := False;
   FHardQuit   := False;
+  FActionFailed := False;
   FStatus.GameWon    := False;
   FCrashSave  := False;
   FSeededGame := False;
@@ -588,7 +611,7 @@ end;
 procedure TDRLSession.ChoosePlayerTrait;
 var iTrait : Byte;
 begin
-  if DemoVersion and ( FPlayer.ExpLevel > 7 ) then Exit;
+  if TDRLLua( FContext.Lua ).Info.Demo and ( FPlayer.ExpLevel > 7 ) then Exit;
   FIO.RunLayer( TPlayerView.CreateTrait( Self ), True );
   if FStatus.State <> DSPlaying then Exit;
   iTrait := TPlayerView.TraitPick;
@@ -633,7 +656,7 @@ begin
     FLevel.Tick;
   until ( not ContinuePlaying ) or ( FPlayer.SCount > 5000 );
   if FStatus.State = DSPlaying then
-    CRASHMODE := False;
+    FActionFailed := False;
 end;
 
 // The player's pre-action steps, with the multi-move interruption between
@@ -659,7 +682,7 @@ procedure TDRLSession.PreAction;
 begin
   if FPlayer.Dying then Exit;
   FLevel.CalculateVision( FPlayer.Position, FPlayer.Vision );
-  StatusEffect := FPlayer.GetPerkEffect;
+  FIO.StatusEffect := FPlayer.GetPerkEffect;
   FIO.PreAction;
   FIO.Focus( FPlayer.Position );
   FPlayer.UpdateVisual;
@@ -819,6 +842,11 @@ end;
 procedure TDRLSession.StartRun( aDir : TDirection );
 begin
   FPlayer.MultiMove.Start( aDir, not FUserConfig.GetBoolean( 'run_over_items' ) );
+end;
+
+procedure TDRLSession.RequestRestart( const aModuleID : AnsiString );
+begin
+  FRestartModule := aModuleID;
 end;
 
 function TDRLSession.FixedPlayerName : AnsiString;
@@ -1077,7 +1105,7 @@ begin
     ((not aItem.isRanged) or (aItem.Ammo = 0) or aItem.Flags[ IF_NOUNLOAD ] or aItem.Flags[ IF_NORELOAD ] or aItem.Flags[ IF_NOAMMO ]) and
     (aItem.Flags[ IF_EXOTIC ] or aItem.Flags[ IF_UNIQUE ] or aItem.Flags[ IF_ASSEMBLED ] or aItem.Flags[ IF_MODIFIED ]) then
   begin
-    iID := FContext.Lua.ProtectedCall( [ CoreModuleID,'GetDisassembleId'], [ aItem ] );
+    iID := FContext.Lua.ProtectedCall( [ FModules.CoreModuleID,'GetDisassembleId'], [ aItem ] );
     if iID <> '' then
     begin
       FIO.PushLayer( TUnloadConfirmView.Create( Self, aItem, iID ) );
@@ -1168,12 +1196,12 @@ try
 except
   on e : Exception do
   begin
-    if CRASHMODE then raise;
+    if FActionFailed then raise;
     ErrorLogOpen('CRITICAL','Player action exception!');
     ErrorLogWriteln('Error message : '+e.Message);
     ErrorLogClose;
     FIO.ErrorReport(e.Message);
-    CRASHMODE := True;
+    FActionFailed := True;
   end;
 end;
   if not ContinuePlaying then Exit( False );
@@ -1500,7 +1528,7 @@ begin
       INPUT_TARGETNEXT : begin FIO.SetAutoTarget( FTargeting.List.Next ); Exit; end;
       INPUT_ESCAPE     : begin ResetAutoTarget; FIO.PushLayer( TInGameMenuView.Create( Self, TDRLRuntime( FRuntime ).HOF, TDRLRuntime( FRuntime ).Help ) ); Exit; end;
       INPUT_QUIT       : begin FIO.PushLayer( TAbandonView.Create( Self ) ); Exit; end;
-      INPUT_HELP       : begin FIO.PushLayer( THelpView.Create( FContext.Lua, TDRLRuntime( FRuntime ).Help, CoreModuleID ) ); Exit; end;
+      INPUT_HELP       : begin FIO.PushLayer( THelpView.Create( FContext.Lua, TDRLRuntime( FRuntime ).Help, FModules.CoreModuleID ) ); Exit; end;
       INPUT_LOOKMODE   : begin FIO.PushLayer( TLookModeView.Create( FLevel, FPlayer ) ); Exit; end;
       INPUT_PLAYERINFO : begin FPlayerView := FIO.PushLayer( TPlayerView.Create( Self, PLAYERVIEW_CHARACTER ) ); Exit; end;
       INPUT_INVENTORY  : begin FPlayerView := FIO.PushLayer( TPlayerView.Create( Self, PLAYERVIEW_INVENTORY ) ); Exit; end;
@@ -1611,14 +1639,12 @@ begin
   begin
   FIO.LoadStop;
 
-  StatusEffect   := StatusNormal;
+  FIO.StatusEffect := StatusNormal;
   FDifficulty    := 2;
   FArchAngel     := False;
   FChallenge     := '';
   FSChallenge    := '';
   FStatus.GameWon       := False;
-  NoPlayerRecord := False;
-  NoScoreRecord  := False;
 
   FIO.MsgClear;
 
@@ -1660,8 +1686,8 @@ begin
 
   if (not(State in [DSLoading, DSCrashLoading])) then
   begin
-    if ( not FUserConfig.GetBoolean( 'skip_intro' ) ) and FContext.Lua.Defined( [ CoreModuleID, 'ShowIntro' ] ) then
-      FContext.Lua.ProtectedCall( [ CoreModuleID, 'ShowIntro' ], [] );
+    if ( not FUserConfig.GetBoolean( 'skip_intro' ) ) and FContext.Lua.Defined( [ FModules.CoreModuleID, 'ShowIntro' ] ) then
+      FContext.Lua.ProtectedCall( [ FModules.CoreModuleID, 'ShowIntro' ], [] );
     GameRNG.SetSeed( iEpisodeSeed );
     CallHook( Hook_OnCreateWorld, [QWord( iEpisodeSeed )] );
   end;
@@ -1702,7 +1728,7 @@ begin
         else
         begin
           FIO.Msg('You enter %s.',[ FLevel.Name ] );
-          FContext.Lua.ProtectedCall( [ CoreModuleID, 'GenerateLevel' ], [] );
+          FContext.Lua.ProtectedCall( [ FModules.CoreModuleID, 'GenerateLevel' ], [] );
           FLevel.AfterGeneration;
         end;
     end;
@@ -1846,7 +1872,6 @@ begin
   except on e : Exception do
   begin
     EmitCrashInfo( e.Message, True );
-    EXCEPTEMMITED := True;
     // God mode does not save on a crash.
     if (not GodMode) and ((FPlayer.Statistics['crash_count'] = 0) or{thelaptop: Vengeance is MINE} (FDifficulty < DIFF_NIGHTMARE)) then
     begin
@@ -1868,7 +1893,10 @@ begin
   FIO.FadeReset;
 
   if State = DSSaving then
+  begin
     WriteSaveFile( False );
+    if FOpenStore then OpenJHCPage;
+  end;
 
   // The ending hook may confirm the outcome over the finished level.
   if State = DSFinished then
@@ -1943,7 +1971,7 @@ begin
     FPlayer.Name := iName
   else
     if aResult.Name = ''
-      then FPlayer.Name := FContext.Lua.ProtectedCall([CoreModuleID,'GetRandomName'],[])
+      then FPlayer.Name := FContext.Lua.ProtectedCall([FModules.CoreModuleID,'GetRandomName'],[])
       else FPlayer.Name := aResult.Name;
 
   if FContext.Lua.Defined(['klasses',FPlayer.Klass,'OnCreate']) then
@@ -1959,9 +1987,7 @@ var iStream    : TStream;
     iModule    : Ansistring;
     iGameRNG   : TRNG;
 begin
-  SaveVersionEngine := '';
-  SaveVersionModule := '';
-  SaveModString     := '';
+  FSaveMismatch := Default( TSaveVersions );
   iRecreate := False;
   iStream   := nil;
   iGameRNG  := nil;
@@ -1970,20 +1996,18 @@ begin
       iStream := TGZFileStream.Create( FPaths.ModuleUserPath + 'save',gzOpenRead );
       //      Stream := TDebugStream.Create( Stream );
       iModule := iStream.ReadAnsiString;
-      if iModule <> CoreModuleID then Exit( False );
+      if iModule <> FModules.CoreModuleID then Exit( False );
 
-      SaveVersionEngine := iStream.ReadAnsiString;
-      if SaveVersionEngine <> VersionEngineSave then Exit( False );
+      FSaveMismatch.Engine := iStream.ReadAnsiString;
+      if FSaveMismatch.Engine <> TDRLLua( FContext.Lua ).Info.EngineSave then Exit( False );
 
-      SaveVersionModule := iStream.ReadAnsiString;
-      if SaveVersionModule <> VersionModuleSave then Exit( False );
+      FSaveMismatch.Module := iStream.ReadAnsiString;
+      if FSaveMismatch.Module <> TDRLLua( FContext.Lua ).Info.ModuleSave then Exit( False );
 
-      SaveModString     := iStream.ReadAnsiString;
-      if SaveModString <> FModules.ModString then Exit( False );
+      FSaveMismatch.ModString := iStream.ReadAnsiString;
+      if FSaveMismatch.ModString <> FModules.ModString then Exit( False );
 
-      SaveVersionEngine := '';
-      SaveVersionModule := '';
-      SaveModString     := '';
+      FSaveMismatch := Default( TSaveVersions );
 
       FIO.ClearAnimations;
       ReleasePlayer;
@@ -2082,9 +2106,9 @@ begin
   Stream := TGZFileStream.Create( FPaths.ModuleUserPath + 'save',gzOpenWrite );
   //      Stream := TDebugStream.Create( Stream );
 
-  Stream.WriteAnsiString( CoreModuleID );
-  Stream.WriteAnsiString( VersionEngineSave );
-  Stream.WriteAnsiString( VersionModuleSave );
+  Stream.WriteAnsiString( FModules.CoreModuleID );
+  Stream.WriteAnsiString( TDRLLua( FContext.Lua ).Info.EngineSave );
+  Stream.WriteAnsiString( TDRLLua( FContext.Lua ).Info.ModuleSave );
   Stream.WriteAnsiString( FModules.ModString );
   FUIDStore.WriteToStream( Stream );
   if FStatus.GameWon   then Stream.WriteByte( 1 ) else Stream.WriteByte( 0 );
@@ -2110,7 +2134,7 @@ begin
 
   FreeAndNil( Stream );
   FLevel.Clear;
-  if ForceShop then
+  if FOpenStore then
     CopyFileSimple( FPaths.ModuleUserPath + 'save', FPaths.ModuleUserPath + 'savedemo' );
 end;
 
@@ -2250,7 +2274,7 @@ function lua_game_save_and_quit( L : PLua_State ) : Integer; cdecl;
 var iState : TLuaGameStack;
 begin
   iState.Init( L );
-  ForceShop := iState.ToBoolean( 1 );
+  ActiveSession( L ).FOpenStore := iState.ToBoolean( 1 );
   ActiveSession( L ).FIO.FadeOut( 0.5 );
   ActiveSession( L ).SetState( DSSaving );
   Result := 0;

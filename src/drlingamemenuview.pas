@@ -58,7 +58,7 @@ begin
   end;
   if VTIG_Selectable( 'Help' ) then
   begin
-    IO.PushLayer( THelpView.Create( FSession.Context.Lua, FHelp, CoreModuleID ) );
+    IO.PushLayer( THelpView.Create( FSession.Context.Lua, FHelp, FSession.Modules.CoreModuleID ) );
     FFinished := True;
   end;
   if VTIG_Selectable( 'Settings' ) then
@@ -112,7 +112,7 @@ begin
   FFadeOut := aFadeOut;
   FCancel  := 'Continue run';
   FConfirm := 'Abandon run';
-  FMessage := FSession.Context.Lua.ProtectedCall([CoreModuleID,'GetQuitMessage'],[]) + #10 +
+  FMessage := FSession.Context.Lua.ProtectedCall([FSession.Modules.CoreModuleID,'GetQuitMessage'],[]) + #10 +
     '{yAre you sure you want to abandon this run?}';
   FSize    := Point( 50, 10 );
 end;

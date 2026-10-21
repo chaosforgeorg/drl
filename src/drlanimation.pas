@@ -85,9 +85,10 @@ end;
 { TGFXExplodeMarkAnimation }
 
 TGFXExplodeMarkAnimation = class(TGFXAnimation)
-  constructor Create( aSpriteMap : TSpriteMap; aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aColor : Byte );
+  constructor Create( aSpriteMap : TSpriteMap; aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aColor : Byte; aSprite : DWord );
   procedure OnDraw; override;
 private
+  FSprite   : DWord;
   FCoord    : TCoord2D;
   FGColor1  : TColor;
   FGColor2  : TColor;
@@ -109,10 +110,11 @@ end;
 
 TGFXParticleBurstAnimation = class(TAnimation)
   constructor Create( aParticles : TParticleStore; aDelay : DWord; aEmitterID : Word; aPosition : TCoord2D;
-    aDirection : TDirection; aCount : Word; aDistanceScale, aSpreadScale : Single );
+    aDirection : TDirection; aCount : Word; aDistanceScale, aSpreadScale : Single; const aDecals : TDecalSprites );
   procedure OnStart; override;
 private
   FParticles     : TParticleStore;
+  FDecals        : TDecalSprites;
   FEmitterID     : Word;
   FPosition      : TCoord2D;
   FDirection     : TDirection;
@@ -415,7 +417,7 @@ end;
 
 { TGFXExplodeMarkAnimation }
 
-constructor TGFXExplodeMarkAnimation.Create( aSpriteMap : TSpriteMap; aDuration : DWord; aDelay : DWord; aCoord: TCoord2D; aColor: Byte );
+constructor TGFXExplodeMarkAnimation.Create( aSpriteMap : TSpriteMap; aDuration : DWord; aDelay : DWord; aCoord: TCoord2D; aColor: Byte; aSprite : DWord );
 var c1, c2, c3 : Byte;
 begin
   inherited Create( aSpriteMap, Max( aDuration, 1 ), aDelay, 0 );
@@ -432,13 +434,14 @@ begin
   FGColor2 := vcolor.NewColor(c2);
   FGColor3 := vcolor.NewColor(c3);
   FCoord    := aCoord;
+  FSprite   := aSprite;
 end;
 
 procedure TGFXExplodeMarkAnimation.OnDraw;
 var iMarkSprite : TSprite;
 begin
   iMarkSprite.Flags       := [ SF_OVERLAY ];
-  iMarkSprite.SpriteID[0] := HARDSPRITE_EXPL;
+  iMarkSprite.SpriteID[0] := FSprite;
 
   case (( FTime * 3 ) div FDuration) of
     0 : iMarkSprite.OverColor    := FGColor1;
@@ -469,10 +472,11 @@ end;
 
 constructor TGFXParticleBurstAnimation.Create( aParticles : TParticleStore; aDelay : DWord; aEmitterID : Word;
   aPosition : TCoord2D; aDirection : TDirection; aCount : Word;
-  aDistanceScale, aSpreadScale : Single );
+  aDistanceScale, aSpreadScale : Single; const aDecals : TDecalSprites );
 begin
   inherited Create( 1, aDelay, 0 );
   FParticles     := aParticles;
+  FDecals        := aDecals;
   FEmitterID     := aEmitterID;
   FPosition      := aPosition;
   FDirection     := aDirection;
@@ -488,7 +492,7 @@ begin
   iDirection.Init( FDirection.X, FDirection.Y );
   FParticles.SpawnBurst( FEmitterID,
     Vec3f( ( FPosition.X - 1 ) * 32 + 16, ( FPosition.Y - 1 ) * 32 + 16, 0 ),
-    iDirection, FCount, HARDSPRITE_DECAL_BLOOD,
+    iDirection, FCount, FDecals,
     NewFloatRange( 0.25 * FDistanceScale, FDistanceScale ),
     NewFloatRange( 0.5, 1.0 ), FSpreadScale );
 end;

@@ -117,7 +117,6 @@ begin
   FKillCount := 0;
 
   FLevelIndex   := 0;
-  StatusEffect  := StatusNormal;
   FStatistics   := TStatistics.Create;
   FScore        := 0;
   NukeActivated := 0;
@@ -532,9 +531,9 @@ begin
 end;
 
 begin
-  if FContext.Lua.Defined([CoreModuleID,'GetScore']) then
+  if FContext.Lua.Defined([TDRLLua( FContext.Lua ).CoreModuleID,'GetScore']) then
   begin
-    FScore := FContext.Lua.ProtectedCall([CoreModuleID,'GetScore'],[])
+    FScore := FContext.Lua.ProtectedCall([TDRLLua( FContext.Lua ).CoreModuleID,'GetScore'],[])
   end
   else
   begin

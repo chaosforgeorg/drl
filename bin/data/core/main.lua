@@ -26,6 +26,7 @@ core.options = {
 	assembly_apply_last_mod = false,
 	relic_slot = false,
 	resist_cap = 95,
+	vision_base = 8,
 	maintain_groups = false,
 }
 

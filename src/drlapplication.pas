@@ -32,6 +32,10 @@ type TDRLRuntime = class( TRLRuntime )
     FDataLoaded       : Boolean;
     FHOF              : THOF;
     FProfileTimeStart : Comp;
+    // Core module the next data load switches to, as the last Session requested.
+    FRestartModule    : AnsiString;
+    // The core module chosen for the current data load.
+    FCoreModuleID     : AnsiString;
     procedure CreateSession( aInitializeData : Boolean );
     procedure ReleaseSession;
     procedure SafeCallModuleHook( aHook : Byte; const aParams : array of Const );
@@ -48,8 +52,9 @@ type TDRLRuntime = class( TRLRuntime )
     procedure ShutdownGameData; override;
     procedure ResetGameData; override;
   public
+    // aCoreModuleID is the module to start with; empty asks the player.
     constructor Create( const aPaths : TGamePaths; var aConfiguration : TObject;
-      const aModulesFile : AnsiString ); reintroduce;
+      const aModulesFile, aCoreModuleID : AnsiString ); reintroduce;
     destructor Destroy; override;
     procedure Reconfigure;
     procedure SaveProfile;
@@ -73,8 +78,11 @@ type TDRLRuntime = class( TRLRuntime )
 // Runtime services and game state belong below this class.
 type TDRLApplication = class( TRLApplication )
   private
-    FWorkshopID  : AnsiString;
-    FModulesFile : AnsiString;
+    FWorkshopID   : AnsiString;
+    FModulesFile  : AnsiString;
+    // Core module to start with: the default_module setting, overridden by --module;
+    // empty to ask.
+    FCoreModuleID : AnsiString;
   protected
     procedure DefineOptions; override;
     procedure ValidateOptions; override;
@@ -132,9 +140,10 @@ end;
 { TDRLRuntime }
 
 constructor TDRLRuntime.Create( const aPaths : TGamePaths;
-  var aConfiguration : TObject; const aModulesFile : AnsiString );
+  var aConfiguration : TObject; const aModulesFile, aCoreModuleID : AnsiString );
 begin
   inherited Create(aPaths, aConfiguration);
+  FCoreModuleID := aCoreModuleID;
   FStore := TStoreInterface.CreateDefault;
   FStore.SuppressProgress := GodMode;
   FModules := TDRLModules.Create( Paths.DataPath, GodMode, aModulesFile );
@@ -223,21 +232,21 @@ end;
 function TDRLRuntime.PrepareGameData : Boolean;
 var iModulePath : AnsiString;
 begin
-  if ForceRestart <> '' then
+  if FRestartModule <> '' then
   begin
     FModules.ScanModules( FStore );
-    CoreModuleID := ForceRestart;
+    FCoreModuleID := FRestartModule;
   end;
-  ForceRestart := '';
-  CoreModuleID := FModules.Validate(CoreModuleID);
-  if CoreModuleID = '' then
-    IO.RunModuleChoice( FModules.CoreModules );
+  FRestartModule := '';
+  FCoreModuleID := FModules.Validate(FCoreModuleID);
+  if FCoreModuleID = '' then
+    FCoreModuleID := IO.RunModuleChoice( FModules.CoreModules );
 
   if not DirectoryExists(Paths.WritePath + 'user') then
     CreateDir(Paths.WritePath + 'user');
-  if not DirectoryExists(Paths.WritePath + 'user' + PathDelim + CoreModuleID) then
-    CreateDir(Paths.WritePath + 'user' + PathDelim + CoreModuleID);
-  iModulePath := Paths.WritePath + 'user' + PathDelim + CoreModuleID + PathDelim;
+  if not DirectoryExists(Paths.WritePath + 'user' + PathDelim + FCoreModuleID) then
+    CreateDir(Paths.WritePath + 'user' + PathDelim + FCoreModuleID);
+  iModulePath := Paths.WritePath + 'user' + PathDelim + FCoreModuleID + PathDelim;
   FPaths.ModuleUserPath := iModulePath;
   if not DirectoryExists(iModulePath + 'screenshot') then
     CreateDir(iModulePath + 'screenshot');
@@ -247,7 +256,7 @@ begin
   if not DirectoryExists(iModulePath + 'backup') then
     CreateDir(iModulePath + 'backup');
 
-  FModules.ActivateModules(CoreModuleID);
+  FModules.ActivateModules(FCoreModuleID);
   if ( FModules.OutdatedModules.Size > 0 )
   and ( not IO.RunModuleAPIWarning( FModules.OutdatedModules ) ) then
     Exit( False );
@@ -288,7 +297,6 @@ end;
 // Phase order: publish Lua; load hooks and module data; then prepare
 // presentation data and attach the initial level.
 procedure TDRLRuntime.InitializeGameData;
-var i : Integer;
 begin
   FSession.Context.BindLua( FLua );
   TDRLLua( FLua ).BindNodeContext( FSession.Context );
@@ -303,7 +311,7 @@ begin
   FData.LoadRules( FLua );
   if GodMode then RegisterDebugConsole( VKEY_F1 );
   FLua.CallDefaultResult := True;
-  FSessionHooks := LoadHooks( FLua, [CoreModuleID], SessionHooks );
+  FSessionHooks := LoadHooks( FLua, [FCoreModuleID], SessionHooks );
   SafeCallModuleHook(Hook_OnLoad, []);
   IO.Reconfigure(Config);
   IO.PrepareGraphics;
@@ -312,27 +320,7 @@ begin
     FLua.LoadFile(Paths.WritePath + 'god.lua');
   FSession.InitializeLevel;
 
-  HARDSPRITE_HIGHLIGHT    := FLua.Get('HARDSPRITE_HIGHLIGHT');
-  HARDSPRITE_EXPL         := FLua.Get('HARDSPRITE_EXPL');
-  HARDSPRITE_SELECT       := FLua.Get('HARDSPRITE_SELECT');
-  HARDSPRITE_MARK         := FLua.Get('HARDSPRITE_MARK');
-  HARDSPRITE_GRID         := FLua.Get('HARDSPRITE_GRID');
-  HARDSPRITE_SHIELD       := FLua.Get('HARDSPRITE_SHIELD');
-  HARDSPRITE_SHIELD_COUNT := FLua.Get('HARDSPRITE_SHIELD_COUNT');
-  HARDEMITTER_BLOOD := 0;
-  if FLua.RawDefined('HARDEMITTER_BLOOD') then
-    HARDEMITTER_BLOOD := FLua.Get('HARDEMITTER_BLOOD', 0);
-  for i := 0 to 3 do
-  begin
-    HARDSPRITE_DECAL_BLOOD[i] := 0;
-    HARDSPRITE_DECAL_WALL_BLOOD[i] := 0;
-  end;
-  if FLua.RawDefined('HARDSPRITE_DECAL_BLOOD_1') then
-    for i := 0 to 3 do
-      HARDSPRITE_DECAL_BLOOD[i] := FLua.Get('HARDSPRITE_DECAL_BLOOD_'+IntToStr(i+1), 0);
-  if FLua.RawDefined('HARDSPRITE_DECAL_WALL_BLOOD_1') then
-    for i := 0 to 3 do
-      HARDSPRITE_DECAL_WALL_BLOOD[i] := FLua.Get('HARDSPRITE_DECAL_WALL_BLOOD_'+IntToStr(i+1), 0);
+  IO.LoadHardSprites( FLua );
 
   FSession.SetSessionHooks( FSessionHooks );
   IO.LoadStop;
@@ -346,13 +334,14 @@ begin
   iFirstSession := True;
   repeat
     iSessionResult := FSession.Run( iFirstSession );
-    if (ForceRestart <> '') or (iSessionResult in [DSR_Quit, DSR_ReloadData]) then
+    FRestartModule := FSession.RestartModule;
+    if (FRestartModule <> '') or (iSessionResult in [DSR_Quit, DSR_ReloadData]) then
       Break;
     ReleaseSession;
     CreateSession( True );
     iFirstSession := False;
   until False;
-  if (ForceRestart <> '') or (iSessionResult = DSR_ReloadData) then
+  if (FRestartModule <> '') or (iSessionResult = DSR_ReloadData) then
     Result := VRR_RELOAD_DATA
   else
     Result := VRR_QUIT;
@@ -397,7 +386,7 @@ begin
     except
       on E : Exception do
       begin
-        if ModdedGame then
+        if TDRLLua( FLua ).Info.Modded then
         begin
           FModErrors.Push('Error : Mod "'+iModule.ID+'" failed to execute '+HookNames[aHook]+'!');
           FModErrors.Push('Path  : '+iModule.Path);
@@ -487,7 +476,7 @@ begin
     aPaths.DataPath  := iState.LuaConfig.Configure( 'DataPath', aPaths.DataPath );
     aPaths.WritePath := iState.LuaConfig.Configure( 'WritePath', aPaths.WritePath );
     aPaths.ScorePath := iState.LuaConfig.Configure( 'ScorePath', aPaths.ScorePath );
-    CoreModuleID := iState.GetString( 'default_module' );
+    FCoreModuleID := iState.GetString( 'default_module' );
     Result := iState;
   except
     iState.Free;
@@ -500,7 +489,7 @@ begin
   if HasOption('name') then
     ForcePlayerName := GetOptionValue('name');
   if HasOption('module') then
-    CoreModuleID := GetOptionValue('module');
+    FCoreModuleID := GetOptionValue('module');
   if HasOption('modules-file') then
     FModulesFile := GetOptionValue('modules-file');
   if HasOption('publish') then
@@ -515,7 +504,7 @@ end;
 
 function TDRLApplication.CreateRuntime( const aPaths : TGamePaths; var aConfiguration : TObject ) : TRLRuntime;
 begin
-  Result := TDRLRuntime.Create(aPaths, aConfiguration, FModulesFile);
+  Result := TDRLRuntime.Create( aPaths, aConfiguration, FModulesFile, FCoreModuleID );
 end;
 
 function TDRLApplication.ExecuteApplicationCommand : Boolean;
@@ -528,8 +517,7 @@ end;
 procedure TDRLApplication.ApplicationException( aException : Exception );
 begin
   if Assigned(Logger) then Logger.Flush;
-  if not EXCEPTEMMITED then
-    EmitCrashInfo(aException.Message, False);
+  EmitCrashInfo(aException.Message, False);
 end;
 
 end.

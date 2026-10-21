@@ -269,7 +269,7 @@ var iColor      : TIOColor;
     iPos := Point( aCoord.x + 1, aCoord.y + 2 );
     if aChar = ' ' then aChar := FConsole.GetChar( iPos.X, iPos.Y );
     iPos := Point( iPos.X - 1, iPos.Y - 1 );
-    if StatusEffect = StatusInvert
+    if FEffect = StatusInvert
        then VTIG_FreeChar( aChar, iPos, Black, LightGray )
        else VTIG_FreeChar( aChar, iPos, aColor );
   end;
@@ -333,8 +333,8 @@ var iLevel : TLevel;
     {$IFDEF CORNERMAP}
     if iLevel.Corner( aCoord ) then aAtr := Yellow;
     {$ENDIF CORNERMAP}
-    if StatusEffect <> StatusNormal then
-      case StatusEffect of
+    if FEffect <> StatusNormal then
+      case FEffect of
         StatusRed     : if aHighlight then aAtr := LightRed     else aAtr := Red;
         StatusGreen   : if aHighlight then aAtr := LightGreen   else aAtr := Green;
         StatusBlue    : if aHighlight then aAtr := LightBlue    else aAtr := Blue;

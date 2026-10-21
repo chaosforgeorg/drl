@@ -213,7 +213,7 @@ implementation
 
 uses math,
      vlualibrary, vluaentitynode, vdebug, vluatools, vcolor, vvector,
-     dfplayer, dflevel, dfmap, drlhooks, drllua;
+     dfplayer, dflevel, dfmap, drlhooks, drllua, drlgamedata;
 
 
 function TBeing.getStrayChance( aDefender : TBeing; aWeapon : TItem ) : Byte;
@@ -370,7 +370,7 @@ begin
   FStrength   := aTable.getInteger('strength');
   FTargetSize := aTable.getInteger('targetsize',0);
 
-  FVisionRadius := VisionBaseValue + aTable.getInteger('vision');
+  FVisionRadius := TGameData.FromState( FContext.Lua.Raw ).Rules.VisionBase + aTable.getInteger('vision');
 
   FHPMax := FHP;
   FHPNom := FHP;
@@ -2091,9 +2091,9 @@ begin
 
   FHP := Max( FHP - aDamage, 0 );
   if ( FHP <= 0 ) and (not IsPlayer) and (not (BF_NODEATHMESSAGE in FFlags)) then
-    if FContext.Lua.Defined( [ CoreModuleID, 'GetDeathMessage' ] ) then
+    if FContext.Lua.Defined( [ TDRLLua( FContext.Lua ).CoreModuleID, 'GetDeathMessage' ] ) then
     begin
-      iDeathMessage := FContext.Lua.ProtectedCall( [ CoreModuleID, 'GetDeathMessage' ], [ Self, isVisible ] );
+      iDeathMessage := FContext.Lua.ProtectedCall( [ TDRLLua( FContext.Lua ).CoreModuleID, 'GetDeathMessage' ], [ Self, isVisible ] );
       if iDeathMessage <> '' then iLevel.Presentation.Msg( iDeathMessage );
     end;
   if FHP <= 0

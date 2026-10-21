@@ -234,7 +234,7 @@ begin
     begin
       if iRResult = Confirm then
       begin
-        ForceRestart := FRestart;
+        FSession.RequestRestart( FRestart );
         FState := SETTINGSVIEW_DONE;
       end;
       FRestart := '';
@@ -391,7 +391,7 @@ begin
                     else if FModValue >= (FSession.Modules.CoreModules.Size+1)
                       then Value := FModCurrent
                       else Value := FSession.Modules.CoreModules[FModValue-1].ID;
-                    if ( FSession.State = DSMenu ) and ( Value <> '' ) and ( Value <> CoreModuleID ) then
+                    if ( FSession.State = DSMenu ) and ( Value <> '' ) and ( Value <> FSession.Modules.CoreModuleID ) then
                     begin
                       FRestart := Value;
                     end;

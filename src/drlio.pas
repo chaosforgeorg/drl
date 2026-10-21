@@ -142,6 +142,10 @@ type TDRLIO = class( TIORL, IDRLPresentation )
   procedure Explosion( aDelay : Integer; aWhere : TCoord2D; aData : TExplosionData ); reintroduce; virtual;
   procedure PulseBlood( aValue : Single ); virtual;
   function ShowsDecals : Boolean; virtual;
+  // Reads the core module's HARDSPRITE_* and HARDEMITTER_BLOOD values after a data load.
+  procedure LoadHardSprites( aLua : TLua );
+  function IDRLPresentation.HardSprites = GetHardSprites;
+  function GetHardSprites : THardSprites;
   function EquipSound : AnsiString;
   // Menu colour of an item, light gray when inventory colouring is off.
   function ItemMenuColor( aItem : TItem ) : Byte;
@@ -182,7 +186,8 @@ type TDRLIO = class( TIORL, IDRLPresentation )
   procedure SetTarget( aTarget : TCoord2D; aColor : Byte; aRange : Byte ); virtual; abstract;
   procedure SetAutoTarget( aTarget : TCoord2D ); virtual;
   function ResolveSub( const aID : Ansistring ) : Ansistring;
-  procedure RunModuleChoice( aModules : TModuleList );
+  // Asks for the core module to run; returns its ID.
+  function RunModuleChoice( aModules : TModuleList ) : AnsiString;
   // Returns True when the player chooses to continue with outdated mods.
   function RunModuleAPIWarning( aModules : TModuleList ) : Boolean;
 private
@@ -205,6 +210,8 @@ protected
   FUserConfig  : TDRLConfiguration; // Borrowed from the runtime, which outlives IO.
   FSettings    : TIOSettings;
   FOptions     : TIOOptions;
+  FHardSprites : THardSprites;
+  FEffect      : TStatusEffect;
   FTime        : QWord;
   FLoading     : TLoadingView;
   FMTarget     : TCoord2D;
@@ -240,6 +247,9 @@ public
   property Audio        : TDRLAudio       read FAudio;
   property Settings     : TIOSettings     read FSettings;
   property Options      : TIOOptions      read FOptions;
+  property HardSprites  : THardSprites    read FHardSprites;
+  // Screen tint from the player's perks; the Session sets it before each action.
+  property StatusEffect : TStatusEffect   read FEffect     write FEffect;
   property MTarget      : TCoord2D        read FMTarget    write FMTarget;
   property ASCII        : TASCIIImageMap  read FASCII;
   property HintOverlay  : AnsiString      read FHintOverlay write FHintOverlay;
@@ -271,6 +281,7 @@ public
   property IO : TDRLIO read GetIO;
 end;
 
+// Reports a crash to the player once per process; later calls do nothing.
 procedure EmitCrashInfo( const aInfo : AnsiString; aInGame : Boolean  );
 
 implementation
@@ -452,6 +463,32 @@ begin
   Exit( False );
 end;
 
+procedure TDRLIO.LoadHardSprites( aLua : TLua );
+var i : Integer;
+begin
+  FHardSprites := Default( THardSprites );
+  FHardSprites.Highlight   := aLua.Get('HARDSPRITE_HIGHLIGHT');
+  FHardSprites.Expl        := aLua.Get('HARDSPRITE_EXPL');
+  FHardSprites.Select      := aLua.Get('HARDSPRITE_SELECT');
+  FHardSprites.Mark        := aLua.Get('HARDSPRITE_MARK');
+  FHardSprites.Grid        := aLua.Get('HARDSPRITE_GRID');
+  FHardSprites.Shield      := aLua.Get('HARDSPRITE_SHIELD');
+  FHardSprites.ShieldCount := aLua.Get('HARDSPRITE_SHIELD_COUNT');
+  if aLua.RawDefined('HARDEMITTER_BLOOD') then
+    FHardSprites.BloodEmitter := aLua.Get('HARDEMITTER_BLOOD', 0);
+  if aLua.RawDefined('HARDSPRITE_DECAL_BLOOD_1') then
+    for i := 0 to 3 do
+      FHardSprites.DecalBlood[i] := aLua.Get('HARDSPRITE_DECAL_BLOOD_'+IntToStr(i+1), 0);
+  if aLua.RawDefined('HARDSPRITE_DECAL_WALL_BLOOD_1') then
+    for i := 0 to 3 do
+      FHardSprites.DecalWallBlood[i] := aLua.Get('HARDSPRITE_DECAL_WALL_BLOOD_'+IntToStr(i+1), 0);
+end;
+
+function TDRLIO.GetHardSprites : THardSprites;
+begin
+  Exit( FHardSprites );
+end;
+
 function TDRLIO.EquipSound : AnsiString;
 begin
   if FSettings.EquipPickupSound then Exit( 'pickup' );
@@ -608,7 +645,8 @@ begin
   if ( aEvent.EType in [ VEVENT_KEYDOWN, VEVENT_KEYUP ] ) and
      ( not aEvent.Key.Repeated ) then
   begin
-    if ( aEvent.Key.Code = VKEY_F1 ) and ModdedGame then
+    // The main menu restarts on this only when the game is modded.
+    if aEvent.Key.Code = VKEY_F1 then
       VTIG_GetIOState.EventState.SetState( TIG_EV_RESTART,
         aEvent.Key.Pressed and ( VKMOD_CTRL in aEvent.Key.ModState ) );
     iKey := IOKeyEventToIOKeyCode( aEvent.Key );
@@ -1663,9 +1701,10 @@ begin
   RunLayer( aLayer, True );
 end;
 
-procedure TDRLIO.RunModuleChoice( aModules : TModuleList );
+function TDRLIO.RunModuleChoice( aModules : TModuleList ) : AnsiString;
 begin
-  RunLauncherLayer( TModuleChoiceView.Create( aModules ) );
+  Result := '';
+  RunLauncherLayer( TModuleChoiceView.Create( aModules, @Result ) );
 end;
 
 function TDRLIO.RunModuleAPIWarning( aModules : TModuleList ) : Boolean;
@@ -1691,6 +1730,10 @@ procedure TDRLIO.PrepareGraphics;
 begin
 end;
 
+// Set once a crash was reported; the application handler then sees the same
+// exception re-raised by the Session.
+var CrashInfoEmitted : Boolean = False;
+
 procedure EmitCrashInfo ( const aInfo : AnsiString; aInGame : Boolean ) ;
 function Iff(expr : Boolean; const str : AnsiString) : AnsiString;
 begin
@@ -1698,6 +1741,8 @@ begin
 end;
 var iErrorMessage : AnsiString;
 begin
+  if CrashInfoEmitted then Exit;
+  CrashInfoEmitted := True;
   {$IFDEF WINDOWS}
   if GraphicsVersion then
   begin
