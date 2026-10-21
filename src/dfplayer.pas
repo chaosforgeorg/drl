@@ -53,7 +53,7 @@ type TPlayer = class(TBeing)
   procedure AddExp( aAmount : LongInt );
   procedure CalculateScore( aDifficulty : Integer; aGameWon : Boolean );
   destructor Destroy; override;
-  procedure Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer ); override;
+  procedure Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer; aCause : TDeathCause ); override;
   procedure AddHistory( const aHistory : Ansistring );
   class procedure RegisterLuaAPI( aLua : TLua );
   procedure UpdateVisual;
@@ -475,7 +475,7 @@ begin
   inherited Destroy;
 end;
 
-procedure TPlayer.Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer );
+procedure TPlayer.Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer; aCause : TDeathCause );
 var iLevel   : TLevel;
     iSlot    : TEqSlot;
 begin

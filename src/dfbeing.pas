@@ -41,7 +41,7 @@ TBeing = class(TThing,IPathQuery)
     function  MoveTowards( aWhere : TCoord2D; aVisualMultiplier : Single = 1.0 ) : TMoveResult;
     procedure Reload( aAmmoItem : TItem; aSingle : Boolean; aWeapon : TItem = nil ); 
     function Resurrect( aRange : Integer ) : TBeing;
-    procedure Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer ); virtual;
+    procedure Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer; aCause : TDeathCause ); virtual;
     function Attack( aWhere : TCoord2D; aMoveOnKill : Boolean; aWeapon : TItem = nil ) : Boolean; overload;
     function Attack( aTarget : TBeing; aSecond : Boolean = False; aWeapon : TItem = nil ) : Boolean; overload;
     function meleeWeaponSlot : TEqSlot;
@@ -1564,7 +1564,7 @@ begin
 end;
 
 
-procedure TBeing.Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer );
+procedure TBeing.Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer; aCause : TDeathCause );
 var iItem      : TItem;
     iCorpse    : Word;
     iBlood     : Byte;
@@ -1581,6 +1581,8 @@ begin
   end;
   FDying := True;
   if ( aKiller <> nil ) and aKiller.Dead then aKiller := nil;
+  // The core module announces the death; the veto above has passed.
+  TDRLLua( FContext.Lua ).CallCoreHook( Hook_OnBeingDeath, [ Self, aKiller, DeathCauseNames[ aCause ] ] );
 
   if ( not ( BF_FRIENDLY in FFlags ) ) and ( not ( BF_ILLUSION in FFlags ) ) and ( not ( BF_NOKILL in FFlags ) ) then
     iLevel.Player.RegisterKill( FID, aKiller, aWeapon, not Flags[ BF_RESPAWN ] );
@@ -1916,7 +1918,6 @@ var iLevel         : TLevel;
     iGibMul        : Single;
     iForceOverkill : Boolean;
     iMeleeAttack   : Boolean;
-    iDeathMessage  : AnsiString;
     iOldDurability : LongInt;
 begin
   if ( aDamage < 0 ) or (BF_INV in FFlags) or Dying then Exit;
@@ -2090,14 +2091,8 @@ begin
   end;
 
   FHP := Max( FHP - aDamage, 0 );
-  if ( FHP <= 0 ) and (not IsPlayer) and (not (BF_NODEATHMESSAGE in FFlags)) then
-    if FContext.Lua.Defined( [ TDRLLua( FContext.Lua ).CoreModuleID, 'GetDeathMessage' ] ) then
-    begin
-      iDeathMessage := FContext.Lua.ProtectedCall( [ TDRLLua( FContext.Lua ).CoreModuleID, 'GetDeathMessage' ], [ Self, isVisible ] );
-      if iDeathMessage <> '' then iLevel.Presentation.Msg( iDeathMessage );
-    end;
   if FHP <= 0
-    then Kill( Min( aDamage div 2, 15), (aDamage >= iOverKillValue) or iForceOverkill, iActive, aSource, aDelay )
+    then Kill( Min( aDamage div 2, 15), (aDamage >= iOverKillValue) or iForceOverkill, iActive, aSource, aDelay, DeathDamage )
     else begin
       CallHook( Hook_OnAttacked, [ iActive, aSource ] );
       FOverlayUntil := Max( FOverlayUntil, iLevel.Presentation.PainUntil( aDelay ) );
@@ -2721,7 +2716,7 @@ var State       : TLuaGameStack;
 begin
   State.Init(L);
   Being := State.ToObject(1) as TBeing;
-  Being.Kill(15,State.ToBoolean(2),nil,nil,0);
+  Being.Kill( 15, State.ToBoolean( 2 ), nil, nil, 0, DeathScript );
   Result := 0;
 end;
 
