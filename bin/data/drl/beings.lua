@@ -1230,22 +1230,23 @@ function drl.register_beings()
 			flags     = { IF_RAYGUN },
 		},
 
+		runtime = {
+			OnAction = function (self)
+				if self.hp < self.hpmax then
+					self.hp = self.hp + 1
+				end
+				--old explosion was LIGHTBLUE
+				if math.random(10) == 1 then
+					self:play_sound("act")
+				end
+			end,
+		},
+
 		OnCreate = function (self)
 			self.hpmax = self.hpmax + DIFFICULTY * DIFFICULTY * 5
 			self.hp = self.hpmax
 			self.telechance = 15
 			self.teleradius = 8
-		end,
-
-		OnAction = function (self)
-			if not game.is_playing() then return end
-			if self.hp < self.hpmax then
-				self.hp = self.hp + 1
-			end
-			--old explosion was LIGHTBLUE
-			if math.random(10) == 1 then
-				self:play_sound("act")
-			end
 		end,
 	}
 
@@ -1299,19 +1300,20 @@ function drl.register_beings()
 			},
 		},
 
+		runtime = {
+			OnAction = function (self)
+				if self.hp < self.hpmax then
+					self.hp = self.hp + 1
+				end
+				--old explosion was RED
+			end,
+		},
+
 		OnCreate = function (self)
 			self.hpmax = self.hpmax + DIFFICULTY * DIFFICULTY * 5
 			self.hp = self.hpmax
 			self.telechance = 5
 			self.teleradius = 5
-		end,
-
-		OnAction = function (self)
-			if not game.is_playing() then return end
-			if self.hp < self.hpmax then
-				self.hp = self.hp + 1
-			end
-			--old explosion was RED
 		end,
 	}
 
@@ -1648,26 +1650,25 @@ function drl.register_beings()
 					ui.msg_enter("Congratulations! You defeated the Apostle!")
 				end
 			end,
+
+			OnAction = function (self)
+				if self.hp < self.hpmax then
+					self.hp = self.hp + 1
+				end
+				if math.random(20) == 1 then
+					self:play_sound("phasing")
+					level:explosion( self.position, { range = 1, delay = 50, color = LIGHTBLUE } )
+					self:phase()
+					level:explosion( self.position, { range = 1, delay = 50, color = LIGHTBLUE } )
+				end
+				if math.random(10) == 1 then
+					self:play_sound("act")
+				end
+			end,
 		},
 
 		OnCreate = function (self)
 			level.flags[ LF_NONUKE ] = true
-		end,
-
-		OnAction = function (self)
-			if not game.is_playing() then return end
-			if self.hp < self.hpmax then
-				self.hp = self.hp + 1
-			end
-			if math.random(20) == 1 then
-				self:play_sound("phasing")
-				level:explosion( self.position, { range = 1, delay = 50, color = LIGHTBLUE } )
-				self:phase()
-				level:explosion( self.position, { range = 1, delay = 50, color = LIGHTBLUE } )
-			end
-			if math.random(10) == 1 then
-				self:play_sound("act")
-			end
 		end,
 	}
 

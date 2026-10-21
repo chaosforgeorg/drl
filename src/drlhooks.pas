@@ -10,7 +10,7 @@ uses vutil, vlua, dfdata;
 
 const
   Hook_OnCreate        = 0;   // Being and Item
-  Hook_OnAction        = 1;   // Being
+  Hook_OnAction        = 1;   // Being, Perk (being)
   Hook_OnAttacked      = 2;   // Being
   Hook_OnUseActive     = 3;   // Perk (player)
   Hook_OnDie           = 4;   // Perk (being)
