@@ -9,7 +9,7 @@ unit dfdata;
 interface
 uses classes, sysutils, idea,
      vlua, vgenerics, vcolor, vutil, vrltools, vtigstyle, vluatable, vioevent, vvector, vrandom,
-     drlconfig, drlkeybindings;
+     drlkeybindings;
 
 const CoreModuleID          : AnsiString = '';
       VersionEngine         : Ansistring = '';
@@ -116,8 +116,6 @@ const
   NoScoreRecord  : Boolean = False;
 
   GodMode      : Boolean = False;
-
-  Config       : TDRLConfig = nil;
 
 const
   AnimationSpeedMove   = 135;

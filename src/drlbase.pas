@@ -8,7 +8,7 @@ unit drlbase;
 interface
 
 uses vapp, vnode, vutil, vuid, vio, viotypes, vrltools, vlua, vioevent, vstoreinterface, vrandom, vrlapp,
-     dflevel, dfdata, dfhof, dfplayer, dfitem, drlhooks, drllua, drlcommand, drlkeybindings, drlmodule, drlgamedata, drlconfiguration, drlio;
+     dflevel, dfdata, dfhof, dfplayer, dfitem, drlhooks, drllua, drlcommand, drlkeybindings, drlmodule, drlgamedata, drlconfig, drlconfiguration, drlio;
 
 // Where a fire command takes its target from.
 type TFireTarget = ( FireManual, FireAuto, FireMouse );
@@ -44,8 +44,8 @@ type TDRLSessionResult = ( DSR_Quit, DSR_Played, DSR_ReloadData );
 // state, targeting, gameplay input, progression, and the save payload. Module
 // and data-generation policy belongs to TDRLRuntime.
 type TDRLSession = class(TVObject)
-       // aUserConfig is borrowed from the runtime, which outlives the Session.
-       constructor Create( aRuntime : TRLRuntime; aIO : TDRLIO; aUserConfig : TDRLConfiguration; aModules : TDRLModules;
+       // aUserConfig and aLuaConfig are borrowed from the runtime and outlive the Session.
+       constructor Create( aRuntime : TRLRuntime; aIO : TDRLIO; aUserConfig : TDRLConfiguration; aLuaConfig : TDRLConfig; aModules : TDRLModules;
          aStore : TStoreInterface; aData : TGameData; const aPaths : TGamePaths );
        procedure InitializeLevel;
        // Starts a directional run with the player's run-over-items setting.
@@ -154,6 +154,7 @@ type TDRLSession = class(TVObject)
        FRuntime         : TRLRuntime;
        FIO              : TDRLIO; // Borrowed from the runtime, which outlives the Session.
        FUserConfig      : TDRLConfiguration; // Borrowed from the runtime.
+       FLuaConfig       : TDRLConfig;        // Borrowed from the runtime; runs Keytable keys.
        FPaths           : TGamePaths;
      public
        property GameWon : Boolean read GetGameWon;
@@ -343,12 +344,13 @@ begin
   {$ENDIF}
 end;
 
-constructor TDRLSession.Create( aRuntime : TRLRuntime; aIO : TDRLIO; aUserConfig : TDRLConfiguration; aModules : TDRLModules;
+constructor TDRLSession.Create( aRuntime : TRLRuntime; aIO : TDRLIO; aUserConfig : TDRLConfiguration; aLuaConfig : TDRLConfig; aModules : TDRLModules;
   aStore : TStoreInterface; aData : TGameData; const aPaths : TGamePaths );
 begin
   FRuntime := aRuntime;
   FIO      := aIO;
   FUserConfig := aUserConfig;
+  FLuaConfig  := aLuaConfig;
   FContext := TNodeContext.Create( aRuntime.Lua, nil );
   FStatus  := TRunStatus.Create;
   FModules := aModules;
@@ -1467,7 +1469,7 @@ begin
   if iAction = BINDING_FORWARD_LUA then
   begin
     if aEvent.Key.Repeated then Exit( False );
-    Config.RunKey( FIO.KeyCode );
+    FLuaConfig.RunKey( FIO.KeyCode );
     Exit( HandleCommand( TCommand.Create( COMMAND_SKIP ) ) );
   end;
 

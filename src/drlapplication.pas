@@ -10,7 +10,7 @@ interface
 
 uses sysutils,
      vapp, viorl, vlua, vrlapp, vstoreinterface, vutil, vioevent,
-     dfdata, dfhof, drlbase, drlmodule, drlgamedata, drlhelp, drlio;
+     dfdata, dfhof, drlbase, drlconfig, drlmodule, drlgamedata, drlhelp, drlio;
 
 type
   TDRLApplication = class;
@@ -38,6 +38,7 @@ type TDRLRuntime = class( TRLRuntime )
     procedure UnloadGameData;
     procedure LuaError( const aMessage : AnsiString );
     function GetIO : TDRLIO;
+    function GetConfig : TDRLConfig;
   protected
     function CreateIO : TIORL; override;
     function CreateLua : TLua; override;
@@ -54,6 +55,8 @@ type TDRLRuntime = class( TRLRuntime )
     procedure SaveProfile;
     // The IO created by CreateIO, typed for DRL.
     property IO        : TDRLIO          read GetIO;
+    // The config.lua state of the current data generation, replaced on each load.
+    property Config    : TDRLConfig      read GetConfig;
     property HOF       : THOF            read FHOF;
     property Help      : THelp           read FHelp;
     property ModErrors : TStringGArray   read FModErrors;
@@ -88,7 +91,7 @@ implementation
 
 uses {$IFDEF WINDOWS}windows,{$ENDIF}
      {$IFDEF WINDOWS}vos,{$ENDIF} vdebug, vlog, vluastate, vluastore,
-     dfmap, drlconfig, drlconfiguration, drlgfxio, drlhooks, drllua, drltextio, drlworkshop;
+     dfmap, drlconfiguration, drlgfxio, drlhooks, drllua, drltextio, drlworkshop;
 
 type TDRLConfigurationState = class( TDRLConfiguration )
   private
@@ -108,8 +111,6 @@ end;
 
 destructor TDRLConfigurationState.Destroy;
 begin
-  if dfdata.Config = FLuaConfig then
-    dfdata.Config := nil;
   if drlconfiguration.Configuration = Self then
     drlconfiguration.Configuration := nil;
   FreeAndNil( FLuaConfig );
@@ -123,7 +124,6 @@ begin
     raise Exception.Create('TDRLConfigurationState requires a Lua configuration');
   iPrevious := FLuaConfig;
   FLuaConfig := aConfig;
-  dfdata.Config := FLuaConfig;
   iPrevious.Free;
 end;
 
@@ -187,7 +187,11 @@ end;
 
 function TDRLRuntime.CreateLua : TLua;
 begin
-  Result := TDRLLua.Create( FModules, Paths.DataPath );
+  // God mode runs the game in the Lua config's state, where godmode.lua
+  // defined the console Keytable.
+  if GodMode
+    then Result := TDRLLua.Create( FModules, Paths.DataPath, Config.Raw )
+    else Result := TDRLLua.Create( FModules, Paths.DataPath, nil );
   Result.ErrorFunc := @LuaError;
   IO.RegisterLuaAPI( Result );
 end;
@@ -195,6 +199,11 @@ end;
 function TDRLRuntime.GetIO : TDRLIO;
 begin
   Exit( TDRLIO( TRLRuntime( Self ).IO ) );
+end;
+
+function TDRLRuntime.GetConfig : TDRLConfig;
+begin
+  Exit( TDRLConfigurationState( Configuration ).LuaConfig );
 end;
 
 // Lua errors during a run are reported in game; elsewhere they abort.
@@ -209,7 +218,7 @@ end;
 
 procedure TDRLRuntime.CreateSession( aInitializeData : Boolean );
 begin
-  FSession := TDRLSession.Create( Self, IO, Self.Configuration as TDRLConfiguration, FModules, FStore, FData, Paths );
+  FSession := TDRLSession.Create( Self, IO, Self.Configuration as TDRLConfiguration, Config, FModules, FStore, FData, Paths );
   IO.BindRunStatus( FSession.RunStatus );
   IO.BindAutoTarget( FSession.Targeting.List );
   if not aInitializeData then Exit;
@@ -218,8 +227,8 @@ begin
   FSession.SetSessionHooks( FSessionHooks );
 end;
 
-// Phase order: select module and paths; confirm outdated mods; create an
-// initial session shell; prepare IO/configuration, then non-Lua data owners.
+// Phase order: select module and paths; confirm outdated mods; prepare IO;
+// reload the Lua config, then the data owners and the initial session shell.
 function TDRLRuntime.PrepareGameData : Boolean;
 var iModulePath : AnsiString;
 begin
@@ -252,8 +261,6 @@ begin
   and ( not IO.RunModuleAPIWarning( FModules.OutdatedModules ) ) then
     Exit( False );
 
-  FData := TGameData.Create;
-  CreateSession( False );
   IO.Initialize( FModules.CoreModule );
   IO.LoadStart;
   FProfileTimeStart := MSecNow();
@@ -274,8 +281,11 @@ begin
 
   Assert( Self.Configuration is TDRLConfigurationState );
   TDRLConfigurationState( Self.Configuration ).ReplaceLuaConfig(
-    TDRLConfig.Create( Paths.ConfigurationPath, True )
+    TDRLConfig.Create( Paths.ConfigurationPath )
   );
+  // The Session borrows the config just loaded.
+  FData := TGameData.Create;
+  CreateSession( False );
   IO.LoadStart;
   FDataLoaded := True;
   IO.Configure(Config, True);
@@ -482,7 +492,7 @@ begin
     else
       iState.Write( aPaths.SettingsPath );
 
-    iState.ReplaceLuaConfig( TDRLConfig.Create( aPaths.ConfigurationPath, False ) );
+    iState.ReplaceLuaConfig( TDRLConfig.Create( aPaths.ConfigurationPath ) );
     aPaths.DataPath  := iState.LuaConfig.Configure( 'DataPath', aPaths.DataPath );
     aPaths.WritePath := iState.LuaConfig.Configure( 'WritePath', aPaths.WritePath );
     aPaths.ScorePath := iState.LuaConfig.Configure( 'ScorePath', aPaths.ScorePath );

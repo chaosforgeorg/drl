@@ -19,8 +19,7 @@ SoundEngine = "DEFAULT"
 -- AllowHighAscii   = true
 
 -- Message coloring system. Remove or comment out the Messages
--- table to turn it off. Use basic color names available in
--- colors.lua.
+-- table to turn it off. Use the basic color names defined below.
 -- As for the string, it's case sensitive, but you may use
 -- the wildcard characters * and ?.
 
@@ -74,20 +73,3 @@ Messages = {
 -- same as WritePath, change for multi-user systems. --score-path= to override
 -- on command line.
 --ScorePath = ""
-
--- Custom coloring based on entity ID's. Search the DRL wiki
--- for id's for entities.
---
--- In case of cells, there are two overrides - [id]_light and [id]_dark
--- [id]_dark cells are out of vision, [id]_light cells are ones you can see.
-
--- An example of how to change DRL's color scheme.
-Colors = {
---	floor_dark  = GREEN,
---	floor_light = BLUE,
---	former = BLUE,
---	demon  = GREEN,
-}
-
--- you can add move or add your changes in separate files using dofile:
---dofile "colors.lua"

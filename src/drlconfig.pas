@@ -7,26 +7,20 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlconfig;
 interface
 
-uses classes, sysutils, vluaconfig, vgenerics;
-
-type TColorOverrides = specialize TGHashMap< Integer >;
+uses classes, sysutils, vluaconfig;
 
 { TDRLConfig }
 
 type TDRLConfig = class(TLuaConfig)
-  constructor Create( const aFileName : AnsiString; aReload : Boolean );
-  destructor Destroy; override;
+  constructor Create( const aFileName : AnsiString );
 private
-  FColorOverrides   : TColorOverrides;
-  FSoundEngine      : AnsiString;
-  FHighASCII        : Boolean;
-  procedure ReadColorOverride( aKey, aValue : Variant );
+  FSoundEngine : AnsiString;
+  FHighASCII   : Boolean;
 public
-  property ColorOverrides   : TColorOverrides read FColorOverrides;
   // Resolved sound engine: 'FMOD', 'SDL' or 'NONE'.
-  property SoundEngine      : AnsiString      read FSoundEngine;
-  // Presentation options read by IO.
-  property HighASCII        : Boolean         read FHighASCII;
+  property SoundEngine : AnsiString read FSoundEngine;
+  // Presentation option read by IO.
+  property HighASCII   : Boolean    read FHighASCII;
 end;
 
 
@@ -37,10 +31,9 @@ uses dfdata;
 
 { TDRLConfig }
 
-constructor TDRLConfig.Create( const aFileName : AnsiString; aReload : Boolean );
+constructor TDRLConfig.Create( const aFileName : AnsiString );
 begin
   inherited Create;
-  FColorOverrides := TColorOverrides.Create;
 
   LoadMain( aFileName );
 
@@ -71,19 +64,6 @@ begin
       then GraphicsVersion := True
       else GraphicsVersion := False;
   end;
-
-  if aReload then EntryFeed( 'Colors', @ReadColorOverride );
-end;
-
-procedure TDRLConfig.ReadColorOverride( aKey, aValue : Variant );
-begin
-  FColorOverrides[aKey] := aValue;
-end;
-
-destructor TDRLConfig.Destroy;
-begin
-  FreeAndNil( FColorOverrides );
-  inherited Destroy;
 end;
 
 end.

@@ -16,7 +16,9 @@ type
 { TDRLLua }
 
 TDRLLua = class(TLua)
-       constructor Create( aModules : TDRLModules; const aDataPath : AnsiString ); reintroduce;
+       // aState nil creates a new Lua state; god mode passes the Lua config's state,
+       // so the console and its Keytable see the game.
+       constructor Create( aModules : TDRLModules; const aDataPath : AnsiString; aState : PLua_State ); reintroduce;
        procedure RegisterPlayer(Thing: TThing);
        function HookName( aHook : Byte ) : AnsiString;
        destructor Destroy; override;
@@ -366,14 +368,12 @@ begin
   FNodeContext := aContext;
 end;
 
-constructor TDRLLua.Create( aModules : TDRLModules; const aDataPath : AnsiString );
+constructor TDRLLua.Create( aModules : TDRLModules; const aDataPath : AnsiString; aState : PLua_State );
 var Count : Byte;
 begin
   FModules := aModules;
   FDataPath := aDataPath;
-  if GodMode
-    then inherited Create( Config.Raw )
-    else inherited Create( nil );
+  inherited Create( aState );
 
   FOpenData := TVDataFileArray.Create;
 
