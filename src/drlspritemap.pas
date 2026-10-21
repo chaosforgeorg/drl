@@ -221,7 +221,7 @@ const MarkerSprite : TSprite = (
 begin
   if ( FMarker.X < 0 ) or ( FMarker.Y < 0 ) then Exit;
   if not FLevel.isProperCoord( FMarker ) then Exit;
-  MarkerSprite.SpriteID[0] := HARDSPRITE_HIGHLIGHT;
+  MarkerSprite.SpriteID[0] := FIO.EngineSprites.Highlight;
   MarkerSprite.Color := ColorBlack;
   MarkerSprite.Color.A := 127;
   if FIO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT ) or FIO.Targeting then
@@ -274,7 +274,7 @@ const TargetSprite : TSprite = (
 );
 
 begin
-  TargetSprite.SpriteID[0] := HARDSPRITE_SELECT;
+  TargetSprite.SpriteID[0] := FIO.EngineSprites.Select;
 
   if FCursor.Active and FDriver.GetMousePos( iPoint ) then
   begin
@@ -739,7 +739,7 @@ end;
 
 procedure TDRLSpriteMap.ApplyEffect;
 begin
-  case StatusEffect of
+  case FIO.StatusEffect of
     StatusRed    : FLutTexture := FTextures['lut_berserk'].GLTexture;
     StatusGreen  : FLutTexture := FTextures['lut_enviro'].GLTexture;
     StatusBlue   : FLutTexture := FTextures['lut_stealth'].GLTexture;
@@ -1237,8 +1237,8 @@ begin
         end
         else if FLevel.BeingIntuited(iCoord, iBeing) then
         begin
-          with FSpriteEngine.Layers[ HARDSPRITE_MARK div 100000 ] do
-            Push( HARDSPRITE_MARK mod 100000, iCoord, ColorWhite, NewColor( Magenta ), ColorZero, NewColor( Magenta ), DRL_Z_FX-1 );
+          with FSpriteEngine.Layers[ FIO.EngineSprites.Mark div 100000 ] do
+            Push( FIO.EngineSprites.Mark mod 100000, iCoord, ColorWhite, NewColor( Magenta ), ColorZero, NewColor( Magenta ), DRL_Z_FX-1 );
         end;
     end;
 
@@ -1251,8 +1251,8 @@ begin
         if (not FLevel.isVisible( FTargetList[iL] )) or
            (not FLevel.isShotPassable( FTargetList[iL] )) then
           iColor := NewColor( 128, 0, 0 );
-        with FSpriteEngine.Layers[ HARDSPRITE_SELECT div 100000 ] do
-          Push( HARDSPRITE_SELECT mod 100000, FTargetList[iL], ColorWhite, iColor, ColorZero, iColor, DRL_Z_FX );
+        with FSpriteEngine.Layers[ FIO.EngineSprites.Select div 100000 ] do
+          Push( FIO.EngineSprites.Select mod 100000, FTargetList[iL], ColorWhite, iColor, ColorZero, iColor, DRL_Z_FX );
       end;
       {
       iColor := NewColor( 0, 96, 192 );
@@ -1262,13 +1262,13 @@ begin
         if (not FLevel.isVisible( FOldTargetList[iL] )) or
            (not FLevel.isShotPassable( FOldTargetList[iL] )) then
           iColor := NewColor( 128, 0, 128 );
-        with FSpriteEngine.Layers[ HARDSPRITE_MARK div 100000 ] do
-          Push( HARDSPRITE_MARK mod 100000, FOldTargetList[iL], ColorWhite, iColor, ColorZero, iColor, DRL_Z_FX+1 );
+        with FSpriteEngine.Layers[ FIO.EngineSprites.Mark div 100000 ] do
+          Push( FIO.EngineSprites.Mark mod 100000, FOldTargetList[iL], ColorWhite, iColor, ColorZero, iColor, DRL_Z_FX+1 );
       end;
       }
       if FTargetList.Size > 0 then
-        with FSpriteEngine.Layers[ HARDSPRITE_MARK div 100000 ] do
-          Push( HARDSPRITE_MARK mod 100000, FTarget, ColorWhite, FTargetColor, ColorZero, FTargetColor, DRL_Z_FX );
+        with FSpriteEngine.Layers[ FIO.EngineSprites.Mark div 100000 ] do
+          Push( FIO.EngineSprites.Mark mod 100000, FTarget, ColorWhite, FTargetColor, ColorZero, FTargetColor, DRL_Z_FX );
     end
   else
     if FAutoTarget.X * FAutoTarget.Y <> 0 then
@@ -1278,15 +1278,15 @@ begin
       if ( iBeing <> nil ) and ( iBeing.AnimCount > 0 ) then
          GetMovePosition( iBeing.UID, iV );
       if ( iBeing <> nil ) and ( iBeing.isVisible or ( iBeing.AnimCount > 0 ) ) 
-        then PushTarget( HARDSPRITE_SELECT, iV, NewColor( Yellow ), 1.0 + iBeing.TargetSize * 0.1 )
-        else PushTarget( HARDSPRITE_SELECT, iV, NewColor( Yellow ), 1.0 );
+        then PushTarget( FIO.EngineSprites.Select, iV, NewColor( Yellow ), 1.0 + iBeing.TargetSize * 0.1 )
+        else PushTarget( FIO.EngineSprites.Select, iV, NewColor( Yellow ), 1.0 );
     end;
 
   if FGridActive then
   for iY := 1 to MAXY do
     for iX := iDMinX to iDMaxX do
-    with FSpriteEngine.Layers[ HARDSPRITE_GRID div 100000 ] do
-      Push( HARDSPRITE_GRID mod 100000, NewCoord2D( iX, iY ), NewColor( 50, 50, 50, 50 ), ColorBlack, ColorZero, ColorBlack, DRL_Z_ITEMS );
+    with FSpriteEngine.Layers[ FIO.EngineSprites.Grid div 100000 ] do
+      Push( FIO.EngineSprites.Grid mod 100000, NewCoord2D( iX, iY ), NewColor( 50, 50, 50, 50 ), ColorBlack, ColorZero, ColorBlack, DRL_Z_ITEMS );
 
 end;
 

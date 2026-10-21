@@ -241,6 +241,7 @@ core.register_blueprint "being"
 	name        = { true,  core.TSTRING },
 	name_plural = { false, core.TSTRING },
 	id          = { false, core.TSTRING },
+	blueprint   = { false, core.TBLUEPRINT },
 	sound_id    = { false, core.TIDIN("beings") },
 	ascii       = { true,  core.TSTRING },
 	color       = { true,  core.TNUMBER },
@@ -282,6 +283,8 @@ core.register_blueprint "being"
 	desc            = { true,  core.TSTRING },
 	kill_desc       = { false, core.TSTRING },
 	kill_desc_melee = { false, core.TSTRING },
+	death_desc      = { false, core.TSTRING, "%s dies." },
+	death_oov_desc  = { false, core.TSTRING, "You hear the scream of a freed soul!" },
 
 	weapon = { false, core.TANY },
 

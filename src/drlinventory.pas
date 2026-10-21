@@ -55,7 +55,7 @@ TInventory = class( TVObject )
 
 implementation
 
-uses vmath, vlua, drlkeybindings, dfplayer, dflevel;
+uses vmath, vlua, drlkeybindings, dfplayer, dflevel, drllua;
 
 { TInventoryEnumerator }
 
@@ -171,8 +171,8 @@ var iAmount : Integer;
     iMax    : Integer;
 begin
   if aID <= 0 then Exit( 0 );
-  if FOwner.Context.Lua.Defined([ CoreModuleID, 'GetItemMax' ])
-    then iMax := FOwner.Context.Lua.ProtectedCall([ CoreModuleID, 'GetItemMax' ], [aID] )
+  if FOwner.Context.Lua.Defined([ TDRLLua( FOwner.Context.Lua ).CoreModuleID, 'GetItemMax' ])
+    then iMax := FOwner.Context.Lua.ProtectedCall([ TDRLLua( FOwner.Context.Lua ).CoreModuleID, 'GetItemMax' ], [aID] )
     else iMax := FOwner.Context.Lua.Get(['items',aID,'max']);
   iItem := SeekStack(aID);
 

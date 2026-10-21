@@ -9,11 +9,13 @@ interface
 uses viotypes, vutil, drlio, dfdata, drlmodule;
 
 type TModuleChoiceView = class( TDRLLayer )
-  constructor Create( aModules : TModuleList );
+  // aChoice receives the chosen module ID.
+  constructor Create( aModules : TModuleList; aChoice : PAnsiString );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsModal : Boolean; override;
 protected
   FModules : TModuleList;
+  FChoice  : PAnsiString;
 end;
 
 type TModuleAPIWarningView = class( TDRLLayer )
@@ -29,9 +31,10 @@ implementation
 
 uses vtig;
 
-constructor TModuleChoiceView.Create( aModules : TModuleList );
+constructor TModuleChoiceView.Create( aModules : TModuleList; aChoice : PAnsiString );
 begin
   FModules  := aModules;
+  FChoice   := aChoice;
   FFinished := False;
 end;
 
@@ -53,7 +56,7 @@ begin
   VTIG_End;
   if iResult <> '' then
   begin
-    CoreModuleID := iResult;
+    FChoice^  := iResult;
     FFinished := True;
   end;
 end;

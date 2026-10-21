@@ -222,23 +222,18 @@ function drl.register_sprites()
     core.declare( "SPRITE_DECO_SKULL_3", DRL_SENVIRO + DRL_COLS * 14 + 16 )
     core.declare( "SPRITE_DECO_SKULL_4", DRL_SENVIRO + DRL_COLS * 15 + 16 )
 
-	core.declare( "HARDSPRITE_HIGHLIGHT", SPRITE_SELECT )
-	core.declare( "HARDSPRITE_EXPL",      SPRITE_EXPLOSION )
-	core.declare( "HARDSPRITE_SELECT",    SPRITE_SELECT )
-	core.declare( "HARDSPRITE_MARK",      SPRITE_MARK )
-	core.declare( "HARDSPRITE_GRID",      SPRITE_GRID )
-	core.declare( "HARDSPRITE_SHIELD",    SPRITE_MARK )
-   	core.declare( "HARDSPRITE_SHIELD_COUNT", 1 )
-
-   	core.declare( "HARDSPRITE_DECAL_BLOOD_1",   SPRITE_DECAL_BLOOD_1 )
-  	core.declare( "HARDSPRITE_DECAL_BLOOD_2",   SPRITE_DECAL_BLOOD_2 )
-  	core.declare( "HARDSPRITE_DECAL_BLOOD_3",   SPRITE_DECAL_BLOOD_3 )
-  	core.declare( "HARDSPRITE_DECAL_BLOOD_4",   SPRITE_DECAL_BLOOD_4 )
-
-   	core.declare( "HARDSPRITE_DECAL_WALL_BLOOD_1",   SPRITE_DECAL_WALL_BLOOD_1 )
-  	core.declare( "HARDSPRITE_DECAL_WALL_BLOOD_2",   SPRITE_DECAL_WALL_BLOOD_2 )
-  	core.declare( "HARDSPRITE_DECAL_WALL_BLOOD_3",   SPRITE_DECAL_WALL_BLOOD_3 )
-  	core.declare( "HARDSPRITE_DECAL_WALL_BLOOD_4",   SPRITE_DECAL_WALL_BLOOD_4 )
+	-- What the engine draws by itself; blood_emitter names an emitter by ID.
+	ui.engine_sprites = {
+		highlight         = SPRITE_SELECT,
+		select            = SPRITE_SELECT,
+		mark              = SPRITE_MARK,
+		grid              = SPRITE_GRID,
+		explosion         = SPRITE_EXPLOSION,
+		shield            = { sprite = SPRITE_MARK, frames = 1 },
+		blood_decals      = { SPRITE_DECAL_BLOOD_1, SPRITE_DECAL_BLOOD_2, SPRITE_DECAL_BLOOD_3, SPRITE_DECAL_BLOOD_4 },
+		wall_blood_decals = { SPRITE_DECAL_WALL_BLOOD_1, SPRITE_DECAL_WALL_BLOOD_2, SPRITE_DECAL_WALL_BLOOD_3, SPRITE_DECAL_WALL_BLOOD_4 },
+		blood_emitter     = "emit_blood_hit",
+	}
 
     register_emitter "emit_blood_hit"
     {
@@ -257,6 +252,5 @@ function drl.register_sprites()
         flags        = { PF_DECAL_ON_GROUND, PF_ROTATE, PF_RAND_OFFSET, PF_NO_EMISSIVE },
     }
 
-    core.declare( "HARDEMITTER_BLOOD", emitters.emit_blood_hit.nid )
 
 end

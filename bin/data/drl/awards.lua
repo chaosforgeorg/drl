@@ -1049,11 +1049,10 @@ function drl.award_global_badges()
 	if amb_total >= amb_total_max    then player:add_badge("technician5") end
 end
 
-function drl.RunAwards( no_record )
+function drl.RunAwards()
 	core.award_medals()
 	drl.award_badges()
 	core.update_player_awards()
-	if no_record then return end
 	core.update_player_data()
 	drl.award_global_badges()
 	core.update_player_badges()

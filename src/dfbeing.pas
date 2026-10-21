@@ -41,7 +41,7 @@ TBeing = class(TThing,IPathQuery)
     function  MoveTowards( aWhere : TCoord2D; aVisualMultiplier : Single = 1.0 ) : TMoveResult;
     procedure Reload( aAmmoItem : TItem; aSingle : Boolean; aWeapon : TItem = nil ); 
     function Resurrect( aRange : Integer ) : TBeing;
-    procedure Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer ); virtual;
+    procedure Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer; aAnnounce : Boolean ); virtual;
     function Attack( aWhere : TCoord2D; aMoveOnKill : Boolean; aWeapon : TItem = nil ) : Boolean; overload;
     function Attack( aTarget : TBeing; aSecond : Boolean = False; aWeapon : TItem = nil ) : Boolean; overload;
     function meleeWeaponSlot : TEqSlot;
@@ -128,6 +128,8 @@ TBeing = class(TThing,IPathQuery)
   protected
     procedure LuaLoad( aTable : TLuaTable; aGameRNG : TRNG ); reintroduce;
     // private
+    procedure PlayEquipSound( aItem : TItem );
+    procedure AnnounceDeath;
     function FireRanged( aTarget : TCoord2D; aGun : TItem; aAlt : Boolean = False; aDelay : Integer = 0 ) : Boolean;
     function getAmmoItem( Weapon : TItem ) : TItem;
     procedure HandleShotgunFire( aTarget : TCoord2D; aShotGun : TItem; aAltFire : Boolean; aShots : DWord );
@@ -212,7 +214,7 @@ implementation
 
 uses math,
      vlualibrary, vluaentitynode, vdebug, vluatools, vcolor, vvector,
-     dfplayer, dflevel, dfmap, drlhooks, drllua;
+     dfplayer, dflevel, dfmap, drlhooks, drllua, drlgamedata;
 
 
 function TBeing.getStrayChance( aDefender : TBeing; aWeapon : TItem ) : Byte;
@@ -370,7 +372,7 @@ begin
   FStrength   := aTable.getInteger('strength');
   FTargetSize := aTable.getInteger('targetsize',0);
 
-  FVisionRadius := VisionBaseValue + aTable.getInteger('vision');
+  FVisionRadius := TGameData.FromState( FContext.Lua.Raw ).Rules.VisionBase + aTable.getInteger('vision');
 
   FHPMax := FHP;
   FHPNom := FHP;
@@ -595,13 +597,28 @@ begin
 
   Inv.Wear( iWeapon );
 
-  if Option_SoundEquipPickup
-    then iWeapon.PlaySound( 'pickup', FPosition )
-    else iWeapon.PlaySound( 'reload', FPosition );
+  PlayEquipSound( iWeapon );
 
   if not ( BF_QUICKSWAP in FFlags )
      then Exit( Success( 'You prepare the %s!',[ iWeapon.Name ], getWearCost(iWeapon) ) )
      else Exit( Success( 'You prepare the %s instantly!',[ iWeapon.Name ] ) );
+end;
+
+procedure TBeing.PlayEquipSound( aItem : TItem );
+begin
+  aItem.PlaySound( TLevel( Parent ).Presentation.EquipSound, FPosition );
+end;
+
+// The prototype's death_desc (or death_oov_desc when unseen) formats the name
+// with %s; an empty description stays silent.
+procedure TBeing.AnnounceDeath;
+var iDesc : AnsiString;
+begin
+  if isVisible
+    then iDesc := GetLuaProtoValue( 'death_desc' )
+    else iDesc := GetLuaProtoValue( 'death_oov_desc' );
+  if iDesc <> '' then
+    TLevel( Parent ).Presentation.Msg( Capitalized( Format( iDesc, [ GetName( True ) ] ) ) );
 end;
 
 function TBeing.ActionSwapWeapon : boolean;
@@ -612,9 +629,7 @@ begin
   Inv.EqSwap( efWeapon, efWeapon2 );
 
   if Inv.Slot[ efWeapon ] <> nil then
-    if Option_SoundEquipPickup
-      then Inv.Slot[ efWeapon ].PlaySound( 'pickup', FPosition )
-      else Inv.Slot[ efWeapon ].PlaySound( 'reload', FPosition );
+    PlayEquipSound( Inv.Slot[ efWeapon ] );
 
   if ( BF_QUICKSWAP in FFlags ) or ( canDualWield )
     then Exit( Success( 'You swap your weapons instantly!',[] ) )
@@ -683,9 +698,7 @@ begin
   if not FInv.Contains( aItem ) then Exit( False );
   iWeapon := aItem.isEqWeapon;
 
-  if Option_SoundEquipPickup
-    then aItem.PlaySound( 'pickup', FPosition )
-    else aItem.PlaySound( 'reload', FPosition );
+  PlayEquipSound( aItem );
 
   if FInv.DoWear( aItem ) then
   begin
@@ -705,9 +718,7 @@ begin
   if not FInv.Contains( aItem ) then Exit( False );
   iWeapon := aItem.isEqWeapon;
 
-  if Option_SoundEquipPickup
-    then aItem.PlaySound( 'pickup', FPosition )
-    else aItem.PlaySound( 'reload', FPosition );
+  PlayEquipSound( aItem );
 
   if FInv.DoWear( aItem, aSlot ) then
   begin
@@ -1578,7 +1589,7 @@ begin
 end;
 
 
-procedure TBeing.Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer );
+procedure TBeing.Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer; aAnnounce : Boolean );
 var iItem      : TItem;
     iCorpse    : Word;
     iBlood     : Byte;
@@ -1595,6 +1606,7 @@ begin
   end;
   FDying := True;
   if ( aKiller <> nil ) and aKiller.Dead then aKiller := nil;
+  if aAnnounce then AnnounceDeath;
 
   if ( not ( BF_FRIENDLY in FFlags ) ) and ( not ( BF_ILLUSION in FFlags ) ) and ( not ( BF_NOKILL in FFlags ) ) then
     iLevel.Player.RegisterKill( FID, aKiller, aWeapon, not Flags[ BF_RESPAWN ] );
@@ -1930,7 +1942,6 @@ var iLevel         : TLevel;
     iGibMul        : Single;
     iForceOverkill : Boolean;
     iMeleeAttack   : Boolean;
-    iDeathMessage  : AnsiString;
     iOldDurability : LongInt;
 begin
   if ( aDamage < 0 ) or (BF_INV in FFlags) or Dying then Exit;
@@ -2104,14 +2115,8 @@ begin
   end;
 
   FHP := Max( FHP - aDamage, 0 );
-  if ( FHP <= 0 ) and (not IsPlayer) and (not (BF_NODEATHMESSAGE in FFlags)) then
-    if FContext.Lua.Defined( [ CoreModuleID, 'GetDeathMessage' ] ) then
-    begin
-      iDeathMessage := FContext.Lua.ProtectedCall( [ CoreModuleID, 'GetDeathMessage' ], [ Self, isVisible ] );
-      if iDeathMessage <> '' then iLevel.Presentation.Msg( iDeathMessage );
-    end;
   if FHP <= 0
-    then Kill( Min( aDamage div 2, 15), (aDamage >= iOverKillValue) or iForceOverkill, iActive, aSource, aDelay )
+    then Kill( Min( aDamage div 2, 15), (aDamage >= iOverKillValue) or iForceOverkill, iActive, aSource, aDelay, True )
     else begin
       CallHook( Hook_OnAttacked, [ iActive, aSource ] );
       FOverlayUntil := Max( FOverlayUntil, iLevel.Presentation.PainUntil( aDelay ) );
@@ -2735,7 +2740,7 @@ var State       : TLuaGameStack;
 begin
   State.Init(L);
   Being := State.ToObject(1) as TBeing;
-  Being.Kill(15,State.ToBoolean(2),nil,nil,0);
+  Being.Kill( 15, State.ToBoolean( 2 ), nil, nil, 0, False );
   Result := 0;
 end;
 

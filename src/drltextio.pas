@@ -17,6 +17,7 @@ uses vrltools, vtextmap, vioevent, vio, viotypes, vluamapnode, vlua,
 type TDRLTextIO = class( TDRLIO, ITextMap )
     constructor Create( aSettings : TDRLConfiguration; aConfig : TDRLConfig ); reintroduce;
     procedure Reset; override;
+    procedure PaceMultiMove; override;
     procedure Initialize( aCoreModule : TDRLModule ); override;
     destructor Destroy; override;
     procedure Update( aMSec : DWord ); override;
@@ -66,6 +67,8 @@ uses sysutils,
 // How a being sensed only by Intuition is drawn.
 const IntuitionChar  = '*';
       IntuitionColor = LightMagenta;
+      // Milliseconds each multi-move step shows for.
+      MultiMoveDelay = 20;
 
 constructor TDRLTextIO.Create( aSettings : TDRLConfiguration; aConfig : TDRLConfig );
 begin
@@ -86,6 +89,11 @@ begin
   inherited Reset;
   FTarget.Create(0,0);
   FTargetRange  := 0;
+end;
+
+procedure TDRLTextIO.PaceMultiMove;
+begin
+  Delay( MultiMoveDelay );
 end;
 
 procedure TDRLTextIO.Initialize( aCoreModule : TDRLModule );
@@ -261,7 +269,7 @@ var iColor      : TIOColor;
     iPos := Point( aCoord.x + 1, aCoord.y + 2 );
     if aChar = ' ' then aChar := FConsole.GetChar( iPos.X, iPos.Y );
     iPos := Point( iPos.X - 1, iPos.Y - 1 );
-    if StatusEffect = StatusInvert
+    if FEffect = StatusInvert
        then VTIG_FreeChar( aChar, iPos, Black, LightGray )
        else VTIG_FreeChar( aChar, iPos, aColor );
   end;
@@ -325,8 +333,8 @@ var iLevel : TLevel;
     {$IFDEF CORNERMAP}
     if iLevel.Corner( aCoord ) then aAtr := Yellow;
     {$ENDIF CORNERMAP}
-    if StatusEffect <> StatusNormal then
-      case StatusEffect of
+    if FEffect <> StatusNormal then
+      case FEffect of
         StatusRed     : if aHighlight then aAtr := LightRed     else aAtr := Red;
         StatusGreen   : if aHighlight then aAtr := LightGreen   else aAtr := Green;
         StatusBlue    : if aHighlight then aAtr := LightBlue    else aAtr := Blue;

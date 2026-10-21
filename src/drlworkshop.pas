@@ -43,7 +43,6 @@ var iSteam   : TStoreInterface;
     iModule  : TDRLModule;
     iWID     : QWord;
 begin
-  Option_ForceRaw := not GodMode;
   iModules := nil;
   iSteam   := nil;
   try
@@ -54,7 +53,7 @@ begin
       Log( LOGERROR,'Can''t connect to steam, aborting.' );
       Exit;
     end;
-    iModules := TDRLModules.Create(aDataPath);
+    iModules := TDRLModules.Create( aDataPath, not GodMode );
     iModules.ScanModules( iSteam );
 
     iModule := iModules.GetModuleInfo( aModID );

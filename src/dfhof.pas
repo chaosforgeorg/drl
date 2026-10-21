@@ -74,7 +74,8 @@ end;
 implementation
 
 uses math, sysutils, strutils, variants,
-     vluatable, vlualibrary, vluagamestack, vdebug, vtig, vutil, vrltools;
+     vluatable, vlualibrary, vluagamestack, vdebug, vtig, vutil, vrltools,
+     drllua;
 
 // Old copies of player.wad and score.wad kept, at most one per day.
 const PlayerBackups = 7;
@@ -849,111 +850,105 @@ var iXMLElement     : TDOMElement;
   end;
 
 begin
-  iGameResultID := FLua.ProtectedCall([CoreModuleID,'GetResultId'],[]);
-  if not NoPlayerRecord then
+  iGameResultID := FLua.ProtectedCall([TDRLLua( FLua ).CoreModuleID,'GetResultId'],[]);
+  iDiffID       := FLua.Get([ 'diff', aDifficulty, 'id' ]);
+  iChalInc      := 0;
+  iChalAbbr     := 'unchallenged';
+  if aChallenge <> '' then
   begin
-    iDiffID       := FLua.Get([ 'diff', aDifficulty, 'id' ]);
-    iChalInc      := 0;
-    iChalAbbr     := 'unchallenged';
-    if aChallenge <> '' then
+    iChalAbbr := FLua.Get(['chal',aChallenge,'abbr']);
+    iChalInc := 1;
+  end;
+
+  iXMLEntry := IncreaseXMLCount( FPlayerInfo.XML.DocumentElement, 'deaths', 1 );
+  IncreaseXMLCount( iXMLEntry, 'death', iChalAbbr, 1 );
+  IncreaseXMLCount( iXMLEntry, 'death', iGameResultID, 1 );
+  if (aPlayer.KilledBy <> '') and (aPlayer.KilledBy <> aPlayer.ID) then
+    IncreaseXMLCount( iXMLEntry, 'death', aPlayer.KilledBy, 1 );
+
+  // KILLS
+
+  iXMLEntry := IncreaseXMLCount( FPlayerInfo.XML.DocumentElement, 'kills', aPlayer.FKills.Count );
+
+  for iKillsEntry in aPlayer.FKills do
+  begin
+    iKills := iKillsEntry.Value.Count;
+    if iKills = 0 then Continue;
+
+    iXMLElement := IncreaseXMLCount( iXMLEntry, 'killbeing', iKillsEntry.Key, iKills );
+    IncreaseXMLCount( iXMLElement, 'killtype', iDiffID, iKills );
+
+    for iKillTypesEntry in iKillsEntry.Value do
     begin
-      iChalAbbr := FLua.Get(['chal',aChallenge,'abbr']);
-      iChalInc := 1;
-    end;
-
-    iXMLEntry := IncreaseXMLCount( FPlayerInfo.XML.DocumentElement, 'deaths', 1 );
-    IncreaseXMLCount( iXMLEntry, 'death', iChalAbbr, 1 );
-    IncreaseXMLCount( iXMLEntry, 'death', iGameResultID, 1 );
-    if (aPlayer.KilledBy <> '') and (aPlayer.KilledBy <> aPlayer.ID) then
-      IncreaseXMLCount( iXMLEntry, 'death', aPlayer.KilledBy, 1 );
-
-    // KILLS
-
-    iXMLEntry := IncreaseXMLCount( FPlayerInfo.XML.DocumentElement, 'kills', aPlayer.FKills.Count );
-
-    for iKillsEntry in aPlayer.FKills do
-    begin
-      iKills := iKillsEntry.Value.Count;
-      if iKills = 0 then Continue;
-
-      iXMLElement := IncreaseXMLCount( iXMLEntry, 'killbeing', iKillsEntry.Key, iKills );
-      IncreaseXMLCount( iXMLElement, 'killtype', iDiffID, iKills );
-
-      for iKillTypesEntry in iKillsEntry.Value do
-      begin
-        iWeaponGroup := WeaponGroup(iKillTypesEntry.Key);
-        IncreaseXMLCount( iXMLElement, 'killtype', iWeaponGroup, iKillTypesEntry.Value );
-        IncreaseXMLCount( iXMLEntry, 'killtype', iWeaponGroup, iKillTypesEntry.Value );
-        if (iKillTypesEntry.Key <> 'melee') and (iKillTypesEntry.Key <> 'other') then
-          IncreaseXMLCount( iXMLEntry, 'killtype', iKillTypesEntry.Key, iKillTypesEntry.Value );
-      end;
-    end;
-
-    IncreaseXMLCount( iXMLEntry, 'killtype', iDiffID, aPlayer.FKills.Count );
-    IncreaseXMLCount( iXMLEntry, 'killtype', iChalAbbr, aPlayer.FKills.Count );
-
-    // GAMES
-    iGameResult := FLua.ProtectedCall([CoreModuleID,'GetShortResultId'],[iGameResultID,aPlayer.Level_Index]);
-    iXMLEntry := IncreaseXMLCount( FPlayerInfo.XML.DocumentElement, 'games', 1 );
-    if aGameWon then
-    begin
-      IncreaseXMLCount( iXMLEntry, 'win', iGameResult, 1 );
-      IncreaseXMLCount( iXMLEntry, 'win', 'total', 1 );
-    end;
-    iXMLElement := IncreaseXMLCount( iXMLEntry, 'game', iDiffID, 1 );
-    iString := iXMLElement.GetAttribute('max');
-    if GameResultBetter( iString, iGameResult ) then iXMLElement.SetAttribute('max',iGameResult);
-    if aGameWon then
-    begin
-      IncreaseXMLCount( iXMLElement, 'win', iGameResult, 1 );
-      IncreaseXMLCount( iXMLElement, 'win', 'total', 1 );
-    end;
-
-    // CHALLENGES
-    iXMLEntry := IncreaseXMLCount( FPlayerInfo.XML.DocumentElement, 'challenges', iChalInc );
-    iXMLElement := IncreaseXMLCount( iXMLEntry, 'challenge', iChalAbbr, 1 );
-    iString := iXMLElement.GetAttribute('max');
-    if GameResultBetter( iGameResult, iString ) then iXMLElement.SetAttribute('max',iGameResult);
-    if aGameWon then
-    begin
-      IncreaseXMLCount( iXMLElement, 'win', iGameResult, 1 );
-      IncreaseXMLCount( iXMLElement, 'win', 'total', 1 );
-    end;
-    iXMLSubElement := IncreaseXMLCount( iXMLElement, 'game', iDiffID, 1 );
-    iString := iXMLSubElement.GetAttribute('max');
-    if GameResultBetter( iString, iGameResult ) then iXMLSubElement.SetAttribute('max',iGameResult);
-    if aGameWon then
-    begin
-      IncreaseXMLCount( iXMLSubElement, 'win', iGameResult, 1 );
-      IncreaseXMLCount( iXMLSubElement, 'win', 'total', 1 );
+      iWeaponGroup := WeaponGroup(iKillTypesEntry.Key);
+      IncreaseXMLCount( iXMLElement, 'killtype', iWeaponGroup, iKillTypesEntry.Value );
+      IncreaseXMLCount( iXMLEntry, 'killtype', iWeaponGroup, iKillTypesEntry.Value );
+      if (iKillTypesEntry.Key <> 'melee') and (iKillTypesEntry.Key <> 'other') then
+        IncreaseXMLCount( iXMLEntry, 'killtype', iKillTypesEntry.Key, iKillTypesEntry.Value );
     end;
   end;
 
-  if not NoScoreRecord then
-  begin
-    iDescription := FLua.ProtectedCall([CoreModuleID,'GetResultDescription'],[iGameResultID,true]);
+  IncreaseXMLCount( iXMLEntry, 'killtype', iDiffID, aPlayer.FKills.Count );
+  IncreaseXMLCount( iXMLEntry, 'killtype', iChalAbbr, aPlayer.FKills.Count );
 
-    FScore.Lock;
-    try
-      FScore.Load;
-      iScoreEntry := FScore.Add( aPlayer.Score );
-      if iScoreEntry <> nil then
-      begin
-        iScoreEntry.SetAttribute('name', aPlayer.Name );
-        iScoreEntry.SetAttribute('level', IntToStr(aPlayer.ExpLevel) );
-        if aLevelAbbr <> ''
-          then iScoreEntry.SetAttribute('depth', aLevelAbbr )
-          else iScoreEntry.SetAttribute('depth', IntToStr(aPlayer.Level_Index) );
-        iScoreEntry.SetAttribute('klass', FLua.Get(['klasses',aPlayer.Klass,'id']) );
-        iScoreEntry.SetAttribute('killed', iDescription );
-        iScoreEntry.SetAttribute('difficulty', IntToStr(aDifficulty) );
-        if aChallenge <> '' then
-          iScoreEntry.SetAttribute('challenge', FLua.Get(['chal',aChallenge,'abbr']) );
-        FScore.Save;
-      end;
-    finally
-      FScore.Unlock;
+  // GAMES
+  iGameResult := FLua.ProtectedCall([TDRLLua( FLua ).CoreModuleID,'GetShortResultId'],[iGameResultID,aPlayer.Level_Index]);
+  iXMLEntry := IncreaseXMLCount( FPlayerInfo.XML.DocumentElement, 'games', 1 );
+  if aGameWon then
+  begin
+    IncreaseXMLCount( iXMLEntry, 'win', iGameResult, 1 );
+    IncreaseXMLCount( iXMLEntry, 'win', 'total', 1 );
+  end;
+  iXMLElement := IncreaseXMLCount( iXMLEntry, 'game', iDiffID, 1 );
+  iString := iXMLElement.GetAttribute('max');
+  if GameResultBetter( iString, iGameResult ) then iXMLElement.SetAttribute('max',iGameResult);
+  if aGameWon then
+  begin
+    IncreaseXMLCount( iXMLElement, 'win', iGameResult, 1 );
+    IncreaseXMLCount( iXMLElement, 'win', 'total', 1 );
+  end;
+
+  // CHALLENGES
+  iXMLEntry := IncreaseXMLCount( FPlayerInfo.XML.DocumentElement, 'challenges', iChalInc );
+  iXMLElement := IncreaseXMLCount( iXMLEntry, 'challenge', iChalAbbr, 1 );
+  iString := iXMLElement.GetAttribute('max');
+  if GameResultBetter( iGameResult, iString ) then iXMLElement.SetAttribute('max',iGameResult);
+  if aGameWon then
+  begin
+    IncreaseXMLCount( iXMLElement, 'win', iGameResult, 1 );
+    IncreaseXMLCount( iXMLElement, 'win', 'total', 1 );
+  end;
+  iXMLSubElement := IncreaseXMLCount( iXMLElement, 'game', iDiffID, 1 );
+  iString := iXMLSubElement.GetAttribute('max');
+  if GameResultBetter( iString, iGameResult ) then iXMLSubElement.SetAttribute('max',iGameResult);
+  if aGameWon then
+  begin
+    IncreaseXMLCount( iXMLSubElement, 'win', iGameResult, 1 );
+    IncreaseXMLCount( iXMLSubElement, 'win', 'total', 1 );
+  end;
+
+  iDescription := FLua.ProtectedCall([TDRLLua( FLua ).CoreModuleID,'GetResultDescription'],[iGameResultID,true]);
+
+  FScore.Lock;
+  try
+    FScore.Load;
+    iScoreEntry := FScore.Add( aPlayer.Score );
+    if iScoreEntry <> nil then
+    begin
+      iScoreEntry.SetAttribute('name', aPlayer.Name );
+      iScoreEntry.SetAttribute('level', IntToStr(aPlayer.ExpLevel) );
+      if aLevelAbbr <> ''
+        then iScoreEntry.SetAttribute('depth', aLevelAbbr )
+        else iScoreEntry.SetAttribute('depth', IntToStr(aPlayer.Level_Index) );
+      iScoreEntry.SetAttribute('klass', FLua.Get(['klasses',aPlayer.Klass,'id']) );
+      iScoreEntry.SetAttribute('killed', iDescription );
+      iScoreEntry.SetAttribute('difficulty', IntToStr(aDifficulty) );
+      if aChallenge <> '' then
+        iScoreEntry.SetAttribute('challenge', FLua.Get(['chal',aChallenge,'abbr']) );
+      FScore.Save;
     end;
+  finally
+    FScore.Unlock;
   end;
 end;
 
@@ -963,8 +958,6 @@ var iSize   : Integer;
     i       : Integer;
     iPair   : TLuaIndexVariant;
 begin
-  if NoPlayerRecord then Exit( False );
-
   iSize := FLua.GetTableSize( 'ranks' );
 
   Initialize( aResult );

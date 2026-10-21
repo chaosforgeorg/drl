@@ -9,17 +9,7 @@ unit dfdata;
 interface
 uses classes, sysutils, idea,
      vlua, vgenerics, vcolor, vutil, vrltools, vtigstyle, vluatable, vioevent, vvector, vrandom,
-     drlconfig, drlkeybindings;
-
-const CoreModuleID          : AnsiString = '';
-      VersionEngine         : Ansistring = '';
-      VersionEngineSave     : Ansistring = '';
-      VersionEngineExpected : Ansistring = '';
-      VersionModule         : Ansistring = '';
-      VersionModuleSave     : Ansistring = '';
-      SaveVersionEngine     : Ansistring = '';
-      SaveVersionModule     : Ansistring = '';
-      SaveModString         : Ansistring = '';
+     drlkeybindings;
 
 const PlayerSafeZone = 6;
 
@@ -97,27 +87,13 @@ type THOFRank = record
 end;
 
 const
-  DEBUG           : Boolean = False;
-  CRASHMODE       : Boolean = False;
-  EXCEPTEMMITED   : Boolean = False;
-  DemoVersion     : Boolean = False;
-  ForceShop       : Boolean = False;
   GraphicsVersion : Boolean = True;
   ForceNoAudio    : Boolean = False;
   ForceConsole    : Boolean = False;
   ForceGraphics   : Boolean = False;
   ForceWindowed   : Boolean = False;
   ForcePlayerName : AnsiString = '';
-  ModdedGame      : Boolean = False;
-  ForceRestart    : Ansistring = '';
-  VisionBaseValue : Byte = 8;
-
-  NoPlayerRecord : Boolean = False;
-  NoScoreRecord  : Boolean = False;
-
-  GodMode      : Boolean = False;
-
-  Config       : TDRLConfig = nil;
+  GodMode         : Boolean = False;
 
 const
   AnimationSpeedMove   = 135;
@@ -150,37 +126,34 @@ const
   COMMAND_SKIP     = 250;
 
 const
-  Option_InvFullDrop      : Boolean = False;
-  Option_MortemArchive    : Boolean = False;
-  Option_MenuReturn       : Boolean = False;
-  Option_SoundEquipPickup : Boolean = False;
-  Option_ColoredInventory : Boolean = True;
-  Option_LockBreak        : Boolean = True;
-  Option_LockClose        : Boolean = True;
-  Option_ForceRaw         : Boolean = True;
-  Option_MaxRun           : DWord = 100;
-  Option_MaxWait          : DWord = 20;
-  Option_RunDelay         : Byte = 0;
-  Option_Graphics         : string = 'TILES';
-  Option_Blending         : Boolean = False;
-  Option_SaveOnCrash      : Boolean = True;
-  Option_AlwaysName       : string = '';
-  Option_TimeStamp        : string = 'yyyy/mm/dd hh:nn:ss';
+  Option_Graphics : string = 'TILES';
+
+// Date and time format in mortem and screenshot file names.
+const FileTimeStamp = 'yyyy/mm/dd hh:nn:ss';
+
+// Longest player name the name entries accept; longer ones break the settings layout.
+const MaxPlayerName = 20;
 
 // Knockback of explosions whose definition leaves it out.
 const DefaultExplosionKnockback = 8;
 
-var
-  HARDSPRITE_HIGHLIGHT        : DWord = 0;
-  HARDSPRITE_EXPL             : DWord = 0;
-  HARDSPRITE_SELECT           : DWord = 0;
-  HARDSPRITE_MARK             : DWord = 0;
-  HARDSPRITE_GRID             : DWord = 0;
-  HARDSPRITE_SHIELD           : DWord = 0;
-  HARDSPRITE_SHIELD_COUNT     : DWord = 0;
-  HARDSPRITE_DECAL_BLOOD      : array[0..3] of DWord = ( 0,0,0,0 );
-  HARDSPRITE_DECAL_WALL_BLOOD : array[0..3] of DWord = ( 0,0,0,0 );
-  HARDEMITTER_BLOOD           : DWord = 0;
+type TDecalSprites = array[0..3] of DWord;
+
+// What the engine draws by itself (target and selection markers, grid,
+// explosion mark, shield, blood), as the core module lists it in
+// ui.engine_sprites; zero where it lists nothing. IO reads it once per data load.
+type TEngineSprites = record
+  Highlight       : DWord;
+  Select          : DWord;
+  Mark            : DWord;
+  Grid            : DWord;
+  Explosion       : DWord;
+  Shield          : DWord;
+  ShieldFrames    : DWord;
+  BloodDecals     : TDecalSprites;
+  WallBloodDecals : TDecalSprites;
+  BloodEmitter    : DWord;
+end;
 
 const
 {$include ../bin/data/core/commands.lua}
@@ -236,6 +209,9 @@ type IDRLPresentation = interface( IRLPresentation )
   procedure PulseBlood( aValue : Single );
   // Whether the level's decals are drawn; placing them draws visual randomness.
   function ShowsDecals : Boolean;
+  function EngineSprites : TEngineSprites;
+  // Sound ID an item plays when equipped: 'pickup' or 'reload'.
+  function EquipSound : AnsiString;
   procedure Explosion( aDelay : Integer; aWhere : TCoord2D; aData : TExplosionData );
   procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ); overload;
   procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single ); overload;
@@ -256,7 +232,6 @@ end;
 
 function NewSprite( ID : DWord ) : TSprite;
 function NewSprite( ID : DWord; Color : TColor ) : TSprite;
-function isDecalBloodId( aID : DWord ) : Boolean;
 
 const
   ActionCostPickUp = 1000;
@@ -267,10 +242,6 @@ const
   ActionCostFire   = 1000;
 
   ActSoundChance    = 30;
-
-const
-
-  StatusEffect  : TStatusEffect = StatusNormal;
 
 const PACK_RELOAD = 100;
 
@@ -670,15 +641,6 @@ begin
     5 : Exit( INPUT_WAIT );
     else Exit( INPUT_WAIT );
   end;
-end;
-
-function isDecalBloodId( aID : DWord ) : Boolean;
-begin
-  Result := ( aID <> 0 ) and
-    ( ( aID = HARDSPRITE_DECAL_BLOOD[0] ) or
-      ( aID = HARDSPRITE_DECAL_BLOOD[1] ) or
-      ( aID = HARDSPRITE_DECAL_BLOOD[2] ) or
-      ( aID = HARDSPRITE_DECAL_BLOOD[3] ) );
 end;
 
 function NewSprite ( ID : DWord ) : TSprite;

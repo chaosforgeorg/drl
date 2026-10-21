@@ -53,7 +53,7 @@ type TPlayer = class(TBeing)
   procedure AddExp( aAmount : LongInt );
   procedure CalculateScore( aDifficulty : Integer; aGameWon : Boolean );
   destructor Destroy; override;
-  procedure Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer ); override;
+  procedure Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer; aAnnounce : Boolean ); override;
   procedure AddHistory( const aHistory : Ansistring );
   class procedure RegisterLuaAPI( aLua : TLua );
   procedure UpdateVisual;
@@ -118,7 +118,6 @@ begin
   FKillCount := 0;
 
   FLevelIndex   := 0;
-  StatusEffect  := StatusNormal;
   FStatistics   := TStatistics.Create;
   FScore        := 0;
   NukeActivated := 0;
@@ -483,7 +482,7 @@ begin
   inherited Destroy;
 end;
 
-procedure TPlayer.Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer );
+procedure TPlayer.Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer; aAnnounce : Boolean );
 var iLevel   : TLevel;
     iSlot    : TEqSlot;
 begin
@@ -539,9 +538,9 @@ begin
 end;
 
 begin
-  if FContext.Lua.Defined([CoreModuleID,'GetScore']) then
+  if FContext.Lua.Defined([TDRLLua( FContext.Lua ).CoreModuleID,'GetScore']) then
   begin
-    FScore := FContext.Lua.ProtectedCall([CoreModuleID,'GetScore'],[])
+    FScore := FContext.Lua.ProtectedCall([TDRLLua( FContext.Lua ).CoreModuleID,'GetScore'],[])
   end
   else
   begin

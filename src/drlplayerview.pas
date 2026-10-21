@@ -612,7 +612,7 @@ begin
         FState := PLAYERVIEW_DONE;
         if FPlayer.Inv.IsFull then
         begin
-          if Option_InvFullDrop
+          if FSession.UserConfig.GetBoolean( 'inv_full_drop' )
             then FSession.QueueCommand( TCommand.Create( COMMAND_DROP, FEq[iSelected].Item ) )
             else IO.PushLayer( TNoRoomConfirmView.Create( FSession, FEq[iSelected].Item ) );
         end
@@ -747,7 +747,7 @@ begin
   if Length( iEntry.Name ) > 47 then iEntry.Name := Copy(iEntry.Name, 1, 47 );
   iEntry.Stats := aItem.GetInvStatsList;
   iEntry.Perks := aItem.GetPerkSummary( True );
-  iEntry.Color := aItem.MenuColor;
+  iEntry.Color := IO.ItemMenuColor( aItem );
   iEntry.QSlot := 0;
 
   iEntry.Desc  := aItem.Context.Lua.Get(['items',aItem.ID,'desc'], '');

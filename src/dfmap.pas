@@ -66,8 +66,7 @@ implementation
 uses sysutils, vdebug;
 
 procedure TCells.RegisterCell( aLua : TLua; aCellNum : byte );
-var iColorID : AnsiString;
-    iHook    : TCellHook;
+var iHook    : TCellHook;
     iCell    : TCell;
     iTable   : TLuaTable;
     iSubTable: TLuaTable;
@@ -86,9 +85,6 @@ begin
   iTable := aLua.GetTable(['cells',aCellNum]);
   with iTable do
   try
-    iColorID := getString('id');
-    if IsString('color_id') then iColorID := getString('color_id');
-
     iCell.Hooks := [];
     for iHook in TCellHooks do
       if isFunction( CellHooks[ iHook ] ) then
@@ -189,10 +185,6 @@ begin
   finally
     Free;
   end;
-
-
-  iCell.LightColor[0] := Config.ColorOverrides.Get( iColorID + '_light', iCell.LightColor[0] );
-  iCell.DarkColor := Config.ColorOverrides.Get( iColorID + '_dark', iCell.DarkColor );
 
   FData[aCellNum] := iCell;
 end;

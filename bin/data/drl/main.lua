@@ -340,11 +340,6 @@ function drl.GetDisassembleId( it )
 	return table.random_pick( modlist )
 end
 
-function drl.GetDeathMessage( being, visible )
-	if visible then return being:get_name( true, true ).." dies." end
-	return "You hear the scream of a freed soul!"
-end
-
 local death_reasons = {
 	acid   = "melted in acid",
 	barrel = "was blown up by a barrel",

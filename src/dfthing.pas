@@ -76,7 +76,6 @@ begin
 end;
 
 procedure TThing.LuaLoad( aTable : TLuaTable );
-var iColorID : AnsiString;
 begin
   FAnimCount   := 0;
   FPerks       := nil;
@@ -91,11 +90,6 @@ begin
   ReadSprite( aTable, FSprite );
   FillChar( FMelSprite, SizeOf( FMelSprite ), 0 );
   ReadSprite( aTable, 'melsprite', FMelSprite );
-
-  iColorID := FID;
-  if aTable.IsString('color_id') then iColorID := aTable.getString('color_id');
-
-  FGylph.Color := Config.ColorOverrides.Get( iColorID, FGylph.Color );
 
   FHooks += LoadCallbacks( FContext.Lua, aTable );
 end;

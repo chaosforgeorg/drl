@@ -32,6 +32,10 @@ implementation
 
 uses dfdata;
 
+// Steps a run or a repeated wait takes before stopping on its own.
+const MaxRunSteps  = 100;
+      MaxWaitSteps = 20;
+
 { TRunData }
 
 constructor TMultiMove.Create;
@@ -95,10 +99,10 @@ begin
     iDir := FDir;
     if iDir.code = 5 then
     begin
-      if FCount >= Option_MaxWait then Stop;
+      if FCount >= MaxWaitSteps then Stop;
     end
     else
-      if FCount >= Option_MaxRun then Stop;
+      if FCount >= MaxRunSteps then Stop;
   end;
   Exit( DirectionToInput( iDir ) );
 end;

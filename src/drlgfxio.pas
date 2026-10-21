@@ -259,7 +259,7 @@ begin
     Log('-------');
   end;
 
-  FTextures  := TTextureManager.Create( Option_Blending );
+  FTextures  := TTextureManager.Create( False );
   TSDLIODriver( FIODriver ).ShowMouse( False );
 
   FMCursor   := TDRLMouseCursor.Create( FTextures );
@@ -444,7 +444,7 @@ begin
     FreeAndNil( iStream );
     FreeAndNil( iCoreData );
   end;
-  iFontTexture := FTextures.AddImage( iFontName, iImage, Option_Blending );
+  iFontTexture := FTextures.AddImage( iFontName, iImage, False );
   FTextures[ iFontTexture ].Image.SubstituteColor( ColorBlack, ColorZero );
   FTextures[ iFontTexture ].Upload;
 
@@ -631,7 +631,8 @@ begin
   if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
   if ( aEmitterID = 0 ) or ( aCount = 0 ) then Exit;
   FAnimations.AddAnimation( TGFXParticleBurstAnimation.Create(
-    Level.Particles, aDelay, aEmitterID, aPosition, aDirection, aCount, aDistanceScale, aSpreadScale ) );
+    Level.Particles, aDelay, aEmitterID, aPosition, aDirection, aCount, aDistanceScale, aSpreadScale,
+    FEngine.BloodDecals ) );
 end;
 
 procedure TDRLGFXIO.addSoundAnimation(aDelay: DWord; aPosition: TCoord2D; aSoundID: DWord);
@@ -662,7 +663,7 @@ end;
 
 procedure TDRLGFXIO.ExplosionMark( aCoord : TCoord2D; aColor : Byte; aDuration : DWord; aDelay : DWord );
 begin
-  FAnimations.AddAnimation( TGFXExplodeMarkAnimation.Create( FSpriteMap, aDuration, aDelay, aCoord, aColor ) )
+  FAnimations.AddAnimation( TGFXExplodeMarkAnimation.Create( FSpriteMap, aDuration, aDelay, aCoord, aColor, FEngine.Explosion ) )
 end;
 
 procedure TDRLGFXIO.SetTarget( aTarget : TCoord2D; aColor : Byte; aRange : Byte );
@@ -698,7 +699,7 @@ var iLevel  : TLevel;
     if iFinalize then
     begin
       if aMain
-        then begin iSprite.Color := NewColor(0,160,0); iSprite.Frames := HARDSPRITE_SHIELD_COUNT; end
+        then begin iSprite.Color := NewColor(0,160,0); iSprite.Frames := FEngine.ShieldFrames; end
         else begin iSprite.Color := NewColor(64,64,64);iSprite.Frames := 1; end;
 
       iLevel.Markers.Add( iBlock, iSprite, 0 );
@@ -720,7 +721,7 @@ var iLevel  : TLevel;
       if not iLevel.isShotPassable( iCurrent ) then
       begin
         iSprite.Color  := NewColor(160,0,0);
-        iSprite.Frames := HARDSPRITE_SHIELD_COUNT;
+        iSprite.Frames := FEngine.ShieldFrames;
         iLevel.Markers.Add( iCurrent, iSprite, 0 );
         Exit;
       end;
@@ -737,8 +738,8 @@ begin
   iLevel.Markers.Wipe(0);
   if ( aTarget = Player.Position ) or ( not iLevel.isProperCoord( aTarget ) ) then Exit;
   FillChar( iSprite, SizeOf( iSprite ), 0 );
-  iSprite.SpriteID[0] := HARDSPRITE_SHIELD;
-  iSprite.Frames      := HARDSPRITE_SHIELD_COUNT;
+  iSprite.SpriteID[0] := FEngine.Shield;
+  iSprite.Frames      := FEngine.ShieldFrames;
   iSprite.FrameTime   := 125;
 
   Include( iSprite.Flags, SF_COSPLAY );
@@ -995,7 +996,7 @@ begin
     QuadSheet.PushColoredQuad( TGLVec2i.Create( iP1.x, iP1.y ), TGLVec2i.Create( iP2.x, iP2.y ), TGLVec4f.Create( 0,0,0,0.8 ) );
 
     iMinus := 1;
-    if StatusEffect = StatusInvert then
+    if FEffect = StatusInvert then
       iMinus := 2;
     iP1 := ConsoleCoordToDeviceCoord( vutil.Point( iAbsolute.x, iAbsolute.y2-iMinus ) );
     iP2 := ConsoleCoordToDeviceCoord( vutil.Point( iAbsolute.x2+1, iAbsolute.y2+2 ) );
@@ -1211,7 +1212,7 @@ begin
       end;
       if iItem <> nil then
       begin
-        VTIG_FreeLabel( '[{!{0}}] {1}', vutil.Point(iPosX,iPosY), [ PadQSlotChar[ i ], iItem.GetInvName ], iItem.MenuColor );
+        VTIG_FreeLabel( '[{!{0}}] {1}', vutil.Point(iPosX,iPosY), [ PadQSlotChar[ i ], iItem.GetInvName ], ItemMenuColor( iItem ) );
         Inc( iPosY );
       end;
     end;

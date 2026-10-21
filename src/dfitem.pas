@@ -279,7 +279,6 @@ end;
 
 function TItem.MenuColor: byte;
 begin
-  if not Option_ColoredInventory then Exit(LightGray);
   if Color = white then Exit(LightGray) else Exit(Color);
 end;
 

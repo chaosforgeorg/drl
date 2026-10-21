@@ -7,28 +7,20 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlconfig;
 interface
 
-uses classes, sysutils, vluaconfig, vgenerics;
-
-type TColorOverrides = specialize TGHashMap< Integer >;
+uses classes, sysutils, vluaconfig;
 
 { TDRLConfig }
 
 type TDRLConfig = class(TLuaConfig)
-  constructor Create( const aFileName : AnsiString; aReload : Boolean );
-  destructor Destroy; override;
+  constructor Create( const aFileName : AnsiString );
 private
-  FColorOverrides  : TColorOverrides;
-  FSoundEngine     : AnsiString;
-  FHighASCII       : Boolean;
-  FMessageBuffer   : DWord;
-  procedure ReadColorOverride( aKey, aValue : Variant );
+  FSoundEngine : AnsiString;
+  FHighASCII   : Boolean;
 public
-  property ColorOverrides  : TColorOverrides read FColorOverrides;
   // Resolved sound engine: 'FMOD', 'SDL' or 'NONE'.
-  property SoundEngine     : AnsiString      read FSoundEngine;
-  // Presentation options read by IO.
-  property HighASCII       : Boolean         read FHighASCII;
-  property MessageBuffer   : DWord           read FMessageBuffer;
+  property SoundEngine : AnsiString read FSoundEngine;
+  // Presentation option read by IO.
+  property HighASCII   : Boolean    read FHighASCII;
 end;
 
 
@@ -39,38 +31,16 @@ uses dfdata;
 
 { TDRLConfig }
 
-constructor TDRLConfig.Create( const aFileName : AnsiString; aReload : Boolean );
+constructor TDRLConfig.Create( const aFileName : AnsiString );
 begin
   inherited Create;
-  FColorOverrides := TColorOverrides.Create;
 
   LoadMain( aFileName );
 
   Option_Graphics         := Configure('Graphics',Option_Graphics);
-  Option_Blending         := Configure('Blending',Option_Blending);
-  Option_SaveOnCrash      := Configure('SaveOnCrash',Option_SaveOnCrash);
   FSoundEngine            := Configure('SoundEngine','DEFAULT');
 
   FHighASCII              := Configure('AllowHighAscii',{$IFDEF WINDOWS}True{$ELSE}False{$ENDIF});
-  Option_AlwaysName       := Configure('AlwaysName',Option_AlwaysName);
-  Option_InvFullDrop      := Configure('InvFullDrop',Option_InvFullDrop);
-  Option_MortemArchive    := Configure('MortemArchive',Option_MortemArchive);
-  Option_MenuReturn       := Configure('MenuReturn',Option_MenuReturn);
-  Option_SoundEquipPickup := Configure('SoundEquipPickup',Option_SoundEquipPickup);
-  Option_ColoredInventory := Configure('ColoredInventory',Option_ColoredInventory);
-  Option_LockBreak        := Configure('LockBreak',Option_LockBreak);
-  Option_LockClose        := Configure('LockClose',Option_LockClose);
-  Option_TimeStamp        := Configure('TimeStamp',Option_TimeStamp);
-
-  Option_RunDelay         := Configure('RunDelay',Option_RunDelay);
-  FMessageBuffer          := Configure('MessageBuffer',100);
-
-  Option_MaxRun           := Configure('MaxRun',Option_MaxRun);
-  Option_MaxWait          := Configure('MaxWait',Option_MaxWait);
-  Option_ForceRaw         := Configure('ForceRaw',GodMode);
-
-  if ForcePlayerName <> '' then
-    Option_AlwaysName := ForcePlayerName;
 
   if ForceNoAudio then FSoundEngine := 'NONE';
   if FSoundEngine = 'DEFAULT' then
@@ -94,19 +64,6 @@ begin
       then GraphicsVersion := True
       else GraphicsVersion := False;
   end;
-
-  if aReload then EntryFeed( 'Colors', @ReadColorOverride );
-end;
-
-procedure TDRLConfig.ReadColorOverride( aKey, aValue : Variant );
-begin
-  FColorOverrides[aKey] := aValue;
-end;
-
-destructor TDRLConfig.Destroy;
-begin
-  FreeAndNil( FColorOverrides );
-  inherited Destroy;
 end;
 
 end.
