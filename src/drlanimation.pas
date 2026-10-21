@@ -580,6 +580,8 @@ begin
   if not ( aAnimation is TGFXMoveAnimation ) then Exit( False );
   iMove := TGFXMoveAnimation( aAnimation );
   if FMustFinish or iMove.FMustFinish then Exit( False );
+  // Preserve the entry path and fade-in when a being moves into view.
+  if FBeing and ( FLightStart = 0 ) then Exit( False );
   iDistance := iMove.FSource.Distance( iMove.FTarget );
   if iDistance = 0.0 then Exit( False );
 

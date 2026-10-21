@@ -563,7 +563,7 @@ begin
           else Inc( iCount );
       until iCount >= Animations.Size;
   FAnimations.AddAnimation( TGFXMoveAnimation.Create( FSpriteMap, Level, aDuration, aDelay, aUID, aFrom, aTo, aSprite, aBeing, 0.0, aFinishBeforeNext ),
-    FSettings.AnimationBlending and aBeing and ( not aWipeBump ) );
+    FSettings.AnimationBlending and ( not aWipeBump ) );
 end;
 
 procedure TDRLGFXIO.addBumpAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aAmount : Single );
