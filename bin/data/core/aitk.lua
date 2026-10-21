@@ -19,6 +19,12 @@ function aitk.OnAction( self )
 	if safe > 1000 then
 		error( "AI : "..ais[ self.ai_type ].id.." entered infinite loop!" )
 	end
+	local OnAction = ais[ self.ai_type ].OnAction
+	if OnAction then OnAction( self ) end
+end
+
+function aitk.OnAttacked( self, ... )
+	return ais[ self.ai_type ].OnAttacked( self, ... )
 end
 
 function aitk.get_patrol_area( self, range, can_wander )

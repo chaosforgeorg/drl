@@ -1183,6 +1183,8 @@ begin
     if not ContinuePlaying then Exit( False );
   end;
 
+  // Gameplay reads the aim from the command, never from the view.
+  aCommand.Aim := FTargeting.List.Current;
   if not ( aCommand.Command in [ COMMAND_FIRE, COMMAND_ALTFIRE, COMMAND_RELOAD ] ) then
     FTargeting.ClearPosition;
 
@@ -1573,7 +1575,6 @@ function TDRLSession.MoveTargetEvent( aCoord : TCoord2D ) : Boolean;
 begin
   if FLevel.isProperCoord( aCoord ) then
   begin
-    FPlayer.TargetPos := aCoord;
     FTargeting.OnTarget( aCoord, True );
     FTargeting.Update( FPlayer.Vision );
     FIO.SetAutoTarget( FTargeting.List.Current );

@@ -281,7 +281,7 @@ begin
   if iThing = nil then Exit( 0 );
   if iThing.FPerks = nil then
     iThing.FPerks := TPerks.Create( iThing, TGameData.FromState( L ).Perks );
-  iThing.FPerks.Add( iState.ToId( iThing.Context.Lua, 2 ), iState.ToInteger(3,-1) );
+  iThing.FPerks.Add( iState.ToStorageID( 2, 'perks' ), iState.ToInteger(3,-1) );
   Result := 0;
 end;
 
@@ -292,7 +292,7 @@ begin
   iState.Init(L);
   iThing := iState.ToObject( 1 ) as TThing;
   if iThing.FPerks <> nil
-    then iState.Push( iThing.FPerks.getTime( iState.ToId( iThing.Context.Lua, 2 ) ) )
+    then iState.Push( iThing.FPerks.getTime( iState.ToStorageID( 2, 'perks' ) ) )
     else iState.Push( 0 );
   Result := 1;
 end;
@@ -304,7 +304,7 @@ begin
   iState.Init(L);
   iThing := iState.ToObject( 1 ) as TThing;
   if iThing.FPerks <> nil 
-    then iState.Push( iThing.FPerks.Remove( iState.ToId( iThing.Context.Lua, 2 ), iState.ToBoolean( 3, False ) ) )
+    then iState.Push( iThing.FPerks.Remove( iState.ToStorageID( 2, 'perks' ), iState.ToBoolean( 3, False ) ) )
     else iState.Push( False );
   Result := 1;
 end;
@@ -315,7 +315,7 @@ var iState : TLuaGameStack;
 begin
   iState.Init(L);
   iThing := iState.ToObject( 1 ) as TThing;
-  iState.Push( ( iThing.FPerks <> nil ) and ( iThing.FPerks.IsActive( iState.ToId( iThing.Context.Lua, 2 ) ) ) );
+  iState.Push( ( iThing.FPerks <> nil ) and ( iThing.FPerks.IsActive( iState.ToStorageID( 2, 'perks' ) ) ) );
   Result := 1;
 end;
 
@@ -339,7 +339,7 @@ var iState : TLuaGameStack;
 begin
   iState.Init( L );
   iThing := iState.ToObject( 1 ) as TThing;
-  iNID   := iState.ToId( iThing.Context.Lua, 2 );
+  iNID   := iState.ToStorageID( 2, 'emitters' );
   iLevel := TLevel( iThing.GetLevel );
   if iLevel = nil then
   begin
@@ -359,7 +359,7 @@ var iState : TLuaGameStack;
 begin
   iState.Init( L );
   iThing := iState.ToObject( 1 ) as TThing;
-  iNID   := iState.ToId( iThing.Context.Lua, 2 );
+  iNID   := iState.ToStorageID( 2, 'emitters' );
   iLevel := TLevel( iThing.GetLevel );
   if iLevel = nil then
   begin

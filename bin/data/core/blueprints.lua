@@ -183,6 +183,7 @@ core.register_blueprint "perk"
 
 	OnPickup       = { false, core.TFUNC }, -- Being, Item
 	OnDrop         = { false, core.TFUNC }, -- Item
+	OnAction       = { false, core.TFUNC }, -- Being
 	OnAct          = { false, core.TFUNC }, -- Being, Item
 	OnCanAct       = { false, core.TFUNC }, -- Being
 	OnDestroy      = { false, core.TFUNC }, -- Item
@@ -288,8 +289,6 @@ core.register_blueprint "being"
 	weapon = { false, core.TANY },
 
 	OnCreate        = { false, core.TFUNC },
-	OnAction        = { false, core.TFUNC },
-	OnAttacked      = { false, core.TFUNC },
 }
 
 core.register_blueprint "being_group_entry"
