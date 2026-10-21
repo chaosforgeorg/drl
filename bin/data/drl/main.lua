@@ -340,16 +340,6 @@ function drl.GetDisassembleId( it )
 	return table.random_pick( modlist )
 end
 
--- Announces deaths from damage; scripted and nuke deaths stay silent.
-function drl.OnBeingDeath( being, killer, cause )
-	if cause ~= "damage" or being.flags[ BF_NODEATHMESSAGE ] then return end
-	if being:is_visible() then
-		ui.msg( being:get_name( true, true ).." dies." )
-	else
-		ui.msg( "You hear the scream of a freed soul!" )
-	end
-end
-
 local death_reasons = {
 	acid   = "melted in acid",
 	barrel = "was blown up by a barrel",

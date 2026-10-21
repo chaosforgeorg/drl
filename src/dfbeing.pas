@@ -41,7 +41,7 @@ TBeing = class(TThing,IPathQuery)
     function  MoveTowards( aWhere : TCoord2D; aVisualMultiplier : Single = 1.0 ) : TMoveResult;
     procedure Reload( aAmmoItem : TItem; aSingle : Boolean; aWeapon : TItem = nil ); 
     function Resurrect( aRange : Integer ) : TBeing;
-    procedure Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer; aCause : TDeathCause ); virtual;
+    procedure Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer; aAnnounce : Boolean ); virtual;
     function Attack( aWhere : TCoord2D; aMoveOnKill : Boolean; aWeapon : TItem = nil ) : Boolean; overload;
     function Attack( aTarget : TBeing; aSecond : Boolean = False; aWeapon : TItem = nil ) : Boolean; overload;
     function meleeWeaponSlot : TEqSlot;
@@ -129,6 +129,7 @@ TBeing = class(TThing,IPathQuery)
     procedure LuaLoad( aTable : TLuaTable; aGameRNG : TRNG ); reintroduce;
     // private
     procedure PlayEquipSound( aItem : TItem );
+    procedure AnnounceDeath;
     function FireRanged( aTarget : TCoord2D; aGun : TItem; aAlt : Boolean = False; aDelay : Integer = 0 ) : Boolean;
     function getAmmoItem( Weapon : TItem ) : TItem;
     procedure HandleShotgunFire( aTarget : TCoord2D; aShotGun : TItem; aAltFire : Boolean; aShots : DWord );
@@ -605,6 +606,18 @@ end;
 procedure TBeing.PlayEquipSound( aItem : TItem );
 begin
   aItem.PlaySound( TLevel( Parent ).Presentation.EquipSound, FPosition );
+end;
+
+// The prototype's death_desc (or death_oov_desc when unseen) formats the name
+// with %s; an empty description stays silent.
+procedure TBeing.AnnounceDeath;
+var iDesc : AnsiString;
+begin
+  if isVisible
+    then iDesc := GetLuaProtoValue( 'death_desc' )
+    else iDesc := GetLuaProtoValue( 'death_oov_desc' );
+  if iDesc <> '' then
+    TLevel( Parent ).Presentation.Msg( Capitalized( Format( iDesc, [ GetName( True ) ] ) ) );
 end;
 
 function TBeing.ActionSwapWeapon : boolean;
@@ -1564,7 +1577,7 @@ begin
 end;
 
 
-procedure TBeing.Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer; aCause : TDeathCause );
+procedure TBeing.Kill( aBloodAmount : DWord; aOverkill : Boolean; aKiller : TBeing; aWeapon : TItem; aDelay : Integer; aAnnounce : Boolean );
 var iItem      : TItem;
     iCorpse    : Word;
     iBlood     : Byte;
@@ -1581,8 +1594,7 @@ begin
   end;
   FDying := True;
   if ( aKiller <> nil ) and aKiller.Dead then aKiller := nil;
-  // The core module announces the death; the veto above has passed.
-  TDRLLua( FContext.Lua ).CallCoreHook( Hook_OnBeingDeath, [ Self, aKiller, DeathCauseNames[ aCause ] ] );
+  if aAnnounce then AnnounceDeath;
 
   if ( not ( BF_FRIENDLY in FFlags ) ) and ( not ( BF_ILLUSION in FFlags ) ) and ( not ( BF_NOKILL in FFlags ) ) then
     iLevel.Player.RegisterKill( FID, aKiller, aWeapon, not Flags[ BF_RESPAWN ] );
@@ -2092,7 +2104,7 @@ begin
 
   FHP := Max( FHP - aDamage, 0 );
   if FHP <= 0
-    then Kill( Min( aDamage div 2, 15), (aDamage >= iOverKillValue) or iForceOverkill, iActive, aSource, aDelay, DeathDamage )
+    then Kill( Min( aDamage div 2, 15), (aDamage >= iOverKillValue) or iForceOverkill, iActive, aSource, aDelay, True )
     else begin
       CallHook( Hook_OnAttacked, [ iActive, aSource ] );
       FOverlayUntil := Max( FOverlayUntil, iLevel.Presentation.PainUntil( aDelay ) );
@@ -2716,7 +2728,7 @@ var State       : TLuaGameStack;
 begin
   State.Init(L);
   Being := State.ToObject(1) as TBeing;
-  Being.Kill( 15, State.ToBoolean( 2 ), nil, nil, 0, DeathScript );
+  Being.Kill( 15, State.ToBoolean( 2 ), nil, nil, 0, False );
   Result := 0;
 end;
 

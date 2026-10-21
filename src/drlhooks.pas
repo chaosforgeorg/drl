@@ -83,9 +83,8 @@ const
   Hook_getDescription  = 68; // Perk
   Hook_OnCreateLevel   = 69; // Module, Challenge
   Hook_OnDamageReceived= 70; // Perk
-  Hook_OnBeingDeath    = 71; // Module (core module, after a being's death is accepted)
 
-  HookAmount           = 72;
+  HookAmount           = 71;
 
 const AllHooks      : TFlags = [ 0..HookAmount-1 ] - [ 41 ];
 
@@ -95,8 +94,6 @@ var   BeingHooks       : TFlags;
       SessionHooks     : TFlags;
       ChallengeHooks   : TFlags;
       ModuleLoadHooks  : TFlags;
-      // Core module hooks entities raise through TDRLLua.CallCoreHook.
-      CoreEntityHooks  : TFlags;
 
 
 const HookNames : array[ 0..HookAmount-1 ] of AnsiString = (
@@ -117,7 +114,7 @@ const HookNames : array[ 0..HookAmount-1 ] of AnsiString = (
       'getGibMul',
       'OnUnequipCheck',
       'OnDrop', 'OnCanAct',
-      'getLabel', 'getDescription', 'OnCreateLevel', 'OnDamageReceived', 'OnBeingDeath'
+      'getLabel', 'getDescription', 'OnCreateLevel', 'OnDamageReceived'
       );
 
 function LoadHooks( aLua : TLua; const aTable : array of Const ) : TFlags;
@@ -174,6 +171,5 @@ SessionHooks := [ Hook_OnCreateLevel,
 ChallengeHooks := [ Hook_OnCreateLevel, Hook_OnCreatePlayer,
   Hook_OnWinGame, Hook_OnCreateWorld ];
 ModuleLoadHooks := [ Hook_OnLoad ];
-CoreEntityHooks := [ Hook_OnBeingDeath ];
 
 end.

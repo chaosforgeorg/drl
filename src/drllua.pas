@@ -37,9 +37,6 @@ TDRLLua = class(TLua)
        // Load content after Runtime owns Lua and the Session context is bound.
        procedure ReadWad( aIO : TDRLIO; aHelp : THelp; aModErrors : TStringGArray );
        procedure BindNodeContext( aContext : TNodeContext );
-       // Calls the core module's hook for an entity event when the module defines it
-       // (aHook in CoreEntityHooks).
-       procedure CallCoreHook( aHook : Byte; const aParams : array of Const );
      private
        procedure LoadFiles( const aDirectory : AnsiString; aLoader : TVDFLoader; aWildcard : AnsiString = '*' );
        function GetCoreModuleID : AnsiString;
@@ -49,7 +46,6 @@ TDRLLua = class(TLua)
        FDataPath    : AnsiString;
        FNodeContext : TNodeContext; // Borrowed from the active Session for Lua factories.
        FInfo        : TWadInfo;
-       FCoreHooks   : TFlags;
      public
        property NodeContext : TNodeContext read FNodeContext;
        property Info        : TWadInfo     read FInfo;
@@ -242,7 +238,6 @@ begin
   aIO.LoadProgress( 100 );
 
   if FInfo.Modded then Log( LOGINFO, 'Game is modded.');
-  FCoreHooks := LoadHooks( Self, [ FModules.CoreModuleID ], CoreEntityHooks );
 end;
 
 procedure TDRLLua.LoadFiles( const aDirectory : AnsiString; aLoader : TVDFLoader; aWildcard : AnsiString = '*' );
@@ -373,12 +368,6 @@ const lua_core_lib : array[0..2] of luaL_Reg = (
 function TDRLLua.GetCoreModuleID : AnsiString;
 begin
   Exit( FModules.CoreModuleID );
-end;
-
-procedure TDRLLua.CallCoreHook( aHook : Byte; const aParams : array of Const );
-begin
-  if aHook in FCoreHooks then
-    ProtectedCall( [ FModules.CoreModuleID, HookNames[ aHook ] ], aParams );
 end;
 
 procedure TDRLLua.BindNodeContext( aContext : TNodeContext );

@@ -105,8 +105,6 @@ type
     TBodyTarget     = ( Target_Internal, Target_Torso, Target_Feet );
     TEqSlot         = ( efTorso, efWeapon, efBoots, efWeapon2, efRelic );
     TStatusEffect   = ( StatusNormal, StatusInvert, StatusRed, StatusGreen, StatusBlue, StatusCyan, StatusMagenta, StatusYellow, StatusGray, StatusWhite );
-    // Why a being died; the core module's OnBeingDeath hook receives its name.
-    TDeathCause     = ( DeathDamage, DeathScript, DeathNuke );
     TDamageType     = ( Damage_None, Damage_Bullet, Damage_Melee, Damage_Pierce, Damage_Sharpnel, Damage_Acid, Damage_Fire, Damage_Cold, Damage_Poison, Damage_Plasma, Damage_SPlasma, Damage_IgnoreArmor );
     TExplosionFlag  = ( efSelfHalf, efSelfKnockback, efSelfSafe, efAfterBlink, efChain, efRandomContent, efNoDistanceDrop, efAlwaysVisible );
     TResistance     = ( Resist_Bullet, Resist_Melee, Resist_Shrapnel, Resist_Acid, Resist_Fire, Resist_Plasma, Resist_Cold, Resist_Poison, Resist_Pierce );
@@ -244,8 +242,6 @@ const
   ActionCostFire   = 1000;
 
   ActSoundChance    = 30;
-
-const DeathCauseNames : array[ TDeathCause ] of AnsiString = ( 'damage', 'script', 'nuke' );
 
 const PACK_RELOAD = 100;
 
