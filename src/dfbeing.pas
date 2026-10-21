@@ -275,7 +275,8 @@ begin
   FHPDecayMax := aStream.ReadWord();
 
   aStream.Read( FTimes,       SizeOf( FTimes ) );
-  aStream.Read( FLastCommand, SizeOf( FLastCommand ) );
+  // Only the command kind is kept; the rest refers to objects of this session.
+  FLastCommand := TCommand.Create( aStream.ReadByte() );
   aStream.Read( FAccuracy,    SizeOf( FAccuracy ) );
   aStream.Read( FStrength,    SizeOf( FStrength ) );
   aStream.Read( FSpriteMod,   SizeOf( FSpriteMod ) );
@@ -305,7 +306,7 @@ begin
   Stream.WriteWord( FHPDecayMax );
 
   Stream.Write( FTimes,       SizeOf( FTimes ) );
-  Stream.Write( FLastCommand, SizeOf( FLastCommand ) );
+  Stream.WriteByte( FLastCommand.Command );
   Stream.Write( FAccuracy,    SizeOf( FAccuracy ) );
   Stream.Write( FStrength,    SizeOf( FStrength ) );
   Stream.Write( FSpriteMod,   SizeOf( FSpriteMod ) );
