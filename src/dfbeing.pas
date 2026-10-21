@@ -166,7 +166,7 @@ TBeing = class(TThing,IPathQuery)
     FOverlayUntil  : QWord;
   public
     property Inv       : TInventory  read FInv       write FInv;
-    property TargetPos : TCoord2D    read FTargetPos write FTargetPos;
+    property TargetPos : TCoord2D    read FTargetPos;
     property LastPos   : TCoord2D    read FLastPos   write FLastPos;
     property LastMove  : TCoord2D    read FMovePos   write FMovePos;
 
