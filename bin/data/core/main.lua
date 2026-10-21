@@ -405,14 +405,6 @@ register_being         = core.register_storage( "beings", "being", function( bp 
 		local runtime_id
 		if bp.runtime and next( bp.runtime ) then
 			runtime_id = "perk_being_"..bp.id
-			-- The AI acts first and may end the run; perk dispatch already
-			-- stops once the being itself is gone.
-			local OnAction = bp.runtime.OnAction
-			if OnAction then
-				bp.runtime.OnAction = function( self )
-					if game.is_playing() then OnAction( self ) end
-				end
-			end
 			register_perk( runtime_id )( bp.runtime )
 			bp.runtime = runtime_id
 		end
@@ -435,18 +427,10 @@ register_being         = core.register_storage( "beings", "being", function( bp 
 				end
 			end
 
-			local SafeOnAction = function( func )
-				if func == nil then return nil end
-				return function( self )
-				  if not game.is_playing() then return nil end
-				  if not self.__ptr then return nil end
-				  func( self )
-				end
-			end
-
+			-- AI hooks dispatch by the current ai_type, which may change at runtime.
 			bp.OnCreate   = core.create_seq_function( OnCreate, bp.OnCreate )
-			bp.OnAction   = core.create_seq_function( aitk.OnAction, SafeOnAction( ai_proto.OnAction ) )
-			bp.OnAttacked = ai_proto.OnAttacked
+			bp.OnAction   = aitk.OnAction
+			bp.OnAttacked = aitk.OnAttacked
 		else
 			local OnCreate = function( self )
 				self:add_property( "ai_group", bp.ai_group )

@@ -1473,14 +1473,25 @@ begin
 end;
 
 procedure TBeing.Action;
+var iLevel : TLevel;
+    iLua   : TDRLLua;
 begin
+  iLevel := TLevel(Parent);
   FMeleeAttack := False;
-  TLevel(Parent).CallHook( FPosition, Self, CellHook_OnEnter );
+  iLevel.CallHook( FPosition, Self, CellHook_OnEnter );
   if Dead then Exit;
   LastPos := FPosition;
   CallHook(Hook_OnPreAction,[]);
   if Dead then Exit;
-  CallHook(Hook_OnAction,[]);
+  // The prototype OnAction is the AI, which may end the run; the being's
+  // perks act only while the run goes on.
+  if Hook_OnAction in FHooks then
+  begin
+    iLua := TDRLLua( FContext.Lua );
+    iLua.ProtectedRunHook( Self, iLua.HookName( Hook_OnAction ), [] );
+    if Dead then Exit;
+  end;
+  if ( FPerks <> nil ) and iLevel.IsActive then FPerks.CallHook( Hook_OnAction, [] );
   if Dead then Exit;
   CallHook(Hook_OnPostAction,[]);
   while FSpeedCount >= 5000 do Dec( FSpeedCount, 1000 );
