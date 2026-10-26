@@ -725,8 +725,9 @@ end;
 function TLevel.BeingExplored( coord: TCoord2D; aBeing: TBeing ) : boolean;
 begin
   if aBeing = nil then Exit(False);
+  if aBeing.Flags[ BF_VISIBLE ] then Exit( True );
   if FPlayer.Flags[ BF_DARKNESS ] and not isVisible( coord ) then Exit(False);
-  Exit(aBeing.Flags[ BF_VISIBLE ] or (LF_BEINGSVISIBLE in FFlags));
+  Exit( LF_BEINGSVISIBLE in FFlags );
 end;
 
 function TLevel.BeingIntuited( coord: TCoord2D; aBeing: TBeing ) : boolean;
@@ -739,8 +740,9 @@ function TLevel.AnimationVisible( aCoord : TCoord2D; aBeing : TBeing ) : boolean
 begin
    if aBeing = nil then Exit(False);
    if isVisible( aCoord ) then Exit( True );
+   if aBeing.Flags[ BF_VISIBLE ] then Exit( True );
    if FPlayer.Flags[ BF_DARKNESS ] then Exit(False);
-   Exit(aBeing.Flags[ BF_VISIBLE ] or (LF_BEINGSVISIBLE in FFlags));
+   Exit( LF_BEINGSVISIBLE in FFlags );
 end;
 
 {$IFDEF CORNERMAP}
