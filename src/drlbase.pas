@@ -7,146 +7,214 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlbase;
 interface
 
-uses vnode, vutil, vuid, viotypes, vrltools, vluasystem, vioevent, vstoreinterface,
-     vrandom,
-     dflevel, dfdata, dfhof, dfitem,
-     drlhooks, drlua, drlcommand, drlkeybindings, drlmodule, drlparticles;
+uses vapp, vnode, vutil, vuid, vio, viotypes, vrltools, vlua, vioevent, vstoreinterface, vrandom, vrlapp,
+     dflevel, dfdata, dfhof, dfplayer, dfitem, drlhooks, drllua, drlcommand, drlkeybindings, drlmodule, drlgamedata, drlconfig, drlconfiguration, drlio;
 
+// Where a fire command takes its target from.
+type TFireTarget = ( FireManual, FireAuto, FireMouse );
+
+type TDRLSession = class;
+     PDRLSession = ^TDRLSession;
+
+// TTargeting
+//
+// Architectural boundary: owns target-selection history and calculations for
+// one session. It may inspect that session's current level, but owns neither.
 type TTargeting = class
-  constructor Create;
+  constructor Create( aSession : TDRLSession );
   procedure Clear;
   procedure ClearPosition;
   procedure Update( aRange : Integer );
   procedure OnTarget( aTarget : TCoord2D; aMove : Boolean );
   destructor Destroy; override;
 private
+  FSession : TDRLSession;
   FList    : TAutoTarget;
   FLastUID : TUID;
   FLastPos : TCoord2D;
-  FPrevPos : TCoord2D;
 public
   property List : TAutoTarget read FList;
-  property PrevPos : TCoord2D read FPrevPos;
 end;
 
-type TDRLState = ( DSStart,      DSMenu,    DSLoading,   DSCrashLoading,
-                    DSPlaying,    DSSaving,  DSNextLevel,
-                    DSQuit,       DSFinished );
+type TDRLSessionResult = ( DSR_Quit, DSR_Played, DSR_ReloadData );
 
-type
+// Versions read from a save that stopped loading at a version check; empty
+// otherwise. The main menu shows them to explain a refused save.
+type TSaveVersions = record
+  Engine    : AnsiString;
+  Module    : AnsiString;
+  ModString : AnsiString;
+end;
 
-{ TDRL }
-
-TDRL = class(TVObject)
-       constructor Create;
-       procedure RunModuleChoice;
+// TDRLSession
+//
+// Architectural boundary: owns one playthrough, including player and level
+// state, targeting, gameplay input, progression, and the save payload. Module
+// and data-generation policy belongs to TDRLRuntime.
+type TDRLSession = class(TVObject)
+       // aUserConfig and aLuaConfig are borrowed from the runtime and outlive the Session.
+       constructor Create( aRuntime : TRLRuntime; aIO : TDRLIO; aUserConfig : TDRLConfiguration; aLuaConfig : TDRLConfig; aModules : TDRLModules;
+         aStore : TStoreInterface; aData : TGameData; const aPaths : TGamePaths );
+       procedure InitializeLevel;
+       // Starts a directional run with the player's run-over-items setting.
+       procedure StartRun( aDir : TDirection );
+       // Name every new character takes: --name, else the always_name
+       // setting; empty when the player names the character.
+       function FixedPlayerName : AnsiString;
+       // Ends the Session at the main menu and reloads the data with aModuleID
+       // as the core module.
+       procedure RequestRestart( const aModuleID : AnsiString );
+       procedure EnterLevel( aLevel : TLevel );
+       procedure ResetLevel;
        procedure Reset;
        procedure Reconfigure;
-       procedure Initialize;
-       procedure Load;
-       procedure UnLoad;
+       procedure SetSessionHooks( aSessionHooks : TFlags );
+       class procedure RegisterLuaAPI( aLua : TLua; aActive : PDRLSession );
        function LoadSaveFile : Boolean;
        procedure WriteSaveFile( aCrash : Boolean );
        function SaveExists : Boolean;
        function Action( aInput : TInputKey ) : Boolean;
-       procedure Run;
+       function Run( aShowIntro : Boolean ) : TDRLSessionResult;
        destructor Destroy; override;
-       procedure CallHook( Hook : Byte; const Params : array of Const );
-       function  CallHookCheck( Hook : Byte; const Params : array of Const ) : Boolean;
-       procedure CallModuleHook( aHook : Byte; const aParams : array of Const );
-       procedure SafeCallModuleHook( aHook : Byte; const aParams : array of Const );
        procedure SetState( aNewState : TDRLState );
-       procedure ClearPlayerView;
+       procedure WinGame;
+       procedure ExitLevel( aFade : Boolean; aFadeTime : Single );
+       procedure ClearPlayerView( aView : TIOLayer );
        procedure OpenJHCPage;
        function HandleUnloadCommand( aItem : TItem ) : Boolean;
+       procedure QueueCommand( const aCommand : TCommand );
        function HandleCommand( aCommand : TCommand ) : Boolean;
        function HandleActionCommand( aInput : TInputKey ) : Boolean;
        function HandleActionCommand( aTarget : TCoord2D; aFlag : Byte ) : Boolean;
        function HandleMoveCommand( aInput : TInputKey; aAlt : Boolean ) : Boolean;
-       function HandleFireCommand( aAlt : Boolean; aMouse : Boolean; aAuto : Boolean; aPad : Boolean ) : Boolean;
+       function HandleFireCommand( aAlt : Boolean; aTarget : TFireTarget ) : Boolean;
+       // Pad fire with a melee weapon attacks the stick direction or an adjacent auto-target.
+       function HandlePadFireCommand( aAlt : Boolean ) : Boolean;
        function HandleUsableCommand( aItem : TItem ) : Boolean;
        function HandleSwapWeaponCommand : Boolean;
        function HandlePickupCommand( aAlt : Boolean ) : Boolean;
        procedure ResetAutoTarget;
      private
+       procedure CallHook( aHook : Byte; const aParams : array of Const );
+       procedure ShowEnding;
+       procedure FinishGame;
+       procedure RecordResult;
+       function GenerateMemorial : TIOStringArray;
+       procedure SetLevel( aLevel : TLevel );
+       procedure SetPlayer( aPlayer : TPlayer );
+       procedure ReleaseLevel;
+       procedure ReleasePlayer;
+       procedure PostRegenerateLevel;
+       procedure LevelUpPlayer;
+       procedure PlayerPreAction;
+       procedure ChoosePlayerTrait;
+       procedure ApplyOutcome;
+       function ContinuePlaying : Boolean;
        procedure Apply( aResult : TMenuResult );
+       procedure HardQuit;
+       procedure HandlePlayerViewSwap;
        function HandleMouseEvent( aEvent : TIOEvent ) : Boolean;
        function HandleKeyEvent( aEvent : TIOEvent ) : Boolean;
        function HandlePadMovement( aPressed : Boolean ) : Boolean;
        function HandlePadEvent( aEvent : TIOEvent ) : Boolean;
        function MoveTargetEvent( aCoord : TCoord2D ) : Boolean;
+       procedure AdvanceTime;
        procedure PreAction;
+       procedure LeaveLevel;
        procedure CreatePlayer( aResult : TMenuResult );
        function PrepareGameSeed( aRequestedSeed : Cardinal ) : Cardinal;
+       function SeedHUDText : AnsiString;
+       procedure RegisterChallengeRuntimes;
+       function GetGameRNG : TRNG;
+       function GetState : TDRLState;
+       function GetGameWon : Boolean;
      private
-       FState           : TDRLState;
+       FStatus          : TRunStatus;
        FLevel           : TLevel;
+       FPlayer          : TPlayer;
+       FUIDStore        : TUIDStore;
+       FContext         : TNodeContext;
        FLastInputTime   : QWord;
        FTargeting       : TTargeting;
-       FDamagedLastTurn : Boolean;
        FPlayerView      : TIOLayer;
+       FQueueCommand    : TCommand;
+       FMemorial        : TPagedReport;
        FPadMoveActive   : Boolean;
        FPadMoveNext     : QWord;
-       FLastFrameTime   : QWord;
+       FLastFrameTime   : DWord;
        FStore           : TStoreInterface;
        FPadMoved        : Boolean;
        FModules         : TDRLModules;
 
-       FCoreHooks       : TFlags;
        FChallengeHooks  : TFlags;
        FSChallengeHooks : TFlags;
-       FModuleHooks     : TFlags;
+       FSessionHooks    : TFlags;
 
        FDifficulty      : Byte;
        FChallenge       : AnsiString;
        FSChallenge      : AnsiString;
        FArchAngel       : Boolean;
-       FDataLoaded      : Boolean;
-       FGameWon         : Boolean;
+       FReloadData      : Boolean;
+       // Set by the hard quit command: the process ends instead of returning
+       // to the main menu.
+       FHardQuit        : Boolean;
+       // A player action raised and was reported; another before time next
+       // advances in play propagates instead.
+       FActionFailed    : Boolean;
+       FSaveMismatch    : TSaveVersions;
+       // Set by game.save_and_quit( true ) at the demo's end: the save is also kept
+       // as savedemo, and the store page opens once it is written.
+       FOpenStore       : Boolean;
+       FRestartModule   : AnsiString;
        FCrashSave       : Boolean;
-       FParticles       : TParticleStore;
+       FData            : TGameData;
        FGameSeed        : Cardinal;
        FSeededGame      : Boolean;
-       FGameRNG         : TRNG;
+       FRuntime         : TRLRuntime;
+       FIO              : TDRLIO; // Borrowed from the runtime, which outlives the Session.
+       FUserConfig      : TDRLConfiguration; // Borrowed from the runtime.
+       FLuaConfig       : TDRLConfig;        // Borrowed from the runtime; runs Keytable keys.
+       FPaths           : TGamePaths;
      public
-       property GameWon : Boolean read FGameWon write FGameWon;
+       property GameWon : Boolean read GetGameWon;
        property Difficulty : Byte read FDifficulty;
        property Challenge  : Ansistring read FChallenge;
        property SChallenge : Ansistring read FSChallenge;
 
+       property Data : TGameData read FData;
+       property Context : TNodeContext read FContext;
+       property UIDs : TUIDStore read FUIDStore;
        property Store : TStoreInterface read FStore;
+       property UserConfig : TDRLConfiguration read FUserConfig;
+       property SaveMismatch : TSaveVersions read FSaveMismatch;
+       // Core module to reload the data with once the Session ends; empty for none.
+       property RestartModule : AnsiString read FRestartModule;
        property Modules : TDRLModules read FModules;
        property Level : TLevel read FLevel;
-       property State : TDRLState read FState;
+       property Player : TPlayer read FPlayer;
+       property State : TDRLState read GetState;
+       property RunStatus : TRunStatus read FStatus;
        property Targeting : TTargeting read FTargeting;
-       property DamagedLastTurn : Boolean read FDamagedLastTurn write FDamagedLastTurn;
-       property Particles : TParticleStore read FParticles;
        property GameSeed : Cardinal read FGameSeed;
        property SeededGame : Boolean read FSeededGame;
-       property GameRNG : TRNG read FGameRNG;
+       property DataReloadRequired : Boolean read FReloadData;
+       property GameRNG : TRNG read GetGameRNG;
+       property Paths : TGamePaths read FPaths;
      end;
-
-var DRL : TDRL;
-var Lua : TDRLLua;
 
 
 implementation
 
-uses  {$IFDEF WINDOWS}Windows,{$ELSE}Unix,{$ENDIF}
-     Classes, SysUtils,
-     vdebug, vlua, vstream,
-     dfmap, dfbeing,
-     drlio, drlgfxio, drltextio, zstream,
-     drlspritemap, // remove
-     drlplayerview, drlingamemenuview, drlhelpview, drlassemblyview,
-     drlpagedview, drlrankupview, drlmainmenuview, drlhudviews, drlmessagesview,
-     drlconfiguration, drlcontrollerbindings, drlhelp, drlconfig, dfplayer;
+uses {$IFDEF WINDOWS}windows,{$ELSE}unix,{$ENDIF} classes, sysutils, zstream,
+     vbindings, vdebug, vstream, vtig, vlualibrary, vluagamestack,
+     dfmap, dfbeing, drlgfxio, drlplayerview, drlingamemenuview, drlhelpview, drlassemblyview, drlpagedview, drlrankupview, drlmainmenuview, drlhudviews, drlmessagesview, drlapplication, drlcontrollerbindings;
 
 const PAD_REPEAT_START = 400;
       PAD_REPEAT       = 100;
 
-constructor TTargeting.Create;
+constructor TTargeting.Create( aSession : TDRLSession );
 begin
+  FSession := aSession;
   FList    := TAutoTarget.Create( NewCoord2D(0,0) );
 end;
 
@@ -165,34 +233,31 @@ end;
 procedure TTargeting.Update( aRange : Integer );
 var iBeing : TBeing;
 begin
-  DRL.Level.UpdateAutoTarget( FList, Player, aRange );
-  if (FLastUID <> 0) and DRL.Level.isAlive( FLastUID ) then
+  FSession.Level.UpdateAutoTarget( FList, FSession.Player, aRange );
+  if FLastUID <> 0 then
   begin
-    iBeing := DRL.Level.FindChild( FLastUID ) as TBeing;
+    iBeing := FSession.Level.FindChild( FLastUID ) as TBeing;
     if iBeing <> nil then
       if iBeing.isVisible then
-        if Distance( iBeing.Position, Player.Position ) <= aRange then
+        if Distance( iBeing.Position, FSession.Player.Position ) <= aRange then
           FList.PriorityTarget( iBeing.Position );
   end;
 
   if FLastPos.X*FLastPos.Y <> 0 then
     if FLastUID = 0 then
-//    if DRL.Level.isVisible( FLastPos ) then
+//    if FSession.Level.isVisible( FLastPos ) then
 //      if Distance( FLastPos, Player.Position ) <= aRange then
           FList.PriorityTarget( FLastPos );
 end;
 
 procedure TTargeting.OnTarget( aTarget : TCoord2D; aMove : Boolean );
 begin
-  if FLastPos.X*FLastPos.Y <> 0
-    then FPrevPos := FLastPos
-    else FPrevPos := aTarget;
   FLastUID := 0;
-  if (not aMove) and (DRL.Level.Being[ aTarget ] <> nil) then
-     if DRL.Level.Flags[ LF_BEINGSVISIBLE ] 
-       or DRL.Level.isVisible(aTarget) 
-       or DRL.Level.Being[ aTarget ].Flags[ BF_VISIBLE ] then
-    FLastUID := DRL.Level.Being[ aTarget ].UID;
+  if (not aMove) and (FSession.Level.Being[ aTarget ] <> nil) then
+     if FSession.Level.Flags[ LF_BEINGSVISIBLE ]
+       or FSession.Level.isVisible(aTarget)
+       or FSession.Level.Being[ aTarget ].Flags[ BF_VISIBLE ] then
+    FLastUID := FSession.Level.Being[ aTarget ].UID;
   FLastPos := aTarget;
 end;
 
@@ -202,77 +267,89 @@ begin
   inherited Destroy;
 end;
 
-procedure TDRL.CallHook( Hook : Byte; const Params : array of const ) ;
+procedure TDRLSession.CallHook( aHook : Byte; const aParams : array of Const );
 begin
-  if (Hook in FModuleHooks) then LuaSystem.ProtectedCall([CoreModuleID,Lua.HookName(Hook)],Params);
-  if (FChallenge <> '')  and (Hook in FChallengeHooks) then LuaSystem.ProtectedCall(['chal',FChallenge,Lua.HookName(Hook)],Params);
-  if (FSChallenge <> '') and (Hook in FSChallengeHooks) then LuaSystem.ProtectedCall(['chal',FSChallenge,Lua.HookName(Hook)],Params);
-  if (Hook in FCoreHooks) then LuaSystem.ProtectedCall(['core',Lua.HookName(Hook)],Params);
+  if aHook in FSessionHooks then
+    FContext.Lua.ProtectedCall( [ FModules.CoreModuleID, HookNames[ aHook ] ], aParams );
+  if aHook in FChallengeHooks then
+    FContext.Lua.ProtectedCall( [ 'chal', FChallenge, HookNames[ aHook ] ], aParams );
+  if aHook in FSChallengeHooks then
+    FContext.Lua.ProtectedCall( [ 'chal', FSChallenge, HookNames[ aHook ] ], aParams );
 end;
 
-function TDRL.CallHookCheck ( Hook : Byte; const Params : array of const ) : Boolean;
+procedure TDRLSession.ShowEnding;
 begin
-  if (Hook in FCoreHooks) then if not LuaSystem.ProtectedCall(['core',HookNames[Hook]],Params) then Exit( False );
-  if (FChallenge <> '') and (Hook in FChallengeHooks) then if not LuaSystem.ProtectedCall(['chal',FChallenge,HookNames[Hook]],Params) then Exit( False );
-  if (FSChallenge <> '') and (Hook in FSChallengeHooks) then if not LuaSystem.ProtectedCall(['chal',FSChallenge,HookNames[Hook]],Params) then Exit( False );
-  if Hook in FModuleHooks then if not LuaSystem.ProtectedCall([CoreModuleID,HookNames[Hook]],Params) then Exit( False );
-  Exit( True );
+  if Hook_OnWinGame in FChallengeHooks then
+    if not FContext.Lua.ProtectedCall( [ 'chal', FChallenge, HookNames[ Hook_OnWinGame ] ], [] ) then Exit;
+  if Hook_OnWinGame in FSChallengeHooks then
+    if not FContext.Lua.ProtectedCall( [ 'chal', FSChallenge, HookNames[ Hook_OnWinGame ] ], [] ) then Exit;
+  if Hook_OnWinGame in FSessionHooks then
+    FContext.Lua.ProtectedCall( [ FModules.CoreModuleID, HookNames[ Hook_OnWinGame ] ], [] );
 end;
 
-procedure TDRL.CallModuleHook( aHook : Byte; const aParams : array of const ) ;
-var iModule : TDRLModule;
+procedure TDRLSession.SetState( aNewState : TDRLState );
+var iWasPlaying : Boolean;
 begin
-  for iModule in FModules.ActiveModules do
-    if aHook in iModule.Hooks then
-      LuaSystem.ProtectedCall([iModule.ID,HookNames[aHook]],aParams);
-end;
-
-procedure TDRL.SafeCallModuleHook( aHook : Byte; const aParams : array of const ) ;
-var iModule : TDRLModule;
-begin
-  for iModule in FModules.ActiveModules do
-    if aHook in iModule.Hooks then
-    try
-      LuaSystem.ProtectedCall([iModule.ID,HookNames[aHook]],aParams);
-    except
-      on E : Exception do
-      begin
-        if ModdedGame then
-        begin
-          ModErrors.Push('Error : Mod "'+iModule.ID+'" failed to execute '+HookNames[aHook]+'!');
-          ModErrors.Push('Path  : '+iModule.Path);
-          ModErrors.Push( E.Message );
-          ModErrors.Push( '' );
-        end
-        else raise;
-      end;
-    end;
-end;
-
-procedure TDRL.SetState( aNewState: TDRLState );
-begin
-  if ( FState = aNewState ) then Exit;
-  if ( FState = DSPlaying ) then
+  if ( FStatus.State = aNewState ) then Exit;
+  iWasPlaying := FStatus.State = DSPlaying;
+  FStatus.State := aNewState;
+  if iWasPlaying then
   begin
-    IO.FadeWait;
-    if ( aNewState <> DSQuit) then IO.FadeReset;
+    FQueueCommand := TCommand.Create( COMMAND_NONE );
+    FIO.FinishLayers;
   end;
-  FState := aNewState;
 end;
 
-procedure TDRL.ClearPlayerView;
+// Death and victory are recorded during an action. Session ends play at its
+// control points, outside the action, so the current step finishes first.
+procedure TDRLSession.ApplyOutcome;
 begin
-  FPlayerView := nil;
+  if ( FStatus.State in [ DSPlaying, DSNextLevel ] )
+    and ( FStatus.GameWon or FPlayer.Killed ) then
+    SetState( DSEnding );
 end;
 
-procedure TDRL.OpenJHCPage;
+function TDRLSession.ContinuePlaying : Boolean;
+begin
+  ApplyOutcome;
+  Exit( FStatus.State = DSPlaying );
+end;
+
+procedure TDRLSession.WinGame;
+begin
+  FStatus.GameWon := True;
+end;
+
+procedure TDRLSession.ExitLevel( aFade : Boolean; aFadeTime : Single );
+begin
+  if FStatus.State in [ DSSaving, DSEnding ] then Exit;
+  if FStatus.GameWon or FPlayer.Killed then Exit;
+  if aFade then FIO.FadeOut( aFadeTime, True );
+  SetState( DSNextLevel );
+end;
+
+procedure TDRLSession.FinishGame;
+begin
+  FPlayer.Statistics.Update( FPlayer );
+  if FContext.Lua.Defined( [FModules.CoreModuleID, 'RunAwards'] ) then
+    FContext.Lua.ProtectedCall( [FModules.CoreModuleID, 'RunAwards'], [] );
+  FPlayer.CalculateScore( FDifficulty, FStatus.GameWon );
+  RecordResult;
+end;
+
+procedure TDRLSession.ClearPlayerView( aView : TIOLayer );
+begin
+  if FPlayerView = aView then FPlayerView := nil;
+end;
+
+procedure TDRLSession.OpenJHCPage;
 const JHCURL      = 'https://store.steampowered.com/app/3126530/Jupiter_Hell_Classic/';
       JHCSTEAMURL = 'steam://store/3126530';
       JHCID       = 3126530;
 var iSteam : Boolean;
     iURL   : Ansistring;
 begin
-  iSteam := DemoVersion and FStore.IsInitialized;
+  iSteam := TDRLLua( FContext.Lua ).Info.Demo and FStore.IsInitialized;
   if iSteam and FStore.IsOverlayEnabled then
   begin
     FStore.OpenStorePage( JHCID );
@@ -289,181 +366,177 @@ begin
   {$ENDIF}
 end;
 
-procedure TDRL.Load;
-var iLua : TDRLLua;
-    i    : Integer;
+constructor TDRLSession.Create( aRuntime : TRLRuntime; aIO : TDRLIO; aUserConfig : TDRLConfiguration; aLuaConfig : TDRLConfig; aModules : TDRLModules;
+  aStore : TStoreInterface; aData : TGameData; const aPaths : TGamePaths );
 begin
-  FreeAndNil( Config );
-  IO.LoadStart;
-  ColorOverrides := TIntHashMap.Create( );
-  Config := TDRLConfig.Create( ConfigurationPath, True );
-  IO.Configure( Config, True );
-  FCoreHooks := [];
-  FModuleHooks := [];
-  FChallengeHooks := [];
-  FSChallengeHooks := [];
-  Cells := TCells.Create;
-  Help := THelp.Create;
-
-  SetState( DSLoading );
-  LuaRNG := FGameRNG;
-  iLua := TDRLLua.Create();
-  LuaSystem := iLua;
-  LuaSystem.CallDefaultResult := True;
-//  Modules.RegisterAwards( LuaSystem.Raw );
-  FCoreHooks   := LoadHooks( [ 'core' ], GlobalHooks );
-  FModuleHooks := LoadHooks( [CoreModuleID], GlobalHooks );
-
-  SafeCallModuleHook( Hook_OnLoad, [] );
-  Reconfigure;
-
-  if GraphicsVersion then
-    (IO as TDRLGFXIO).Textures.Upload;
-
-  if GodMode and FileExists( WritePath + 'god.lua') then
-    Lua.LoadFile( WritePath + 'god.lua');
-  HOF.Init;
-  FLevel := TLevel.Create;
-  if not GraphicsVersion then
-    (IO as TDRLTextIO).SetTextMap( FLevel );
-
-  HARDSPRITE_HIGHLIGHT    := Lua.Get( 'HARDSPRITE_HIGHLIGHT' );
-  HARDSPRITE_EXPL         := Lua.Get( 'HARDSPRITE_EXPL' );
-  HARDSPRITE_SELECT       := Lua.Get( 'HARDSPRITE_SELECT' );
-  HARDSPRITE_MARK         := Lua.Get( 'HARDSPRITE_MARK' );
-  HARDSPRITE_GRID         := Lua.Get( 'HARDSPRITE_GRID' );
-  HARDSPRITE_SHIELD       := Lua.Get( 'HARDSPRITE_SHIELD' );
-  HARDSPRITE_SHIELD_COUNT := Lua.Get( 'HARDSPRITE_SHIELD_COUNT' );
-  HARDEMITTER_BLOOD       := 0;
-  if Lua.RawDefined( 'HARDEMITTER_BLOOD' ) then
-    HARDEMITTER_BLOOD     := Lua.Get( 'HARDEMITTER_BLOOD', 0 );
-  for i := 0 to 3 do
-  begin
-    HARDSPRITE_DECAL_BLOOD[i]      := 0;
-    HARDSPRITE_DECAL_WALL_BLOOD[i] := 0;
-  end;
-
-  if Lua.RawDefined( 'HARDSPRITE_DECAL_BLOOD_1' ) then
-    for i := 0 to 3 do
-      HARDSPRITE_DECAL_BLOOD[i] := Lua.Get( 'HARDSPRITE_DECAL_BLOOD_'+IntToStr(i+1), 0 );
-
-  if Lua.RawDefined( 'HARDSPRITE_DECAL_WALL_BLOOD_1' ) then
-    for i := 0 to 3 do
-      HARDSPRITE_DECAL_WALL_BLOOD[i] := Lua.Get( 'HARDSPRITE_DECAL_WALL_BLOOD_'+IntToStr(i+1), 0 );
-
-  FDataLoaded := True;
-  IO.LoadStop;
-end;
-
-procedure TDRL.UnLoad;
-begin
-  if Assigned( IO ) then IO.AnimationWipe;
-  FDataLoaded := False;
-  HOF.Done;
-  FreeAndNil(LuaSystem);
-  FreeAndNil(Help);
-  FreeAndNil(FLevel);
-  FreeAndNil(ColorOverrides);
-  FreeAndNil(Cells);
-end;
-
-constructor TDRL.Create;
-begin
+  FRuntime := aRuntime;
+  FIO      := aIO;
+  FUserConfig := aUserConfig;
+  FLuaConfig  := aLuaConfig;
+  FContext := TNodeContext.Create( aRuntime.Lua, nil );
+  FStatus  := TRunStatus.Create;
+  FModules := aModules;
+  FStore := aStore;
+  FPaths := aPaths;
   FGameSeed := 0;
-  FGameRNG  := TRNG.Create( 0 );
-  LuaRNG    := FGameRNG;
-  FParticles := TParticleStore.Create;
-  FTargeting := TTargeting.Create;
+  FData := aData;
+  FTargeting := TTargeting.Create(Self);
   Reset;
-  FStore     := TStoreInterface.Get;
-  Reconfigure;
-  if GraphicsVersion then
-  begin
-    IO := TDRLGFXIO.Create;
-    FParticles.Initialize( TDRLGFXIO(IO).ParticleEngine );
-  end
-  else
-    IO := TDRLTextIO.Create;
-
-  ModErrors := TStringGArray.Create;
-
-  FModules := TDRLModules.Create;
-  FModules.ScanModules;
 end;
 
-procedure TDRL.RunModuleChoice;
+procedure TDRLSession.InitializeLevel;
 begin
-  IO.RunModuleChoice;
+  Assert( FLevel = nil );
+  SetLevel( TLevel.Create( FContext, GameRNG, FData ) );
 end;
 
-
-procedure TDRL.Reset;
+procedure TDRLSession.SetLevel( aLevel : TLevel );
 begin
+  FLevel := aLevel;
+  FLevel.BindPlayer( FPlayer );
+  FLevel.BindRunStatus( FStatus );
+  FLevel.BindPresentation( TDRLIO( FIO ) );
+  if GraphicsVersion
+    then FLevel.InitializeParticles( TDRLGFXIO(FIO).ParticleEngine )
+    else FLevel.InitializeParticles( nil );
+  FContext.Lua.SetValue( 'level', FLevel );
+  FIO.SetLevel( aLevel );
+end;
+
+procedure TDRLSession.ReleaseLevel;
+begin
+  if FLevel = nil then Exit;
+  // Animation destructors still need the outgoing level and its bindings.
+  FIO.ClearAnimations;
+  FIO.SetLevel( nil );
+  if FPlayer <> nil then FPlayer.Detach;
   FreeAndNil( FLevel );
+end;
 
+procedure TDRLSession.SetPlayer( aPlayer : TPlayer );
+begin
+  FPlayer := aPlayer;
+  FLevel.BindPlayer( FPlayer );
+  FIO.SetPlayer( FPlayer );
+end;
+
+procedure TDRLSession.ReleasePlayer;
+begin
+  if FLevel <> nil then FLevel.BindPlayer( nil );
+  FIO.SetPlayer( nil );
+  FreeAndNil( FPlayer );
+end;
+
+function TDRLSession.GetGameRNG : TRNG;
+begin
+  Result := FRuntime.GameRNG;
+end;
+
+function TDRLSession.GetState : TDRLState;
+begin
+  Exit( FStatus.State );
+end;
+
+function TDRLSession.GetGameWon : Boolean;
+begin
+  Exit( FStatus.GameWon );
+end;
+
+procedure TDRLSession.SetSessionHooks( aSessionHooks : TFlags );
+begin
+  FSessionHooks := aSessionHooks;
+end;
+
+procedure TDRLSession.RecordResult;
+var iRuntime : TDRLRuntime;
+begin
+  iRuntime := TDRLRuntime( FRuntime );
+  if FPlayer.Score > 0 then
+  begin
+    FStore.IncStat( 'drl_kills', FPlayer.FKills.Count );
+    if FPlayer.HP <= 0 then FStore.IncStat( 'drl_deaths' );
+    if FStatus.GameWon then FStore.IncStat( 'drl_wins' );
+  end;
+  iRuntime.HOF.Add( FPlayer, FDifficulty, FStatus.GameWon,
+    FChallenge, FLevel.Abbr );
+  iRuntime.SaveProfile;
+end;
+
+function TDRLSession.GenerateMemorial : TIOStringArray;
+var iMortemPath : AnsiString;
+    iMortemList : TStringList;
+    i           : Integer;
+begin
+  Result := nil;
+  iMortemList := TStringList.Create;
+  try
+    try
+      iMortemList.Text := FContext.Lua.ProtectedCall( [FModules.CoreModuleID, 'GenerateMemorial'], [] );
+      Result := TIOStringArray.Create;
+      for i := 0 to iMortemList.Count - 1 do
+      begin
+        Result.Push( iMortemList[i] );
+        iMortemList[i] := VTIG_StripTags( iMortemList[i] );
+      end;
+      iMortemList.SaveToFile( FPaths.ModuleUserPath + 'mortem.txt' );
+
+      if FUserConfig.GetBoolean( 'mortem_archive' ) then
+      begin
+        iMortemPath := FPaths.ModuleUserPath + 'mortem' + PathDelim
+          + ToProperFilename( '[' + FormatDateTime( FileTimeStamp, Now ) + '] ' + FPlayer.Name ) + '.txt';
+        Log( 'Writing mortem...: ' + iMortemPath );
+        try
+          iMortemList.SaveToFile( iMortemPath );
+        except
+          // An optional archive failure must not discard the completed memorial.
+        end;
+      end;
+    except
+      FreeAndNil( Result );
+      raise;
+    end;
+  finally
+    iMortemList.Free;
+  end;
+end;
+
+procedure TDRLSession.Reconfigure;
+begin
+  TDRLRuntime(FRuntime).Reconfigure;
+end;
+
+
+procedure TDRLSession.Reset;
+begin
+  FreeAndNil( FMemorial );
+  ReleaseLevel;
+
+  FQueueCommand := TCommand.Create( COMMAND_NONE );
   SetState( DSStart );
   FTargeting.Clear;
   FDifficulty := 0;
   FChallenge  := '';
   FSChallenge := '';
   FArchAngel  := False;
-  FDataLoaded := False;
-  FGameWon    := False;
+  FReloadData := False;
+  FHardQuit   := False;
+  FActionFailed := False;
+  FStatus.GameWon    := False;
   FCrashSave  := False;
   FSeededGame := False;
 
   FLastInputTime   := 0;
-  FDamagedLastTurn := False;
   FPadMoveNext     := 0;
   FLastFrameTime   := 0;
   FPadMoved        := False;
-  FCoreHooks       := [];;
-  FModuleHooks     := [];
   FChallengeHooks  := [];
   FSChallengeHooks := [];
   FLastInputTime   := 0;
   FPlayerView      := nil;
   FPadMoveActive   := False;
-
-  FParticles.Clear;
-  if IO <> nil then IO.Reset;
 end;
 
-procedure TDRL.Reconfigure;
-begin
-  if Assigned( IO ) then
-    IO.Reconfigure( Config );
-  Setting_AlwaysRandomName := Configuration.GetBoolean( 'always_random_name' );
-  Setting_NoIntro          := Configuration.GetBoolean( 'skip_intro' );
-  Setting_Flash            := Configuration.GetBoolean( 'flashing_fx' );
-  Setting_Glow             := Configuration.GetBoolean( 'glow_fx' );
-  Setting_BloodPulse       := Configuration.GetBoolean( 'pulse_fx' );
-  Setting_ScreenShake      := Configuration.GetBoolean( 'screen_shake' );
-  Setting_RunOverItems     := Configuration.GetBoolean( 'run_over_items' );
-  Setting_HideHints        := Configuration.GetBoolean( 'hide_hints' );
-  Setting_EmptyConfirm     := Configuration.GetBoolean( 'empty_confirm' );
-  Setting_Mouse            := Configuration.GetBoolean( 'enable_mouse' );
-  Setting_GamepadRumble    := Configuration.GetBoolean( 'enable_rumble' );
-  Setting_MouseEdgePan     := Configuration.GetBoolean( 'mouse_edge_pan' );
-  Setting_UnlockAll        := Configuration.GetBoolean( 'unlock_all' );
-  Setting_MenuSound        := Configuration.GetBoolean( 'menu_sound' );
-  Setting_WaitSound        := Configuration.GetBoolean( 'wait_sound' );
-  Setting_GroupMessages    := Configuration.GetBoolean( 'group_messages' );
-  Setting_ItemDropAnimation:= Configuration.GetBoolean( 'item_drop_animation' );
-  Setting_Fade             := Configuration.GetBoolean( 'fade_fx' );
-end;
-
-procedure TDRL.Initialize;
-begin
-  FModules.ActivateModules( CoreModuleID );
-  IO.Initialize;
-  IO.LoadStart;
-  ProgramRealTime := MSecNow();
-  IO.Configure( Config );
-  IO.Reconfigure( Config );
-end;
-
-procedure TDRL.Apply ( aResult : TMenuResult ) ;
+procedure TDRLSession.Apply ( aResult : TMenuResult ) ;
 begin
   if aResult.Quit   then SetState( DSQuit );
   if not aResult.Loaded then
@@ -475,48 +548,167 @@ begin
     FSeededGame     := aResult.Seed <> 0;
   end;
 
-  LuaSystem.SetValue('DIFFICULTY', FDifficulty);
-  LuaSystem.SetValue('CHALLENGE',  FChallenge);
-  LuaSystem.SetValue('SCHALLENGE', FSChallenge);
-  LuaSystem.SetValue('ARCHANGEL', FArchAngel);
-  LuaSystem.SetValue('SEEDED_GAME', FSeededGame);
+  FContext.Lua.SetValue('DIFFICULTY', FDifficulty);
+  FContext.Lua.SetValue('CHALLENGE',  FChallenge);
+  FContext.Lua.SetValue('SCHALLENGE', FSChallenge);
+  FContext.Lua.SetValue('ARCHANGEL', FArchAngel);
+  FContext.Lua.SetValue('SEEDED_GAME', FSeededGame);
 
   FChallengeHooks := [];
   FSChallengeHooks := [];
-  if FChallenge  <> '' then FChallengeHooks  := LoadHooks( ['chal',FChallenge], GlobalHooks );
-  if FSChallenge <> '' then FSChallengeHooks := LoadHooks( ['chal',FSChallenge], GlobalHooks );
+  if FChallenge  <> '' then FChallengeHooks  := LoadHooks( FContext.Lua, ['chal',FChallenge], ChallengeHooks );
+  if FSChallenge <> '' then FSChallengeHooks := LoadHooks( FContext.Lua, ['chal',FSChallenge], ChallengeHooks );
 end;
 
-procedure TDRL.PreAction;
+procedure TDRLSession.RegisterChallengeRuntimes;
 begin
-  FLevel.CalculateVision( Player.Position );
-  StatusEffect := Player.GetPerkEffect;
-  IO.PreAction;
-  IO.Focus( Player.Position );
-  Player.UpdateVisual;
+  if ( FChallenge <> '' ) and FContext.Lua.Defined( [ 'chal', FChallenge, 'OnRegister' ] ) then
+  begin
+    FReloadData := True;
+    FContext.Lua.Call( [ 'chal', FChallenge, 'OnRegister' ], [] );
+  end;
+  if ( FSChallenge <> '' ) and FContext.Lua.Defined( [ 'chal', FSChallenge, 'OnRegister' ] ) then
+  begin
+    FReloadData := True;
+    FContext.Lua.Call( [ 'chal', FSChallenge, 'OnRegister' ], [] );
+  end;
+end;
+
+procedure TDRLSession.ResetLevel;
+begin
+  FPlayer.Detach;
+  FLevel.Clear;
+  FLevel.FullClear;
+  CallHook( Hook_OnCreateLevel, [] );
+end;
+
+// Completes a god-mode regeneration started by ResetLevel.
+procedure TDRLSession.PostRegenerateLevel;
+begin
+  FIO.MsgUpdate;
+  FLevel.AfterGeneration;
+  EnterLevel( FLevel );
+  FLevel.CalculateVision( FPlayer.Position, FPlayer.Vision );
+  PlayerPreAction;
+end;
+
+// One player level-up: the player advances, the advance is presented, then
+// the trait choice runs between the pre- and post-level-up hooks.
+procedure TDRLSession.LevelUpPlayer;
+begin
+  FPlayer.AdvanceLevel;
+  FIO.Blink( LightBlue, 100 );
+  FIO.Msg( 'You advance to level %d!', [ FPlayer.ExpLevel ] );
+  FIO.RunLayer( TMoreLayer.Create( False ) );
+
+  if not FPlayer.CallHookCheck( Hook_OnPreLevelUp, [ FPlayer.ExpLevel ] ) then Exit;
+  FIO.BloodSlideDown( 20 );
+  ChoosePlayerTrait;
+  FPlayer.CallHook( Hook_OnLevelUp, [ FPlayer.ExpLevel ] );
+end;
+
+// Runs the trait view and applies the pick; cancelling applies nothing.
+procedure TDRLSession.ChoosePlayerTrait;
+var iTrait : Byte;
+begin
+  if TDRLLua( FContext.Lua ).Info.Demo and ( FPlayer.ExpLevel > 7 ) then Exit;
+  FIO.RunLayer( TPlayerView.CreateTrait( Self ), True );
+  if FStatus.State <> DSPlaying then Exit;
+  iTrait := TPlayerView.TraitPick;
+  if iTrait <> 255 then FPlayer.UpgradeTrait( iTrait );
+end;
+
+procedure TDRLSession.EnterLevel( aLevel : TLevel );
+begin
+  aLevel.Enter;
+  FIO.EnterLevel( FPlayer.Position );
+
+  aLevel.CallHook( Hook_OnEnterLevel, [ aLevel.Index, aLevel.ID ] );
+
+  FPlayer.LevelEnter;
+
+  aLevel.Enter;
+  FIO.EnterLevel( FPlayer.Position );
+end;
+
+procedure TDRLSession.LeaveLevel;
+var iTimeDiff : LongInt;
+begin
+  FLevel.CallHook( Hook_OnExitLevel, [ FLevel.Index, FLevel.ID, FLevel.Status ] );
+  FPlayer.CallHook( Hook_OnExitLevel, [ FLevel.Index, FLevel.ID, FLevel.Status ] );
+  if ( FPlayer.HP > 0 ) and ( not FLevel.HasHook( Hook_OnExitLevel ) ) then
+  begin
+    iTimeDiff := FPlayer.Statistics.GameTime - FPlayer.Statistics['entry_time'];
+    if iTimeDiff < 100 then
+      FPlayer.AddHistory( 'He left @1 as soon as possible.' );
+  end;
+
+  // Exit hooks may win the game; keep their final messages.
+  ApplyOutcome;
+  if FStatus.State = DSNextLevel then FIO.MsgReset;
+end;
+
+procedure TDRLSession.AdvanceTime;
+begin
+  if not ContinuePlaying then Exit;
+  // Each batch includes at least one step, also on fresh level entry.
+  repeat
+    FLevel.Tick;
+  until ( not ContinuePlaying ) or ( FPlayer.SCount > 5000 );
+  if FStatus.State = DSPlaying then
+    FActionFailed := False;
+end;
+
+// The player's pre-action steps, with the multi-move interruption between
+// them: a pending key stops the move; console mode paces each step.
+procedure TDRLSession.PlayerPreAction;
+begin
+  FPlayer.PreAction;
+  if FPlayer.MultiMove.Active then
+  begin
+    if FIO.CommandEventPending then
+    begin
+      FIO.Msg('Stop.');
+      FPlayer.MultiMove.Stop;
+      FIO.ClearEventBuffer;
+    end
+    else
+      FIO.PaceMultiMove;
+  end;
+  FPlayer.CallHook( Hook_OnPreAction, [] );
+end;
+
+procedure TDRLSession.PreAction;
+begin
+  if FPlayer.Dying then Exit;
+  FLevel.CalculateVision( FPlayer.Position, FPlayer.Vision );
+  FIO.StatusEffect := FPlayer.GetPerkEffect;
+  FIO.PreAction;
+  FIO.Focus( FPlayer.Position );
+  FPlayer.UpdateVisual;
   if GraphicsVersion then
-    (IO as TDRLGFXIO).UpdateMinimap;
-  Player.PreAction;
-  FTargeting.Update( Player.Vision );
-  IO.SetAutoTarget( FTargeting.List.Current );
-  if ( FPlayerView <> nil ) and (not FDamagedLastTurn) and (Player.EnemiesInVision < 1) then
+    (FIO as TDRLGFXIO).UpdateMinimap;
+  PlayerPreAction;
+  FTargeting.Update( FPlayer.Vision );
+  FIO.SetAutoTarget( FTargeting.List.Current );
+  if ( FPlayerView <> nil ) and (not FPlayer.DamagedLastTurn) and (FPlayer.EnemiesInVision < 1) then
      (FPlayerView as TPlayerView).Retain;
 end;
 
-function TDRL.Action( aInput : TInputKey ) : Boolean;
+function TDRLSession.Action( aInput : TInputKey ) : Boolean;
 var iDir : TDirection;
 begin
   if aInput in [INPUT_RUNWAIT]+INPUT_MULTIMOVE then
   begin
-    Player.MultiMove.Stop;
+    FPlayer.MultiMove.Stop;
     iDir    := InputDirection( aInput );
-    if ModuleOption_MeleeMoveOnKill and ( aInput <> INPUT_RUNWAIT ) then
-      if ( Player.TryMove( Player.Position + iDir ) in [ MoveBeing, MoveBlock ] )
+    if FData.Rules.MeleeMoveOnKill and ( aInput <> INPUT_RUNWAIT ) then
+      if ( FPlayer.TryMove( FPlayer.Position + iDir ) in [ MoveBeing, MoveBlock ] )
         then Exit( HandleMoveCommand( aInput, True ) );
 
-    if Player.EnemiesInVision > 0
-      then IO.Msg( 'Can''t multi-move, there are enemies present.',[] )
-      else Player.MultiMove.Start( iDir );
+    if FPlayer.EnemiesInVision > 0
+      then FIO.Msg( 'Can''t multi-move, there are enemies present.',[] )
+      else StartRun( iDir );
     Exit;
   end;
 
@@ -524,23 +716,22 @@ begin
     Exit( HandleMoveCommand( aInput, False ) );
 
   case aInput of
-    INPUT_FIRE       : Exit( HandleFireCommand( False, False, Setting_AutoTarget, False ) );
-    INPUT_ALTFIRE    : Exit( HandleFireCommand( True, False, Setting_AutoTarget, False ) );
-    INPUT_TARGET     : Exit( HandleFireCommand( False, False, False, False ) );
-    INPUT_ALTTARGET  : Exit( HandleFireCommand( True, False, False, False ) );
+    INPUT_FIRE       : Exit( HandleFireCommand( False, FireAuto ) );
+    INPUT_ALTFIRE    : Exit( HandleFireCommand( True, FireAuto ) );
+    INPUT_TARGET     : Exit( HandleFireCommand( False, FireManual ) );
+    INPUT_ALTTARGET  : Exit( HandleFireCommand( True, FireManual ) );
     INPUT_ACTION     : Exit( HandleActionCommand( INPUT_ACTION ) );
     INPUT_LEGACYOPEN : Exit( HandleActionCommand( INPUT_LEGACYOPEN ) );
     INPUT_LEGACYCLOSE: Exit( HandleActionCommand( INPUT_LEGACYCLOSE ) );
-//    INPUT_QUICKKEY_0 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, 'chainsaw' ) ) );
-    INPUT_QUICKKEY_1 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '1' ) ) );
-    INPUT_QUICKKEY_2 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '2' ) ) );
-    INPUT_QUICKKEY_3 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '3' ) ) );
-    INPUT_QUICKKEY_4 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '4' ) ) );
-    INPUT_QUICKKEY_5 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '5' ) ) );
-    INPUT_QUICKKEY_6 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '6' ) ) );
-    INPUT_QUICKKEY_7 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '7' ) ) );
-    INPUT_QUICKKEY_8 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '8' ) ) );
-    INPUT_QUICKKEY_9 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '9' ) ) );
+    INPUT_QUICKKEY_1 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, FTargeting.List.Current, '1' ) ) );
+    INPUT_QUICKKEY_2 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, FTargeting.List.Current, '2' ) ) );
+    INPUT_QUICKKEY_3 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, FTargeting.List.Current, '3' ) ) );
+    INPUT_QUICKKEY_4 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, FTargeting.List.Current, '4' ) ) );
+    INPUT_QUICKKEY_5 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, FTargeting.List.Current, '5' ) ) );
+    INPUT_QUICKKEY_6 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, FTargeting.List.Current, '6' ) ) );
+    INPUT_QUICKKEY_7 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, FTargeting.List.Current, '7' ) ) );
+    INPUT_QUICKKEY_8 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, FTargeting.List.Current, '8' ) ) );
+    INPUT_QUICKKEY_9 : Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, FTargeting.List.Current, '9' ) ) );
 
     INPUT_ACTIVE     : Exit( HandleCommand( TCommand.Create( COMMAND_ACTIVE ) ) );
     INPUT_WAIT       : Exit( HandleCommand( TCommand.Create( COMMAND_WAIT ) ) );
@@ -552,12 +743,12 @@ begin
     INPUT_SWAPWEAPON  : Exit( HandleSwapWeaponCommand );
     INPUT_NONE        : Exit;
   end;
-  IO.MsgUpDate;
-  IO.Msg('Unknown command. Press {^{$input_menu}} for menu and help.' );
+  FIO.MsgUpDate;
+  FIO.Msg('Unknown command. Press {^{$input_menu}} for menu and help.' );
   Exit( False );
 end;
 
-function TDRL.HandleActionCommand( aInput : TInputKey ) : Boolean;
+function TDRLSession.HandleActionCommand( aInput : TInputKey ) : Boolean;
 var iItem   : TItem;
     iID     : AnsiString;
     iFlag   : Byte;
@@ -569,11 +760,11 @@ begin
 
   if aInput = INPUT_ACTION then
   begin
-    if Level.cellFlagSet( Player.Position, CF_STAIRS ) then
+    if Level.cellFlagSet( FPlayer.Position, CF_STAIRS ) then
       Exit( HandleCommand( TCommand.Create( COMMAND_ENTER ) ) )
     else
     begin
-      iItem := Level.Item[ Player.Position ];
+      iItem := Level.Item[ FPlayer.Position ];
       if ( iItem <> nil ) and ( iItem.isLever ) then
         Exit( HandleCommand( TCommand.Create( COMMAND_USE, iItem ) ) );
     end;
@@ -594,15 +785,15 @@ begin
   iCount := 0;
   if iFlag = 0 then
   begin
-    for iScan in NewArea( Player.Position, 1 ).Clamped( Level.Area ) do
-      if ( iScan <> Player.Position ) and ( Level.cellFlagSet(iScan, CF_OPENABLE) or Level.cellFlagSet(iScan, CF_CLOSABLE) ) then
+    for iScan in NewArea( FPlayer.Position, 1 ).Clamped( Level.Area ) do
+      if ( iScan <> FPlayer.Position ) and ( Level.cellFlagSet(iScan, CF_OPENABLE) or Level.cellFlagSet(iScan, CF_CLOSABLE) ) then
       begin
         Inc(iCount);
         iTarget := iScan;
       end;
   end
   else
-    for iScan in NewArea( Player.Position, 1 ).Clamped( Level.Area ) do
+    for iScan in NewArea( FPlayer.Position, 1 ).Clamped( Level.Area ) do
       if Level.cellFlagSet( iScan, iFlag ) and Level.isEmpty( iScan ,[EF_NOITEMS,EF_NOBEINGS] ) then
       begin
         Inc(iCount);
@@ -612,23 +803,23 @@ begin
   if iCount = 0 then
   begin
     if iID = ''
-      then IO.Msg( 'There''s nothing you can act upon here.' )
-      else IO.Msg( 'There''s no door you can %s here.', [ iID ] );
+      then FIO.Msg( 'There''s nothing you can act upon here.' )
+      else FIO.Msg( 'There''s no door you can %s here.', [ iID ] );
     Exit( False );
   end;
 
   if iCount > 1 then
   begin
     if iID = ''
-      then IO.PushLayer( TActionDirView.Create( 'Action', iFlag ) )
-      else IO.PushLayer( TActionDirView.Create( Capitalized(iID)+' door', iFlag ) );
+      then FIO.PushLayer( TActionDirView.Create( Self, 'Action', iFlag ) )
+      else FIO.PushLayer( TActionDirView.Create( Self, Capitalized(iID)+' door', iFlag ) );
     Exit( False );
   end;
 
   Exit( HandleActionCommand( iTarget, iFlag ) );
 end;
 
-function TDRL.HandleActionCommand( aTarget : TCoord2D; aFlag : Byte ) : Boolean;
+function TDRLSession.HandleActionCommand( aTarget : TCoord2D; aFlag : Byte ) : Boolean;
 begin
   if Level.isProperCoord( aTarget ) then
   begin
@@ -637,44 +828,60 @@ begin
     begin
       if not Level.isEmpty( aTarget ,[EF_NOITEMS,EF_NOBEINGS] ) then
       begin
-        IO.Msg( 'There''s something in the way!' );
+        FIO.Msg( 'There''s something in the way!' );
         Exit( False );
       end;
-      // SUCCESS
-      Exit( HandleCommand( TCommand.Create( COMMAND_ACTION, aTarget ) ) );
+      QueueCommand( TCommand.Create( COMMAND_ACTION, aTarget ) );
+      Exit( True );
     end;
-    IO.Msg( 'You can''t do that!' );
+    FIO.Msg( 'You can''t do that!' );
   end;
   Exit( False );
 end;
 
-function TDRL.HandleMoveCommand( aInput : TInputKey; aAlt : Boolean ) : Boolean;
+procedure TDRLSession.StartRun( aDir : TDirection );
+begin
+  FPlayer.MultiMove.Start( aDir, not FUserConfig.GetBoolean( 'run_over_items' ) );
+end;
+
+procedure TDRLSession.RequestRestart( const aModuleID : AnsiString );
+begin
+  FRestartModule := aModuleID;
+end;
+
+function TDRLSession.FixedPlayerName : AnsiString;
+begin
+  if ForcePlayerName <> '' then Exit( ForcePlayerName );
+  Exit( FUserConfig.GetString( 'always_name' ) );
+end;
+
+function TDRLSession.HandleMoveCommand( aInput : TInputKey; aAlt : Boolean ) : Boolean;
 var iDir        : TDirection;
     iTarget     : TCoord2D;
     iMoveResult : TMoveResult;
     iItem       : TItem;
     iBeing      : TBeing;
 begin
-  if Player.Flags[ BF_SESSILE ] then
+  if FPlayer.Flags[ BF_SESSILE ] then
   begin
-    IO.Msg( 'You can''t!' );
+    FIO.Msg( 'You can''t!' );
     Exit( False );
   end;
 
   iDir := InputDirection( aInput );
-  iTarget := Player.Position + iDir;
-  iMoveResult := Player.TryMove( iTarget );
+  iTarget := FPlayer.Position + iDir;
+  iMoveResult := FPlayer.TryMove( iTarget );
   if ( iMoveResult = MoveBlock ) and Level.isProperCoord( iTarget ) and
      ( Level.Being[ iTarget ] <> nil ) then
     iMoveResult := MoveBeing;
 
-  if Player.MultiMove.IsRepeat and (
+  if FPlayer.MultiMove.IsRepeat and (
        ( iMoveResult <> MoveOk ) or
        Level.cellFlagSet( iTarget, CF_NORUN ) or
        (not Level.isEmpty(iTarget,[EF_NOTELE]))
      ) then
   begin
-    Player.MultiMove.Stop;
+    FPlayer.MultiMove.Stop;
     Exit( False );
   end;
 
@@ -685,21 +892,20 @@ begin
          iItem := Level.Item[ iTarget ];
          if Assigned( iItem ) and iItem.HasHook( Hook_OnAct ) then
            Exit( HandleCommand( TCommand.Create( COMMAND_ACTION, iTarget ) ) );
-         if Option_Blindmode then IO.Msg( 'You bump into a wall.' );
          Exit( False );
        end;
      MoveBeing :
        begin
          if not Level.isProperCoord( iTarget ) then Exit( False );
          iBeing := Level.Being[ iTarget ];
-         if Assigned( iBeing ) and iBeing.HasHook( Hook_OnAct ) and iBeing.CallHookCheck( Hook_OnCanAct, [Player] ) and ( not ( aAlt and iBeing.Flags[ BF_FRIENDLY ] ) ) then
+         if Assigned( iBeing ) and iBeing.HasHook( Hook_OnAct ) and iBeing.CallHookCheck( Hook_OnCanAct, [FPlayer] ) and ( not ( aAlt and iBeing.Flags[ BF_FRIENDLY ] ) ) then
          begin
-           Player.MultiMove.Stop;
+           FPlayer.MultiMove.Stop;
            Exit( HandleCommand( TCommand.Create( COMMAND_ACTION, iTarget ) ) );
          end;
          if iBeing.Flags[ BF_FRIENDLY ]
            then Exit( HandleCommand( TCommand.Create( COMMAND_SWAPPOSITION, iTarget ) ) )
-           else Exit( HandleCommand( TCommand.Create( COMMAND_MELEE, iTarget, ModuleOption_MeleeMoveOnKill and (not aAlt) ) ) );
+           else Exit( HandleCommand( TCommand.Create( COMMAND_MELEE, iTarget, FData.Rules.MeleeMoveOnKill and (not aAlt) ) ) );
        end;
      MoveDoor  : Exit( HandleCommand( TCommand.Create( COMMAND_ACTION, iTarget ) ) );
      MoveOk    : Exit( HandleCommand( TCommand.Create( COMMAND_MOVE, iTarget ) ) );
@@ -707,81 +913,67 @@ begin
   Exit( False );
 end;
 
-function TDRL.HandleFireCommand( aAlt : Boolean; aMouse : Boolean; aAuto : Boolean; aPad : Boolean ) : Boolean;
+function TDRLSession.HandleFireCommand( aAlt : Boolean; aTarget : TFireTarget ) : Boolean;
 var iTarget     : TCoord2D;
     iItem       : TItem;
     iFireTitle  : AnsiString;
-    iChainFire  : Byte;
     iLimitRange : Boolean;
     iRange      : Byte;
     iCommand    : Byte;
     iEmpty      : Boolean;
     iShotCost   : Integer;
 begin
-  IO.MsgUpdate;
+  FIO.MsgUpdate;
   iLimitRange := False;
   iFireTitle  := '';
-  iChainFire  := Player.ChainFire;
-  if iChainFire > 0 then aAuto := False;
-  Player.ChainFire := 0;
 
-  iItem := Player.Inv.Slot[ efWeapon ];
+  iItem := FPlayer.Inv.Slot[ efWeapon ];
   if (iItem = nil) or (not iItem.isWeapon) then
   begin
-    IO.Msg( 'You have no weapon.' );
+    FIO.Msg( 'You have no weapon.' );
     Exit( False );
   end;
 
   if aAlt and ( not iItem.HasHook( Hook_OnAltFire ) ) then
   begin
-    IO.Msg( 'This weapon has no alternate fire mode' );
+    FIO.Msg( 'This weapon has no alternate fire mode' );
     Exit( False );
   end;
 
   if not aAlt then
   begin
-    if (not aMouse) and (not aAuto) and iItem.isMelee then
+    if ( aTarget = FireManual ) and iItem.isMelee then
     begin
-      IO.PushLayer( TMeleeDirView.Create );
+      FIO.PushLayer( TMeleeDirView.Create( Self ) );
       Exit( False );
     end;
 
     if (not iItem.isRanged) then
     begin
-      if aPad then
-      begin
-        iTarget := FTargeting.List.Current;
-        if IO.GetPadLDir.NotZero then 
-          iTarget := Player.Position + IO.GetPadLDir;
-        if Distance( Player.Position, iTarget ) = 1 then
-          Exit( HandleCommand( TCommand.Create( COMMAND_MELEE, iTarget, ModuleOption_MeleeMoveOnKill ) ) );
-      end;
-      IO.Msg( 'You have no ranged weapon.' );
+      FIO.Msg( 'You have no ranged weapon.' );
       Exit( False );
     end;
   end
   else
-  begin
-    if ( not iItem.Flags[ IF_ALTTARGET ] ) then aAuto := False;
-    if iItem.Flags[ IF_ALTMANUAL ]         then aAuto := False;
-  end;
-  if not iItem.CallHookCheck( Hook_OnUseCheck, [Player,aAlt] ) then Exit( False );
+    // Alternate fire that needs or forbids a chosen target ignores the auto-target.
+    if ( aTarget = FireAuto ) and ( ( not iItem.Flags[ IF_ALTTARGET ] ) or iItem.Flags[ IF_ALTMANUAL ] ) then
+      aTarget := FireManual;
+  if not FPlayer.CallHookCheck( Hook_OnUseCheck, [ iItem, aAlt ] ) then Exit( False );
+  if not iItem.CallHookCheck( Hook_OnUseCheck, [FPlayer,aAlt] ) then Exit( False );
 
   if aAlt then
   begin
     if iItem.isMelee and iItem.Flags[ IF_ALTTARGET ] then
-    begin
-      if aMouse then
-        iTarget  := IO.MTarget
-      else if aAuto then
-        iTarget := FTargeting.List.Current
-      else
-      begin
-        iRange      := iItem.Range;
-        iLimitRange := iItem.Flags[ IF_EXACTHIT ];
-        iFireTitle  := 'Choose target ('+iItem.GetAltFireName+'):';
+      case aTarget of
+        FireMouse  : iTarget := FIO.MTarget;
+        FireAuto   : iTarget := FTargeting.List.Current;
+        FireManual :
+          begin
+            iRange      := iItem.Range;
+            iLimitRange := iItem.Flags[ IF_EXACTHIT ];
+            iFireTitle  := 'Choose target ('+iItem.GetAltFireName+'):';
+          end;
       end;
-    end;
   end;
 
   if iItem.isRanged then
@@ -790,48 +982,43 @@ begin
     if not iItem.Flags[ IF_NOAMMO ] then
     begin
       iShotCost := iItem.getShotCost( aAlt );
-           if iItem.Ammo = 0              then begin IO.Msg( 'Your weapon is empty.' ); iEmpty := True; end
-      else if iItem.Ammo < iShotCost      then begin IO.Msg( 'You don''t have enough ammo to fire the %s!', [iItem.Name] ); iEmpty := True; end;
+           if iItem.Ammo = 0              then begin FIO.Msg( 'Your weapon is empty.' ); iEmpty := True; end
+      else if iItem.Ammo < iShotCost      then begin FIO.Msg( 'You don''t have enough ammo to fire the %s!', [iItem.Name] ); iEmpty := True; end;
     end;
 
     if iEmpty then
     begin
-      if Setting_EmptyConfirm then
-        IO.PushLayer( TMoreLayer.Create( False ) );
+      if FUserConfig.GetBoolean( 'empty_confirm' ) then
+        FIO.PushLayer( TMoreLayer.Create( False ) );
       Exit( False );
     end;
 
     iRange := iItem.Range;
-    if iRange = 0 then iRange := Player.Vision;
+    if iRange = 0 then iRange := FPlayer.Vision;
 
     iLimitRange := (not iItem.Flags[ IF_SHOTGUN ]) and iItem.Flags[ IF_EXACTHIT ];
-    if aMouse or aAuto then
-    begin
-      if aMouse
-        then iTarget := IO.MTarget
-        else iTarget := FTargeting.List.Current;
-
-      if iLimitRange then
-        if Distance( Player.Position, iTarget ) > iRange then
-          Exit( Player.Fail( 'Out of range!', [] ) );
-    end
-    else
-    begin
-      iFireTitle := 'Choose fire target:';
-      if aAlt then
-      begin
-        if iItem.Flags[ IF_ALTCHAIN ] then
+    case aTarget of
+      FireMouse,
+      FireAuto :
         begin
-          case iChainFire of
-            0      : iFireTitle := 'Alternate fire ({Ginitial}):';
-            1      : iFireTitle := 'Alternate fire ({Ywarming}):';
-            2..255 : iFireTitle := 'Alternate fire ({Rfull}):';
+          if aTarget = FireMouse
+            then iTarget := FIO.MTarget
+            else iTarget := FTargeting.List.Current;
+
+          if iLimitRange then
+            if Distance( FPlayer.Position, iTarget ) > iRange then
+              Exit( FPlayer.Fail( 'Out of range!', [] ) );
+        end;
+      FireManual :
+        begin
+          iFireTitle := 'Choose fire target:';
+          if aAlt then
+          begin
+            if iItem.Flags[ IF_ALTTARGET ]
+              then iFireTitle := 'Fire target ({L'+iItem.GetAltFireName+'}):'
+              else begin iFireTitle := ''; iTarget := FPlayer.Position; end;
           end;
-        end
-        else if iItem.Flags[ IF_ALTTARGET ] 
-          then iFireTitle := 'Fire target ({L'+iItem.GetAltFireName+'}):'
-          else begin iFireTitle := ''; iTarget := Player.Position; end;
-      end;
+        end;
     end;
   end;
 
@@ -840,18 +1027,18 @@ begin
 
   if iFireTitle <> '' then
   begin
-    if iRange = 0 then iRange := Player.Vision;
-    if iRange <> Player.Vision then
+    if iRange = 0 then iRange := FPlayer.Vision;
+    if iRange <> FPlayer.Vision then
       FTargeting.Update( iRange );
-    IO.PushLayer( TTargetModeView.Create( iItem, iCommand, iFireTitle, iRange+1, iLimitRange, FTargeting.List, iChainFire ) );
+    FIO.PushLayer( TTargetModeView.Create( Self, iItem, iCommand, iFireTitle, iRange+1, iLimitRange ) );
     Exit( False );
   end;
 
-  if aAuto then
+  if aTarget = FireAuto then
   begin
-    if FTargeting.List.Current = Player.Position then
+    if FTargeting.List.Current = FPlayer.Position then
     begin
-      IO.Msg( 'No valid target.' );
+      FIO.Msg( 'No valid target.' );
       ResetAutoTarget;
       Exit( False );
     end;
@@ -861,275 +1048,355 @@ begin
   Exit( HandleCommand( TCommand.Create( iCommand, iTarget, iItem ) ) )
 end;
 
-function TDRL.HandleUsableCommand( aItem : TItem ) : Boolean;
+function TDRLSession.HandlePadFireCommand( aAlt : Boolean ) : Boolean;
+var iItem   : TItem;
+    iTarget : TCoord2D;
+begin
+  iItem := FPlayer.Inv.Slot[ efWeapon ];
+  if ( not aAlt ) and ( iItem <> nil ) and iItem.isWeapon and ( not iItem.isRanged ) then
+  begin
+    iTarget := FTargeting.List.Current;
+    if FIO.GetPadLDir.NotZero then
+      iTarget := FPlayer.Position + FIO.GetPadLDir;
+    if Distance( FPlayer.Position, iTarget ) = 1 then
+    begin
+      FIO.MsgUpdate;
+      Exit( HandleCommand( TCommand.Create( COMMAND_MELEE, iTarget, FData.Rules.MeleeMoveOnKill ) ) );
+    end;
+  end;
+  Exit( HandleFireCommand( aAlt, FireAuto ) );
+end;
+
+function TDRLSession.HandleUsableCommand( aItem : TItem ) : Boolean;
 var iRange      : Integer;
     iLimitRange : Boolean;
 begin
   iRange := aItem.Range;
-  if iRange = 0 then iRange := Player.Vision;
-  if iRange <> Player.Vision then
+  if iRange = 0 then iRange := FPlayer.Vision;
+  if iRange <> FPlayer.Vision then
     FTargeting.Update( iRange );
   iLimitRange := aItem.Flags[ IF_EXACTHIT ];
-  IO.PushLayer( TTargetModeView.Create( aItem, COMMAND_USE, 'Choose target:', iRange+1, iLimitRange, FTargeting.List, 0 ) );
+  FIO.PushLayer( TTargetModeView.Create( Self, aItem, COMMAND_USE, 'Choose target:', iRange+1, iLimitRange ) );
   Exit( False );
 end;
 
-function TDRL.HandleUnloadCommand( aItem : TItem ) : Boolean;
+function TDRLSession.HandleUnloadCommand( aItem : TItem ) : Boolean;
 var iID         : AnsiString;
     iItemTypes  : TItemTypeSet;
 begin
   iItemTypes := [ ItemType_Ranged, ItemType_AmmoPack ];
-  if Player.Flags[ BF_SCAVENGER ] then
+  if FPlayer.Flags[ BF_SCAVENGER ] then
     iItemTypes := [ ItemType_Ranged, ItemType_AmmoPack, ItemType_Melee, ItemType_Armor, ItemType_Boots ];
   if ( aItem = nil ) then
-    aItem := Level.Item[ Player.Position ];
+    aItem := Level.Item[ FPlayer.Position ];
   if ( aItem = nil ) or ( not (aItem.IType in iItemTypes) ) then
   begin
-    FPlayerView := IO.PushLayer( TPlayerView.CreateCommand( COMMAND_UNLOAD, Player.Flags[ BF_SCAVENGER ] ) );
+    FPlayerView := FIO.PushLayer( TPlayerView.CreateCommand( Self, COMMAND_UNLOAD, FPlayer.Flags[ BF_SCAVENGER ] ) );
     Exit( True );
   end;
 
   if aItem.isAmmoPack then
   begin
-    IO.PushLayer( TUnloadConfirmView.Create( aItem ) );
+    FIO.PushLayer( TUnloadConfirmView.Create( Self, aItem ) );
     Exit( True );
   end;
 
-  if (not aItem.isAmmoPack) and Player.Flags[ BF_SCAVENGER ] and
+  if (not aItem.isAmmoPack) and FPlayer.Flags[ BF_SCAVENGER ] and
     ((not aItem.isRanged) or (aItem.Ammo = 0) or aItem.Flags[ IF_NOUNLOAD ] or aItem.Flags[ IF_NORELOAD ] or aItem.Flags[ IF_NOAMMO ]) and
     (aItem.Flags[ IF_EXOTIC ] or aItem.Flags[ IF_UNIQUE ] or aItem.Flags[ IF_ASSEMBLED ] or aItem.Flags[ IF_MODIFIED ]) then
   begin
-    iID := LuaSystem.ProtectedCall( [ CoreModuleID,'GetDisassembleId'], [ aItem ] );
+    iID := FContext.Lua.ProtectedCall( [ FModules.CoreModuleID,'GetDisassembleId'], [ aItem ] );
     if iID <> '' then
     begin
-      IO.PushLayer( TUnloadConfirmView.Create(aItem,iID) );
-      Exit;
+      FIO.PushLayer( TUnloadConfirmView.Create( Self, aItem, iID ) );
+      Exit( True );
     end;
   end;
 
   if not( aItem.IType in [ ItemType_Ranged, ItemType_AmmoPack ] )  then
      Exit( False );
 
-  Exit( HandleCommand( TCommand.Create( COMMAND_UNLOAD, aItem, iID ) ) );
+  QueueCommand( TCommand.Create( COMMAND_UNLOAD, aItem, iID ) );
+  Exit( True );
 end;
 
-function TDRL.HandleSwapWeaponCommand : Boolean;
+function TDRLSession.HandleSwapWeaponCommand : Boolean;
 begin
-  if ( Player.Inv.Slot[ efWeapon ] <> nil ) and ( not Player.Inv.Slot[ efWeapon ].CallHookCheck( Hook_OnUnequipCheck, [ Player, False ] ) ) then Exit( False );
-  if ( Player.Inv.Slot[ efWeapon2 ] <> nil ) and ( Player.Inv.Slot[ efWeapon2 ].isAmmoPack )        then begin IO.Msg('Nothing to swap!'); Exit( False ); end;
+  if ( FPlayer.Inv.Slot[ efWeapon ] <> nil ) and ( not FPlayer.Inv.Slot[ efWeapon ].CallHookCheck( Hook_OnUnequipCheck, [ FPlayer, False ] ) ) then Exit( False );
+  if ( FPlayer.Inv.Slot[ efWeapon2 ] <> nil ) and ( FPlayer.Inv.Slot[ efWeapon2 ].isAmmoPack )        then begin FIO.Msg('Nothing to swap!'); Exit( False ); end;
   Exit( HandleCommand( TCommand.Create( COMMAND_SWAPWEAPON ) ) );
 end;
 
-function TDRL.HandlePickupCommand( aAlt : Boolean ) : Boolean;
+function TDRLSession.HandlePickupCommand( aAlt : Boolean ) : Boolean;
 var iItem : TItem;
 begin
+  iItem := Level.Item[ FPlayer.Position ];
+  if ( iItem <> nil ) and FPlayer.Flags[ BF_IMPATIENT ] and iItem.isUsable then
+  begin
+    if not aAlt then FIO.Msg( 'No time to waste.' );
+    aAlt := True;
+  end;
   if not aAlt then Exit( HandleCommand( TCommand.Create( COMMAND_PICKUP ) ) );
-  iItem := Level.Item[ Player.Position ];
   if ( iItem = nil ) or (not (iItem.isPickupable or iItem.isUsable or iItem.isWearable) ) then
   begin
-    IO.Msg( 'There''s nothing to use on the ground!' );
+    FIO.Msg( 'There''s nothing to use on the ground!' );
     Exit( False );
   end;
   if iItem.isRelic then
     Exit( HandleCommand( TCommand.Create( COMMAND_PICKUP ) ) );
   if iItem.IType = ITEMTYPE_URANGED
-    then Exit( DRL.HandleUsableCommand( iItem ) );
-  Exit( HandleCommand( TCommand.Create( COMMAND_USE, iItem ) ) );
+    then Exit( HandleUsableCommand( iItem ) );
+  Exit( HandleCommand( TCommand.Create( COMMAND_USE, FPlayer.Position, iItem ) ) );
 end;
 
-function TDRL.HandleCommand( aCommand : TCommand ) : Boolean;
+procedure TDRLSession.QueueCommand( const aCommand : TCommand );
 begin
+  Assert( FQueueCommand.Command = COMMAND_NONE, 'A command is already queued' );
+  FQueueCommand := aCommand;
+end;
+
+procedure TDRLSession.HandlePlayerViewSwap;
+var iItem : TItem;
+    iSlot : TEqSlot;
+begin
+  if FPlayerView = nil then Exit;
+  if not ( FPlayerView as TPlayerView ).TakeSwapRequest( iSlot ) then Exit;
+  iItem := FPlayer.Inv.Slot[ iSlot ];
+  if ( iItem = nil ) or iItem.CallHookCheck( Hook_OnUnequipCheck, [ FPlayer, False ] ) then
+    if ContinuePlaying then
+      ( FPlayerView as TPlayerView ).InitSwapMode( iSlot );
+  if FPlayerView <> nil then
+    ( FPlayerView as TPlayerView ).FinishPending;
+end;
+
+function TDRLSession.HandleCommand( aCommand : TCommand ) : Boolean;
+var iItem : TItem;
+begin
+  iItem := nil;
+  case aCommand.Command of
+    COMMAND_DROP : if FPlayer.Inv.Equipped( aCommand.Item ) then iItem := aCommand.Item;
+    COMMAND_TAKEOFF : iItem := FPlayer.Inv.Slot[ aCommand.Slot ];
+  end;
+  if iItem <> nil then
+  begin
+    if not iItem.CallHookCheck( Hook_OnUnequipCheck, [ FPlayer, False ] ) then Exit( False );
+    if not ContinuePlaying then Exit( False );
+  end;
+
+  // Gameplay reads the aim from the command, never from the view.
+  aCommand.Aim := FTargeting.List.Current;
   if not ( aCommand.Command in [ COMMAND_FIRE, COMMAND_ALTFIRE, COMMAND_RELOAD ] ) then
     FTargeting.ClearPosition;
 
   if aCommand.Command = COMMAND_NONE then
     Exit( False );
-  IO.MsgUpDate;
+  FIO.MsgUpDate;
+  if aCommand.Command = COMMAND_WAIT then
+    FIO.PlayWaitSound;
 try
-  Player.HandleCommand( aCommand );
+  FPlayer.HandleCommand( aCommand );
 except
   on e : Exception do
   begin
-    if CRASHMODE then raise;
+    if FActionFailed then raise;
     ErrorLogOpen('CRITICAL','Player action exception!');
     ErrorLogWriteln('Error message : '+e.Message);
     ErrorLogClose;
-    IO.ErrorReport(e.Message);
-    CRASHMODE := True;
+    FIO.ErrorReport(e.Message);
+    FActionFailed := True;
   end;
 end;
-  if State <> DSPlaying then Exit( False );
-  Player.PostAction;
-  if State <> DSPlaying then Exit( False );
-  IO.Focus( Player.Position );
-  FDamagedLastTurn := False;
-  while (Player.SCount < 5000) and (State = DSPlaying) do
+  if not ContinuePlaying then Exit( False );
+  while FPlayer.LevelUpPending do
+    LevelUpPlayer;
+  FPlayer.PostAction;
+  if not ContinuePlaying then Exit( False );
+  FIO.Focus( FPlayer.Position );
+  FPlayer.DamagedLastTurn := False;
+  while (FPlayer.SCount < 5000) and ContinuePlaying do
   begin
-    FLevel.CalculateVision( Player.Position );
-    FLevel.Tick;
-    if Player.MultiMove.Active then
-      IO.WaitForAnimation;
-    if not Player.PlayerTick then Exit( True );
+    FLevel.CalculateVision( FPlayer.Position, FPlayer.Vision );
+    AdvanceTime;
+    if FPlayer.MultiMove.Active then
+      FIO.WaitForAnimation;
+    if not FPlayer.PlayerTick then Exit( True );
   end;
   PreAction;
   Exit( True );
 end;
 
-procedure TDRL.ResetAutoTarget;
+procedure TDRLSession.ResetAutoTarget;
 begin
   FTargeting.Clear;
-  FTargeting.Update( Player.Vision );
-  IO.SetAutoTarget( FTargeting.List.Current );
+  FTargeting.Update( FPlayer.Vision );
+  FIO.SetAutoTarget( FTargeting.List.Current );
 end;
 
-function TDRL.HandleMouseEvent( aEvent : TIOEvent ) : Boolean;
+function TDRLSession.HandleMouseEvent( aEvent : TIOEvent ) : Boolean;
 var iAlt     : Boolean;
     iButton  : TIOMouseButton;
 begin
-  if not Setting_Mouse then Exit( False );
-  IO.MTarget := SpriteMap.DevicePointToCoord( aEvent.Mouse.Pos );
-  if DRL.Level.isProperCoord( IO.MTarget ) then
+  FIO.MTarget := FIO.DevicePointToCoord( aEvent.Mouse.Pos );
+  if Level.isProperCoord( FIO.MTarget ) then
   begin
     iButton  := aEvent.Mouse.Button;
     iAlt     := False;
     if iButton in [ VMB_BUTTON_LEFT, VMB_BUTTON_RIGHT ] then
-      iAlt := VKMOD_ALT in IO.Driver.GetModKeyState;
+      iAlt := VKMOD_ALT in FIO.Driver.GetModKeyState;
 
     if iButton = VMB_BUTTON_MIDDLE then
-      if IO.MTarget = Player.Position
+      if FIO.MTarget = FPlayer.Position
         then Exit( HandleSwapWeaponCommand )
         else begin
-//          FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_EQUIPMENT ) );
+//          FPlayerView := FIO.PushLayer( TPlayerView.Create( Self, PLAYERVIEW_EQUIPMENT ) );
 //          Exit( True );
         end;
 
     if iButton = VMB_BUTTON_LEFT then
     begin
-      if IO.MTarget = Player.Position then
+      if FIO.MTarget = FPlayer.Position then
       begin
         if iAlt then
         begin
-          FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_INVENTORY ) );
+          FPlayerView := FIO.PushLayer( TPlayerView.Create( Self, PLAYERVIEW_INVENTORY ) );
           Exit( True );
         end
         else
-        if Level.cellFlagSet( Player.Position, CF_STAIRS ) then
+        if Level.cellFlagSet( FPlayer.Position, CF_STAIRS ) then
           Exit( HandleCommand( TCommand.Create( COMMAND_ENTER ) ) )
         else
-          if Level.Item[ Player.Position ] <> nil then
-            if Level.Item[ Player.Position ].isLever then
-              Exit( HandleCommand( TCommand.Create( COMMAND_USE, Level.Item[ Player.Position ] ) ) )
+          if Level.Item[ FPlayer.Position ] <> nil then
+            if Level.Item[ FPlayer.Position ].isLever then
+              Exit( HandleCommand( TCommand.Create( COMMAND_USE, Level.Item[ FPlayer.Position ] ) ) )
             else
-              Exit( HandleCommand( TCommand.Create( COMMAND_PICKUP ) ) )
+              Exit( HandlePickupCommand( False ) )
           else
             begin
-              FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_INVENTORY ) );
+              FPlayerView := FIO.PushLayer( TPlayerView.Create( Self, PLAYERVIEW_INVENTORY ) );
               Exit( True );
             end
       end
       else
-      if Distance( Player.Position, IO.MTarget ) = 1
-        then Exit( HandleMoveCommand( DirectionToInput( NewDirection( Player.Position, IO.MTarget ) ), IO.ShiftHeld ) )
-        else if Level.isExplored( IO.MTarget ) then
+      if Distance( FPlayer.Position, FIO.MTarget ) = 1
+        then Exit( HandleMoveCommand( DirectionToInput( NewDirection( FPlayer.Position, FIO.MTarget ) ), FIO.ShiftHeld ) )
+        else if Level.isExplored( FIO.MTarget ) then
         begin
-          if not Player.RunPath( IO.MTarget ) then
+          if not FPlayer.RunPath( FIO.MTarget ) then
           begin
-            IO.Msg('Can''t get there!');
+            FIO.Msg('Can''t get there!');
             Exit;
           end;
         end
         else
         begin
-          IO.Msg('You don''t know how to get there!');
+          FIO.Msg('You don''t know how to get there!');
           Exit;
         end;
     end;
 
     if iButton = VMB_BUTTON_RIGHT then
     begin
-      if (IO.MTarget = Player.Position) or
-        ((Player.Inv.Slot[ efWeapon ] <> nil) and (Player.Inv.Slot[ efWeapon ].isRanged) and (not (Player.Inv.Slot[efWeapon].GetFlag(IF_NOAMMO))) and (Player.Inv.Slot[ efWeapon ].Ammo < Player.Inv.Slot[ efWeapon ].getShotCost))  then
+      if (FIO.MTarget = FPlayer.Position) or
+        ((FPlayer.Inv.Slot[ efWeapon ] <> nil) and (FPlayer.Inv.Slot[ efWeapon ].isRanged) and (not (FPlayer.Inv.Slot[efWeapon].GetFlag(IF_NOAMMO))) and (FPlayer.Inv.Slot[ efWeapon ].Ammo < FPlayer.Inv.Slot[ efWeapon ].getShotCost))  then
       begin
         if iAlt
           then Exit( HandleCommand( TCommand.Create( COMMAND_ALTRELOAD ) ) )
           else Exit( HandleCommand( TCommand.Create( COMMAND_RELOAD ) ) );
       end
-      else if (Player.Inv.Slot[ efWeapon ] <> nil) and (Player.Inv.Slot[ efWeapon ].isRanged) then
-      begin
-        if iAlt
-          then Exit( HandleFireCommand( True, True, False, False ) )
-          else Exit( HandleFireCommand( False, True, False, False ) );
-      end
+      else if (FPlayer.Inv.Slot[ efWeapon ] <> nil) and (FPlayer.Inv.Slot[ efWeapon ].isRanged) then
+        Exit( HandleFireCommand( iAlt, FireMouse ) )
       else Exit( HandleCommand( TCommand.Create( COMMAND_MELEE,
-        Player.Position + NewDirectionSmooth( Player.Position, IO.MTarget )
+        FPlayer.Position + NewDirectionSmooth( FPlayer.Position, FIO.MTarget )
       ) ) );
     end;
 
     if iButton in [ VMB_WHEEL_UP, VMB_WHEEL_DOWN ] then
-      IO.PushLayer( TScrollSwapLayer.Create );
+    begin
+      if FPlayer.Inv.Slot[ efWeapon ] <> nil then
+      begin
+        if not FPlayer.Inv.Slot[ efWeapon ].CallHookCheck( Hook_OnUnequipCheck, [ FPlayer, False ] ) then Exit( False );
+        if not ContinuePlaying then Exit( False );
+      end;
+      FIO.PushLayer( TScrollSwapLayer.Create( Self ) );
+    end;
   end;
   Exit( False );
 end;
 
-function TDRL.HandlePadMovement( aPressed : Boolean ) : Boolean;
-var iTarget : TCoord2D;
-    iCell   : Integer;
+function TDRLSession.HandlePadMovement( aPressed : Boolean ) : Boolean;
+var iTarget      : TCoord2D;
+    iCell        : Integer;
+    iRepeatDelay : DWord;
 begin
   Result := False;
-
-  if IO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT ) then
-  begin // Move target mode
+  if ( not ContinuePlaying ) or FIO.IsModal
+    or ( not FIO.ControllerActionHeld( CONTROLLER_MOVE ) ) then
+  begin
     FPadMoveActive := False;
-    if IO.GetPadLDir.NotZero then
-      Exit( MoveTargetEvent( FTargeting.List.Current + IO.GetPadLDir ) );
-    if ( not IO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN ) )
-      and (FTargeting.List.Current <> Player.Position)
-      and (Level.Being[FTargeting.List.Current] <> nil) then
-    begin
-      IO.FullLook( Level.Being[FTargeting.List.Current] );
-      Exit( False );
-    end;
-    IO.FullLook( Player );
     Exit( False );
   end;
 
+  if FIO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT ) then
+  begin // Move target mode
+    FPadMoveActive := False;
+    if FIO.GetPadLDir.NotZero then
+      Exit( MoveTargetEvent( FTargeting.List.Current + FIO.GetPadLDir ) );
+    if ( not FIO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN ) )
+      and (FTargeting.List.Current <> FPlayer.Position)
+      and (Level.Being[FTargeting.List.Current] <> nil) then
+    begin
+      FIO.FullLook( Level.Being[FTargeting.List.Current] );
+      Exit( False );
+    end;
+    FIO.FullLook( FPlayer );
+    Exit( False );
+  end;
+
+  // Match movement animation pacing, including movement cost and player speed.
+  iRepeatDelay := FPlayer.VisualTime( FPlayer.getMoveCost, AnimationSpeedMove );
+  if iRepeatDelay < PAD_REPEAT then iRepeatDelay := PAD_REPEAT;
+  if aPressed and ( iRepeatDelay < PAD_REPEAT_START ) then
+    iRepeatDelay := PAD_REPEAT_START;
+
   if aPressed then // normal mode
   begin
-    if IO.GetPadLDir.NotZero
+    if FIO.GetPadLDir.NotZero
       then begin
         FPadMoved := True;
         Result := HandleMoveCommand(
-          DirectionToInput( NewDirection( IO.GetPadLDir ) ),
-          IO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
+          DirectionToInput( NewDirection( FIO.GetPadLDir ) ),
+          FIO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
         );
       end
       else Result := HandleCommand( TCommand.Create( COMMAND_WAIT ) );
-    FPadMoveNext := IO.Time + PAD_REPEAT_START;
   end
   else // repeat mode
   begin
-    if IO.GetPadLDir.NotZero then
+    if FIO.GetPadLDir.NotZero then
     begin
-      iTarget := Player.Position + IO.GetPadLDir;
+      iTarget := FPlayer.Position + FIO.GetPadLDir;
       if Level.isProperCoord( iTarget ) then
       begin
         iCell := Level.getCell( iTarget );
-        if not ( ( CellHook_OnHazardQuery in Cells[ iCell ].Hooks ) and  Level.CallHook( CellHook_OnHazardQuery, iCell, Player ) ) then
+        if not ( ( CellHook_OnHazardQuery in FData.Cells[ iCell ].Hooks ) and  Level.CallHook( CellHook_OnHazardQuery, iCell, FPlayer ) ) then
           Result := HandleMoveCommand(
-            DirectionToInput( NewDirection( IO.GetPadLDir ) ),
-            IO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
+            DirectionToInput( NewDirection( FIO.GetPadLDir ) ),
+            FIO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
           );
       end;
     end;
-    FPadMoveNext := IO.Time + PAD_REPEAT;
   end;
-  FPadMoveActive := ( State = DSPlaying )
-    and ( Player.EnemiesInVision = 0 )
-    and ( aPressed or (not FDamagedLastTurn) );
+  FPadMoveNext := FIO.Time + iRepeatDelay;
+  // A nested prompt may have consumed the release while handling the command.
+  FPadMoveActive := ContinuePlaying
+    and ( not FIO.IsModal )
+    and FIO.ControllerActionHeld( CONTROLLER_MOVE )
+    and ( FPlayer.EnemiesInVision = 0 )
+    and ( aPressed or (not FPlayer.DamagedLastTurn) );
   Exit( Result );
 end;
 
-function TDRL.HandlePadEvent( aEvent : TIOEvent ) : Boolean;
+function TDRLSession.HandlePadEvent( aEvent : TIOEvent ) : Boolean;
 var iItem   : TItem;
     iAction : TControllerAction;
 begin
@@ -1140,7 +1407,7 @@ begin
   end;
 
   if not ( aEvent.EType in [ VEVENT_PADDOWN, VEVENT_PADUP ] ) then Exit( False );
-  if not IO.ResolveControllerAction( aEvent.Pad.Button, iAction ) then Exit( False );
+  if not FIO.ResolveControllerAction( aEvent.Pad.Button, iAction ) then Exit( False );
 
   if iAction = CONTROLLER_MOVE then
   begin
@@ -1155,58 +1422,58 @@ begin
   if aEvent.EType <> VEVENT_PADDOWN then Exit( False );
 
   case iAction of
-    CONTROLLER_ACTION : if IO.GetPadLDir.NotZero
-                          then Exit( HandleActionCommand( Player.Position + IO.GetPadLDir, 0 ) )
+    CONTROLLER_ACTION : if FIO.GetPadLDir.NotZero
+                          then Exit( HandleActionCommand( FPlayer.Position + FIO.GetPadLDir, 0 ) )
                           else begin
-                            if Level.cellFlagSet( Player.Position, CF_STAIRS ) then
+                            if Level.cellFlagSet( FPlayer.Position, CF_STAIRS ) then
                               Exit( HandleCommand( TCommand.Create( COMMAND_ENTER ) ) );
-                            iItem := Level.Item[ Player.Position ];
+                            iItem := Level.Item[ FPlayer.Position ];
                             if ( iItem <> nil ) and ( iItem.isLever ) then
                               Exit( HandleCommand( TCommand.Create( COMMAND_USE, iItem ) ) );
-                            Exit( HandlePickupCommand( IO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT ) ) )
+                            Exit( HandlePickupCommand( FIO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT ) ) )
                           end;
-    CONTROLLER_FIRE : Exit( HandleFireCommand( IO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT ), False, True, True ) );
+    CONTROLLER_FIRE : Exit( HandlePadFireCommand( FIO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT ) ) );
     CONTROLLER_RELOAD : Exit( HandleCommand( TCommand.Create(
       Iif(
-        IO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT ),
+        FIO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT ),
         COMMAND_ALTRELOAD,
         COMMAND_RELOAD
       )
     ) ) );
     CONTROLLER_MENU : begin
       ResetAutoTarget;
-      IO.PushLayer( TInGameMenuView.Create );
+      FIO.PushLayer( TInGameMenuView.Create( Self, TDRLRuntime( FRuntime ).HOF, TDRLRuntime( FRuntime ).Help ) );
       Exit( False );
     end;
     CONTROLLER_PLAYER : begin
-      if IO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT )
-        then FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_EQUIPMENT ) )
-        else FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_INVENTORY ) );
+      if FIO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT )
+        then FPlayerView := FIO.PushLayer( TPlayerView.Create( Self, PLAYERVIEW_EQUIPMENT ) )
+        else FPlayerView := FIO.PushLayer( TPlayerView.Create( Self, PLAYERVIEW_INVENTORY ) );
       Exit( False );
     end;
     CONTROLLER_ACTIVE : Exit( HandleCommand( TCommand.Create( COMMAND_ACTIVE ) ) );
-    CONTROLLER_SWAP : if IO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT )
+    CONTROLLER_SWAP : if FIO.ControllerActionHeld( CONTROLLER_MODIFIER_ALT )
                         then Exit( HandleUnloadCommand( nil ) )
                         else Exit( HandleSwapWeaponCommand );
     CONTROLLER_TARGET_PREV : begin
-      IO.SetAutoTarget( FTargeting.List.Prev );
+      FIO.SetAutoTarget( FTargeting.List.Prev );
       Exit( False );
     end;
     CONTROLLER_TARGET_NEXT : begin
-      IO.SetAutoTarget( FTargeting.List.Next );
+      FIO.SetAutoTarget( FTargeting.List.Next );
       Exit( False );
     end;
-    CONTROLLER_UP : if IO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
-      then Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '1' ) ) )
+    CONTROLLER_UP : if FIO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
+      then Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, FTargeting.List.Current, '1' ) ) )
       else if FPadMoved then Exit( MoveTargetEvent( FTargeting.List.Current + NewCoord2D( 0,-1 ) ) );
-    CONTROLLER_DOWN : if IO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
-      then Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '4' ) ) )
+    CONTROLLER_DOWN : if FIO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
+      then Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, FTargeting.List.Current, '4' ) ) )
       else if FPadMoved then Exit( MoveTargetEvent( FTargeting.List.Current + NewCoord2D( 0, 1 ) ) );
-    CONTROLLER_LEFT : if IO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
-      then Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '2' ) ) )
+    CONTROLLER_LEFT : if FIO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
+      then Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, FTargeting.List.Current, '2' ) ) )
       else if FPadMoved then Exit( MoveTargetEvent( FTargeting.List.Current + NewCoord2D(-1, 0 ) ) );
-    CONTROLLER_RIGHT : if IO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
-      then Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, '3' ) ) )
+    CONTROLLER_RIGHT : if FIO.ControllerActionHeld( CONTROLLER_MODIFIER_RUN )
+      then Exit( HandleCommand( TCommand.Create( COMMAND_QUICKKEY, FTargeting.List.Current, '3' ) ) )
       else if FPadMoved then Exit( MoveTargetEvent( FTargeting.List.Current + NewCoord2D( 1, 0 ) ) );
     CONTROLLER_MODIFIER_RUN,
     CONTROLLER_MODIFIER_ALT : ;
@@ -1214,25 +1481,40 @@ begin
   Exit( False );
 end;
 
-function TDRL.HandleKeyEvent( aEvent : TIOEvent ) : Boolean;
-var iInput : TInputKey;
+procedure TDRLSession.HardQuit;
+begin
+  FIO.FadeReset;
+  FHardQuit := True;
+  SetState( DSQuit );
+end;
+
+function TDRLSession.HandleKeyEvent( aEvent : TIOEvent ) : Boolean;
+var iAction : TBindingAction;
+    iInput  : TInputKey;
 begin
   if aEvent.Key.Code = 0 then Exit( False );
-  IO.KeyCode := IOKeyEventToIOKeyCode( aEvent.Key );
-  iInput     := TInputKey( Config.Commands[ IO.KeyCode ] );
+  FIO.KeyCode := IOKeyEventToIOKeyCode( aEvent.Key );
+  iAction    := FIO.GameBindings.ResolveKey( FIO.KeyCode );
+
+  if iAction = BINDING_FORWARD_LUA then
+  begin
+    if aEvent.Key.Repeated then Exit( False );
+    FLuaConfig.RunKey( FIO.KeyCode );
+    Exit( HandleCommand( TCommand.Create( COMMAND_SKIP ) ) );
+  end;
+
+  if ( iAction < Ord( Low( TInputKey ) ) )
+    or ( iAction > Ord( High( TInputKey ) ) ) then
+    Exit( False );
+  iInput := TInputKey( iAction );
 
   // Handle key-repeat
   if aEvent.Key.Repeated then
     if ( not ( iInput in [ INPUT_WAIT ] + INPUT_MOVE ) ) or
-       ( IO.Time - FLastInputTime < Player.VisualTime( Player.getMoveCost, AnimationSpeedMove - 2 ) ) or (Player.EnemiesInVision > 0) then
+       ( FIO.Time - FLastInputTime < FPlayer.VisualTime( FPlayer.getMoveCost, AnimationSpeedMove - 2 ) ) or (FPlayer.EnemiesInVision > 0) then
       Exit( False );
-  FLastInputTime := IO.Time;
+  FLastInputTime := FIO.Time;
 
-  if ( Byte(iInput) = 255 ) then // GodMode Keys
-  begin
-    Config.RunKey( IO.KeyCode );
-    Exit( HandleCommand( TCommand.Create( COMMAND_SKIP ) ) );
-  end;
   if iInput <> INPUT_NONE then
   begin
     // Handle commands that should be handled by the UI
@@ -1244,134 +1526,148 @@ begin
     end;
 
     case iInput of
-//      INPUT_ESCAPE     : begin if GodMode then DRL.SetState( DSQuit ); Exit; end;
-      INPUT_TARGETNEXT : begin IO.SetAutoTarget( FTargeting.List.Next ); Exit; end;
-      INPUT_ESCAPE     : begin ResetAutoTarget; IO.PushLayer( TInGameMenuView.Create ); Exit; end;
-      INPUT_QUIT       : begin IO.PushLayer( TAbandonView.Create ); Exit; end;
-      INPUT_HELP       : begin IO.PushLayer( THelpView.Create ); Exit; end;
-      INPUT_LOOKMODE   : begin IO.PushLayer( TLookModeView.Create ); Exit; end;
-      INPUT_PLAYERINFO : begin FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_CHARACTER ) ); Exit; end;
-      INPUT_INVENTORY  : begin FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_INVENTORY ) ); Exit; end;
-      INPUT_EQUIPMENT  : begin FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_EQUIPMENT ) ); Exit; end;
-      INPUT_ASSEMBLIES : begin IO.PushLayer( TAssemblyView.Create ); Exit; end;
-      INPUT_MORE       : begin IO.FullLook( Level.Being[FTargeting.List.Current] ); Exit; end;
-      INPUT_MORESELF   : begin IO.FullLook( Player ); Exit; end;
-      INPUT_LEGACYUSE  : begin FPlayerView := IO.PushLayer( TPlayerView.CreateCommand( COMMAND_USE ) ); Exit; end;
-      INPUT_LEGACYDROP : begin FPlayerView := IO.PushLayer( TPlayerView.CreateCommand( COMMAND_DROP ) ); Exit; end;
+//      INPUT_ESCAPE     : begin if GodMode then SetState( DSQuit ); Exit; end;
+      INPUT_TARGETNEXT : begin FIO.SetAutoTarget( FTargeting.List.Next ); Exit; end;
+      INPUT_ESCAPE     : begin ResetAutoTarget; FIO.PushLayer( TInGameMenuView.Create( Self, TDRLRuntime( FRuntime ).HOF, TDRLRuntime( FRuntime ).Help ) ); Exit; end;
+      INPUT_QUIT       : begin FIO.PushLayer( TAbandonView.Create( Self ) ); Exit; end;
+      INPUT_HELP       : begin FIO.PushLayer( THelpView.Create( FContext.Lua, TDRLRuntime( FRuntime ).Help, FModules.CoreModuleID ) ); Exit; end;
+      INPUT_LOOKMODE   : begin FIO.PushLayer( TLookModeView.Create( FLevel, FPlayer ) ); Exit; end;
+      INPUT_PLAYERINFO : begin FPlayerView := FIO.PushLayer( TPlayerView.Create( Self, PLAYERVIEW_CHARACTER ) ); Exit; end;
+      INPUT_INVENTORY  : begin FPlayerView := FIO.PushLayer( TPlayerView.Create( Self, PLAYERVIEW_INVENTORY ) ); Exit; end;
+      INPUT_EQUIPMENT  : begin FPlayerView := FIO.PushLayer( TPlayerView.Create( Self, PLAYERVIEW_EQUIPMENT ) ); Exit; end;
+      INPUT_ASSEMBLIES : begin FIO.PushLayer( TAssemblyView.Create( FContext.Lua, TDRLRuntime( FRuntime ).HOF ) ); Exit; end;
+      INPUT_MORE       : begin FIO.FullLook( Level.Being[FTargeting.List.Current] ); Exit; end;
+      INPUT_MORESELF   : begin FIO.FullLook( FPlayer ); Exit; end;
+      INPUT_LEGACYUSE  : begin FPlayerView := FIO.PushLayer( TPlayerView.CreateCommand( Self, COMMAND_USE ) ); Exit; end;
+      INPUT_LEGACYDROP : begin FPlayerView := FIO.PushLayer( TPlayerView.CreateCommand( Self, COMMAND_DROP ) ); Exit; end;
       INPUT_UNLOAD     : begin HandleUnloadCommand( nil ); Exit; end;
 
-      INPUT_MESSAGES   : begin IO.PushLayer( TMessagesView.Create( IO.MsgGetRecent ) ); Exit; end;
+      INPUT_MESSAGES   : begin FIO.PushLayer( TMessagesView.Create( FIO.MsgGetRecent ) ); Exit; end;
 
-      INPUT_HARDQUIT   : begin
-        Option_MenuReturn := False;
-        DRL.SetState( DSQuit );
-        Player.Score := -100000;
-        Exit;
-      end;
+      INPUT_HARDQUIT   : begin HardQuit; Exit; end;
 
-      INPUT_LEGACYSAVE: begin DRL.SetState( DSSaving ); Exit; end;
-      INPUT_TRAITS    : begin FPlayerView := IO.PushLayer( TPlayerView.Create( PLAYERVIEW_TRAITS ) ); Exit; end;
+      INPUT_LEGACYSAVE: begin SetState( DSSaving ); Exit; end;
+      INPUT_TRAITS    : begin FPlayerView := FIO.PushLayer( TPlayerView.Create( Self, PLAYERVIEW_TRAITS ) ); Exit; end;
       INPUT_RUN       : begin
-        Player.MultiMove.Stop;
-        if Player.EnemiesInVision > 0
-          then IO.Msg( 'Can''t multi-move, there are enemies present.',[] )
-          else IO.PushLayer( TRunModeView.create );
+        FPlayer.MultiMove.Stop;
+        if FPlayer.EnemiesInVision > 0
+          then FIO.Msg( 'Can''t multi-move, there are enemies present.',[] )
+          else FIO.PushLayer( TRunModeView.Create( Self ) );
         Exit;
       end;
 
-      INPUT_EXAMINENPC   : begin Player.ExamineNPC; Exit; end;
-      INPUT_EXAMINEITEM  : begin Player.ExamineItem; Exit; end;
-      INPUT_TOGGLEGRID   : begin if GraphicsVersion then SpriteMap.ToggleGrid; Exit; end;
-      INPUT_SOUNDTOGGLE  : begin SoundOff := not SoundOff; Exit; end;
-      INPUT_MUSICTOGGLE  : begin
-                               MusicOff := not MusicOff;
-                               if MusicOff then IO.Audio.PlayMusic('')
-                                           else IO.Audio.PlayMusic(Iif( FLevel.Music_ID <> '', FLevel.Music_ID, FLevel.ID ));
-                               Exit;
-                             end;
+      INPUT_TOGGLEGRID   : begin FIO.ToggleGrid; Exit; end;
+      INPUT_SOUNDTOGGLE  : begin FIO.Audio.ToggleSound; Exit; end;
+      INPUT_MUSICTOGGLE  : begin FIO.Audio.ToggleMusic( Iif( FLevel.Music_ID <> '', FLevel.Music_ID, FLevel.ID ) ); Exit; end;
     end;
     Exit( Action( iInput ) );
   end
     else
     begin
-      IO.MsgUpDate;
-      IO.Msg('Unknown command. Press {^{$input_menu}} for menu and help.' );
+      FIO.MsgUpDate;
+      FIO.Msg('Unknown command. Press {^{$input_menu}} for menu and help.' );
     end;
 
   Exit( False );
 end;
 
-function TDRL.MoveTargetEvent( aCoord : TCoord2D ) : Boolean;
+function TDRLSession.MoveTargetEvent( aCoord : TCoord2D ) : Boolean;
 begin
   if FLevel.isProperCoord( aCoord ) then
   begin
-    Player.TargetPos := aCoord;
     FTargeting.OnTarget( aCoord, True );
-    FTargeting.Update( Player.Vision );
-    IO.SetAutoTarget( FTargeting.List.Current );
+    FTargeting.Update( FPlayer.Vision );
+    FIO.SetAutoTarget( FTargeting.List.Current );
     Exit( True );
   end;
   Exit( False );
 end;
 
-function TDRL.PrepareGameSeed( aRequestedSeed : Cardinal ) : Cardinal;
+// HUD label: difficulty code, highlighted challenge abbreviations and the seed.
+function TDRLSession.SeedHUDText : AnsiString;
+var iChallengeText : AnsiString;
+begin
+  Result := ' ' + FContext.Lua.Get([ 'diff', FDifficulty, 'code' ]);
+  iChallengeText := '';
+  if FChallenge <> '' then
+    iChallengeText += Copy( FContext.Lua.Get([ 'chal', FChallenge, 'abbr' ]), 3, MaxInt );
+  if FSChallenge <> '' then
+    iChallengeText += Copy( FContext.Lua.Get([ 'chal', FSChallenge, 'abbr' ]), 3, MaxInt );
+  if iChallengeText <> '' then Result += '{r' + iChallengeText + '}';
+  // Seeds are entered as signed numbers.
+  Result += IntToStr( LongInt( FGameSeed ) );
+end;
+
+function TDRLSession.PrepareGameSeed( aRequestedSeed : Cardinal ) : Cardinal;
 begin
   FGameSeed := aRequestedSeed;
   if FGameSeed = 0 then
   begin
-    FGameRNG.Randomize;
-    FGameSeed := FGameRNG.RDWord( 1, 999999 );
+    GameRNG.Randomize;
+    FGameSeed := GameRNG.RDWord( 1, 999999 );
   end;
-  FGameRNG.SetSeed( FGameSeed );
-  Result := FGameRNG.RDWord;
+  GameRNG.SetSeed( FGameSeed );
+  Result := GameRNG.RDWord;
 end;
 
 
-procedure TDRL.Run;
+function TDRLSession.Run( aShowIntro : Boolean ) : TDRLSessionResult;
 var iRank       : THOFRank;
     iResult     : TMenuResult;
     iEvent      : TIOEvent;
     iInput      : TInputKey;
+    iCommand    : TCommand;
     iFullLoad   : Boolean;
     iChalAbbr   : Ansistring;
     iScript     : Ansistring;
     iReport     : TPagedReport;
-    iEnterNuke  : Boolean;
+    iMemorial   : TIOStringArray;
+    iEnterNuke  : Word;
     iCrashIndex : Integer;
-    iEpisodeSeed : Cardinal;
-    iLevelSeed   : Cardinal;
+    iEpisodeSeed: Cardinal;
+    iLevelSeed  : Cardinal;
+    iLevelInfo  : TLuaTable;
 begin
+  Result := DSR_Quit;
   iResult    := TMenuResult.Create;
   iEpisodeSeed := 0;
-  DRL.Load;
+  if aShowIntro then
+  begin
+    FIO.RunLayer( TMainMenuView.Create(
+      Self, TDRLRuntime( FRuntime ).HOF, TDRLRuntime( FRuntime ).Help, TDRLRuntime( FRuntime ).ModErrors ), True );
+  end;
+  if FStatus.State <> DSQuit then
+  begin
+  FIO.LoadStop;
 
-  IO.PushLayer( TMainMenuView.Create );
-  IO.WaitForLayer( True );
-  if FState <> DSQuit then
-repeat
-  if not FDataLoaded then
-    DRL.Load;
-  IO.LoadStop;
-
-  StatusEffect   := StatusNormal;
+  FIO.StatusEffect := StatusNormal;
   FDifficulty    := 2;
   FArchAngel     := False;
   FChallenge     := '';
   FSChallenge    := '';
-  FGameWon       := False;
-  NoPlayerRecord := False;
-  NoScoreRecord  := False;
+  FStatus.GameWon       := False;
 
-  IO.ClearAllMessages;
+  FIO.MsgClear;
 
-  IO.Audio.PlayMusic('start');
+  FIO.Audio.PlayMusic('start');
   SetState( DSMenu );
   iResult.Reset; // TODO : could reuse for same game!
 
-  IO.PushLayer( TMainMenuView.Create( MAINMENU_MENU, iResult ) );
-  IO.WaitForLayer( True );
+  FIO.RunLayer( TMainMenuView.Create(
+    Self, TDRLRuntime( FRuntime ).HOF, TDRLRuntime( FRuntime ).Help, TDRLRuntime( FRuntime ).ModErrors, MAINMENU_MENU, iResult ), True );
+  if iResult.ReloadData then
+  begin
+    Result := DSR_ReloadData;
+    FreeAndNil( iResult );
+    Exit;
+  end;
   Apply( iResult );
-  if State = DSQuit then Break;
+  if State = DSQuit then
+  begin
+    FreeAndNil( iResult );
+    Exit;
+  end;
+  Result := DSR_Played;
 
   if iResult.Loaded then
   begin
@@ -1381,139 +1677,154 @@ repeat
   end
   else
   begin
+    RegisterChallengeRuntimes;
     iEpisodeSeed := PrepareGameSeed( iResult.Seed );
     CreatePlayer( iResult );
   end;
 
-  LuaSystem.SetValue('GAME_SEED', FGameSeed);
-  IO.SetSeed( FGameSeed );
-  LuaSystem.SetValue('level', Level );
-
-  if (not (State in [DSLoading, DSCrashLoading])) then
-    CallHookCheck( Hook_OnIntro, [Setting_NoIntro] );
+  FContext.Lua.SetValue('GAME_SEED', FGameSeed);
+  FIO.SetSeedText( SeedHUDText );
 
   if (not(State in [DSLoading, DSCrashLoading])) then
   begin
-    FGameRNG.SetSeed( iEpisodeSeed );
-    CallHook( Hook_OnCreateEpisode, [QWord( iEpisodeSeed )] );
+    if ( not FUserConfig.GetBoolean( 'skip_intro' ) ) and FContext.Lua.Defined( [ FModules.CoreModuleID, 'ShowIntro' ] ) then
+      FContext.Lua.ProtectedCall( [ FModules.CoreModuleID, 'ShowIntro' ], [] );
+    GameRNG.SetSeed( iEpisodeSeed );
+    CallHook( Hook_OnCreateWorld, [QWord( iEpisodeSeed )] );
   end;
-  CallHook( Hook_OnLoaded, [(State in [DSLoading, DSCrashLoading])] );
+  CallHook( Hook_OnStartGame, [(State in [DSLoading, DSCrashLoading])] );
 
-  GameRealTime := MSecNow();
+  FPlayer.Statistics.StartTimer;
   try
   repeat
-    iEnterNuke := False;
+    iEnterNuke := 0;
     if State <> DSLoading then
     begin
-      iEnterNuke := False;
-      if (Player.NukeActivated > 0) then
+      if (FPlayer.NukeActivated > 0) then
       begin
-        Player.Score := Player.Score + 1000;
-        Player.Statistics.Increase('levels_nuked');
-        Player.NukeActivated := 0;
-        iEnterNuke := True;
+        FPlayer.Score := FPlayer.Score + 1000;
+        FPlayer.Statistics.Increase('levels_nuked');
+        iEnterNuke := FPlayer.NukeActivated;
+        FPlayer.NukeActivated := 0;
       end;
 
-      Player.Statistics.Update;
-      Player.NextLevelIndex;
+      FPlayer.Statistics.Update( FPlayer );
+      FPlayer.NextLevelIndex;
 
-      with LuaSystem.GetTable(['player','episode',Player.Level_Index]) do
+      iLevelInfo := FContext.Lua.GetTable( [ 'player', 'episode', FPlayer.Level_Index ] );
       try
-        FLevel.Init(getInteger('style',0),
-                   getString('name',''),
-                   Player.Level_Index,
-                   getInteger('danger',0));
-        if IsString('sname') then FLevel.SName := getString('sname');
-        if IsString('abbr')  then FLevel.Abbr  := getString('abbr');
-        iScript := getString('script','');
-        iLevelSeed := getInteger('seed',0);
+        FPlayer.Detach;
+        FLevel.Init( iLevelInfo, FPlayer.Level_Index, FDifficulty );
+        iScript := iLevelInfo.GetString( 'script', '' );
+        iLevelSeed := iLevelInfo.GetInteger( 'seed', 0 );
       finally
-        Free;
+        iLevelInfo.Free;
       end;
 
-      if iLevelSeed <> 0 then FGameRNG.SetSeed( iLevelSeed );
+      if iLevelSeed <> 0 then GameRNG.SetSeed( iLevelSeed );
+      CallHook( Hook_OnCreateLevel, [] );
       if iScript <> ''
         then
           FLevel.ScriptLevel(iScript)
         else
         begin
-          IO.Msg('You enter %s.',[ FLevel.Name ] );
-          CallHookCheck(Hook_OnGenerate,[]);
+          FIO.Msg('You enter %s.',[ FLevel.Name ] );
+          FContext.Lua.ProtectedCall( [ FModules.CoreModuleID, 'GenerateLevel' ], [] );
           FLevel.AfterGeneration;
         end;
     end;
     iFullLoad := State = DSLoading;
 
-    FLevel.CalculateVision( Player.Position );
+    FLevel.CalculateVision( FPlayer.Position, FPlayer.Vision );
     SetState( DSPlaying );
-    IO.BloodSlideDown(20);
-    IO.FadeIn( True );
-    IO.Audio.PlayMusic( Iif( FLevel.Music_ID <> '', FLevel.Music_ID, FLevel.ID ) );
+    FIO.BloodSlideDown(20);
+    FIO.FadeIn( True );
+    FIO.Audio.PlayMusic( Iif( FLevel.Music_ID <> '', FLevel.Music_ID, FLevel.ID ) );
 
-    if iEnterNuke then
+    if iEnterNuke > 0 then
     begin
-      IO.Msg('You hear a gigantic explosion above!');
-      IO.addScreenShakeAnimation( 1000, 100, 7 );
-      IO.addRumbleAnimation( 0, $8000, $4000, 300 );
+      if iEnterNuke = 1 then FIO.Msg('Right in the nick of time!');
+      FIO.Msg('You hear a gigantic explosion above!');
+      FIO.addScreenShakeAnimation( 1000, 100, 7 );
+      FIO.addRumbleAnimation( 0, $8000, $4000, 300 );
     end;
 
     if not iFullLoad then
     begin
-      FLevel.PreEnter;
-      FLevel.Tick;
+      EnterLevel( FLevel );
+      AdvanceTime;
     end;
     FTargeting.Clear;
     PreAction;
 
-    while ( State = DSPlaying ) do
+    while ContinuePlaying do
     begin
-      if Player.ChainFire > 0 then
+      // No callback is running between loop iterations.
+      FContext.FlushDestroyed;
+      if FIO.MsgPending then
       begin
-        Action( INPUT_ALTFIRE );
+        FIO.MsgUpdate;
         Continue;
       end;
 
-      if ( Player.MultiMove.Active ) then
+      if FQueueCommand.Command <> COMMAND_NONE then
       begin
-        iInput := Player.GetMultiMoveInput;
+        iCommand := FQueueCommand;
+        FQueueCommand := TCommand.Create( COMMAND_NONE );
+        HandleCommand( iCommand );
+        if FPlayerView <> nil then
+          ( FPlayerView as TPlayerView ).FinishPending;
+        Continue;
+      end;
+
+      if ( FPlayer.MultiMove.Active ) then
+      begin
+        iInput := FPlayer.GetMultiMoveInput;
         if iInput <> INPUT_NONE then
           Action( iInput );
         Continue;
       end;
 
-      while ( not IO.Driver.EventPending ) and ( State = DSPlaying ) do
+      while ( not FIO.Driver.EventPending ) and ContinuePlaying
+        and ( FQueueCommand.Command = COMMAND_NONE ) and ( not FIO.MsgPending ) do
       begin
-        if FPadMoveActive and ( IO.Time >= FPadMoveNext ) then
+        if FPadMoveActive and ( FIO.Time >= FPadMoveNext ) then
         begin
           HandlePadMovement( False );
           Continue;
         end;
-        IO.FullUpdate;
-        FLastFrameTime := IO.Time;
-        IO.Driver.Sleep(10);
+        FIO.FullUpdate;
+        HandlePlayerViewSwap;
+        FLastFrameTime := FIO.Driver.GetMs;
+        FIO.Driver.Sleep(10);
       end;
-      if State <> DSPlaying then Break;
+      if not ContinuePlaying then Break;
+      if ( FQueueCommand.Command <> COMMAND_NONE ) or FIO.MsgPending then Continue;
 
       // Guarantee a render slice even when events arrive faster than we can drain them
       // (e.g. a drifting gamepad stick spamming VEVENT_PADAXIS keeps EventPending true).
-      if IO.Time - FLastFrameTime >= 16 then
+      // FIO.Time only advances during updates; use the driver clock to avoid starvation.
+      if DWord( FIO.Driver.GetMs - FLastFrameTime ) >= 16 then
       begin
-        IO.FullUpdate;
-        FLastFrameTime := IO.Time;
+        FIO.FullUpdate;
+        HandlePlayerViewSwap;
+        FLastFrameTime := FIO.Driver.GetMs;
       end;
 
-      if not IO.Driver.PollEvent( iEvent ) then continue;
-      if IO.OnEvent( iEvent ) then Continue;
+      if not ContinuePlaying then Break;
+      if ( FQueueCommand.Command <> COMMAND_NONE ) or FIO.MsgPending then Continue;
+      if not FIO.Driver.PollEvent( iEvent ) then continue;
+      if FIO.OnEvent( iEvent ) then Continue;
 
       if (iEvent.EType = VEVENT_SYSTEM) and (iEvent.System.Code = VIO_SYSEVENT_QUIT) then
       begin
-        if Option_LockClose
-           then Action( INPUT_QUIT )
-           else Action( INPUT_HARDQUIT );
-        Continue;
+        // God mode quits outright when the window closes.
+        if GodMode
+           then HardQuit
+           else FIO.PushLayer( TAbandonView.Create( Self, False ) );
       end;
 
-      if ( State <> DSPlaying ) then Break;
+      if not ContinuePlaying then Break;
 
       if iEvent.EType = VEVENT_MOUSEDOWN then HandleMouseEvent( iEvent );
       if iEvent.EType = VEVENT_KEYDOWN   then HandleKeyEvent( iEvent );
@@ -1521,183 +1832,232 @@ repeat
         HandlePadEvent( iEvent );
     end;
 
+    if ( State <> DSQuit ) and FIO.MsgPending then FIO.MsgUpdate;
+
+    // Finish the requested fade after UI dispatch, while the outgoing level exists.
+    FIO.FadeWait;
+    if State <> DSQuit then FIO.FadeReset;
+
     if State = DSNextLevel then
+      LeaveLevel;
+
+    // Finish the outgoing effects before recording an accepted outcome.
+    if State = DSEnding then
     begin
-      FLevel.Leave;
+      FIO.WaitForAnimation;
+      if FPlayer.Dying then
+      begin
+        FPlayer.AnimCount := 1;
+        FIO.Msg( 'You die!...' );
+        FIO.RunLayer( TMoreLayer.Create( False ) );
+      end;
+      SetState( DSFinished );
     end;
 
+    // Animation destructors may still access the outgoing level and its entities.
+    FIO.ClearAnimations;
     if State <> DSSaving then
     begin
-      Player.Score := Player.Score + 1000;
-      if FGameWon and (State <> DSNextLevel) then Player.WriteMemorial;
-      FLevel.Clear;
-      FParticles.ClearParticles;
+      if ( State = DSNextLevel ) or ( ( State = DSFinished ) and FStatus.GameWon ) then
+        FPlayer.Score := FPlayer.Score + 1000;
+      if State = DSFinished then
+        FinishGame
+      else
+      begin
+        FPlayer.Detach;
+        FLevel.Clear;
+      end;
     end;
-    IO.SetHint('');
+    FIO.SetHint('');
   until (State <> DSNextLevel);
   except on e : Exception do
   begin
     EmitCrashInfo( e.Message, True );
-    EXCEPTEMMITED := True;
-    if Option_SaveOnCrash and ((Player.Statistics['crash_count'] = 0) or{thelaptop: Vengeance is MINE} (FDifficulty < DIFF_NIGHTMARE)) then
+    // God mode does not save on a crash.
+    if (not GodMode) and ((FPlayer.Statistics['crash_count'] = 0) or{thelaptop: Vengeance is MINE} (FDifficulty < DIFF_NIGHTMARE)) then
     begin
       try
-        iCrashIndex := LuaSystem.Get( [ 'player', '__props', 'crash_index' ], 0 );
+        iCrashIndex := FContext.Lua.Get( [ 'player', '__props', 'crash_index' ], 0 );
       except
         iCrashIndex := 0;
       end;
       if iCrashIndex > 0
-        then Player.Level_Index := iCrashIndex - 1
-        else if Player.Level_Index <> 1 then Player.NextLevelIndex;
-      Player.Statistics.Increase('crash_count');
+        then FPlayer.Level_Index := iCrashIndex - 1
+        else if FPlayer.Level_Index <> 1 then FPlayer.NextLevelIndex;
+      FPlayer.Statistics.Increase('crash_count');
       WriteSaveFile( True );
     end;
     raise;
   end;
   end;
 
-  IO.FadeReset;
+  FIO.FadeReset;
 
   if State = DSSaving then
+  begin
     WriteSaveFile( False );
+    if FOpenStore then OpenJHCPage;
+  end;
 
+  // The ending hook may confirm the outcome over the finished level.
   if State = DSFinished then
   begin
-    if FGameWon then
+    if FStatus.GameWon then
     begin
-      IO.Audio.PlayMusic('victory');
-      CallHookCheck(Hook_OnWinGame,[]);
+      ShowEnding;
+      FIO.FadeLevel( 1.0 );
     end
-    else IO.Audio.PlayMusic('bunny');
+    else
+    begin
+      FIO.Audio.PlayMusic( 'bunny' );
+      FIO.FadeLevel( 0.0 );
+    end;
+
+    // Include messages from the result and ending hooks before reading history.
+    if FIO.MsgPending then FIO.MsgUpdate;
+    iMemorial := GenerateMemorial;
+    FMemorial := TPagedReport.Create( 'Post mortem', False );
+    FMemorial.Add( iMemorial, 'mortem.txt' );
+
+    FPlayer.Detach;
+    FLevel.Clear;
   end;
 
   if State = DSFinished then
   begin
-    if HOF.RankCheck( iRank ) then
+    if TDRLRuntime( FRuntime ).HOF.RankCheck( FStore, iRank ) then
     begin
-      IO.PushLayer( TRankUpView.Create( iRank ) );
-      IO.WaitForLayer( True );
+      FIO.RunLayer( TRankUpView.Create( FContext.Lua, iRank ), True );
     end;
-    if Player.Score >= -1000 then
+    if FMemorial <> nil then
     begin
-      iReport := TPagedReport.Create('Post mortem', False );
-      iReport.Add( MortemData, 'mortem.txt' );
-      MortemData := nil; // handled by iReport
-      IO.PushLayer( TPagedView.Create( iReport ) );
-      IO.WaitForLayer( True );
+      iReport := FMemorial;
+      FMemorial := nil; // Ownership passes to the view.
+      FIO.RunLayer( TPagedView.Create( iReport ), True );
     end;
     iChalAbbr := '';
-    if FChallenge <> '' then iChalAbbr := LuaSystem.Get(['chal',FChallenge,'abbr']);
-    IO.PushLayer( TPagedView.Create( HOF.GetPagedScoreReport, iChalAbbr ) );
-    IO.WaitForLayer( True );
+    if FChallenge <> '' then iChalAbbr := FContext.Lua.Get(['chal',FChallenge,'abbr']);
+    FIO.RunLayer( TPagedView.Create( TDRLRuntime( FRuntime ).HOF.GetPagedScoreReport, iChalAbbr ), True );
   end;
-  CallHook(Hook_OnUnLoad,[]);
 
-  IO.BloodSlideDown(20);
-  FreeAndNil(Player);
+  FIO.BloodSlideDown(20);
+  ReleasePlayer;
 
-until not Option_MenuReturn;
+  if FHardQuit then
+    Result := DSR_Quit
+  else if FReloadData then
+    Result := DSR_ReloadData;
+  end;
   FreeAndNil( iResult );
 end;
 
-procedure TDRL.CreatePlayer ( aResult : TMenuResult ) ;
-var iTraitID : AnsiString;
-    iTrait   : Byte;
+procedure TDRLSession.CreatePlayer ( aResult : TMenuResult ) ;
+var iName : AnsiString;
 begin
-  FreeAndNil( UIDs );
-  UIDs := TUIDStore.Create;
-  Player := TPlayer.Create;
-  FLevel.Place( Player, NewCoord2D(4,4) );
-  Player.Klass := aResult.Klass;
+  ReleasePlayer;
+  FLevel.Particles.BindUIDs( nil );
+  FContext.BindUIDs( nil );
+  FContext.Lua.Context.BindUIDs( nil );
+  FreeAndNil( FUIDStore );
+  FUIDStore := TUIDStore.Create;
+  FLevel.Particles.BindUIDs( FUIDStore );
+  FContext.BindUIDs( FUIDStore );
+  FContext.Lua.Context.BindUIDs( FUIDStore );
+  SetPlayer( TPlayer.Create( FContext, GameRNG ) );
+  FLevel.Place( FPlayer, NewCoord2D(4,4) );
+  FPlayer.Klass := aResult.Klass;
 
-  if Option_AlwaysName <> '' then
-    Player.Name := Option_AlwaysName
+  iName := FixedPlayerName;
+  if iName <> '' then
+    FPlayer.Name := iName
   else
-    if (Setting_AlwaysRandomName) or (aResult.Name = '')
-      then Player.Name := LuaSystem.ProtectedCall([CoreModuleID,'GetRandomName'],[])
-      else Player.Name := aResult.Name;
+    if aResult.Name = ''
+      then FPlayer.Name := FContext.Lua.ProtectedCall([FModules.CoreModuleID,'GetRandomName'],[])
+      else FPlayer.Name := aResult.Name;
 
-  LuaSystem.ProtectedCall(['klasses',Player.Klass,'OnPick'], [ Player ] );
-  iTraitID := LuaSystem.Get(['klasses',Player.Klass,'core_trait'],'' );
-  if iTraitID <> '' then
-  begin
-    iTrait := LuaSystem.Get(['traits',iTraitID,'nid']);
-    Player.Traits.Upgrade( 0, iTrait );
-  end;
+  if FContext.Lua.Defined(['klasses',FPlayer.Klass,'OnCreate']) then
+    FContext.Lua.ProtectedCall(['klasses',FPlayer.Klass,'OnCreate'], [ FPlayer ] );
   CallHook(Hook_OnCreatePlayer,[]);
-  Player.Traits.Upgrade( Player.Klass, aResult.Trait );
-  Player.UpdateVisual;
+  FPlayer.Traits.Upgrade( FPlayer.Klass, aResult.Trait );
+  FPlayer.UpdateVisual;
 end;
 
-function TDRL.LoadSaveFile: Boolean;
+function TDRLSession.LoadSaveFile: Boolean;
 var iStream    : TStream;
     iRecreate  : Boolean;
     iModule    : Ansistring;
     iGameRNG   : TRNG;
 begin
-  SaveVersionEngine := '';
-  SaveVersionModule := '';
-  SaveModString     := '';
+  FSaveMismatch := Default( TSaveVersions );
   iRecreate := False;
   iStream   := nil;
   iGameRNG  := nil;
   try
     try
-      iStream := TGZFileStream.Create( ModuleUserPath + 'save',gzOpenRead );
+      iStream := TGZFileStream.Create( FPaths.ModuleUserPath + 'save',gzOpenRead );
       //      Stream := TDebugStream.Create( Stream );
       iModule := iStream.ReadAnsiString;
-      if iModule <> CoreModuleID then Exit( False );
+      if iModule <> FModules.CoreModuleID then Exit( False );
 
-      SaveVersionEngine := iStream.ReadAnsiString;
-      if SaveVersionEngine <> VersionEngineSave then Exit( False );
+      FSaveMismatch.Engine := iStream.ReadAnsiString;
+      if FSaveMismatch.Engine <> TDRLLua( FContext.Lua ).Info.EngineSave then Exit( False );
 
-      SaveVersionModule := iStream.ReadAnsiString;
-      if SaveVersionModule <> VersionModuleSave then Exit( False );
+      FSaveMismatch.Module := iStream.ReadAnsiString;
+      if FSaveMismatch.Module <> TDRLLua( FContext.Lua ).Info.ModuleSave then Exit( False );
 
-      SaveModString     := iStream.ReadAnsiString;
-      if SaveModString <> DRL.Modules.ModString then Exit( False );
+      FSaveMismatch.ModString := iStream.ReadAnsiString;
+      if FSaveMismatch.ModString <> FModules.ModString then Exit( False );
 
-      SaveVersionEngine := '';
-      SaveVersionModule := '';
-      SaveModString     := '';
+      FSaveMismatch := Default( TSaveVersions );
 
-      FreeAndNil( UIDs );
-      UIDs             := TUIDStore.CreateFromStream( iStream );
-      FGameWon         := iStream.ReadByte <> 0;
+      FIO.ClearAnimations;
+      ReleasePlayer;
+      FLevel.Particles.BindUIDs( nil );
+      FContext.BindUIDs( nil );
+      FContext.Lua.Context.BindUIDs( nil );
+      FreeAndNil( FUIDStore );
+      FUIDStore        := TUIDStore.CreateFromStream( iStream );
+      FLevel.Particles.BindUIDs( FUIDStore );
+      FContext.BindUIDs( FUIDStore );
+      FContext.Lua.Context.BindUIDs( FUIDStore );
+      FStatus.GameWon         := iStream.ReadByte <> 0;
       FDifficulty      := iStream.ReadByte;
       FChallenge       := iStream.ReadAnsiString;
       FArchAngel       := iStream.ReadByte <> 0;
       FSChallenge      := iStream.ReadAnsiString;
 
+      FContext.Lua.SetValue('DIFFICULTY', FDifficulty);
+      FContext.Lua.SetValue('CHALLENGE',  FChallenge);
+      FContext.Lua.SetValue('SCHALLENGE', FSChallenge);
+      FContext.Lua.SetValue('ARCHANGEL', FArchAngel);
+      RegisterChallengeRuntimes;
+
       FGameSeed   := iStream.ReadDWord;
       FSeededGame := iStream.ReadBool;
       iGameRNG := TRNG.CreateFromStream( iStream );
-      LuaRNG := iGameRNG;
-      FreeAndNil( FGameRNG );
-      FGameRNG := iGameRNG;
-      iGameRNG := nil;
+      FLevel.BindGameRNG( iGameRNG );
+      FRuntime.ReplaceGameRNG( iGameRNG );
 
-      Player := TPlayer.CreateFromStream( iStream );
+      SetPlayer( TPlayer.CreateFromStream( iStream, FContext, FData.Perks ) );
       FCrashSave := iStream.ReadByte <> 0;
 
       if not FCrashSave then
       begin
-        FreeAndNil( FLevel );
+        ReleaseLevel;
         iRecreate := True;
-        FLevel := TLevel.CreateFromStream( iStream );
-        FLevel.Place( Player, Player.Position );
-        LuaSystem.SetValue('level', FLevel );
-        FParticles.ReadFromStream( iStream );
+        SetLevel( TLevel.CreateFromStream( iStream, FContext, GameRNG, FData ) );
+        FLevel.Place( FPlayer, FPlayer.Position );
+        FLevel.Particles.ReadFromStream( iStream );
       end;
     finally
       FreeAndNil( iGameRNG );
       FreeAndNil( iStream );
     end;
-    DeleteFile( ModuleUserPath + 'save' );
+    DeleteFile( FPaths.ModuleUserPath + 'save' );
 
-    IO.Msg('Game loaded.');
+    FIO.Msg('Game loaded.');
 
-    if Player.Dead then
+    if FPlayer.Dying then
       raise EException.Create('Player in save file is dead anyway.');
     LoadSaveFile := True;
     FPadMoved    := True;
@@ -1705,17 +2065,15 @@ begin
     on e : Exception do
     begin
       Log('Save file corrupted! Error while loading : '+ e.message );
-      DeleteFile( ModuleUserPath + 'save' );
+      DeleteFile( FPaths.ModuleUserPath + 'save' );
       LoadSaveFile := False;
       if iRecreate then
       begin
-        FreeAndNil( FLevel );
-        FLevel := TLevel.Create;
+        ReleaseLevel;
+        SetLevel( TLevel.Create( FContext, GameRNG, FData ) );
       end;
     end;
   end;
-  if not GraphicsVersion then
-    (IO as TDRLTextIO).SetTextMap( FLevel );
 end;
 
 // TODO: cleanup and remove
@@ -1741,30 +2099,30 @@ begin
 end;
 
 
-procedure TDRL.WriteSaveFile( aCrash : Boolean );
+procedure TDRLSession.WriteSaveFile( aCrash : Boolean );
 var Stream : TStream;
 begin
-  Player.Statistics.OnSaveFile;
+  FPlayer.Statistics.OnSaveFile;
 
-  Stream := TGZFileStream.Create( ModuleUserPath + 'save',gzOpenWrite );
+  Stream := TGZFileStream.Create( FPaths.ModuleUserPath + 'save',gzOpenWrite );
   //      Stream := TDebugStream.Create( Stream );
 
-  Stream.WriteAnsiString( CoreModuleID );
-  Stream.WriteAnsiString( VersionEngineSave );
-  Stream.WriteAnsiString( VersionModuleSave );
+  Stream.WriteAnsiString( FModules.CoreModuleID );
+  Stream.WriteAnsiString( TDRLLua( FContext.Lua ).Info.EngineSave );
+  Stream.WriteAnsiString( TDRLLua( FContext.Lua ).Info.ModuleSave );
   Stream.WriteAnsiString( FModules.ModString );
-  UIDs.WriteToStream( Stream );
-  if FGameWon   then Stream.WriteByte( 1 ) else Stream.WriteByte( 0 );
+  FUIDStore.WriteToStream( Stream );
+  if FStatus.GameWon   then Stream.WriteByte( 1 ) else Stream.WriteByte( 0 );
   Stream.WriteByte( FDifficulty );
   Stream.WriteAnsiString( FChallenge );
   if FArchAngel then Stream.WriteByte( 1 ) else Stream.WriteByte( 0 );
   Stream.WriteAnsiString( FSChallenge );
   Stream.WriteDWord( FGameSeed );
   Stream.WriteBool( FSeededGame );
-  FGameRNG.WriteToStream( Stream );
+  GameRNG.WriteToStream( Stream );
 
-  Player.WriteToStream(Stream);
-  Player.Detach;
+  FPlayer.WriteToStream(Stream);
+  FPlayer.Detach;
   if aCrash
     then Stream.WriteByte( 1 )
     else Stream.WriteByte( 0 );
@@ -1772,35 +2130,192 @@ begin
   if not aCrash then
   begin
     FLevel.WriteToStream( Stream );
-    FParticles.WriteToStream( Stream );
+    FLevel.Particles.WriteToStream( Stream );
   end;
 
   FreeAndNil( Stream );
   FLevel.Clear;
-  if ForceShop then
-    CopyFileSimple( ModuleUserPath + 'save', ModuleUserPath + 'savedemo' );
+  if FOpenStore then
+    CopyFileSimple( FPaths.ModuleUserPath + 'save', FPaths.ModuleUserPath + 'savedemo' );
 end;
 
-function TDRL.SaveExists : Boolean;
+function TDRLSession.SaveExists : Boolean;
 begin
-  Exit( FileExists( ModuleUserPath + 'save' ) );
+  Exit( FileExists( FPaths.ModuleUserPath + 'save' ) );
 end;
 
-destructor TDRL.Destroy;
+destructor TDRLSession.Destroy;
 begin
-  UnLoad;
-  LuaRNG := nil;
-  FreeAndNil( FGameRNG );
-  FParticles.Initialize( nil );
-  FreeAndNil( ModErrors );
-  FreeAndNil( FModules );
-  FreeAndNil( Config );
+  FreeAndNil( FMemorial );
+  ReleaseLevel;
+  ReleasePlayer;
   FreeAndNil( FTargeting );
-  FreeAndNil( IO );
-  FreeAndNil( FParticles );
-  FreeAndNil( UIDs );
+  // The initial Session shell can be destroyed before Lua has been created.
+  if FContext.Lua <> nil then
+  begin
+    TDRLLua( FContext.Lua ).BindNodeContext( nil );
+    FContext.Lua.Context.BindUIDs( nil );
+  end;
+  FreeAndNil( FUIDStore );
+  FreeAndNil( FContext );
+  FreeAndNil( FStatus );
   Log('DRL destroyed.');
   inherited Destroy;
+end;
+
+// Session-bound native callbacks capture the owner's current-session slot as
+// upvalue 1, so functions cached by Lua always act on the active Session.
+function ActiveSession( L : PLua_State ) : TDRLSession; inline;
+begin
+  Exit( PDRLSession( lua_touserdata( L, lua_upvalueindex( 1 ) ) )^ );
+end;
+
+function lua_game_win( L : PLua_State ) : Integer; cdecl;
+begin
+  ActiveSession( L ).WinGame;
+  Result := 0;
+end;
+
+function lua_game_has_won( L : PLua_State ) : Integer; cdecl;
+var iState : TLuaGameStack;
+begin
+  iState.Init( L );
+  iState.Push( ActiveSession( L ).GameWon );
+  Result := 1;
+end;
+
+function lua_game_is_playing( L : PLua_State ) : Integer; cdecl;
+var iState   : TLuaGameStack;
+    iSession : TDRLSession;
+begin
+  iState.Init( L );
+  iSession := ActiveSession( L );
+  // The level exists whenever the run is playing.
+  iState.Push( ( iSession.State = DSPlaying ) and iSession.FLevel.IsActive );
+  Result := 1;
+end;
+
+function lua_game_exit( L : PLua_State ) : Integer; cdecl;
+var iState   : TLuaGameStack;
+    iSession : TDRLSession;
+begin
+  iState.Init( L );
+  if not ( iState.IsNil( 1 ) or iState.IsNumber( 1 ) ) then
+    iState.Error( 'game.exit - expected a level index or nil!' );
+  iSession := ActiveSession( L );
+  iSession.ExitLevel( iState.IsNumber( 2 ), iState.ToFloat( 2, 0.0 ) );
+  iSession.FPlayer.SCount := 4000;
+  if iState.IsNumber( 1 ) then
+    iSession.FPlayer.Level_Index := iState.ToInteger( 1 ) - 1;
+  Result := 0;
+end;
+
+function lua_game_reset_level( L : PLua_State ) : Integer; cdecl;
+begin
+  ActiveSession( L ).ResetLevel;
+  Result := 0;
+end;
+
+function lua_game_post_regenerate( L : PLua_State ) : Integer; cdecl;
+begin
+  ActiveSession( L ).PostRegenerateLevel;
+  Result := 0;
+end;
+
+function lua_game_level_up( L : PLua_State ) : Integer; cdecl;
+begin
+  ActiveSession( L ).LevelUpPlayer;
+  Result := 0;
+end;
+
+function lua_game_choose_trait( L : PLua_State ) : Integer; cdecl;
+begin
+  ActiveSession( L ).ChoosePlayerTrait;
+  Result := 0;
+end;
+
+function lua_statistics_get( L : PLua_State ) : Integer; cdecl;
+var iState  : TLuaGameStack;
+    iPlayer : TPlayer;
+begin
+  iState.Init( L );
+  iPlayer := ActiveSession( L ).FPlayer;
+  iPlayer.Statistics.Update( iPlayer );
+  // Unused parameter #1 is self
+  iState.Push( iPlayer.Statistics[ iState.ToString( 2 ) ] );
+  Result := 1;
+end;
+
+function lua_statistics_set( L : PLua_State ) : Integer; cdecl;
+var iState : TLuaGameStack;
+begin
+  iState.Init( L );
+  // Unused parameter #1 is self
+  ActiveSession( L ).FPlayer.Statistics.Assign( iState.ToString( 2 ), iState.ToInteger( 3 ) );
+  Result := 0;
+end;
+
+function lua_statistics_inc( L : PLua_State ) : Integer; cdecl;
+var iState : TLuaGameStack;
+begin
+  iState.Init( L );
+  ActiveSession( L ).FPlayer.Statistics.Increase( iState.ToString( 1 ), iState.ToInteger( 2 ) );
+  Result := 0;
+end;
+
+function lua_game_time( L : PLua_State ) : Integer; cdecl;
+var iState : TLuaGameStack;
+begin
+  iState.Init( L );
+  iState.Push( ActiveSession( L ).FPlayer.Statistics.GameTime );
+  Result := 1;
+end;
+
+function lua_game_save_and_quit( L : PLua_State ) : Integer; cdecl;
+var iState : TLuaGameStack;
+begin
+  iState.Init( L );
+  ActiveSession( L ).FOpenStore := iState.ToBoolean( 1 );
+  ActiveSession( L ).FIO.FadeOut( 0.5 );
+  ActiveSession( L ).SetState( DSSaving );
+  Result := 0;
+end;
+
+function lua_game_reset_auto_target( L : PLua_State ) : Integer; cdecl;
+begin
+  ActiveSession( L ).ResetAutoTarget;
+  Result := 0;
+end;
+
+const lua_game_lib : array[0..11] of luaL_Reg = (
+  ( name : 'win';               func : @lua_game_win ),
+  ( name : 'exit';              func : @lua_game_exit ),
+  ( name : 'has_won';           func : @lua_game_has_won ),
+  ( name : 'is_playing';        func : @lua_game_is_playing ),
+  ( name : 'reset_level';       func : @lua_game_reset_level ),
+  ( name : 'post_regenerate';   func : @lua_game_post_regenerate ),
+  ( name : 'level_up';          func : @lua_game_level_up ),
+  ( name : 'choose_trait';      func : @lua_game_choose_trait ),
+  ( name : 'time';              func : @lua_game_time ),
+  ( name : 'save_and_quit';     func : @lua_game_save_and_quit ),
+  ( name : 'reset_auto_target'; func : @lua_game_reset_auto_target ),
+  ( name : nil;                 func : nil )
+);
+
+const lua_statistics_lib : array[0..1] of luaL_Reg = (
+  ( name : 'inc';        func : @lua_statistics_inc ),
+  ( name : nil;         func : nil )
+);
+
+class procedure TDRLSession.RegisterLuaAPI( aLua : TLua; aActive : PDRLSession );
+begin
+  // aActive is borrowed from the owner and must outlive the Lua state.
+  lua_pushlightuserdata( aLua.Raw, aActive );
+  aLua.Register( 'game', lua_game_lib, 1 );
+  lua_pushlightuserdata( aLua.Raw, aActive );
+  aLua.Register( 'statistics', lua_statistics_lib, 1 );
+  lua_pushlightuserdata( aLua.Raw, aActive );
+  aLua.RegisterMetaTable( 'statistics', @lua_statistics_get, @lua_statistics_set, 1 );
 end;
 
 end.

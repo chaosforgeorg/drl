@@ -6,10 +6,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlinventory;
 interface
-uses SysUtils,
-     vnode,
-     dfitem, dfthing, dfdata,
-     drlhooks;
+uses sysutils, vnode, dfitem, dfthing, dfdata, drlhooks;
 
 type
   TItemList      = array[TItemSlot] of TItem;
@@ -32,7 +29,7 @@ TInventory = class( TVObject )
        function  isFull : boolean;
        procedure RawSetSlot( aIndex : TEqSlot; aItem : TItem ); inline;
        procedure EqSwap( aSlot1, aSlot2 : TEqSlot );
-       procedure Tick;
+       procedure Tick( aTime : LongInt );
        procedure ClearSlot( aItem : TItem );
        function DoWear( aItem : TItem ) : Boolean;
        // no checking if slot fits!
@@ -58,7 +55,7 @@ TInventory = class( TVObject )
 
 implementation
 
-uses vmath, vluasystem, drlio, drlkeybindings, dfplayer;
+uses vmath, vlua, drlkeybindings, dfplayer, dflevel, drllua;
 
 { TInventoryEnumerator }
 
@@ -174,9 +171,9 @@ var iAmount : Integer;
     iMax    : Integer;
 begin
   if aID <= 0 then Exit( 0 );
-  if LuaSystem.Defined([ CoreModuleID, 'GetItemMax' ])
-    then iMax := LuaSystem.ProtectedCall([ CoreModuleID, 'GetItemMax' ], [aID] )
-    else iMax := LuaSystem.Get(['items',aID,'max']);
+  if FOwner.Context.Lua.Defined([ TDRLLua( FOwner.Context.Lua ).CoreModuleID, 'GetItemMax' ])
+    then iMax := FOwner.Context.Lua.ProtectedCall([ TDRLLua( FOwner.Context.Lua ).CoreModuleID, 'GetItemMax' ], [aID] )
+    else iMax := FOwner.Context.Lua.Get(['items',aID,'max']);
   iItem := SeekStack(aID);
 
   if iItem <> nil then
@@ -191,7 +188,7 @@ begin
     if isFull then Exit(aCount);
 
     iAmount      := Min(aCount,iMax);
-    iItem        := TItem.Create(aID);
+    iItem        := TItem.Create( aID, FOwner.Context );
     iItem.Amount := iAmount;
     Add(iItem);
     aCount -= iAmount;
@@ -213,7 +210,7 @@ begin
     iAmount := Min( aCount, iItem.Amount );
     aCount -= iAmount;
     iItem.Amount := iItem.Amount - iAmount;
-    if iItem.Amount <= 0 then iItem.Free;
+    if iItem.Amount <= 0 then iItem.Discard;
   until aCount = 0;
   Exit( True );
 end;
@@ -222,7 +219,7 @@ function TInventory.isFull: boolean;
 var iSize : Integer;
 begin
   iSize := Size;
-  if FOwner = Player then Exit( iSize >= Player.InventorySize );
+  if FOwner is TPlayer then Exit( iSize >= TPlayer( FOwner ).InventorySize );
   Exit(iSize >= High(TItemSlot));
 end;
 
@@ -235,12 +232,12 @@ begin
   FSlots[aSlot2] := iItem;
 end;
 
-procedure TInventory.Tick;
+procedure TInventory.Tick( aTime : LongInt );
 var iSlot : TEqSlot;
 begin
   for iSlot in TEqSlot do
     if FSlots[iSlot] <> nil then
-      FSlots[iSlot].Tick;
+      FSlots[iSlot].Tick( aTime );
 end;
 
 procedure TInventory.ClearSlot ( aItem : TItem ) ;
@@ -259,7 +256,7 @@ begin
     if not aItem.CallHookCheck( Hook_OnEquipCheck,[FOwner] ) then Exit( False );
   iItem := FSlots[aItem.eqSlot];
   if (iItem <> nil) and ( not iItem.CallHookCheck( Hook_OnUnequipCheck, [FOwner, False] ) ) then Exit( False );
-  IO.Msg('You wear/wield : '+aItem.GetName(false));
+  TLevel( FOwner.GetLevel ).Presentation.Msg( 'You wear/wield : '+aItem.GetName(false) );
   Wear( aItem );
   Exit( True );
 end;
@@ -272,7 +269,7 @@ begin
     if not aItem.CallHookCheck( Hook_OnEquipCheck,[FOwner] ) then Exit( False );
   iItem := FSlots[aSlot];
   if (iItem <> nil) and ( not iItem.CallHookCheck( Hook_OnUnequipCheck, [FOwner, False] ) ) then Exit( False );
-  IO.Msg('You wear/wield : '+aItem.GetName(false));
+  TLevel( FOwner.GetLevel ).Presentation.Msg( 'You wear/wield : '+aItem.GetName(false) );
   setSlot( aSlot, aItem );
   Exit( True );
 end;

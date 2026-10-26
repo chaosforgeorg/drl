@@ -6,23 +6,32 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlconfiguration;
 interface
-uses vconfiguration;
+uses vconfiguration, vbindings, drlcontrollerbindings;
 
 type TDRLConfiguration = class( TConfigurationManager )
   constructor Create;
+  destructor Destroy; override;
+private
+  FKeyBindings          : TBindingCatalog;
+  FControllerBindings   : TControllerBindingCatalog;
+  FUIKeyBindings        : TBindingCatalog;
+  FUIControllerBindings : TControllerBindingCatalog;
+public
+  property KeyBindings          : TBindingCatalog read FKeyBindings;
+  property ControllerBindings   : TControllerBindingCatalog read FControllerBindings;
+  property UIKeyBindings        : TBindingCatalog read FUIKeyBindings;
+  property UIControllerBindings : TControllerBindingCatalog read FUIControllerBindings;
 end;
-
-var Configuration : TDRLConfiguration;
 
 implementation
 
-uses vioevent, drlkeybindings, drlcontrollerbindings;
+uses SysUtils, drlkeybindings, drluibindings;
 
 constructor TDRLConfiguration.Create;
 var iGroup : TConfigurationGroup;
-    iInput : TInputKey;
     iID    : Ansistring;
-const CInputGroups : array[1..7] of Ansistring = (
+const CInputGroups : array[1..8] of Ansistring = (
+  'keybindings_hidden',
   'keybindings_movement',
   'keybindings_actions',
   'keybindings_ui',
@@ -33,6 +42,21 @@ const CInputGroups : array[1..7] of Ansistring = (
 );
 begin
   inherited Create;
+  FKeyBindings := TBindingCatalog.Create(KeyInfo);
+  FControllerBindings := TControllerBindingCatalog.Create(
+    ControllerBindingInfo,
+    [],
+    'Malformed gameplay controller bindings; resetting the complete controller binding group.'
+  );
+  FUIKeyBindings := TBindingCatalog.Create( UIKeyBindingInfo );
+  FUIControllerBindings := TControllerBindingCatalog.Create(
+    UIPadBindingInfo,
+    [
+      CONTROLLER_BINDING_ALLOW_UNBOUND,
+      CONTROLLER_BINDING_ALLOW_DPAD_CAPTURE
+    ],
+    'Malformed UI controller bindings; resetting the complete UI controller binding group.'
+  );
 
   iGroup := AddGroup( 'meta' );
   iGroup.AddInteger( 'config_version', 0 );
@@ -107,6 +131,14 @@ begin
     .SetName('Item drop animation')
     .SetDescription('Setting to {!Disabled} will disable the drop bump animation.')
     ;
+  iGroup.AddToggle( 'animation_blending', True )
+    .SetName('Animation blending')
+    .SetDescription('Blend unfinished movement and melee animations toward the latest action. Setting to {!Disabled} keeps each action separate.')
+    ;
+  iGroup.AddToggle( 'colored_inventory', True )
+    .SetName('Colored inventory')
+    .SetDescription('Set to {!Disabled} to show inventory and equipment items without their colors.')
+    ;
 
   iGroup := AddGroup( 'audio' );
   iGroup.AddInteger( 'volume_sound', 70 )
@@ -131,11 +163,24 @@ begin
     .SetName('Wait sound')
     .SetDescription('Set to {!Disabled} to disable the wait action sound.')
     ;
+  iGroup.AddToggle( 'equip_pickup_sound', False )
+    .SetName('Pickup sound on equip')
+    .SetDescription('Set to {!Enabled} to play the pickup sound instead of the reload sound when equipping or swapping items.')
+    ;
 
   iGroup := AddGroup( 'gameplay' );
   iGroup.AddToggle( 'always_random_name', False )
     .SetName('Always random name')
     .SetDescription( 'Setting to {!Enabled} will skip name entry and always supply a random name.')
+    ;
+  // The --name command line option overrides it.
+  iGroup.AddString( 'always_name', '' )
+    .SetName('Always use name')
+    .SetDescription('Skip name entry and always use this name. Leave empty to be asked each game.')
+    ;
+  iGroup.AddToggle( 'mortem_archive', True )
+    .SetName('Archive mortems')
+    .SetDescription('Setting to {!Enabled} keeps a copy of every post-mortem in the mortem folder.')
     ;
   iGroup.AddToggle( 'hide_hints', False )
     .SetName('Hide hints')
@@ -149,6 +194,10 @@ begin
     .SetName('Group messages')
     .SetDescription('Group repeated messages into (x{^3}) combos to save on doing "more...".')
     ;
+  iGroup.AddToggle( 'more_prompt', True )
+    .SetName('More prompt')
+    .SetDescription('Set to {!Disabled} to not wait for confirmation when too many messages are printed in a turn. Useful for speedrunning.')
+    ;
   iGroup.AddToggle( 'unlock_all', False )
     .SetName('Unlock all unlocks')
     .SetDescription('For returning players so they don''t have to unlock everything again. Otherwise a cheat!')
@@ -158,6 +207,10 @@ begin
   iGroup.AddToggle( 'empty_confirm', False )
     .SetName('Confirm firing empty weapon')
     .SetDescription('Setting to {!Enabled} will make the game wait for confirmation if trying to fire an empty weapon')
+    ;
+  iGroup.AddToggle( 'inv_full_drop', False )
+    .SetName('Drop when inventory full')
+    .SetDescription('Setting to {!Enabled} drops an item taken off with a full inventory instead of asking.')
     ;
   iGroup.AddToggle( 'enable_mouse', True )
     .SetName('Mouse control')
@@ -177,22 +230,29 @@ begin
     ;
 
   iGroup := AddGroup( CONTROLLER_BINDINGS_GAMEPLAY_GROUP );
-  RegisterControllerBindings( iGroup );
+  FControllerBindings.RegisterGroup(iGroup, CONTROLLER_BINDING_INFO_GROUP);
 
-  iGroup := AddGroup( 'keybindings_hidden' );
-  iGroup.AddInteger( 'input_escape', VKEY_ESCAPE );
-  iGroup.AddInteger( 'input_ok', VKEY_ENTER );
+  FUIKeyBindings.RegisterGroup(
+    AddGroup( UI_KEY_BINDING_GROUP ), UI_KEY_BINDING_GROUP );
+  FUIControllerBindings.RegisterGroup(
+    AddGroup( UI_PAD_BINDING_GROUP ), UI_PAD_BINDING_GROUP );
 
   for iID in CInputGroups do
-  begin
-    iGroup := AddGroup( iID );
-    for iInput in TInputKey do
-      if KeyInfo[ iInput ].Group = iID then
-        iGroup.AddInteger( KeyInfo[ iInput ].ID, KeyInfo[ iInput ].Default )
-          .SetName(KeyInfo[ iInput ].Name)
-          .SetDescription(KeyInfo[ iInput ].Description)
-          ;
-  end;
+    FKeyBindings.RegisterGroup(AddGroup(iID), iID);
+
+  FKeyBindings.ValidateRegistration;
+  FControllerBindings.ValidateRegistration;
+  FUIKeyBindings.ValidateRegistration;
+  FUIControllerBindings.ValidateRegistration;
+end;
+
+destructor TDRLConfiguration.Destroy;
+begin
+  FreeAndNil(FUIControllerBindings);
+  FreeAndNil(FUIKeyBindings);
+  FreeAndNil(FControllerBindings);
+  FreeAndNil(FKeyBindings);
+  inherited Destroy;
 end;
 
 end.

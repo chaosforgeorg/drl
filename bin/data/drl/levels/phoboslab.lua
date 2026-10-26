@@ -2,10 +2,49 @@
 
 register_level "phobos_lab"
 {
-	name  = "Phobos Lab",
-	entry = "On @1 he sneaked into the Phobos Lab.",
+	name    = "Phobos Lab",
+	entry   = "On @1 he sneaked into the Phobos Lab.",
 	welcome = "You arrive at the Phobos Lab. You are overcome by the feeling of nostalgia!",
-	level = 7,
+	level   = 7,
+
+	runtime = {
+		OnTick = function ( self )
+			if self.status == 1 then
+				if player.x < 12 then
+					ui.msg("The walls lower!")
+					self:transmute( "wall", "floor", self.data.trap11 )
+					self:transmute( "wall", "floor", self.data.trap12 )
+					player:remove_perk("enviro")
+					self:play_sound( "door.open", player.position )
+					self.status = 2
+				end
+			elseif self.status == 2 then
+				if player.x > 30 then
+					ui.msg("The walls lower!")
+					self:transmute( "wall", "floor", self.data.trap21 )
+					self:transmute( "wall", "floor", self.data.trap22 )
+					player:remove_perk("enviro")
+					self:play_sound( "door.open", player.position )
+					self.status = 3
+				end
+			end
+		end,
+
+		OnKillAll = function ( self )
+			if self.status < 4 then
+				ui.msg("\"This lab won't do any more experiments... I wonder if there are others?\"")
+				self.status = 4
+			end
+		end,
+
+		OnExitLevel = function ( self )
+			if self.status == 4 then
+				core.special_complete()
+			end
+			ui.msg("\"So much for the lab, next time I'll use neurotoxin...\"")
+			player:add_history("He broke through the lab.")
+		end,
+	},
 
 	OnRegister = function ()
 		register_item "lever_phoboslab1"
@@ -22,16 +61,16 @@ register_level "phobos_lab"
 
 			color_id = false,
 			sound_id = "lever",
-
-			OnUse = function(self,being)
-				statistics.levers_pulled = statistics.levers_pulled + 1
-				level:transmute( "ldoor", "floor", level.data.door1 )
-				level:transmute( "floor", "door",  level.data.door1 )
-				ui.msg("Green access granted, west doors unlocked.")
-				return true
-			end,
-
-			OnDescribe = item.get_lever_description,
+			perks   = { "perk_lever_description" },
+			runtime = {
+				OnUse = function(self,being)
+					statistics.levers_pulled = statistics.levers_pulled + 1
+					level:transmute( "ldoor", "floor", level.data.door1 )
+					level:transmute( "floor", "door",  level.data.door1 )
+					ui.msg("Green access granted, west doors unlocked.")
+					return true
+				end,
+			},
 		}
 
 		register_item "lever_phoboslab2"
@@ -48,20 +87,20 @@ register_level "phobos_lab"
 
 			color_id = false,
 			sound_id = "lever",
-
-			OnUse = function(self,being)
-				statistics.levers_pulled = statistics.levers_pulled + 1
-				level:transmute( "ldoor", "floor", level.data.door1 )
-				level:transmute( "floor", "door",  level.data.door1 )
-				level:transmute( "ldoor", "floor", level.data.door2 )
-				level:transmute( "floor", "door",  level.data.door2 )
-				level:transmute( "acid",  "bridge",level.data.bridge )
-				ui.msg("Blue access granted, east doors unlocked.")
-				level.status = 1
-				return true
-			end,
-
-			OnDescribe = item.get_lever_description,
+			perks   = { "perk_lever_description" },
+			runtime = {
+				OnUse = function(self,being)
+					statistics.levers_pulled = statistics.levers_pulled + 1
+					level:transmute( "ldoor", "floor", level.data.door1 )
+					level:transmute( "floor", "door",  level.data.door1 )
+					level:transmute( "ldoor", "floor", level.data.door2 )
+					level:transmute( "floor", "door",  level.data.door2 )
+					level:transmute( "acid",  "bridge",level.data.bridge )
+					ui.msg("Blue access granted, east doors unlocked.")
+					level.status = 1
+					return true
+				end,
+			},
 		}
 	end,	
 
@@ -141,47 +180,5 @@ register_level "phobos_lab"
 		level.flags[ LF_SHARPFLUID ] = true
 		level:drop_being( player, coord( 57,19 ) )
 	end,
-
-	OnKillAll = function ()
-		if level.status < 4 then
-			ui.msg("\"This lab won't do any more experiments... I wonder if there are others?\"")
-			level.status = 4
-		end
-	end,
-
-	OnTick = function ()
-		if level.status == 1 then
-			if player.x < 12 then
-				ui.msg("The walls lower!")
-				level:transmute( "wall", "floor", level.data.trap11 )
-				level:transmute( "wall", "floor", level.data.trap12 )
-				player:remove_perk("enviro")
-				level:play_sound( "door.open", player.position )
-				level.status = 2
-			end
-		elseif level.status == 2 then
-			if player.x > 30 then
-				ui.msg("The walls lower!")
-				level:transmute( "wall", "floor", level.data.trap21 )
-				level:transmute( "wall", "floor", level.data.trap22 )
-				player:remove_perk("enviro")
-				level:play_sound( "door.open", player.position )
-				level.status = 3
-			end
-		end
-	end,
-
-	OnEnterLevel = function ()
-		level.status = 0
-	end,
-
-	OnExit = function ()
-		if level.status == 4 then
-			core.special_complete()
-		end
-		ui.msg("\"So much for the lab, next time I'll use neurotoxin...\"")
-		player:add_history("He broke through the lab.")
-	end,
-
 
 }

@@ -64,12 +64,12 @@ function being:acquire( what, count )
 	local function add( it )
 		local drop = false
 		if self.flags[ BF_IMPATIENT ] then
-			if ( it.itype == ITEMTYPE_PACK and it.__proto.OnUse ) or it.itype == ITEMTYPE_URANGED then
+			if it:is_usable() then
 				drop = true
 			end
 		end
 		if drop or not self.inv:add( it ) then
-			if not level:drop_item( it, self.position, true, true, true ) then
+			if not level:drop_item( it, self.position, true, true ) then
 				ok = false
 			end
 		end
@@ -340,7 +340,7 @@ function being:pick_item_to_mod( mod, filter )
 
 	local proto     = mod.__proto
 	local modletter = proto.mod_letter
-	local techbonus = self.techbonus
+	local techbonus = self.TECH_BONUS
 
 	local choice = {
 		title = "Choose an item to mod",
@@ -358,15 +358,15 @@ function being:pick_item_to_mod( mod, filter )
 				if (not ma) and ( not cm ) then
 					desc = "Max level of this mod reached!"
 				else
-					if cm and proto.OnModDescribe then
-						desc = "Effect : "..proto.OnModDescribe( mod, it )
+					if cm and proto.getModDescription then
+						desc = "Effect : "..proto.getModDescription( mod, it )
 					end
 					if ma then
 						desc = desc or ""
 						desc = desc.."\nAssembly possible : {!"..ma.name.."}"
 					end
 				end
-				table.insert( choice.entries, { name = it.desc, value = i, desc = desc } )
+				table.insert( choice.entries, { name = it.inv_name, value = i, desc = desc } )
 			end
 		end
 	end
@@ -403,7 +403,7 @@ function being:pick_item_to_mod( mod, filter )
 			ma_choice.header = ma_choice.header ..  " Mod effect will also be applied first."
 		end
 		if ma.desc and ma.desc ~= "" then
-			ma_choice.header = ma_choice.header .. "\n\n" .. "Mod      : "..proto.OnModDescribe( mod, item )
+			ma_choice.header = ma_choice.header .. "\n\n" .. "Mod      : "..proto.getModDescription( mod, item )
 			ma_choice.header = ma_choice.header .. "\n" .. "Assembly : "..ma.desc
 		end
 		local result = ui.choice( ma_choice )
@@ -412,9 +412,7 @@ function being:pick_item_to_mod( mod, filter )
 			if core.options.assembly_apply_last_mod then
 				-- Apply mod effect first, then assembly transformation
 				mod:add_property("chosen_item", item)
-				if mod.__proto.OnUse then
-					mod.__proto.OnUse( mod, player )
-				end
+				core.callback( mod, "OnUse", self )
 			end
 			ui.msg("You assemble the "..ma.name..".")
 			item:apply_mod_array( ma )
@@ -429,6 +427,8 @@ function being:pick_item_to_mod( mod, filter )
 end
 
 function being:apply_timed_perk( id, max_duration, resist, target )
+	local proto = perks[ id ]
+	if proto.OnApplyCheck and not proto.OnApplyCheck( self ) then return false end
 	if resist then
 		local rvalue = self:get_total_resistance( resist, target or TARGET_TORSO )
 		if rvalue > 0 then

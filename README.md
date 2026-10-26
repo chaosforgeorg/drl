@@ -22,7 +22,7 @@ There are two IDEs available: Visual Studio Code and Lazarus. You should only ne
 
 ### Components
 1. Fpcvalkyrie: is the low level engine that manages the core functions of the game world
-2. Makewad.exe assembles the wad files, which contain the digital assets (sounds) and rules (lua)
+2. drlwad.exe assembles the WAD files from Lua build manifests; they contain digital assets and game rules
 3. drl.exe is the drl-specific game engine, which references the wads (drl.wad and core.wad)
 
 ### Setting up the source folders:
@@ -79,7 +79,7 @@ To get a debug-ready version going:
 At this point you can start debugging, and the lua will compile when you run.
 
 If you want to build the full package:
-1. Terminal/Run Task/Build makewad.exe (debug)
+1. Terminal/Run Task/Build drlwad.exe (debug)
 2. Terminal/Run Task/Build drl.wad, core.wad
 3. Terminal/Run Task/Build the release package (all). This won't work on a windows machine without some adjustments to the build script.
 
@@ -129,8 +129,8 @@ The Lazarus installation is preferred for VS Code (compared with the simpler fpc
 4. Add %lazarus%\\fpc\\3.2.2\\bin\\x86_64-win64 to your path (to support the release package build)
 
 #### Build
-1. Open src/makewad.lpi (with Lazarus). Build. You should receive '...bin\makewad.exe: Success'
-2. Start a command prompt and change to the bin folder. Run makewad.exe
+1. Build `drlwad.exe` with the VS Code `Build drlwad.exe (debug)` task. `drlwad` deliberately has no Lazarus `.lpi`.
+2. Start a command prompt, change to the bin folder, and run `drlwad.exe ..`
 3. Open src/drl.lpi. Build. You should receive '...bin\drl.exe: Success'
 4. Open up the Run\Run Parameters screen. Correct the working directory to point to your bin folder. Also note the Command Line Parameters, which might change the application's behaviour
 5. Run

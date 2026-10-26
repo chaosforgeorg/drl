@@ -6,186 +6,155 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlhooks;
 interface
-uses vutil, vluasystem, dfdata;
+uses vutil, vlua, dfdata;
 
 const
-  Hook_OnCreate        = 0;   // Being and Item -> Level, Module, Challenge, Core (Chained)
-  Hook_OnAction        = 1;   // Being
-  Hook_OnAttacked      = 2;   // Trait, Being
-  Hook_OnUseActive     = 3;   // Trait, Being
-  Hook_OnDie           = 4;   // Trait, Being, Level, Module, Challenge, Core (Chained)
-  Hook_OnDieCheck      = 5;   // Trait, Being, Level, Module, Challenge, Core (Chained)
-  Hook_OnPickupItem    = 6;   // Trait, Being, Level, Module, Challenge, Core (Chained)
-  Hook_OnPickup        = 7;   // Item, Level, Module, Challenge, Core (Chained)
-  Hook_OnPickupCheck   = 8;   // Item, Level, Module, Challenge, Core (Chained)
-  Hook_OnFirstPickup   = 9;   // Item
-  Hook_OnUse           = 10;  // Item, Level, Module, Challenge, Core (Chained)
-  Hook_OnUseCheck      = 11;  // Item, Level, Module, Challenge, Core (Chained)
-  Hook_OnAltFire       = 12;  // Item
-  Hook_OnAltReload     = 13;  // Item
-  Hook_OnEquip         = 14;  // Item
-  Hook_OnUnequip       = 15;  // Item
-  Hook_OnAdd           = 16;  // Perk
-  Hook_OnRemove        = 17;  // Perk
-  Hook_OnTick10        = 18;  // Perk
-  Hook_OnKill          = 19;  // Item (separate), Trait, Being (separate), Level, Module, Challenge, Core (Chained)
-  Hook_OnKillAll       = 20;  // Level, Module, Challenge, Core (Chained)
-  Hook_OnHitBeing      = 21;  // Item
-  Hook_OnReload        = 22;  // Item
-  Hook_OnDescribe      = 23;  // Item, Perk
-  Hook_OnEquipCheck    = 24;  // Item
-  Hook_OnAct           = 25;  // Item, Being (hack)
-  Hook_OnDestroy       = 26;  // Item
-  Hook_OnEnter         = 27;  // Item (separate)
-  Hook_OnEnterLevel    = 28;  // Level, Module, Challenge, Core (chained)
-  Hook_OnFire          = 29;  // Trait (separate), Item (not chained)
-  Hook_OnFired         = 30;  // Trait (separate), Item, Level, Module, Challenge, Core (Chained)
-  Hook_OnExit          = 31;  // Level, Module, Challenge, Core (Chained)
-  Hook_OnTick          = 32;  // Perk, Being (Separate), Level, Module, Challenge, Core (Chained)
-  Hook_OnNuked         = 33;  // Level, Module, Challenge, Core (Chained)
-  Hook_OnLoad          = 34;  // Module, Challenge, Core (Chained)
-  Hook_OnLoaded        = 35;  // Module, Challenge, Core (Chained)
-  Hook_OnUnLoad        = 36;  // Module, Challenge, Core (Chained)
-  Hook_OnCreatePlayer  = 37;  // Module, Challenge, Core (Chained)
-  Hook_OnLevelUp       = 38;  // Module, Challenge, Core (Chained)
-  Hook_OnPreLevelUp    = 39;  // Module, Challenge, Core (Chained)
-  Hook_OnWinGame       = 40;  // Module, Challenge, Core (Chained)
-  Hook_OnMortem        = 41;  // Module, Challenge, Core (Chained)
-  Hook_OnMortemPrint   = 42;  // Module, Challenge, Core (Chained)
-  Hook_OnCreateEpisode = 43;  // Module, Challenge, Core (Chained)
-  Hook_OnIntro         = 44;  // Module, Challenge, Core (Chained)
-  Hook_OnGenerate      = 45;  // Module, Challenge, Core (Chained)
+  // Prototype hooks
+  Hook_OnCreate         = 0;  // being, item
+  Hook_OnAction         = 1;  // being (AI dispatch); also a perk hook
+  Hook_OnAttacked       = 2;  // being (AI dispatch)
 
-  // TODO: merge with above
-  Hook_OnPostMove      = 46;   // Trait, Being
-  Hook_OnPreReload     = 47;   // Trait, Being
-  Hook_OnDamage        = 48;   // Trait, Being, Item
-  Hook_OnReceiveDamage = 49;   // Trait, Being
-  Hook_OnPreAction     = 50;   // Trait, Being
-  Hook_OnPostAction    = 51;   // Trait, Being
-  Hook_OnCanDualWield  = 52;   // Trait
-  Hook_OnCanMaxDamage  = 53;   // Trait
+  // Session hooks
+  Hook_OnLoad           = 3;  // module
+  Hook_OnStartGame      = 4;  // module
+  Hook_OnCreateWorld    = 5;  // module, challenge
+  Hook_OnCreatePlayer   = 6;  // module, challenge
+  Hook_OnCreateLevel    = 7;  // module, challenge
+  Hook_OnWinGame        = 8;  // module, challenge
 
-  Hook_getDamageBonus  = 54; // Trait, Being, Affects
-  Hook_getToHitBonus   = 55; // Trait, Being, Affects
-  Hook_getShotsBonus   = 56; // Trait, Being, Affects
-  Hook_getFireCostBonus= 57; // Trait, Being, Affects
-  Hook_getDefenceBonus = 58; // Trait, Being, Affects
-  Hook_getDodgeBonus   = 59; // Trait, Being, Affects
-  Hook_getMoveBonus    = 60; // Trait, Being, Affects
-  Hook_getBodyBonus    = 61; // Trait, Being, Affects
-  Hook_getResistBonus  = 62; // Trait, Being, Affects
-  Hook_getDamageMul    = 63; // Trait, Being, Affects
-  Hook_getFireCostMul  = 64; // Trait, Being, Affects
-  Hook_getAmmoCostMul  = 65; // Trait, Being, Affects
-  Hook_getReloadCostMul= 66; // Trait, Being, Affects
-  Hook_getGibMul       = 67; // Trait, Being, Affects
-  Hook_OnUnequipCheck  = 68; // Item
-  Hook_OnDrop          = 69; // Item
-  Hook_OnDropItem      = 70; // Item
-  Hook_OnCanAct        = 71; // Being
-  Hook_OnShort         = 72; // Perk
+  // Perk hooks; comments name the owners the perk can be attached to
+  Hook_OnAdd            = 9;  // level, being, item
+  Hook_OnRemove         = 10; // level, being, item
+  Hook_OnTick           = 11; // level, being, item
+  Hook_OnTick10         = 12; // level, being, item
+  Hook_OnPreAction      = 13; // being, item
+  Hook_OnPostAction     = 14; // being, item
+  Hook_OnPostMove       = 15; // being, item
+  Hook_OnAct            = 16; // being, item
+  Hook_OnCanAct         = 17; // being
+  Hook_OnUseActive      = 18; // player
+  Hook_OnActiveUsed     = 19; // player
+  Hook_OnFire           = 20; // being, item
+  Hook_OnFired          = 21; // being, item
+  Hook_OnAltFire        = 22; // item
+  Hook_OnHitBeing       = 23; // item
+  Hook_OnDamage         = 24; // being, item
+  Hook_OnReceiveDamage  = 25; // being, item
+  Hook_OnDamageReceived = 26; // being, item
+  Hook_OnCanMaxDamage   = 27; // being, item
+  Hook_OnCanDualWield   = 28; // player
+  Hook_OnKill           = 29; // level, being, item
+  Hook_OnKillAll        = 30; // level
+  Hook_OnDieCheck       = 31; // being, item
+  Hook_OnDie            = 32; // being (except player)
+  Hook_OnPickupCheck    = 33; // being, item
+  Hook_OnPickup         = 34; // being, item
+  Hook_OnDrop           = 35; // item
+  Hook_OnEquipCheck     = 36; // item
+  Hook_OnEquip          = 37; // item
+  Hook_OnUnequipCheck   = 38; // item
+  Hook_OnUnequip        = 39; // item
+  Hook_OnUseCheck       = 40; // being, item
+  Hook_OnUse            = 41; // item
+  Hook_OnPreReload      = 42; // item
+  Hook_OnReload         = 43; // item
+  Hook_OnAltReload      = 44; // item
+  Hook_OnDestroy        = 45; // item
+  Hook_OnEnter          = 46; // item (separate from cell OnEnter)
+  Hook_OnEnterLevel     = 47; // level, player, item
+  Hook_OnExitLevel      = 48; // level, player, item
+  Hook_OnCreateBeing    = 49; // level
+  Hook_OnNuked          = 50; // level
+  Hook_OnPreLevelUp     = 51; // player
+  Hook_OnLevelUp        = 52; // player, item
 
-  HookAmount           = 73;
+  // Perk getters
+  Hook_getDamageBonus   = 53; // being, item
+  Hook_getToHitBonus    = 54; // being, item
+  Hook_getShotsBonus    = 55; // being, item
+  Hook_getFireCostBonus = 56; // being, item
+  Hook_getDefenceBonus  = 57; // being, item
+  Hook_getDodgeBonus    = 58; // being, item
+  Hook_getMoveBonus     = 59; // being, item
+  Hook_getBodyBonus     = 60; // being, item
+  Hook_getResistBonus   = 61; // being, item
+  Hook_getDamageMul     = 62; // being, item
+  Hook_getFireCostMul   = 63; // being, item
+  Hook_getAmmoCostMul   = 64; // being, item
+  Hook_getReloadCostMul = 65; // being, item
+  Hook_getGibMul        = 66; // being, item
+  Hook_getGroundDesc    = 67; // item
+  Hook_getLabel         = 68; // level, being, item
+  Hook_getDescription   = 69; // level, being, item
 
-const AllHooks      : TFlags = [ 0..HookAmount-1 ];
+  HookAmount            = 70;
 
-var   BeingHooks    : TFlags;
-      ItemHooks     : TFlags;
-      ChainedHooks  : TFlags;
-      FullInvHooks  : TFlags;
-      LevelHooks    : TFlags;
-      GlobalHooks   : TFlags;
-      ModuleHooks   : TFlags;
-
+const AllHooks         : TFlags = [ 0..HookAmount-1 ];
+      // Prototype hooks of beings; items call OnCreate by name.
+      BeingHooks       : TFlags = [ Hook_OnCreate..Hook_OnAttacked ];
+      PerkHooks        : TFlags = [ Hook_OnAction, Hook_OnAdd..HookAmount-1 ];
+      // Core module and challenge functions.
+      SessionHooks     : TFlags = [ Hook_OnStartGame..Hook_OnWinGame ];
+      ChallengeHooks   : TFlags = [ Hook_OnCreateWorld..Hook_OnWinGame ];
 
 const HookNames : array[ 0..HookAmount-1 ] of AnsiString = (
-      'OnCreate', 'OnAction', 'OnAttacked', 'OnUseActive', 'OnDie', 'OnDieCheck',
-      'OnPickupItem', 'OnPickup','OnPickupCheck','OnFirstPickup','OnUse','OnUseCheck',
-      'OnAltFire', 'OnAltReload', 'OnEquip', 'OnUnequip', 'OnAdd', 'OnRemove', 'OnTick10', 'OnKill', 'OnKillAll',
-      'OnHitBeing', 'OnReload', 'OnDescribe', 'OnEquipCheck', 'OnAct', 'OnDestroy', 'OnEnter', 'OnEnterLevel',
-      'OnFire', 'OnFired', 'OnExit', 'OnTick', 'OnNuked',
-      'OnLoad','OnLoaded','OnUnLoad', 'OnCreatePlayer', 'OnLevelUp','OnPreLevelUp',
-      'OnWinGame', 'OnMortem', 'OnMortemPrint', 'OnCreateEpisode', 'OnIntro' , 'OnGenerate',
-
-      'OnPostMove', 'OnPreReload', 'OnDamage', 'OnReceiveDamage', 'OnPreAction', 'OnPostAction',
-      'OnCanDualWield', 'OnCanMaxDamage',
-
+      // Prototype hooks
+      'OnCreate', 'OnAction', 'OnAttacked',
+      // Session hooks
+      'OnLoad', 'OnStartGame', 'OnCreateWorld', 'OnCreatePlayer', 'OnCreateLevel', 'OnWinGame',
+      // Perk hooks
+      'OnAdd', 'OnRemove', 'OnTick', 'OnTick10',
+      'OnPreAction', 'OnPostAction', 'OnPostMove', 'OnAct', 'OnCanAct',
+      'OnUseActive', 'OnActiveUsed',
+      'OnFire', 'OnFired', 'OnAltFire', 'OnHitBeing',
+      'OnDamage', 'OnReceiveDamage', 'OnDamageReceived', 'OnCanMaxDamage', 'OnCanDualWield',
+      'OnKill', 'OnKillAll', 'OnDieCheck', 'OnDie',
+      'OnPickupCheck', 'OnPickup', 'OnDrop',
+      'OnEquipCheck', 'OnEquip', 'OnUnequipCheck', 'OnUnequip',
+      'OnUseCheck', 'OnUse', 'OnPreReload', 'OnReload', 'OnAltReload', 'OnDestroy', 'OnEnter',
+      'OnEnterLevel', 'OnExitLevel', 'OnCreateBeing', 'OnNuked',
+      'OnPreLevelUp', 'OnLevelUp',
+      // Perk getters
       'getDamageBonus', 'getToHitBonus', 'getShotsBonus', 'getFireCostBonus',
       'getDefenceBonus', 'getDodgeBonus', 'getMoveBonus', 'getBodyBonus', 'getResistBonus',
-      'getDamageMul', 'getFireCostMul', 'getAmmoCostMul', 'getReloadCostMul',
-      'getGibMul',
-      'OnUnequipCheck',
-      'OnDrop', 'OnDropItem', 'OnCanAct',
-      'OnShort'
+      'getDamageMul', 'getFireCostMul', 'getAmmoCostMul', 'getReloadCostMul', 'getGibMul',
+      'getGroundDesc', 'getLabel', 'getDescription'
       );
 
-function LoadHooks( const aTable : array of Const ) : TFlags;
-function LoadHooks( const aTable : array of Const; aHooks : TFlags ) : TFlags;
-function LoadCallbacks( aTable : TLuaTable ) : TFlags;
+function LoadHooks( aLua : TLua; const aTable : array of Const; aHooks : TFlags ) : TFlags;
+function LoadCallbacks( aLua : TLua; aTable : TLuaTable ) : TFlags;
 
 implementation
 
-function LoadHooks ( const aTable : array of Const ) : TFlags;
-begin
-  Exit( LoadHooks( aTable, AllHooks ) );
-end;
-
-function LoadHooks ( const aTable : array of Const; aHooks : TFlags ) : TFlags;
+function LoadHooks( aLua : TLua; const aTable : array of Const; aHooks : TFlags ) : TFlags;
 var iHook    : Byte;
     i, iSize : DWord;
 begin
-  with LuaSystem.GetTable( aTable ) do
+  with aLua.GetTable( aTable ) do
   try
     LoadHooks := [];
     for iHook in aHooks do
       if isFunction(HookNames[iHook]) then
         Include(LoadHooks,iHook);
-    iSize := LuaSystem.GetTableSize( ['core','callbacks'] );
+    iSize := aLua.GetTableSize( ['core','callbacks'] );
     if iSize > 0 then
       for i := 1 to iSize do
-        if isFunction( LuaSystem.Get( ['core','callbacks', i] ) ) then
+        if isFunction( aLua.Get( ['core','callbacks', i] ) ) then
           Include( LoadHooks, i + 200 );
   finally
     Free;
   end;
 end;
 
-function LoadCallbacks( aTable : TLuaTable ) : TFlags;
+function LoadCallbacks( aLua : TLua; aTable : TLuaTable ) : TFlags;
 var i, iSize : DWord;
 begin
-  iSize := LuaSystem.GetTableSize( ['core','callbacks'] );
+  iSize := aLua.GetTableSize( ['core','callbacks'] );
   if iSize = 0 then Exit( [] );
   LoadCallbacks := [];
   for i := 1 to iSize do
-    if aTable.isFunction( LuaSystem.Get( ['core','callbacks', i] ) ) then
+    if aTable.isFunction( aLua.Get( ['core','callbacks', i] ) ) then
       Include( LoadCallbacks, i + 200 );
 end;
 
-initialization
-
-AllHooks     := [ 0..HookAmount-1 ];
-BeingHooks   := [ Hook_OnCreate, Hook_OnAction, Hook_OnAttacked, Hook_OnUseActive,
-  Hook_OnDie, Hook_OnDieCheck, Hook_OnPickUpItem, Hook_OnDropItem, Hook_OnPostMove, Hook_OnKill,
-  Hook_OnDamage, Hook_OnReceiveDamage, Hook_OnPreAction, Hook_OnEnterLevel, Hook_OnAct, Hook_OnCanAct,
-  Hook_getDamageBonus, Hook_getToHitBonus, Hook_getShotsBonus, Hook_getFireCostBonus,
-  Hook_getDefenceBonus, Hook_getDodgeBonus, Hook_getMoveBonus, Hook_getBodyBonus,
-  Hook_getResistBonus, Hook_getDamageMul, Hook_getFireCostMul, Hook_getAmmoCostMul ];
-FullInvHooks := [ Hook_OnPreAction, Hook_OnPostAction, Hook_OnTick ];
-ItemHooks    := [ Hook_OnCreate, Hook_OnPickup, Hook_OnFirstPickup,
-  Hook_OnUse, Hook_OnUseCheck, Hook_OnAltFire, Hook_OnEquip, Hook_OnUnequip,
-  Hook_OnEnter, Hook_OnFire, Hook_OnAct, Hook_OnDestroy, Hook_OnDescribe, Hook_OnPickupCheck, 
-  Hook_OnUnequipCheck, Hook_OnDrop ];
-ChainedHooks := [ Hook_OnCreate, Hook_OnDie, Hook_OnDieCheck, Hook_OnPickup,
-  Hook_OnPickUpItem, Hook_OnKillAll, Hook_OnPickupCheck, Hook_OnUse, Hook_OnUseCheck,
-  Hook_OnFired, Hook_OnDrop, Hook_OnDropItem ];
-LevelHooks   := ChainedHooks + [ Hook_OnEnterLevel, Hook_OnKill, Hook_OnExit, Hook_OnTick,
-  Hook_OnNuked, Hook_OnDrop, Hook_OnDropItem ];
-GlobalHooks  := LevelHooks + [ Hook_OnEnterLevel, Hook_OnKill, Hook_OnExit, Hook_OnTick,
-  Hook_OnLoad, Hook_OnLoaded, Hook_OnUnLoad, Hook_OnCreatePlayer, Hook_OnLevelUp,
-  Hook_OnPreLevelUp, Hook_OnWinGame, Hook_OnMortem, Hook_OnMortemPrint, Hook_OnCreateEpisode,
-  Hook_OnIntro, Hook_OnGenerate ];
-ModuleHooks  := [ Hook_OnLoad ];
-
 end.
-

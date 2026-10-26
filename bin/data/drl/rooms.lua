@@ -25,13 +25,13 @@ function drl.register_rooms()
 		
 			local proto = items[lid]
 			local lever = item.new( lid )
-			if lever:has_property("target_area") then
-				lever.target_area = room:clone()
+			if lever:has_property("TARGET_AREA") then
+				lever.TARGET_AREA = room:clone()
 			end
 			level:drop_item( lever, pos )
 
 			if proto.fullchance and math.random(100) < proto.fullchance then
-				lever.target_area = area.FULL:clone()
+				lever.TARGET_AREA = area.FULL:clone()
 				if proto.warning then
 					ui.msg_feel( proto.warning )
 				end
@@ -88,7 +88,7 @@ function drl.register_rooms()
 				pick = pick - entry[1]
 				if pick <= 0 then
 					local amount = math.random( entry[3], entry[4] )
-					level:area_drop( room, entry[2], amount, true )
+					level:area_drop_ammo( room, entry[2], amount )
 					return true
 				end
 			end
@@ -155,7 +155,7 @@ function drl.register_rooms()
 				room2.used = true
 				local lever = level:drop_item( "lever_walls", keypos )
 				lever.flags[ IF_NODESTROY ] = true
-				lever:add_property( "target_area", room:shrinked(1) )
+				lever:add_property( "TARGET_AREA", room:shrinked(1) )
 			end
 
 			local vault = room:shrinked(2)
@@ -210,7 +210,7 @@ function drl.register_rooms()
 						sboots = 0.25,
 					},
 				}
-				level:drop_item( item, pos, true )
+				level:drop_ammo( item, pos )
 			end
 
 			generator.scatter_blood(vault,nil,30)

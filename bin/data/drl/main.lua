@@ -1,9 +1,9 @@
 core.declare( "drl", {} )
 core.declare( "core_module", "drl" )
 core.declare( "DEMO", false )
-core.declare( "VERSION_MODULE",          "0.10.11" )
-core.declare( "VERSION_MODULE_SAVE",     "0.10.11" )
-core.declare( "VERSION_ENGINE_EXPECTED", "0.10.11" )
+core.declare( "VERSION_MODULE",          "0.10.12" )
+core.declare( "VERSION_MODULE_SAVE",     "0.10.12" )
+core.declare( "VERSION_ENGINE_EXPECTED", "0.10.12" )
 
 require( "drl:generator" )
 require( "drl:generators" )
@@ -56,7 +56,7 @@ require( "drl:levels/house" )
 
 -- main DRL lua script file --
 
-function drl.OnLoaded()
+function drl.OnStartGame()
 	ui.msg('Welcome to {RDRL}...')
 end
 
@@ -70,6 +70,7 @@ function drl.OnLoad()
 		plasma  = "plasma",
 		bfg     = "BFG",
 	}
+	core.register_callback( "OnFirstPickup", "perk" )
 	drl.register_sprites()
 	drl.register_difficulties()
 	drl.register_base_data()
@@ -162,18 +163,6 @@ function drl.register_base_data()
 		sprite = SPRITE_CORPSE,
 	}
 
-	register_item "stubitem"
-	{
-		name     = "stubitem",
-		color    = RED,
-		sprite   = SPRITE_TELEPORT,
-		weight   = 0,
-
-		type = ITEMTYPE_TELE,
-
-		OnEnter = function() end,
-	}
-
 	register_item "teleport"
 	{
 		name     = "teleport",
@@ -184,37 +173,54 @@ function drl.register_base_data()
 		flags    = { IF_NODESTROY, IF_NUKERESIST },
 
 		type = ITEMTYPE_TELE,
+		properties = { TARGET = false },
+		runtime    = {
+			OnEnter = function( self, being )
+				if not self.TARGET then
+					self.TARGET = level:random_empty_coord{ EF_NOBEINGS, EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN }
+				end
+				-- Explosions can have sounds, but by the time the sound plays, the player has already moved
+				level:play_sound( "teleport.use", being.position )
+				level:explosion( being.position, { range = 4, delay = 50, color = GREEN } )
+				being:msg( "You feel yanked away!", being:get_name(true,true).." suddenly disappears!" )
+				local target = self.TARGET
+				local empty = { EF_NOBEINGS, EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN }
+				if cells[ level.map[ target ] ].flags[ CF_BLOCKMOVE ] then
+					being:msg("You feel out of place!")
+					being:apply_damage(15, TARGET_INTERNAL, DAMAGE_FIRE, "phase" )
+					target = level:random_empty_coord( empty )
+				end
+				if level:get_being( target ) then
+					local tgt = level:get_being( target )
+					being:msg("Suddenly you feel weird!")
+					tgt:msg("Argh! You feel like someone is trying to implode you!")
+					tgt:apply_damage(15, TARGET_INTERNAL, DAMAGE_FIRE, "phase" )
+					target = level:random_empty_coord( empty )
+				end
+				if being.__ptr then
+					being:relocate( target )
+					being:msg(nil,"Suddenly "..being:get_name(false,false).." appears out of nowhere!")
+					being.scount = being.scount - 1000
+				end
+			end,
+		},
+	}
 
-		OnCreate = function( self )
-			self:add_property( "target", false )
-		end,
-
-		OnEnter = function( self, being )
-			if not self.target then
-				self.target = level:random_empty_coord{ EF_NOBEINGS, EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN }
+	register_perk "active_running"
+	{
+		OnUseActive = function( self )
+			if self:is_perk( "berserk" ) then return false end
+			if self:is_perk( "tired" ) then
+				ui.msg( "Too tired to do that right now.")
+				return false
 			end
-			-- Explosions can have sounds, but by the time the sound plays, the player has already moved
-			level:play_sound( "teleport.use", being.position )
-			level:explosion( being.position, { range = 4, delay = 50, color = GREEN } )
-			being:msg( "You feel yanked away!", being:get_name(true,true).." suddenly disappears!" )
-			local target = self.target
-			local empty = { EF_NOBEINGS, EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN }
-			if cells[ level.map[ target ] ].flags[ CF_BLOCKMOVE ] then
-				being:msg("You feel out of place!")
-				being:apply_damage(15, TARGET_INTERNAL, DAMAGE_FIRE, "phase" )
-				target = level:random_empty_coord( empty )
-			end
-			if level:get_being( target ) then
-				local tgt = level:get_being( target )
-				being:msg("Suddenly you feel weird!")
-				tgt:msg("Argh! You feel like someone is trying to implode you!")
-				tgt:apply_damage(15, TARGET_INTERNAL, DAMAGE_FIRE, "phase" )
-				target = level:random_empty_coord( empty )
-			end
-			if being.__ptr then
-				being:relocate( target )
-				being:msg(nil,"Suddenly "..being:get_name(false,false).." appears out of nowhere!")
-				being.scount = being.scount - 1000
+			if self:is_perk( "running" ) then
+				self:remove_perk( "running", false )
+				return false
+			else
+				self:add_perk( "running", self.RUNNING_TIME * 10 )
+				self.scount = self.scount - 100
+				return true
 			end
 		end,
 	}
@@ -237,17 +243,44 @@ function drl.register_base_data()
 		ai_type      = "",
 		ai_group     = "player",
 
-		OnCreate = function(self)
-			self:add_property( "medals", {} )
-			self:add_property( "badges", {} )
-			self:add_property( "awards", {} )
-			self:add_property( "assemblies", {} )
-			self:add_property( "items_found", {} )
-			self:add_property( "history", {} )
-			self:add_property( "episode", {} )
-			self:add_property( "level_data", {} )
-			self:add_property( "crash_index", 0 )
+		properties = {
+			medals       = {},
+			badges       = {},
+			awards       = {},
+			assemblies   = {},
+			items_found  = {},
+			history      = {},
+			episode      = {},
+			level_data   = {},
+			crash_index  = 0,
+			RUNNING_TIME = 30,
+			TECH_BONUS   = 0,
+		},
 
+		perks = { "active_running" },
+
+		runtime = {
+			OnEnterLevel = function( self )
+				self:remove_perk( "running", true )
+				self:remove_perk( "tired", true )
+			end,
+
+			OnPickup = function(self,i)
+				if not self:has_found_item( i.id ) then
+					if i.flags[ IF_UNIQUE ] then
+						statistics.uniques_found = statistics.uniques_found + 1
+						self:add_history( 'On @1 he found the '..i.name..'!' )
+						ui.blink( LIGHTGREEN, 50 )
+					end
+					local firstmsg = i.__proto.firstmsg
+					if firstmsg then ui.msg( "\""..firstmsg.."\"" ) end
+					core.callback( i, "OnFirstPickup", self )
+					self:add_found_item( i.id )
+				end
+			end,
+		},
+
+		OnCreate = function(self)
 			if rawget(_G,"DIFFICULTY") then
 				self.hp    = 50
 				self.hpmax = self.hp
@@ -256,59 +289,39 @@ function drl.register_base_data()
 				self.expfactor = diff[DIFFICULTY].expfactor
 			end
 
-			self:add_property( "runningtime", 30 )
-			self:add_property( "techbonus", 0 )
 			self:set_coscolor{ 0.8, 0.7, 0.7, 1.0 }
-		end,
-
-		--These stubs exist so that modders can hijack them properly
-		OnAction   = function(self) return end,
-		OnAttacked = function(self) return end,
-		OnDie      = function(self, overkill) return end,
-		OnDieCheck = function(self, overkill) return true end,
-
-		OnPickupItem = function(self,i)
-			if not self:has_found_item( i.id ) then
-				if i.flags[ IF_UNIQUE ] then
-					statistics.uniques_found = statistics.uniques_found + 1
-					self:add_history( 'On @1 he found the '..i.name..'!' )
-					ui.blink( LIGHTGREEN, 50 )
-				end
-				if items[ i.id ].OnFirstPickup then
-					items[ i.id ].OnFirstPickup( i, self )
-				end
-				self:add_found_item( i.id )
-			end
-		end,
-
-		OnUseActive = function( self )
-			if klasses[player.klass].OnUseActive then
-				return klasses[player.klass].OnUseActive( self )
-			end
-			if self:is_perk( "berserk" ) then return false end
-			if self:is_perk( "tired" ) then
-				ui.msg( "Too tired to do that right now.")
-				return false
-			end
-			if self:is_perk( "running" ) then
-				self:remove_perk( "running", false )
-				return false
-			else
-				self:add_perk( "running", self.runningtime * 10 )
-				self.scount = self.scount - 100
-				return true
-			end
 		end,
 	}
 
 end
 
-function drl.OnEnterLevel()
+function drl.ShowIntro()
+	drl.plot_intro()
+end
+
+function drl.GenerateLevel()
+	core.log("drl.GenerateLevel()")
+
+	local dlevel = level.danger_level
+	local choice = weight_table.new()
+	for _,g in ipairs(generators) do
+		if dlevel >= g.min_lev and DIFFICULTY >= g.min_diff then
+			local weight = core.ranged_table( g.weight, dlevel )
+			choice:add( g, weight )
+		end
+	end
+	if choice:size() == 0 then error("NO GENERATOR AVAILABLE!") end
+	local gen = choice:roll()
+	generator.run( gen )
+end
+
+function drl.OnCreateLevel()
+	level:add_perk( "perk_level_enrage" )
+	level:add_perk( "perk_level_unique_feeling" )
 	local linfo = player.episode[ level.index ]
 	player:add_property( "crash_index", ( linfo and linfo.exit ) or ( level.index + 1 ) )
-	player:remove_perk( "running", true )
-	player:remove_perk( "tired", true )
 end
+
 
 function drl.GetDisassembleId( it )
 	local modlist = {"mod_agility","mod_bulk","mod_tech","mod_power"}
@@ -327,11 +340,6 @@ function drl.GetDisassembleId( it )
 	return table.random_pick( modlist )
 end
 
-function drl.GetDeathMessage( being, visible )
-	if visible then return being:get_name( true, true ).." dies." end
-	return "You hear the scream of a freed soul!"
-end
-
 local death_reasons = {
 	acid   = "melted in acid",
 	barrel = "was blown up by a barrel",
@@ -343,7 +351,7 @@ local death_reasons = {
 function drl.GetResultId()
 	local result    = "unknown"
 	local dead      = player.hp <= 0
-	local won       = player:has_won()
+	local won       = game.has_won()
 	local nuked     = level.flags[ LF_NUKED ]
 	local boss1dead = won
 	local boss2dead = kills.get("jc") > 0 or kills.get("apostle") > 0
@@ -388,7 +396,7 @@ function drl.GetResultDescription( result, highscore )
 		) or killed_by
 	end
 
-	if player:has_won() then
+	if game.has_won() then
 		local chal_idx
 		if highscore then
 			if ARCHANGEL then
@@ -413,135 +421,138 @@ function drl.GetResultDescription( result, highscore )
 	return killed_by
 end
 
-function drl.RunPrintMortem()
+function drl.GenerateMemorial()
+	local lines = {}
 	local result_id    = drl.GetResultId()
 	local death_reason = drl.GetResultDescription( result_id, false )
 	local game_module    = nil
 
-	player:mortem_print( "{r--------------------------------------------------------------}" )
-	player:mortem_print( " {RDRL} {!"..VERSION_MODULE.."} (Engine {!"..VERSION_ENGINE.."}) roguelike post-mortem dump")
+	table.insert( lines, "{r--------------------------------------------------------------}" )
+	table.insert( lines, " {RDRL} {!"..VERSION_MODULE.."} (Engine {!"..VERSION_ENGINE.."}) roguelike post-mortem dump" )
 --	if game_type ~= GAMESTANDARD then
---		player:mortem_print( " Module : "..module.name.." ("..mortem.version_string(module.version)..")")
+--		table.insert( lines, " Module : "..module.name.." ("..mortem.version_string(module.version)..")" )
 --		game_module = _G[module.id]
 --	end
-	player:mortem_print( "{r--------------------------------------------------------------}" )
-	player:mortem_print()
+	table.insert( lines, "{r--------------------------------------------------------------}" )
+	table.insert( lines, "" )
 
-	if game_module and game_module.RunPrintMortem then
-		game_module.RunPrintMortem()
-		return
+	if game_module and game_module.GenerateMemorial then
+		return table.concat( lines, "\n" ) .. "\n" .. game_module.GenerateMemorial()
 	end
 
 	if not game_module then
 		local player_description = "level {!"..player.explevel.." "
-			..ranks.exp[ ui.get_rank("exp") + 1].name.." "..ranks.skill[ui.get_rank("skill") + 1].name
+			..ranks.exp[ player_data.get_rank("exp") + 1].name.." "..ranks.skill[player_data.get_rank("skill") + 1].name
 			.." "..klasses[player.klass].name.."},"
 		if string.len(player.name) <= 12 then
-			player:mortem_print(" {!"..player.name.."}, "..player_description)
+			table.insert( lines, " {!"..player.name.."}, "..player_description )
 		else
-			player:mortem_print(" {!"..player.name.."},")
-			player:mortem_print(" "..player_description)
+			table.insert( lines, " {!"..player.name.."}," )
+			table.insert( lines, " "..player_description )
 		end
 		local epi_name = player.episode[player.level_index].deathname or player.episode[player.level_index].name or "an Unknown Location"
-		player:mortem_print( " "..death_reason.." at {!"..epi_name.."}." )
+		table.insert( lines, " "..death_reason.." at {!"..epi_name.."}." )
 	else
 		if game_module.OnMortemPrint then
-			game_module.OnMortemPrint(death_reason)
+			local text = game_module.OnMortemPrint(death_reason)
+			if text and text ~= "" then
+				table.insert( lines, ( text:gsub( "\n$", "" ) ) )
+			end
 		else
-			player:mortem_print( " {!"..player.name.."}, level {!"..player.explevel.." "
+			table.insert( lines, " {!"..player.name.."}, level {!"..player.explevel.." "
 		.." "..klasses[player.klass].name.."}, "..death_reason )
-			player:mortem_print(" in a custom location...")
+			table.insert( lines, " in a custom location..." )
 		end
 	end
 
-	mortem.print_time_and_kills()
+	mortem.append_time_and_kills( lines )
 	local ratio = statistics.kills / statistics.max_kills
 
 		if statistics.kills == statistics.max_kills then
-			player:mortem_print( " This ass-kicking marine killed all of them!" )
+			table.insert( lines, " This ass-kicking marine killed all of them!" )
 	elseif statistics.kills + 1 == statistics.max_kills then
-			player:mortem_print (" He missed one kill to totally be ass-kicking." )
+			table.insert( lines, " He missed one kill to totally be ass-kicking." )
 	elseif statistics.kills == 0 then
-			player:mortem_print( " Poor pacifist, didn't even get a single kill..." )
+			table.insert( lines, " Poor pacifist, didn't even get a single kill..." )
 	elseif statistics.kills == 1 then
-			player:mortem_print( " Somehow, he managed only *one* kill." )
+			table.insert( lines, " Somehow, he managed only *one* kill." )
 	elseif ratio < 0.1    then
-			player:mortem_print( " My, wasn't he a wimpy chump." )
+			table.insert( lines, " My, wasn't he a wimpy chump." )
 	elseif ratio < 0.3    then
-			player:mortem_print( " Who gave him the ticket to Hell, anyway?" )
+			table.insert( lines, " Who gave him the ticket to Hell, anyway?" )
 	elseif ratio > 0.999  then
-			player:mortem_print( " A natural born killer!" )
+			table.insert( lines, " A natural born killer!" )
 	elseif ratio > 0.99   then
-			player:mortem_print( " He was a real killing machine..." )
+			table.insert( lines, " He was a real killing machine..." )
 	elseif ratio > 0.9    then
-			player:mortem_print( " He held his right to remain violent." )
+			table.insert( lines, " He held his right to remain violent." )
 	end
 
-	mortem.print_challenge()
-	mortem.print_crash_save()
-	player:mortem_print()
-	player:mortem_print("{r-- {ySpecial levels} --------------------------------------------}")
-	player:mortem_print()
-	mortem.print_special_levels()
-	player:mortem_print()
-	player:mortem_print("{r-- {yAwards} ----------------------------------------------------}")
-	player:mortem_print()
-	mortem.print_awards()
-	player:mortem_print()
+	mortem.append_challenge( lines )
+	mortem.append_crash_save( lines )
+	table.insert( lines, "" )
+	table.insert( lines, "{r-- {ySpecial levels} --------------------------------------------}" )
+	table.insert( lines, "" )
+	mortem.append_special_levels( lines )
+	table.insert( lines, "" )
+	table.insert( lines, "{r-- {yAwards} ----------------------------------------------------}" )
+	table.insert( lines, "" )
+	mortem.append_awards( lines )
+	table.insert( lines, "" )
 
-	player:mortem_print( "{r-- {yGraveyard} -------------------------------------------------}")
-	player:mortem_print()
-	mortem.print_graveyard()
-	player:mortem_print()
-	player:mortem_print( "{r-- {yStatistics} ------------------------------------------------}" )
-	player:mortem_print()
-	mortem.print_statistics()
-	mortem.print_damage_and_spree()
-	player:mortem_print()
-	player:mortem_print( "{r-- {yTraits} ----------------------------------------------------}" )
-	player:mortem_print()
-	mortem.print_traits()
-	player:mortem_print()
-	player:mortem_print( "{r-- {yEquipment} -------------------------------------------------}" )
-	player:mortem_print()
-	mortem.print_equipment()
-	player:mortem_print()
-	player:mortem_print( "{r-- {yInventory} -------------------------------------------------}" )
-	player:mortem_print()
-	mortem.print_inventory()
-	player:mortem_print()
-	player:mortem_print( "{r-- {yResistances} -----------------------------------------------}" )
-	player:mortem_print()
-	mortem.print_resistances()
-	player:mortem_print()
-	player:mortem_print( "{r-- {yKills} -----------------------------------------------------}" )
-	player:mortem_print()
-	mortem.print_kills()
-	player:mortem_print()
-	mortem.print_weapon_kills(
+	table.insert( lines, "{r-- {yGraveyard} -------------------------------------------------}" )
+	table.insert( lines, "" )
+	mortem.append_graveyard( lines )
+	table.insert( lines, "" )
+	table.insert( lines, "{r-- {yStatistics} ------------------------------------------------}" )
+	table.insert( lines, "" )
+	mortem.append_statistics( lines )
+	mortem.append_damage_and_spree( lines )
+	table.insert( lines, "" )
+	table.insert( lines, "{r-- {yTraits} ----------------------------------------------------}" )
+	table.insert( lines, "" )
+	mortem.append_traits( lines )
+	table.insert( lines, "" )
+	table.insert( lines, "{r-- {yEquipment} -------------------------------------------------}" )
+	table.insert( lines, "" )
+	mortem.append_equipment( lines )
+	table.insert( lines, "" )
+	table.insert( lines, "{r-- {yInventory} -------------------------------------------------}" )
+	table.insert( lines, "" )
+	mortem.append_inventory( lines )
+	table.insert( lines, "" )
+	table.insert( lines, "{r-- {yResistances} -----------------------------------------------}" )
+	table.insert( lines, "" )
+	mortem.append_resistances( lines )
+	table.insert( lines, "" )
+	table.insert( lines, "{r-- {yKills} -----------------------------------------------------}" )
+	table.insert( lines, "" )
+	mortem.append_kills( lines )
+	table.insert( lines, "" )
+	mortem.append_weapon_kills( lines,
 		{ "melee", "pistol", "shotgun", "chain", "rocket", "plasma", "bfg" },
 		{ "Melee kills    : ", "Pistol kills   : ", "Shotgun kills  : ", "Chaingun kills : ", "Rocket kills   : ", "Plasma kills   : ", "BFG kills      : " }
 	)
-	player:mortem_print()
-	player:mortem_print( "{r-- {yHistory} ---------------------------------------------------}" )
-	player:mortem_print()
-	mortem.print_history()
+	table.insert( lines, "" )
+	table.insert( lines, "{r-- {yHistory} ---------------------------------------------------}" )
+	table.insert( lines, "" )
+	mortem.append_history( lines )
 	if not game_module then
 		if kills.get("jc") > 0 then
-			player:mortem_print( "  Then finally in Hell itself, he killed the final EVIL." )
+			table.insert( lines, "  Then finally in Hell itself, he killed the final EVIL." )
 		else
-			player:mortem_print( "  On level {!"..player.level_index.."} he finally "..death_reason..".")
+			table.insert( lines, "  On level {!"..player.level_index.."} he finally "..death_reason.."." )
 		end
 	end
-	player:mortem_print()
-	player:mortem_print( "{r-- {yMessages} --------------------------------------------------} " )
-	player:mortem_print()
-	mortem.print_messages()
-	player:mortem_print()
+	table.insert( lines, "" )
+	table.insert( lines, "{r-- {yMessages} --------------------------------------------------} " )
+	table.insert( lines, "" )
+	mortem.append_messages( lines )
+	table.insert( lines, "" )
 
 	if not game_module then
-		player:mortem_print( "{r-- {yGeneral} ---------------------------------------------------} " )
-		player:mortem_print()
+		table.insert( lines, "{r-- {yGeneral} ---------------------------------------------------} " )
+		table.insert( lines, "" )
 
 		local deaths = player_data.count('player/deaths')
 		if deaths > 1 then
@@ -553,9 +564,9 @@ function drl.RunPrintMortem()
 				else
 					desc = desc:gsub( "@was", "was" )
 				end
-				player:mortem_print( desc:gsub( "@1", count.."" ) )
+				table.insert( lines, ( desc:gsub( "@1", count.."" ) ) )
 			end
-			player:mortem_print( " "..deaths.." brave souls have ventured into Phobos:" )
+			table.insert( lines, " "..deaths.." brave souls have ventured into Phobos:" )
 			reason( "killed" ," {!@1} of those @was killed.")
 			reason( "unknown"," {!@1} of those @was killed by something unknown." )
 			reason( "nuke"   ," {!@1} didn't read the thermonuclear bomb manual." )
@@ -567,21 +578,52 @@ function drl.RunPrintMortem()
 			local wins      = sacrifice + win + fullwin
 
 			if wins > 0 then
-				player:mortem_print()
-				player:mortem_print(" {!"..wins.."} souls destroyed the Mastermind...")
-				if sacrifice > 0 then player:mortem_print(" {!"..sacrifice.."} sacrificed itself for the good of mankind." ) end
-				if win       > 0 then player:mortem_print(" {!"..win.."} killed the bitch and survived." ) end
-				if fullwin   > 0 then player:mortem_print(" {!"..fullwin.."} showed that it can outsmart Hell itself." ) end
+				table.insert( lines, "" )
+				table.insert( lines, " {!"..wins.."} souls destroyed the Mastermind..." )
+				if sacrifice > 0 then table.insert( lines, " {!"..sacrifice.."} sacrificed itself for the good of mankind." ) end
+				if win       > 0 then table.insert( lines, " {!"..win.."} killed the bitch and survived." ) end
+				if fullwin   > 0 then table.insert( lines, " {!"..fullwin.."} showed that it can outsmart Hell itself." ) end
 			end
 		else
-			player:mortem_print("  He's the {!first} brave soul to have ventured into Hell...")
+			table.insert( lines, "  He's the {!first} brave soul to have ventured into Hell..." )
 		end
-		player:mortem_print()
+		table.insert( lines, "" )
 	end
-	player:mortem_print( "{r--------------------------------------------------------------} " )
+	mortem.append_mods( lines, "{r-- {yMods} ------------------------------------------------------} " )
+	table.insert( lines, "{r--------------------------------------------------------------} " )
+	return table.concat( lines, "\n" ) .. "\n"
 end
 
-function drl.OnCreateEpisode()
+function drl.modify_rewards( rewards, modifications )
+	for _,id in ipairs( modifications.remove or {} ) do
+		for index = #rewards,1,-1 do
+			if rewards[index].id == id then
+				table.remove( rewards, index )
+			end
+		end
+	end
+	for _,addition in ipairs( modifications.add or {} ) do
+		local id     = type(addition) == "table" and addition[1] or addition
+		local amount = type(addition) == "table" and addition[2] or 1
+		local found
+		for _,reward in ipairs( rewards ) do
+			if reward.id == id then
+				reward.amount = reward.amount + amount
+				found = true
+				break
+			end
+		end
+		if not found then
+			table.insert( rewards, { id = id, amount = amount } )
+		end
+	end
+end
+
+function drl.OnCreatePlayer()
+	player.level_data.hells_arena = { reward_modifications = {} }
+end
+
+function drl.OnCreateWorld()
 	player.episode = {}
 	local paired = {
 		{"hells_arena"}, -- 2                                    26
@@ -619,7 +661,7 @@ function drl.OnCreateEpisode()
 		if (not level_proto.canGenerate) or level_proto.canGenerate() then
 			local index = core.resolve_range(level_proto.level)
 			local from  = player.episode[index]
-			table.insert( player.episode, { 
+			table.insert( player.episode, {
 				script = level_proto.id,
 				style  = from.style,
 				danger = from.danger,
@@ -673,6 +715,7 @@ Major changes since last version (see {yversion.txt} for full list)
 end
 
 function drl.OnWinGame()
+	ui.play_music("victory")
 	if kills.get("jc") > 0 then
 		drl.plot_outro_final()
 	elseif player.level_index >= 24 then
@@ -809,7 +852,7 @@ function drl.GetQuitMessage()
 		"Go ahead and leave. See if I care.",
 		"Ya know. Next time ya gonna come here, I'm gonna toast ya."
 	}
-	return messages[core.visual_random(#(messages))]
+	return messages[ui.visual_random(#(messages))]
 end
 
 function drl.GetItemMax( id )
@@ -823,76 +866,6 @@ function drl.GetItemMax( id )
 	return result
 end
 
-function drl.OnGenerate()
-	core.log("drl.OnGenerate()")
-
-	local dlevel = level.danger_level
-	local choice = weight_table.new()
-	for _,g in ipairs(generators) do
-		if dlevel >= g.min_lev and DIFFICULTY >= g.min_diff then
-			local weight = core.ranged_table( g.weight, dlevel ) 
-			choice:add( g, weight )
-		end
-	end
-	if choice:size() == 0 then error("NO GENERATOR AVAILABLE!") end
-	local gen = choice:roll()
-	generator.run( gen )
-end
-
-function drl.OnTick( time )
-	if level.empty    then return end
-	if time % 10 ~= 0 then return end
-	time = time / 10 -- convert to seconds
-	local enrage = 15*60 -- 15 minutes
-	local stage1 = enrage - 2*60
-	local stage2 = enrage - 1*60
-	local stage3 = enrage -   10
-	if time >= stage1 then
-		if time == stage1 then
-			ui.msg( "Demonic forces grow restless..." )
-		elseif time == stage2 then
-			ui.msg( "Demonic forces grow more restless..." )
-		elseif time == stage3 then
-			ui.msg( "The air grows thick with malice..." )
-		end
-		if time == enrage then
-			ui.msg( "You hear angry growls!" )
-			level.flags[ LF_ENRAGE ] = true
-			for b in level:beings() do
-				if not b:is_player() then
-					b.flags[ BF_HUNTING ] = true
-					b.expvalue = math.ceil( b.expvalue * 0.5 )
-					b.speed    = math.min( math.ceil( b.speed * 1.5 ), 250 )
-					b.accuracy = b.accuracy + 4
-				end
-			end
-		end
-		if time == enrage * 2 then
-			for b in level:beings() do
-				if not b:is_player() then
-					b.expvalue = 0
-					b.speed    = math.min( math.ceil( b.speed * 1.5 ), 250 )
-					b.accuracy = b.accuracy + 4
-				end
-			end
-		end
-	end
-end
-
-function drl.OnCreate( this )
-	if rawget( level, "__ptr" ) and level.flags[ LF_ENRAGE ] then
-		if this:is_being() then
-			if not this:is_player() then
-				if not this.flags[ BF_HUNTING ] then
-					this.flags[ BF_HUNTING ] = true
-					this.expvalue = math.ceil( this.expvalue * 0.5 )
-					this.speed    = math.ceil( this.speed * 1.5 )
-					this.accuracy = this.accuracy + 4
-				end
-			end
-		end
-	end
-end
 
 drl.help = {
 	{ "intro", "Introduction" },

@@ -46,7 +46,7 @@ function generator.scatter_item(scatter_area,good,item_id,count)
 	for _ = 1, count do
 		local c = level:random_empty_coord({ EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM, EF_NOLIQUID }, scatter_area )
 		if level:get_cell(c) == good then
-			level:drop_item( item_id, c, true )
+			level:drop_item( item_id, c )
 		end
 	end
 end
@@ -75,7 +75,7 @@ function generator.scatter_cross_item(scatter_area,good,item_id,count)
 			if c then
 				if test( coord( c.x-1, c.y ) ) and test( coord( c.x+1, c.y ) ) and
 					test( coord( c.x, c.y-1 ) ) and test( coord( c.x, c.y+1 ) ) then
-					level:drop_item( id, c, true )
+					level:drop_item( id, c )
 					return true
 				end
 			end	
@@ -128,7 +128,7 @@ function generator.scatter_blood(scatter_area,good,count)
 	if type(good) == "string" then good = cells[good].nid end
 	for c = 1, count do
 		local c = scatter_area:random_coord()
-		if not good or level:get_cell(c) == good then level:set_light_flag( c, LFBLOOD, true ) end
+		if not good or level:get_cell(c) == good then level:add_blood( c, ui.visual_random(3) ) end
 	end
 end
 
@@ -169,6 +169,10 @@ function generator.place_dungen_tile( code, tile_object, tile_pos )
 		local tile_entry = code[ char ]
 		if type(tile_entry) ~= "number" then
 			local p = tile_pos + c - coord.UNIT
+			if tile_entry.precell then
+				level:set_cell( p, tile_entry.precell )
+				level:set_cell( p, tile_entry[1] )
+			end
 			if type(tile_entry) == "table" and #tile_entry > 1 then
 				level:set_cell( p, table.random_pick( tile_entry ) )
 			end
@@ -188,6 +192,13 @@ function generator.place_dungen_tile( code, tile_object, tile_pos )
 				for _, flag in ipairs(tile_entry.flags) do
 					level:set_light_flag( p, flag, true )
 				end
+			end
+			if tile_entry.blood then
+				local blood = tile_entry.blood
+				if type(blood) == "table" then
+					blood = blood[1] + ui.visual_random(blood[2]-blood[1]+1) - 1
+				end
+				level:add_blood( p, blood )
 			end
 			if tile_entry.deco then
 				level:set_raw_deco( p, tile_entry.deco )
@@ -278,6 +289,49 @@ function generator.scatter_put(scatter_area,code,tile,good,count)
 	until count == 0 or tries == 0
 end
 
+function generator.scatter_tiles( settings, amount )
+	assert( settings and #settings > 0, "no tiles for scatter_tiles!" )
+	amount = core.resolve_range( amount or settings.amount or 1 )
+	if amount <= 0 then return end
+	local style = generator.styles[ level.style ]
+	local floor_cell = settings.floor_cell or style.floor
+	local translation = {
+		["X"] = 0,
+		["#"] = style.wall,
+		["."] = style.floor,
+		["+"] = style.door,
+	}
+	for k,v in pairs( settings.trans or {} ) do translation[k] = v end
+	local pure_translation = generator.create_translation( translation )
+
+	local tiles = {}
+	for _,block in ipairs( settings ) do
+		tiles[ #tiles + 1 ] = generator.tile_new( level, block, pure_translation, true )
+	end
+
+	while amount > 0 and #tiles > 0 do
+		local index = math.random( #tiles )
+		local tile = tiles[ index ]
+		if not settings.no_flip then
+			tile:flip_random()
+		end
+		local tile_size = tile:get_size_coord()
+		local placed = false
+		for i = 1, 100 do
+			local c = area.FULL_SHRINKED:random_coord()
+			if level:scan( area( c, c + tile_size - coord.UNIT ), floor_cell ) then
+				generator.place_dungen_tile( translation, tile, c )
+				amount = amount - 1
+				placed = true
+				break
+			end
+		end
+		if not placed then
+			table.remove( tiles, index )
+		end
+	end
+end
+
 function generator.safe_empty_coord( a )
 	local result = level:random_empty_coord({ EF_NOBEINGS, EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM, EF_NOSPAWN, EF_NOLIQUID, EF_NOSAFE }, a )
 	if not result then
@@ -310,18 +364,6 @@ function generator.set_permanence( ar, val, tile )
 				level:set_light_flag( c, LFPERMANENT, val )
 			end
 		end
-	end
-end
-
-function generator.set_blood( ar, val, tile )
-	if type(val) ~= "boolean" then val = true end
-	if tile then
-		tile = cells[ tile ].nid
-		for c in level:each( tile, ar ) do
-			level:set_light_flag( c, LFBLOOD, val )
-		end
-	else
-		level:set_light_flag( ar, LFBLOOD, true )
 	end
 end
 
@@ -1002,6 +1044,15 @@ function generator.remove_needless_doors()
 	end
 end
 
+-- Places a copy of the item at c1 on c2, keeping its amount (for example
+-- difficulty-scaled ammo).
+function generator.mirror_item( c1, c2 )
+	local item = level:get_item( c1 )
+	if not item then return end
+	local copy = level:drop_item( item.id, c2 )
+	if copy then copy.amount = item.amount end
+end
+
 function generator.mirror_horizontally( y_value, x_start )
 	core.log("generator.mirror_horizontally()")
 	local x_start = x_start or 1
@@ -1010,10 +1061,7 @@ function generator.mirror_horizontally( y_value, x_start )
 			local c1 = coord( x, y )
 			local c2 = coord( x, 2 * y_value - y )
 			level:set_cell( c2, level:get_cell( c1 ) )
-			local item = level:get_item( c1 )
-			if item then
-				level:drop_item( item.id, c2 )
-			end
+			generator.mirror_item( c1, c2 )
 			level:copy_lflags( c1, c2 )
 		end
 	end
@@ -1027,10 +1075,8 @@ function generator.mirror_vertically( x_value, y_start )
 			local c1 = coord( x, y )
 			local c2 = coord( 2 * x_value - x, y )
 			level:set_cell( c2, level:get_cell( c1 ) )
-			local item = level:get_item( c1 )
-			if item then
-				level:drop_item( item.id, c2 )
-			end
+			generator.mirror_item( c1, c2 )
+			level:copy_lflags( c1, c2 )
 		end
 	end
 end

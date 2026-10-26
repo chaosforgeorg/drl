@@ -51,40 +51,10 @@ core.register_blueprint "trait"
 	author          = { false, core.TSTRING },
 	master          = { false, core.TBOOL,   false },
 	abbr            = { true,  core.TSTRING },
+	perks           = { false, core.TARRAY( core.TSTRING ) },
+	runtime         = { false, core.TTABLE },
 
-	OnPick          = { false, core.TFUNC },
-	OnAttacked      = { false, core.TFUNC },
-	OnPreAction     = { false, core.TFUNC },
-	OnPostAction    = { false, core.TFUNC },
-	OnDie           = { false, core.TFUNC },
-	OnDieCheck      = { false, core.TFUNC },
-	OnUseActive     = { false, core.TFUNC },
-	OnPickupItem    = { false, core.TFUNC },
-	OnPostMove      = { false, core.TFUNC },
-	OnKill          = { false, core.TFUNC },
-	OnFire          = { false, core.TFUNC },
-	OnFired         = { false, core.TFUNC },
-	OnDamage        = { false, core.TFUNC },
-	OnTick          = { false, core.TFUNC },
-	OnReceiveDamage = { false, core.TFUNC },
-	OnEnterLevel    = { false, core.TFUNC },
-	OnCanDualWield  = { false, core.TFUNC },
-	OnCanMaxDamage  = { false, core.TFUNC },
-
-	getDamageBonus   = { false, core.TFUNC },
-	getToHitBonus    = { false, core.TFUNC },
-	getShotsBonus    = { false, core.TFUNC },
-	getFireCostBonus = { false, core.TFUNC },
-	getDefenceBonus  = { false, core.TFUNC },
-	getDodgeBonus    = { false, core.TFUNC },
-	getMoveBonus     = { false, core.TFUNC },
-	getBodyBonus     = { false, core.TFUNC },
-	getResistBonus   = { false, core.TFUNC },
-	getDamageMul     = { false, core.TFUNC },
-	getFireCostMul   = { false, core.TFUNC },
-	getAmmoCostMul   = { false, core.TFUNC },
-	getReloadCostMul = { false, core.TFUNC },
-	getGibMul        = { false, core.TFUNC },
+	OnPick          = { false, core.TFUNC }, -- each rank gained
 }
 
 core.register_blueprint "klass_trait"
@@ -107,11 +77,22 @@ core.register_blueprint "klass"
 	char        = { true,  core.TSTRING },
 	desc        = { true,  core.TSTRING },
 	hidden      = { false, core.TBOOL, false },
+	available   = { false, core.TBOOL, true }, -- selectable in the klass menu
 	traits      = { true,  core.TARRAY("klass_trait") },
-	core_trait  = { false, core.TIDIN("traits") },
+	perks       = { false, core.TARRAY( core.TSTRING ) },
+	runtime     = { false, core.TTABLE },
 
-	OnPick      = { false,  core.TFUNC },
-	OnUseActive = { false,  core.TFUNC },
+	OnCreate    = { false,  core.TFUNC },
+}
+
+core.register_blueprint "requirements"
+{
+	winonly    = { false, core.TBOOL },
+	challenge  = { false, core.TSTRING },
+	difficulty = { false, core.TNUMBER },
+	kills      = { false, core.TNUMBER },
+	trait      = { false, core.TNUMBER },
+	condition  = { false, core.TFUNC },
 }
 
 core.register_blueprint "medal"
@@ -120,22 +101,22 @@ core.register_blueprint "medal"
 	name      = { true,  core.TSTRING },
 	desc      = { true,  core.TSTRING },
 	score     = { false, core.TNUMBER, 0 },
-	winonly   = { false, core.TBOOL,   false },
 	hidden    = { false, core.TBOOL,   false },
 	removes   = { false, core.TARRAY( core.TIDIN("medals") ) },
-	condition = { false, core.TFUNC },
+	requirements = { false, "requirements" },
 }
 
 core.register_blueprint "badge"
 {
-	id          = { true,  core.TSTRING },
-	name        = { true,  core.TSTRING },
-	desc        = { true,  core.TSTRING },
-	level       = { true,  core.TNUMBER },
-	set         = { false, core.TSTRING, "" },
-	klass       = { false, core.TSTRING, "" },
-	achievement = { false, core.TSTRING, "" },
-	condition   = { false, core.TFUNC },
+	id           = { true,  core.TSTRING },
+	name         = { true,  core.TSTRING },
+	desc         = { true,  core.TSTRING },
+	level        = { true,  core.TNUMBER },
+	set          = { false, core.TSTRING, "" },
+	klass        = { false, core.TSTRING, "" },
+	achievement  = { false, core.TSTRING, "" },
+	challenge    = { false, core.TIDIN( "chal" ), "" },
+	requirements = { false, "requirements" },
 }
 
 core.register_blueprint "award_level"
@@ -157,7 +138,7 @@ core.register_blueprint "perk"
 {
 	id             = { true,  core.TSTRING },
 	name           = { false, core.TSTRING, "" },
-	short          = { false, core.TSTRING, "" },
+	label          = { false, core.TSTRING, "" },
 	desc 		   = { false, core.TSTRING, "" },
 	color          = { false, core.TNUMBER },
 	color_expire   = { false, core.TNUMBER },
@@ -168,57 +149,79 @@ core.register_blueprint "perk"
 	weight         = { false, core.TNUMBER, 0 },
 	min_lev        = { false, core.TNUMBER, 0 },
 	min_diff       = { false, core.TNUMBER, 0 },
+	ordered        = { false, core.TBOOL, false }, -- dispatch in registration order; set for trait runtimes
 
-	OnAdd          = { false, core.TFUNC },
-	OnTick         = { false, core.TFUNC },
-	OnTick10       = { false, core.TFUNC },
-	OnRemove       = { false, core.TFUNC },
-	OnDescribe     = { false, core.TFUNC },
-	OnShort        = { false, core.TFUNC },
+	-- TODO: decide whether to keep this (add bleeding etc) 
+	-- or change to different mechanism
+	OnApplyCheck   = { false, core.TFUNC }, -- being:apply_timed_perk
+	matches_item   = { false, core.TFUNC }, -- item perk generation
 
-	getDamageBonus   = { false, core.TFUNC },
-	getToHitBonus    = { false, core.TFUNC },
-	getShotsBonus    = { false, core.TFUNC },
-	getFireCostBonus = { false, core.TFUNC },
-	getDefenceBonus  = { false, core.TFUNC },
-	getDodgeBonus    = { false, core.TFUNC },
-	getMoveBonus     = { false, core.TFUNC },
-	getBodyBonus     = { false, core.TFUNC },
-	getResistBonus   = { false, core.TFUNC },
-	getDamageMul     = { false, core.TFUNC },
-	getFireCostMul   = { false, core.TFUNC },
-	getAmmoCostMul   = { false, core.TFUNC },
-	getReloadCostMul = { false, core.TFUNC },
-	getGibMul        = { false, core.TFUNC },
+	-- Native dispatch owners; Being includes Player unless noted.
+	-- Item includes hooks forwarded to equipped items by Player.
+	OnAdd          = { false, core.TFUNC }, -- Level, Being, Item
+	OnTick         = { false, core.TFUNC }, -- Level, Being, Item
+	OnTick10       = { false, core.TFUNC }, -- Level, Being, Item
+	OnRemove       = { false, core.TFUNC }, -- Level, Being, Item
+	getGroundDesc  = { false, core.TFUNC }, -- Item
+	getLabel       = { false, core.TFUNC }, -- Level, Being, Item
+	getDescription = { false, core.TFUNC }, -- Level, Being, Item
 
-	OnPickup       = { false, core.TFUNC },
-	OnDrop         = { false, core.TFUNC },
-	OnFirstPickup  = { false, core.TFUNC },
-	OnPickupCheck  = { false, core.TFUNC },
-	OnUse          = { false, core.TFUNC },
-	OnUseCheck     = { false, core.TFUNC },
-	OnPreReload    = { false, core.TFUNC },
-	OnReload       = { false, core.TFUNC },
-	OnAltFire      = { false, core.TFUNC },
-	OnAltReload    = { false, core.TFUNC },
-	OnEquipCheck   = { false, core.TFUNC },
-	OnPreAction    = { false, core.TFUNC },
-	OnPostAction   = { false, core.TFUNC },
-	OnKill         = { false, core.TFUNC },
-	OnHitBeing     = { false, core.TFUNC },
-	OnEnter        = { false, core.TFUNC },
-	OnEnterLevel   = { false, core.TFUNC },
-	OnFired        = { false, core.TFUNC },
-	OnFire         = { false, core.TFUNC },
-	OnPostMove     = { false, core.TFUNC },
-	OnDamage       = { false, core.TFUNC },
-	OnDieCheck     = { false, core.TFUNC },
-	OnCanMaxDamage = { false, core.TFUNC },
-	OnReceiveDamage= { false, core.TFUNC },
-	OnUnequipCheck = { false, core.TFUNC },
-	OnEquip        = { false, core.TFUNC },
-	OnUnequip      = { false, core.TFUNC },
-	OnDie          = { false, core.TFUNC }, -- double check if working
+	getDamageBonus   = { false, core.TFUNC }, -- Being, Item
+	getToHitBonus    = { false, core.TFUNC }, -- Being, Item
+	getShotsBonus    = { false, core.TFUNC }, -- Being, Item
+	getFireCostBonus = { false, core.TFUNC }, -- Being, Item
+	getDefenceBonus  = { false, core.TFUNC }, -- Being, Item
+	getDodgeBonus    = { false, core.TFUNC }, -- Being, Item
+	getMoveBonus     = { false, core.TFUNC }, -- Being, Item
+	getBodyBonus     = { false, core.TFUNC }, -- Being, Item
+	getResistBonus   = { false, core.TFUNC }, -- Being, Item
+	getDamageMul     = { false, core.TFUNC }, -- Being, Item
+	getFireCostMul   = { false, core.TFUNC }, -- Being, Item
+	getAmmoCostMul   = { false, core.TFUNC }, -- Being, Item
+	getReloadCostMul = { false, core.TFUNC }, -- Being, Item
+	getGibMul        = { false, core.TFUNC }, -- Being, Item
+
+	OnPickup       = { false, core.TFUNC }, -- Being, Item
+	OnDrop         = { false, core.TFUNC }, -- Item
+	OnAction       = { false, core.TFUNC }, -- Being
+	OnAct          = { false, core.TFUNC }, -- Being, Item
+	OnCanAct       = { false, core.TFUNC }, -- Being
+	OnDestroy      = { false, core.TFUNC }, -- Item
+	OnPickupCheck  = { false, core.TFUNC }, -- Being, Item
+	OnUse          = { false, core.TFUNC }, -- Item
+	OnUseCheck     = { false, core.TFUNC }, -- Being, Item
+	OnPreReload    = { false, core.TFUNC }, -- Item
+	OnReload       = { false, core.TFUNC }, -- Item
+	OnAltFire      = { false, core.TFUNC }, -- Item
+	OnAltReload    = { false, core.TFUNC }, -- Item
+	OnEquipCheck   = { false, core.TFUNC }, -- Item
+	OnPreAction    = { false, core.TFUNC }, -- Being, Item
+	OnPostAction   = { false, core.TFUNC }, -- Being, Item
+	OnKill         = { false, core.TFUNC }, -- Level, Being, Item
+	OnKillAll      = { false, core.TFUNC }, -- Level
+	OnCreateBeing  = { false, core.TFUNC }, -- Level
+	OnExitLevel    = { false, core.TFUNC }, -- Level, Player, Item
+	OnPreLevelUp   = { false, core.TFUNC }, -- Player
+	OnUseActive    = { false, core.TFUNC }, -- Player
+	OnActiveUsed   = { false, core.TFUNC }, -- Player
+	OnLevelUp      = { false, core.TFUNC }, -- Player, Item
+	OnNuked        = { false, core.TFUNC }, -- Level
+	OnHitBeing     = { false, core.TFUNC }, -- Item
+	OnEnter        = { false, core.TFUNC }, -- Item
+	OnEnterLevel   = { false, core.TFUNC }, -- Level, Player, Item
+	OnFired        = { false, core.TFUNC }, -- Being, Item
+	OnFire         = { false, core.TFUNC }, -- Being, Item
+	OnPostMove     = { false, core.TFUNC }, -- Being, Item
+	OnDamage       = { false, core.TFUNC }, -- Being, Item
+	OnDieCheck     = { false, core.TFUNC }, -- Being, Item
+	OnCanMaxDamage = { false, core.TFUNC }, -- Being, Item
+	OnCanDualWield = { false, core.TFUNC }, -- Player
+	OnReceiveDamage= { false, core.TFUNC }, -- Being, Item
+	OnDamageReceived = { false, core.TFUNC }, -- Being, Item: HP lost, source, attacker, damage type
+	OnUnequipCheck = { false, core.TFUNC }, -- Item
+	OnEquip        = { false, core.TFUNC }, -- Item
+	OnUnequip      = { false, core.TFUNC }, -- Item
+	OnDie          = { false, core.TFUNC }, -- Being (except Player)
 }
 
 core.register_blueprint "ai"
@@ -226,6 +229,7 @@ core.register_blueprint "ai"
 	id          = { true,  core.TSTRING },
 	states      = { true,  core.TMAP( core.TSTRING, core.TFUNC ) },
 	funcs       = { false, core.TMAP( core.TSTRING, core.TFUNC ), {} },
+	perks       = { false, core.TARRAY( core.TSTRING ) },
 
 	OnCreate    = { true,  core.TFUNC },
 	OnAttacked  = { true,  core.TFUNC },
@@ -237,6 +241,7 @@ core.register_blueprint "being"
 	name        = { true,  core.TSTRING },
 	name_plural = { false, core.TSTRING },
 	id          = { false, core.TSTRING },
+	blueprint   = { false, core.TBLUEPRINT },
 	sound_id    = { false, core.TIDIN("beings") },
 	ascii       = { true,  core.TSTRING },
 	color       = { true,  core.TNUMBER },
@@ -270,45 +275,20 @@ core.register_blueprint "being"
 	ai_type     = { true,  core.TSTRING }, -- TIDIN("ais")
 	ai_group    = { false, core.TSTRING, "demon" },
 	is_group    = false,
+	properties  = { false, core.TTABLE },
+	perks       = { false, core.TARRAY( core.TSTRING ) },
+	runtime     = { false, core.TTABLE },
 	resist      = { false, core.TTABLE },
 
 	desc            = { true,  core.TSTRING },
 	kill_desc       = { false, core.TSTRING },
 	kill_desc_melee = { false, core.TSTRING },
+	death_desc      = { false, core.TSTRING, "%s dies." },
+	death_oov_desc  = { false, core.TSTRING, "You hear the scream of a freed soul!" },
 
 	weapon = { false, core.TANY },
 
 	OnCreate        = { false, core.TFUNC },
-	OnPreAction     = { false, core.TFUNC },
-	OnAction        = { false, core.TFUNC },
-	OnPostAction    = { false, core.TFUNC },
-	OnAttacked      = { false, core.TFUNC },
-	OnKill          = { false, core.TFUNC },
-	OnDie           = { false, core.TFUNC },
-	OnDieCheck      = { false, core.TFUNC },
-	OnPickupItem    = { false, core.TFUNC },
-	OnUseActive     = { false, core.TFUNC },
-	OnPostMove      = { false, core.TFUNC },
-	OnDamage        = { false, core.TFUNC },
-	OnTick          = { false, core.TFUNC },
-	OnAct           = { false, core.TFUNC },
-	OnCanAct        = { false, core.TFUNC },
-	OnReceiveDamage = { false, core.TFUNC },
-	OnEnterLevel    = { false, core.TFUNC },
-
-	getDamageBonus   = { false, core.TFUNC },
-	getToHitBonus    = { false, core.TFUNC },
-	getShotsBonus    = { false, core.TFUNC },
-	getFireCostBonus = { false, core.TFUNC },
-	getDefenceBonus  = { false, core.TFUNC },
-	getDodgeBonus    = { false, core.TFUNC },
-	getMoveBonus     = { false, core.TFUNC },
-	getBodyBonus     = { false, core.TFUNC },
-	getResistBonus   = { false, core.TFUNC },
-	getDamageMul     = { false, core.TFUNC },
-	getFireCostMul   = { false, core.TFUNC },
-	getAmmoCostMul   = { false, core.TFUNC },
-	getReloadCostMul = { false, core.TFUNC },
 }
 
 core.register_blueprint "being_group_entry"
@@ -338,7 +318,6 @@ core.register_blueprint "cell"
 	sprite     = { true,  core.TANY },
 	sprites    = { false, core.TANY },
 	deco       = { false, core.TANY },
-	blsprite   = { false, core.TNUMBER },
 	sflags     = { false, core.TFLAGS },
 	sframes    = { false, core.TNUMBER, 0 },
 	sftime     = { false, core.TNUMBER, FRAME_TIME },
@@ -353,15 +332,17 @@ core.register_blueprint "cell"
 	destroyto  = { false, core.TIDIN("cells"), "" },
 	raiseto    = { false, core.TIDIN("beings"), "" },
 	hp         = { false, core.TNUMBER },
+	affected_by = { false, core.TNUMBER, DAMAGE_NONE },
 	set        = { false, core.TNUMBER },
 	move_cost  = { false, core.TNUMBER, 1.0 },
 
 	OnEnter       = { false, core.TFUNC },
 	OnExit        = { false, core.TFUNC },
 	OnAct         = { false, core.TFUNC },
-	OnDescribe    = { false, core.TFUNC },
 	OnDestroy     = { false, core.TFUNC },
 	OnHazardQuery = { false, core.TFUNC },
+	
+	getGroundDesc = { false, core.TFUNC },
 }
 
 core.register_blueprint "challenge"
@@ -377,8 +358,11 @@ core.register_blueprint "challenge"
 	removemedals  = { false, core.TARRAY( core.TIDIN("medals") ) },
 	win_mortem    = { false, core.TSTRING },
 	win_highscore = { false, core.TSTRING },
+	secondary     = { false, core.TTABLE },
+	runtime       = { false, core.TTABLE },
+	level_runtime = { false, core.TTABLE },
+	perks         = { false, core.TARRAY( core.TSTRING ) },
 
-	secondary          = { false, core.TTABLE },
 	arch_name          = { false, core.TSTRING },
 	arch_description   = { false, core.TSTRING },
 	arch_rating        = { false, core.TSTRING },
@@ -386,31 +370,11 @@ core.register_blueprint "challenge"
 	arch_win_mortem    = { false, core.TSTRING },
     arch_win_highscore = { false, core.TSTRING },
 
-	OnCreate         = { false, core.TFUNC },
-	OnDie            = { false, core.TFUNC },
-	OnDieCheck       = { false, core.TFUNC },
-	OnPickup         = { false, core.TFUNC },
-	OnPickupCheck    = { false, core.TFUNC },
-	OnUse            = { false, core.TFUNC },
-	OnUseCheck       = { false, core.TFUNC },
-	OnKill           = { false, core.TFUNC },
-	OnKillAll        = { false, core.TFUNC },
-	OnEnterLevel     = { false, core.TFUNC },
-	OnFired          = { false, core.TFUNC },
-	OnExit           = { false, core.TFUNC },
-	OnTick           = { false, core.TFUNC },
-	OnLoad           = { false, core.TFUNC },
-	OnLoaded         = { false, core.TFUNC },
-	OnUnLoad         = { false, core.TFUNC },
+	OnCreateLevel    = { false, core.TFUNC },
+	OnRegister       = { false, core.TFUNC },
 	OnCreatePlayer   = { false, core.TFUNC },
-	OnLevelUp        = { false, core.TFUNC },
-	OnPreLevelUp     = { false, core.TFUNC },
 	OnWinGame        = { false, core.TFUNC },
-	OnMortem         = { false, core.TFUNC },
-	OnMortemPrint    = { false, core.TFUNC },
-	OnCreateEpisode  = { false, core.TFUNC },
-	OnIntro          = { false, core.TFUNC },
-	OnGenerate       = { false, core.TFUNC },
+	OnCreateWorld    = { false, core.TFUNC },
 }
 
 core.register_blueprint "mod_array"
@@ -447,8 +411,10 @@ core.register_blueprint "item"
 	set            = { false, core.TIDIN("itemsets") },
 	flags          = { false, core.TFLAGS, {} },
 	firstmsg       = { false, core.TSTRING },
+	properties     = { false, core.TTABLE },
 	resist         = { false, core.TTABLE },
 	tags           = { false, core.TTABLE, {} },
+	req_tag        = { false, core.TSTRING },
 	max            = { false, core.TNUMBER, 1 },
     amount         = { false, core.TNUMBER, 1 },
 	movemod        = { false, core.TNUMBER, 0 },
@@ -482,24 +448,17 @@ core.register_blueprint "item"
 			dis_exotic = { false, core.TBOOLEAN, false },
 			dis_unique = { false, core.TBOOLEAN, false },
 			dis_other  = { false, core.TBOOLEAN, false },
-			OnUse      = { false, core.TFUNC },
 
-			OnModDescribe = { false, core.TFUNC },
+			getModDescription = { false, core.TFUNC },
 		},
 		[ITEMTYPE_POWER]   = {
 			ascii    = { false, core.TSTRING, "^" },
 			slevel   = { false, core.TNUMBER },
-			OnPickup = { true, core.TFUNC },
-			OnEnter  = { false, core.TFUNC },
 		},
 		[ITEMTYPE_RELIC]   = {
 			ascii         = { false, core.TSTRING, "^" },
 			desc          = { false, core.TSTRING },
 			perk_id       = { false, core.TIDIN("perks") },
-			OnPickup      = { false, core.TFUNC },
-			OnPickupCheck = { false, core.TFUNC },
-			OnUnequipCheck= { false, core.TFUNC },
-			OnEnter       = { false, core.TFUNC },
 		},
 		[ITEMTYPE_AMMO]   = {
 			ascii   = { false, core.TSTRING, "|" },
@@ -630,29 +589,21 @@ core.register_blueprint "item"
 			desc       = { true,  core.TSTRING },
 			warning    = { false, core.TSTRING },
 			fullchance = { false, core.TNUMBER },
-
-			OnDescribe = { false, core.TFUNC },
 		},
 		[ITEMTYPE_TELE] = {
 			ascii   = { false, core.TSTRING, "*" },
-			OnEnter = { true, core.TFUNC },
 		},
 		[ITEMTYPE_FEATURE] = {
 			ascii     = { false, core.TSTRING, "*" },
 			armor     = { false, core.TNUMBER },
 			hp        = { false, core.TNUMBER },
-			OnDestroy = { false, core.TFUNC },
-			OnAct     = { false, core.TFUNC },
 		},
 	}},
 
+	perks          = { false, core.TARRAY( core.TSTRING ) },
+	runtime        = { false, core.TTABLE },
+
 	OnCreate       = { false, core.TFUNC },
-	OnPickup       = { false, core.TFUNC },
-	OnFirstPickup  = { false, core.TFUNC },
-	OnUse          = { false, core.TFUNC },
-	OnUseCheck     = { false, core.TFUNC },
-	OnEquip        = { false, core.TFUNC },
-	OnUnequip      = { false, core.TFUNC },
 }
 
 core.register_blueprint "itemset"
@@ -674,25 +625,13 @@ core.register_blueprint "level"
 	entry         = { false, core.TSTRING },
 	welcome       = { false, core.TSTRING },
 	level         = { false, core.TANY },
+	runtime       = { false, core.TTABLE },
+	perks         = { false, core.TARRAY( core.TSTRING ) },
 
 	Create           = { true,  core.TFUNC },
 	canGenerate      = { false, core.TFUNC },
 	OnRegister       = { false, core.TFUNC },
 
-	OnCreate         = { false, core.TFUNC },
-	OnDie            = { false, core.TFUNC },
-	OnDieCheck       = { false, core.TFUNC },
-	OnPickup         = { false, core.TFUNC },
-	OnPickupCheck    = { false, core.TFUNC },
-	OnUse            = { false, core.TFUNC },
-	OnUseCheck       = { false, core.TFUNC },
-	OnKill           = { false, core.TFUNC },
-	OnKillAll        = { false, core.TFUNC },
-	OnEnterLevel     = { false, core.TFUNC },
-	OnFired          = { false, core.TFUNC },
-	OnExit           = { false, core.TFUNC },
-	OnTick           = { false, core.TFUNC },
-	OnNuked          = { false, core.TFUNC },
 }
 
 core.register_blueprint "room"
@@ -736,4 +675,3 @@ core.register_blueprint "emitter"
 	looping         = { false, core.TBOOL, false },
 	attached        = { false, core.TBOOL, false },
 }
-

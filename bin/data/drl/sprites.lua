@@ -1,19 +1,19 @@
 function drl.register_sprites()
-    core.texture_upload( "logo",          true )
-    core.texture_upload( "background",    true )
-    core.texture_upload( "low_life_glow", true )
-    core.texture_upload( "lut_clear",     true, true )
-    core.texture_upload( "lut_iddqd",     true, true )
-    core.texture_upload( "lut_enviro",    true, true )
-    core.texture_upload( "lut_berserk",   true, true )
+    ui.texture_upload( "logo",          true )
+    ui.texture_upload( "background",    true )
+    ui.texture_upload( "low_life_glow", true )
+    ui.texture_upload( "lut_clear",     true, true )
+    ui.texture_upload( "lut_iddqd",     true, true )
+    ui.texture_upload( "lut_enviro",    true, true )
+    ui.texture_upload( "lut_berserk",   true, true )
 
-    local DRL_SENVIRO = core.register_sprite_sheet( "levels", "levels_mask", nil, "levels_emissive", 0 )
-    local DRL_SDOODAD = core.register_sprite_sheet( "doors_and_decorations", "doors_and_decorations_mask", "doors_and_decorations_shadow", "doors_and_decorations_emissive",100 )
-    local DRL_SITEMS  = core.register_sprite_sheet( "guns_and_pickups", "guns_and_pickups_mask", "guns_and_pickups_shadow", "guns_and_pickups_emissive", 200 )
-    local DRL_SBEINGS = core.register_sprite_sheet( "enemies", nil, "enemies_shadow", "enemies_emissive", 300 )
-    local DRL_SPLAYER = core.register_sprite_sheet( "dguy", "dguy_mask", "dguy_shadow", "dguy_emissive", 300 )
-    local DRL_SLARGE  = core.register_sprite_sheet( "enemies_big", nil, "enemies_big_shadow", "enemies_big_emissive", 500 )
-    local DRL_SFX     = core.register_sprite_sheet( "fx", "fx_mask", nil, "fx_emissive", 1000 )
+    local DRL_SENVIRO = ui.register_sprite_sheet( "levels", "levels_mask", nil, "levels_emissive", 0, true ) -- procedural transitions
+    local DRL_SDOODAD = ui.register_sprite_sheet( "doors_and_decorations", "doors_and_decorations_mask", "doors_and_decorations_shadow", "doors_and_decorations_emissive",100 )
+    local DRL_SITEMS  = ui.register_sprite_sheet( "guns_and_pickups", "guns_and_pickups_mask", "guns_and_pickups_shadow", "guns_and_pickups_emissive", 200 )
+    local DRL_SBEINGS = ui.register_sprite_sheet( "enemies", nil, "enemies_shadow", "enemies_emissive", 300 )
+    local DRL_SPLAYER = ui.register_sprite_sheet( "dguy", "dguy_mask", "dguy_shadow", "dguy_emissive", 300 )
+    local DRL_SLARGE  = ui.register_sprite_sheet( "enemies_big", nil, "enemies_big_shadow", "enemies_big_emissive", 500 )
+    local DRL_SFX     = ui.register_sprite_sheet( "fx", "fx_mask", nil, "fx_emissive", 1000 )
 
     core.declare( "SPRITE_PLAYER",          DRL_SPLAYER + 1 )
     core.declare( "SPRITE_PLAYER_KNIFE",    DRL_SPLAYER + 2 )
@@ -162,10 +162,20 @@ function drl.register_sprites()
     core.declare( "SPRITE_PORTAL",       DRL_SDOODAD + DRL_COLS * 7 + 3 )
     core.declare( "SPRITE_TELEPORT",     DRL_SDOODAD + DRL_COLS * 7 + 4 )
     core.declare( "SPRITE_LEVER",        DRL_SDOODAD + DRL_COLS * 7 + 5 )
-    core.declare( "SPRITE_BLOOD",        DRL_SDOODAD + DRL_COLS * 7 + 6 )
     core.declare( "SPRITE_BLOODPOOL",    DRL_SDOODAD + DRL_COLS * 7 + 7 )
     core.declare( "SPRITE_CORPSE",       DRL_SDOODAD + DRL_COLS * 7 + 8 )
-    core.declare( "SPRITE_WALLBLOOD",    DRL_SDOODAD + DRL_COLS * 7 + 9 )
+
+    core.declare( "SPRITE_DECAL_BLOOD_1",      DRL_SDOODAD + DRL_COLS*7  + 11)
+    core.declare( "SPRITE_DECAL_BLOOD_2",      DRL_SDOODAD + DRL_COLS*8  + 11)
+    core.declare( "SPRITE_DECAL_BLOOD_3",      DRL_SDOODAD + DRL_COLS*7  + 12)
+    core.declare( "SPRITE_DECAL_BLOOD_4",      DRL_SDOODAD + DRL_COLS*8  + 12)
+
+    core.declare( "SPRITE_DECAL_WALL_BLOOD_1", DRL_SDOODAD + DRL_COLS*7 + 13)
+    core.declare( "SPRITE_DECAL_WALL_BLOOD_2", DRL_SDOODAD + DRL_COLS*8 + 13)
+    core.declare( "SPRITE_DECAL_WALL_BLOOD_3", DRL_SDOODAD + DRL_COLS*7 + 14)
+    core.declare( "SPRITE_DECAL_WALL_BLOOD_4", DRL_SDOODAD + DRL_COLS*8 + 14)
+
+    core.declare( "SPRITE_PARTICLE_BLOOD",     DRL_SDOODAD + DRL_COLS*7 + 15)
 
     --
     core.declare( "SPRITE_FLOOR",      DRL_SENVIRO + 1 )
@@ -212,11 +222,35 @@ function drl.register_sprites()
     core.declare( "SPRITE_DECO_SKULL_3", DRL_SENVIRO + DRL_COLS * 14 + 16 )
     core.declare( "SPRITE_DECO_SKULL_4", DRL_SENVIRO + DRL_COLS * 15 + 16 )
 
-	core.declare( "HARDSPRITE_HIGHLIGHT", SPRITE_SELECT )
-	core.declare( "HARDSPRITE_EXPL",      SPRITE_EXPLOSION )
-	core.declare( "HARDSPRITE_SELECT",    SPRITE_SELECT )
-	core.declare( "HARDSPRITE_MARK",      SPRITE_MARK )
-	core.declare( "HARDSPRITE_GRID",      SPRITE_GRID )
-	core.declare( "HARDSPRITE_SHIELD",    SPRITE_MARK )
-   	core.declare( "HARDSPRITE_SHIELD_COUNT", 1 )
+	-- What the engine draws by itself; blood_emitter names an emitter by ID.
+	ui.engine_sprites = {
+		highlight         = SPRITE_SELECT,
+		select            = SPRITE_SELECT,
+		mark              = SPRITE_MARK,
+		grid              = SPRITE_GRID,
+		explosion         = SPRITE_EXPLOSION,
+		shield            = { sprite = SPRITE_MARK, frames = 1 },
+		blood_decals      = { SPRITE_DECAL_BLOOD_1, SPRITE_DECAL_BLOOD_2, SPRITE_DECAL_BLOOD_3, SPRITE_DECAL_BLOOD_4 },
+		wall_blood_decals = { SPRITE_DECAL_WALL_BLOOD_1, SPRITE_DECAL_WALL_BLOOD_2, SPRITE_DECAL_WALL_BLOOD_3, SPRITE_DECAL_WALL_BLOOD_4 },
+		blood_emitter     = "emit_blood_hit",
+	}
+
+    register_emitter "emit_blood_hit"
+    {
+        shape        = "point",
+        offset       = { 0, 0, 6 },
+        direction    = { 0, 0, 0.9 },
+        spread_angle = 25,
+        speed        = { 160, 320 },
+        accel        = { 0, 0, -1920 },
+        lifetime     = { 1.5, 1.5 },
+        rotation     = { 0, 360 },
+        rot_speed    = { -180, 180 },
+        sprite       = SPRITE_PARTICLE_BLOOD,
+        anim_frames  = 4,
+        anim_ftime   = 0.05,
+        flags        = { PF_DECAL_ON_GROUND, PF_ROTATE, PF_RAND_OFFSET, PF_NO_EMISSIVE },
+    }
+
+
 end

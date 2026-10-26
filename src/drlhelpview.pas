@@ -6,10 +6,10 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlhelpview;
 interface
-uses vutil, viotypes, drlio, drlhelp, dfdata;
+uses vutil, viotypes, vlua, drlio, drlhelp, dfdata;
 
-type THelpView = class( TIOLayer )
-  constructor Create;
+type THelpView = class( TDRLLayer )
+  constructor Create( aLua : TLua; aHelp : THelp; const aModuleID : AnsiString );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
@@ -28,9 +28,9 @@ end;
 
 implementation
 
-uses sysutils, vtig, vluasystem;
+uses sysutils, vtig;
 
-constructor THelpView.Create;
+constructor THelpView.Create( aLua : TLua; aHelp : THelp; const aModuleID : AnsiString );
 var iTable : TLuaTable;
 begin
   VTIG_EventClear;
@@ -43,12 +43,12 @@ begin
   FList    := THelpArray.Create( False );
   FEntries := TStringGArray.Create;
 
-  if not LuaSystem.Defined([CoreModuleID,'help']) then Exit;
-  with LuaSystem.GetTable([CoreModuleID]) do
+  if not aLua.Defined([aModuleID,'help']) then Exit;
+  with aLua.GetTable([aModuleID]) do
   try
     for iTable in ITables('help') do
     begin
-      FList.Push( Help[iTable.GetValue(1)] );
+      FList.Push( aHelp[iTable.GetValue(1)] );
       FEntries.Push( iTable.GetValue(2) );
     end;
   finally
@@ -64,7 +64,7 @@ end;
 
 function THelpView.IsFinished : Boolean;
 begin
-  Exit( FMode = HELPVIEW_DONE );
+  Exit( inherited IsFinished or ( FMode = HELPVIEW_DONE ) );
 end;
 
 function THelpView.IsModal : Boolean;

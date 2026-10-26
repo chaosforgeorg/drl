@@ -6,8 +6,8 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlsettingsview;
 interface
-uses vio, viotypes, vioevent, vconfiguration, drlio, dfdata,
-     drlcontrollerbindings;
+uses vio, viotypes, vioevent, vconfiguration, vbindings, drlio, dfdata,
+     drlcontrollerbindings, drlconfiguration, drlbase;
 
 type TSettingsViewState = (
   SETTINGSVIEW_GENERAL,
@@ -22,6 +22,8 @@ type TSettingsViewState = (
   SETTINGSVIEW_KEYMULTIMOVE,
   SETTINGSVIEW_KEYHELPER,
   SETTINGSVIEW_KEYLEGACY,
+  SETTINGSVIEW_UIKEYBOARD,
+  SETTINGSVIEW_UICONTROLLER,
   SETTINGSVIEW_DONE
 );
 
@@ -31,29 +33,42 @@ const SETTINGSVIEW_KEYS : set of TSettingsViewState = [
   SETTINGSVIEW_KEYUI,
   SETTINGSVIEW_KEYMULTIMOVE,
   SETTINGSVIEW_KEYHELPER,
-  SETTINGSVIEW_KEYLEGACY
+  SETTINGSVIEW_KEYLEGACY,
+  SETTINGSVIEW_UIKEYBOARD
 ];
 
-type TSettingsView = class( TIOLayer )
-  constructor Create;
+// Longest text a string setting takes; the only one is a player name.
+const MaxTextEntry = MaxPlayerName;
+
+type TSettingsView = class( TDRLLayer )
+  constructor Create( aSession : TDRLSession );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
   function HandleEvent( const aEvent : TIOEvent ) : Boolean; override;
   destructor Destroy; override;
 protected
+  procedure Setup; override;
   procedure Reconfigure;
   procedure Reset( aGroup : TConfigurationGroup );
-  function KeyCapture( aValue : PInteger; aSelected : Boolean ) : Boolean;
-  procedure ControllerCapture( aAction   : TControllerAction; aSelected : Boolean );
+  procedure KeyCapture( aBindings : TBindingCatalog;
+    aAction : TBindingAction; aSelected : Boolean );
+  // The text entry window over the settings; closes on accept or cancel.
+  procedure OpenTextEntry( aEntry : TStringConfigurationEntry );
+  procedure UpdateTextEntry;
+  function CaptureControllerBindings : TControllerBindingCatalog;
+  procedure ControllerCapture( aBindings : TControllerBindingCatalog;
+    aAction : TBindingAction; aSelected : Boolean );
 protected
+  FSession             : TDRLSession; // Borrowed; the view is released before Session.
+  FUserConfig          : TDRLConfiguration; // The Session's user settings, edited here.
   FState               : TSettingsViewState;
   FSize                : TIOPoint;
   FWSize               : TIOPoint;
   FCapture             : Boolean;
   FKey                 : Word;
   FControllerCapture   : Boolean;
-  FControllerAction    : TControllerAction;
+  FControllerAction    : TBindingAction;
   FControllerButton    : TIOPadButton;
   FControllerCandidate : TIOPadButton;
   FControllerCancel    : Boolean;
@@ -68,12 +83,14 @@ protected
   FModCurrent          : Ansistring;
   FWarning             : Ansistring;
   FRestart             : Ansistring;
+  FTextEntry           : TStringConfigurationEntry; // Being edited; nil when no entry window is open.
+  FTextBuffer          : array[0..MaxTextEntry] of Char;
 end;
 
 implementation
 
 uses math, sysutils, vutil, vdebug, vtig, vtigio,
-     drlconfiguration, drlbase;
+     drluibindings;
 
 const CStates : array[ TSettingsViewState ] of record Title, ID : Ansistring; end = (
    ( Title : 'Settings'; ID : 'general' ),
@@ -88,10 +105,12 @@ const CStates : array[ TSettingsViewState ] of record Title, ID : Ansistring; en
    ( Title : 'Settings (Keybindings - Multi-move)'; ID : 'keybindings_running' ),
    ( Title : 'Settings (Keybindings - Helper)'; ID : 'keybindings_helper' ),
    ( Title : 'Settings (Keybindings - Legacy)'; ID : 'keybindings_legacy' ),
+   ( Title : 'Settings (UI bindings - Keyboard)'; ID : UI_KEY_BINDING_GROUP ),
+   ( Title : 'Settings (UI bindings - Controller)'; ID : UI_PAD_BINDING_GROUP ),
    ( Title : ''; ID : '' )
 );
 
-const CSub : array[ 1..11 ] of record State : TSettingsViewState; Select, Desc : Ansistring; end = (
+const CSub : array[ 1..13 ] of record State : TSettingsViewState; Select, Desc : Ansistring; end = (
   ( State : SETTINGSVIEW_DISPLAY;     Select : 'Display';                  Desc : 'Configure video and display options.' ),
   ( State : SETTINGSVIEW_AUDIO;       Select : 'Audio';                    Desc : 'Configure audio, music and sound options.' ),
   ( State : SETTINGSVIEW_GAMEPLAY;    Select : 'Gameplay';                 Desc : 'Configure gameplay options.' ),
@@ -102,13 +121,17 @@ const CSub : array[ 1..11 ] of record State : TSettingsViewState; Select, Desc :
   ( State : SETTINGSVIEW_KEYUI;       Select : 'Keybindings - UI';         Desc : 'Configure keybindings accessing UI elements (inventory, etc.).' ),
   ( State : SETTINGSVIEW_KEYMULTIMOVE;Select : 'Keybindings - Multi-move'; Desc : 'Configure keybindings for repeat movement.' ),
   ( State : SETTINGSVIEW_KEYHELPER;   Select : 'Keybindings - Helper';     Desc : 'Configure extra helper keybindings and quickslot keys.' ),
-  ( State : SETTINGSVIEW_KEYLEGACY;   Select : 'Keybindings - Legacy';     Desc : 'Keybindings that are no longer needed, but some may want them back.' )
+  ( State : SETTINGSVIEW_KEYLEGACY;   Select : 'Keybindings - Legacy';     Desc : 'Keybindings that are no longer needed, but some may want them back.' ),
+  ( State : SETTINGSVIEW_UIKEYBOARD;  Select : 'UI bindings - Keyboard';   Desc : 'Configure keyboard navigation shared by menus and dialogs.' ),
+  ( State : SETTINGSVIEW_UICONTROLLER;Select : 'UI bindings - Controller'; Desc : 'Configure controller navigation shared by menus and dialogs.' )
 );
 
-constructor TSettingsView.Create;
-var i, iCount : Integer;
+constructor TSettingsView.Create( aSession : TDRLSession );
+var i : Integer;
 begin
   inherited Create;
+  FSession := aSession;
+  FUserConfig := aSession.UserConfig;
   VTIG_EventClear;
   VTIG_ResetSelect( 'settings' );
   FSize  := Point( 80, 25 );
@@ -116,7 +139,7 @@ begin
 
   FCapture             := False;
   FControllerCapture   := False;
-  FControllerAction    := CONTROLLER_MOVE;
+  FControllerAction    := Ord( CONTROLLER_MOVE );
   FControllerButton    := VPAD_BUTTON_INVALID;
   FControllerCandidate := VPAD_BUTTON_INVALID;
   FControllerCancel    := False;
@@ -129,22 +152,12 @@ begin
   FRestart             := '';
 
 
-  if GraphicsVersion then
-  begin
-    iCount := Min( 17, IO.Driver.DisplayModes.Size );
-    SetLength( FResolutions, iCount + 1);
-    FResolutions[0] := 'Automatic';
-    for i := 1 to iCount do
-      with IO.Driver.DisplayModes[i-1] do
-        FResolutions[i] := IntToStr( Width ) + 'x' + IntToStr( Height )
-  end;
-
-  SetLength( FModules, DRL.Modules.CoreModules.Size + 1 );
-  FModCurrent := Configuration.GetString('default_module');
+  SetLength( FModules, FSession.Modules.CoreModules.Size + 1 );
+  FModCurrent := FUserConfig.GetString('default_module');
   FModules[0] := 'Ask on launch';
   FModValue := -1;
-  for i := 1 to DRL.Modules.CoreModules.Size do
-    with DRL.Modules.CoreModules[i-1] do
+  for i := 1 to FSession.Modules.CoreModules.Size do
+    with FSession.Modules.CoreModules[i-1] do
     begin
       if FModCurrent = ID then
         FModValue := i;
@@ -153,10 +166,23 @@ begin
   if FModCurrent = '' then FModValue := 0;
   if FModValue = -1 then
   begin
-    FModValue := DRL.Modules.CoreModules.Size + 1;
+    FModValue := FSession.Modules.CoreModules.Size + 1;
     SetLength( FModules, FModValue + 1 );
     FModules[FModValue] := FModCurrent+' (missing)';
   end;
+end;
+
+// The resolution list comes from the owning IO's display modes.
+procedure TSettingsView.Setup;
+var i, iCount : Integer;
+begin
+  if not GraphicsVersion then Exit;
+  iCount := Min( 17, IO.Driver.DisplayModes.Size );
+  SetLength( FResolutions, iCount + 1);
+  FResolutions[0] := 'Automatic';
+  for i := 1 to iCount do
+    with IO.Driver.DisplayModes[i-1] do
+      FResolutions[i] := IntToStr( Width ) + 'x' + IntToStr( Height )
 end;
 
 procedure TSettingsView.Update( aDTime : Integer; aActive : Boolean );
@@ -170,6 +196,7 @@ var iSelected : Integer;
     iHover    : TConfigurationEntry;
     iMode     : TIntegerConfigurationEntry;
     iAction   : TControllerAction;
+    iBindings : TBindingCatalog;
     i         : Integer;
     iRResult  : ( None, Cancel, Confirm );
 begin
@@ -207,11 +234,17 @@ begin
     begin
       if iRResult = Confirm then
       begin
-        ForceRestart := FRestart;
+        FSession.RequestRestart( FRestart );
         FState := SETTINGSVIEW_DONE;
       end;
       FRestart := '';
     end;
+    Exit;
+  end;
+
+  if FTextEntry <> nil then
+  begin
+    UpdateTextEntry;
     Exit;
   end;
 
@@ -220,9 +253,9 @@ begin
   iGroup := nil;
 
   if CStates[ FState ].ID <> '' then
-    iGroup := Configuration.Group[ CStates[ FState ].ID ];
+    iGroup := FUserConfig.Group[ CStates[ FState ].ID ];
 
-  iMode := Configuration.CastInteger( 'display_mode' );
+  iMode := FUserConfig.CastInteger( 'display_mode' );
 
   VTIG_BeginWindow( CStates[ FState ].Title, 'settings', FSize );
     VTIG_BeginGroup( 18, True );
@@ -241,6 +274,12 @@ begin
         for iAction in TControllerAction do
           if iAction in CONTROLLER_BINDING_MENU_ACTIONS then
             VTIG_Selectable( ControllerBindingInfo[ iAction ].Name );
+      end
+      else if FState = SETTINGSVIEW_UICONTROLLER then
+      begin
+        for iEntry in iGroup.Entries do
+          if iEntry.Name <> '' then
+            VTIG_Selectable( iEntry.Name );
       end
       else
       begin
@@ -272,21 +311,42 @@ begin
           for iAction in TControllerAction do
             if iAction in CONTROLLER_BINDING_MENU_ACTIONS then
             begin
-              ControllerCapture( iAction, iSelected = i );
+              ControllerCapture(
+                FUserConfig.ControllerBindings,
+                Ord( iAction ),
+                iSelected = i
+              );
               if iSelected = i then
-                iHover := Configuration.CastInteger(
+                iHover := FUserConfig.CastInteger(
                   ControllerBindingInfo[ iAction ].ID
                 );
               Inc( i );
             end;
         end
-        else if FState in SETTINGSVIEW_KEYS then
+        else if FState = SETTINGSVIEW_UICONTROLLER then
         begin
           for iEntry in iGroup.Entries do
             if iEntry.Name <> '' then
             begin
-              with iEntry as TIntegerConfigurationEntry do
-                KeyCapture( Access, iSelected = i );
+              ControllerCapture(
+                FUserConfig.UIControllerBindings,
+                UIPadBindingInfo[ i ].Action,
+                iSelected = i
+              );
+              if iSelected = i then iHover := iEntry;
+              Inc( i );
+            end;
+        end
+        else if FState in SETTINGSVIEW_KEYS then
+        begin
+          if FState = SETTINGSVIEW_UIKEYBOARD then
+            iBindings := FUserConfig.UIKeyBindings
+          else
+            iBindings := FUserConfig.KeyBindings;
+          for iEntry in iGroup.Entries do
+            if iEntry.Name <> '' then
+            begin
+              KeyCapture( iBindings, iBindings.ActionForID( iEntry.ID ), iSelected = i );
               if iSelected = i then iHover := iEntry;
               Inc( i );
             end;
@@ -301,16 +361,16 @@ begin
               begin
                 if iMode.Value = 0 then
                 begin
-                  Configuration.AccessInteger( 'screen_width' )^  := 0;
-                  Configuration.AccessInteger( 'screen_height' )^ := 0;
+                  FUserConfig.AccessInteger( 'screen_width' )^  := 0;
+                  FUserConfig.AccessInteger( 'screen_height' )^ := 0;
                 end
                 else
                 with IO.Driver.DisplayModes[ iMode.Value - 1 ] do
                 begin
-                  Configuration.AccessInteger( 'screen_width' )^  := Width;
-                  Configuration.AccessInteger( 'screen_height' )^ := Height;
+                  FUserConfig.AccessInteger( 'screen_width' )^  := Width;
+                  FUserConfig.AccessInteger( 'screen_height' )^ := Height;
                 end;
-                DRL.Reconfigure;
+                FSession.Reconfigure;
               end;
             end
             else
@@ -328,14 +388,24 @@ begin
                   with iEntry as TStringConfigurationEntry do
                   begin
                     if FModValue = 0 then Value := ''
-                    else if FModValue >= (DRL.Modules.CoreModules.Size+1)
+                    else if FModValue >= (FSession.Modules.CoreModules.Size+1)
                       then Value := FModCurrent
-                      else Value := DRL.Modules.CoreModules[FModValue-1].ID;
-                    if ( DRL.State = DSMenu ) and ( Value <> '' ) and ( Value <> CoreModuleID ) then
+                      else Value := FSession.Modules.CoreModules[FModValue-1].ID;
+                    if ( FSession.State = DSMenu ) and ( Value <> '' ) and ( Value <> FSession.Modules.CoreModuleID ) then
                     begin
                       FRestart := Value;
                     end;
                   end;
+              end
+              else
+              if iEntry is TStringConfigurationEntry then
+              begin
+                with iEntry as TStringConfigurationEntry do
+                  if Value = ''
+                    then VTIG_InputField( 'None' )
+                    else VTIG_InputField( Copy( Value, 1, MaxTextEntry ) );
+                if ( iSelected = i ) and VTIG_EventConfirm then
+                  OpenTextEntry( TStringConfigurationEntry( iEntry ) );
               end
               else
               if iEntry is TIntegerConfigurationEntry then
@@ -355,7 +425,7 @@ begin
                     end;
                     if FState = SETTINGSVIEW_DISPLAY then
                     begin
-                      DRL.Reconfigure;
+                      FSession.Reconfigure;
                       if (ID = 'tile_multi') and ( Access^ = 2 ) then
                          FWarning := 'Do note that the x1.5 multiplier is an accessability option, created mostly for SteamDeck readability - the pixel art will be distorted in this setting, and small artifacts may appear!';
                     end;
@@ -398,7 +468,9 @@ begin
     then VTIG_Text( iHover.Description );
 
 
-  if FState = SETTINGSVIEW_CONTROLLER then
+  if FState = SETTINGSVIEW_UICONTROLLER then
+    VTIG_End('{l<{!{$input_up},{$input_down}}> select, <{!{$input_ok}}> rebind, <{!{$input_uidrop}}> clear, <{!{$input_escape}}> back}')
+  else if FState = SETTINGSVIEW_CONTROLLER then
     VTIG_End('{l<{!{$input_up},{$input_down}}> select, <{!{$input_ok}}> rebind, <{!{$input_escape}}> back}')
   else if FState in SETTINGSVIEW_KEYS
     then VTIG_End('{l<{!{$input_up},{$input_down}}> select, <{!{$input_ok}}> change/enter, <{!{$input_escape}}> back, <{!{$input_uidrop}}> clear}')
@@ -423,8 +495,8 @@ begin
   begin
     if FState = SETTINGSVIEW_GENERAL
       then Reset( nil )
-      else if FState = SETTINGSVIEW_CONTROLLER
-        then ResetControllerBindings( Configuration )
+      else if FState in [ SETTINGSVIEW_CONTROLLER, SETTINGSVIEW_UICONTROLLER ]
+        then CaptureControllerBindings.ResetValues
       else Reset( iGroup );
     Reconfigure;
   end;
@@ -432,7 +504,7 @@ end;
 
 function TSettingsView.IsFinished : Boolean;
 begin
-  Exit( FState = SETTINGSVIEW_DONE );
+  Exit( inherited IsFinished or ( FState = SETTINGSVIEW_DONE ) );
 end;
 
 function TSettingsView.IsModal : Boolean;
@@ -442,6 +514,7 @@ end;
 
 function TSettingsView.HandleEvent( const aEvent : TIOEvent ) : Boolean;
 var iButton        : TIOPadButton;
+    iBindings      : TControllerBindingCatalog;
     iNow           : DWord;
     iBHoldComplete : Boolean;
 begin
@@ -483,7 +556,8 @@ begin
         else if iButton = FControllerCandidate then
         begin
           FControllerCandidate := VPAD_BUTTON_INVALID;
-          if IsControllerMenuAssignableButton( iButton ) then
+          iBindings := CaptureControllerBindings;
+          if ( iBindings <> nil ) and iBindings.CanCapture( iButton ) then
             FControllerButton := iButton
           else
             FControllerMessage := 'D-pad directions are fixed.';
@@ -497,24 +571,38 @@ begin
   begin
     if aEvent.Key.Code = VKEY_ESCAPE
       then FKey := VKEY_ESCAPE
-      else FKey := IOKeyEventToIOKeyCode( aEvent.Key );
+      else if FState = SETTINGSVIEW_UIKEYBOARD
+        then FKey := aEvent.Key.Code
+        else FKey := IOKeyEventToIOKeyCode( aEvent.Key );
   end;
   Exit( True );
 end;
 
 destructor TSettingsView.Destroy;
 begin
-  Configuration.Write( SettingsPath );
+  FUserConfig.Write( FSession.Paths.SettingsPath );
   inherited Destroy;
 end;
 
+function TSettingsView.CaptureControllerBindings : TControllerBindingCatalog;
+begin
+  case FState of
+    SETTINGSVIEW_CONTROLLER:
+      Exit( FUserConfig.ControllerBindings );
+    SETTINGSVIEW_UICONTROLLER:
+      Exit( FUserConfig.UIControllerBindings );
+  end;
+  Exit( nil );
+end;
+
 procedure TSettingsView.ControllerCapture(
-  aAction   : TControllerAction;
+  aBindings : TControllerBindingCatalog;
+  aAction   : TBindingAction;
   aSelected : Boolean
 );
 var iCurrent : TIOPadButton;
 begin
-  iCurrent := GetControllerButton( Configuration, aAction );
+  iCurrent := aBindings.GetButton( aAction );
   VTIG_InputField( VPadButtonToDisplayString( iCurrent ) );
 
   if FControllerCapture and ( FControllerAction = aAction ) then
@@ -522,8 +610,7 @@ begin
     VTIG_Begin( 'controller_capture', Point( 56, 8 ) );
     VTIG_Text( 'Release one controller button to bind.' );
     VTIG_Text( 'Hold {!B} for one second or press {!Escape} to cancel.' );
-    if FControllerMessage <> '' then
-      VTIG_Text( FControllerMessage );
+    if FControllerMessage <> '' then VTIG_Text( FControllerMessage );
     VTIG_End;
 
     if FControllerCancel then
@@ -531,45 +618,47 @@ begin
     else if FControllerButton <> VPAD_BUTTON_INVALID then
     begin
       FControllerCapture := False;
-      if ( FControllerButton <> iCurrent )
-        and SwapControllerBinding(
-          Configuration,
-          FControllerAction,
-          FControllerButton
-        ) then
-        Reconfigure;
+      if ( FControllerButton <> iCurrent ) and
+         aBindings.Swap( aAction, FControllerButton ) then Reconfigure;
     end;
 
     if not FControllerCapture then
     begin
-      FControllerButton    := VPAD_BUTTON_INVALID;
+      FControllerButton := VPAD_BUTTON_INVALID;
       FControllerCandidate := VPAD_BUTTON_INVALID;
-      FControllerCancel    := False;
-      FControllerBHold     := False;
-      FControllerBStart    := 0;
-      FControllerMessage   := '';
+      FControllerCancel := False;
+      FControllerBHold := False;
+      FControllerBStart := 0;
+      FControllerMessage := '';
     end;
     VTIG_EventClear;
     Exit;
   end;
 
-  if aSelected and VTIG_EventConfirm then
+  if not aSelected then Exit;
+  if aBindings.AllowsUnbound and VTIG_Event( UI_BINDING_DROP ) then
   begin
-    FControllerCapture   := True;
-    FControllerAction    := aAction;
-    FControllerButton    := VPAD_BUTTON_INVALID;
+    if aBindings.Swap( aAction, VPAD_BUTTON_INVALID ) then Reconfigure;
+    Exit;
+  end;
+  if VTIG_EventConfirm then
+  begin
+    FControllerCapture := True;
+    FControllerAction := aAction;
+    FControllerButton := VPAD_BUTTON_INVALID;
     FControllerCandidate := VPAD_BUTTON_INVALID;
-    FControllerCancel    := False;
-    FControllerBHold     := False;
-    FControllerBStart    := 0;
-    FControllerMessage   := '';
+    FControllerCancel := False;
+    FControllerBHold := False;
+    FControllerBStart := 0;
+    FControllerMessage := '';
     VTIG_EventClear;
   end;
 end;
 
-function TSettingsView.KeyCapture( aValue : PInteger; aSelected : Boolean ) : Boolean;
+procedure TSettingsView.KeyCapture( aBindings : TBindingCatalog;
+  aAction : TBindingAction; aSelected : Boolean );
 begin
-  VTIG_InputField( IOKeyCodeToStringShort( aValue^ ) );
+  VTIG_InputField( IOKeyCodeToStringShort( aBindings.ConfigurationValue( aAction ) ) );
   if aSelected then
   begin
     if FCapture then
@@ -582,7 +671,7 @@ begin
       begin
         FCapture := False;
         if FKey <> VKEY_ESCAPE then
-          aValue^ := FKey;
+          aBindings.SetKey( aAction, FKey );
         FKey := 0;
       end;
       VTIG_EventClear;
@@ -592,31 +681,86 @@ begin
       begin
         FCapture := True;
         FKey     := 0;
-        Exit( False );
+        Exit;
       end;
-    if VTIG_Event( [VTIG_IE_BACKSPACE] ) then
-      aValue^ := 0;
+    if VTIG_Event( UI_BINDING_DROP ) then
+      aBindings.SetKey( aAction, 0 );
   end;
-  Exit( False );
 end;
 
 procedure TSettingsView.Reset( aGroup : TConfigurationGroup );
-var iEntry : TConfigurationEntry;
+var iEntry    : TConfigurationEntry;
+    iBindings : TBindingCatalog;
+    iAction   : TBindingAction;
 begin
   if aGroup = nil then
   begin
-    for aGroup in Configuration.Groups do
+    for aGroup in FUserConfig.Groups do
       Reset( aGroup );
     Exit;
   end;
 
   for iEntry in aGroup.Entries do
-    iEntry.Reset;
+  begin
+    iBindings := FUserConfig.KeyBindings;
+    iAction := iBindings.ActionForID( iEntry.ID );
+    if iAction = BINDING_NONE then
+    begin
+      iBindings := FUserConfig.UIKeyBindings;
+      iAction := iBindings.ActionForID( iEntry.ID );
+    end;
+    if iAction = BINDING_NONE then
+      iEntry.Reset
+    else
+      iBindings.SetKey( iAction, TIntegerConfigurationEntry( iEntry ).Default );
+  end;
+end;
+
+procedure TSettingsView.OpenTextEntry( aEntry : TStringConfigurationEntry );
+begin
+  FTextEntry := aEntry;
+  StrPLCopy( @FTextBuffer[0], aEntry.Value, High( FTextBuffer ) );
+  VTIG_ResetInput( 'settings_text' );
+  IO.Console.ShowCursor;
+  IO.Driver.StartTextInput;
+  if IO.IsGamepad then
+    FSession.Store.StartText( aEntry.Name, MaxTextEntry, aEntry.Value );
+end;
+
+// An accepted text replaces the entry's value; cancel keeps the old one.
+procedure TSettingsView.UpdateTextEntry;
+var iStoreText   : Ansistring;
+    iStoreCancel : Boolean;
+    iDone        : Boolean;
+begin
+  iDone := False;
+  VTIG_BeginWindow( FTextEntry.Name, 'settings_text', Point( 50, 8 ) );
+    VTIG_Text( FTextEntry.Description );
+    VTIG_Text( '' );
+    if VTIG_Input( @FTextBuffer[0], High( FTextBuffer ) + 1 ) then
+    begin
+      FTextEntry.Value := AnsiString( FTextBuffer );
+      iDone := True;
+    end;
+    if FSession.Store.GetText( iStoreText, @iStoreCancel ) then
+    begin
+      if not iStoreCancel then
+        FTextEntry.Value := iStoreText;
+      iDone := True;
+    end;
+  VTIG_End('{l<{!{$input_ok}}> accept, <{!{$input_escape}}> cancel}');
+
+  if iDone or VTIG_EventCancel then
+  begin
+    IO.Driver.StopTextInput;
+    IO.Console.HideCursor;
+    FTextEntry := nil;
+  end;
 end;
 
 procedure TSettingsView.Reconfigure;
 begin
-  DRL.Reconfigure;
+  FSession.Reconfigure;
 end;
 
 end.

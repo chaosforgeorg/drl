@@ -1,5 +1,14 @@
 table.merge( item, thing )
 
+-- Creates an item, applying the difficulty ammo multiplier if it is ammo.
+function item.new_ammo( id )
+	local it = item.new( id )
+	if it.itype == ITEMTYPE_AMMO then
+		it.amount = math.floor( it.amount * diff[ DIFFICULTY ].ammofactor + 0.5 )
+	end
+	return it
+end
+
 function item:can_mod( c, tech_bonus )
 	if not string.match(c,"^[A-Z]$") then return false end
 	if self.flags[ IF_UNIQUE ] and ( not self.flags[ IF_MODABLE ] ) then return false end
@@ -197,17 +206,6 @@ function item:reset_resistances()
 		self.resist.cold     = 0
 		self.resist.poison   = 0
 	end		
-end
-
-function item:get_lever_description( full, good )
-	full = full or self.__proto.desc
-	good = good or self.__proto.good
-	if player:has_property( "LEVER_SENSE" ) then
-		local sense = player.LEVER_SENSE
-		if sense > 1 then return "lever ("..full..")" end
-		return "lever ("..good..")"
-	end
-	return "lever"
 end
 
 setmetatable(item,getmetatable(thing))

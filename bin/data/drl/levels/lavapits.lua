@@ -2,10 +2,42 @@
 
 register_level "the_lava_pits"
 {
-	name  = "The Lava Pits",
-	entry = "On @1 he entered the Lava Pits.",
+	name    = "The Lava Pits",
+	entry   = "On @1 he entered the Lava Pits.",
 	welcome = "You descend into the Lava Pits. Dammit, it's hot in here!",
-	level = 22,
+	level   = 22,
+
+	runtime = {
+		OnKillAll = function ( self )
+			local result = self.status
+			if result == 0 then
+				ui.msg("That seems to be all of them... wait! Something is moving there, or is it just lava glow?")
+				self.status = 1
+				local element = self:summon("lava_elemental")
+				element.inv:add( item.new("lava_element") )
+			elseif result == 1 then
+				ui.msg("Tough son of a bitch... now to get that shiny object he left behind...")
+				self.status = 2
+			end
+		end,
+
+		OnExitLevel = function ( self )
+			local result = self.status
+			if result == 0 then
+				ui.msg("Too hot dammit, I'm leaving this party...")
+				player:add_history("He decided it was too hot there.")
+			elseif result == 1 then
+				ui.msg("There goes my beard... at least I'm still alive.")
+				player:add_history("He fled there from the monstrous lava elemental.")
+			elseif result == 2 then
+				core.special_complete()
+				ui.msg("Lava elementals my ass. I don't care.")
+				player:add_badge("lava1")
+				if core.is_challenge("challenge_aoi") then player:add_badge("lava2") end
+				player:add_history("He managed to clear the Lava Pits completely!")
+			end
+		end,
+	},
 
 	Create = function ()
 		core.special_create()
@@ -74,33 +106,4 @@ register_level "the_lava_pits"
 		level.status = 0
 	end,
 
-	OnKillAll = function ()
-		local result = level.status
-		if result == 0 then
-			ui.msg("That seems to be all of them... wait! Something is moving there, or is it just lava glow?")
-			level.status = 1
-			local element = level:summon("lava_elemental")
-			element.inv:add( item.new("lava_element") )
-		elseif result == 1 then
-			ui.msg("Tough son of a bitch... now to get that shiny object he left behind...")
-			level.status = 2
-		end
-	end,
-
-	OnExit = function ()
-		local result = level.status
-		if result == 0 then
-			ui.msg("Too hot dammit, I'm leaving this party...")
-			player:add_history("He decided it was too hot there.")
-		elseif result == 1 then
-			ui.msg("There goes my beard... at least I'm still alive.")
-			player:add_history("He fled there from the monstrous lava elemental.")
-		elseif result == 2 then
-			core.special_complete()
-			ui.msg("Lava elementals my ass. I don't care.")
-			player:add_badge("lava1")
-			if core.is_challenge("challenge_aoi") then player:add_badge("lava2") end
-			player:add_history("He managed to clear the Lava Pits completely!")
-		end
-	end,
 }

@@ -4,11 +4,26 @@ local hell
 
 register_level "the_asmos_den"
 {
-	name  = "The Asmos Den",
-	entry = "On @1 he braved the Asmos Den.",
+	name    = "The Asmos Den",
+	entry   = "On @1 he braved the Asmos Den.",
 	welcome = "This place reeks of evil, even more so than everywhere else...",
-	level = 22,
+	level   = 22,
 	welcome = "You enter Asmos Den.",
+
+	runtime = {
+		OnExitLevel = function ( self )
+			local result = self.status
+			if result == 0 then
+				ui.msg("Let's just get the hell out of here!")
+				player:add_history("He kept his hands to himself.")
+			else
+				hell:kill()
+				ui.msg("I hope this damn armor was worth the trouble!")
+				player:add_history("He pilfered the treasure there.")
+				core.special_complete()
+			end
+		end,
+	},
 
 	OnRegister = function()
 
@@ -56,19 +71,21 @@ register_level "the_asmos_den"
 				},
 			},
 
+			runtime = {
+				OnAction = function (self)
+					if self:distance_to(player) > self.vision-1 then
+						local target = level:drop_coord( self.position, {EF_NOBEINGS,EF_NOBLOCK} )
+						self:play_sound("phasing")
+						level:explosion( player, { range = 2, delay = 50, color = YELLOW } )
+						player:relocate( target )
+						level:explosion( player, { range = 1, delay = 50, color = YELLOW } )
+					end
+
+				end,
+			},
+
 			OnCreate = function (self)
 				self:add_property( "master", true )
-			end,
-			
-			OnAction = function (self)
-				if self:distance_to(player) > self.vision-1 then
-					local target = level:drop_coord( self.position, {EF_NOBEINGS,EF_NOBLOCK} )
-					self:play_sound("phasing")
-					level:explosion( player, { range = 2, delay = 50, color = YELLOW } )
-					player:relocate( target )
-					level:explosion( player, { range = 1, delay = 50, color = YELLOW } )
-				end
-
 			end,
 		}
 
@@ -132,9 +149,9 @@ register_level "the_asmos_den"
 
 		local translation = {
 			['.'] = "floor",
-			[','] = { "floor", flags = { LFBLOOD } },
+			[','] = { "floor", blood = { 1, 3 } },
 			['#'] = { "rwall", flags = { LFPERMANENT } },
-			['%'] = { "rwall", flags = { LFPERMANENT, LFBLOOD } },
+			['%'] = { "rwall", flags = { LFPERMANENT }, blood = { 1, 3 } },
 			['>'] = { "stairs" },
 			['='] = "lava",
 			['~'] = "bridge",
@@ -189,10 +206,6 @@ register_level "the_asmos_den"
 		level:drop_being( player, coord( 77,19 ) )
 	end,
 
-	OnEnterLevel = function ()
-		level.status = 0
-	end,
-
 	OnPickup = function (item)
 		if level.status == 0 and item.id == "uhellwrap" then
 			ui.msg("A deafening voice speaks: \"So you think you can steal Hell's riches? ")
@@ -204,17 +217,5 @@ register_level "the_asmos_den"
 		end
 	end,
 
-	OnExit = function ()
-		local result = level.status
-		if result == 0 then
-			ui.msg("Let's just get the hell out of here!")
-			player:add_history("He kept his hands to himself.")
-		else
-			hell:kill()
-			ui.msg("I hope this damn armor was worth the trouble!")
-			player:add_history("He pilfered the treasure there.")
-			core.special_complete()
-		end
-	end,
 }
 --]]

@@ -3,7 +3,7 @@ core.declare( "classic", {} )
 require "classic:data/phobos_arena"
 
 function classic.OnMortem()
-	if not player:has_won() then return end
+	if not game.has_won() then return end
 	
 	local is_maxkills  = (statistics.unique_kills == statistics.max_unique_kills)
 	local is_90kills   = (statistics.unique_kills >= statistics.max_unique_kills * 0.9)
@@ -30,7 +30,7 @@ function classic.OnMortemPrint(killedby)
     player:mortem_print( " "..player.name..", level "..player.explevel.." "..klasses[player.klass].name..", "..killedby )
 end
 
-function classic.OnCreateEpisode()
+function classic.OnCreateWorld()
 	local BOSS_LEVEL = 10
 	player.episode = {}
   
@@ -43,7 +43,7 @@ function classic.OnCreateEpisode()
 	statistics.bonus_levels_count = 0
 end
 
-function classic.OnGenerate()
+function classic.GenerateLevel()
 	generator.reset()
 	generator.run( generators.gen_tiled )
 end

@@ -2,10 +2,76 @@
 
 register_level "central_processing"
 {
-	name  = "Central Processing",
-	entry = "On @1 he trekked through Central Processing.",
+	name    = "Central Processing",
+	entry   = "On @1 he trekked through Central Processing.",
 	welcome = "You enter Central Processing. You shudder, thinking about the evil mastermind who planned this.",
-	level = 4,
+	level   = 4,
+
+	runtime = {
+		OnTick = function ( self )
+			local platform_up = (game.time() % 500 > 249)
+			if not self.data.platform:contains(player.position) then
+				if not self.data.platform_up and platform_up then
+					self:transmute( "wall", "floor", self.data.platform)
+					self:play_sound( "door.open", self.data.platform_coord )
+				elseif self.data.platform_up and not platform_up then
+					--Transmute fails if the wall is actually a bloodpool
+					--Actually, this 'wall' is a platform, so there is no need to kill the monster. However it will look unusual sitting atop a wall!
+					--If killing it is the preferred option, contrary to the intent of the square, refer to toxinrefinery's code.
+					self.map[self.data.platform_coord] = "wall"
+				end
+				self.data.platform_up = platform_up
+			end
+
+			if self.data.trap2:contains(player.position) then
+				self:transmute( "wall", "floor", self.data.trap21)
+			elseif self.data.trapSA:contains(player.position) then
+				self:transmute( "wall", "floor", self.data.trapSA1)
+			elseif self.data.trapSB:contains(player.position) then
+				self:transmute( "wall", "floor", self.data.trapSB1)
+				self:transmute( "wall", "floor", self.data.trapSB2)
+			elseif self.data.trapSC:contains(player.position) then
+				self:transmute( "wall", "floor", self.data.trapSC1)
+			elseif self.data.trap6:contains(player.position) and not self.data.trap6_triggered then
+				--This avoids the transmute situation if the floor is actually a bloodpool
+				for iCoord in self.data.trap6P.coords(self.data.trap6P) do
+					self.map[iCoord] = "gwall"
+				end
+				self.data.trap6_expiry = game.time() + 300
+				self.data.trap6_triggered = true
+				self:play_sound("door.close", self.data.door4_coord)
+				self:transmute( "wall", "floor", self.data.trap61)
+				self:transmute( "wall", "floor", self.data.trap62)
+				self:transmute( "wall", "floor", self.data.trap63)
+				self:transmute( "wall", "floor", self.data.trap64)
+				self:transmute( "wall", "floor", self.data.trap65)
+			end
+			if self.data.trap6_expiry > 0 and game.time() > self.data.trap6_expiry then
+				self:transmute( "gwall", "floor", self.data.trap6P )
+				self.data.trap6_expiry = 0
+				self:play_sound("door.open", self.data.door4_coord)
+			end
+		end,
+
+		OnKillAll = function ( self )
+			if not self.data.kill_all then
+				self.data.kill_all  = true
+				ui.msg("The machinery falls silent.")
+				self.status = 4
+			end
+		end,
+
+		OnExitLevel = function ( self )
+			if self.data.kill_all  then
+				core.special_complete()
+				ui.msg("No meat left to process.")
+				player:add_history("Nothing stood in his way.")
+			else
+				ui.msg("Just too many to count.")
+				player:add_history("He couldn't quite finish the job.")
+			end
+		end,
+	},
 
 	OnRegister = function ()
 		register_item "lever_centralprocessing1"
@@ -22,19 +88,20 @@ register_level "central_processing"
 
 			color_id = false,
 			sound_id = "lever",
+			runtime = {
+				OnUse = function(self,being)
+					statistics.levers_pulled = statistics.levers_pulled + 1
+					level:transmute( "ldoor", "floor", level.data.door1 )
+					level:transmute( "wall", "floor", level.data.trap11 )
+					level:transmute( "wall", "floor", level.data.trap12 )
+					level:transmute( "wall", "floor", level.data.trap13 )
+					level:transmute( "wall", "floor", level.data.trap14 )
+					level:play_sound( "door.open", level.data.door1_coord )
 
-			OnUse = function(self,being)
-				statistics.levers_pulled = statistics.levers_pulled + 1
-				level:transmute( "ldoor", "floor", level.data.door1 )
-				level:transmute( "wall", "floor", level.data.trap11 )
-				level:transmute( "wall", "floor", level.data.trap12 )
-				level:transmute( "wall", "floor", level.data.trap13 )
-				level:transmute( "wall", "floor", level.data.trap14 )
-				level:play_sound( "door.open", level.data.door1_coord )
-
-				ui.msg("North door unlocked.")
-				return true
-			end,
+					ui.msg("North door unlocked.")
+					return true
+				end,
+			},
 		}
 
 		register_item "lever_centralprocessing2"
@@ -51,14 +118,15 @@ register_level "central_processing"
 
 			color_id = false,
 			sound_id = "lever",
-
-			OnUse = function(self,being)
-				statistics.levers_pulled = statistics.levers_pulled + 1
-				level:transmute( "ldoor", "floor", level.data.door2 )
-				level:play_sound( "door.open", level.data.door2_coord )
-				ui.msg("Central area unlocked.")
-				return true
-			end,
+			runtime = {
+				OnUse = function(self,being)
+					statistics.levers_pulled = statistics.levers_pulled + 1
+					level:transmute( "ldoor", "floor", level.data.door2 )
+					level:play_sound( "door.open", level.data.door2_coord )
+					ui.msg("Central area unlocked.")
+					return true
+				end,
+			},
 		}
 
 		register_item "lever_centralprocessing3"
@@ -75,17 +143,18 @@ register_level "central_processing"
 
 			color_id = false,
 			sound_id = "lever",
-
-			OnUse = function(self,being)
-				statistics.levers_pulled = statistics.levers_pulled + 1
-				level:transmute( "ldoor", "floor", level.data.door3 )
-				level:transmute( "wall", "floor", level.data.trap31 )
-				level:transmute( "wall", "floor", level.data.trap32 )
-				level:transmute( "wall", "floor", level.data.wall22 )
-				level:play_sound( "door.open", level.data.door3_coord )
-				ui.msg("Processing area unlocked.")
-				return true
-			end,
+			runtime = {
+				OnUse = function(self,being)
+					statistics.levers_pulled = statistics.levers_pulled + 1
+					level:transmute( "ldoor", "floor", level.data.door3 )
+					level:transmute( "wall", "floor", level.data.trap31 )
+					level:transmute( "wall", "floor", level.data.trap32 )
+					level:transmute( "wall", "floor", level.data.wall22 )
+					level:play_sound( "door.open", level.data.door3_coord )
+					ui.msg("Processing area unlocked.")
+					return true
+				end,
+			},
 		}
 	
 		register_item "lever_centralprocessing4"
@@ -102,14 +171,15 @@ register_level "central_processing"
 
 			color_id = false,
 			sound_id = "lever",
-
-			OnUse = function(self,being)
-				statistics.levers_pulled = statistics.levers_pulled + 1
-				level:transmute( "ldoor", "floor", level.data.door4 )
-				level:play_sound( "door.open", level.data.door4_coord )
-				ui.msg("East door unlocked.")
-				return true
-			end,
+			runtime = {
+				OnUse = function(self,being)
+					statistics.levers_pulled = statistics.levers_pulled + 1
+					level:transmute( "ldoor", "floor", level.data.door4 )
+					level:play_sound( "door.open", level.data.door4_coord )
+					ui.msg("East door unlocked.")
+					return true
+				end,
+			},
 		}
 	
 		register_item "lever_centralprocessing5"
@@ -126,13 +196,14 @@ register_level "central_processing"
 
 			color_id = false,
 			sound_id = "lever",
-
-			OnUse = function(self,being)
-				statistics.levers_pulled = statistics.levers_pulled + 1
-				level:transmute( "ldoor", "door", level.data.door5 )
-				ui.msg("Exit unlocked.")
-				return true
-			end,
+			runtime = {
+				OnUse = function(self,being)
+					statistics.levers_pulled = statistics.levers_pulled + 1
+					level:transmute( "ldoor", "door", level.data.door5 )
+					ui.msg("Exit unlocked.")
+					return true
+				end,
+			},
 		}
 	end,
 
@@ -322,74 +393,5 @@ register_level "central_processing"
 
 		level:drop_being( player, coord( 5,11 ) )
 	end,
-
-	OnKillAll = function ()
-		if not level.data.kill_all then
-			level.data.kill_all  = true
-			ui.msg("The machinery falls silent.")
-			level.status = 4
-		end
-	end,
-
-	OnEnterLevel = function ()
-		level.status = 0
-	end,
-
-	OnTick = function ()
-		local platform_up = (core.game_time() % 500 > 249)
-		if not level.data.platform:contains(player.position) then
-			if not level.data.platform_up and platform_up then
-				level:transmute( "wall", "floor", level.data.platform)
-				level:play_sound( "door.open", level.data.platform_coord )
-			elseif level.data.platform_up and not platform_up then
-				--Transmute fails if the wall is actually a bloodpool
-				--Actually, this 'wall' is a platform, so there is no need to kill the monster. However it will look unusual sitting atop a wall!
-				--If killing it is the preferred option, contrary to the intent of the square, refer to toxinrefinery's code.
-				level.map[level.data.platform_coord] = "wall"
-			end
-			level.data.platform_up = platform_up
-		end
-
-		if level.data.trap2:contains(player.position) then
-			level:transmute( "wall", "floor", level.data.trap21)
-		elseif level.data.trapSA:contains(player.position) then
-			level:transmute( "wall", "floor", level.data.trapSA1)
-		elseif level.data.trapSB:contains(player.position) then
-			level:transmute( "wall", "floor", level.data.trapSB1)
-			level:transmute( "wall", "floor", level.data.trapSB2)
-		elseif level.data.trapSC:contains(player.position) then
-			level:transmute( "wall", "floor", level.data.trapSC1)
-		elseif level.data.trap6:contains(player.position) and not level.data.trap6_triggered then
-			--This avoids the transmute situation if the floor is actually a bloodpool
-			for iCoord in level.data.trap6P.coords(level.data.trap6P) do
-				level.map[iCoord] = "gwall"
-			end
-			level.data.trap6_expiry = core.game_time() + 300
-			level.data.trap6_triggered = true
-			level:play_sound("door.close", level.data.door4_coord)
-			level:transmute( "wall", "floor", level.data.trap61)
-			level:transmute( "wall", "floor", level.data.trap62)
-			level:transmute( "wall", "floor", level.data.trap63)
-			level:transmute( "wall", "floor", level.data.trap64)
-			level:transmute( "wall", "floor", level.data.trap65)
-		end
-		if level.data.trap6_expiry > 0 and core.game_time() > level.data.trap6_expiry then
-			level:transmute( "gwall", "floor", level.data.trap6P )
-			level.data.trap6_expiry = 0
-			level:play_sound("door.open", level.data.door4_coord)
-		end
-	end,
-
-	OnExit = function ()
-		if level.data.kill_all  then
-			core.special_complete()
-			ui.msg("No meat left to process.")
-			player:add_history("Nothing stood in his way.")
-		else
-			ui.msg("Just too many to count.")
-			player:add_history("He couldn't quite finish the job.")
-		end
-	end,
-
 
 }

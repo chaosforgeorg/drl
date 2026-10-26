@@ -7,11 +7,11 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit dfmap;
 interface
-uses vutil, vmath, dfdata;
+uses vlua, vutil, vmath, dfdata;
 
-type TCellHook  = (CellHook_OnEnter, CellHook_OnExit, CellHook_OnAct, CellHook_OnDescribe, CellHook_OnHazardQuery, CellHook_OnDestroy);
+type TCellHook  = (CellHook_OnEnter, CellHook_OnExit, CellHook_OnAct, CellHook_getGroundDesc, CellHook_OnHazardQuery, CellHook_OnDestroy);
      TCellHooks = set of TCellHook;
-const CellHooks : array[TCellHook] of string = ('OnEnter', 'OnExit', 'OnAct', 'OnDescribe', 'OnHazardQuery', 'OnDestroy');
+const CellHooks : array[TCellHook] of string = ('OnEnter', 'OnExit', 'OnAct', 'getGroundDesc', 'OnHazardQuery', 'OnDestroy');
 
 type TMap = object
        Overlay  : array[ 1..MaxX, 1..MaxY ] of Byte;
@@ -27,7 +27,6 @@ type TCell = class
   PicLow      : Char;
   Sprite      : array[0..15] of TSprite;
   Deco        : array[1..16] of TSprite;
-  BloodSprite : TSprite;
   LightColor  : array[0..15] of Byte;
   DarkColor   : Byte;
   BloodColor  : Byte;
@@ -35,6 +34,7 @@ type TCell = class
   BlDesc      : AnsiString;
   DR          : Byte;
   HP          : Byte;
+  AffectedBy  : TDamageType;
   Flags       : TFlags;
   Hooks       : TCellHooks;
   MoveCost    : Single;
@@ -50,26 +50,23 @@ type
 
 TCells = class
          public
-           procedure RegisterCell( aCellNum : Byte );
+           procedure RegisterCell( aLua : TLua; aCellNum : Byte );
            destructor Destroy; override;
          private
            FData     : array of TCell;
            FMaxCells : Byte;
-           function getCell( aIndex : Byte ) : TCell;
+           function getCell( aIndex : Byte ) : TCell; inline;
          public
            property Cells[ aIndex : Byte ] : TCell read getCell; default;
            property Max : Byte read FMaxCells;
          end;
 
-var Cells : TCells;
-
 implementation
 
-uses SysUtils, vluasystem, vdebug;
+uses sysutils, vdebug;
 
-procedure TCells.RegisterCell( aCellNum : byte );
-var iColorID : AnsiString;
-    iHook    : TCellHook;
+procedure TCells.RegisterCell( aLua : TLua; aCellNum : byte );
+var iHook    : TCellHook;
     iCell    : TCell;
     iTable   : TLuaTable;
     iSubTable: TLuaTable;
@@ -85,12 +82,9 @@ begin
   if aCellNum > FMaxCells then FMaxCells := aCellNum;
 
   iCell  := TCell.Create;
-  iTable := LuaSystem.GetTable(['cells',aCellNum]);
+  iTable := aLua.GetTable(['cells',aCellNum]);
   with iTable do
   try
-    iColorID := getString('id');
-    if IsString('color_id') then iColorID := getString('color_id');
-
     iCell.Hooks := [];
     for iHook in TCellHooks do
       if isFunction( CellHooks[ iHook ] ) then
@@ -124,13 +118,13 @@ begin
     iCell.BlDesc    := getString('blname');
     iCell.DR        := getInteger('armor');
     iCell.HP        := getInteger('hp');
+    iCell.AffectedBy := TDamageType( getInteger( 'affected_by', Ord( Damage_None ) ) );
     iCell.Flags     := getFlags('flags');
     iCell.bloodto   := getString('bloodto');
     iCell.destroyto := getString('destroyto');
     iCell.raiseto   := getString('raiseto');
     iCell.MoveCost  := getFloat('move_cost', 1.0 );
     FillChar( iCell.Sprite,      SizeOf(iCell.Sprite),      0 );
-    FillChar( iCell.BloodSprite, SizeOf(iCell.BloodSprite), 0 );
     FillChar( iCell.Deco,        SizeOf(iCell.Deco),        0 );
     Initialize( iBase );
     FillChar( iBase,             SizeOf(iBase),             0 );
@@ -162,7 +156,6 @@ begin
     end
     else
       iCell.Sprite[0] := iBase;
-    iCell.BloodSprite.SpriteID[0] := getInteger('blsprite',0);
     if iTable.IsTable( 'deco' ) then
     begin
       iSize := iTable.GetTableSize( 'deco' );
@@ -192,13 +185,6 @@ begin
   finally
     Free;
   end;
-
-  if (not Option_HighASCII) then iCell.PicChr := iCell.PicLow;
-
-  if ColorOverrides.Exists(iColorID+'_light') then
-    iCell.LightColor[0] := ColorOverrides[iColorID+'_light'];
-  if ColorOverrides.Exists(iColorID+'_dark') then
-    iCell.DarkColor:= ColorOverrides[iColorID+'_dark'];
 
   FData[aCellNum] := iCell;
 end;

@@ -7,28 +7,9 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit dfdata;
 interface
-uses Classes, SysUtils, idea,
-     vgenerics, vcolor, vutil, vrltools, vtigstyle, vluatable, vioevent, vvector,
-     drlconfig, drlkeybindings;
-
-const CoreModuleID          : AnsiString = '';
-      ConfigurationPath     : AnsiString = 'config.lua';
-      ModuleUserPath        : AnsiString = '';
-      DataPath              : AnsiString = '';
-      WritePath             : AnsiString = '';
-      ScorePath             : AnsiString = '';
-      SettingsPath          : AnsiString = 'settings.lua';
-    
-      VersionEngine         : Ansistring = '';
-      VersionEngineSave     : Ansistring = '';
-      VersionEngineExpected : Ansistring = '';
-      VersionModule         : Ansistring = '';
-      VersionModuleSave     : Ansistring = '';
-      SaveVersionEngine     : Ansistring = '';
-      SaveVersionModule     : Ansistring = '';
-      SaveModString         : Ansistring = '';
-
-var   MemorialWritten : Boolean;
+uses classes, sysutils, idea,
+     vlua, vgenerics, vcolor, vutil, vrltools, vtigstyle, vluatable, vioevent, vvector, vrandom,
+     drlkeybindings;
 
 const PlayerSafeZone = 6;
 
@@ -67,6 +48,7 @@ end;
 type TMenuResult = class
   Quit       : Boolean;
   Loaded     : Boolean;
+  ReloadData : Boolean;
   ArchAngel  : Boolean;
   Challenge  : AnsiString;
   SChallenge : AnsiString;
@@ -80,6 +62,21 @@ type TMenuResult = class
   procedure Reset;
 end;
 
+type TDRLState = ( DSStart,   DSMenu,       DSLoading, DSCrashLoading,
+                  DSPlaying, DSEnding,   DSSaving,  DSNextLevel,
+                  DSQuit,    DSFinished );
+
+// Run control owned by the Session and borrowed by its level, which only
+// reads it. Player death and victory are recorded during an action; the
+// Session enters DSEnding at its own control points.
+type TRunStatus = class
+  State   : TDRLState;
+  GameWon : Boolean;
+
+  // Play continues and no victory is recorded yet.
+  function Undecided : Boolean;
+end;
+
 type THOFRankEntry = record
   ID    : Ansistring;
   Value : Integer;
@@ -90,31 +87,13 @@ type THOFRank = record
 end;
 
 const
-  DEBUG           : Boolean = False;
-  CRASHMODE       : Boolean = False;
-  EXCEPTEMMITED   : Boolean = False;
-  DemoVersion     : Boolean = False;
-  ForceShop       : Boolean = False;
   GraphicsVersion : Boolean = True;
-  SoundVersion    : Boolean = True;
   ForceNoAudio    : Boolean = False;
   ForceConsole    : Boolean = False;
   ForceGraphics   : Boolean = False;
   ForceWindowed   : Boolean = False;
-  ModdedGame      : Boolean = False;
-  ForceRestart    : Ansistring = '';
-  ModErrors       : TStringGArray = nil;
-  VisionBaseValue : Byte = 8;
-
-  NoPlayerRecord : Boolean = False;
-  NoScoreRecord  : Boolean = False;
-
-  GodMode      : Boolean = False;
-
-  GameRealTime    : Comp = 0;
-  ProgramRealTime : Comp = 0;
-
-  Config       : TDRLConfig = nil;
+  ForcePlayerName : AnsiString = '';
+  GodMode         : Boolean = False;
 
 const
   AnimationSpeedMove   = 135;
@@ -126,7 +105,7 @@ type
     TBodyTarget     = ( Target_Internal, Target_Torso, Target_Feet );
     TEqSlot         = ( efTorso, efWeapon, efBoots, efWeapon2, efRelic );
     TStatusEffect   = ( StatusNormal, StatusInvert, StatusRed, StatusGreen, StatusBlue, StatusCyan, StatusMagenta, StatusYellow, StatusGray, StatusWhite );
-    TDamageType     = ( Damage_Bullet, Damage_Melee, Damage_Pierce, Damage_Sharpnel, Damage_Acid, Damage_Fire, Damage_Cold, Damage_Poison, Damage_Plasma, Damage_SPlasma, Damage_IgnoreArmor );
+    TDamageType     = ( Damage_None, Damage_Bullet, Damage_Melee, Damage_Pierce, Damage_Sharpnel, Damage_Acid, Damage_Fire, Damage_Cold, Damage_Poison, Damage_Plasma, Damage_SPlasma, Damage_IgnoreArmor );
     TExplosionFlag  = ( efSelfHalf, efSelfKnockback, efSelfSafe, efAfterBlink, efChain, efRandomContent, efNoDistanceDrop, efAlwaysVisible );
     TResistance     = ( Resist_Bullet, Resist_Melee, Resist_Shrapnel, Resist_Acid, Resist_Fire, Resist_Plasma, Resist_Cold, Resist_Poison, Resist_Pierce );
 
@@ -147,87 +126,34 @@ const
   COMMAND_SKIP     = 250;
 
 const
-  Setting_AlwaysRandomName : Boolean = False;
-  Setting_NoIntro          : Boolean = False;
-  Setting_RunOverItems     : Boolean = False;
-  Setting_HideHints        : Boolean = False;
-  Setting_EmptyConfirm     : Boolean = False;
-  Setting_UnlockAll        : Boolean = False;
-  Setting_MenuSound        : Boolean = False;
-  Setting_WaitSound        : Boolean = True;
-  Setting_MouseEdgePan     : Boolean = False;
-  Setting_Mouse            : Boolean = True;
-  Setting_GamepadRumble    : Boolean = True;
-  Setting_Flash            : Boolean = True;
-  Setting_Glow             : Boolean = True;
-  Setting_Fade             : Boolean = True;
-  Setting_ScreenShake      : Boolean = True;
-  Setting_BloodPulse       : Boolean = True;
-  Setting_ItemDropAnimation: Boolean = True;
-  Setting_AutoTarget       : Boolean = True;
-  Setting_GroupMessages    : Boolean = True;
-  Setting_MusicVolume      : Byte = 25;
-  Setting_SoundVolume      : Byte = 25;
+  Option_Graphics : string = 'TILES';
 
-const
-  Option_HighASCII        : Boolean = {$IFDEF WINDOWS}True{$ELSE}False{$ENDIF};
-  Option_Music            : Boolean = False;
-  Option_Sound            : Boolean = False;
-  Option_BlindMode        : Boolean = False;
-  Option_ClearMessages    : Boolean = False;
-  Option_MorePrompt       : Boolean = True;
-  Option_MessageColoring  : Boolean = False;
-  Option_InvFullDrop      : Boolean = False;
-  Option_MortemArchive    : Boolean = False;
-  Option_MenuReturn       : Boolean = False;
-  Option_SoundEquipPickup : Boolean = False;
-  Option_ColoredInventory : Boolean = True;
-  Option_LockBreak        : Boolean = True;
-  Option_LockClose        : Boolean = True;
-  Option_ForceRaw         : Boolean = True;
-  Option_MessageBuffer    : DWord = 100;
-  Option_MaxRun           : DWord = 100;
-  Option_MaxWait          : DWord = 20;
-  Option_RunDelay         : Byte = 0;
-  Option_Graphics         : string = 'TILES';
-  Option_Blending         : Boolean = False;
-  Option_SaveOnCrash      : Boolean = True;
-  Option_SoundEngine      : string = 'DEFAULT';
-  Option_AlwaysName       : string = '';
-  Option_TimeStamp        : string = 'yyyy/mm/dd hh:nn:ss';
-  Option_PlayerBackups    : DWord = 7;
-  Option_ScoreBackups     : DWord = 7;
-  Option_IntuitionColor   : Byte = LIGHTGRAY;
-  Option_IntuitionChar    : Char = '.';
+// Date and time format in mortem and screenshot file names.
+const FileTimeStamp = 'yyyy/mm/dd hh:nn:ss';
 
-var
-  ModuleOption_KlassAchievements         : Boolean = False;
-  ModuleOption_NewMenu                   : Boolean = False;
-  ModuleOption_MeleeMoveOnKill           : Boolean = False;
-  ModuleOption_FullBeingDescription      : Boolean = False;
-  ModuleOption_PercentHealth             : Boolean = False;
-  ModuleOption_RelicSlot                 : Boolean = False;
-  ModuleOption_NewFloorLayout            : Boolean = False;
-  ModuleOption_ResistCap                 : Integer = 95;
-  ModuleOption_DefaultExplosionKnockback : Integer = 8;
+// Longest player name the name entries accept; longer ones break the settings layout.
+const MaxPlayerName = 20;
 
-var
-  HARDSPRITE_HIGHLIGHT        : DWord = 0;
-  HARDSPRITE_EXPL             : DWord = 0;
-  HARDSPRITE_SELECT           : DWord = 0;
-  HARDSPRITE_MARK             : DWord = 0;
-  HARDSPRITE_GRID             : DWord = 0;
-  HARDSPRITE_SHIELD           : DWord = 0;
-  HARDSPRITE_SHIELD_COUNT     : DWord = 0;
-  HARDSPRITE_DECAL_BLOOD      : array[0..3] of DWord = ( 0,0,0,0 );
-  HARDSPRITE_DECAL_WALL_BLOOD : array[0..3] of DWord = ( 0,0,0,0 );
-  HARDEMITTER_BLOOD           : DWord = 0;
+// Knockback of explosions whose definition leaves it out.
+const DefaultExplosionKnockback = 8;
 
-var
-  SoundOff  : boolean = False;
-  MusicOff  : boolean = False;
+type TDecalSprites = array[0..3] of DWord;
 
-  // 0-25 range
+// What the engine draws by itself (target and selection markers, grid,
+// explosion mark, shield, blood), as the core module lists it in
+// ui.engine_sprites; zero where it lists nothing. IO reads it once per data load.
+type TEngineSprites = record
+  Highlight       : DWord;
+  Select          : DWord;
+  Mark            : DWord;
+  Grid            : DWord;
+  Explosion       : DWord;
+  Shield          : DWord;
+  ShieldFrames    : DWord;
+  BloodDecals     : TDecalSprites;
+  WallBloodDecals : TDecalSprites;
+  BloodEmitter    : DWord;
+end;
 
 const
 {$include ../bin/data/core/commands.lua}
@@ -271,6 +197,39 @@ type TCellSet = set of Byte;
        Sprite     : TSprite;
      end;
 
+// Sounds and queued visual effects for the level and its entities, on top of
+// messages and the presentation RNG. Implemented by IO and borrowed by the
+// level; entities reach it through the level, so they present only while on it.
+type IDRLPresentation = interface( IRLPresentation )
+  function ResolveSoundID( const aResolveIDs : array of AnsiString ) : Word;
+  procedure PlaySound( aSoundID : Word; aCoord : TCoord2D; aDelay : DWord = 0 );
+  // Presentation time until which a pain sprite shows when hit after aDelay.
+  function PainUntil( aDelay : Integer ) : QWord;
+  procedure Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0 );
+  procedure PulseBlood( aValue : Single );
+  // Whether the level's decals are drawn; placing them draws visual randomness.
+  function ShowsDecals : Boolean;
+  function EngineSprites : TEngineSprites;
+  // Sound ID an item plays when equipped: 'pickup' or 'reload'.
+  function EquipSound : AnsiString;
+  procedure Explosion( aDelay : Integer; aWhere : TCoord2D; aData : TExplosionData );
+  procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ); overload;
+  procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single ); overload;
+  procedure addMoveAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aWipeBump : Boolean; aFinishBeforeNext : Boolean = False );
+  procedure addBumpAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aAmount : Single );
+  procedure addScreenMoveAnimation( aDuration : DWord; aTo : TCoord2D );
+  procedure addCellAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aValue : Integer );
+  procedure addItemAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aValue : Integer );
+  procedure addKillAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aSprite : TSprite; aReverse : Boolean = False );
+  procedure addMissileAnimation( aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aColor : Byte; aPic : Char; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False; aTrailNID : Word = 0 );
+  procedure addMarkAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aColor : Byte; aPic : Char );
+  procedure addFXAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite );
+  procedure addParticleBurstAnimation( aDelay : DWord; aEmitterID : Word; aPosition : TCoord2D;
+    aDirection : TDirection; aCount : Word; aDistanceScale, aSpreadScale : Single );
+  procedure addSoundAnimation( aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord );
+  procedure addRumbleAnimation( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord );
+end;
+
 function NewSprite( ID : DWord ) : TSprite;
 function NewSprite( ID : DWord; Color : TColor ) : TSprite;
 
@@ -284,10 +243,6 @@ const
 
   ActSoundChance    = 30;
 
-const
-
-  StatusEffect  : TStatusEffect = StatusNormal;
-
 const PACK_RELOAD = 100;
 
 
@@ -299,7 +254,7 @@ const ItemEqFilters : array[TEqSlot] of TItemTypeSet = (
                        [ItemType_Armor],
                        [ItemType_Melee,ItemType_Ranged,ItemType_NRanged],
                        [ItemType_Boots],
-                       [ItemType_Melee,ItemType_Ranged,ItemType_AmmoPack],
+                       [ItemType_Melee,ItemType_Ranged,ItemType_NRanged,ItemType_AmmoPack],
                        [ItemType_Relic]
                       );
 const ItemsAll      : TItemTypeSet = [Low(TItemType)..High(TItemType)];
@@ -359,7 +314,7 @@ const ExpTable : array[1..MaxPlayerLevel] of LongInt =
                500000, 600000, 700000,
                900000,10000000);
                
-function Roll(stat : Integer) : Integer;
+function Roll( aRNG : TRNG; aStat : Integer ) : Integer;
 function ApplyMul( aBase, aMul : Integer ) : Integer;
 function InputDirection( aInput : TInputKey ) : TDirection;
 function DirectionToInput(Dir : TDirection) : TInputKey;
@@ -374,24 +329,20 @@ function Percent(Value : Integer) : string;
 function Seconds(Value : Integer) : string;
 function ItemTypeSetFromFlags( const aFlags : TFlags ) : TItemTypeSet;
 function ExplosionFlagsFromFlags( const aFlags : TFlags ) : TExplosionFlags;
-function RotateTowards( aSource, aTarget1, aTarget2 : TCoord2D; aAmount : Real ) : TCoord2D;
 function MSecNow : Comp;
 function DurationString( aSeconds : int64 ) : Ansistring;
-function BlindCoord( const where : TCoord2D ) : string;
 function SlotName(slot : TEqSlot) : string;
 function DamageTypeName( aDamageType : TDamageType ) : Ansistring;
 function ReadSprite( aTable : TLuaTable; var aSprite : TSprite ) : Boolean;
 function ReadSprite( aTable : TLuaTable; const aName : Ansistring; var aSprite : TSprite ) : Boolean;
-function ReadExplosion( aTable : TLuaTable; const aName : Ansistring; var aExplosion : TExplosionData ) : Boolean;
-function ReadExplosion( aTable : TLuaTable; var aExplosion : TExplosionData ) : Boolean;
+function ReadExplosion( aLua : TLua; aTable : TLuaTable; const aName : Ansistring; var aExplosion : TExplosionData ) : Boolean;
+function ReadExplosion( aLua : TLua; aTable : TLuaTable; var aExplosion : TExplosionData ) : Boolean;
 function ReadFileString( aStream : TStream; aSize : Integer ) : Ansistring;
 function ReadFileString( const aFileName : Ansistring ) : Ansistring;
 function WriteFileString( const aFileName, aText : Ansistring ) : Boolean;
 function ReadLineFromStream( aStream : TStream; aSize : Integer = -1 ) : AnsiString;
 function AxisToDirection( aAxis : TVec2f ) : TCoord2D;
 function SmoothFade( aElapsed, aDuration : Single; aFadeIn : Boolean ) : Single;
-
-var ColorOverrides : TIntHashMap;
 
 function GetPropValueFixed(Instance: TObject; const PropName: Ansistring; PreferStrings: Boolean = True): Variant;
 
@@ -400,7 +351,7 @@ var TIGStyleColored   : TTIGStyle;
     TIGStylePadless   : TTIGStyle;
 
 implementation
-uses typinfo, strutils, math, vmath, vdebug, vluasystem, drlbase;
+uses typinfo, strutils, math, vmath, vdebug;
 
 function ReadFileString( aStream : TStream; aSize : Integer ) : Ansistring;
 begin
@@ -505,6 +456,11 @@ end;
 
 { TMenuResult }
 
+function TRunStatus.Undecided : Boolean;
+begin
+  Exit( ( State = DSPlaying ) and ( not GameWon ) );
+end;
+
 constructor TMenuResult.Create;
 begin
   Reset;
@@ -514,6 +470,7 @@ procedure TMenuResult.Reset;
 begin
   Quit       := False;
   Loaded     := False;
+  ReloadData := False;
   Difficulty := 0;
   Challenge  := '';
   SChallenge := '';
@@ -540,6 +497,7 @@ end;
 function DamageTypeName( aDamageType : TDamageType ) : Ansistring;
 begin
   case aDamageType of
+    Damage_None    : Exit('none');
     Damage_Bullet  : Exit('bullet');
     Damage_Melee   : Exit('melee');
     Damage_Sharpnel: Exit('shred');
@@ -554,17 +512,6 @@ begin
   end;
 end;
 
-
-function BlindCoord( const where : TCoord2D ) : string;
-begin
-  BlindCoord := '[';
-  if where.y > 0 then BlindCoord += IntToStr(where.y)+'s';
-  if where.y < 0 then BlindCoord += IntToStr(-where.y)+'n';
-  if where.x > 0 then BlindCoord += IntToStr(where.x)+'e';
-  if where.x < 0 then BlindCoord += IntToStr(-where.x)+'w';
-  if (where.x = 0) and (where.y = 0) then BlindCoord += 'here';
-  BlindCoord += ']';
-end;
 
 function GetPropValueFixed(Instance: TObject; const PropName: Ansistring;
   PreferStrings: Boolean): Variant;
@@ -603,31 +550,6 @@ begin
   ExplosionFlagsFromFlags := [];
   for iCount in TExplosionFlags  do
     if Byte( iCount ) in aFlags then Include( ExplosionFlagsFromFlags, iCount );
-end;
-
-function RotateTowards( aSource, aTarget1, aTarget2: TCoord2D; aAmount : Real ): TCoord2D;
-var iVector1, iVector2 : TCoord2D;
-    iCos, iSin, iAngle : Float;
-    iAT1, iAT2         : Float;
-    iSign              : Integer;
-begin
-  if aTarget1 = aTarget2 then Exit( aTarget2 );
-  iVector1  := aTarget1 - aSource;
-  iVector2  := aTarget2 - aSource;
-  iAT1      := arctan2( iVector1.y, iVector1.x );
-  iAT2      := arctan2( iVector2.y, iVector2.x );
-  if iAT1 < 0 then iAT1 += 2*PI;
-  if iAT2 < 0 then iAT2 += 2*PI;
-  iAngle    := iAT2 - iAT1;
-  iSign     := Sign( iAngle );
-  if Floor( Abs( iAngle ) / aAmount ) < 1 then Exit( aTarget2 );
-  if Abs( iAngle ) > PI then iSign := -iSign;
-
-  iCos := cos( aAmount * iSign );
-  iSin := sin( aAmount * iSign );
-  
-  RotateTowards.x := aSource.x + Round((iVector1.x * iCos) - (iVector1.y * iSin));
-  RotateTowards.y := aSource.y + Round((iVector1.y * iCos) + (iVector1.x * iSin));
 end;
 
 function MSecNow: Comp;
@@ -738,17 +660,17 @@ begin
   NewSprite.Frametime   := 0;
 end;
 
-function Roll(stat : Integer) : Integer;
-var DieRoll : byte;
+function Roll( aRNG : TRNG; aStat : Integer ) : Integer;
+var iRoll : Byte;
 begin
-  DieRoll := DRL.GameRNG.Dice( 3, 6 );
-  case DieRoll of
+  iRoll := aRNG.Dice( 3, 6 );
+  case iRoll of
       3 : Exit(30);
       4 : Exit(20);
      17 : Exit(-20);
      18 : Exit(-30);
   end;
-  Roll := stat - DieRoll;
+  Result := aStat - iRoll;
 end;
 
 function ApplyMul( aBase, aMul : Integer ) : Integer;
@@ -894,12 +816,12 @@ begin
   end;
 end;
 
-function ReadExplosion( aTable : TLuaTable; var aExplosion : TExplosionData ) : Boolean;
+function ReadExplosion( aLua : TLua; aTable : TLuaTable; var aExplosion : TExplosionData ) : Boolean;
 begin
   aExplosion.Range      := aTable.getInteger('range',0);
   aExplosion.Delay      := aTable.getInteger('delay',0);
   aExplosion.Color      := aTable.getInteger('color',0);
-  aExplosion.Knockback  := aTable.GetInteger('knockback',ModuleOption_DefaultExplosionKnockback);
+  aExplosion.Knockback  := aTable.GetInteger('knockback',DefaultExplosionKnockback);
   aExplosion.SoundID    := aTable.getString('sound_id','');
   aExplosion.Flags      := ExplosionFlagsFromFlags( aTable.getFlags('flags',[]) );
   aExplosion.Damage     := NewDiceRoll( aTable.getString('damage','') );
@@ -908,7 +830,7 @@ begin
     aExplosion.ContentID  := aTable.getInteger('content',0)
   else if aTable.IsString('content') then
   begin
-    aExplosion.ContentID := LuaSystem.Defines[ aTable.getString( 'content' ) ];
+    aExplosion.ContentID := aLua.Defines[ aTable.getString( 'content' ) ];
     if aExplosion.ContentID = 0 then
       Log( LOGERROR, 'unknown define ('+aTable.getString( 'content' ) +')!' );
   end
@@ -920,7 +842,7 @@ begin
     aExplosion.EmitterID := aTable.getInteger('emitter',0)
   else if aTable.IsString('emitter') then
   begin
-    aExplosion.EmitterID := LuaSystem.Defines[ aTable.getString( 'emitter' ) ];
+    aExplosion.EmitterID := aLua.Defines[ aTable.getString( 'emitter' ) ];
     if aExplosion.EmitterID = 0 then
       Log( LOGERROR, 'unknown emitter define ('+aTable.getString( 'emitter' ) +')!' );
   end
@@ -929,7 +851,7 @@ begin
   ReadExplosion := aExplosion.Color > 0;
 end;
 
-function ReadExplosion( aTable : TLuaTable; const aName : Ansistring; var aExplosion : TExplosionData ) : Boolean;
+function ReadExplosion( aLua : TLua; aTable : TLuaTable; const aName : Ansistring; var aExplosion : TExplosionData ) : Boolean;
 var iTable : TLuaTable;
 begin
   ReadExplosion                 := False;
@@ -937,7 +859,7 @@ begin
   if aTable.IsTable( aName ) then
   begin
     iTable := aTable.GetTable( aName );
-    Result := ReadExplosion( iTable, aExplosion );
+    Result := ReadExplosion( aLua, iTable, aExplosion );
     iTable.Free;
   end;
 end;

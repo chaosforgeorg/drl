@@ -6,14 +6,12 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlio;
 interface
-uses {$IFDEF WINDOWS}Windows,{$ENDIF} Classes, SysUtils,
-     vio, viorl, vrltools, vluaconfig, vglquadrenderer, vmessages, vtextures, vtigstyle,
-     vluastate, viotypes, vioevent, vioconsole, vgenerics, vutil,
-     dfdata, dfthing, dfbeing, drlspritemap, drlaudio, drlkeybindings,
-     drlcontrollerbindings, drlloadingview;
+uses {$IFDEF WINDOWS}windows,{$ENDIF} classes, sysutils,
+     vluagamestack, vio, vbindings, viorl, vrltools, vluaconfig, vglquadrenderer, vstoreinterface, vtextures, vtigstyle, vlua, viotypes, vioevent, vioconsole, vgenerics, vutil, vdf,
+     dfdata, dfthing, dfitem, dfbeing, dfplayer, dflevel, drlaudio, drlkeybindings, drlcontrollerbindings, drlloadingview, drlmodule,
+     drlconfig, drlconfiguration;
 
 const TIG_EV_NONE      = 0;
-      //TIG_EV_DROP      = 1;
       TIG_EV_INVENTORY = 2;
       TIG_EV_EQUIPMENT = 3;
       TIG_EV_CHARACTER = 4;
@@ -36,19 +34,51 @@ const TIG_EV_NONE      = 0;
 type TASCIIImageMap       = specialize TGObjectHashMap<TIOStringArray>;
 type TStringHashMap       = specialize TGHashMap< AnsiString >;
 
-type TDRLIO = class( TIORL )
-  constructor Create; reintroduce;
+// User settings that change how the game is presented and controlled with
+// the mouse and gamepad; IO reloads them on every Reconfigure.
+type TIOSettings = record
+  Flash             : Boolean;
+  Glow              : Boolean;
+  Fade              : Boolean;
+  ScreenShake       : Boolean;
+  BloodPulse        : Boolean;
+  ItemDropAnimation : Boolean;
+  AnimationBlending : Boolean;
+  Mouse             : Boolean;
+  MouseEdgePan      : Boolean;
+  GamepadRumble     : Boolean;
+  WaitSound         : Boolean;
+  GroupMessages     : Boolean;
+  MorePrompt        : Boolean;
+  HideHints         : Boolean;
+  EquipPickupSound  : Boolean;
+  ColoredInventory  : Boolean;
+end;
+
+// Presentation options from config.lua; IO copies them from each loaded
+// config, which the runtime replaces on every data load.
+type TIOOptions = record
+  HighASCII      : Boolean;
+end;
+
+// Architectural boundary: adapts shared roguelike presentation mechanics to DRL policy and its active session.
+type TDRLIO = class( TIORL, IDRLPresentation )
+  // aSettings is borrowed from the runtime, which outlives IO; aConfig is the
+  // Lua config at construction, replaced later through Configure.
+  constructor Create( aSettings : TDRLConfiguration; aConfig : TDRLConfig ); reintroduce;
   procedure Reset; virtual;
-  procedure SetSeed( aCardinal : LongInt );
-  procedure Initialize; virtual; abstract;
+  procedure SetSeedText( const aText : AnsiString );
+  // Sets up rendering; graphics mode loads its fonts from the core module.
+  procedure Initialize( aCoreModule : TDRLModule ); virtual; abstract;
   procedure Initialize( iRenderer : TIOConsoleRenderer );
-  procedure Reconfigure( aConfig : TLuaConfig ); virtual;
-  procedure Configure( aConfig : TLuaConfig ); override; overload;
-  procedure Configure( aConfig : TLuaConfig; aReload : Boolean ); overload; virtual;
-  procedure WaitForLayer( aHideHUD : Boolean ); reintroduce;
+  // Reloads the settings, then applies the configuration.
+  procedure Reconfigure( aConfig : TLuaConfig );
+  procedure Configure( aConfig : TDRLConfig; aReload : Boolean ); overload; virtual;
+  procedure RunLayer( aLayer : TIOLayer; aHideHUD : Boolean = False ); reintroduce;
+  procedure FadeLevel( aFadeTime : Single = 0.0 );
   procedure PreUpdate; override;
   destructor Destroy; override;
-  procedure Screenshot( aBB : Boolean );
+  procedure Screenshot;
 
   procedure EventMore;
 
@@ -57,56 +87,82 @@ type TDRLIO = class( TIORL )
   procedure LoadProgress( aProgress : DWord );
   procedure LoadStop;
   procedure Update( aMSec : DWord ); override;
+  procedure PlaySound( aSoundID : Word; aCoord : TCoord2D; aDelay : DWord = 0 );
+  function ResolveSoundID( const aResolveIDs : array of AnsiString ) : Word;
+  // Acknowledges a wait command, if the player wants a sound for it.
+  procedure PlayWaitSound;
 
   function EventToUIInput( const aEvent : TIOEvent ) : Integer; override;
   function CommandEventPending : Boolean;
 
   procedure SetHint( const aText : AnsiString );
+  // Animations and the level view follow the run state; nil without a Session.
+  // The runtime's store; IO pumps its platform callbacks each update.
+  procedure BindStore( aStore : TStoreInterface );
+  procedure BindRunStatus( aStatus : TRunStatus );
+  // The Session's auto-target list; nil without a Session.
+  procedure BindAutoTarget( aList : TAutoTarget );
 
   procedure Focus( aCoord: TCoord2D ); virtual;
   procedure FinishTargeting; virtual;
+  // Map-view operations; the console IO has no map view to change.
+  procedure SetLookTarget( aTarget : TCoord2D ); virtual;
+  procedure ToggleGrid; virtual;
+  // Paces one step of a multi-move; the console shows each step.
+  procedure PaceMultiMove; virtual;
+  // The map cell under a device point; off the map without a map view.
+  function DevicePointToCoord( aPoint : TPoint ) : TCoord2D; virtual;
 
   procedure LookDescription( aWhere : TCoord2D );
 
-  procedure Msg( const aText : AnsiString ); override; overload;
-  function  MsgGetRecent : TMessageBuffer;
-  procedure MsgReset;
-  // TODO: Could this be removed as well?
   procedure MsgUpDate; override;
   procedure ErrorReport( const aText : AnsiString );
 
-  procedure ClearAllMessages;
   procedure ASCIILoader( aStream : TStream; aName : Ansistring; aSize : DWord );
 
-  procedure BloodSlideDown( aDelayTime : Word );
+  procedure BloodSlideDown( aDelayTime : Word ); virtual;
 
   procedure WaitForAnimation( aStrict : Boolean = True ); virtual;
-  function AnimationsRunning : Boolean; virtual; abstract;
-  function AnimationsBlockingFinished : Boolean; virtual; abstract;
-  procedure AnimationWipe; virtual; abstract;
   procedure Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0); virtual; abstract;
   procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ); virtual;
   procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single );
-  procedure addMoveAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aWipeBump : Boolean ); virtual;
+  procedure addMoveAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aWipeBump : Boolean; aFinishBeforeNext : Boolean = False ); virtual;
   procedure addBumpAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aAmount : Single ); virtual;
   procedure addScreenMoveAnimation( aDuration : DWord; aTo : TCoord2D ); virtual;
   procedure addCellAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aValue : Integer ); virtual;
-  procedure addItemAnimation( aDuration : DWord; aDelay : DWord; aItem : TThing; aValue : Integer ); virtual;
-  procedure addKillAnimation( aDuration : DWord; aDelay : DWord; aBeing : TThing; aReverse : Boolean = False ); virtual;
+  procedure addItemAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aValue : Integer ); virtual;
+  procedure addKillAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aSprite : TSprite; aReverse : Boolean = False ); virtual;
   procedure addMissileAnimation( aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aColor : Byte; aPic : Char; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False; aTrailNID : Word = 0 ); virtual; abstract;
   procedure addMarkAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aColor : Byte; aPic : Char ); reintroduce; virtual; abstract;
   procedure addFXAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite ); virtual;
   procedure addParticleBurstAnimation( aDelay : DWord; aEmitterID : Word; aPosition : TCoord2D;
     aDirection : TDirection; aCount : Word; aDistanceScale, aSpreadScale : Single ); virtual;
   procedure addSoundAnimation( aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord ); virtual; abstract;
-  procedure addRumbleAnimation( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord ); virtual;
+  procedure addRumbleAnimation( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord );
   procedure Explosion( aDelay : Integer; aWhere : TCoord2D; aData : TExplosionData ); reintroduce; virtual;
   procedure PulseBlood( aValue : Single ); virtual;
+  function ShowsDecals : Boolean; virtual;
+  // Reads ui.engine_sprites after a data load.
+  procedure LoadEngineSprites( aLua : TLua );
+  function IDRLPresentation.EngineSprites = GetEngineSprites;
+  function GetEngineSprites : TEngineSprites;
+  function EquipSound : AnsiString;
+  // Menu colour of an item, light gray when inventory colouring is off.
+  function ItemMenuColor( aItem : TItem ) : Byte;
+  function PainUntil( aDelay : Integer ) : QWord;
 
-  class procedure RegisterLuaAPI( State : TLuaState ); reintroduce;
+  // IO outlives Lua; its natives capture it as upvalue 1.
+  procedure RegisterLuaAPI( aLua : TLua ); virtual;
+  // Module graphics, from a WAD or a module folder; graphics IO only.
+  procedure LoadGraphics( aData : TVDataFile ); virtual; overload;
+  procedure LoadGraphics( const aPath : AnsiString ); virtual; overload;
+  // Finish module uploads and GPU warm-up while the loading screen is active.
+  procedure PrepareGraphics; virtual;
 
   function PushLayer( aLayer : TIOLayer ) : TIOLayer; override;
   procedure PreAction;
+  procedure EnterLevel( aCoord : TCoord2D ); virtual;
+  procedure FinishLayers; override;
   procedure Clear; override;
   function OnEvent( const aEvent : TIOEvent ) : Boolean; override;
 
@@ -130,24 +186,43 @@ type TDRLIO = class( TIORL )
   procedure SetTarget( aTarget : TCoord2D; aColor : Byte; aRange : Byte ); virtual; abstract;
   procedure SetAutoTarget( aTarget : TCoord2D ); virtual;
   function ResolveSub( const aID : Ansistring ) : Ansistring;
-  procedure RunModuleChoice; virtual;
+  // Asks for the core module to run; returns its ID.
+  function RunModuleChoice( aModules : TModuleList ) : AnsiString;
+  // Returns True when the player chooses to continue with outdated mods.
+  function RunModuleAPIWarning( aModules : TModuleList ) : Boolean;
+private
+  function GetHeartbeatVolume : Integer;
+  procedure LoadSettings;
+  procedure ReadOptions( aConfig : TDRLConfig );
 protected
+  // Runs a modal launch-time layer before IO is initialized.
+  procedure RunLauncherLayer( aLayer : TIOLayer ); virtual;
+  // Applies the configuration once the settings are current.
+  procedure DoReconfigure( aConfig : TLuaConfig ); virtual;
+  // Rumbles now or after aDelay; called only when rumble is enabled and a gamepad is in use.
+  procedure QueueRumble( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord ); virtual;
   procedure UpdateStyles;
   procedure ExplosionMark( aCoord : TCoord2D; aColor : Byte; aDuration : DWord; aDelay : DWord ); virtual; abstract;
   procedure DrawHud; virtual;
-  procedure ColorQuery(nkey,nvalue : Variant);
-  function ScreenShotCallback( aEvent : TIOEvent ) : Boolean;
-  function BBScreenShotCallback( aEvent : TIOEvent ) : Boolean;
+  function ScreenshotCallback( aEvent : TIOEvent ) : Boolean;
 protected
   FAudio       : TDRLAudio;
+  FUserConfig  : TDRLConfiguration; // Borrowed from the runtime, which outlives IO.
+  FSettings    : TIOSettings;
+  FOptions     : TIOOptions;
+  FEngine      : TEngineSprites;
+  FEffect      : TStatusEffect;
   FTime        : QWord;
   FLoading     : TLoadingView;
   FMTarget     : TCoord2D;
   FLastTarget  : TCoord2D;
   FASCII       : TASCIIImageMap;
+  FStore       : TStoreInterface; // Borrowed from the runtime.
+  FSShotPath   : AnsiString;
+  FRunStatus   : TRunStatus; // Borrowed from the Session, released with it.
+  FAutoTarget  : TAutoTarget; // Borrowed from the Session, released with it.
 
   FHudEnabled  : Boolean;
-  FWaiting     : Boolean;
   FTargeting   : Boolean;
   FNarrowMode  : Boolean;
   FHint        : AnsiString;
@@ -160,7 +235,6 @@ protected
   FSeedHUDOffset : Integer;
 
   // Textmode only
-  FTargetLast     : Boolean;
   FTargetEnabled  : Boolean;
 
   // String subs
@@ -169,38 +243,55 @@ protected
 
   FTIGDefault     : TTIGStyle;
 public
-  property KeyCode     : TIOKeyCode     read FKeyCode    write FKeyCode;
-  property Audio       : TDRLAudio     read FAudio;
-  property MTarget     : TCoord2D       read FMTarget    write FMTarget;
-  property ASCII       : TASCIIImageMap read FASCII;
-  property HintOverlay : AnsiString     read FHintOverlay write FHintOverlay;
-  property Targeting   : Boolean        read FTargeting   write FTargeting;
-  property HintStatus  : AnsiString     read FHintStatus  write FHintStatus;
-  property Time        : QWord          read FTime;
-  property NarrowMode  : Boolean        read FNarrowMode;
+  property KeyCode      : TIOKeyCode      read FKeyCode    write FKeyCode;
+  property Audio        : TDRLAudio       read FAudio;
+  property Settings     : TIOSettings     read FSettings;
+  property Options      : TIOOptions      read FOptions;
+  property EngineSprites : TEngineSprites read FEngine;
+  // Screen tint from the player's perks; the Session sets it before each action.
+  property StatusEffect : TStatusEffect   read FEffect     write FEffect;
+  property MTarget      : TCoord2D        read FMTarget    write FMTarget;
+  property ASCII        : TASCIIImageMap  read FASCII;
+  property HintOverlay  : AnsiString      read FHintOverlay write FHintOverlay;
+  property Targeting    : Boolean         read FTargeting   write FTargeting;
+  property HintStatus   : AnsiString      read FHintStatus  write FHintStatus;
+  property Time         : QWord           read FTime;
+  property NarrowMode   : Boolean         read FNarrowMode;
+  property Store        : TStoreInterface read FStore;
+  // Folder for F9/F10 screenshots; empty until the module's user paths exist.
+  property SShotPath    : AnsiString      read FSShotPath write FSShotPath;
+  property RunStatus    : TRunStatus      read FRunStatus;
+  property AutoTarget   : TAutoTarget     read FAutoTarget;
+  function GetPlayer : TPlayer;
+  function GetLevel : TLevel;
+  // The Session's player and level, set through SetPlayer and SetLevel.
+  property Player       : TPlayer         read GetPlayer;
+  property Level        : TLevel          read GetLevel;
 
   // Textmode only
   property TargetEnabled : Boolean        read FTargetEnabled write FTargetEnabled;
-  property TargetLast    : Boolean        read FTargetLast    write FTargetLast;
 end;
 
-var IO : TDRLIO;
+// Base for layers that use DRL's IO; IO is the owner, set when the layer is
+// pushed, so it is available from Setup on.
+type TDRLLayer = class( TIOLayer )
+protected
+  function GetIO : TDRLIO;
+public
+  property IO : TDRLIO read GetIO;
+end;
 
+// Reports a crash to the player once per process; later calls do nothing.
 procedure EmitCrashInfo( const aInfo : AnsiString; aInGame : Boolean  );
 
 implementation
 
-uses math, video, dateutils, variants,
-     vsound, vluasystem, vuid, vlog, vdebug, vmath,
-     vsdlio, vglconsole, vtig, vtigio, vvector,
-     dflevel, dfplayer, dfitem, dfhof,
-     drlconfiguration, drlbase, drlmoreview, drlchoiceview, drlua, drlmodulechoiceview,
-     drlhudviews, drlplotview;
+uses math, video, dateutils,
+     vsound, vlualibrary, vluastate, vuid, vlog, vdebug, vmath, vsdlio, vglconsole, vtig, vtigio, vvector,
+     drluibindings, drlmoreview, drlchoiceview, drlmodulechoiceview, drlhudviews, drlplotview, drlplayerview;
 
-function TIGSubCallback( const aID : Ansistring ) : Ansistring;
-begin
-  Exit( IO.ResolveSub( aID ) );
-end;
+// Messages kept in the message history.
+const MessageBufferSize = 100;
 
 {
 procedure OutPutRestore;
@@ -223,10 +314,6 @@ var Temp  : TGFXScreen;
     vx,vy : byte;
 }
 begin
-  if GraphicsVersion then
-    if Player <> nil then
-      SpriteMap.NewShift := SpriteMap.ShiftValue( Player.Position );
-
 {
   for vx := 1 to 80 do for vy := 1 to 25 do Temp [vy,vx] := VideoBuf^[(vx-1)+(vy-1)*ScreenSizeX];
   OutputRestore;
@@ -237,40 +324,18 @@ begin
 end;
 
 procedure TDRLIO.WaitForAnimation( aStrict : Boolean = True );
-var iTime : DWord;
 begin
-  if FWaiting then Exit;
-  if DRL.State <> DSPlaying then Exit;
-  FWaiting := True;
-  iTime := IO.Driver.GetMs;
-  if aStrict then
+  if ( FRunStatus = nil ) or not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then
   begin
-    while AnimationsRunning do
-    begin
-      IO.Delay(5);
-      if ( IO.Driver.GetMs - iTime ) > 2000 then
-        begin
-          Log(LOGWARN, 'Emergency animation break!' );
-          AnimationWipe;
-          Break;
-        end;
-    end;
-  end
-  else
-  begin
-    while not AnimationsBlockingFinished do
-    begin
-      IO.Delay(5);
-      if ( IO.Driver.GetMs - iTime ) > 2000 then
-        begin
-          Log(LOGWARN, 'Emergency animation break!' );
-          AnimationWipe;
-          Break;
-        end;
-    end;
+    if MsgPending then MsgUpdate;
+    Exit;
   end;
-  FWaiting := False;
-  DRL.Level.RevealBeings;
+  if not WaitForAnimationCompletion( aStrict, 2000 ) then
+    Log( LOGWARN, 'Emergency animation break!' );
+  if aStrict then ClearAnimations;
+  // Partial waits can leave nonblocking clips drawing beings.
+  if ( Level <> nil ) and ( not AnimationsRunning ) then
+    Level.RevealBeings;
 end;
 
 procedure TDRLIO.addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection );
@@ -283,7 +348,7 @@ begin
   addScreenShakeAnimation( aDuration, aDelay, aStrength, NewDirection(0) );
 end;
 
-procedure TDRLIO.addMoveAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aWipeBump : Boolean );
+procedure TDRLIO.addMoveAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aWipeBump : Boolean; aFinishBeforeNext : Boolean );
 begin
 
 end;
@@ -303,12 +368,12 @@ begin
 
 end;
 
-procedure TDRLIO.addItemAnimation( aDuration : DWord; aDelay : DWord; aItem : TThing; aValue : Integer );
+procedure TDRLIO.addItemAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aValue : Integer );
 begin
 
 end;
 
-procedure TDRLIO.addKillAnimation( aDuration : DWord; aDelay : DWord; aBeing : TThing; aReverse : Boolean = False );
+procedure TDRLIO.addKillAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aSprite : TSprite; aReverse : Boolean = False );
 begin
 
 end;
@@ -327,8 +392,13 @@ end;
 
 procedure TDRLIO.addRumbleAnimation( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord );
 begin
-  if (not Setting_GamepadRumble) or (not IsGamepad ) then Exit;
-    IO.Driver.Rumble( aLow, aHigh, aDuration );
+  if (not FSettings.GamepadRumble) or (not IsGamepad ) then Exit;
+  QueueRumble( aDelay, aLow, aHigh, aDuration );
+end;
+
+procedure TDRLIO.QueueRumble( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord );
+begin
+  FIODriver.Rumble( aLow, aHigh, aDuration );
 end;
 
 procedure TDRLIO.Explosion( aDelay : Integer; aWhere: TCoord2D; aData : TExplosionData );
@@ -338,14 +408,14 @@ var iCoord    : TCoord2D;
     iLevel    : TLevel;
     iSound    : Word;
 begin
-  iLevel := DRL.Level;
+  iLevel := Level;
   if not iLevel.isProperCoord( aWhere ) then Exit;
 
   if aData.SoundID <> '' then
   begin
-    iSound := IO.Audio.ResolveSoundID([aData.SoundID+'.explode',aData.SoundID,'explode']);
+    iSound := FAudio.ResolveSoundID([aData.SoundID+'.explode',aData.SoundID,'explode']);
     if iSound <> 0 then
-      IO.addSoundAnimation( aDelay, aWhere, iSound );
+      addSoundAnimation( aDelay, aWhere, iSound );
   end;
 
   if aData.Range > 0 then
@@ -355,7 +425,7 @@ begin
   end;
 
   if GraphicsVersion and ( aData.EmitterID > 0 ) then
-    DRL.Particles.AddEmitterDirect( aData.EmitterID,
+    iLevel.Particles.AddEmitterDirect( aData.EmitterID,
       Vec3f( ( aWhere.X - 1 ) * 32 + 16, ( aWhere.Y - 1 ) * 32 + 16, 0 ) );
 
   for iCoord in NewArea( aWhere, aData.Range ).Clamped( iLevel.Area ) do
@@ -380,12 +450,63 @@ begin
   end;
 
   if not iVisible then if aData.Range > 3 then
-    IO.Msg( 'You hear an explosion!' );
+    Msg( 'You hear an explosion!' );
 end;
 
 procedure TDRLIO.PulseBlood( aValue : Single );
 begin
 
+end;
+
+function TDRLIO.ShowsDecals : Boolean;
+begin
+  Exit( False );
+end;
+
+procedure TDRLIO.LoadEngineSprites( aLua : TLua );
+var iEmitter : AnsiString;
+    i        : Integer;
+begin
+  FEngine := Default( TEngineSprites );
+  FEngine.Highlight    := aLua.Get( ['ui','engine_sprites','highlight'], 0 );
+  FEngine.Select       := aLua.Get( ['ui','engine_sprites','select'], 0 );
+  FEngine.Mark         := aLua.Get( ['ui','engine_sprites','mark'], 0 );
+  FEngine.Grid         := aLua.Get( ['ui','engine_sprites','grid'], 0 );
+  FEngine.Explosion    := aLua.Get( ['ui','engine_sprites','explosion'], 0 );
+  FEngine.Shield       := aLua.Get( ['ui','engine_sprites','shield','sprite'], 0 );
+  FEngine.ShieldFrames := aLua.Get( ['ui','engine_sprites','shield','frames'], 1 );
+  for i := 0 to High( TDecalSprites ) do
+  begin
+    FEngine.BloodDecals[i]     := aLua.Get( ['ui','engine_sprites','blood_decals', i + 1], 0 );
+    FEngine.WallBloodDecals[i] := aLua.Get( ['ui','engine_sprites','wall_blood_decals', i + 1], 0 );
+  end;
+  // The emitter is named by ID; it is registered by the time data has loaded.
+  iEmitter := aLua.Get( ['ui','engine_sprites','blood_emitter'], '' );
+  if iEmitter <> '' then
+    FEngine.BloodEmitter := aLua.Get( ['emitters', iEmitter, 'nid'], 0 );
+end;
+
+function TDRLIO.GetEngineSprites : TEngineSprites;
+begin
+  Exit( FEngine );
+end;
+
+function TDRLIO.EquipSound : AnsiString;
+begin
+  if FSettings.EquipPickupSound then Exit( 'pickup' );
+  Exit( 'reload' );
+end;
+
+function TDRLIO.ItemMenuColor( aItem : TItem ) : Byte;
+begin
+  if not FSettings.ColoredInventory then Exit( LightGray );
+  Exit( aItem.MenuColor );
+end;
+
+function TDRLIO.PainUntil( aDelay : Integer ) : QWord;
+const PAIN_DURATION = 500;
+begin
+  Exit( FTime + aDelay + PAIN_DURATION );
 end;
 
 {
@@ -409,7 +530,7 @@ begin
   t := 1;
   repeat
     Inc(t);
-    IO.Delay(DelayTime);
+    Delay(DelayTime);
     for cn := 1 to 80 do MoveColumn(cn);
   until t = 25;
   for vx := 1 to 80 do for vy := 1 to 25 do VideoBuf^[(vx-1)+(vy-1)*ScreenSizeX] := NewScreen[vy,vx];
@@ -431,14 +552,19 @@ end;
 
 { TDRLIO }
 
-constructor TDRLIO.Create;
+constructor TDRLIO.Create( aSettings : TDRLConfiguration; aConfig : TDRLConfig );
 begin
   inherited Create( FIODriver, nil );
-  FLoading := nil;
-  FAudio    := TDRLAudio.Create;
-  FMessages := TMessages.Create( 2, 77, @EventMore, Option_MessageBuffer );
-  FMessages.GroupMultiple := Setting_GroupMessages;
-  inherited Configure( dfdata.Config );
+  FUserConfig := aSettings;
+  LoadSettings;
+  ReadOptions( aConfig );
+
+  FMsgQueue := True;
+  FLoading  := nil;
+  FAudio    := TDRLAudio.Create( FVisualRNG, aSettings );
+  InitializeMessages( 2, 77, @EventMore, MessageBufferSize );
+  Messages.GroupMultiple := FSettings.GroupMessages;
+  inherited Configure( aConfig );
   FASCII    := TASCIIImageMap.Create( True );
 
   FIODriver.SetTitle('DRL','DRL');
@@ -451,16 +577,15 @@ end;
 
 procedure TDRLIO.Reset;
 begin
+  MsgClear;
   Clear;
-  IO := Self;
   VTIG_Shutdown;
   VTIGDefaultStyle := FTIGDefault;
   FLoading := nil;
   FTime := 0;
   FASCII.Clear;
   FAudio.Reset;
-  FWaiting     := False;
-  FHudEnabled  := False;
+  FHudEnabled  := True;
   FTargeting   := False;
   FNarrowMode  := False;
   FHint        := '';
@@ -470,7 +595,6 @@ begin
   FSeedHUDOffset := -2;
 
   FTargetEnabled := False;
-  FTargetLast    := False;
   FCachedAmmo    := -1;
   FLastTarget.Create(0,0);
 end;
@@ -479,7 +603,7 @@ procedure TDRLIO.Initialize( iRenderer : TIOConsoleRenderer );
 begin
   inherited Initialize( iRenderer );
   if iRenderer = nil then Exit;
-  VTIG_SetSubCallback( @TIGSubCallback );
+  VTIG_SetSubCallback( @ResolveSub );
   UpdateStyles;
   iRenderer.Clear;
   iRenderer.HideCursor;
@@ -499,6 +623,16 @@ begin
   FLastTarget.Create(0,0);
 end;
 
+procedure TDRLIO.EnterLevel( aCoord : TCoord2D );
+begin
+end;
+
+procedure TDRLIO.FinishLayers;
+begin
+  if FTargeting then FinishTargeting;
+  inherited FinishLayers;
+end;
+
 procedure TDRLIO.Clear;
 begin
   FCachedAmmo := -1;
@@ -506,22 +640,23 @@ begin
 end;
 
 function TDRLIO.OnEvent( const aEvent : TIOEvent ) : Boolean;
-var iInput : TInputKey;
-    iKey   : TIOKeyCode;
+var iAction : TBindingAction;
+    iInput  : TInputKey;
+    iKey    : TIOKeyCode;
 begin
-  if ( aEvent.EType in [ VEVENT_MOUSEMOVE, VEVENT_MOUSEDOWN, VEVENT_MOUSEUP ] ) then
-    if not Setting_Mouse then
-      Exit( False );
-
-  if ( aEvent.EType = VEVENT_KEYDOWN ) or ( aEvent.EType = VEVENT_KEYUP ) and ( not aEvent.Key.Repeated ) then
+  if ( aEvent.EType in [ VEVENT_KEYDOWN, VEVENT_KEYUP ] ) and
+     ( not aEvent.Key.Repeated ) then
   begin
-    case aEvent.Key.Code of
-      VKEY_F1     : if ModdedGame then VTIG_GetIOState.EventState.SetState( TIG_EV_RESTART, aEvent.Key.Pressed and ( VKMOD_CTRL in aEvent.Key.ModState ) );
-    end;
+    // The main menu restarts on this only when the game is modded.
+    if aEvent.Key.Code = VKEY_F1 then
+      VTIG_GetIOState.EventState.SetState( TIG_EV_RESTART,
+        aEvent.Key.Pressed and ( VKMOD_CTRL in aEvent.Key.ModState ) );
     iKey := IOKeyEventToIOKeyCode( aEvent.Key );
-    if (iKey mod 256) <> 0 then
+    iAction := FGameBindings.ResolveKey( iKey );
+    if ( iAction >= Ord( Low( TInputKey ) ) ) and
+       ( iAction <= Ord( High( TInputKey ) ) ) then
     begin
-      iInput := TInputKey( Config.Commands[ iKey ] );
+      iInput := TInputKey( iAction );
       case iInput of
         INPUT_INVENTORY  : VTIG_GetIOState.EventState.SetState( TIG_EV_INVENTORY, aEvent.Key.Pressed );
         INPUT_EQUIPMENT  : VTIG_GetIOState.EventState.SetState( TIG_EV_EQUIPMENT, aEvent.Key.Pressed );
@@ -542,18 +677,20 @@ begin
 end;
 
 function TDRLIO.ResolveControllerAction( aButton : TIOPadButton; out aAction : TControllerAction ) : Boolean;
-var iCommand : Byte;
+var iBinding : TBindingAction;
 begin
-  iCommand := Config.PadCommands[ aButton ];
-  if iCommand > Byte( High( TControllerAction ) ) then Exit( False );
-  aAction := TControllerAction( iCommand );
+  iBinding := FGameBindings.ResolvePad( aButton );
+  if ( iBinding < Ord( Low( TControllerAction ) ) )
+    or ( iBinding > Ord( High( TControllerAction ) ) ) then
+    Exit( False );
+  aAction := TControllerAction( iBinding );
   Exit( True );
 end;
 
 function TDRLIO.ControllerActionHeld( aAction : TControllerAction ) : Boolean;
 var iButton : TIOPadButton;
 begin
-  iButton := Config.GetPadButton( Byte( aAction ) );
+  iButton := FGameBindings.GetPadButton( Ord( aAction ) );
   Exit( ( iButton <> VPAD_BUTTON_INVALID ) and PadState.Active( iButton ) );
 end;
 
@@ -610,15 +747,15 @@ begin
   else if aThing is TItem then
   begin
     FConsole.HideCursor;
-    PushLayer( TMoreItemView.Create( TItem(aThing) ) );
+    PushLayer( TMoreItemView.Create( TItem(aThing), ItemMenuColor( TItem(aThing) ) ) );
   end;
 end;
 
 procedure TDRLIO.SetAutoTarget( aTarget : TCoord2D );
 begin
-  FHintTarget := DRL.Level.GetTargetDescription( aTarget );
-  if DRL.Level.isVisible( aTarget ) and ( DRL.Level.Being[ aTarget ] <> nil ) 
-    then FHintStatus := DRL.Level.Being[ aTarget ].GetTraitString
+  FHintTarget := Level.GetTargetDescription( Player, aTarget );
+  if Level.isVisible( aTarget ) and ( Level.Being[ aTarget ] <> nil )
+    then FHintStatus := Level.Being[ aTarget ].GetPerkSummary
     else FHintStatus := '';
 end;
 
@@ -629,37 +766,78 @@ begin
     else Exit( FKeySubMap.Get(aID, '') );
 end;
 
+procedure TDRLIO.LoadSettings;
+begin
+  FSettings.Flash             := FUserConfig.GetBoolean( 'flashing_fx' );
+  FSettings.Glow              := FUserConfig.GetBoolean( 'glow_fx' );
+  FSettings.Fade              := FUserConfig.GetBoolean( 'fade_fx' );
+  FSettings.ScreenShake       := FUserConfig.GetBoolean( 'screen_shake' );
+  FSettings.BloodPulse        := FUserConfig.GetBoolean( 'pulse_fx' );
+  FSettings.ItemDropAnimation := FUserConfig.GetBoolean( 'item_drop_animation' );
+  FSettings.AnimationBlending := FUserConfig.GetBoolean( 'animation_blending' );
+  FSettings.Mouse             := FUserConfig.GetBoolean( 'enable_mouse' );
+  FSettings.MouseEdgePan      := FUserConfig.GetBoolean( 'mouse_edge_pan' );
+  FSettings.GamepadRumble     := FUserConfig.GetBoolean( 'enable_rumble' );
+  FSettings.WaitSound         := FUserConfig.GetBoolean( 'wait_sound' );
+  FSettings.GroupMessages     := FUserConfig.GetBoolean( 'group_messages' );
+  FSettings.MorePrompt        := FUserConfig.GetBoolean( 'more_prompt' );
+  FSettings.HideHints         := FUserConfig.GetBoolean( 'hide_hints' );
+  FSettings.EquipPickupSound  := FUserConfig.GetBoolean( 'equip_pickup_sound' );
+  FSettings.ColoredInventory  := FUserConfig.GetBoolean( 'colored_inventory' );
+end;
+
 procedure TDRLIO.Reconfigure( aConfig : TLuaConfig );
-var iInput     : TInputKey;
-    iAction    : TControllerAction;
+begin
+  LoadSettings;
+  DoReconfigure( aConfig );
+end;
+
+procedure TDRLIO.DoReconfigure( aConfig : TLuaConfig );
+var iAction    : TControllerAction;
     iPadString : AnsiString;
     procedure CtrlAssign( aWhat : TInputKey; aFrom : TInputKey );
     var iKey : TIOKeyCode;
     begin
-      iKey := aConfig.Commands[ Configuration.GetInteger(KeyInfo[aFrom].ID) ];
+      iKey := FUserConfig.KeyBindings.ConfigurationValue( Ord( aFrom ) );
+      if iKey = 0 then Exit;
       if ( iKey and IOKeyCodeCtrlMask ) = 0
-        then aConfig.Commands[ iKey + IOKeyCodeCtrlMask ] := Word(aWhat)
-        else Log( LogWarn, 'Movement key assigned with Ctrl prevents targeting move assignemnt!' );
+        then FGameBindings.BindKey( iKey + IOKeyCodeCtrlMask, Ord( aWhat ) )
+        else Log( LOGWARN, 'Movement key assigned with Ctrl prevents targeting move assignment!' );
     end;
     function GetString( aWhat : TInputKey ) : Ansistring;
     var iKey : TIOKeyCode;
     begin
-      iKey := Configuration.GetInteger(KeyInfo[aWhat].ID);
+      iKey := FGameBindings.GetKey( Ord( aWhat ) );
       Exit( IOKeyCodeToStringShort( iKey ) );
     end;
     function GetPadString( aWhat : TControllerAction ) : Ansistring;
     begin
-      Exit( VPadButtonToStringShort( GetControllerButton( Configuration, aWhat ) ) );
+      Exit( VPadButtonToStringShort( FGameBindings.GetPadButton( Ord( aWhat ) ) ) );
+    end;
+    function GetUIKeyString( aWhat : TBindingAction ) : Ansistring;
+    begin
+      Exit( IOKeyCodeToStringShort(
+        FUserConfig.UIKeyBindings.ConfigurationValue( aWhat )
+      ) );
+    end;
+    function GetUIPadString( aWhat : TBindingAction ) : Ansistring;
+    begin
+      Exit( VPadButtonToStringShort(
+        FUserConfig.UIControllerBindings.GetButton( aWhat )
+      ) );
+    end;
+    function WithModifier( const aModifier, aBinding : Ansistring ) : Ansistring;
+    begin
+      if aBinding = '' then Exit( '' );
+      Exit( aModifier + '+' + aBinding );
     end;
 begin
   FAudio.Reconfigure;
-  aConfig.ResetCommands;
+  FMessages.GroupMultiple := FSettings.GroupMessages;
+  FGameBindings.Clear;
   if aConfig.TableExists('Keytable') then
-    aConfig.LoadKeybindings('Keytable');
-
-  for iInput in TInputKey do
-    if KeyInfo[iInput].ID <> '' then
-      aConfig.Commands[ Configuration.GetInteger(KeyInfo[iInput].ID) ] := Word(iInput);
+    aConfig.LoadKeybindings(FGameBindings, 'Keytable');
+  FGameBindings.LoadKeys(FUserConfig.KeyBindings);
 
   CtrlAssign( INPUT_TARGETLEFT,      INPUT_WALKLEFT );
   CtrlAssign( INPUT_TARGETRIGHT,     INPUT_WALKRIGHT );
@@ -670,38 +848,52 @@ begin
   CtrlAssign( INPUT_TARGETDOWNLEFT,  INPUT_WALKDOWNLEFT );
   CtrlAssign( INPUT_TARGETDOWNRIGHT, INPUT_WALKDOWNRIGHT );
 
-  ApplyControllerBindings( Configuration, aConfig );
+  FUserConfig.ControllerBindings.Validate;
+  FGameBindings.LoadPad( FUserConfig.ControllerBindings );
+
+  UIBindings.Clear;
+  UIBindings.LoadKeys( FUserConfig.UIKeyBindings );
+  FUserConfig.UIControllerBindings.Validate;
+  UIBindings.LoadPad( FUserConfig.UIControllerBindings );
+  if ( FUserConfig.UIControllerBindings.ConfigurationValue( VTIG_IE_LEFT ) =
+       Ord( VPAD_BUTTON_DPAD_LEFT ) ) and
+     ( UIBindings.ResolvePad( VPAD_BUTTON_LEFTSHOULDER ) = BINDING_NONE ) then
+    UIBindings.BindPad( VPAD_BUTTON_LEFTSHOULDER, VTIG_IE_LEFT );
+  if ( FUserConfig.UIControllerBindings.ConfigurationValue( VTIG_IE_RIGHT ) =
+       Ord( VPAD_BUTTON_DPAD_RIGHT ) ) and
+     ( UIBindings.ResolvePad( VPAD_BUTTON_RIGHTSHOULDER ) = BINDING_NONE ) then
+    UIBindings.BindPad( VPAD_BUTTON_RIGHTSHOULDER, VTIG_IE_RIGHT );
 
   FKeySubMap.Clear;
-  FKeySubMap['input_ok']        := 'Enter';
-  FKeySubMap['input_escape']    := 'Escape';
-  FKeySubMap['input_uidrop']    := 'Backspace';
-  FKeySubMap['input_uialtdrop'] := 'SHIFT+Backspace';
-  FKeySubMap['input_uiswap']    := 'Tab';
-  FKeySubMap['input_left']      := 'Left';
-  FKeySubMap['input_right']     := 'Right';
-  FKeySubMap['input_up']        := 'Up';
-  FKeySubMap['input_down']      := 'Down';
-  FKeySubMap['input_pgup']      := 'PgUp';
-  FKeySubMap['input_pgdn']      := 'PgDn';
+  FKeySubMap['input_ok']        := GetUIKeyString( VTIG_IE_CONFIRM );
+  FKeySubMap['input_escape']    := GetUIKeyString( VTIG_IE_CANCEL );
+  FKeySubMap['input_uidrop']    := GetUIKeyString( UI_BINDING_DROP );
+  FKeySubMap['input_uialtdrop'] := WithModifier( 'SHIFT', GetUIKeyString( UI_BINDING_DROP ) );
+  FKeySubMap['input_uiswap']    := GetUIKeyString( UI_BINDING_SWAP );
+  FKeySubMap['input_left']      := GetUIKeyString( VTIG_IE_LEFT );
+  FKeySubMap['input_right']     := GetUIKeyString( VTIG_IE_RIGHT );
+  FKeySubMap['input_up']        := GetUIKeyString( VTIG_IE_UP );
+  FKeySubMap['input_down']      := GetUIKeyString( VTIG_IE_DOWN );
+  FKeySubMap['input_pgup']      := GetUIKeyString( VTIG_IE_PGUP );
+  FKeySubMap['input_pgdn']      := GetUIKeyString( VTIG_IE_PGDOWN );
   FKeySubMap['input_help']      := GetString( INPUT_HELP );
   FKeySubMap['input_fire']      := GetString( INPUT_FIRE );
   FKeySubMap['input_reload']    := GetString( INPUT_RELOAD );
   FKeySubMap['input_pickup']    := GetString( INPUT_PICKUP );
   FKeySubMap['input_action']    := GetString( INPUT_ACTION );
-  FKeySubMap['input_menu']      := 'Escape';
+  FKeySubMap['input_menu']      := GetUIKeyString( VTIG_IE_CANCEL );
   FKeySubMap['input_inventory'] := GetString( INPUT_INVENTORY );
 
   FPadSubMap.Clear;
-  FPadSubMap['input_ok']        := 'A';
-  FPadSubMap['input_escape']    := 'B';
-  FPadSubMap['input_uidrop']    := 'Y';
-  FPadSubMap['input_uialtdrop'] := 'RTrigger+Y';
-  FPadSubMap['input_uiswap']    := 'X';
-  FPadSubMap['input_left']      := 'Left';
-  FPadSubMap['input_right']     := 'Right';
-  FPadSubMap['input_up']        := 'Up';
-  FPadSubMap['input_down']      := 'Down';
+  FPadSubMap['input_ok']        := GetUIPadString( VTIG_IE_CONFIRM );
+  FPadSubMap['input_escape']    := GetUIPadString( VTIG_IE_CANCEL );
+  FPadSubMap['input_uidrop']    := GetUIPadString( UI_BINDING_DROP );
+  FPadSubMap['input_uialtdrop'] := WithModifier( 'RTrigger', GetUIPadString( UI_BINDING_DROP ) );
+  FPadSubMap['input_uiswap']    := GetUIPadString( UI_BINDING_SWAP );
+  FPadSubMap['input_left']      := GetUIPadString( VTIG_IE_LEFT );
+  FPadSubMap['input_right']     := GetUIPadString( VTIG_IE_RIGHT );
+  FPadSubMap['input_up']        := GetUIPadString( VTIG_IE_UP );
+  FPadSubMap['input_down']      := GetUIPadString( VTIG_IE_DOWN );
   FPadSubMap['input_help']      := GetPadString( CONTROLLER_MENU );
   FPadSubMap['input_menu']      := GetPadString( CONTROLLER_MENU );
   FPadSubMap['input_fire']      := GetPadString( CONTROLLER_FIRE );
@@ -722,102 +914,90 @@ begin
   end;
 end;
 
-procedure TDRLIO.Configure( aConfig : TLuaConfig );
-begin
-  Configure( aConfig, False );
-end;
-
-procedure TDRLIO.Configure ( aConfig : TLuaConfig; aReload : Boolean ) ;
+procedure TDRLIO.Configure ( aConfig : TDRLConfig; aReload : Boolean ) ;
 begin
   inherited Configure( aConfig );
+  ReadOptions( aConfig );
   // TODO : configurable
 
-  if GodMode then
-    RegisterDebugConsole( VKEY_F1 );
-  FIODriver.RegisterInterrupt( VKEY_F9, @ScreenShotCallback );
-  FIODriver.RegisterInterrupt( VKEY_F10, @BBScreenShotCallback );
+  FIODriver.RegisterInterrupt( VKEY_F9, @ScreenshotCallback );
+  FIODriver.RegisterInterrupt( VKEY_F10, @ScreenshotCallback );
 
-  if Option_MessageBuffer < 20 then Option_MessageBuffer := 20;
   FAudio.Configure( aConfig, aReload );
 
-  if aReload then
-    aConfig.EntryFeed('Colors', @ColorQuery );
-  if Option_MessageColoring then
+  if aConfig.TableExists( 'Messages' ) then
     aConfig.EntryFeed( 'Messages', @FMessages.AddHighlightCallback );
 end;
 
-procedure TDRLIO.WaitForLayer( aHideHUD : Boolean );
+procedure TDRLIO.ReadOptions( aConfig : TDRLConfig );
 begin
+  FOptions.HighASCII := aConfig.HighASCII;
+end;
+
+procedure TDRLIO.RunLayer( aLayer : TIOLayer; aHideHUD : Boolean );
+var iHudEnabled : Boolean;
+begin
+  iHudEnabled := FHudEnabled;
   if aHideHUD then FHudEnabled := False;
-  inherited WaitForLayer;
-  if aHideHUD then FHudEnabled := True;
+  inherited RunLayer( aLayer );
+  FHudEnabled := iHudEnabled;
 end;
 
 procedure TDRLIO.PreUpdate;
 begin
   VTIG_Clear;
-  if FHudEnabled then DrawHud;
+  if FHudEnabled and ( FLevel <> nil ) then DrawHud;
   inherited PreUpdate;
+end;
+
+procedure TDRLIO.FadeLevel( aFadeTime : Single );
+begin
+  if FLevel = nil then Exit;
+  if aFadeTime > 0.0 then FadeOut( aFadeTime, True );
+  ClearAnimations;
+  SetLevel( nil );
 end;
 
 destructor TDRLIO.Destroy;
 begin
   FreeAndNil( FAudio );
-  FreeAndNil( FMessages );
   FreeAndNil( FASCII );
   FreeAndNil( FKeySubMap );
   FreeAndNil( FPadSubMap );
-  IO := nil;
   inherited Destroy;
 end;
 
-procedure TDRLIO.Screenshot ( aBB : Boolean );
+procedure TDRLIO.Screenshot;
 var iFName : AnsiString;
     iName  : AnsiString;
     iExt   : AnsiString;
     iCount : DWord;
 begin
+  if FSShotPath = '' then Exit;
   if GraphicsVersion
      then iExt := '.png'
      else iExt := '.txt';
 
   iName := 'DRL';
   if Player <> nil then iName := Player.Name;
-  if not DirectoryExists( ModuleUserPath + 'screenshot' ) then CreateDir( ModuleUserPath + 'screenshot' );
-  iFName := ModuleUserPath + 'screenshot'+PathDelim+ToProperFilename('['+FormatDateTime(Option_TimeStamp,Now)+'] '+iName)+iExt;
+  if not DirectoryExists( FSShotPath ) then CreateDir( FSShotPath );
+  iFName := FSShotPath+PathDelim+ToProperFilename('['+FormatDateTime(FileTimeStamp,Now)+'] '+iName)+iExt;
   iCount := 1;
   while FileExists(iFName) do
   begin
-    iFName := ModuleUserPath + 'screenshot'+PathDelim+ToProperFilename('['+FormatDateTime(Option_TimeStamp,Now)+'] '+iName)+'-'+IntToStr(iCount)+iExt;
+    iFName := FSShotPath+PathDelim+ToProperFilename('['+FormatDateTime(FileTimeStamp,Now)+'] '+iName)+'-'+IntToStr(iCount)+iExt;
     Inc(iCount);
   end;
 
   Log('Writing screenshot...: '+iFName);
-  if not GraphicsVersion then
-  begin
-{    iCon.Init( FConsole );
-    if aBB then iCon.ScreenShot(iFName,1)
-           else iCon.ScreenShot(iFName);}
-  end
-  else
-  begin
-    TSDLIODriver(FIODriver).ScreenShot(iFName);
-  end;
-    {  if aBB then UI.Msg('BB Screenshot created.')
-             else UI.Msg('Screenshot created.');}
+  if GraphicsVersion
+    then CaptureScreen( iFName )
+    else SaveConsoleTextDump( iFName );
 end;
 
-procedure TDRLIO.SetSeed( aCardinal : LongInt );
-var iChallengeText : AnsiString;
+procedure TDRLIO.SetSeedText( const aText : AnsiString );
 begin
-  FSeedHUDText := ' ' + LuaSystem.Get([ 'diff', DRL.Difficulty, 'code' ]);
-  iChallengeText := '';
-  if DRL.Challenge <> '' then
-    iChallengeText += Copy( LuaSystem.Get([ 'chal', DRL.Challenge, 'abbr' ]), 3, MaxInt );
-  if DRL.SChallenge <> '' then
-    iChallengeText += Copy( LuaSystem.Get([ 'chal', DRL.SChallenge, 'abbr' ]), 3, MaxInt );
-  if iChallengeText <> '' then FSeedHUDText += '{r' + iChallengeText + '}';
-  FSeedHUDText += IntToStr( aCardinal );
+  FSeedHUDText   := aText;
   FSeedHUDOffset := -2-VTIG_Length( FSeedHUDText );
 end;
 
@@ -902,7 +1082,7 @@ begin
 
     VTIG_FreeLabel( 'A:',                                 iPos + Point(28,0), iCNormal );
     VTIG_FreeLabel( Player.Name,                          iPos + Point(1,0),  NameColor(iHPP) );
-    if ModuleOption_PercentHealth then
+    if Level.Data.Rules.PercentHealth then
     begin
       VTIG_FreeLabel( 'Health:      Exp:   /      W:',      iPos + Point(1,1),  iCNormal );
       VTIG_FreeLabel( IntToStr(iHPP)+'%',                   iPos + Point(9,1),  Red );
@@ -926,29 +1106,29 @@ begin
         begin
           if FCachedAmmo = -1 then
             FCachedAmmo := Player.Inv.CountAmount( iWeapon.AmmoID );
-          iDesc := Player.Inv.Slot[efWeapon].Description;
+          iDesc := Player.Inv.Slot[efWeapon].GetInvName;
           if Length( iDesc ) > 42 then iDesc := Copy(iDesc, 1, 42 );
           VTIG_FreeLabel( iDesc, iPos + Point(31,1), WeaponColor(Player.Inv.Slot[efWeapon]) );
           VTIG_FreeLabel( ' ({0})', iPos + Point(31+Length(iDesc),1), [ FCachedAmmo ], iCNormal );
         end
         else
-          VTIG_FreeLabel( Player.Inv.Slot[efWeapon].Description, iPos + Point(31,1), WeaponColor(Player.Inv.Slot[efWeapon]) );
+          VTIG_FreeLabel( Player.Inv.Slot[efWeapon].GetInvName, iPos + Point(31,1), WeaponColor(Player.Inv.Slot[efWeapon]) );
       end;
 
     if Player.Inv.Slot[efTorso] = nil
       then VTIG_FreeLabel( 'none',                                iPos + Point(31,0), iCBold )
-      else VTIG_FreeLabel( Player.Inv.Slot[efTorso].Description,  iPos + Point(31,0), ArmorColor(Player.Inv.Slot[efTorso].Durability) );
+      else VTIG_FreeLabel( Player.Inv.Slot[efTorso].GetInvName,  iPos + Point(31,0), ArmorColor(Player.Inv.Slot[efTorso].Durability) );
 
     iColor := Red;
-    if DRL.Level.Empty
+    if Level.Empty
       then iColor := Blue
-      else if DRL.Level.Flags[ LF_ENRAGE ]
+      else if Level.Flags[ LF_ENRAGE ]
         then iColor := LightMagenta;
 
-    VTIG_FreeLabel( DRL.Level.Name, Point( -2-Length( DRL.Level.Name), iBottom ), iColor );
+    VTIG_FreeLabel( Level.Name, Point( -2-Length( Level.Name), iBottom ), iColor );
     VTIG_FreeLabel( FSeedHUDText, Point( FSeedHUDOffset, iBottom+1 ) );
 
-    iTraitStr := Player.GetTraitString;
+    iTraitStr := Player.GetPerkSummary;
     if iTraitStr <> '' then
       VTIG_FreeLabel( iTraitStr, Point( iPos.X+1, iBottom ) );
   end;
@@ -957,20 +1137,20 @@ begin
 
   if FHintOverlay <> ''
     then VTIG_FreeLabel( ' '+FHintOverlay+' ', Point( iOffset-VTIG_Length( FHintOverlay ), 2 ), Yellow )
-    else if ( (FHint <> '') and ( not GraphicsVersion ) )
+    else if ( (FHint <> '') and ( not FSettings.HideHints ) and ( not GraphicsVersion ) )
       then VTIG_FreeLabel( ' '+FHint+' ', Point( iOffset-VTIG_Length( FHint ), 2 ), Yellow )
-      else if (FHintTarget <> '') and Setting_AutoTarget
+      else if FHintTarget <> ''
         then VTIG_FreeLabel( ' '+FHintTarget+' ', Point( iOffset-VTIG_Length( FHintTarget ), 2 ), Brown );
 
   if GraphicsVersion and ( FHintStatus <> '' ) and ( ( FHintOverlay <> '' ) or ( FHintTarget <> '' ) ) then
     VTIG_FreeLabel( ' '+FHintStatus+' ', Point( iOffset-VTIG_Length( FHintStatus ), 3 ), Yellow );
   
-  if GraphicsVersion and ( FHint <> '' ) then
+  if GraphicsVersion and ( FHint <> '' ) and ( not FSettings.HideHints ) then
     VTIG_FreeLabel( ' '+FHint+' ', Point( 20, 4 ), Yellow );
 
-  if ( DRL.Level <> nil ) and ( DRL.Level.Boss <> 0 ) then
+  if ( Level <> nil ) and ( Level.Boss <> 0 ) then
   begin
-    iBoss := UIDs.Get( DRL.Level.Boss ) as TBeing;
+    iBoss := Level.Context.UIDs.Get( Level.Boss ) as TBeing;
     if iBoss <> nil then
     begin
       VTIG_FreeLabel( iBoss.Name, Point( 40 - Ceil(Length( iBoss.Name ) / 2), 3 ), iCBold );
@@ -994,25 +1174,44 @@ begin
   end;
 end;
 
+function TDRLLayer.GetIO : TDRLIO;
+begin
+  Exit( TDRLIO( FLayerOwner ) );
+end;
+
+procedure TDRLIO.BindStore( aStore : TStoreInterface );
+begin
+  FStore := aStore;
+end;
+
+procedure TDRLIO.BindRunStatus( aStatus : TRunStatus );
+begin
+  FRunStatus := aStatus;
+end;
+
+procedure TDRLIO.BindAutoTarget( aList : TAutoTarget );
+begin
+  FAutoTarget := aList;
+end;
+
+function TDRLIO.GetPlayer : TPlayer;
+begin
+  Exit( TPlayer( FPlayer ) );
+end;
+
+function TDRLIO.GetLevel : TLevel;
+begin
+  Exit( TLevel( FLevel ) );
+end;
+
 procedure TDRLIO.SetHint ( const aText : AnsiString ) ;
 begin
   FHint       := aText;
 end;
 
-procedure TDRLIO.ColorQuery(nkey,nvalue : Variant);
+function TDRLIO.ScreenshotCallback ( aEvent : TIOEvent ) : Boolean;
 begin
-    ColorOverrides[nkey] := nvalue;
-end;
-
-function TDRLIO.ScreenShotCallback ( aEvent : TIOEvent ) : Boolean;
-begin
-  ScreenShot( False );
-  Exit(True);
-end;
-
-function TDRLIO.BBScreenShotCallback ( aEvent : TIOEvent ) : Boolean;
-begin
-  ScreenShot( True );
+  Screenshot;
   Exit(True);
 end;
 
@@ -1029,12 +1228,13 @@ begin
 end;
 
 procedure TDRLIO.EventMore;
+var iHudEnabled : Boolean;
 begin
-  if Option_MorePrompt then
-  begin
-    IO.PushLayer( TMoreLayer.Create( True ) );
-    IO.WaitForLayer( False );
-  end;
+  if not FSettings.MorePrompt then Exit;
+  iHudEnabled := FHudEnabled;
+  FHudEnabled := True;
+  WaitForLayer( PushLayer( TMoreLayer.Create( True ) ) );
+  FHudEnabled := iHudEnabled;
 end;
 
 procedure TDRLIO.LoadStart;
@@ -1064,18 +1264,28 @@ begin
   end;
 end;
 
+function TDRLIO.GetHeartbeatVolume : Integer;
+var iPlayer : TBeing;
+begin
+  if ( FRunStatus = nil ) or ( FRunStatus.State <> DSPlaying ) then Exit( 0 );
+  iPlayer := Player;
+  if ( iPlayer = nil ) or iPlayer.Dying or ( iPlayer.HP * 2 >= iPlayer.HPMax ) then Exit( 0 );
+  Result := Round( 200.0 * ( iPlayer.HPMax - 2 * iPlayer.HP ) / Max( iPlayer.HPMax - 2, 1 ) );
+  Result := Clamp( Result, 0, 100 );
+end;
+
 procedure TDRLIO.Update( aMSec : DWord );
 begin
   if Assigned( Sound ) then
     Sound.Update;
-  if Assigned( DRL ) then
-    DRL.Store.Update;
+  if Assigned( FStore ) then
+    FStore.Update;
 
   if ControllerActionHeld( CONTROLLER_MODIFIER_ALT )
-    and (DRL <> nil) and (DRL.State = DSPlaying)
-    and (FTargeting or ( not isModal)) and ( FLastTarget <> DRL.Targeting.List.Current ) then
+    and ( FRunStatus <> nil ) and ( FRunStatus.State = DSPlaying )
+    and (FTargeting or ( not isModal)) and ( FLastTarget <> FAutoTarget.Current ) then
     begin
-      FLastTarget := DRL.Targeting.List.Current;
+      FLastTarget := FAutoTarget.Current;
       if (FLastTarget.X * FLastTarget.Y <> 0) and (FLastTarget <> Player.Position) then
         LookDescription(FLastTarget);
     end;
@@ -1088,33 +1298,55 @@ begin
   end;
 
   FTime += aMSec;
-  FAudio.Update( aMSec );
+  if Player <> nil then
+    FAudio.Update( aMSec, Player.Position, GetHeartbeatVolume )
+  else
+    FAudio.Update( aMSec );
 
   inherited Update( aMSec );
  // if aMSec > 200 then
  //   VTIG_EventClear;
 end;
 
+procedure TDRLIO.PlaySound( aSoundID : Word; aCoord : TCoord2D; aDelay : DWord );
+begin
+  if Player = nil then Exit;
+  FAudio.PlaySound( aSoundID, aCoord, Player.Position, aDelay );
+end;
+
+function TDRLIO.ResolveSoundID( const aResolveIDs : array of AnsiString ) : Word;
+begin
+  Exit( FAudio.ResolveSoundID( aResolveIDs ) );
+end;
+
+procedure TDRLIO.PlayWaitSound;
+begin
+  if FSettings.WaitSound then
+    FAudio.PlaySound( 'wait', 50 );
+end;
+
 function TDRLIO.EventToUIInput( const aEvent : TIOEvent ) : Integer;
+var iAction : TBindingAction;
 begin
   if ( aEvent.EType = VEVENT_SYSTEM ) and ( aEvent.System.Code = VIO_SYSEVENT_QUIT ) then
-    if Option_LockClose
-       then Exit( Integer( INPUT_QUIT ) )
-       else Exit( Integer( INPUT_HARDQUIT ) );
+    if GodMode
+       then Exit( Integer( INPUT_HARDQUIT ) )
+       else Exit( Integer( INPUT_QUIT ) );
   if (aEvent.EType = VEVENT_MOUSEMOVE) then
   begin
-    if not Setting_Mouse then Exit( Integer( INPUT_NONE ) );
-    FMTarget := SpriteMap.DevicePointToCoord( aEvent.MouseMove.Pos );
-    if DRL.Level <> nil then
-      if DRL.Level.isProperCoord( FMTarget ) then
+    if Level <> nil then
+    begin
+      FMTarget := DevicePointToCoord( aEvent.MouseMove.Pos );
+      if Level.isProperCoord( FMTarget ) then
         Exit( Integer( INPUT_MMOVE ) );
+    end;
   end;
   if aEvent.EType = VEVENT_MOUSEDOWN then
   begin
-    if not Setting_Mouse then Exit( Integer( INPUT_NONE ) );
-    FMTarget := SpriteMap.DevicePointToCoord( aEvent.Mouse.Pos );
-    if DRL.Level <> nil then
-      if DRL.Level.isProperCoord( FMTarget ) then
+    if Level <> nil then
+    begin
+      FMTarget := DevicePointToCoord( aEvent.Mouse.Pos );
+      if Level.isProperCoord( FMTarget ) then
       begin
         case aEvent.Mouse.Button of
           VMB_BUTTON_LEFT     : Exit( Integer( INPUT_MLEFT ) );
@@ -1124,12 +1356,15 @@ begin
           VMB_WHEEL_DOWN      : Exit( Integer( INPUT_MSCRDOWN ) );
         end;
       end;
+    end;
   end;
   if aEvent.EType = VEVENT_KEYDOWN then
   begin
     FKeyCode := IOKeyEventToIOKeyCode( aEvent.Key );
-    if (FKeyCode mod 256) <> 0
-      then Exit( Config.Commands[ FKeyCode ] );
+    iAction := FGameBindings.ResolveKey( FKeyCode );
+    if ( iAction >= Ord( Low( TInputKey ) ) ) and
+       ( iAction <= Ord( High( TInputKey ) ) ) then
+      Exit( iAction );
   end;
   Exit( inherited EventToUIInput( aEvent ) );
 end;
@@ -1139,11 +1374,6 @@ var iEvent : TIOEvent;
 begin
   repeat
     if not FIODriver.PeekEvent( iEvent ) then Exit( False );
-    if ( not Setting_Mouse ) and ( iEvent.EType in [ VEVENT_MOUSEMOVE, VEVENT_MOUSEUP, VEVENT_MOUSEDOWN ] ) then
-    begin
-      FIODriver.PollEvent( iEvent );
-      Continue;
-    end;
     if not ( iEvent.EType in [ VEVENT_KEYDOWN, VEVENT_MOUSEDOWN, VEVENT_PADDOWN ] ) then
     begin
       FIODriver.PollEvent( iEvent );
@@ -1162,44 +1392,43 @@ end;
 
 procedure TDRLIO.FinishTargeting;
 begin
-  MsgUpDate;
+  FHintOverlay := '';
   FConsole.HideCursor;
   FTargeting := False;
-  if SpriteMap <> nil then SpriteMap.ClearTarget;
   FTargetEnabled := False;
+end;
+
+procedure TDRLIO.SetLookTarget( aTarget : TCoord2D );
+begin
+end;
+
+procedure TDRLIO.ToggleGrid;
+begin
+end;
+
+procedure TDRLIO.PaceMultiMove;
+begin
+end;
+
+function TDRLIO.DevicePointToCoord( aPoint : TPoint ) : TCoord2D;
+begin
+  Exit( NewCoord2D( 0, 0 ) );
 end;
 
 procedure TDRLIO.LookDescription(aWhere: TCoord2D);
 var LookDesc : string;
 begin
-  LookDesc := DRL.Level.GetLookDescription( aWhere );
-  if Option_BlindMode then LookDesc += ' | '+BlindCoord( aWhere - Player.Position );
-  if DRL.Level.isVisible(aWhere) and (DRL.Level.Being[aWhere] <> nil) then
+  LookDesc := Level.GetLookDescription( aWhere );
+  if Level.isVisible(aWhere) and (Level.Being[aWhere] <> nil) then
   begin
     if isGamepad
       then LookDesc += ' | <{LA}> more'
       else LookDesc += ' | <{Lm}>ore';
-    FHintStatus := DRL.Level.Being[ aWhere ].GetTraitString;
+    FHintStatus := Level.Being[ aWhere ].GetPerkSummary;
   end
   else
     FHintStatus := '';
   FHintOverlay := LookDesc;
-end;
-
-procedure TDRLIO.Msg( const aText : AnsiString );
-begin
-  inherited Msg( aText );
-end;
-
-function TDRLIO.MsgGetRecent : TMessageBuffer;
-begin
-  Exit( FMessages.Content );
-end;
-
-procedure TDRLIO.MsgReset;
-begin
-  FMessages.Reset;
-  FMessages.Update;
 end;
 
 procedure TDRLIO.MsgUpDate;
@@ -1211,24 +1440,22 @@ end;
 procedure TDRLIO.ErrorReport(const aText: AnsiString);
 begin
   Msg('{RError:} '+aText);
-  PushLayer( TMoreLayer.Create( False ) );
-  WaitForLayer( False );
+  RunLayer( TMoreLayer.Create( False ) );
   Msg('{yError written to error.log, please report!}');
-end;
-
-procedure TDRLIO.ClearAllMessages;
-begin
-  FMessages.Clear;
 end;
 
 (**************************** LUA UI *****************************)
 
+function LuaIO( L : PLua_State ) : TDRLIO; inline;
+begin
+  Exit( TDRLIO( lua_touserdata( L, lua_upvalueindex( 1 ) ) ) );
+end;
+
 function lua_ui_set_hint(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
-  if not Setting_HideHints then
-    IO.SetHint( State.ToString( 1 ) );
+  LuaIO( L ).SetHint( State.ToString( 1 ) );
   Result := 0;
 end;
 
@@ -1236,68 +1463,72 @@ end;
 
 function lua_ui_blood_slide(L: Plua_State): Integer; cdecl;
 begin
-  IO.BloodSlideDown(20);
+  LuaIO( L ).BloodSlideDown(20);
   Result := 0;
 end;
 
 {$HINTS ON}
 
 function lua_ui_blink(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
-  IO.Blink( State.ToInteger(1), State.ToInteger(2), State.ToInteger(3));
+  LuaIO( L ).Blink( State.ToInteger(1), State.ToInteger(2), State.ToInteger(3));
   Result := 0;
 end;
 
 function lua_ui_plot_screen(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
+    iIO    : TDRLIO;
 begin
   iState.Init(L);
-  IO.PushLayer( TPlotView.Create( iState.ToString(1), iState.ToIOColor(2), iState.ToString(3,'') ) );
-  IO.WaitForLayer( True );
+  iIO := LuaIO( L );
+  if ( iIO.RunStatus <> nil ) and ( iIO.RunStatus.State = DSFinished ) then
+    iIO.FadeLevel( 1.0 );
+  iIO.RunLayer( TPlotView.Create( iState.ToString(1), iState.ToIOColor(2), iState.ToString(3,'') ), True );
   Result := 0;
 end;
 
 function lua_ui_msg(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
-  IO.Msg(State.ToString(1));
+  LuaIO( L ).Msg(State.ToString(1));
   Result := 0;
 end;
 
 function lua_ui_msg_clear(L: Plua_State): Integer; cdecl;
 begin
-  IO.MsgReset();
+  LuaIO( L ).MsgReset();
   Result := 0;
 end;
 
 function lua_ui_msg_enter(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
+    iIO   : TDRLIO;
 begin
   State.Init(L);
   if State.StackSize = 0 then Exit(0);
-  IO.Msg(State.ToString(1));
-  IO.PushLayer( TMoreLayer.Create( False ) );
-  IO.WaitForLayer( False );
-  IO.MsgUpDate;
+  iIO := LuaIO( L );
+  iIO.Msg(State.ToString(1));
+  iIO.RunLayer( TMoreLayer.Create( False ) );
+  iIO.MsgUpDate;
   Result := 0;
 end;
 
 function lua_ui_msg_history(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
     Idx   : Integer;
     Msg   : AnsiString;
 begin
   State.Init(L);
   if State.StackSize = 0 then Exit(0);
   Idx := State.ToInteger(1)+1;
-  if Idx > IO.MsgGetRecent.Size then
+  if Idx > LuaIO( L ).MsgGetRecent.Size then
     State.PushNil
   else
   begin
-    Msg := IO.MsgGetRecent[-Idx];
+    Msg := LuaIO( L ).MsgGetRecent[-Idx];
     if Msg <> '' then
       State.Push( Msg )
     else
@@ -1307,7 +1538,7 @@ begin
 end;
 
 function lua_ui_strip_encoding(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
+var State : TLuaGameStack;
 begin
   State.Init(L);
   if State.StackSize = 0 then Exit(0);
@@ -1316,7 +1547,7 @@ begin
 end;
 
 function lua_ui_choice(L: Plua_State): Integer; cdecl;
-var State     : TDRLLuaState;
+var State     : TLuaGameStack;
     iView     : TChoiceView;
     i, iCount : Integer;
     iEntry    : TChoiceViewChoice;
@@ -1354,17 +1585,13 @@ begin
     finally
       Free;
     end;
-  IO.PushLayer( iView );
-  repeat
-    IO.FullUpdate;
-    IO.HandleEvents;
-  until TChoiceView.Done;
+  LuaIO( L ).RunLayer( iView );
   State.PushVariant(TChoiceView.Result);
   Result := 1;
 end;
 
 function lua_ui_set_style_color(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iEntry : TTIGStyleColorEntry;
 begin
   iState.Init(L);
@@ -1375,7 +1602,7 @@ begin
 end;
 
 function lua_ui_set_style_frame(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iEntry : TTIGStyleFrameEntry;
 begin
   iState.Init(L);
@@ -1386,7 +1613,7 @@ begin
 end;
 
 function lua_ui_set_style_padding(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iEntry : TTIGStylePaddingEntry;
 begin
   iState.Init(L);
@@ -1397,59 +1624,54 @@ begin
 end;
 
 function lua_ui_set_narrow_mode(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
 begin
   iState.Init(L);
-  IO.FNarrowMode := iState.ToBoolean(1);
+  LuaIO( L ).FNarrowMode := iState.ToBoolean(1);
   Result := 0;
 end;
 
 function lua_ui_update_styles(L: Plua_State): Integer; cdecl;
 begin
-  IO.UpdateStyles;
+  LuaIO( L ).UpdateStyles;
   Result := 0;
 end;
 
 function lua_ui_is_pad(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
 begin
   iState.Init(L);
-  iState.Push( IO.IsGamepad );
+  iState.Push( LuaIO( L ).IsGamepad );
   Result := 1;
-end;
-
-function lua_ui_get_rank(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
-begin
-  iState.Init(L);
-  iState.Push( HOF.GetRank( iState.ToString( 1 ) ) );
-  Result := 1;
-end;
-
-function lua_ui_save_and_quit(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
-begin
-  iState.Init(L);
-  ForceShop := iState.ToBoolean(1);
-  IO.FadeOut(0.5);
-  DRL.SetState( DSSaving );
-  Result := 0;
 end;
 
 function lua_ui_get_target(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
 begin
   iState.Init(L);
-  iState.PushCoord( DRL.Targeting.List.Current );
+  iState.PushCoord( LuaIO( L ).AutoTarget.Current );
   Result := 1;
 end;
 
-function lua_ui_reset_auto_target(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+function lua_ui_play_music(L: Plua_State): Integer; cdecl;
+var State : TLuaGameStack;
 begin
-  iState.Init(L);
-  DRL.ResetAutoTarget;
+  State.Init(L);
+  LuaIO( L ).Audio.PlayMusic(State.ToString(1));
   Result := 0;
+end;
+
+function lua_ui_time_ms(L: Plua_State): Integer; cdecl;
+var State : TLuaGameStack;
+begin
+  State.Init(L);
+  State.Push( LongInt(LuaIO( L ).Driver.GetMs) );
+  Result := 1;
+end;
+
+function lua_ui_visual_random(L: Plua_State): Integer; cdecl;
+begin
+  Exit( vlua_rng_random( L, LuaIO( L ).VisualRNG ) );
 end;
 
 const lua_ui_lib : array[0..20] of luaL_Reg = (
@@ -1469,23 +1691,50 @@ const lua_ui_lib : array[0..20] of luaL_Reg = (
       ( name : 'set_narrow_mode';   func : @lua_ui_set_narrow_mode ),
       ( name : 'update_styles';     func : @lua_ui_update_styles ),
       ( name : 'is_pad';            func : @lua_ui_is_pad ),
-      ( name : 'get_rank';          func : @lua_ui_get_rank ),
-      ( name : 'save_and_quit';     func : @lua_ui_save_and_quit ),
-      ( name : 'reset_auto_target'; func : @lua_ui_reset_auto_target ),
       ( name : 'get_target';        func : @lua_ui_get_target ),
+      ( name : 'time_ms';           func : @lua_ui_time_ms ),
+      ( name : 'visual_random';     func : @lua_ui_visual_random ),
+      ( name : 'play_music';        func : @lua_ui_play_music ),
       ( name : nil;          func : nil; )
 );
 
-procedure TDRLIO.RunModuleChoice;
+procedure TDRLIO.RunLauncherLayer( aLayer : TIOLayer );
 begin
-  PushLayer( TModuleChoiceView.Create );
-  WaitForLayer( True );
+  RunLayer( aLayer, True );
 end;
 
-class procedure TDRLIO.RegisterLuaAPI( State : TLuaState );
+function TDRLIO.RunModuleChoice( aModules : TModuleList ) : AnsiString;
 begin
-  State.Register( 'ui', lua_ui_lib );
+  Result := '';
+  RunLauncherLayer( TModuleChoiceView.Create( aModules, @Result ) );
 end;
+
+function TDRLIO.RunModuleAPIWarning( aModules : TModuleList ) : Boolean;
+begin
+  RunLauncherLayer( TModuleAPIWarningView.Create( aModules, @Result ) );
+end;
+
+procedure TDRLIO.RegisterLuaAPI( aLua : TLua );
+begin
+  lua_pushlightuserdata( aLua.Raw, Self );
+  aLua.Register( 'ui', lua_ui_lib, 1 );
+end;
+
+procedure TDRLIO.LoadGraphics( aData : TVDataFile );
+begin
+end;
+
+procedure TDRLIO.LoadGraphics( const aPath : AnsiString );
+begin
+end;
+
+procedure TDRLIO.PrepareGraphics;
+begin
+end;
+
+// Set once a crash was reported; the application handler then sees the same
+// exception re-raised by the Session.
+var CrashInfoEmitted : Boolean = False;
 
 procedure EmitCrashInfo ( const aInfo : AnsiString; aInGame : Boolean ) ;
 function Iff(expr : Boolean; const str : AnsiString) : AnsiString;
@@ -1494,13 +1743,15 @@ begin
 end;
 var iErrorMessage : AnsiString;
 begin
+  if CrashInfoEmitted then Exit;
+  CrashInfoEmitted := True;
   {$IFDEF WINDOWS}
   if GraphicsVersion then
   begin
     iErrorMessage := 'DRL crashed!'#10#10'Reason : '+aInfo+#10#10
      +'If this reason doesn''t seem your fault, please submit a bug report at http://forum.chaosforge.org/'#10
      +'Be sure to include the last entries in your error.log that will get created once you hit OK.'
-     +Iff(aInGame and Option_SaveOnCrash,#10'DRL will also attempt to save your game, so you may continue on the next level.');
+     +Iff(aInGame and not GodMode,#10'DRL will also attempt to save your game, so you may continue on the next level.');
     MessageBox( 0, PChar(iErrorMessage),
      'DRL - Fatal Error!', MB_OK or MB_ICONERROR );
   end
@@ -1518,7 +1769,7 @@ begin
     Writeln('If this reason doesn''t seem your fault, please submit a bug report at' );
     Writeln('http://forum.chaosforge.org/, be sure to include the last entries in');
     Writeln('your error.log that will get created once you hit Enter.');
-    if aInGame and Option_SaveOnCrash then
+    if aInGame and not GodMode then
     begin
       Writeln( 'DRL will also attempt to save your game, so you may continue on' );
       Writeln( 'the next level.' );

@@ -5,4 +5,4 @@ set -eu
 # --geometry=80x25 doesn't work at all, AFAI can see.
 # for older konsole versions, --vt_sz 80x25 should do the trick.
 
-konsole --workdir=`pwd` -e ./drl -console
+konsole --workdir=`pwd` -e ./drl --console

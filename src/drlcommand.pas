@@ -10,10 +10,11 @@ type TCommand = object
   Slot    : TEqSlot;
   Alt     : Boolean;
   ID      : AnsiString;
+  Aim     : TCoord2D;
 
   class function Create( aCommand : Byte ) : TCommand; static;
   class function Create( aCommand : Byte; aTarget : TCoord2D; aAlt : Boolean = False ) : TCommand; static;
-  class function Create( aCommand : Byte; aID : AnsiString ) : TCommand; static;
+  class function Create( aCommand : Byte; aTarget : TCoord2D; aID : AnsiString ) : TCommand; static;
   class function Create( aCommand : Byte; aItem : TItem ) : TCommand; static;
   class function Create( aCommand : Byte; aItem : TItem; aAlt : Boolean ) : TCommand; static;
   class function Create( aCommand : Byte; aItem : TItem; aSlot : TEqSlot ) : TCommand; static;
@@ -26,19 +27,23 @@ implementation
 class function TCommand.Create( aCommand : Byte ) : TCommand;
 begin
   Result.Command := aCommand;
+  Result.Aim     := NewCoord2D(0,0);
   Result.Target  := NewCoord2D(0,0);
 end;
 
 class function TCommand.Create( aCommand : Byte; aTarget : TCoord2D; aAlt : Boolean = False ) : TCommand;
 begin
   Result.Command := aCommand;
+  Result.Aim     := NewCoord2D(0,0);
   Result.Target  := aTarget;
   Result.Alt     := aAlt;
 end;
 
-class function TCommand.Create( aCommand : Byte; aID : AnsiString ) : TCommand;
+class function TCommand.Create( aCommand : Byte; aTarget : TCoord2D; aID : AnsiString ) : TCommand;
 begin
   Result.Command := aCommand;
+  Result.Aim     := NewCoord2D(0,0);
+  Result.Target  := aTarget;
   Result.Item    := nil;
   Result.ID      := aID;
 end;
@@ -46,6 +51,7 @@ end;
 class function TCommand.Create( aCommand : Byte; aItem : TItem ) : TCommand;
 begin
   Result.Command := aCommand;
+  Result.Aim     := NewCoord2D(0,0);
   Result.Item    := aItem;
   Result.ID      := '';
   Result.Alt     := False;
@@ -54,6 +60,7 @@ end;
 class function TCommand.Create( aCommand : Byte; aItem : TItem; aAlt : Boolean ) : TCommand;
 begin
   Result.Command := aCommand;
+  Result.Aim     := NewCoord2D(0,0);
   Result.Item    := aItem;
   Result.ID      := '';
   Result.Alt     := aAlt;
@@ -62,6 +69,7 @@ end;
 class function TCommand.Create( aCommand : Byte; aItem : TItem; aSlot : TEqSlot ) : TCommand;
 begin
   Result.Command := aCommand;
+  Result.Aim     := NewCoord2D(0,0);
   Result.Item    := aItem;
   Result.Slot    := aSlot;
   Result.ID      := '';
@@ -71,6 +79,7 @@ end;
 class function TCommand.Create( aCommand : Byte; aItem : TItem; aID : AnsiString ) : TCommand;
 begin
   Result.Command := aCommand;
+  Result.Aim     := NewCoord2D(0,0);
   Result.Item    := aItem;
   Result.Id      := aID;
   Result.Alt     := False;
@@ -79,6 +88,7 @@ end;
 class function TCommand.Create( aCommand : Byte; aTarget : TCoord2D; aItem : TItem ) : TCommand; static;
 begin
   Result.Command := aCommand;
+  Result.Aim     := NewCoord2D(0,0);
   Result.Target  := aTarget;
   Result.Item    := aItem;
   Result.Id      := '';

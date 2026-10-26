@@ -1,10 +1,70 @@
 function drl.register_perks()
 
+	register_perk "perk_level_enrage"
+	{
+		OnTick = function( self, time )
+			if self.empty    then return end
+			if time % 10 ~= 0 then return end
+			time = time / 10 -- convert to seconds
+			local enrage = 15*60 -- 15 minutes
+			local stage1 = enrage - 2*60
+			local stage2 = enrage - 1*60
+			local stage3 = enrage -   10
+			if time >= stage1 then
+				if time == stage1 then
+					ui.msg( "Demonic forces grow restless..." )
+				elseif time == stage2 then
+					ui.msg( "Demonic forces grow more restless..." )
+				elseif time == stage3 then
+					ui.msg( "The air grows thick with malice..." )
+				end
+				if time == enrage then
+					ui.msg( "You hear angry growls!" )
+					self.flags[ LF_ENRAGE ] = true
+					for b in self:beings() do
+						if not b:is_player() then
+							b.flags[ BF_HUNTING ] = true
+							b.expvalue = math.ceil( b.expvalue * 0.5 )
+							b.speed    = math.min( math.ceil( b.speed * 1.5 ), 250 )
+							b.accuracy = b.accuracy + 4
+						end
+					end
+				end
+				if time == enrage * 2 then
+					for b in self:beings() do
+						if not b:is_player() then
+							b.expvalue = 0
+							b.speed    = math.min( math.ceil( b.speed * 1.5 ), 250 )
+							b.accuracy = b.accuracy + 4
+						end
+					end
+				end
+			end
+		end,
+
+		OnCreateBeing = function( self, being )
+			if not self.flags[ LF_ENRAGE ] then return end
+			if being.flags[ BF_HUNTING ] then return end
+			being.flags[ BF_HUNTING ] = true
+			being.expvalue = math.ceil( being.expvalue * 0.5 )
+			being.speed    = math.ceil( being.speed * 1.5 )
+			being.accuracy = being.accuracy + 4
+		end,
+	}
+
+	register_perk "perk_pushable"
+	{
+		OnAct = function( self, c, being )
+			local push = c + (c - being.position)
+			level:push_feature( being, self, c, push, false, self:get_property( "WARN_HAZARD", false ) )
+		end,
+	}
+
 	-- Cursed item perk
 	register_perk "perk_cursed"
 	{
 		name   = "",
-		short  = "cursed",
+		label  = "cursed",
 		desc   = "cannot be unequipped",
 		color  = RED,
 		tags   = {},
@@ -22,7 +82,7 @@ function drl.register_perks()
 	register_perk "perk_altfire_throw"
 	{
 		name   = "",
-		short  = "throw",
+		label  = "throw",
 		desc   = "throws the melee weapon at a target",
 		color  = LIGHTBLUE,
 		tags   = { "altfire" },
@@ -49,7 +109,7 @@ function drl.register_perks()
 	register_perk "perk_altfire_rocketjump"
 	{
 		name   = "",
-		short  = "rocketjump",
+		label  = "rocketjump",
 		desc   = "fire at your feet with less damage and more knockback",
 		color  = LIGHTBLUE,
 		tags   = { "altfire" },
@@ -95,7 +155,7 @@ function drl.register_perks()
 	register_perk "perk_altfire_single"
 	{
 		name   = "",
-		short  = "single",
+		label  = "single",
 		desc   = "fires a single shot",
 		color  = LIGHTBLUE,
 		tags   = { "altfire" },
@@ -128,7 +188,7 @@ function drl.register_perks()
 	register_perk "perk_altfire_aimed"
 	{
 		name   = "",
-		short  = "aimed",
+		label  = "aimed",
 		desc   = "fires an aimed shot with +3 to hit, but double time taken",
 		color  = LIGHTBLUE,
 		tags   = { "altfire" },
@@ -168,33 +228,70 @@ function drl.register_perks()
 		end,
 	}
 
-	register_perk "perk_altfire_chainfire"
+	register_perk "perk_spool"
 	{
-		name   = "",
-		short  = "chainfire",
-		desc   = "spins up to fire longer bursts",
-		color  = LIGHTBLUE,
-		tags   = { "altfire" },
+		name   = "Spool-up",
+		desc   = "spools up when firing at enemies, granting bonus shots",
+		color  = WHITE,
+		tags   = {},
 
-		OnAdd = function(self)
-			self:add_property( "pp_chainfire", false )
-			self.flags[ IF_ALTTARGET ] = true
-			self.flags[ IF_ALTCHAIN  ] = true
+		OnPreAction = function( self )
+			local being = self.parent
+			being:add_property( "SPOOL_TARGET", false )
 		end,
 
-		OnRemove = function(self)
-			self:remove_property( "pp_chainfire" )
-			self.flags[ IF_ALTTARGET ] = false
-			self.flags[ IF_ALTCHAIN  ] = false
-		end,
-
-		OnAltFire = function( self, being, target )
-			self.pp_chainfire = true
+		OnFire = function( self, being, is_melee, alt )
+			if is_melee or alt then return true end
+			local target = being:get_target()
+			if level:get_being( target ) then
+				being:add_property( "SPOOL_TARGET", true )
+			end
 			return true
 		end,
 
-		OnFired = function( self, being )
-			self.pp_chainfire = false
+		OnUnequipCheck = function( self, being )
+			being:remove_perk( "spool_1", true )
+			being:remove_perk( "spool_2", true )
+			return true
+		end,
+
+		OnPostAction = function( self )
+			local being = self.parent
+			if not being then return end
+			if being.eq.weapon ~= self then return end
+
+			if being:get_property( "SPOOL_TARGET", false ) then
+				if not being:is_perk( "spool_2" ) then
+					if being:remove_perk( "spool_1", true ) then
+						being:add_perk( "spool_2" )
+					else
+						being:add_perk( "spool_1" )
+					end
+				end
+			else
+				being:remove_perk( "spool_1", true )
+				being:remove_perk( "spool_2", true )
+			end
+		end,
+	}
+
+	register_perk "perk_altfire_spool"
+	{
+		name   = "",
+		label  = "no spool",
+		desc   = "fires without spooling up",
+		color  = LIGHTBLUE,
+		tags   = { "altfire" },
+
+		OnAdd = function( self )
+			self.flags[ IF_ALTTARGET ] = true
+		end,
+
+		OnRemove = function( self )
+			self.flags[ IF_ALTTARGET ] = false
+		end,
+
+		OnAltFire = function( self, being )
 			return true
 		end,
 	}
@@ -204,7 +301,7 @@ function drl.register_perks()
 	register_perk "perk_altreload_full"
 	{
 		name   = "",
-		short  = "full",
+		label  = "full",
 		desc   = "fully reloads the weapon (max 2.5s)",
 		color  = LIGHTBLUE,
 		tags   = { "altreload" },
@@ -223,7 +320,7 @@ function drl.register_perks()
 	register_perk "perk_altreload_nuke"
 	{
 		name   = "",
-		short  = "overload",
+		label  = "overload",
 		desc   = "overloads the nuclear reactor",
 		color  = LIGHTBLUE,
 		tags   = { "altreload" },
@@ -252,7 +349,7 @@ function drl.register_perks()
 	register_perk "perk_altreload_overcharge"
 	{
 		name   = "",
-		short  = "overcharge",
+		label  = "overcharge",
 		desc   = "boosts the weapon and destroys it after the next shot",
 		color  = LIGHTBLUE,
 		tags   = { "altreload" },
@@ -273,7 +370,7 @@ function drl.register_perks()
 				self.ammomax       = self.shots
 				self.ammo          = self.shots
 				self.damage_sides  = self.damage_sides + 1
-				self.flags[ IF_ALTCHAIN ] = false
+				self:remove_perk( "perk_spool" )
 			end
 			return true
 		end,

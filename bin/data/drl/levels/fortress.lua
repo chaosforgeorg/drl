@@ -2,20 +2,51 @@
 
 register_level "unholy_cathedral"
 {
-	name  = "Unholy Cathedral",
-	entry = "On @1 he invaded the Unholy Cathedral!",
-	welcome = "You arrive at the Unholy Cathedral. You feel something sinister in the air.",
-	level = 19,
+	name        = "Unholy Cathedral",
+	entry       = "On @1 he invaded the Unholy Cathedral!",
+	welcome     = "You arrive at the Unholy Cathedral. You feel something sinister in the air.",
+	level       = 19,
 
 	canGenerate = function ()
 		return DIFFICULTY > 1
 	end,
 
+	runtime = {
+		OnKillAll = function ( self )
+			if self.status == 0 then
+				self.status = 1
+				ui.msg("As you kill the Angel of Death the cathedral suddenly")
+				ui.msg_enter("starts to fall apart!")
+				self:nuke()
+			end
+		end,
+
+		OnExitLevel = function ( self )
+			player:remove_perk( "perk_player_unholy_cathedral", true )
+			if self.status == 0 then
+				ui.msg("...Or wonder, till it drives you mad,")
+				ui.msg("What would have followed if you had....")
+				player:add_history("He fled the Unholy Cathedral seeing no chance to win.")
+			else
+				core.special_complete()
+				ui.msg("Never again...")
+				player:add_history("He then destroyed the Unholy Cathedral!")
+				if not self.flags[ LF_NUKED ] then
+					player:add_badge("death3")
+					if DIFFICULTY >= DIFF_NIGHTMARE then
+						player:add_badge("death4")
+						if not player:has_trait( "brute" ) then player:add_badge("death5") end
+					end
+				end
+			end
+		end,
+	},
+
 	OnRegister = function ()
 
 		register_perk "perk_spear_altfire"
 		{
-			short = "holy flame",
+			label = "holy flame",
 			desc  = "explosion around self",
 			color = LIGHTBLUE,
 			tags  = { "altfire" },
@@ -53,20 +84,19 @@ register_level "unholy_cathedral"
 			damage      = "8d8",
 			damagetype  = DAMAGE_PLASMA,
 
-			OnFirstPickup = function(self,being)
-				being:quick_weapon("spear")
-				ui.blink( WHITE, 100 )
-				ui.msg("You perceive an aura of holiness around this weapon!")
-			end,
-
-			OnCreate = function(self)
-				self:add_perk( "perk_spear_altfire" )
-			end,
+			perks   = { "perk_spear_altfire" },
+			runtime = {
+				OnFirstPickup = function(self,being)
+					being:quick_weapon("spear")
+					ui.blink( WHITE, 100 )
+					ui.msg("You perceive an aura of holiness around this weapon!")
+				end,
+			},
 		}
 
 		register_perk "perk_uscythe_altfire"
 		{
-			short = "whisper of death",
+			label = "whisper of death",
 			desc  = "damage all enemies, at the cost of max health",
 			color = LIGHTBLUE,
 			tags  = { "altfire" },
@@ -109,15 +139,14 @@ register_level "unholy_cathedral"
 			damage      = "9d9",
 			damagetype  = DAMAGE_PLASMA,
 
-			OnFirstPickup = function(self,being)
-				being:quick_weapon("uscythe")
-				ui.blink( RED, 100 )
-				ui.msg("You perceive an aura of evil around this weapon!")
-			end,
-
-			OnCreate = function(self)
-				self:add_perk( "perk_uscythe_altfire" )
-			end,
+			perks   = { "perk_uscythe_altfire" },
+			runtime = {
+				OnFirstPickup = function(self,being)
+					being:quick_weapon("uscythe")
+					ui.blink( RED, 100 )
+					ui.msg("You perceive an aura of evil around this weapon!")
+				end,
+			},
 		}
 
 		register_badge "death3"
@@ -141,6 +170,21 @@ register_level "unholy_cathedral"
 			level = 5,
 		}
 
+		register_perk "perk_player_unholy_cathedral"
+		{
+            name     = "Unholy Aura",
+            desc     = "Your ranged weapons are cursed and refuse to fire in the Unholy Cathedral.",
+            color    = LIGHTRED,
+
+			OnUseCheck = function(self,item)
+				if item and item.itype == ITEMTYPE_RANGED then
+					ui.msg("You pull the trigger... nothing happens!")
+					return false
+				end
+				return true
+			end,
+		}
+
 	end,
 
 	Create = function ()
@@ -157,7 +201,7 @@ register_level "unholy_cathedral"
 
 		local translation = {
 		['.'] = "floor",
-		[','] = {"floor", flags = {LFBLOOD} },
+		[','] = {"floor", blood = { 1, 3 } },
 		['#'] = "rwall",
 		['+'] = "door",
 		['>'] = "stairs",
@@ -165,9 +209,9 @@ register_level "unholy_cathedral"
 		['$'] = { "odoor", item = reward },
 		['s'] = { "floor", being = "lostsoul" },
 		['d'] = { "floor", being = "demon" },
-		['S'] = { "floor", flags = { LFBLOOD }, being = core.ifdiff( 3, "lostsoul" ) },
+		['S'] = { "floor", blood = { 1, 3 }, being = core.ifdiff( 3, "lostsoul" ) },
 		['D'] = { "floor", being = core.ifdiff( 4, "demon" ) },
-		['A'] = { "floor", flags = { LFBLOOD }, being = "angel" },
+		['A'] = { "floor", blood = { 1, 3 }, being = "angel" },
 		}
 
 		local map = [[
@@ -195,41 +239,7 @@ register_level "unholy_cathedral"
 
 		level:drop_being( player, coord( 3,10 ) )
 		level.status = 0
+		player:add_perk( "perk_player_unholy_cathedral" )
 	end,
 
-	OnKillAll = function ()
-		if level.status == 0 then
-			level.status = 1
-			ui.msg("As you kill the Angel of Death the cathedral suddenly")
-			ui.msg_enter("starts to fall apart!")
-			level:nuke()
-		end
-	end,
-
-	OnUseCheck = function(item,being)
-		if being:is_player() and item and item.itype == ITEMTYPE_RANGED then
-			ui.msg("You pull the trigger... nothing happens!")
-			return false
-		end
-		return true
-	end,
-
-	OnExit = function ()
-		if level.status == 0 then
-			ui.msg("...Or wonder, till it drives you mad,")
-			ui.msg("What would have followed if you had....")
-			player:add_history("He fled the Unholy Cathedral seeing no chance to win.")
-		else
-			core.special_complete()
-			ui.msg("Never again...")
-			player:add_history("He then destroyed the Unholy Cathedral!")
-			if not level.flags[ LF_NUKED ] then
-				player:add_badge("death3")
-				if DIFFICULTY >= DIFF_NIGHTMARE then
-					player:add_badge("death4")
-					if not player:has_trait( "brute" ) then player:add_badge("death5") end
-				end
-			end
-		end
-	end,
 }

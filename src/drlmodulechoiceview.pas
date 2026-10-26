@@ -6,21 +6,35 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlmodulechoiceview;
 interface
-uses viotypes, vutil, drlio, dfdata;
+uses viotypes, vutil, drlio, dfdata, drlmodule;
 
-type TModuleChoiceView = class( TIOLayer )
-  constructor Create;
+type TModuleChoiceView = class( TDRLLayer )
+  // aChoice receives the chosen module ID.
+  constructor Create( aModules : TModuleList; aChoice : PAnsiString );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsModal : Boolean; override;
 protected
+  FModules : TModuleList;
+  FChoice  : PAnsiString;
+end;
+
+type TModuleAPIWarningView = class( TDRLLayer )
+  constructor Create( aModules : TModuleList; aContinue : PBoolean );
+  procedure Update( aDTime : Integer; aActive : Boolean ); override;
+  function IsModal : Boolean; override;
+protected
+  FModules  : TModuleList;
+  FContinue : PBoolean;
 end;
 
 implementation
 
-uses vtig, drlbase, drlmodule;
+uses vtig;
 
-constructor TModuleChoiceView.Create;
+constructor TModuleChoiceView.Create( aModules : TModuleList; aChoice : PAnsiString );
 begin
+  FModules  := aModules;
+  FChoice   := aChoice;
   FFinished := False;
 end;
 
@@ -34,7 +48,7 @@ begin
   VTIG_BeginWindow( 'DRL module choice', 'core_module_choice', Point( 40, -1 ) );
   VTIG_Text( 'Select core module to run' );
   VTIG_Ruler;
-  for iModule in DRL.Modules.CoreModules do
+  for iModule in FModules do
      if VTIG_Selectable( iModule.Name ) then
        iResult := iModule.ID;
   VTIG_Ruler;
@@ -42,7 +56,7 @@ begin
   VTIG_End;
   if iResult <> '' then
   begin
-    CoreModuleID := iResult;
+    FChoice^  := iResult;
     FFinished := True;
   end;
 end;
@@ -52,5 +66,43 @@ begin
   Exit( True );
 end;
 
-end.
+constructor TModuleAPIWarningView.Create( aModules : TModuleList; aContinue : PBoolean );
+begin
+  FFinished := False;
+  FModules  := aModules;
+  FContinue := aContinue;
+  FContinue^ := False;
+end;
 
+procedure TModuleAPIWarningView.Update( aDTime : Integer; aActive : Boolean );
+var iModule : TDRLModule;
+    iAPI    : Ansistring;
+begin
+  VTIG_Clear;
+  IO.Console.HideCursor;
+  VTIG_BeginWindow( 'Outdated mods', 'module_api_warning', Point( 60, -1 ) );
+  VTIG_Text( 'The following mods are built against an older API and might crash or not function properly:' );
+  VTIG_Text('');
+  for iModule in FModules do
+  begin
+    iAPI := iModule.APIVersion;
+    if iAPI = '' then iAPI := 'unknown';
+    VTIG_Text( iModule.Name + ' ({^' + iAPI + '})', Red );
+  end;
+  VTIG_Ruler;
+  if VTIG_Selectable( 'Continue' ) then
+  begin
+    FContinue^ := True;
+    FFinished  := True;
+  end;
+  if VTIG_Selectable( 'Exit' ) then
+    FFinished := True;
+  VTIG_End;
+end;
+
+function TModuleAPIWarningView.IsModal : Boolean;
+begin
+  Exit( True );
+end;
+
+end.

@@ -6,28 +6,30 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlmoreview;
 interface
-uses vutil, viotypes, drlio, dfdata, dfbeing, dfitem, drlhooks;
+uses vutil, vio, viotypes, drlio, dfdata, dfbeing, dfitem, drlhooks;
 
-type TMoreBeingView = class( TIOLayer )
+type TMoreBeingView = class( TDRLLayer )
   constructor Create( aBeing : TBeing );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
-  function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
   destructor Destroy; override;
 protected
   procedure ReadTexts;
+  procedure Setup; override;
 protected
   FSize     : TPoint;
   FBeing    : TBeing;
   FDesc     : Ansistring;
   FASCII    : Ansistring;
   FTexts    : array[0..6] of TStringGArray;
+  // The module's full_being_description rule, read from the being's level.
+  FFull     : Boolean;
 end;
 
 type TMoreItemView = class( TIOLayer )
-  constructor Create( aItem : TItem );
+  // aColor is the title colour, resolved by IO from the inventory options.
+  constructor Create( aItem : TItem; aColor : Byte );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
-  function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
   destructor Destroy; override;
 protected
@@ -42,7 +44,7 @@ end;
 
 implementation
 
-uses math, sysutils, vluasystem, vtig, dfplayer, drlbase, drlperk;
+uses math, sysutils, vlua, vtig, dflevel, drlgamedata, drlperk;
 
 constructor TMoreBeingView.Create( aBeing : TBeing );
 var i : Integer;
@@ -51,20 +53,29 @@ begin
   VTIG_EventClear;
   FFinished := False;
   FBeing    := aBeing;
-  FDesc     := LuaSystem.Get(['beings',FBeing.ID,'desc']);
+  FDesc     := FBeing.Context.Lua.Get(['beings',FBeing.ID,'desc']);
+  FFull     := TLevel( FBeing.Parent ).Data.Rules.FullBeingDescription;
   FASCII    := '';
-  if not ModuleOption_FullBeingDescription then
-    if FBeing.ID = 'soldier'
-      then FASCII := Player.ASCIIMoreCode
-      else FASCII := FBeing.ID;
   FSize      := Point( 80, 25 );
   for i := Low( FTexts ) to High( FTexts ) do
     FTexts[i] := nil;
-  if ModuleOption_FullBeingDescription then
+  if FFull then
   begin
     FSize      := Point( 60, 25 );
     ReadTexts;
   end;
+end;
+
+// The player is drawn by worn torso armour when it has its own art.
+procedure TMoreBeingView.Setup;
+begin
+  if FFull then Exit;
+  if not FBeing.IsPlayer then
+    FASCII := FBeing.ID
+  else if ( FBeing.Inv.Slot[ efTorso ] <> nil ) and IO.ASCII.Exists( FBeing.Inv.Slot[ efTorso ].ID ) then
+    FASCII := FBeing.Inv.Slot[ efTorso ].ID
+  else
+    FASCII := 'player';
 end;
 
 procedure TMoreBeingView.ReadTexts;
@@ -73,14 +84,15 @@ var iTot, iTor : Integer;
     iCount, i  : Integer;
     iPerks     : TPerkList;
     iName      : Ansistring;
+    iDesc      : Ansistring;
   procedure DescribeItem( aItem : TItem );
   var iBox    : Ansistring;
       iPos, i : Integer;
   begin
     if aItem = nil then Exit;
     FTexts[iCount] := TStringGArray.Create;
-    FTexts[iCount].Push( '{!'+aItem.Description+'}' );
-    iBox := aItem.DescriptionBox( True );
+    FTexts[iCount].Push( '{!'+aItem.GetInvName+'}' );
+    iBox := aItem.GetInvStatsList( False );
     iPos := 1;
     if Length( iBox ) > 0 then
     begin
@@ -122,19 +134,21 @@ begin
   if ( iPerks <> nil ) and ( iPerks.Size > 0 ) then
   begin
     for i := 0 to iPerks.Size - 1 do
-      with PerkData[ iPerks[i].ID ] do
-      if ( Desc <> '' ) and ( ColorExp <> 0 ) then
+      with FBeing.Perks.Definitions.Data[ iPerks[i].ID ] do
+      if ColorExp <> 0 then
       begin
+        iDesc := FBeing.GetPerkDescription( iPerks[i].ID );
+        if iDesc = '' then Continue;
         if FTexts[iCount] = nil then
         begin
           FTexts[iCount] :=  TStringGArray.Create;
           FTexts[iCount].Push( '{!Status effects}' );
         end;
         iName := Name;
-        if iName = '' then iName := FBeing.GetPerkShort( iPerks[i].ID );
+        if iName = '' then iName := FBeing.GetPerkLabel( iPerks[i].ID );
         if iPerks[i].Time > 0
-          then FTexts[iCount].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} ({!' + FloatToStr( iPerks[i].Time / 10 ) + '}s) - ' + Desc )
-          else FTexts[iCount].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} - ' + Desc );
+          then FTexts[iCount].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} ({!' + FloatToStr( iPerks[i].Time / 10 ) + '}s) - ' + iDesc )
+          else FTexts[iCount].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} - ' + iDesc );
       end;
     if FTexts[iCount] <> nil then Inc( iCount );
   end;
@@ -142,15 +156,17 @@ begin
   if ( iPerks <> nil ) and ( iPerks.Size > 0 ) then
   begin
     for i := 0 to iPerks.Size - 1 do
-      with PerkData[ iPerks[i].ID ] do
-      if ( Desc <> '' ) and ( ColorExp = 0 ) then
+      with FBeing.Perks.Definitions.Data[ iPerks[i].ID ] do
+      if ColorExp = 0 then
       begin
+        iDesc := FBeing.GetPerkDescription( iPerks[i].ID );
+        if iDesc = '' then Continue;
         if FTexts[iCount] = nil then
         begin
           FTexts[iCount] :=  TStringGArray.Create;
           FTexts[iCount].Push( '{!Permanents}' );
         end;
-        FTexts[iCount].Push( '  {' + VTIG_ColorChar( Color ) + Name + '} - ' + Desc );
+        FTexts[iCount].Push( '  {' + VTIG_ColorChar( Color ) + Name + '} - ' + iDesc );
       end;
     if FTexts[iCount] <> nil then Inc( iCount );
   end;
@@ -166,7 +182,7 @@ procedure TMoreBeingView.Update( aDTime : Integer; aActive : Boolean );
 var iString : Ansistring;
     iCount  : Integer;
 begin
-  if not ModuleOption_FullBeingDescription then
+  if not FFull then
   begin
     VTIG_PushStyle(@TIGStylePadless);
     VTIG_BeginWindow(FBeing.name, 'more_being_view', FSize );
@@ -216,11 +232,6 @@ begin
 end;
 
 
-function TMoreBeingView.IsFinished : Boolean;
-begin
-  Exit( FFinished or ( DRL.State <> DSPlaying ) );
-end;
-
 function TMoreBeingView.IsModal : Boolean;
 begin
   Exit( True );
@@ -236,16 +247,16 @@ end;
 
 { TMoreItemView }
 
-constructor TMoreItemView.Create( aItem : TItem );
+constructor TMoreItemView.Create( aItem : TItem; aColor : Byte );
 var i : Integer;
 begin
   VTIG_ResetScroll( 'more_item_view' );
   VTIG_EventClear;
   FFinished := False;
   FItem     := aItem;
-  FDesc     := LuaSystem.Get(['items',FItem.ID,'desc']);
+  FDesc     := FItem.Context.Lua.Get(['items',FItem.ID,'desc']);
   FSize     := Point( 60, 25 );
-  FTitle    := '{'+VTIG_ColorChar( FItem.MenuColor ) + FItem.Description + '}';
+  FTitle    := '{'+VTIG_ColorChar( aColor ) + FItem.GetInvName + '}';
   for i := Low( FTexts ) to High( FTexts ) do
     FTexts[i] := nil;
   ReadTexts;
@@ -258,6 +269,7 @@ var iPerks     : TPerkList;
     iStatQueue : TStringGArray;
     iGroup     : AnsiString;
     iGroupName : AnsiString;
+    iDesc      : AnsiString;
   procedure AddStat( const aName : Ansistring; const aValue : Ansistring );
   begin
     iStatQueue.Push( Padded( aName, 13 ) + ': {!' + aValue + '}' );
@@ -282,14 +294,14 @@ begin
   FTexts[0] := TStringGArray.Create;
   iStatQueue := TStringGArray.Create;
 
-  iGroup := LuaSystem.Get(['items', FItem.ID, 'group'], '');
+  iGroup := FItem.Context.Lua.Get(['items', FItem.ID, 'group'], '');
   if iGroup <> '' then
   begin
-    iGroupName := LuaSystem.Get(['core', 'weapon_group_name', iGroup], iGroup);
+    iGroupName := FItem.Context.Lua.Get(['core', 'weapon_group_name', iGroup], iGroup);
     AddStat( 'Weapon group', iGroupName );
   end;
   if (FItem.AmmoID > 0) and (not FItem.Flags[ IF_NOAMMO ]) then
-    AddStat( 'Ammo type', LuaSystem.Get(['items', FItem.AmmoID, 'name'], '') );
+    AddStat( 'Ammo type', FItem.Context.Lua.Get(['items', FItem.AmmoID, 'name'], '') );
 
   case FItem.IType of
     ITEMTYPE_ARMOR, ITEMTYPE_BOOTS :
@@ -373,31 +385,43 @@ begin
     // Alt-fire perk (shown separately with description)
     if FItem.HasHook( Hook_OnAltFire ) then
       for i := 0 to iPerks.Size - 1 do
-        with PerkData[ iPerks[i].ID ] do
+        with FItem.Perks.Definitions.Data[ iPerks[i].ID ] do
           if Hook_OnAltFire in Hooks then
           begin
-            FTexts[0].Push( '' );
-            FTexts[0].Push( 'Alt. fire    : {!' + Desc + '}' );
-            iHasFire := True;
+            iDesc := FItem.GetPerkDescription( iPerks[i].ID );
+            if iDesc <> '' then
+            begin
+              FTexts[0].Push( '' );
+              FTexts[0].Push( 'Alt. fire    : {!' + iDesc + '}' );
+              iHasFire := True;
+            end;
             break;
           end;
 
     // Alt-reload perk (shown separately with description)
     if FItem.HasHook( Hook_OnAltReload ) then
       for i := 0 to iPerks.Size - 1 do
-        with PerkData[ iPerks[i].ID ] do
+        with FItem.Perks.Definitions.Data[ iPerks[i].ID ] do
           if Hook_OnAltReload in Hooks then
           begin
-            if not iHasFire then FTexts[0].Push( '' );
-            FTexts[0].Push( 'Alt. reload  : {!' + Desc + '}' );
+            iDesc := FItem.GetPerkDescription( iPerks[i].ID );
+            if iDesc <> '' then
+            begin
+              if not iHasFire then FTexts[0].Push( '' );
+              FTexts[0].Push( 'Alt. reload  : {!' + iDesc + '}' );
+            end;
             break;
           end;
 
     FTexts[1] := TStringGArray.Create;
     for i := 0 to iPerks.Size - 1 do
-      with PerkData[ iPerks[i].ID ] do
-        if ( Name <> '' ) and ( Desc <> '' ) then
-          FTexts[1].Push( '{' + VTIG_ColorChar( Color ) + Name + '} - ' + Desc );
+      with FItem.Perks.Definitions.Data[ iPerks[i].ID ] do
+        if Name <> '' then
+        begin
+          iDesc := FItem.GetPerkDescription( iPerks[i].ID );
+          if iDesc <> '' then
+            FTexts[1].Push( '{' + VTIG_ColorChar( Color ) + Name + '} - ' + iDesc );
+        end;
   end;
 end;
 
@@ -426,11 +450,6 @@ begin
   end;
 end;
 
-function TMoreItemView.IsFinished : Boolean;
-begin
-  Exit( FFinished or ( DRL.State <> DSPlaying ) );
-end;
-
 function TMoreItemView.IsModal : Boolean;
 begin
   Exit( True );
@@ -445,4 +464,3 @@ begin
 end;
 
 end.
-

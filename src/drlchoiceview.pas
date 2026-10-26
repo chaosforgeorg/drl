@@ -6,7 +6,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlchoiceview;
 interface
-uses viotypes, vgenerics, vutil, dfdata;
+uses vio, viotypes, vgenerics, vutil, dfdata;
 
 type TChoiceViewChoice = record
   Name    : AnsiString;
@@ -20,7 +20,7 @@ type TChoiceArray = specialize TGArray< TChoiceViewChoice >;
 type TChoiceView = class( TIOLayer )
   constructor Create;
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
-  function IsFinished : Boolean; override;
+  procedure Finish; override;
   function IsModal : Boolean; override;
   procedure Add( const aEntry : TChoiceViewChoice );
   destructor Destroy; override;
@@ -56,7 +56,7 @@ end;
 
 implementation
 
-uses sysutils, vdebug, vtig, drlbase;
+uses sysutils, vdebug, vtig;
 
 constructor TChoiceView.Create;
 begin
@@ -118,17 +118,16 @@ begin
     FDone     := True;
     FResult   := FCancel;
   end;
-
-  if IsFinished and not FDone then
-  begin
-    FDone   := True;
-    FResult := FCancel;
-  end;
 end;
 
-function TChoiceView.IsFinished : Boolean;
+procedure TChoiceView.Finish;
 begin
-  Exit( FFinished or ( DRL.State <> DSPlaying ) );
+  if not FFinished then
+  begin
+    FResult := FCancel;
+    FDone := True;
+  end;
+  inherited Finish;
 end;
 
 function TChoiceView.IsModal : Boolean;

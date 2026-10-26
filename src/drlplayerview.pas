@@ -7,15 +7,13 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlplayerview;
 interface
 uses vioevent, viotypes, vgenerics, vtigstyle,
-     dfitem, dfdata, drlhooks,
-     drlio, drltraits, drlconfirmview;
+     dfplayer, dfitem, dfdata, drlhooks, drlio, drluibindings, drltraits, drlconfirmview, drlbase;
 
 type TPlayerViewState = (
   PLAYERVIEW_INVENTORY,
   PLAYERVIEW_EQUIPMENT,
   PLAYERVIEW_CHARACTER,
   PLAYERVIEW_TRAITS,
-  PLAYERVIEW_CLOSING,
   PLAYERVIEW_PENDING,
   PLAYERVIEW_DONE
 );
@@ -47,19 +45,24 @@ end;
 
 type TTraitViewArray = specialize TGArray< TTraitViewEntry >;
 
-type TPlayerView = class( TIOLayer )
-  constructor Create( aInitialState : TPlayerViewState = PLAYERVIEW_INVENTORY );
-  constructor CreateTrait( aFirstTrait : Boolean; aKlass : Byte = 0 );
-  constructor CreateCommand( aCommand : Byte; aScavenger : Boolean = False );
+type TPlayerView = class( TDRLLayer )
+  constructor Create( aSession : TDRLSession; aInitialState : TPlayerViewState = PLAYERVIEW_INVENTORY );
+  constructor CreateTrait( aSession : TDRLSession );
+  constructor CreateInitialTrait( aSession : TDRLSession; aKlass : Byte );
+  constructor CreateCommand( aSession : TDRLSession; aCommand : Byte; aScavenger : Boolean = False );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
   procedure Retain;
+  procedure FinishPending;
+  function TakeSwapRequest( out aSlot : TEqSlot ) : Boolean;
+  procedure InitSwapMode( aSlot : TEqSlot );
   destructor Destroy; override;
 protected
   function MarkQSlot( aItem : TItem; aValue : Byte ) : Boolean;
   function QSlotChar( aQSlot : Byte ) : Char;
   procedure Initialize;
+  procedure Setup; override;
   procedure UpdateInventory( aActive : Boolean );
   procedure UpdateEquipment( aActive : Boolean );
   procedure UpdateCharacter( aActive : Boolean );
@@ -70,11 +73,12 @@ protected
   procedure ReadTraits( aKlass : Byte );
   procedure ReadCharacter;
   procedure ReadQuickslots;
-  procedure InitSwapMode( aSlot : TEqSlot );
   procedure Sort( aList : TItemViewArray );
 protected
   procedure Filter( aSet : TItemTypeSet; aUsableOnly : Boolean = False );
 protected
+  FSession     : TDRLSession; // Borrowed; the view is released before Session.
+  FPlayer      : TPlayer; // Borrowed; nil only for initial trait selection.
   FState       : TPlayerViewState;
   FSize        : TIOPoint;
   FInv         : TItemViewArray;
@@ -92,6 +96,7 @@ protected
   FSSlot       : TEqSlot;
   FTraits      : TTraitViewArray;
   FCommandMode : Byte;
+  FSwapRequest : Boolean;
 
   class var FTraitPick : Byte;
 public
@@ -99,7 +104,7 @@ public
 end;
 
 type TUnloadConfirmView = class( TConfirmView )
-  constructor Create( aItem : TItem; aID : Ansistring = '' );
+  constructor Create( aSession : TDRLSession; aItem : TItem; aID : Ansistring = '' );
 protected
   procedure OnConfirm; override;
 protected
@@ -108,7 +113,7 @@ protected
 end;
 
 type TNoRoomConfirmView = class( TConfirmView )
-  constructor Create( aItem : TItem; aID : Ansistring = '' );
+  constructor Create( aSession : TDRLSession; aItem : TItem; aID : Ansistring = '' );
 protected
   procedure OnConfirm; override;
 protected
@@ -118,42 +123,58 @@ end;
 implementation
 
 uses sysutils, math, variants,
-     vutil, vtig, vtigio, vluasystem,
-     dfplayer,
-     drlcommand, drlbase, drlinventory, drlperk;
+     vutil, vtig, vtigio, vlua,
+     dflevel, drlcommand, drlinventory, drlperk;
 
-constructor TPlayerView.Create( aInitialState : TPlayerViewState = PLAYERVIEW_INVENTORY );
+constructor TPlayerView.Create( aSession : TDRLSession; aInitialState : TPlayerViewState = PLAYERVIEW_INVENTORY );
 begin
+  FSession := aSession;
+  FPlayer := FSession.Player;
   Initialize;
   FState := aInitialState;
 end;
 
-constructor TPlayerView.CreateTrait( aFirstTrait : Boolean; aKlass : Byte = 0 );
+constructor TPlayerView.CreateTrait( aSession : TDRLSession );
 begin
+  FSession := aSession;
+  FPlayer := FSession.Player;
   Initialize;
   FState     := PLAYERVIEW_TRAITS;
   FTraitMode := True;
-  FTraitFirst:= aFirstTrait;
-
-  if FTraitFirst
-    then ReadTraits( aKlass )
-    else ReadTraits( Player.Klass )
+  ReadTraits( FPlayer.Klass );
 end;
 
-constructor TPlayerView.CreateCommand( aCommand : Byte; aScavenger : Boolean = False );
+constructor TPlayerView.CreateInitialTrait( aSession : TDRLSession; aKlass : Byte );
 begin
+  FSession := aSession;
+  Initialize;
+  FState      := PLAYERVIEW_TRAITS;
+  FTraitMode  := True;
+  FTraitFirst := True;
+  ReadTraits( aKlass );
+end;
+
+constructor TPlayerView.CreateCommand( aSession : TDRLSession; aCommand : Byte; aScavenger : Boolean = False );
+begin
+  FSession := aSession;
+  FPlayer := FSession.Player;
   Initialize;
   FCommandMode := aCommand;
   FScavenger   := aScavenger;
   FState       := PLAYERVIEW_INVENTORY;
-  ReadInv;
+  // ReadInv runs on the first update, after the layer has an IO owner.
   case aCommand of
-    COMMAND_USE    : begin FAction := 'use';  FITitle := 'Choose item to use';  Filter( [ITEMTYPE_PACK,ITEMTYPE_URANGED], True ); end;
+    COMMAND_USE    : begin FAction := 'use';  FITitle := 'Choose item to use'; end;
     COMMAND_DROP   : begin FAction := 'drop'; FITitle := 'Choose item to drop'; end;
     COMMAND_UNLOAD : if aScavenger
-                       then begin FAction := 'unload/scavenge';  FITitle := 'Choose item to unload/scavenge';  Filter( [ITEMTYPE_RANGED, ITEMTYPE_AMMOPACK, ITEMTYPE_MELEE, ITEMTYPE_ARMOR, ITEMTYPE_BOOTS] ); end
-                       else begin FAction := 'unload';           FITitle := 'Choose item to unload';  Filter( [ITEMTYPE_RANGED, ITEMTYPE_AMMOPACK] ); end;
+                       then begin FAction := 'unload/scavenge';  FITitle := 'Choose item to unload/scavenge'; end
+                       else begin FAction := 'unload';           FITitle := 'Choose item to unload'; end;
   end;
+end;
+
+procedure TPlayerView.Setup;
+begin
+  if IO.NarrowMode then FSize := Point( 76, 25 );
 end;
 
 procedure TPlayerView.Initialize;
@@ -171,7 +192,6 @@ begin
   VTIG_ResetScroll( 'character' );
   FState       := PLAYERVIEW_INVENTORY;
   FSize        := Point( 80, 25 );
-  if IO.NarrowMode then FSize := Point( 76, 25 );
   FInv         := nil;
   FEq          := nil;
   FTraits      := nil;
@@ -179,22 +199,15 @@ begin
   FTraitMode   := False;
   FTraitFirst  := False;
   FCommandMode := 0;
+  FSwapRequest := False;
   FAction      := 'wear/use';
   FITitle      := 'Inventory';
   FTraitPick   := 255;
 end;
 
 procedure TPlayerView.Update( aDTime : Integer; aActive : Boolean );
-var iTraitFirst : Boolean;
 begin
-  if IsFinished or (FState = PLAYERVIEW_CLOSING) or (FState = PLAYERVIEW_PENDING) then Exit;
-
-  iTraitFirst := FTraitFirst;
-  if ( DRL.State <> DSPlaying ) and ( not iTraitFirst ) then
-  begin
-    FState := PLAYERVIEW_DONE;
-    Exit;
-  end;
+  if IsFinished or ( FState = PLAYERVIEW_PENDING ) then Exit;
 
   case FState of
     PLAYERVIEW_INVENTORY : UpdateInventory( aActive );
@@ -203,7 +216,7 @@ begin
     PLAYERVIEW_TRAITS    : UpdateTraits( aActive );
   end;
 
-  if (( DRL.State <> DSPlaying ) and ( not iTraitFirst )) or IsFinished or (FState = PLAYERVIEW_CLOSING) or (FState = PLAYERVIEW_PENDING) then Exit;
+  if IsFinished or ( FState = PLAYERVIEW_PENDING ) then Exit;
 
   if (aActive) and ( not FSwapMode ) and ( not FTraitMode ) and ( FCommandMode = 0 ) then
   begin
@@ -261,23 +274,42 @@ end;
 
 function TPlayerView.IsFinished : Boolean;
 begin
-  Exit( FState = PLAYERVIEW_DONE );
+  Exit( inherited IsFinished or ( FState = PLAYERVIEW_DONE ) );
 end;
 
 procedure TPlayerView.Retain;
+var i : Integer;
 begin
-  if FState = PLAYERVIEW_PENDING then FState := PLAYERVIEW_INVENTORY;
+  if FState <> PLAYERVIEW_PENDING then Exit;
+  FreeAndNil( FEq );
+  FreeAndNil( FTraits );
+  for i := Low( FCharacter ) to High( FCharacter ) do
+    FreeAndNil( FCharacter[i] );
+  ReadInv;
+  FState := PLAYERVIEW_INVENTORY;
+end;
+
+procedure TPlayerView.FinishPending;
+begin
+  if FState = PLAYERVIEW_PENDING then FState := PLAYERVIEW_DONE;
+end;
+
+function TPlayerView.TakeSwapRequest( out aSlot : TEqSlot ) : Boolean;
+begin
+  Result := FSwapRequest;
+  aSlot := FSSlot;
+  FSwapRequest := False;
 end;
 
 function TPlayerView.IsModal : Boolean;
 begin
-  Exit( ( FState <> PLAYERVIEW_CLOSING ) and ( FState <> PLAYERVIEW_PENDING ) );
+  Exit( FState <> PLAYERVIEW_PENDING );
 end;
 
 destructor TPlayerView.Destroy;
 var i : Integer;
 begin
-  DRL.ClearPlayerView;
+  FSession.ClearPlayerView( Self );
   FreeAndNil( FEq );
   FreeAndNil( FInv );
   FreeAndNil( FTraits );
@@ -291,25 +323,25 @@ var i : Integer;
 begin
   if aItem.isWearable and ( not aItem.isRelic ) then
   begin
-    if Player.FQuickSlots[ aValue ].UID = aItem.UID
-      then Player.FQuickSlots[ aValue ].UID := 0
-      else Player.FQuickSlots[ aValue ].UID := aItem.UID;
-    Player.FQuickSlots[ aValue ].ID := '';
+    if FPlayer.FQuickSlots[ aValue ].UID = aItem.UID
+      then FPlayer.FQuickSlots[ aValue ].UID := 0
+      else FPlayer.FQuickSlots[ aValue ].UID := aItem.UID;
+    FPlayer.FQuickSlots[ aValue ].ID := '';
     for i := 1 to 9 do
-      if ( i <> aValue ) and ( Player.FQuickSlots[ i ].UID = aItem.UID ) then
-        Player.FQuickSlots[ i ].UID := 0;
+      if ( i <> aValue ) and ( FPlayer.FQuickSlots[ i ].UID = aItem.UID ) then
+        FPlayer.FQuickSlots[ i ].UID := 0;
     ReadQuickslots;
     Exit( True );
   end;
   if aItem.isUsable then
   begin
-    if Player.FQuickSlots[ aValue ].ID = aItem.ID
-      then Player.FQuickSlots[ aValue ].ID := ''
-      else Player.FQuickSlots[ aValue ].ID := aItem.ID;
-    Player.FQuickSlots[ aValue ].UID := 0;
+    if FPlayer.FQuickSlots[ aValue ].ID = aItem.ID
+      then FPlayer.FQuickSlots[ aValue ].ID := ''
+      else FPlayer.FQuickSlots[ aValue ].ID := aItem.ID;
+    FPlayer.FQuickSlots[ aValue ].UID := 0;
     for i := 1 to 9 do
-      if ( i <> aValue ) and ( Player.FQuickSlots[ i ].ID = aItem.ID ) then
-        Player.FQuickSlots[ i ].ID := '';
+      if ( i <> aValue ) and ( FPlayer.FQuickSlots[ i ].ID = aItem.ID ) then
+        FPlayer.FQuickSlots[ i ].ID := '';
     ReadQuickslots;
     Exit( True );
   end;
@@ -327,7 +359,6 @@ procedure TPlayerView.UpdateInventory( aActive : Boolean );
 var iEntry    : TItemViewEntry;
     iSelected : Integer;
     iCommand  : Byte;
-
 begin
   if FInv = nil then ReadInv;
   VTIG_PushStyle( @FCompactStyle );
@@ -402,27 +433,25 @@ begin
     begin
       if VTIG_EventConfirm then
       begin
-        FState := PLAYERVIEW_CLOSING;
-        DRL.HandleCommand( TCommand.Create( COMMAND_SWAP, FInv[iSelected].Item, FSSlot ) );
+        FSession.QueueCommand( TCommand.Create( COMMAND_SWAP, FInv[iSelected].Item, FSSlot ) );
         FState := PLAYERVIEW_DONE;
+        Exit;
       end;
     end
     else
     begin
       if ( FCommandMode in [0, COMMAND_USE] ) then
       begin
-        if VTIG_Event( VTIG_IE_BACKSPACE ) then
+        if VTIG_Event( UI_BINDING_DROP ) then
         begin
           FState := PLAYERVIEW_PENDING;
-          DRL.HandleCommand( TCommand.Create(
+          FSession.QueueCommand( TCommand.Create(
             COMMAND_DROP,
             FInv[iSelected].Item,
             VTIG_Event( VTIG_IE_SHIFT )
               or IO.PadState.Active( VPAD_BUTTON_RIGHTTRIGGER )
           ) );
-          if FState = PLAYERVIEW_PENDING
-            then FState := PLAYERVIEW_DONE
-            else begin ReadInv; FState := PLAYERVIEW_INVENTORY; end
+          Exit;
         end
         else
         if VTIG_EventConfirm then
@@ -430,12 +459,12 @@ begin
           iCommand := COMMAND_NONE;
           if FInv[iSelected].Item.isWearable then iCommand := COMMAND_WEAR;
           if FInv[iSelected].Item.isUsable   then iCommand := COMMAND_USE;
-          FState := PLAYERVIEW_CLOSING;
+          FState := PLAYERVIEW_DONE;
           if iCommand <> COMMAND_NONE then
             if FInv[iSelected].Item.IType = ITEMTYPE_URANGED
-              then DRL.HandleUsableCommand( FInv[iSelected].Item )
-              else DRL.HandleCommand( TCommand.Create( iCommand, FInv[iSelected].Item ) );
-          FState := PLAYERVIEW_DONE;
+              then FSession.HandleUsableCommand( FInv[iSelected].Item )
+              else FSession.QueueCommand( TCommand.Create( iCommand, FInv[iSelected].Item ) );
+          Exit;
         end;
         if VTIG_Event( VTIG_IE_1 ) then MarkQSlot( FInv[iSelected].Item, 1 );
         if VTIG_Event( VTIG_IE_2 ) then MarkQSlot( FInv[iSelected].Item, 2 );
@@ -451,13 +480,11 @@ begin
       begin
         if VTIG_EventConfirm then
         begin
-          iCommand := FCommandMode;
-          FState := PLAYERVIEW_CLOSING;
-               if iCommand = COMMAND_UNLOAD then
-            DRL.HandleUnloadCommand( FInv[iSelected].Item )
-          else if iCommand <> COMMAND_NONE then
-            DRL.HandleCommand( TCommand.Create( iCommand, FInv[iSelected].Item ) );
           FState := PLAYERVIEW_DONE;
+          if FCommandMode = COMMAND_UNLOAD
+            then FSession.HandleUnloadCommand( FInv[iSelected].Item )
+            else FSession.QueueCommand( TCommand.Create( FCommandMode, FInv[iSelected].Item ) );
+          Exit;
         end;
       end;
     end;
@@ -470,30 +497,15 @@ begin
 end;
 
 procedure TPlayerView.UpdateEquipment( aActive : Boolean );
+const TraitRows = 11;
 var iEntry            : TItemViewEntry;
     iSelected,iY      : Integer;
-    iB, iA, iR, iK    : Integer;
+    iT, iR, iK        : Integer;
+    iWidth            : Integer;
     iTot, iFeet, iTor : Integer;
     iCount            : Integer;
     iRes              : TResistance;
     iName             : Ansistring;
-  function CannotUnequip : Boolean;
-  var iSavedState : TPlayerViewState;
-  begin
-    if ( FEq[iSelected].Item <> nil ) then
-    begin
-      iSavedState := FState;
-      FState := PLAYERVIEW_CLOSING;
-      if not FEq[iSelected].Item.CallHookCheck( Hook_OnUnequipCheck, [ Player, False ] ) then
-      begin
-        FState := PLAYERVIEW_DONE;
-        Exit( True );
-      end;
-      FState := iSavedState;
-    end;
-    Exit( False );
-  end;
-
 begin
   if FEq = nil then ReadEq;
   VTIG_BeginWindow('Equipment', 'equipment', FSize );
@@ -525,8 +537,7 @@ begin
     VTIG_EndGroup( True );
 
     iY := 10;
-    iB := 0;
-    iA := 0;
+    iT := 0;
     iR := 42;
     iK := 42;
     if IO.NarrowMode then
@@ -535,32 +546,30 @@ begin
       iK := 40;
     end;
 
-    VTIG_FreeLabel( 'Basic traits',    Point(0, iY) );
-    VTIG_FreeLabel( 'Advanced traits', Point(20,iY) );
-    VTIG_FreeLabel( 'Resistances',     Point(iR,iY) );
+    VTIG_FreeLabel( 'Traits',      Point(0, iY) );
+    VTIG_FreeLabel( 'Resistances', Point(iR,iY) );
 
+    // Traits in ID order, filling the left column first. Up to two full-width
+    // columns fit; more columns share the space left of the resistances.
     for iCount := 1 to MAXTRAITS do
-      if Player.Traits[iCount] > 0 then
+      if FPlayer.Traits[iCount] > 0 then
+        Inc( iT );
+    iWidth := Min( 20, iR div Max( 2, ( iT + TraitRows - 1 ) div TraitRows ) );
+    iT := 0;
+    for iCount := 1 to MAXTRAITS do
+      if FPlayer.Traits[iCount] > 0 then
       begin
-        iName := LuaSystem.Get(['traits',iCount,'name']);
-        if iName = '' then Continue;
-        if iCount < 10 then
-        begin
-          Inc( iB );
-          VTIG_FreeLabel( '{d'+Padded(iName,16) + '({!' + IntToStr(Player.Traits[iCount])+ '})}', Point(0, iY+iB) );
-        end
-        else
-        begin
-          Inc( iA );
-          VTIG_FreeLabel( '{d'+Padded(iName,16) + '({!' + IntToStr(Player.Traits[iCount])+ '})}', Point(20, iY+iA) );
-        end;
+        iName := FSession.Context.Lua.Get(['traits',iCount,'name']);
+        VTIG_FreeLabel( '{d'+Padded(iName,iWidth-4) + '({!' + IntToStr(FPlayer.Traits[iCount])+ '})}',
+          Point( iWidth * ( iT div TraitRows ), iY + 1 + iT mod TraitRows ) );
+        Inc( iT );
       end;
 
     for iRes := Low(TResistance) to High(TResistance) do
     begin
-      iTot  := Player.getTotalResistance(ResIDs[iRes],TARGET_INTERNAL);
-      iTor  := Player.getTotalResistance(ResIDs[iRes],TARGET_TORSO);
-      iFeet := Player.getTotalResistance(ResIDs[iRes],TARGET_FEET);
+      iTot  := FPlayer.getTotalResistance(ResIDs[iRes],TARGET_INTERNAL);
+      iTor  := FPlayer.getTotalResistance(ResIDs[iRes],TARGET_TORSO);
+      iFeet := FPlayer.getTotalResistance(ResIDs[iRes],TARGET_FEET);
       if (iTot <> 0) or (iTor <> 0) or (iFeet <> 0) then
       begin
         Inc( iY );
@@ -600,55 +609,40 @@ begin
     begin
       if Assigned( FEq[iSelected].Item ) then
       begin
-        if ( Player.Inv.isFull ) then
+        FState := PLAYERVIEW_DONE;
+        if FPlayer.Inv.IsFull then
         begin
-          FState := PLAYERVIEW_CLOSING;
-          if not Option_InvFullDrop then
-          begin
-            IO.PushLayer( TNoRoomConfirmView.Create( FEq[iSelected].Item ) );
-            FState := PLAYERVIEW_DONE;
-            Exit;
-          end;
-          if CannotUnequip then Exit;
-          FState := PLAYERVIEW_CLOSING;
-          DRL.HandleCommand( TCommand.Create( COMMAND_DROP, FEq[iSelected].Item ) );
-          FState := PLAYERVIEW_DONE;
+          if FSession.UserConfig.GetBoolean( 'inv_full_drop' )
+            then FSession.QueueCommand( TCommand.Create( COMMAND_DROP, FEq[iSelected].Item ) )
+            else IO.PushLayer( TNoRoomConfirmView.Create( FSession, FEq[iSelected].Item ) );
         end
-        else
-        begin
-          if CannotUnequip then Exit;
-          FState := PLAYERVIEW_CLOSING;
-          DRL.HandleCommand( TCommand.Create( COMMAND_TAKEOFF, nil, TEqSlot(iSelected) ) );
-          FState := PLAYERVIEW_DONE;
-        end;
+        else FSession.QueueCommand( TCommand.Create( COMMAND_TAKEOFF, nil, TEqSlot(iSelected) ) );
       end
       else
-      begin
         InitSwapMode( TEqSlot(iSelected) );
-        Exit;
-      end;
+      Exit;
     end
     else
-    if VTIG_Event( VTIG_IE_TAB ) then
+    if VTIG_Event( UI_BINDING_SWAP ) then
     begin
-      if CannotUnequip then Exit;
-      InitSwapMode( TEqSlot(iSelected) );
+      FSwapRequest := True;
+      FSSlot := TEqSlot(iSelected);
+      FState := PLAYERVIEW_PENDING;
       Exit;
     end
     else
     if Assigned( FEq[iSelected].Item ) then
     begin
-      if VTIG_Event( VTIG_IE_BACKSPACE ) then
+      if VTIG_Event( UI_BINDING_DROP ) then
       begin
-        if CannotUnequip then Exit;
-        FState := PLAYERVIEW_CLOSING;
-        DRL.HandleCommand( TCommand.Create(
+        FSession.QueueCommand( TCommand.Create(
           COMMAND_DROP,
           FEq[iSelected].Item,
           VTIG_Event( VTIG_IE_SHIFT )
             or IO.PadState.Active( VPAD_BUTTON_RIGHTTRIGGER )
         ) );
         FState := PLAYERVIEW_DONE;
+        Exit;
       end;
       if VTIG_Event( VTIG_IE_1 ) then MarkQSlot( FEq[iSelected].Item, 1 );
       if VTIG_Event( VTIG_IE_2 ) then MarkQSlot( FEq[iSelected].Item, 2 );
@@ -686,7 +680,7 @@ procedure TPlayerView.UpdateTraits( aActive : Boolean );
 var iSelected : Integer;
     iEntry    : TTraitViewEntry;
 begin
-  if FTraits = nil then ReadTraits( Player.Klass );
+  if FTraits = nil then ReadTraits( FPlayer.Klass );
   VTIG_PushStyle( @FTraitsStyle );
   if FTraitMode
     then VTIG_BeginWindow('Select trait to upgrade', 'traits', FSize )
@@ -721,9 +715,9 @@ begin
     if FTraits[iSelected].Master then
     begin
       VTIG_Text( '' );
-      if ( not FTraitFirst ) and ( Player.Traits.Master > 0 ) then
+      if ( not FTraitFirst ) and ( FPlayer.Traits.Master > 0 ) then
       begin
-        if FTraits[iSelected].Index <> Player.Traits.Master then
+        if FTraits[iSelected].Index <> FPlayer.Traits.Master then
           VTIG_Text( '{rYou can pick only one {RMaster} trait.}' );
       end
       else
@@ -736,13 +730,10 @@ begin
     then VTIG_End('{l<{!{$input_up},{$input_down}}> scroll, <{!{$input_ok}}> select}')
     else VTIG_End('{l<{!{$input_left},{$input_right}}> panels, <{!{$input_up},{$input_down}}> scroll, <{!{$input_escape}}> exit}');
 
-  if (iSelected >= 0) and FTraitMode and FTraits[iSelected].Available then
+  if aActive and (iSelected >= 0) and FTraitMode and FTraits[iSelected].Available then
     if VTIG_EventConfirm then
     begin
-      FState := PLAYERVIEW_CLOSING;
-      if FTraitFirst
-        then FTraitPick := FTraits[iSelected].Index
-        else Player.Traits.Upgrade( Player.Klass, FTraits[iSelected].Index );
+      FTraitPick := FTraits[iSelected].Index;
       FState := PLAYERVIEW_DONE;
     end;
 end;
@@ -752,20 +743,20 @@ var iEntry : TItemViewEntry;
     iSet   : AnsiString;
 begin
   iEntry.Item  := aItem;
-  iEntry.Name  := aItem.Description;
+  iEntry.Name  := aItem.GetInvName;
   if Length( iEntry.Name ) > 47 then iEntry.Name := Copy(iEntry.Name, 1, 47 );
-  iEntry.Stats := aItem.DescriptionBox;
-  iEntry.Perks := aItem.GetTraitString( True );
-  iEntry.Color := aItem.MenuColor;
+  iEntry.Stats := aItem.GetInvStatsList;
+  iEntry.Perks := aItem.GetPerkSummary( True );
+  iEntry.Color := IO.ItemMenuColor( aItem );
   iEntry.QSlot := 0;
 
-  iEntry.Desc  := LuaSystem.Get(['items',aItem.ID,'desc'], '');
-  if aItem.Flags[ IF_SETITEM ] then
+  iEntry.Desc  := aItem.Context.Lua.Get(['items',aItem.ID,'desc'], '');
+  iSet := aItem.Context.Lua.Get( ['items',aItem.ID,'set'], '' );
+  if iSet <> '' then
   begin
-    iSet        := LuaSystem.Get(['items',aItem.ID,'set']);
     iEntry.Desc := Format('{!%s} (1/%d)', [
-      AnsiString( LuaSystem.Get(['itemsets',iSet,'name']) ),
-      Byte( LuaSystem.Get(['itemsets',iSet,'trigger']) ) ])
+      AnsiString( aItem.Context.Lua.Get(['itemsets',iSet,'name']) ),
+      Byte( aItem.Context.Lua.Get(['itemsets',iSet,'trigger']) ) ])
       + #10+ iEntry.Desc;
   end;
   aArray.Push( iEntry );
@@ -777,11 +768,19 @@ begin
   if FInv = nil then FInv := TItemViewArray.Create;
   FInv.Clear;
 
-  for iItem in Player.Inv do
-    if (not Player.Inv.Equipped( iItem )) {and (iItem.IType in aFilter) }then
+  for iItem in FPlayer.Inv do
+    if not FPlayer.Inv.Equipped( iItem ) then
       PushItem( iItem, FInv );
 
   Sort( FInv );
+  if FSwapMode then
+    Filter( ItemEqFilters[ FSSlot ] )
+  else case FCommandMode of
+    COMMAND_USE : Filter( [ ITEMTYPE_PACK, ITEMTYPE_URANGED ], True );
+    COMMAND_UNLOAD : if FScavenger
+      then Filter( [ ITEMTYPE_RANGED, ITEMTYPE_AMMOPACK, ITEMTYPE_MELEE, ITEMTYPE_ARMOR, ITEMTYPE_BOOTS ] )
+      else Filter( [ ITEMTYPE_RANGED, ITEMTYPE_AMMOPACK ] );
+  end;
   ReadQuickSlots;
 end;
 
@@ -794,9 +793,9 @@ begin
 
   for iSlot := Low(TEqSlot) to High(TEqSlot) do
   begin
-    if (iSlot = efRelic) and (not ModuleOption_RelicSlot) then Continue;
-    if Player.Inv.Slot[iSlot] <> nil
-      then PushItem( Player.Inv.Slot[iSlot], FEq )
+    if (iSlot = efRelic) and (not FSession.Data.Rules.RelicSlot) then Continue;
+    if FPlayer.Inv.Slot[iSlot] <> nil
+      then PushItem( FPlayer.Inv.Slot[iSlot], FEq )
       else
         begin
           iEntry.Item  := nil;
@@ -832,7 +831,7 @@ const MaxReqLength = 38;
   function Value( aTrait : Byte ) : Byte;
   begin
     if FTraitFirst then Exit(0);
-    Exit( Player.Traits[aTrait] );
+    Exit( FPlayer.Traits[aTrait] );
   end;
 
   procedure AddRequires( aStr : Ansistring );
@@ -854,16 +853,16 @@ begin
   iKlass := aKlass;
   iLevel := 0;
   if not FTraitFirst then
-    iLevel := Player.ExpLevel;
+    iLevel := FPlayer.ExpLevel;
 
-  iTraits := LuaSystem.Get(['klasses',iKlass,'traitlist']);
+  iTraits := FSession.Context.Lua.Get(['klasses',iKlass,'traitlist']);
   for i := VarArrayLowBound(iTraits, 1) to VarArrayHighBound(iTraits, 1) do
   begin
     iTrait := iTraits[ i ];
     iEntry.Value     := Value( iTrait );
-    iEntry.Name      := LuaSystem.Get(['traits',iTrait,'name']);
+    iEntry.Name      := FSession.Context.Lua.Get(['traits',iTrait,'name']);
     iEntry.Entry     := Padded(iEntry.Name,16) +' ({!'+IntToStr(iEntry.Value)+'})';
-    with LuaSystem.GetTable(['traits',iTrait]) do
+    with FSession.Context.Lua.GetTable(['traits',iTrait]) do
     try
       iEntry.Quote := getString('quote');
       iEntry.Desc  := getString('desc');
@@ -874,14 +873,14 @@ begin
     iReqLen := 0;
     iEntry.Requires := '';
     iEntry.Blocks   := '';
-    with LuaSystem.GetTable(['klasses',iKlass,'trait',iTrait]) do
+    with FSession.Context.Lua.GetTable(['klasses',iKlass,'trait',iTrait]) do
     try
       iEntry.Master:= getBoolean( 'master', False );
       if GetTableSize('requires') > 0 then
       for iTable in ITables('requires') do
       begin
         iNID            := iTable.GetValue( 1 );
-        iName           := LuaSystem.Get(['traits',iNID,'name']);
+        iName           := FSession.Context.Lua.Get(['traits',iNID,'name']);
         iValue          := iTable.GetValue( 2 );
         AddRequires( '{'+RG[Value(iNID) < iValue]+iName+'} ({!'+IntToStr(iValue)+'}), ' );
       end;
@@ -901,7 +900,7 @@ begin
           for iCount := 1 to iSize do
           begin
             iNID          := GetValue( iCount );
-            iName         := LuaSystem.Get(['traits',iNID,'name']);
+            iName         := FSession.Context.Lua.Get(['traits',iNID,'name']);
             iEntry.Blocks += '{'+RL[Value(iNID) > 0]+iName+'}, ';
           end;
         finally
@@ -915,20 +914,23 @@ begin
 
     iEntry.Index     := iTrait;
     if FTraitFirst
-      then iEntry.Available := TTraits.CanPickInitially( iTrait, iKlass )
-      else iEntry.Available := Player.Traits.CanPick( iKlass, iTrait, iLevel );
+      then iEntry.Available := TTraits.CanPickInitially( FSession.Context.Lua, iTrait, iKlass )
+      else iEntry.Available := FPlayer.Traits.CanPick( iKlass, iTrait, iLevel );
     FTraits.Push( iEntry );
   end;
 end;
 
 procedure TPlayerView.ReadCharacter;
-var iKillRecord   : Integer;
+var iLevel        : TLevel;
+    iKillRecord   : Integer;
     iDodgeBonus   : Integer;
     iKnockMod     : Integer;
     iLeft, iULeft : DWord;
     i             : Integer;
     iPerks        : TPerkList;
     iName         : Ansistring;
+    iDesc         : Ansistring;
+    iHasSection   : Boolean;
     iMelee        : Boolean;
   function Percent( aCurrent, aMax : Integer ) : Integer;
   begin
@@ -938,14 +940,15 @@ begin
   for i := Low( FCharacter ) to High( FCharacter ) do
     FreeAndNil( FCharacter[i] );
 
-  FCTitle := LuaSystem.Get([ 'diff', DRL.Difficulty, 'code' ]);
-  if DRL.Challenge <> ''  then FCTitle += ' / ' + LuaSystem.Get(['chal',DRL.Challenge,'abbr']);
-  if DRL.SChallenge <> '' then FCTitle += ' + ' + LuaSystem.Get(['chal',DRL.SChallenge,'abbr']);
+  iLevel := TLevel( FPlayer.Parent );
+  FCTitle := FPlayer.Context.Lua.Get([ 'diff', FSession.Difficulty, 'code' ]);
+  if FSession.Challenge <> ''  then FCTitle += ' / ' + FPlayer.Context.Lua.Get(['chal',FSession.Challenge,'abbr']);
+  if FSession.SChallenge <> '' then FCTitle += ' + ' + FPlayer.Context.Lua.Get(['chal',FSession.SChallenge,'abbr']);
   FCTitle := 'Character ( '+FCTitle+' )';
 
-  with Player do
+  with FPlayer do
   begin
-    Statistics.Update();
+    Statistics.Update( FPlayer );
     iKillRecord := Statistics['kills_non_damage'];
     if FKills.NoDamageSequence > iKillRecord then iKillRecord := FKills.NoDamageSequence;
     iDodgeBonus := getDodgeMod;
@@ -953,7 +956,7 @@ begin
 
     // Section 0: Player
     FCharacter[0] := TStringGArray.Create;
-    FCharacter[0].Push( '{!' + Name + '} - level {!' + IntToStr(ExpLevel) + '} ' + AnsiString(LuaSystem.Get(['klasses',Klass,'name'])) );
+    FCharacter[0].Push( '{!' + Name + '} - level {!' + IntToStr(ExpLevel) + '} ' + AnsiString(FPlayer.Context.Lua.Get(['klasses',Klass,'name'])) );
     if ExpLevel < MaxPlayerLevel - 1
       then FCharacter[0].Push( Format( '  Experience   : {!%d} ({!%d} more needed for level {!%d})', [ Exp, ExpTable[ExpLevel+1] - Exp, ExpLevel+1 ] ) )
       else FCharacter[0].Push( Format( '  Experience   : {!%d} ({!max level reached!})', [ Exp ] ) );
@@ -989,65 +992,70 @@ begin
     iPerks := GetPerkList;
     if ( iPerks <> nil ) and ( iPerks.Size > 0 ) then
     begin
+      iHasSection := False;
       for i := 0 to iPerks.Size - 1 do
-        with PerkData[ iPerks[i].ID ] do
-        if ( Desc <> '' ) and ( ColorExp <> 0 ) then
+        with Perks.Definitions.Data[ iPerks[i].ID ] do
+        if ColorExp <> 0 then
         begin
-          FCharacter[0].Push( '' );
-          FCharacter[0].Push( '{!Status effects}' );
-          break;
-        end;
-      for i := 0 to iPerks.Size - 1 do
-        with PerkData[ iPerks[i].ID ] do
-        if ( Desc <> '' ) and ( ColorExp <> 0 ) then
-        begin
+          iDesc := GetPerkDescription( iPerks[i].ID );
+          if iDesc = '' then Continue;
+          if not iHasSection then
+          begin
+            FCharacter[0].Push( '' );
+            FCharacter[0].Push( '{!Status effects}' );
+            iHasSection := True;
+          end;
           iName := Name;
-          if iName = '' then iName := GetPerkShort( iPerks[i].ID );
+          if iName = '' then iName := GetPerkLabel( iPerks[i].ID );
           if iPerks[i].Time > 0
-            then FCharacter[0].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} ({!' + FloatToStr( iPerks[i].Time / 10 ) + '}s) - ' + Desc )
-            else FCharacter[0].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} - ' + Desc );
+            then FCharacter[0].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} ({!' + FloatToStr( iPerks[i].Time / 10 ) + '}s) - ' + iDesc )
+            else FCharacter[0].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} - ' + iDesc );
         end;
 
       // Player perks: permanents
+      iHasSection := False;
       for i := 0 to iPerks.Size - 1 do
-        with PerkData[ iPerks[i].ID ] do
-        if ( Desc <> '' ) and ( ColorExp = 0 ) then
+        with Perks.Definitions.Data[ iPerks[i].ID ] do
+        if ColorExp = 0 then
         begin
-          FCharacter[0].Push( '' );
-          FCharacter[0].Push( '{!Permanents}' );
-          break;
+          iDesc := GetPerkDescription( iPerks[i].ID );
+          if iDesc = '' then Continue;
+          if not iHasSection then
+          begin
+            FCharacter[0].Push( '' );
+            FCharacter[0].Push( '{!Permanents}' );
+            iHasSection := True;
+          end;
+          FCharacter[0].Push( '  {' + VTIG_ColorChar( Color ) + Name + '} - ' + iDesc );
         end;
-      for i := 0 to iPerks.Size - 1 do
-        with PerkData[ iPerks[i].ID ] do
-        if ( Desc <> '' ) and ( ColorExp = 0 ) then
-          FCharacter[0].Push( '  {' + VTIG_ColorChar( Color ) + Name + '} - ' + Desc );
     end;
 
     // Section 1: Level
     FCharacter[1] := TStringGArray.Create;
-    FCharacter[1].Push( Format( '{!%s}', [ DRL.Level.Name ] ) );
-    iLeft  := DRL.Level.EnemiesLeft;
-    iULeft := DRL.Level.EnemiesLeft( True );
+    FCharacter[1].Push( Format( '{!%s}', [ iLevel.Name ] ) );
+    iLeft  := iLevel.EnemiesLeft;
+    iULeft := iLevel.EnemiesLeft( True );
     if iLeft = iULeft
-      then FCharacter[1].Push( Padded( Format( '  Turns taken  : {!%d}', [ DRL.Level.LTime ] ), 32 ) + Format( 'Enemies left : {!%d}', [iLeft] ) )
-      else FCharacter[1].Push( Padded( Format( '  Turns taken  : {!%d}', [ DRL.Level.LTime ] ), 32 ) + Format( 'Enemies left : {!%d} (%d respawned)', [iLeft, iLeft-iULeft] ) );
-    if DRL.Level.Feeling <> '' then
-      FCharacter[1].Push( Format( '  Level feel   : {!%s}', [DRL.Level.Feeling] ) );
+      then FCharacter[1].Push( Padded( Format( '  Turns taken  : {!%d}', [ iLevel.LTime ] ), 32 ) + Format( 'Enemies left : {!%d}', [iLeft] ) )
+      else FCharacter[1].Push( Padded( Format( '  Turns taken  : {!%d}', [ iLevel.LTime ] ), 32 ) + Format( 'Enemies left : {!%d} (%d respawned)', [iLeft, iLeft-iULeft] ) );
+    if iLevel.Feeling <> '' then
+      FCharacter[1].Push( Format( '  Level feel   : {!%s}', [iLevel.Feeling] ) );
 
     // Level perks
-    iPerks := DRL.Level.GetPerkList;
+    iPerks := iLevel.GetPerkList;
     if ( iPerks <> nil ) and ( iPerks.Size > 0 ) then
     begin
       FCharacter[1].Push( '' );
       for i := 0 to iPerks.Size - 1 do
-        with PerkData[ iPerks[i].ID ] do
-        if ( Desc <> '' ) then
+        with iLevel.Perks.Definitions.Data[ iPerks[i].ID ] do
         begin
+          iDesc := iLevel.GetPerkDescription( iPerks[i].ID );
+          if iDesc = '' then Continue;
           iName := Name;
-          if iName = '' then iName := DRL.Level.GetPerkShort( iPerks[i].ID );
+          if iName = '' then iName := iLevel.GetPerkLabel( iPerks[i].ID );
           if iPerks[i].Time > 0
-            then FCharacter[1].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} ({!' + FloatToStr( iPerks[i].Time / 10 ) + '}s) - ' + Desc )
-            else FCharacter[1].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} - ' + Desc );
+            then FCharacter[1].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} ({!' + FloatToStr( iPerks[i].Time / 10 ) + '}s) - ' + iDesc )
+            else FCharacter[1].Push( '  {' + VTIG_ColorChar( Color ) + iName + '} - ' + iDesc );
         end;
     end;
   end;
@@ -1074,7 +1082,6 @@ var iCount  : Integer;
     iSize   : Integer;
 begin
   iSize := 0;
-  if FInv = nil then ReadInv;
   if FInv.Size > 0 then
   for iCount := 0 to FInv.Size - 1 do
     if (FInv[ iCount ].Item.IType in aSet) and
@@ -1097,18 +1104,18 @@ begin
 
     for s := 1 to 9 do
     begin
-      if Player.FQuickSlots[s].UID <> 0 then
+      if FPlayer.FQuickSlots[s].UID <> 0 then
       begin
         for i := 0 to FInv.Size - 1 do
           if Assigned( FInv.Data^[i].Item ) then
-            if FInv.Data^[i].Item.UID = Player.FQuickSlots[s].UID then
+            if FInv.Data^[i].Item.UID = FPlayer.FQuickSlots[s].UID then
               FInv.Data^[i].QSlot := s;
       end
-      else if Player.FQuickSlots[s].ID <> '' then
+      else if FPlayer.FQuickSlots[s].ID <> '' then
       begin
         for i := 0 to FInv.Size - 1 do
           if Assigned( FInv.Data^[i].Item ) then
-            if FInv.Data^[i].Item.ID = Player.FQuickSlots[s].ID then
+            if FInv.Data^[i].Item.ID = FPlayer.FQuickSlots[s].ID then
               FInv.Data^[i].QSlot := s;
       end;
     end;
@@ -1121,11 +1128,11 @@ begin
 
     for s := 1 to 9 do
     begin
-      if Player.FQuickSlots[s].UID <> 0 then
+      if FPlayer.FQuickSlots[s].UID <> 0 then
       begin
         for i := 0 to FEq.Size - 1 do
           if Assigned( FEq.Data^[i].Item ) then
-            if FEq.Data^[i].Item.UID = Player.FQuickSlots[s].UID then
+            if FEq.Data^[i].Item.UID = FPlayer.FQuickSlots[s].UID then
               FEq.Data^[i].QSlot := s;
       end
     end;
@@ -1139,13 +1146,14 @@ begin
   FSwapMode := True;
   FITitle   := 'Select item to wear/wield';
   FAction   := 'wear/wield';
-  Filter( ItemEqFilters[ aSlot ] );
   FSSlot := aSlot;
+  FreeAndNil( FEq );
+  ReadInv;
 end;
 
-constructor TUnloadConfirmView.Create( aItem : TItem; aID : Ansistring = '' );
+constructor TUnloadConfirmView.Create( aSession : TDRLSession; aItem : TItem; aID : Ansistring = '' );
 begin
-  inherited Create;
+  inherited Create( aSession );
   FItem := aItem;
   FID   := aID;
   if FID = ''
@@ -1158,12 +1166,12 @@ end;
 
 procedure TUnloadConfirmView.OnConfirm;
 begin
-  DRL.HandleCommand( TCommand.Create( COMMAND_UNLOAD, FItem, FID ) );
+  FSession.QueueCommand( TCommand.Create( COMMAND_UNLOAD, FItem, FID ) );
 end;
 
-constructor TNoRoomConfirmView.Create( aItem : TItem; aID : Ansistring = '' );
+constructor TNoRoomConfirmView.Create( aSession : TDRLSession; aItem : TItem; aID : Ansistring = '' );
 begin
-  inherited Create;
+  inherited Create( aSession );
   FItem := aItem;
   FConfirm := 'Drop item';
   FCancel  := 'Cancel';
@@ -1173,8 +1181,7 @@ end;
 
 procedure TNoRoomConfirmView.OnConfirm;
 begin
-  if FItem.CallHookCheck( Hook_OnUnequipCheck, [ Player, False ] )
-    then DRL.HandleCommand( TCommand.Create( COMMAND_DROP, FItem ) );
+  FSession.QueueCommand( TCommand.Create( COMMAND_DROP, FItem ) );
 end;
 
 

@@ -1,4 +1,4 @@
 #!/bin/sh
 set -eu
 
-gnome-terminal --geometry=80x25  -e "./drl -console"
+gnome-terminal --geometry=80x25  -e "./drl --console"

@@ -179,7 +179,6 @@ Hook info:
   OnCompletedCheck// Level, Module, Challenge, Core (Chained)
   OnLoad          // Module, Challenge, Core (Chained)
   OnLoaded        // Module, Challenge, Core (Chained)
-  OnUnLoad        // Module, Challenge, Core (Chained)
   OnCreatePlayer  // Module, Challenge, Core (Chained)
   OnLevelUp       // Module, Challenge, Core (Chained)
   OnPreLevelUp    // Module, Challenge, Core (Chained)

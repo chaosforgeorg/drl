@@ -8,7 +8,7 @@ unit drlmessagesview;
 interface
 uses vutil, viotypes, vmessages, drlio, dfdata;
 
-type TMessagesView = class( TIOLayer )
+type TMessagesView = class( TDRLLayer )
   constructor Create( aContent : TMessageBuffer );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsModal : Boolean; override;

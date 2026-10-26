@@ -65,7 +65,6 @@ BF_UNLOADONKILL   = 5;
 BF_NOEXP          = 6;
 BF_QUICKSWAP      = 7;
 BF_HUNTING        = 8;
-BF_NODEATHMESSAGE = 9;
 BF_UNIQUENAME     = 10;
 BF_IMPATIENT      = 11;
 BF_SPLASHIMMUNE   = 12;
@@ -140,7 +139,6 @@ IF_NOUNLOAD       = 42;
 IF_NUKERESIST     = 43;
 IF_NODROP         = 44;
 IF_AUTOHIT        = 45;
-IF_SETITEM        = 46;
 IF_NODURABILITY   = 47;
 IF_NODESTROY      = 48;
 IF_NONMODABLE     = 49;
@@ -165,7 +163,7 @@ IF_HARDCOVER      = 67;
 IF_ILLUSION       = 68;
 IF_ALTTARGET      = 69;
 IF_ALTMANUAL      = 70;
-IF_ALTCHAIN       = 71;
+
 IF_DESTROY        = 72;
 IF_AUTOAMMO       = 73;
 IF_REVEALED       = 74;
@@ -173,7 +171,6 @@ IF_SHIELD         = 75;
 IF_OVERLAY        = 76;
 
 LF_NOHOMING       = 1;
-LF_UNIQUEITEM     = 2;
 
 LF_SCRIPT         = 4;
 LF_NORESPAWN      = 5;

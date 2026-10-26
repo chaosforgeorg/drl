@@ -6,7 +6,8 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlmainmenuview;
 interface
-uses vio, viotypes, vgenerics, vtextures, vtigstyle, dfdata, drlio;
+uses vio, viotypes, vgenerics, vtextures, vtigstyle,
+     dfdata, dfhof, drlio, drlhelp, drllua, drlbase;
 
 type TMainMenuViewMode = (
   MAINMENU_FIRST, MAINMENU_INTRO, MAINMENU_ENGINECOMPAT, MAINMENU_MENU,
@@ -27,8 +28,9 @@ end;
 
 type TMainMenuEntryArray = specialize TGArray< TMainMenuEntry >;
 
-type TMainMenuView = class( TIOLayer )
-  constructor Create( aInitial : TMainMenuViewMode = MAINMENU_FIRST; aResult : TMenuResult = nil );
+type TMainMenuView = class( TDRLLayer )
+  constructor Create( aSession : TDRLSession; aHOF : THOF; aHelp : THelp; aModErrors : TStringGArray;
+    aInitial : TMainMenuViewMode = MAINMENU_FIRST; aResult : TMenuResult = nil );
   procedure Update( aDTime : Integer; aActive : Boolean ); override;
   function IsFinished : Boolean; override;
   function IsModal : Boolean; override;
@@ -49,8 +51,11 @@ protected
   procedure UpdateKlass;
   procedure UpdateChallengeType;
   procedure UpdateChallenge;
+  // What the current data load found: versions, demo and modded flags.
+  function WadInfo : TWadInfo;
   procedure CancelNewGame;
   procedure OnCancel;
+  procedure Setup; override;
   procedure SetSoundCallback;
   procedure ResetSoundCallback;
   procedure ReloadArrays;
@@ -58,6 +63,10 @@ protected
   procedure RenderASCIILogo;
   procedure UpdateModErrors;
 protected
+  FSession     : TDRLSession; // Borrowed; the view is released before Session.
+  FHOF         : THOF;
+  FHelp        : THelp;
+  FModErrors   : TStringGArray;
   FSize        : TIOPoint;
   FMode        : TMainMenuViewMode;
   FFirst       : Ansistring;
@@ -80,7 +89,7 @@ protected
 
   FBGTexture   : TTextureID;
   FLogoTexture : TTextureID;
-  FName        : array[0..48] of Char;
+  FName        : array[0..MaxPlayerName] of Char;
   FSeed        : array[0..7] of Char;
   FSeedInvalid : Boolean;
 end;
@@ -88,11 +97,10 @@ end;
 implementation
 
 uses math, sysutils,
-     vutil, vtig, vtigio, vgltypes, vluasystem, vluavalue,
-     dfhof,
-     drlbase, drlgfxio, drlplayerview, drlhelpview, drlsettingsview, drlpagedview;
+     vutil, vtig, vtigio, vgltypes, vlua, vluavalue,
+     drlgfxio, drlaudio, drlplayerview, drlhelpview, drlsettingsview, drlpagedview;
 
-var ChallengeType : array[1..4] of TMainMenuEntry =
+const ChallengeType : array[1..4] of TMainMenuEntry =
 ((
    Name : 'Angel Game';
    Desc : 'Play one of the DRL classic challenge games that place restrictions on play style or modify play behaviour.';
@@ -137,8 +145,15 @@ const CTYPE_ANGEL  = 1;
 
       CTYPE_SECOND = 10;
 
-constructor TMainMenuView.Create( aInitial : TMainMenuViewMode = MAINMENU_FIRST; aResult : TMenuResult = nil );
+constructor TMainMenuView.Create( aSession : TDRLSession; aHOF : THOF; aHelp : THelp; aModErrors : TStringGArray;
+    aInitial : TMainMenuViewMode = MAINMENU_FIRST; aResult : TMenuResult = nil );
+var iLua : TLua;
 begin
+  FSession   := aSession;
+  FHOF       := aHOF;
+  FHelp      := aHelp;
+  FModErrors := aModErrors;
+  iLua := FSession.Context.Lua;
   FMenuStyle   := TIGStyleFrameless;
   FMenuStyle.Padding[ VTIG_WINDOW_PADDING ]   := Point( 5, 1 );
   FWindowStyle := TIGStyleFrameless;
@@ -150,8 +165,8 @@ begin
   FMode       := aInitial;
   FResult     := aResult;
   FSaveExists := False;
-  FJHCLink    := (CoreModuleID = 'drl') and ( not DRL.Store.IsSteam );
-  if (not FJHCLink) and DemoVersion then
+  FJHCLink    := (FSession.Modules.CoreModuleID = 'drl') and ( not FSession.Store.IsSteam );
+  if (not FJHCLink) and WadInfo.Demo then
     FJHCLink := True;
   FArrayCType := nil;
   FArrayDiff  := nil;
@@ -159,7 +174,7 @@ begin
   FArrayChal  := nil;
   FTitleChal  := '';
   FSize       := Point( 80, 25 );
-  FChallenges := ( LuaSystem.Get( ['chal','__counter'], 0 ) > 0 ) and (not DemoVersion);
+  FChallenges := ( iLua.Get( ['chal','__counter'], 0 ) > 0 ) and (not WadInfo.Demo);
   FSeed[0]    := #0;
   FSeedInvalid := False;
 
@@ -168,20 +183,20 @@ begin
 
   if FMode = MAINMENU_FIRST then
   begin
-    if not FileExists( WritePath + 'drl.prc' ) then
+    if not FileExists( FSession.Paths.WritePath + 'drl.prc' ) then
     begin
-      WriteFileString( WritePath + 'drl.prc', 'DRL was already run.' );
+      WriteFileString( FSession.Paths.WritePath + 'drl.prc', 'DRL was already run.' );
 
-      FFirst := AnsiString( LuaSystem.ProtectedCall( [CoreModuleID,'GetFirstText'], [] ) );
+      FFirst := AnsiString( iLua.ProtectedCall( [FSession.Modules.CoreModuleID,'GetFirstText'], [] ) );
       if FFirst = '' then FMode := MAINMENU_INTRO;
 
-      if not DemoVersion then
+      if not WadInfo.Demo then
       begin
-        if FileExists( ModuleUserPath + 'savedemo' ) then
+        if FileExists( FSession.Paths.ModuleUserPath + 'savedemo' ) then
         begin
-          if ( not FileExists( ModuleUserPath + 'save' ) )
-            then RenameFile( ModuleUserPath + 'savedemo', ModuleUserPath + 'save' )
-            else DeleteFile( ModuleUserPath + 'savedemo' );
+          if ( not FileExists( FSession.Paths.ModuleUserPath + 'save' ) )
+            then RenameFile( FSession.Paths.ModuleUserPath + 'savedemo', FSession.Paths.ModuleUserPath + 'save' )
+            else DeleteFile( FSession.Paths.ModuleUserPath + 'savedemo' );
         end;
       end;
     end
@@ -189,24 +204,25 @@ begin
       FMode := MAINMENU_INTRO;
   end;
 
-  FMOTD := AnsiString( LuaSystem.ProtectedCall( [CoreModuleID,'GetMOTD'], [] ) );
+  FMOTD := AnsiString( iLua.ProtectedCall( [FSession.Modules.CoreModuleID,'GetMOTD'], [] ) );
 
   if FMode in [MAINMENU_FIRST,MAINMENU_INTRO] then
   begin
-    FIntro1 := AnsiString( LuaSystem.ProtectedCall( [CoreModuleID,'GetLogoBox'], [] ) );
-    FIntro2 := AnsiString( LuaSystem.ProtectedCall( [CoreModuleID,'GetLogoText'], [] ) );
-  end;
-
-  if GraphicsVersion then
-  begin
-    FBGTexture   := (IO as TDRLGFXIO).Textures.TextureID['background'];
-    FLogoTexture := (IO as TDRLGFXIO).Textures.TextureID[AnsiString( LuaSystem.ProtectedCall( [CoreModuleID,'GetLogoTexture'], [] ) )];
+    FIntro1 := AnsiString( iLua.ProtectedCall( [FSession.Modules.CoreModuleID,'GetLogoBox'], [] ) );
+    FIntro2 := AnsiString( iLua.ProtectedCall( [FSession.Modules.CoreModuleID,'GetLogoText'], [] ) );
   end;
 
   if FMode = MAINMENU_MENU then
   begin
-    FSaveExists := DRL.SaveExists;
+    FSaveExists := FSession.SaveExists;
   end;
+end;
+
+procedure TMainMenuView.Setup;
+begin
+  if not GraphicsVersion then Exit;
+  FBGTexture   := (IO as TDRLGFXIO).Textures.TextureID['background'];
+  FLogoTexture := (IO as TDRLGFXIO).Textures.TextureID[AnsiString( FSession.Context.Lua.ProtectedCall( [FSession.Modules.CoreModuleID,'GetLogoTexture'], [] ) )];
 end;
 
 procedure TMainMenuView.Update( aDTime : Integer; aActive : Boolean );
@@ -217,7 +233,7 @@ begin
     begin
       FResult.Klass := FArrayKlass[0].NID;
       FMode         := MAINMENU_TRAIT;
-      IO.PushLayer( TPlayerView.CreateTrait( True, FResult.Klass ) );
+      IO.PushLayer( TPlayerView.CreateInitialTrait( FSession, FResult.Klass ) );
     end;
   end;
   VTIG_Clear;
@@ -229,7 +245,7 @@ begin
   end;
   SetSoundCallback;
 
-  if ModErrors.Size > 0 then
+  if FModErrors.Size > 0 then
   begin
     UpdateModErrors;
     Exit;
@@ -265,14 +281,14 @@ begin
       else
       begin
         FResult.Trait := TPlayerView.TraitPick;
-        if (Option_AlwaysName <> '') or Setting_AlwaysRandomName
+        if (FSession.FixedPlayerName <> '') or FSession.UserConfig.GetBoolean( 'always_random_name' )
           then FMode := MAINMENU_DONE
           else begin
             IO.Console.ShowCursor;
             FName[0] := #0;
             IO.Driver.StartTextInput;
             if IO.IsGamepad then
-              DRL.Store.StartText( 'Enter name', 30 );
+              FSession.Store.StartText( 'Enter name', MaxPlayerName );
             FMode := MAINMENU_NAME;
           end;
       end;
@@ -290,7 +306,7 @@ end;
 procedure TMainMenuView.UpdateIntro;
   function EngineVersionCompatible : Boolean;
   begin
-    Result := Copy( VersionEngine, 1, Length( VersionEngineExpected ) ) = VersionEngineExpected;
+    Result := Copy( WadInfo.Engine, 1, Length( WadInfo.EngineExpected ) ) = WadInfo.EngineExpected;
   end;
 begin
   VTIG_FreeLabel( FIntro1, Point( 28, 9 ) );
@@ -307,15 +323,15 @@ begin
   VTIG_BeginWindow( 'Engine version mismatch', 'mainmenu_enginecompat', Point( 52, 15 ), Point( 14, 7 ) );
   VTIG_Text( 'This module expects a different {!engine version}.' );
   VTIG_Text( '' );
-  VTIG_Text( 'Module version          : {!'+VersionModule+'}' );
-  VTIG_Text( 'Engine version          : {!'+VersionEngine+'}' );
-  VTIG_Text( 'Expected engine version : {!'+VersionEngineExpected+'}' );
+  VTIG_Text( 'Module version          : {!'+WadInfo.Module+'}' );
+  VTIG_Text( 'Engine version          : {!'+WadInfo.Engine+'}' );
+  VTIG_Text( 'Expected engine version : {!'+WadInfo.EngineExpected+'}' );
   VTIG_Text( '' );
   VTIG_Text( 'Update the engine or the module, whichever is lower. Continuing may cause unstable behaviour!' );
   VTIG_Text( '' );
   if VTIG_Selectable( 'Exit' ) then
   begin
-    DRL.SetState( DSQUIT );
+    FSession.SetState( DSQUIT );
     FMode := MAINMENU_DONE;
   end;
   if VTIG_Selectable( 'Continue' ) then
@@ -324,7 +340,7 @@ begin
 
   if VTIG_EventCancel then
   begin
-    DRL.SetState( DSQUIT );
+    FSession.SetState( DSQUIT );
     FMode := MAINMENU_DONE;
   end;
 end;
@@ -358,14 +374,14 @@ begin
     if FSaveExists then
       if VTIG_Selectable( TextContinueGame ) then
       begin
-        if DRL.LoadSaveFile then
+        if FSession.LoadSaveFile then
         begin
           FResult.Loaded := True;
           FMode := MAINMENU_DONE;
         end
         else
         begin
-          if ( SaveVersionEngine = '' ) and ( SaveVersionModule = '' )
+          if ( FSession.SaveMismatch.Engine = '' ) and ( FSession.SaveMismatch.Module = '' )
             then FMode := MAINMENU_BADSAVE
             else FMode := MAINMENU_SAVECOMPAT;
         end;
@@ -377,14 +393,14 @@ begin
         VTIG_ResetSelect( 'mainmenu_newgame' );
         FMode := MAINMENU_NEWGAME;
       end;
-    if VTIG_Selectable( TextShowHighscore ) then IO.PushLayer( TPagedView.Create( HOF.GetPagedScoreReport ) );
-    if VTIG_Selectable( TextShowPlayer )    then IO.PushLayer( TPagedView.Create( HOF.GetPagedPlayerReport ) );
-    if VTIG_Selectable( TextHelp )          then IO.PushLayer( THelpView.Create );
-    if VTIG_Selectable( TextSettings )      then IO.PushLayer( TSettingsView.Create );
+    if VTIG_Selectable( TextShowHighscore ) then IO.PushLayer( TPagedView.Create( FHOF.GetPagedScoreReport ) );
+    if VTIG_Selectable( TextShowPlayer )    then IO.PushLayer( TPagedView.Create( FHOF.GetPagedPlayerReport ) );
+    if VTIG_Selectable( TextHelp )          then IO.PushLayer( THelpView.Create( FSession.Context.Lua, FHelp, FSession.Modules.CoreModuleID ) );
+    if VTIG_Selectable( TextSettings )      then IO.PushLayer( TSettingsView.Create( FSession ) );
     if FJHCLink then
     begin
       if VTIG_Selectable( TextJHC ) then
-        DRL.OpenJHCPage;
+        FSession.OpenJHCPage;
     end;
     if VTIG_Selectable( TextExit ) then
     begin
@@ -405,19 +421,13 @@ begin
       else VTIG_ResetSelect( MAINMENU_ID, iCount );
   end;
 
-  if ForceShop then
-  begin
-    DRL.OpenJHCPage;
-    ForceShop := False;
-  end;
+  if VTIG_Event( TIG_EV_RESTART ) and WadInfo.Modded then
+    FSession.RequestRestart( FSession.Modules.CoreModuleID );
 
-  if VTIG_Event( TIG_EV_RESTART ) then
-    ForceRestart := CoreModuleID;
-
-  if ForceRestart <> '' then
+  if FSession.RestartModule <> '' then
   begin
     FMode := MAINMENU_DONE;
-    DRL.SetState( DSQUIT );
+    FSession.SetState( DSQUIT );
     if FResult <> nil then FResult.Quit := True;
   end;
 end;
@@ -474,7 +484,7 @@ begin
         FSeedInvalid := False;
         IO.Console.ShowCursor;
         IO.Driver.StartTextInput;
-        if IO.IsGamepad then DRL.Store.StartText( 'Enter seed', 6 );
+        if IO.IsGamepad then FSession.Store.StartText( 'Enter seed', 6 );
         FMode := MAINMENU_SEED;
       end;
     end
@@ -523,7 +533,7 @@ begin
       FSeedInvalid := not iAccepted;
     end;
 
-    if (not iAccepted) and DRL.Store.GetText( iStoreText, @iStoreCancel ) then
+    if (not iAccepted) and FSession.Store.GetText( iStoreText, @iStoreCancel ) then
     begin
       if iStoreCancel
         then iCancelled := True
@@ -535,7 +545,7 @@ begin
           begin
             StrPLCopy( @FSeed[0], iStoreText, High( FSeed ) );
             VTIG_ResetInput( 'mainmenu_seed' );
-            if IO.IsGamepad then DRL.Store.StartText( 'Enter seed', 6, iStoreText );
+            if IO.IsGamepad then FSession.Store.StartText( 'Enter seed', 6, iStoreText );
           end;
         end;
     end;
@@ -568,36 +578,42 @@ begin
   if VTIG_EventCancel or VTIG_EventConfirm then
   begin
     FSaveExists := False;
-    FMode := MAINMENU_MENU;
+    if FSession.DataReloadRequired then
+    begin
+      FResult.ReloadData := True;
+      FMode := MAINMENU_DONE;
+    end
+    else
+      FMode := MAINMENU_MENU;
   end;
 end;
 
 procedure TMainMenuView.UpdateSaveCompat;
 begin
   VTIG_BeginWindow('Incompatible save file!', Point( 42, 20 ), Point(19,4) );
-  if SaveVersionEngine <> VersionEngineSave then
+  if FSession.SaveMismatch.Engine <> WadInfo.EngineSave then
   begin
     VTIG_Text('Save file uses an incompatible {!engine version}!');
-    VTIG_Text('Save engine version : {!'+SaveVersionEngine+'}' );
-    VTIG_Text('Current engine version : {!'+VersionEngineSave+'}' );
+    VTIG_Text('Save engine version : {!'+FSession.SaveMismatch.Engine+'}' );
+    VTIG_Text('Current engine version : {!'+WadInfo.EngineSave+'}' );
     VTIG_Text('');
     VTIG_Text('This in-progress save cannot be loaded by this engine version.');
   end
-  else if SaveVersionModule <> VersionModuleSave then
+  else if FSession.SaveMismatch.Module <> WadInfo.ModuleSave then
   begin
     VTIG_Text('Save file is from an incompatible version of the game!');
-    VTIG_Text('Save game version : {!'+SaveVersionModule+'}' );
-    VTIG_Text('This game version : {!'+VersionModuleSave+'}' );
+    VTIG_Text('Save game version : {!'+FSession.SaveMismatch.Module+'}' );
+    VTIG_Text('This game version : {!'+WadInfo.ModuleSave+'}' );
     VTIG_Text('');
-    if DRL.Store.IsSteam
+    if FSession.Store.IsSteam
       then VTIG_Text('You can try to download the direct previous version from {!Steam} Betas tab and finish the game, or delete the save file now.')
       else VTIG_Text('You can try downloading the previous version from the web and finish the game, or delete the save file now.');
   end
   else
   begin
     VTIG_Text('Save file uses different mods!');
-    VTIG_Text('Save file IDs : {!'+SaveModString+'}' );
-    VTIG_Text('Current IDs   : {!'+DRL.Modules.ModString+'}' );
+    VTIG_Text('Save file IDs : {!'+FSession.SaveMismatch.ModString+'}' );
+    VTIG_Text('Current IDs   : {!'+FSession.Modules.ModString+'}' );
     VTIG_Text('');
     VTIG_Text('You can exit the game and try to match the mods or delete the save file now.');
   end;
@@ -607,7 +623,7 @@ begin
   if VTIG_Selectable( '  Delete save file' ) then
   begin
     FSaveExists := False;
-    DeleteFile( ModuleUserPath + 'save' );
+    DeleteFile( FSession.Paths.ModuleUserPath + 'save' );
     FMode := MAINMENU_MENU;
   end;
 
@@ -646,14 +662,14 @@ begin
   VTIG_PopStyle;
   VTIG_PushStyle( @TIGStyleColored );
   VTIG_Text('Type a name for your character');
-  if VTIG_Input(@FName[0],48) then
+  if VTIG_Input( @FName[0], MaxPlayerName + 1 ) then
   begin
     FResult.Name := AnsiString(FName);
     IO.Driver.StopTextInput;
     IO.Console.HideCursor;
     FMode := MAINMENU_DONE;
   end;
-  if DRL.Store.GetText( iStoreText, @iStoreCancel ) then
+  if FSession.Store.GetText( iStoreText, @iStoreCancel ) then
   begin
     IO.Driver.StopTextInput;
     IO.Console.HideCursor;
@@ -688,7 +704,7 @@ begin
     FMode := MAINMENU_KLASS;
     Exit;
   end;
-  if ModuleOption_NewMenu then
+  if FSession.Data.Rules.NewMenu then
   begin
     iLines := 13;
     if FArrayDiff[FArrayDiff.Size-1].Allow then iLines -= 2;
@@ -786,7 +802,7 @@ begin
       begin
         FResult.Klass := FArrayKlass[i].NID;
         FMode         := MAINMENU_TRAIT;
-        IO.PushLayer( TPlayerView.CreateTrait( True, FResult.Klass ) );
+        IO.PushLayer( TPlayerView.CreateInitialTrait( FSession, FResult.Klass ) );
       end;
     iSelected := VTIG_Selected;
     VTIG_PopStyle;
@@ -868,7 +884,7 @@ begin
           VTIG_Text( 'Rating: {!'+FArrayChal[iSelect].Extra+'}'#10#10+FArrayChal[iSelect].Desc );
           if not FArrayChal[iSelect].Allow then
           begin
-            iRank := LuaSystem.Get( ['ranks','skill',FArrayChal[iSelect].Req+1,'name'] );
+            iRank := FSession.Context.Lua.Get( ['ranks','skill',FArrayChal[iSelect].Req+1,'name'] );
             VTIG_Text('');
             VTIG_Text( 'Reach {y'+iRank+'} rank to unlock!' );
           end;
@@ -893,6 +909,11 @@ begin
   end;
 end;
 
+function TMainMenuView.WadInfo : TWadInfo;
+begin
+  Exit( TDRLLua( FSession.Context.Lua ).Info );
+end;
+
 procedure TMainMenuView.CancelNewGame;
 begin
   FResult.Reset;
@@ -902,27 +923,27 @@ end;
 
 procedure TMainMenuView.OnCancel;
 begin
-  if (not Option_Sound) or (not Setting_MenuSound) then Exit;
-  if IO.Audio.SampleExists('menu.cancel') then IO.Audio.PlaySound('menu.cancel');
+  IO.Audio.PlayMenuSound('menu.cancel');
 end;
 
 procedure SoundCallback( aEvent : TTIGSoundEvent; aParam : Pointer );
 begin
-  if (not Option_Sound) or (not Setting_MenuSound) then Exit;
   case aEvent of
-    VTIG_SOUND_CHANGE : if IO.Audio.SampleExists('menu.change') then IO.Audio.PlaySound('menu.change');
-    VTIG_SOUND_ACCEPT : if IO.Audio.SampleExists('menu.pick')   then IO.Audio.PlaySound('menu.pick');
+    VTIG_SOUND_CHANGE : TDRLAudio( aParam ).PlayMenuSound('menu.change');
+    VTIG_SOUND_ACCEPT : TDRLAudio( aParam ).PlayMenuSound('menu.pick');
   end;
 end;
 
 procedure TMainMenuView.SetSoundCallback;
 begin
+  VTIG_GetIOState.SoundParameter := IO.Audio;
   VTIG_GetIOState.SoundCallback := @SoundCallback;
 end;
 
 procedure TMainMenuView.ResetSoundCallback;
 begin
   VTIG_GetIOState.SoundCallback := nil;
+  VTIG_GetIOState.SoundParameter := nil;
 end;
 
 
@@ -973,7 +994,7 @@ end;
 
 function TMainMenuView.IsFinished : Boolean;
 begin
-  Exit( FMode = MAINMENU_DONE );
+  Exit( inherited IsFinished or ( FMode = MAINMENU_DONE ) );
 end;
 
 function TMainMenuView.IsModal : Boolean;
@@ -982,11 +1003,15 @@ begin
 end;
 
 procedure TMainMenuView.ReloadArrays;
-var iEntry : TMainMenuEntry;
-    iTable : TLuaTable;
-    iCount : Word;
-    iSkill : Integer;
+var iLua       : TLua;
+    iEntry     : TMainMenuEntry;
+    iTable     : TLuaTable;
+    iCount     : Word;
+    iSkill     : Integer;
+    iUnlockAll : Boolean;
 begin
+  iLua := FSession.Context.Lua;
+  iUnlockAll := FSession.UserConfig.GetBoolean( 'unlock_all' );
   if FArrayCType = nil then FArrayCType := TMainMenuEntryArray.Create;
   if FArrayDiff  = nil then FArrayDiff  := TMainMenuEntryArray.Create;
   if FArrayKlass = nil then FArrayKlass := TMainMenuEntryArray.Create;
@@ -994,21 +1019,24 @@ begin
   FArrayDiff.Clear;
   FArrayKlass.Clear;
 
-  iSkill := HOF.GetRank('skill');
+  iSkill := FHOF.GetRank('skill');
 
-  ChallengeType[1].Allow := (iSkill > 0) or (GodMode) or (Setting_UnlockAll);
-  ChallengeType[2].Allow := (iSkill > 3) or (GodMode) or (Setting_UnlockAll);
-  ChallengeType[3].Allow := (iSkill > 4) or (GodMode) or (Setting_UnlockAll);
-  FArrayCType.Push( ChallengeType[1] );
-  FArrayCType.Push( ChallengeType[2] );
-  FArrayCType.Push( ChallengeType[3] );
+  iEntry := ChallengeType[1];
+  iEntry.Allow := (iSkill > 0) or (GodMode) or (iUnlockAll);
+  FArrayCType.Push( iEntry );
+  iEntry := ChallengeType[2];
+  iEntry.Allow := (iSkill > 3) or (GodMode) or (iUnlockAll);
+  FArrayCType.Push( iEntry );
+  iEntry := ChallengeType[3];
+  iEntry.Allow := (iSkill > 4) or (GodMode) or (iUnlockAll);
+  FArrayCType.Push( iEntry );
 
-  for iTable in LuaSystem.ITables('diff') do
+  for iTable in iLua.ITables('diff') do
   with iTable do
   begin
     iEntry.Allow := True;
     if (FResult.Challenge <> '') and (not GetBoolean( 'challenge' )) then Continue;
-    if GetInteger('req_skill',0) > iSkill then iEntry.Allow := Setting_UnlockAll;
+    if GetInteger('req_skill',0) > iSkill then iEntry.Allow := iUnlockAll;
     iEntry.Name := GetString('name');
     iEntry.Desc := GetString('desc','');
     iEntry.Extra:= GetString('desc_unlock','');
@@ -1018,8 +1046,8 @@ begin
     FArrayDiff.Push( iEntry );
   end;
 
-  for iCount := 1 to LuaSystem.Get(['klasses','__counter']) do
-    with LuaSystem.GetTable([ 'klasses', iCount ]) do
+  for iCount := 1 to iLua.Get(['klasses','__counter']) do
+    with iLua.GetTable([ 'klasses', iCount ]) do
     try
       if not GetBoolean( 'hidden',False ) then
       begin
@@ -1028,7 +1056,7 @@ begin
         iEntry.ID    := GetString('id');
         iEntry.Extra := '';
         iEntry.NID   := GetInteger('nid');
-        iEntry.Allow := IsFunction('OnPick');
+        iEntry.Allow := GetBoolean( 'available', True );
         iEntry.Req  := 0;
         FArrayKlass.Push( iEntry );
       end;
@@ -1038,20 +1066,24 @@ begin
 end;
 
 procedure TMainMenuView.ReloadChallenge( aType : Byte );
-var iChalCount  : DWord;
+var iLua : TLua;
+    iChalCount  : DWord;
     iChoices    : DWord;
     iCount      : Integer;
     iPrefix     : Ansistring;
     iChallenges : array of Byte;
     iEntry      : TMainMenuEntry;
     iValue      : TLuaValue;
+    iUnlockAll  : Boolean;
 begin
+  iLua := FSession.Context.Lua;
+  iUnlockAll := FSession.UserConfig.GetBoolean( 'unlock_all' );
   VTIG_EventClear;
   VTIG_ResetSelect( 'challenges_view' );
 
   if FArrayChal = nil then FArrayChal := TMainMenuEntryArray.Create;
   FArrayChal.Clear;
-  iChalCount  := LuaSystem.Get(['chal','__counter']);
+  iChalCount  := iLua.Get(['chal','__counter']);
   iChallenges := nil;
   iChoices    := 0;
   iPrefix     := '';
@@ -1068,7 +1100,7 @@ begin
     CTYPE_DANGEL : begin
       FTitleChal := 'Choose your Primary Challenge';
       for iCount := 1 to iChalCount do
-        if LuaSystem.Defined([ 'chal', iCount, 'secondary' ]) then
+        if iLua.Defined([ 'chal', iCount, 'secondary' ]) then
         begin
           iChallenges[iChoices] := iCount;
           Inc( iChoices );
@@ -1079,7 +1111,7 @@ begin
       FResult.ArchAngel := True;
       iPrefix := 'arch_';
       for iCount := 1 to iChalCount do
-        if LuaSystem.Defined([ 'chal', iCount, 'arch_name' ]) then
+        if iLua.Defined([ 'chal', iCount, 'arch_name' ]) then
         begin
           iChallenges[iChoices] := iCount;
           Inc( iChoices );
@@ -1088,11 +1120,11 @@ begin
 //        CTYPE_CUSTOM = 4;
     CTYPE_SECOND : begin
       FTitleChal := 'Choose your Secondary Challenge';
-      with LuaSystem.GetTable([ 'chal', FResult.Challenge, 'secondary' ]) do
+      with iLua.GetTable([ 'chal', FResult.Challenge, 'secondary' ]) do
       try
         for iValue in Values do
         begin
-          iChallenges[iChoices] := LuaSystem.Get( ['chal','challenge_'+LowerCase(iValue.ToString),'nid'] );
+          iChallenges[iChoices] := iLua.Get( ['chal','challenge_'+LowerCase(iValue.ToString),'nid'] );
           Inc( iChoices );
         end;
       finally
@@ -1103,7 +1135,7 @@ begin
   SetLength( iChallenges, iChoices );
 
   for iCount := 0 to High( iChallenges ) do
-    with LuaSystem.GetTable([ 'chal', iChallenges[iCount] ]) do
+    with iLua.GetTable([ 'chal', iChallenges[iCount] ]) do
     try
       iEntry.Name  := GetString(iPrefix+'name');
       iEntry.Desc  := GetString(iPrefix+'description');
@@ -1112,7 +1144,7 @@ begin
       iEntry.ID    := GetString('id');
       iEntry.NID   := iChallenges[iCount];
       iEntry.Req   := GetInteger(iPrefix+'rank',0);
-      iEntry.Allow := (HOF.GetRank('skill') >= iEntry.Req) or (GodMode) or (Setting_UnlockAll);
+      iEntry.Allow := (FHOF.GetRank('skill') >= iEntry.Req) or (GodMode) or (iUnlockAll);
       FArrayChal.Push( iEntry );
     finally
       Free;
@@ -1125,24 +1157,24 @@ begin
   VTIG_BeginWindow('Mod loading errors', Point( 70, -1 ) );
   VTIG_Text('{!There were errors while loading mods - fix, remove or disable!} ');
   VTIG_Text('');
-  iM := Min( ModErrors.Size, 8 );
+  iM := Min( FModErrors.Size, 8 );
   for i := 0 to iM - 1 do
-    VTIG_Text(ModErrors[i], LIGHTRED );
-  if ModErrors.Size > 12
-    then VTIG_Text('... and '+IntToStr( ModErrors.Size - 8 )+' more error line(s).' );
+    VTIG_Text(FModErrors[i], LIGHTRED );
+  if FModErrors.Size > 12
+    then VTIG_Text('... and '+IntToStr( FModErrors.Size - 8 )+' more error line(s).' );
   VTIG_Text('');
   VTIG_Text('You can ignore and proceed the errors are just version compatibility errors, otherwise the game might be unstable.');
   VTIG_Text('If you''re working on a mod, you can edit it and press {!Ctrl}+{!F1} to reload.');
   VTIG_End('Press <{!{$input_escape}}> to continue...');
-  if VTIG_Event( TIG_EV_RESTART ) then
+  if VTIG_Event( TIG_EV_RESTART ) and WadInfo.Modded then
   begin
-    ForceRestart := CoreModuleID;
+    FSession.RequestRestart( FSession.Modules.CoreModuleID );
     FMode := MAINMENU_MENU;
-    ModErrors.Clear;
+    FModErrors.Clear;
   end;
 
   if VTIG_EventCancel then
-    ModErrors.Clear;
+    FModErrors.Clear;
 end;
 
 procedure TMainMenuView.RenderASCIILogo;

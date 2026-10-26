@@ -7,32 +7,39 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drltextio;
 interface
 
-uses vrltools, vtextmap, vioevent, drlio, dfdata;
+uses vrltools, vtextmap, vioevent, vio, viotypes, vluamapnode, vlua,
+     drlio, dfdata, dflevel, drlconfig, drlconfiguration, drlmodule;
 
-type TDRLTextIO = class( TDRLIO )
-    constructor Create; reintroduce;
+// TDRLTextIO
+//
+// Architectural boundary: owns the concrete text rendering and animation
+// backend. Gameplay policy belongs outside this adapter.
+type TDRLTextIO = class( TDRLIO, ITextMap )
+    constructor Create( aSettings : TDRLConfiguration; aConfig : TDRLConfig ); reintroduce;
     procedure Reset; override;
-    procedure Initialize; override;
+    procedure PaceMultiMove; override;
+    procedure Initialize( aCoreModule : TDRLModule ); override;
     destructor Destroy; override;
     procedure Update( aMSec : DWord ); override;
     function OnEvent( const aEvent : TIOEvent ) : Boolean; override;
 
-    procedure WaitForAnimation( aStrict : Boolean = True ); override;
     function AnimationsRunning : Boolean; override;
     function AnimationsBlockingFinished : Boolean; override;
-    procedure AnimationWipe; override;
+    procedure ClearAnimations; override;
     procedure Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0); override;
     procedure addMissileAnimation( aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aColor : Byte; aPic : Char; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False; aTrailNID : Word = 0 ); override;
     procedure addMarkAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aColor : Byte; aPic : Char ); override;
     procedure addSoundAnimation( aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord ); override;
     procedure Explosion( aDelay : Integer; aWhere : TCoord2D; aData : TExplosionData ); override;
 
-    procedure SetTextMap( aMap : ITextMap );
+    procedure SetLevel( aLevel : TLuaMapNode ); override;
+    function GetGylph( const aCoord : TCoord2D ) : TIOGylph;
     procedure SetTarget( aTarget : TCoord2D; aColor : Byte; aRange : Byte ); override;
     procedure SetAutoTarget( aTarget : TCoord2D ); override;
+    procedure RegisterLuaAPI( aLua : TLua ); override;
 
-    procedure RunModuleChoice; override;
   protected
+    procedure RunLauncherLayer( aLayer : TIOLayer ); override;
     procedure ExplosionMark( aCoord : TCoord2D; aColor : Byte; aDuration : DWord; aDelay : DWord ); override;
     procedure DrawHud; override;
   protected
@@ -41,24 +48,32 @@ type TDRLTextIO = class( TDRLIO )
 
     FTarget         : TCoord2D;
     FTargetRange    : Byte;
+    // Sprite sheets have no textures in text mode; only their IDs are issued.
+    FSpriteSheets   : Integer;
   end;
 
 implementation
 
 uses sysutils,
-     viotypes,
      {$IFDEF WINDOWS}
      vtextio, vtextconsole,
      {$ELSE}
      vcursesio, vcursesconsole,
      {$ENDIF}
-     vioconsole, vtig, vvision, vutil,
-     drlbase, drlanimation,
-     dflevel, dfplayer;
+     vioconsole, vtig, vvision, vutil, vlualibrary, vluagamestack,
+     drlanimation,
+     dfbeing, dfitem;
 
-constructor TDRLTextIO.Create;
+// How a being sensed only by Intuition is drawn.
+const IntuitionChar  = '*';
+      IntuitionColor = LightMagenta;
+      // Milliseconds each multi-move step shows for.
+      MultiMoveDelay = 20;
+
+constructor TDRLTextIO.Create( aSettings : TDRLConfiguration; aConfig : TDRLConfig );
 begin
-  FTextMap  := nil;
+  FTextMap      := nil;
+  FSpriteSheets := -1;
   {$IFDEF WINDOWS}
   FIODriver := TTextIODriver.Create( 80, 25 );
   {$ELSE}
@@ -66,7 +81,7 @@ begin
   {$ENDIF}
   if (FIODriver.GetSizeX < 80) or (FIODriver.GetSizeY < 25) then
     raise EIOException.Create('Too small console available, resize your console to 80x25!');
-  inherited Create;
+  inherited Create( aSettings, aConfig );
 end;
 
 procedure TDRLTextIO.Reset;
@@ -76,7 +91,12 @@ begin
   FTargetRange  := 0;
 end;
 
-procedure TDRLTextIO.Initialize;
+procedure TDRLTextIO.PaceMultiMove;
+begin
+  Delay( MultiMoveDelay );
+end;
+
+procedure TDRLTextIO.Initialize( aCoreModule : TDRLModule );
 var iRenderer : TIOConsoleRenderer;
 begin
   {$IFDEF WINDOWS}
@@ -92,6 +112,39 @@ destructor TDRLTextIO.Destroy;
 begin
   FreeAndNil( FTextMap );
   inherited Destroy;
+end;
+
+{$HINTS OFF} // To supress Hint: Parameter "x" not found
+
+function lua_ui_texture_upload(L: Plua_State): Integer; cdecl;
+begin
+  Result := 0;
+end;
+
+{$HINTS ON}
+
+function lua_ui_register_sprite_sheet(L: Plua_State): Integer; cdecl;
+var iState : TLuaGameStack;
+    iIO    : TDRLTextIO;
+begin
+  iState.Init(L);
+  iIO := TDRLTextIO( lua_touserdata( L, lua_upvalueindex( 1 ) ) );
+  Inc( iIO.FSpriteSheets );
+  iState.Push( Integer( iIO.FSpriteSheets * 100000 ) );
+  Result := 1;
+end;
+
+const lua_ui_text_lib : array[0..2] of luaL_Reg = (
+      ( name : 'texture_upload';        func : @lua_ui_texture_upload),
+      ( name : 'register_sprite_sheet'; func : @lua_ui_register_sprite_sheet),
+      ( name : nil;                     func : nil; )
+);
+
+procedure TDRLTextIO.RegisterLuaAPI( aLua : TLua );
+begin
+  inherited RegisterLuaAPI( aLua );
+  lua_pushlightuserdata( aLua.Raw, Self );
+  aLua.Register( 'ui', lua_ui_text_lib, 1 );
 end;
 
 procedure TDRLTextIO.Update( aMSec : DWord );
@@ -115,26 +168,19 @@ begin
   Exit( inherited OnEvent( aEvent ) );
 end;
 
-procedure TDRLTextIO.WaitForAnimation( aStrict : Boolean = True );
-begin
-  inherited WaitForAnimation( aStrict );
-  if aStrict then
-    FTextMap.ClearAnimations;
-end;
-
 function TDRLTextIO.AnimationsRunning : Boolean;
 begin
-  if DRL.State <> DSPlaying then Exit(False);
+  if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit(False);
   Exit( not FTextMap.AnimationsFinished );
 end;
 
 function TDRLTextIO.AnimationsBlockingFinished : Boolean;
 begin
-  if DRL.State <> DSPlaying then Exit(True);
+  if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit(True);
   Exit( FTextMap.AnimationsBlockingFinished );
 end;
 
-procedure TDRLTextIO.AnimationWipe;
+procedure TDRLTextIO.ClearAnimations;
 begin
   FTextMap.ClearAnimations;
 end;
@@ -142,8 +188,8 @@ end;
 procedure TDRLTextIO.Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0 );
 var iChr : Char;
 begin
-  if Option_HighASCII then iChr := Chr(219) else iChr := '#';
-  if Setting_Flash then
+  if FOptions.HighASCII then iChr := Chr(219) else iChr := '#';
+  if FSettings.Flash then
     FTextMap.AddAnimation( TTextBlinkAnimation.Create( IOGylph( iChr, aColor ), aDuration, aDelay ) );
 end;
 
@@ -151,23 +197,23 @@ procedure TDRLTextIO.addMissileAnimation(aDuration: DWord; aDelay: DWord; aSourc
   aTarget: TCoord2D; aColor: Byte; aPic: Char; aDrawDelay: Word;
   aSprite: TSprite; aRay: Boolean; aTrailNID : Word);
 begin
-  if DRL.State <> DSPlaying then Exit;
+  if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
   if aRay
-    then FTextMap.AddAnimation( TTextRayAnimation.Create( DRL.Level, aSource, aTarget, IOGylph( aPic, aColor ), aDuration, aDelay, Player.Vision ) )
-    else FTextMap.AddAnimation( TTextBulletAnimation.Create( DRL.Level, aSource, aTarget, IOGylph( aPic, aColor ), aDuration, aDelay, Player.Vision ) );
+    then FTextMap.AddAnimation( TTextRayAnimation.Create( Level, aSource, aTarget, IOGylph( aPic, aColor ), aDuration, aDelay, Player.Vision ) )
+    else FTextMap.AddAnimation( TTextBulletAnimation.Create( Level, aSource, aTarget, IOGylph( aPic, aColor ), aDuration, aDelay, Player.Vision ) );
 end;
 
 procedure TDRLTextIO.addMarkAnimation(aDuration: DWord; aDelay: DWord;
   aCoord: TCoord2D; aSprite : TSprite; aColor: Byte; aPic: Char);
 begin
-  if DRL.State <> DSPlaying then Exit;
+  if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
   FTextMap.AddAnimation( TTextMarkAnimation.Create( aCoord, IOGylph( aPic, aColor ), aDuration, aDelay ) );
 end;
 
 procedure TDRLTextIO.addSoundAnimation(aDelay: DWord; aPosition: TCoord2D; aSoundID: DWord);
 begin
-  if DRL.State <> DSPlaying then Exit;
-  FTextMap.AddAnimation( TSoundEventAnimation.Create( aDelay, aPosition, aSoundID ) )
+  if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
+  FTextMap.AddAnimation( TSoundEventAnimation.Create( Self, aDelay, aPosition, aSoundID ) )
 end;
 
 procedure TDRLTextIO.ExplosionMark( aCoord : TCoord2D; aColor : Byte; aDuration : DWord; aDelay : DWord );
@@ -181,8 +227,8 @@ begin
   FTarget        := aTarget;
   FTargetRange   := aRange;
   if FLayers.IsEmpty then
-    IO.Console.ShowCursor;
-  IO.Console.MoveCursor( aTarget.x+1, aTarget.y+2 );
+    FConsole.ShowCursor;
+  FConsole.MoveCursor( aTarget.x+1, aTarget.y+2 );
 end;
 
 procedure TDRLTextIO.SetAutoTarget( aTarget : TCoord2D );
@@ -191,12 +237,12 @@ begin
   if not FTargetEnabled then
   begin
     if FLayers.IsEmpty then
-      IO.Console.ShowCursor;
-    IO.Console.MoveCursor( aTarget.x+1, aTarget.y+2 );
+      FConsole.ShowCursor;
+    FConsole.MoveCursor( aTarget.x+1, aTarget.y+2 );
   end;
 end;
 
-procedure TDRLTextIO.RunModuleChoice;
+procedure TDRLTextIO.RunLauncherLayer( aLayer : TIOLayer );
 var iRenderer : TIOConsoleRenderer;
 begin
   {$IFDEF WINDOWS}
@@ -205,8 +251,8 @@ begin
   iRenderer := TCursesConsoleRenderer.Create( 80, 25, [VIO_CON_BGCOLOR, VIO_CON_CURSOR] );
   {$ENDIF}
   inherited Initialize( iRenderer );
-  inherited RunModuleChoice;
-  inherited Initialize( nil );
+  inherited RunLauncherLayer( aLayer );
+  inherited Initialize( TIOConsoleRenderer( nil ) );
   Reset;
 end;
 
@@ -221,9 +267,9 @@ var iColor      : TIOColor;
   var iPos        : TIOPoint;
   begin
     iPos := Point( aCoord.x + 1, aCoord.y + 2 );
-    if aChar = ' ' then aChar := IO.Console.GetChar( iPos.X, iPos.Y );
+    if aChar = ' ' then aChar := FConsole.GetChar( iPos.X, iPos.Y );
     iPos := Point( iPos.X - 1, iPos.Y - 1 );
-    if StatusEffect = StatusInvert
+    if FEffect = StatusInvert
        then VTIG_FreeChar( aChar, iPos, Black, LightGray )
        else VTIG_FreeChar( aChar, iPos, aColor );
   end;
@@ -235,9 +281,7 @@ begin
 
   if FTargetEnabled then
   begin
-    iLevel := DRL.Level;
-    if FTargetLast then
-      Paint( Player.TargetPos, Yellow );
+    iLevel := Level;
     if ( Player.Position <> FTarget ) then
     begin
       iColor := Green;
@@ -257,9 +301,111 @@ begin
   end;
 end;
 
-procedure TDRLTextIO.SetTextMap( aMap : ITextMap );
+procedure TDRLTextIO.SetLevel( aLevel : TLuaMapNode );
 begin
-  FTextMap.SetMap( aMap );
+  inherited SetLevel( aLevel );
+  if aLevel <> nil
+    then FTextMap.SetMap( Self )
+    else FTextMap.SetMap( nil );
+end;
+
+function TDRLTextIO.GetGylph( const aCoord : TCoord2D ) : TIOGylph;
+var iLevel : TLevel;
+  function GetColor( aAtr : Byte; aCoord : TCoord2D; aHighlight : Boolean = False ) : TIOColor;
+  var iAlternate : Boolean;
+  begin
+    if aAtr > 16 then
+    begin
+      iAlternate := ((aCoord.x+aCoord.y) mod 2) = 0;
+      case aAtr of
+        COLOR_WATER : if iAlternate then aAtr := BLUE     else aAtr := LIGHTBLUE;
+        COLOR_ACID  : if iAlternate then aAtr := GREEN    else aAtr := LIGHTGREEN;
+        COLOR_LAVA  : if iAlternate then aAtr := YELLOW   else aAtr := RED;
+        COLOR_BLOOD : if iAlternate then aAtr := LIGHTRED else aAtr := RED;
+        COLOR_MUD   : if iAlternate then aAtr := YELLOW   else aAtr := BROWN;
+        MULTIPORTAL : case (( Player.Statistics.GameTime div 10 ) mod 3) of
+                        0 : aAtr := LIGHTMAGENTA;
+                        1 : aAtr := MAGENTA;
+                        2 : aAtr := WHITE;
+                      end;
+      end;
+    end;
+    {$IFDEF CORNERMAP}
+    if iLevel.Corner( aCoord ) then aAtr := Yellow;
+    {$ENDIF CORNERMAP}
+    if FEffect <> StatusNormal then
+      case FEffect of
+        StatusRed     : if aHighlight then aAtr := LightRed     else aAtr := Red;
+        StatusGreen   : if aHighlight then aAtr := LightGreen   else aAtr := Green;
+        StatusBlue    : if aHighlight then aAtr := LightBlue    else aAtr := Blue;
+        StatusCyan    : if aHighlight then aAtr := LightCyan    else aAtr := Cyan;
+        StatusMagenta : if aHighlight then aAtr := LightMagenta else aAtr := Magenta;
+        StatusYellow  : if aHighlight then aAtr := Yellow       else aAtr := Brown;
+        StatusGray    : if aHighlight then aAtr := LightGray    else aAtr := DarkGray;
+        StatusWhite   : if aHighlight then aAtr := White        else aAtr := DarkGray;
+        StatusInvert  : if aHighlight then aAtr := 16*LightGray else aAtr := 16*LightGray+DarkGray;
+      end;
+    Exit( aAtr );
+  end;
+var iColor    : TIOColor;
+    iChar     : Char;
+    iPic      : Char;
+    iCell     : DWord;
+    iStyle    : Integer;
+    iVisible  : Boolean;
+    iExplored : Boolean;
+    iBlood    : Boolean;
+    iItem     : TItem;
+    iBeing    : TBeing;
+begin
+  iLevel   := Level;
+  iBeing   := iLevel.Being[ aCoord ];
+
+  if iLevel.BeingVisible( aCoord, iBeing ) or iLevel.BeingExplored( aCoord, iBeing) then
+    Exit( IOGylph( iBeing.Picture, GetColor( iBeing.Color, aCoord, True ) ) );
+
+  if iLevel.BeingIntuited( aCoord, iBeing ) then
+    Exit( IOGylph( IntuitionChar, GetColor( IntuitionColor, aCoord, True ) ) );
+
+  iItem    := iLevel.Item[ aCoord ];
+
+  if iLevel.ItemVisible( aCoord, iItem ) then
+    Exit( IOGylph( iItem.Picture, GetColor( iItem.Color, aCoord, True ) ) );
+
+  if iLevel.ItemExplored( aCoord, iItem ) then
+    Exit( IOGylph( iItem.Picture, GetColor( DarkGray, aCoord, True ) ) );
+
+  iVisible  := iLevel.isVisible( aCoord );
+  iExplored := iLevel.CellExplored( aCoord );
+  iCell     := iLevel.Cell[ aCoord ];
+
+  iColor   := LightGray;
+  iChar    := ' ';
+  if FOptions.HighASCII
+    then iPic := iLevel.Data.Cells[ iCell ].PicChr
+    else iPic := iLevel.Data.Cells[ iCell ].PicLow;
+  with iLevel.Data.Cells[ iCell ] do
+  if iPic <> ' ' then
+  begin
+    if iVisible or iExplored then
+      iChar := iPic;
+    if iVisible then
+    begin
+      iBlood := iLevel.LightFlag[ aCoord, LFBLOOD ] and (BloodColor <> 0);
+      if iBlood
+         then iColor := BloodColor
+         else
+         begin
+           iStyle := iLevel.CStyle[ aCoord ];
+           iColor := LightColor[ iStyle ];
+           if iColor = 0 then
+             iColor := LightColor[ 0 ];
+         end;
+    end
+    else if iExplored then iColor := DarkColor;
+  end;
+  Result.ASCII := iChar;
+  Result.Color := GetColor( iColor, aCoord, CF_HIGHLIGHT in iLevel.Data.Cells[ iCell ].Flags );
 end;
 
 procedure TDRLTextIO.Explosion( aDelay : Integer; aWhere: TCoord2D; aData : TExplosionData );

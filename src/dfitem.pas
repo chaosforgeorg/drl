@@ -7,7 +7,9 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit dfitem;
 interface
-uses Classes, SysUtils, dfthing, dfdata, vrltools, vluatable, vcolor, math;
+uses classes, sysutils, math,
+     vluagamestack, vrltools, vluatable, vcolor, vlua, vrandom, vnode,
+     drlperk, dfthing, dfdata;
 
 type
 
@@ -15,21 +17,20 @@ type
 
 TItem  = class( TThing )
 
-    constructor Create( const aID : AnsiString; aOnFloor : Boolean = False ); overload;
-    constructor Create( aNID : Integer; aOnFloor : Boolean = False); overload;
-    constructor CreateFromStream( aStream: TStream ); override;
+    constructor Create( const aID : AnsiString; aContext : TNodeContext ); overload;
+    constructor Create( aNID : Integer; aContext : TNodeContext ); overload;
+    constructor CreateFromStream( aStream : TStream; aContext : TNodeContext; aPerkDefinitions : TPerkDefinitions ); override;
     procedure WriteToStream( aStream: TStream ); override;
 
-    function    rollDamage : Integer;
+    function    rollDamage( aGameRNG : TRNG ) : Integer;
     function    maxDamage : Integer;
     function    GetName( aKnown : boolean; aSingle : Boolean = False ) : Ansistring;
-    function    GetExtName( aLyingHere : Boolean ) : Ansistring;
+    function    GetGroundDesc( aLyingHere : Boolean ) : Ansistring;
     function    GetProtection : Integer;
     function    GetResistance( const aResistance : AnsiString ) : Integer;
-    function    Description( aSingle : Boolean ) : Ansistring; overload;
-    function    Description : Ansistring; overload;
-    function    DescriptionBox( aShort : Boolean = False ) : Ansistring;
-    function    ResistDescriptionShort : AnsiString;
+    function    GetInvName( aSingle : Boolean ) : Ansistring; overload;
+    function    GetInvName : Ansistring; overload;
+    function    GetInvStatsList( aIncludeAltActions : Boolean = True ) : Ansistring;
     function    GetAltFireName : AnsiString;
     function    GetAltReloadName : AnsiString;
     function    GetFirstPerkDescription : AnsiString;
@@ -56,7 +57,7 @@ TItem  = class( TThing )
     function MenuColor : byte;
     function Preposition( const Item : AnsiString ) : string;
     class function Compare( a, b : TItem ) : Boolean; reintroduce;
-    class procedure RegisterLuaAPI();
+    class procedure RegisterLuaAPI( aLua : TLua );
     private
     FNID      : Integer;
     FProps    : TItemProperties;
@@ -64,7 +65,7 @@ TItem  = class( TThing )
     FAppear   : Integer;
     FAmount   : Integer;
     FMax      : Integer;
-    procedure LuaLoad( aTable : TLuaTable; aOnFloor: boolean ); reintroduce;
+    procedure LuaLoad( aTable : TLuaTable ); override;
     public
     property PGlowColor     : TColor         read FProps.PGlowColor      write FProps.PGlowColor;
     property PCosColor      : TColor         read FProps.PCosColor       write FProps.PCosColor;
@@ -107,15 +108,15 @@ TItem  = class( TThing )
     property MisColor       : Byte        read FProps.MisColor       write FProps.MisColor;
     property MisDelay       : Byte        read FProps.MisDelay       write FProps.MisDelay;
     property Appear         : Integer     read FAppear               write FAppear;
-    property Desc           : AnsiString  read Description;
+    property Inv_Name       : AnsiString  read GetInvName;
   end;
 
 procedure SwapItem(var a, b: TItem);
 
 implementation
 
-uses vnode, drlua, vluasystem, vluaentitynode, vutil, vdebug, dfbeing, drlbase, 
-     vmath, drlhooks, drlperk;
+uses vluaentitynode, vutil, vdebug, vmath,
+     dfbeing, drllua, drlhooks;
 
 procedure SwapItem(var a, b: TItem);
 var c : TItem;
@@ -148,34 +149,34 @@ begin
   raise EItemException.CreateFmt('eqSlot -- unsupported IType: %d',[ Byte( FProps.Itype ) ]);
 end;
 
-constructor TItem.Create( aNID : Integer; aOnFloor : Boolean );
+constructor TItem.Create( aNID : Integer; aContext : TNodeContext );
 var iTable : TLuaTable;
 begin
   if aNID <= 0 then raise EItemException.Create('Bad item (ID<=0) passed to Create!');
-  inherited Create( LuaSystem.Get( ['items', aNID, 'id' ] ) );
+  inherited Create( aContext.Lua.Get( ['items', aNID, 'id' ] ), aContext );
   FEntityID := ENTITY_ITEM;
 
-  iTable := LuaSystem.GetTable( ['items', aNID ] );
-  LuaLoad( iTable, aOnFloor );
+  iTable := FContext.Lua.GetTable( ['items', aNID ] );
+  LuaLoad( iTable );
   FreeAndNil( iTable );
 end;
 
-constructor TItem.Create( const aID : AnsiString; aOnFloor: Boolean );
+constructor TItem.Create( const aID : AnsiString; aContext : TNodeContext );
 var iTable : TLuaTable;
 begin
   if aID = '' then raise EItemException.Create('Bad item id!');
-  inherited Create( aID );
+  inherited Create( aID, aContext );
   FEntityID := ENTITY_ITEM;
 
-  iTable := LuaSystem.GetTable( ['items', aID ] );
-  LuaLoad( iTable, aOnFloor );
+  iTable := FContext.Lua.GetTable( ['items', aID ] );
+  LuaLoad( iTable );
   FreeAndNil( iTable );
 end;
 
-constructor TItem.CreateFromStream ( aStream : TStream ) ;
+constructor TItem.CreateFromStream( aStream : TStream; aContext : TNodeContext; aPerkDefinitions : TPerkDefinitions );
 var i, iCount : Word;
 begin
-  inherited CreateFromStream ( aStream ) ;
+  inherited CreateFromStream( aStream, aContext, aPerkDefinitions );
 
   aStream.Read( FMods,     SizeOf( FMods ) );
   aStream.Read( FProps,    SizeOf( FProps ) );
@@ -187,7 +188,7 @@ begin
   iCount := aStream.ReadWord();
   if iCount = 0 then Exit;
   for i := 1 to iCount do
-    Add( TItem.CreateFromStream( aStream ) );
+    Add( TItem.CreateFromStream( aStream, FContext, aPerkDefinitions ) );
 end;
 
 procedure TItem.WriteToStream ( aStream : TStream ) ;
@@ -210,7 +211,7 @@ begin
        iNode.WriteToStream( aStream );
 end;
 
-procedure TItem.LuaLoad( aTable : TLuaTable; aOnFloor: boolean );
+procedure TItem.LuaLoad( aTable : TLuaTable );
 var i   : Byte;
     iID : AnsiString;
 begin
@@ -239,7 +240,7 @@ begin
   if Ammo = 0 then FProps.Ammo := FProps.AmmoMax;
 
   FProps.Damage     := NewDiceRoll( aTable.getInteger('damage_dice',0), aTable.getInteger('damage_sides',0), aTable.getInteger('damage_bonus',0) );
-  FProps.DamageType := TDamageType( aTable.getInteger('damagetype',0) );
+  FProps.DamageType := TDamageType( aTable.getInteger( 'damagetype', Ord( Damage_Bullet ) ) );
 
   FProps.Acc         := aTable.getInteger('acc',0);
   FProps.UseTime     := aTable.getInteger('usetime',10);
@@ -262,7 +263,7 @@ begin
   FProps.MissTrail   := 0;
   iID                := aTable.getString('miss_trail','');
   if iID <> '' then
-    FProps.MissTrail := LuaSystem.Defines[ iID ];
+    FProps.MissTrail := FContext.Lua.Defines[ iID ];
 
   FProps.PCosColor := ColorZero;
   FProps.PGlowColor := ColorZero;
@@ -271,24 +272,19 @@ begin
 
   ReadSprite( aTable, 'missprite', FProps.MisSprite );
   ReadSprite( aTable, 'hitsprite', FProps.HitSprite );
-  ReadExplosion( aTable, 'explosion', FProps.Explosion );
+  ReadExplosion( FContext.Lua, aTable, 'explosion', FProps.Explosion );
 
-
-  if aOnFloor and ( FProps.IType = ITEMTYPE_AMMO ) then
-    FAmount := Round( FAmount * Double(LuaSystem.Get([ 'diff', DRL.Difficulty, 'ammofactor' ])) );
-
-  CallHook( Hook_OnCreate, [] );
+  FContext.Lua.ProtectedRunHook( Self, 'OnCreate', [] );
 end;
 
 function TItem.MenuColor: byte;
 begin
-  if not Option_ColoredInventory then Exit(LightGray);
   if Color = white then Exit(LightGray) else Exit(Color);
 end;
 
-function TItem.rollDamage : Integer;
+function TItem.rollDamage( aGameRNG : TRNG ) : Integer;
 begin
-  if isWeapon then Exit( FProps.Damage.Roll( DRL.GameRNG ) );
+  if isWeapon then Exit( FProps.Damage.Roll( aGameRNG ) );
   raise EItemException.CreateFmt('TItem.Damage called for Itype %d!',[ Byte( FProps.Itype ) ] );
 end;
 
@@ -329,68 +325,65 @@ begin
   else Exit(iResist);
 end;
 
-function TItem.Description : Ansistring;
+function TItem.GetInvName : Ansistring;
 begin
-  Exit( Description( False ) );
+  Exit( GetInvName( False ) );
 end;
 
-function TItem.Description( aSingle : Boolean ) : Ansistring;
+function TItem.GetInvName( aSingle : Boolean ) : Ansistring;
 var FlagStr : string[10];
     Count   : Byte;
 begin
-  Description := Name;
+  GetInvName := Name;
   case FProps.IType of
     ITEMTYPE_LEVER,
     ITEMTYPE_TELE,
-    ITEMTYPE_FEATURE  : Exit(Description);
-    ITEMTYPE_AMMOPACK : Description += ' (x'+IntToStr(FProps.Ammo)+')';
+    ITEMTYPE_FEATURE  : Exit(GetInvName);
+    ITEMTYPE_AMMOPACK : GetInvName += ' (x'+IntToStr(FProps.Ammo)+')';
     ITEMTYPE_MELEE :
     begin
-      Description += ' ('+FProps.Damage.toString+')';
+      GetInvName += ' ('+FProps.Damage.toString+')';
       FlagStr := '';
       if IF_MODIFIED in FFlags then
       for Count := Ord('A') to Ord('Z') do
           if FMods[Count] > 0 then
             FlagStr += Chr(Count) + Iif( FMods[Count] > 1, IntToStr(FMods[Count]), '' );
-      if FArmor <> 0 then Description += ' ['+IntToStr(FArmor)+']';
-      if FlagStr <> '' then Description += ' ('+FlagStr+')';
-      Description += ResistDescriptionShort;
+      if FArmor <> 0 then GetInvName += ' ['+IntToStr(FArmor)+']';
+      if FlagStr <> '' then GetInvName += ' ('+FlagStr+')';
     end;
     ITEMTYPE_ARMOR, ITEMTYPE_BOOTS :
       begin
         if IF_NODURABILITY in FFlags then
-          Description += ' ['+IntToStr(GetProtection)+']'
+          GetInvName += ' ['+IntToStr(GetProtection)+']'
         else
-          Description += ' ['+IntToStr(GetProtection)+'/'+IntToStr(FArmor)+'] ('+IntToStr(FProps.Durability)+'%)';
+          GetInvName += ' ['+IntToStr(GetProtection)+'/'+IntToStr(FArmor)+'] ('+IntToStr(FProps.Durability)+'%)';
         FlagStr := '';
         if IF_MODIFIED in FFlags then
         for Count := Ord('A') to Ord('Z') do
           if FMods[Count] > 0 then
             FlagStr += Chr(Count) + Iif( FMods[Count] > 1, IntToStr(FMods[Count]), '' );
-        if FlagStr <> '' then Description += ' ('+FlagStr+')';
-        //Description += ResistDescriptionShort;
+        if FlagStr <> '' then GetInvName += ' ('+FlagStr+')';
       end;
     ITEMTYPE_RANGED, ITEMTYPE_NRANGED : begin
-            Description += ' ('+FProps.Damage.toString+')';
-            if FProps.Shots <> 0 then Description += 'x' +IntToStr(FProps.Shots);
-            if not ( IF_NOAMMO in FFlags ) then Description += ' ['+IntToStr(FProps.Ammo)+'/'+IntToStr(FProps.AmmoMax)+']';
-            if FArmor <> 0 then Description += ' ['+IntToStr(FArmor)+']';
+            GetInvName += ' ('+FProps.Damage.toString+')';
+            if FProps.Shots <> 0 then GetInvName += 'x' +IntToStr(FProps.Shots);
+            if not ( IF_NOAMMO in FFlags ) then GetInvName += ' ['+IntToStr(FProps.Ammo)+'/'+IntToStr(FProps.AmmoMax)+']';
+            if FArmor <> 0 then GetInvName += ' ['+IntToStr(FArmor)+']';
             if IF_MODIFIED in FFlags then
             begin
               FlagStr := '';
               for Count := Ord('A') to Ord('Z') do
               if FMods[Count] > 0 then
                 FlagStr += Chr(Count) + Iif( FMods[Count] > 1, IntToStr(FMods[Count]), '' );
-              if FlagStr <> '' then Description += ' ('+FlagStr+')';
+              if FlagStr <> '' then GetInvName += ' ('+FlagStr+')';
             end;
-            Description += ResistDescriptionShort;
           end;
     ITEMTYPE_URANGED: begin
         if FProps.Damage.max > 0 then
-          Description += ' ('+FProps.Damage.toString+')';
+          GetInvName += ' ('+FProps.Damage.toString+')';
       end;
   end;
-  if ( FMax > 1 ) and ( not aSingle ) then Description += ' (x'+IntToStr(FAmount)+')';
+  if ( FMax > 1 ) and ( not aSingle ) then GetInvName += ' (x'+IntToStr(FAmount)+')';
 end;
 
 function TItem.GetAltFireName : AnsiString;
@@ -402,8 +395,8 @@ begin
   begin
     iPerks := FPerks.List;
     for i := 0 to iPerks.Size - 1 do
-      if Hook_OnAltFire in PerkData[ iPerks[i].ID ].Hooks then
-        Exit( PerkData[ iPerks[i].ID ].Short );
+      if Hook_OnAltFire in FPerks.Definitions.Data[ iPerks[i].ID ].Hooks then
+        Exit( FPerks.Definitions.Data[ iPerks[i].ID ].LabelText );
   end;
 end;
 
@@ -416,8 +409,8 @@ begin
   begin
     iPerks := FPerks.List;
     for i := 0 to iPerks.Size - 1 do
-      if Hook_OnAltReload in PerkData[ iPerks[i].ID ].Hooks then
-        Exit( PerkData[ iPerks[i].ID ].Short );
+      if Hook_OnAltReload in FPerks.Definitions.Data[ iPerks[i].ID ].Hooks then
+        Exit( FPerks.Definitions.Data[ iPerks[i].ID ].LabelText );
   end;
 end;
 
@@ -430,22 +423,22 @@ begin
   begin
     iPerks := FPerks.List;
     if iPerks.Size = 0 then Exit('');
-    Exit( PerkData[ iPerks[0].ID ].Desc );
+    Exit( FPerks.Definitions.Data[ iPerks[0].ID ].Desc );
   end;
 end;
 
-function TItem.DescriptionBox( aShort : Boolean = False ): Ansistring;
+function TItem.GetInvStatsList( aIncludeAltActions : Boolean = True ): Ansistring;
 begin
-  DescriptionBox := '';
+  GetInvStatsList := '';
   if FProps.IType = ITEMTYPE_RELIC then Exit( GetFirstPerkDescription );
   case FProps.IType of
-    ITEMTYPE_ARMOR, ITEMTYPE_BOOTS : DescriptionBox :=
+    ITEMTYPE_ARMOR, ITEMTYPE_BOOTS : GetInvStatsList :=
       'Durability  : {!'+IntToStr(FProps.MaxDurability)+'}'#10+
       IIf(FProps.SwapTime  <> 10, 'Swap time   : {!'+Seconds(FProps.SwapTime)+'}'#10);
-    ITEMTYPE_URANGED : DescriptionBox :=
+    ITEMTYPE_URANGED : GetInvStatsList :=
       'Damage type : {!'+DamageTypeName(FProps.DamageType)+'}'#10+
       IIf(FProps.Radius <> 0,'Expl.radius : {!'+IntToStr(FProps.Radius)+'}'#10);
-    ITEMTYPE_RANGED, ITEMTYPE_NRANGED : DescriptionBox :=
+    ITEMTYPE_RANGED, ITEMTYPE_NRANGED : GetInvStatsList :=
       IIf(FProps.UseTime  <> 10, 'Fire time   : {!'+Seconds(FProps.UseTime)+'}'#10)+
       IIf(FProps.ReloadTime > 0, 'Reload time : {!'+Seconds(FProps.ReloadTime)+'}'#10)+
       IIf(FProps.SwapTime <> 10, 'Swap time   : {!'+Seconds(FProps.SwapTime)+'}'#10)+
@@ -457,21 +450,21 @@ begin
       IIf(FProps.Falloff  <> 0,'Dmg. falloff: {!'+IntToStr(FProps.Falloff)+'%}'#10)+
       IIf(FProps.Spread   <> 0,'Cone size   : {!'+IntToStr(FProps.Spread)+'}'#10)+
       IIf(FProps.Range    <> 0,'Max range   : {!'+IntToStr(FProps.Range)+'}'#10)+
-      IIf((not aShort) and HasHook( Hook_OnAltFire ),  'Alt. fire   : {!'+GetAltFireName+'}'#10)+
-      IIf((not aShort) and HasHook( Hook_OnAltReload ),'Alt. reload : {!'+GetAltReloadName+'}'#10);
-    ITEMTYPE_MELEE : DescriptionBox :=
+      IIf(aIncludeAltActions and HasHook( Hook_OnAltFire ),  'Alt. fire   : {!'+GetAltFireName+'}'#10)+
+      IIf(aIncludeAltActions and HasHook( Hook_OnAltReload ),'Alt. reload : {!'+GetAltReloadName+'}'#10);
+    ITEMTYPE_MELEE : GetInvStatsList :=
       IIf(FProps.UseTime <> 10, 'Attack time : {!'+Seconds(FProps.UseTime)+'}'#10)+
       IIf(FProps.SwapTime<> 10, 'Swap time   : {!'+Seconds(FProps.SwapTime)+'}'#10)+
       IIf(FProps.Acc     <> 0,  'Accuracy    : {!' + BonusStr(FProps.Acc)+'}'#10)+
       'Damage type : {!'+DamageTypeName(FProps.DamageType)+'}'#10+
-      IIf((not aShort) and HasHook( Hook_OnAltFire ),  'Alt. fire   : {!'+GetAltFireName+'}'#10);
+      IIf(aIncludeAltActions and HasHook( Hook_OnAltFire ),  'Alt. fire   : {!'+GetAltFireName+'}'#10);
   end;
-  DescriptionBox +=
+  GetInvStatsList +=
     IIf(FProps.MoveMod  <> 0,'Move speed  : {!'+Percent(FProps.MoveMod)+'}'#10)+
     IIf(FProps.KnockMod <> 0,'Knockback   : {!'+Percent(FProps.KnockMod)+'}'#10)+
     IIf(FProps.DodgeMod <> 0,'Dodge rate  : {!'+Percent(FProps.DodgeMod)+'}'#10);
 
-  DescriptionBox +=
+  GetInvStatsList +=
       IIf(GetResistance('bullet')   <> 0,'Bullet res. : {!' + BonusStr(GetResistance('bullet'))+'}'#10)+
       IIf(GetResistance('melee')    <> 0,'Melee res.  : {!' + BonusStr(GetResistance('melee'))+'}'#10)+
       IIf(GetResistance('shrapnel') <> 0,'Shrapnel res: {!' + BonusStr(GetResistance('shrapnel'))+'}'#10)+
@@ -481,25 +474,6 @@ begin
       IIf(GetResistance('cold')     <> 0,'Cold res.   : {!' + BonusStr(GetResistance('cold'))+'}'#10)+
       IIf(GetResistance('poison')   <> 0,'Poison res. : {!' + BonusStr(GetResistance('poison'))+'}'#10)+
       IIf(GetResistance('pierce')   <> 0,'Pierce res. : {!' + BonusStr(GetResistance('pierce'))+'}'#10);
-end;
-
-function TItem.ResistDescriptionShort: AnsiString;
-const ResLetter : array[Low(TResistance)..High(TResistance)] of Char = ( 'b','m','s','a','f','p','c','o','i' );
-const ResID   : array[Low(TResistance)..High(TResistance)] of AnsiString =
-   ( 'bullet', 'melee', 'shrapnel', 'acid', 'fire', 'plasma', 'cold', 'poison', 'pierce' );
-var Resistance : TResistance;
-    iValue : LongInt;
-begin
-  ResistDescriptionShort := '';
-  for Resistance := Low( TResistance ) to High( TResistance ) do
-  begin
-    iValue := GetResistance( ResID[ Resistance ] );
-    if iValue > 0 then
-      ResistDescriptionShort += ResLetter[ Resistance ]
-    else if iValue < 0 then
-      ResistDescriptionShort += '-'+ResLetter[ Resistance ];
-  end;
-  if ResistDescriptionShort = '' then Exit('') else Exit(' {'+ResistDescriptionShort+'}')
 end;
 
 function TItem.Preposition( const Item : AnsiString ) : string;
@@ -513,19 +487,27 @@ end;
 
 function    TItem.GetName( aKnown : boolean; aSingle : Boolean = False ) : Ansistring;
 begin
-  if FAmount > 1 then Exit( Description( aSingle ) );
-  if Flags[ IF_UNIQUENAME ] then Exit( Description( aSingle ) );
-  if aKnown then Exit('the '+Description( aSingle ))
-            else Exit(Preposition(Description( aSingle ))+Description( aSingle ));
+  if FAmount > 1 then Exit( GetInvName( aSingle ) );
+  if Flags[ IF_UNIQUENAME ] then Exit( GetInvName( aSingle ) );
+  if aKnown then Exit('the '+GetInvName( aSingle ))
+            else Exit(Preposition(GetInvName( aSingle ))+GetInvName( aSingle ));
 end;
 
-function TItem.GetExtName( aLyingHere : Boolean ) : Ansistring;
-var iName : AnsiString;
+function TItem.GetGroundDesc( aLyingHere : Boolean ) : Ansistring;
+var iName  : AnsiString;
+    iPerks : TPerkList;
+    i      : Integer;
 begin
   iName := '';
-  if Hook_OnDescribe in FHooks then
+  if ( FPerks <> nil ) and ( Hook_getGroundDesc in FPerks.Hooks ) then
   begin
-    iName := LuaSystem.ProtectedRunHook( Self, HookNames[Hook_OnDescribe], [] );
+    iPerks := FPerks.List;
+    for i := 0 to iPerks.Size - 1 do
+      if Hook_getGroundDesc in FPerks.Definitions.Data[ iPerks[i].ID ].Hooks then
+      begin
+        iName := FContext.Lua.ProtectedCall( [ 'perks', iPerks[i].ID, HookNames[Hook_getGroundDesc] ], [ Self ] );
+        Break;
+      end;
   end;
   if iName = '' then iName := GetName( False );
 
@@ -601,7 +583,7 @@ end;
 function TItem.isUsable : boolean;
 begin
   Exit((FProps.IType = ITEMTYPE_URANGED) or
-    ((FProps.IType = ITEMTYPE_PACK) and (Hook_OnUse in FHooks)));
+    ((FProps.IType = ITEMTYPE_PACK) and HasHook( Hook_OnUse )));
 end;
 
 function TItem.isAmmoPack : boolean;
@@ -644,18 +626,20 @@ begin
   Exit( True );
 end;
 
-function lua_item_new(L: Plua_State): Integer; cdecl;
-var State : TDRLLuaState;
-    Item  : TItem;
+function lua_item_new( L : PLua_State ): Integer; cdecl;
+var iState : TLuaGameStack;
+    iLua   : TDRLLua;
+    iItem  : TItem;
 begin
-  State.Init(L);
-  Item := TItem.Create( State.ToId( 1 ), State.ToBoolean( 2 ) );
-  State.Push(Item);
+  iState.Init( L );
+  iLua := TDRLLua( TLuaContext.FromState( L ).Lua );
+  iItem := TItem.Create( iState.ToStorageID( 1, 'items' ), iLua.NodeContext );
+  iState.Push(iItem);
   Result := 1;
 end;
 
 function lua_item_get_mod(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iItem  : TItem;
 begin
   iState.Init(L);
@@ -665,7 +649,7 @@ begin
 end;
 
 function lua_item_set_mod(L: Plua_State): Integer; cdecl;
-var iState : TDRLLuaState;
+var iState : TLuaGameStack;
     iItem  : TItem;
 begin
   iState.Init(L);
@@ -675,7 +659,7 @@ begin
 end;
 
 function lua_item_set_sprite(L: Plua_State): Integer; cdecl;
-var iState   : TDRLLuaState;
+var iState   : TLuaGameStack;
     iItem    : TItem;
     iType    : Ansistring;
     iPSprite : ^TSprite;
@@ -714,7 +698,7 @@ begin
 end;
 
 function lua_item_set_explosion(L: Plua_State): Integer; cdecl;
-var iState   : TDRLLuaState;
+var iState   : TLuaGameStack;
     iItem    : TItem;
     iTable   : TLuaTable;
 begin
@@ -724,13 +708,13 @@ begin
   iTable := iState.ToTable(2);
   if iTable = nil then Exit( 0 );
   FillChar( iItem.FProps.Explosion, SizeOf( TExplosionData ), 0 );
-  ReadExplosion( iTable, iItem.FProps.Explosion );
+  ReadExplosion( iItem.Context.Lua, iTable, iItem.FProps.Explosion );
   FreeAndNil( iTable );
   Result := 0;
 end;
 
 function lua_item_set_sound_id(L: Plua_State): Integer; cdecl;
-var iState   : TDRLLuaState;
+var iState   : TLuaGameStack;
     iItem    : TItem;
 begin
   iState.Init(L);
@@ -740,8 +724,20 @@ begin
   Result := 0;
 end;
 
-const lua_item_lib : array[0..6] of luaL_Reg = (
+function lua_item_is_usable( L : Plua_State ) : Integer; cdecl;
+var iState : TLuaGameStack;
+    iItem  : TItem;
+begin
+  iState.Init( L );
+  iItem := iState.ToObject( 1 ) as TItem;
+  if iItem = nil then Exit( 0 );
+  iState.Push( iItem.isUsable );
+  Result := 1;
+end;
+
+const lua_item_lib : array[0..7] of luaL_Reg = (
       ( name : 'new';           func : @lua_item_new),
+      ( name : 'is_usable';     func : @lua_item_is_usable),
       ( name : 'get_mod';       func : @lua_item_get_mod),
       ( name : 'set_mod';       func : @lua_item_set_mod),
       ( name : 'set_sprite';    func : @lua_item_set_sprite),
@@ -750,9 +746,9 @@ const lua_item_lib : array[0..6] of luaL_Reg = (
       ( name : nil;             func : nil; )
 );
 
-class procedure TItem.RegisterLuaAPI();
+class procedure TItem.RegisterLuaAPI( aLua : TLua );
 begin
-  LuaSystem.Register( 'item', lua_item_lib );
+  aLua.Register( 'item', lua_item_lib );
 end;
 
 end.

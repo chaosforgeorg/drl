@@ -11,7 +11,7 @@ function aitk.OnAction( self )
 		local ai        = ais[ self.ai_type ]
 		local old_state = self.ai_state
 		local new_state = ai.states[ old_state ]( self ) or old_state
-		if not core.is_playing() then return end -- gracefully exit if being kills player
+		if not game.is_playing() then return end -- gracefully exit if being kills player
 		if not self.__ptr then return end -- gracefully exit if being dies
 		self.ai_state = new_state
 		safe = safe + 1
@@ -19,6 +19,12 @@ function aitk.OnAction( self )
 	if safe > 1000 then
 		error( "AI : "..ais[ self.ai_type ].id.." entered infinite loop!" )
 	end
+	local OnAction = ais[ self.ai_type ].OnAction
+	if OnAction then OnAction( self ) end
+end
+
+function aitk.OnAttacked( self, ... )
+	return ais[ self.ai_type ].OnAttacked( self, ... )
 end
 
 function aitk.get_patrol_area( self, range, can_wander )
@@ -166,7 +172,7 @@ end
 
 function aitk.flock_on_attacked( self, target )
     if self == target then return end
-    if target and target:has_property("master") then return end
+    if target and target:has_property("MASTER") then return end
     local target = target or uids.get( self.target )
     for b in level:beings_in_range( self, self.flock_max or 4 ) do
         if b.id == self.id then
@@ -210,6 +216,8 @@ function aitk.flock_idle( self )
         if self:direct_seek( self.move_to ) ~= MOVEOK then
             self.scount =  self.scount - 500
             self.move_to = false
+            return "idle"
+        elseif not self.__ptr then
             return "idle"
         end
     else
@@ -350,6 +358,7 @@ function aitk.basic_pursue( self )
         return "idle"
     end
     local move_check = aitk.move_path( self, self.move_to )
+    if not self.__ptr then return "idle" end
     if aitk.basic_scan( self ) then
         self.move_to = false
         return "hunt"
@@ -405,7 +414,7 @@ function aitk.basic_on_attacked( self, target )
     if self == target then return end
     if self:has_property("boredom") then self.boredom = 0 end
     if target then 
-        if target:has_property("master") then return end
+        if target:has_property("MASTER") then return end
         if target.id == self.id then return end
         if self.ai_group == "player" and target.ai_group == "player" then return end
         self.target = target.uid
@@ -421,7 +430,7 @@ function aitk.disciplined_on_attacked( self, target )
     if self == target then return end
     if self:has_property("boredom") then self.boredom = 0 end
     if target then 
-        if target:has_property("master") then return end
+        if target:has_property("MASTER") then return end
         if target.id == self.id then return end
         if self.ai_group == target.ai_group then return end
         self.target = target.uid
@@ -564,7 +573,7 @@ function aitk.try_hunt( self )
         end
     end
     if self.retaliate then attackchance = 100 end
-    if self:has_property("attackrange") and self.attackrange < dist then
+    if self:has_property("ATTACKRANGE") and self.ATTACKRANGE < dist then
         attackchance = math.floor( attackchance / 3 )
     end
     if dist == 1 and (not self.nomelee) then
@@ -743,7 +752,7 @@ function aitk.charge_charge( self )
     if move_check ~= MOVEOK then
         if player.position == move_coord then
             self:attack( move_coord )
-       		if ( not core.is_playing() ) or ( not self.__ptr ) then return "idle" end 
+		if ( not game.is_playing() ) or ( not self.__ptr ) then return "idle" end
         else
             self.scount = self.scount - 500
         end
@@ -760,10 +769,11 @@ end
 
 function aitk.charge_post_charge( self )
     local move_check,move_coord = self:direct_seek( self.move_to, 2.0 )
+    if not self.__ptr then return "idle" end
     if move_check ~= MOVEOK then
         if player.position == move_coord then
             self:attack( move_coord )
-       		if ( not core.is_playing() ) or ( not self.__ptr ) then return "idle" end 
+		if ( not game.is_playing() ) or ( not self.__ptr ) then return "idle" end
         else
             self.scount = self.scount - 500
         end

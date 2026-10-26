@@ -1,5 +1,5 @@
-core.declare( "VERSION_ENGINE",      "0.10.11" )
-core.declare( "VERSION_ENGINE_SAVE", "0.10.11" )
+core.declare( "VERSION_ENGINE",      "0.10.12" )
+core.declare( "VERSION_ENGINE_SAVE", "0.10.12" )
 
 require( "core:constants" )
 require( "core:commands" )
@@ -26,6 +26,7 @@ core.options = {
 	assembly_apply_last_mod = false,
 	relic_slot = false,
 	resist_cap = 95,
+	vision_base = 8,
 	maintain_groups = false,
 }
 
@@ -87,9 +88,77 @@ register_perk       = core.register_storage( "perks", "perk", function (a)
 	a.tags = table.toset( a.tags )
 	core.register_perk( a.nid ) 
 end )
-register_trait      = core.register_storage( "traits", "trait" )
-register_ai         = core.register_storage( "ais", "ai" )
-register_challenge  = core.register_storage( "chal", "challenge" )
+-- Preserve declaration order; IDs resolve when the owner is initialized.
+local function add_perks( self, perks )
+	if not perks then return end
+	for _, id in ipairs( perks ) do
+		self:add_perk( id )
+	end
+end
+
+register_trait = core.register_storage( "traits", "trait", function( trait )
+	local runtime_id
+	if trait.runtime and next( trait.runtime ) then
+		runtime_id = "perk_trait_"..trait.id
+		-- Trait hooks run in trait registration order, independent of pick order.
+		trait.runtime.ordered = true
+		register_perk( runtime_id )( trait.runtime )
+		trait.runtime = runtime_id
+	end
+	if runtime_id or (trait.perks and #trait.perks > 0) then
+		local function OnPick( self, rank )
+			if rank == 1 then
+				if runtime_id then self:add_perk( runtime_id ) end
+				add_perks( self, trait.perks )
+			end
+		end
+		trait.OnPick = core.create_seq_function( OnPick, trait.OnPick )
+	end
+end )
+register_ai = core.register_storage( "ais", "ai", function( ai )
+	if ai.perks and #ai.perks > 0 then
+		local function OnCreate( self )
+			add_perks( self, ai.perks )
+		end
+		ai.OnCreate = core.create_seq_function( OnCreate, ai.OnCreate )
+	end
+end )
+register_challenge = core.register_storage( "chal", "challenge", function( challenge )
+	local runtime_id
+	local level_runtime_id
+	if challenge.runtime or challenge.level_runtime then
+		local runtime_source = challenge.runtime
+		local level_runtime_source = challenge.level_runtime
+		if runtime_source then runtime_id = "perk_"..challenge.id end
+		if level_runtime_source then level_runtime_id = "perk_level_"..challenge.id end
+		local function register_runtimes()
+			if runtime_id then register_perk( runtime_id )( runtime_source ) end
+			if level_runtime_id then register_perk( level_runtime_id )( level_runtime_source ) end
+		end
+
+		challenge.runtime = runtime_id
+		challenge.level_runtime = level_runtime_id
+		if BASE_MODULE_LOADING then
+			register_runtimes()
+		else
+			challenge.OnRegister = core.create_seq_function( register_runtimes, challenge.OnRegister )
+		end
+	end
+
+	if runtime_id or (challenge.perks and #challenge.perks > 0) then
+		local function OnCreatePlayer()
+			if runtime_id then player:add_perk( runtime_id ) end
+			add_perks( player, challenge.perks )
+		end
+		challenge.OnCreatePlayer = core.create_seq_function( OnCreatePlayer, challenge.OnCreatePlayer )
+	end
+	if level_runtime_id then
+		local function OnCreateLevel()
+			level:add_perk( level_runtime_id )
+		end
+		challenge.OnCreateLevel = core.create_seq_function( OnCreateLevel, challenge.OnCreateLevel )
+	end
+end )
 register_itemset    = core.register_storage( "itemsets", "itemset" )
 register_emitter    = core.register_storage( "emitters", "emitter", function( e )
 	if #e.shape_params == 0 then e.shape_params = {0, 0, 0} end
@@ -128,6 +197,19 @@ register_klass      = core.register_storage( "klasses", "klass", function(k)
 				end
 			end
 		end
+		local runtime_id
+		if k.runtime and next( k.runtime ) then
+			runtime_id = "perk_klass_"..k.id
+			register_perk( runtime_id )( k.runtime )
+			k.runtime = runtime_id
+		end
+		if runtime_id or (k.perks and #k.perks > 0) then
+			local function OnCreate( self )
+				if runtime_id then self:add_perk( runtime_id ) end
+				add_perks( self, k.perks )
+			end
+			k.OnCreate = core.create_seq_function( OnCreate, k.OnCreate )
+		end
 	end
 )
 
@@ -144,7 +226,7 @@ function register_klass_badge( id )
 			return ""
 		end
 		for _,k in ipairs(klasses) do
-			if k.OnPick then
+			if k.available then
 				register_badge( k.id.."_"..id ) {
 					name = k.sname.." "..b.name,
 					desc = b.desc.." as "..k.sname,
@@ -152,16 +234,21 @@ function register_klass_badge( id )
 					set   = id,
 					klass = k.id,
 					achievement = acv_id( k.id ),
+					challenge = b.challenge,
+					requirements = b.requirements,
 				}
 			end
 		end
 	end
 end
 
-function check_condition( t )
-	if t.challenge then
-		local id = "challenge_"..t.challenge
-		if not ( CHALLENGE == id or SCHALLENGE == id ) then
+function core.check_award_requirements( t )
+	if not t then return true end
+	if t.winonly and not game.has_won() then return false end
+	if t.challenge ~= nil then
+		if t.challenge == "" then
+			if CHALLENGE ~= "" then return false end
+		elseif not core.is_challenge( t.challenge ) then
 			return false
 		end
 	end
@@ -175,9 +262,23 @@ function check_condition( t )
 			return false
 		end
 	end
+	if t.trait and not player:has_trait( t.trait ) then return false end
+	if t.condition and not t.condition() then return false end
 	return true
 end
- 
+
+local function copy_master_requirements( source, trait )
+	return
+	{
+		winonly    = true,
+		challenge  = source.challenge,
+		difficulty = source.difficulty,
+		kills       = source.kills,
+		trait       = trait,
+		condition   = source.condition,
+	}
+end
+
 function register_master_badge( id )
 	return function( b )
 		assert( b.mid )
@@ -185,6 +286,7 @@ function register_master_badge( id )
 		assert( traits[b.mid], "Master trait '"..b.mid.."' not found!" )
 		assert( traits[b.mid].master, "'"..b.mid.."' not a master trait!" )
 		local name = traits[b.mid].name
+		local trait = traits[b.mid].nid
 
 		register_badge ( id.."_1" )
 		{
@@ -193,6 +295,11 @@ function register_master_badge( id )
 			level = 1,
 			set   = id,
 			klass = b.klass,
+			requirements =
+			{
+				trait     = trait,
+				condition = function() return player.episode[ level.index ].episode >= 3 end,
+			},
 		}
 		register_badge ( id.."_2" )
 		{
@@ -201,6 +308,11 @@ function register_master_badge( id )
 			level = 2,
 			set   = id,
 			klass = b.klass,
+			requirements =
+			{
+				winonly = true,
+				trait   = trait,
+			},
 		}
 		register_badge ( id.."_3" )
 		{
@@ -209,6 +321,12 @@ function register_master_badge( id )
 			level = 3,
 			set   = id,
 			klass = b.klass,
+			requirements =
+			{
+				winonly    = true,
+				difficulty = DIFF_HARD,
+				trait      = trait,
+			},
 		}
 		register_badge ( id.."_4" )
 		{
@@ -217,9 +335,7 @@ function register_master_badge( id )
 			level = 4,
 			set   = id,
 			klass = b.klass,
-			condition = function()
-				return player:has_trait( b.mid ) and check_condition( b.platinum )
-			end
+			requirements = copy_master_requirements( b.platinum, trait ),
 		}
 		register_badge ( id.."_5" )
 		{
@@ -228,14 +344,27 @@ function register_master_badge( id )
 			level = 5,
 			set   = id,
 			klass = b.klass,
-			condition = function()
-				return player:has_trait( b.mid ) and check_condition( b.diamond )
-			end
+			requirements = copy_master_requirements( b.diamond, trait ),
 		}
 	end
 end
 
-register_level   = core.register_storage( "levels", "level" )
+register_level = core.register_storage( "levels", "level", function( level_def )
+	if level_def.runtime or (level_def.perks and #level_def.perks > 0) then
+		local runtime_id
+		if level_def.runtime then
+			runtime_id = "perk_level_"..level_def.id
+			register_perk( runtime_id )( level_def.runtime )
+			level_def.runtime = runtime_id
+		end
+
+		local function Create()
+			if runtime_id then level:add_perk( runtime_id ) end
+			add_perks( level, level_def.perks )
+		end
+		level_def.Create = core.create_seq_function( Create, level_def.Create )
+	end
+end )
 levels.default = {}
 
 register_requirement   = core.register_storage( "requirements", "requirement" )
@@ -261,7 +390,26 @@ register_being_group   = core.register_array_storage( "being_groups", "being_gro
 end
 )
 
+local function add_properties( self, properties )
+	if not properties then return end
+	for key, value in pairs( properties ) do
+		if type( value ) == "userdata" then
+			value = value:clone()
+		else
+			value = table.copy( value )
+		end
+		self:add_property( key, value )
+	end
+end
+
 register_being         = core.register_storage( "beings", "being", function( bp )
+		local runtime_id
+		if bp.runtime and next( bp.runtime ) then
+			runtime_id = "perk_being_"..bp.id
+			register_perk( runtime_id )( bp.runtime )
+			bp.runtime = runtime_id
+		end
+
 		bp.name_plural = bp.name_plural or bp.name.."s"
 		bp.tags        = table.toset( bp.tags )
 
@@ -280,19 +428,10 @@ register_being         = core.register_storage( "beings", "being", function( bp 
 				end
 			end
 
-			local SafeOnAction = function( func )
-				if func == nil then return nil end
-				return function( self )
-				  if not core.is_playing() then return nil end
-				  if not self.__ptr then return nil end
-				  func( self )
-				end
-			end
-
+			-- AI hooks dispatch by the current ai_type, which may change at runtime.
 			bp.OnCreate   = core.create_seq_function( OnCreate, bp.OnCreate )
-			bp.OnAction   = core.create_seq_function( SafeOnAction( ai_proto.OnAction ), SafeOnAction( bp.OnAction ) )
-			bp.OnAction   = core.create_seq_function( aitk.OnAction, bp.OnAction )
-			bp.OnAttacked = core.create_seq_function( bp.OnAttacked, ai_proto.OnAttacked )
+			bp.OnAction   = aitk.OnAction
+			bp.OnAttacked = aitk.OnAttacked
 		else
 			local OnCreate = function( self )
 				self:add_property( "ai_group", bp.ai_group )
@@ -343,31 +482,64 @@ register_being         = core.register_storage( "beings", "being", function( bp 
 					self.resist[ k ] = v
 				end
 			end
+			-- Explicit parent constructors must not reapply defaults or perks.
+			if self.__proto == bp then
+				add_properties( self, bp.properties )
+				-- Runtime hooks precede other perks, as prototype hooks did.
+				if runtime_id then self:add_perk( runtime_id ) end
+				add_perks( self, bp.perks )
+			end
 		end
 		bp.OnCreate = core.create_seq_function( OnCreate, bp.OnCreate )
 	end
 )
 
-register_item          = core.register_storage( "items", "item", function( ip )
-		local set = ip.set
-		if set then
-			ip.flags[ IF_SETITEM ] = true
-
-			local OnEquip = function (self,being)
-				if being:set_items( set ) == (itemsets[ set ].trigger - 1) then
-					itemsets[ set ].OnEquip(self,being)
-				end
-			end
-
-			local OnUnequip = function (self,being)
-				if being:set_items( set ) == itemsets[ set ].trigger then
-					itemsets[ set ].OnUnequip(self,being)
-				end
-			end
-
-			ip.OnUnequip = core.create_seq_function( OnUnequip, ip.OnUnequip )
-			ip.OnEquip  = core.create_seq_function( OnEquip, ip.OnEquip )
+register_perk "perk_level_unique_feeling"
+{
+	OnEnterLevel = function( self )
+		if self:get_property( "unique_item", false ) then
+			ui.msg_feel( "You feel there is something really valuable here!" )
 		end
+	end,
+}
+
+register_perk "perk_lever_description"
+{
+	getGroundDesc = function( self )
+		if player:has_property( "LEVER_SENSE" ) then
+			if player.LEVER_SENSE > 1 then return "lever ("..self.__proto.desc..")" end
+			return "lever ("..self.__proto.good..")"
+		end
+		return "lever"
+	end,
+}
+
+register_perk "perk_itemset"
+{
+	OnEquip = function( self, being )
+		local set = self.__proto.set
+		if being:set_items( set ) == (itemsets[ set ].trigger - 1) then
+			itemsets[ set ].OnEquip( self, being )
+		end
+	end,
+
+	OnUnequip = function( self, being )
+		local set = self.__proto.set
+		if being:set_items( set ) == itemsets[ set ].trigger then
+			itemsets[ set ].OnUnequip( self, being )
+		end
+	end,
+}
+
+register_item          = core.register_storage( "items", "item", function( ip )
+		local runtime_id
+		if ip.runtime and next( ip.runtime ) then
+			runtime_id = "perk_item_"..ip.id
+			register_perk( runtime_id )( ip.runtime )
+			ip.runtime = runtime_id
+		end
+
+		local set = ip.set
 
 		ip.tags        = table.toset( ip.tags )
 		ip.flags[ ip.type ] = true
@@ -387,8 +559,6 @@ register_item          = core.register_storage( "items", "item", function( ip )
 		if ip.explosion and ip.explosion.content then
 			ip.explosion.content = cells[ip.explosion.content].nid
 		end
-
-		if ip.firstmsg then ip.OnFirstPickup = function () ui.msg("\""..ip.firstmsg.."\"") end end
 
 		if core.options.auto_glow_items then
 			if not ip.glow then
@@ -413,6 +583,14 @@ register_item          = core.register_storage( "items", "item", function( ip )
 			self:add_property( "group", ip.group or "" )
 			if ip.group == "shotgun" then
 				self.flags[ IF_SHOTGUN ] = true
+			end
+			-- Explicit parent constructors must not reapply defaults or perks.
+			if self.__proto == ip then
+				add_properties( self, ip.properties )
+				-- Set effects preceded item runtime hooks in the prototype wrappers.
+				if set then self:add_perk( "perk_itemset" ) end
+				if runtime_id then self:add_perk( runtime_id ) end
+				add_perks( self, ip.perks )
 			end
 		end
 		ip.OnCreate = core.create_seq_function( OnCreate, ip.OnCreate )
@@ -441,23 +619,18 @@ function core.kills_count_group( weapon_group )
 end
 
 function core.award_medals()
-	-- Prefetch win condition
-	local win = player:has_won()
-
 	-- Iterate through the medals
 	for _,medal_proto in ipairs(medals) do
-		if medal_proto.condition and ( ( not medal_proto.winonly ) or win ) then
-			if medal_proto.condition() then
-				player:add_medal( medal_proto.id )
-				--if the player already has lesser medals in their player.wad, remove them from mortem
-				if medal_proto.removes then
-					for _,zero_medal in ipairs(medal_proto.removes) do
-						local medal_count = player_data.get_counted( 'medals', 'medal', zero_medal )
-						if medal_count <= 0 then
-							player:add_medal( zero_medal )
-						else
-							player:remove_medal( zero_medal )
-						end
+		if medal_proto.requirements and core.check_award_requirements( medal_proto.requirements ) then
+			player:add_medal( medal_proto.id )
+			--if the player already has lesser medals in their player.wad, remove them from mortem
+			if medal_proto.removes then
+				for _,zero_medal in ipairs(medal_proto.removes) do
+					local medal_count = player_data.get_counted( 'medals', 'medal', zero_medal )
+					if medal_count <= 0 then
+						player:add_medal( zero_medal )
+					else
+						player:remove_medal( zero_medal )
 					end
 				end
 			end

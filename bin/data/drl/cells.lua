@@ -25,7 +25,6 @@ function drl.register_cells()
 		blname     = "blood",
 		blcolor    = RED;
 		bloodto    = "bloodpool";
-		blsprite   = SPRITE_BLOOD;
 		sprite     = {
 			SPRITE_FLOOR, -- phobos
 			SPRITE_PLATEFLOOR, -- deimos
@@ -50,7 +49,6 @@ function drl.register_cells()
 		set        = CELLSET_FLOORS,
 		blcolor    = RED,
 		sprite     = SPRITE_RUBBLE,
-		blsprite   = SPRITE_BLOOD,
 		sflags     = { SF_MULTI, SF_FLOOR },
 	}
 
@@ -74,7 +72,6 @@ function drl.register_cells()
 			SPRITE_WALL, -- hell (unused)
 			SPRITE_PIPEWALL, -- phobos (alt 2)
 		},
-		blsprite   = SPRITE_WALLBLOOD,
 		destroyto  = "wall_destroyed",
 		sflags     = { SF_MULTI },
 	}
@@ -105,7 +102,6 @@ function drl.register_cells()
 			SPRITE_STONEWALL,
 			SPRITE_STONEWALL,
 		},
-		blsprite   = SPRITE_WALLBLOOD,
 		destroyto  = "wall_destroyed",
 		sflags     = { SF_MULTI },
 	}
@@ -126,7 +122,6 @@ function drl.register_cells()
 		flags      = { CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_STICKWALL, CF_FRAGILE },
 		coscolor   = { 0.6,0.6,1.0,1.0 },
 		sprite     = SPRITE_CAVEWALL,
-		blsprite   = SPRITE_WALLBLOOD,
 		sflags     = { SF_MULTI },
 		destroyto  = "wall_destroyed",
 	}
@@ -152,7 +147,6 @@ function drl.register_cells()
 		hp         = 30,
 		set        = CELLSET_WALLS,
 		flags      = { CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_STICKWALL },
-		blsprite   = SPRITE_WALLBLOOD,
 		sflags     = { SF_MULTI },
 	}
 
@@ -165,7 +159,6 @@ function drl.register_cells()
 		blname     = "blood",
 		blcolor    = RED;
 		bloodto    = "bloodpool";
-		blsprite   = SPRITE_BLOOD;
 		sprite     = {
 			SPRITE_CAVEFLOOR, -- cave 0
 			SPRITE_HELLFLOOR, -- cave 1
@@ -189,7 +182,6 @@ function drl.register_cells()
 		flags      = { CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_STICKWALL },
 		sprite     = SPRITE_BOSSWALL,
 		deco       = { SPRITE_DECO_SKULL_1, SPRITE_DECO_SKULL_2, SPRITE_DECO_SKULL_3, SPRITE_DECO_SKULL_4 },
-		blsprite   = SPRITE_WALLBLOOD,
 		sflags     = { SF_MULTI },
 		destroyto  = "wall_destroyed",
 	}
@@ -210,7 +202,6 @@ function drl.register_cells()
 		set        = CELLSET_WALLS,
 		flags      = {CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_STICKWALL},
 		sprite     = SPRITE_YBOX,
-		blsprite   = SPRITE_WALLBLOOD,
 	}
 
 	register_cell "ycrate"
@@ -225,7 +216,6 @@ function drl.register_cells()
 		set        = CELLSET_WALLS,
 		flags      = {CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_STICKWALL},
 		sprite     = SPRITE_WBOX,
-		blsprite   = SPRITE_WALLBLOOD,
 	}
 
 
@@ -336,7 +326,7 @@ function drl.register_cells()
 
 		OnExit = function(c)
 			local linfo = player.episode[level.index]
-			player:exit( linfo.exit, 0.5 )
+			game.exit( linfo.exit, 0.5 )
 		end,
 	}
 
@@ -360,10 +350,10 @@ function drl.register_cells()
 			if sinfo and sinfo.script and levels[sinfo.script].entry then
 				player:add_history( levels[sinfo.script].entry )
 			end
-			player:exit( linfo.special, 0.5 )
+			game.exit( linfo.special, 0.5 )
 		end,
 
-		OnDescribe = function(c)
+		getGroundDesc = function(c)
 			local linfo = player.episode[level.index]
 			return "stairs leading to "..player.episode[linfo.special].name
 		end,
@@ -428,7 +418,7 @@ function drl.register_cells()
 				if being:is_perk("running") then damage = damage / 2 end
 				if not fully_resisted then
 					ui.msg("Argh!!! Acid!")
-					if core.game_time() % 3 == 0 then
+					if game.time() % 3 == 0 then
 						being:play_sound("hit")
 					end
 				end
@@ -462,7 +452,7 @@ function drl.register_cells()
 				if being:is_perk("running") then damage = damage / 2 end
 				if not fully_resisted then
 					ui.msg("Argh!!! Lava!")
-					if core.game_time() % 3 == 0 then
+					if game.time() % 3 == 0 then
 						being:play_sound("hit")
 					end
 				end
@@ -497,7 +487,7 @@ function drl.register_cells()
 			if being:is_perk("running") then damage = damage / 2 end
 			if not fully_resisted then
 				ui.msg("Argh!!! Blood!")
-				if core.game_time() % 3 == 0 then
+				if game.time() % 3 == 0 then
 					being:play_sound("hit")
 				end
 			end
@@ -524,7 +514,6 @@ function drl.register_cells()
 		sprite     = SPRITE_BRIDGE,
 		blname     = "blood",
 		blcolor    = RED;
-		blsprite   = SPRITE_BLOOD;
 		sflags     = { SF_FLUID },
 	}
 
@@ -564,7 +553,6 @@ function drl.register_cells()
 		set        = CELLSET_WALLS,
 		flags      = {CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_STICKWALL, CF_FRAGILE},
 		sprite     = SPRITE_WBOXC,
-		blsprite   = SPRITE_WALLBLOOD,
 		coscolor   = {1.0,0.0,0.0,1.0},
 
 		OnDestroy = function(c)
@@ -573,7 +561,7 @@ function drl.register_cells()
 				if math.random(5) == 1 then
 					item_spawn = {"pammo","pshell"}
 				end
-				level:drop_item( table.random_pick( item_spawn ), c, true, true, true )
+				level:drop_ammo( table.random_pick( item_spawn ), c, true, true )
 			end
 		end,
 	}
@@ -590,7 +578,6 @@ function drl.register_cells()
 		set        = CELLSET_WALLS,
 		flags      = {CF_BLOCKLOS, CF_BLOCKSHOT, CF_BLOCKFLY, CF_BLOCKMOVE, CF_STICKWALL, CF_FRAGILE},
 		sprite     = SPRITE_YBOXC,
-		blsprite   = SPRITE_WALLBLOOD,
 		coscolor   = {1.0,1.0,0.0,1.0},
 
 		OnDestroy = function(c)
@@ -599,7 +586,7 @@ function drl.register_cells()
 				if math.random(5) == 1 then
 					item_spawn = {"barmor","pboots","lmed"}
 				end
-				level:drop_item( table.random_pick( item_spawn ), c, true, true, true )
+				level:drop_ammo( table.random_pick( item_spawn ), c, true, true )
 			end
 		end,
 	}
