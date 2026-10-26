@@ -82,7 +82,7 @@ begin
       iModule.WorkshopID := IntToStr( iWID );
       Log( LOGINFO,'Assigned Workshop ID = ' + iModule.WorkshopID );
       if iModule.Source = DRLMWAD
-        then WriteModuleFile( aDataPath+'/deploy/'+iModule.ID+'/meta.lua', iModule )
+        then WriteModuleFile( aDataPath+'deploy/'+iModule.ID+'/meta.lua', iModule )
         else WriteModuleFile( iModule.Path+'meta.lua', iModule );
     end
     else
@@ -91,7 +91,7 @@ begin
     Log( LOGINFO,'Workshop ID = ' + IntToStr(iWID) + ' ' + Iif( iModule.Source = DRLMSOURCE, 'source', 'WAD' ) + ' deploy initialized.' );
     if iModule.Source = DRLMSOURCE
       then iSteam.ModUpdate( iModule.Path, iWID )
-      else iSteam.ModUpdate( ExpandFileName( aDataPath+'/deploy/'+iModule.ID+'/'), iWID );
+      else iSteam.ModUpdate( ExpandFileName( aDataPath+'deploy/'+iModule.ID+'/'), iWID );
 
   finally
     FreeAndNil( iModules );
