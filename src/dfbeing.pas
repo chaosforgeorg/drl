@@ -1133,7 +1133,7 @@ begin
     iName   := aItem.Name;
     aItem.Discard;
     aItem := TItem.Create( aDisassembleID, FContext );
-    aItem.PlaySound('reload', FPosition );
+    PlaySound( 'reload' );
     if not Inv.isFull
        then Inv.Add( aItem )
        else TLevel(Parent).DropItem( aItem, FPosition, False, True );
