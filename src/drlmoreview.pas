@@ -270,6 +270,7 @@ var iPerks     : TPerkList;
     iGroup     : AnsiString;
     iGroupName : AnsiString;
     iDesc      : AnsiString;
+    iKnockback : Integer;
   procedure AddStat( const aName : Ansistring; const aValue : Ansistring );
   begin
     iStatQueue.Push( Padded( aName, 13 ) + ': {!' + aValue + '}' );
@@ -343,9 +344,23 @@ begin
     end;
   end;
 
+  if FItem.isRanged then
+  begin
+    iKnockback := FItem.Knockback;
+    if not FItem.Flags[ IF_SHOTGUN ] then
+      if FItem.Radius > 0 then
+        iKnockback := FItem.Explosion.Knockback
+      else if FItem.Flags[ IF_PIERCEHIT ] then
+        iKnockback := 0;
+    if iKnockback > 0 then
+      AddStat( 'Knockback', IntToStr( iKnockback ) + ' dmg/tile' )
+    else
+      AddStat( 'Knockback', 'None' );
+  end;
+
   // Common stats
   AddStat( 'Move speed', Percent(FItem.MoveMod) );
-  AddStat( 'Knockback', Percent(FItem.KnockMod) );
+  AddStat( 'Knockback mod', Percent(FItem.KnockMod) );
   AddStat( 'Dodge rate', Percent(FItem.DodgeMod) );
 
   FlushStats;
