@@ -24,11 +24,13 @@ program drl;
 uses
   SysUtils,
   {$IFDEF HEAPTRACE}heaptrc,{$ENDIF}
-  vapp, drlapplication;
+  drlapplication;
 
 {$IFDEF WINDOWS}
 {$R drl.rc}
 {$ENDIF}
+
+var Application : TDRLApplication;
 
 begin
   Application := TDRLApplication.Create;

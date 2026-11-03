@@ -402,7 +402,7 @@ begin
   iFontTexture := FTextures.AddImage( 'default_font', iImage, False );
   FTextures[ iFontTexture ].Image.SubstituteColor( ColorBlack, ColorZero );
   FTextures[ iFontTexture ].Upload;
-  Exit( TBitmapFont.CreateFromGrid( iFontTexture, 32, 256-32, 32 ) );
+  Exit( TBitmapFont.CreateFromGrid( FTextures[ iFontTexture ], 32, 256-32, 32 ) );
 end;
 
 procedure TDRLGFXIO.Initialize( aCoreModule : TDRLModule );
@@ -448,7 +448,7 @@ begin
   FTextures[ iFontTexture ].Image.SubstituteColor( ColorBlack, ColorZero );
   FTextures[ iFontTexture ].Upload;
 
-  iFont := TBitmapFont.CreateFromGrid( iFontTexture, 32, 256-32, 32 );
+  iFont := TBitmapFont.CreateFromGrid( FTextures[ iFontTexture ], 32, 256-32, 32 );
 
   RecalculateScaling( True );
 
