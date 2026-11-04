@@ -15,7 +15,9 @@ uses vrltools, vtextmap, vioevent, vio, viotypes, vluamapnode, vlua,
 // Architectural boundary: owns the concrete text rendering and animation
 // backend. Gameplay policy belongs outside this adapter.
 type TDRLTextIO = class( TDRLIO, ITextMap )
-    constructor Create( aSettings : TDRLConfiguration; aConfig : TDRLConfig ); reintroduce;
+    // Creates the console driver the constructor takes ownership of.
+    class function CreateDriver : TIODriver;
+    constructor Create( aDriver : TIODriver; aSettings : TDRLConfiguration; aConfig : TDRLConfig ); reintroduce;
     procedure Reset; override;
     procedure PaceMultiMove; override;
     procedure Initialize( aCoreModule : TDRLModule ); override;
@@ -70,17 +72,25 @@ const IntuitionChar  = '*';
       // Milliseconds each multi-move step shows for.
       MultiMoveDelay = 20;
 
-constructor TDRLTextIO.Create( aSettings : TDRLConfiguration; aConfig : TDRLConfig );
+class function TDRLTextIO.CreateDriver : TIODriver;
 begin
+  {$IFDEF WINDOWS}
+  Result := TTextIODriver.Create( 80, 25 );
+  {$ELSE}
+  Result := TCursesIODriver.Create( 80, 25 );
+  {$ENDIF}
+  if (Result.GetSizeX < 80) or (Result.GetSizeY < 25) then
+  begin
+    FreeAndNil( Result );
+    raise EIOException.Create('Too small console available, resize your console to 80x25!');
+  end;
+end;
+
+constructor TDRLTextIO.Create( aDriver : TIODriver; aSettings : TDRLConfiguration; aConfig : TDRLConfig );
+begin
+  FIODriver     := aDriver;
   FTextMap      := nil;
   FSpriteSheets := -1;
-  {$IFDEF WINDOWS}
-  FIODriver := TTextIODriver.Create( 80, 25 );
-  {$ELSE}
-  FIODriver := TCursesIODriver.Create( 80, 25 );
-  {$ENDIF}
-  if (FIODriver.GetSizeX < 80) or (FIODriver.GetSizeY < 25) then
-    raise EIOException.Create('Too small console available, resize your console to 80x25!');
   inherited Create( aSettings, aConfig );
 end;
 

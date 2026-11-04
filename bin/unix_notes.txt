@@ -1,4 +1,5 @@
-To run doomrl you'll need lua5.1, timidity, sdl and sdl_mixer installed.
+To run DRL you'll need SDL 3.4 or newer (libSDL3.so.0) installed. Sound uses
+FMOD (libfmod.so), which must be on the library path.
 
 Known issues with Unix (Linux, FreeBSD) DoomRL versions:
 

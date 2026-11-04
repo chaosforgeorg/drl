@@ -44,7 +44,7 @@ begin
 
   if ForceNoAudio then FSoundEngine := 'NONE';
   if FSoundEngine = 'DEFAULT' then
-     FSoundEngine := {$IFDEF WINDOWS}'FMOD'{$ELSE}'SDL'{$ENDIF};
+     FSoundEngine := 'FMOD';
   if (FSoundEngine <> 'FMOD') and (FSoundEngine <> 'SDL') then
      FSoundEngine := 'NONE';
 

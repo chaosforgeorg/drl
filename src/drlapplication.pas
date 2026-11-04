@@ -154,9 +154,11 @@ end;
 
 destructor TDRLRuntime.Destroy;
 begin
-  ReleaseSession;
+  // IO is nil when CreateIO failed during construction; no session or IO
+  // bindings exist then.
+  if IO <> nil then ReleaseSession;
   UnloadGameData;
-  IO.BindStore( nil );
+  if IO <> nil then IO.BindStore( nil );
   FreeAndNil(FModErrors);
   FreeAndNil(FModules);
   inherited Destroy;
@@ -179,10 +181,14 @@ end;
 
 function TDRLRuntime.CreateIO : TIORL;
 begin
+  // The driver is created first, so a driver failure leaves no partially
+  // constructed IO. The IO owns the driver from its constructor onward.
   if GraphicsVersion then
-    Result := TDRLGFXIO.Create( Self.Configuration as TDRLConfiguration, Config )
+    Result := TDRLGFXIO.Create( TDRLGFXIO.CreateDriver( Self.Configuration as TDRLConfiguration ),
+      Self.Configuration as TDRLConfiguration, Config )
   else
-    Result := TDRLTextIO.Create( Self.Configuration as TDRLConfiguration, Config );
+    Result := TDRLTextIO.Create( TDRLTextIO.CreateDriver,
+      Self.Configuration as TDRLConfiguration, Config );
 end;
 
 function TDRLRuntime.CreateLua : TLua;
