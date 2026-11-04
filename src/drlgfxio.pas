@@ -483,6 +483,7 @@ begin
   FMinimap.SetOpacity( iOpacity );
   UpdateMinimap;
 
+  ApplyWindowSettings;
   RecalculateScaling( False );
   DeviceChanged;
   TGLConsoleRenderer( FConsole ).HideCursor;
