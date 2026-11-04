@@ -166,7 +166,7 @@ makefile = {
 			exec = { "drl" },
 			files = { "config.lua", "font.dat" },
 			os = {
-				WINDOWS = { "fmod64.dll", "lua5.1.dll", "SDL3.dll", "SDL3_image.dll", "drl_console.bat" },
+				WINDOWS = { "fmod64.dll", "lua5.1.dll", "SDL3.dll", "drl_console.bat" },
 				LINUX   = { "unix_notes.txt", "drl_gnome-terminal", "drl_konsole", "drl_xterm", dos2unix = true, },
 				MACOSX  = { "unix_notes.txt" },
 			},
@@ -181,7 +181,7 @@ makefile = {
 			exec = { "drl" },
 			files = { "config.lua", "font.dat" },
 			os = {
-				WINDOWS = { "fmod64.dll", "lua5.1.dll", "SDL3.dll", "SDL3_image.dll", "drl_console.bat" },
+				WINDOWS = { "fmod64.dll", "lua5.1.dll", "SDL3.dll", "drl_console.bat" },
 				LINUX   = { "unix_notes.txt", "drl_gnome-terminal", "drl_konsole", "drl_xterm",  dos2unix = true, },
 				MACOSX  = { "unix_notes.txt" },
 			},
@@ -196,8 +196,8 @@ makefile = {
 			exec = { "drl" },
 			files = { "config.lua", "font.dat" },
 			os = {
-				WINDOWS = { "steam_api64.dll", "fmod64.dll", "lua5.1.dll", "SDL3.dll", "SDL3_image.dll", "drl_console.bat" },
-				LINUX   = { "libsteam_api.so", "libfmod.so", "libSDL3.so.0.4.2", "libSDL3_image.so.0.4.0", "run_jhc.sh" },
+				WINDOWS = { "steam_api64.dll", "fmod64.dll", "lua5.1.dll", "SDL3.dll", "drl_console.bat" },
+				LINUX   = { "libsteam_api.so", "libfmod.so", "libSDL3.so.0", "run_jhc.sh" },
 				MACOSX  = { "unix_notes.txt" },
 			},
 			other = { "jhc.wad", "core.wad", "version.txt" },
@@ -324,14 +324,13 @@ makefile = {
 		dmg_size   = 128000,
 		app_icon   = "bin/iconfile.icns",
 		app_bg     = "background.png",
+		-- Untested. SDL3.framework is the macos-arm64_x86_64 slice of
+		-- SDL3.xcframework from the official SDL3 release .dmg. The executable
+		-- loads every library at runtime from Contents/Frameworks.
 		app_fworks = {
-			"Frameworks/SDL.framework",
-			"Frameworks/SDL_image.framework",
-			"Frameworks/SDL_mixer.framework",
+			"Frameworks/SDL3.framework",
+			"Frameworks/libfmod.dylib",
 		},
-		app_exefix = function( file )
-			os.execute("install_name_tool -change @rpath/SDL.framework/Versions/A/SDL @executable_path/../Frameworks/SDL.framework/Versions/A/SDL "..file )
-		end,
 
 	}
 }
