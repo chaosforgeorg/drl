@@ -25,7 +25,7 @@ end;
 
 implementation
 
-uses SysUtils, drlkeybindings, drluibindings;
+uses SysUtils, vio, drlkeybindings, drluibindings;
 
 constructor TDRLConfiguration.Create;
 var iGroup : TConfigurationGroup;
@@ -73,14 +73,8 @@ begin
     ;
 
   iGroup := AddGroup( 'display' );
-  iGroup.AddInteger( 'display_mode', 0 );
-  iGroup.AddInteger( 'screen_width', 0 );
-  iGroup.AddInteger( 'screen_height', 0 );
-
-  iGroup.AddToggle( 'fullscreen', True )
-    .SetName('Fullscreen')
-    .SetDescription('Set to {!Disabled} to make the game launch in windowed mode.')
-    ;
+  // fullscreen, window_width, window_height; kept in step by the IO.
+  TIO.RegisterWindowSettings( iGroup );
 
   iGroup.AddInteger( 'font_multiplier', 0 )
     .SetRange(0,4)

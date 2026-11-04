@@ -89,8 +89,7 @@ type
     procedure DrawHUD; override;
     function ReadDefaultFont : TBitmapFont;
     procedure ExplosionMark( aCoord : TCoord2D; aColor : Byte; aDuration : DWord; aDelay : DWord ); override;
-    function FullScreenCallback( aEvent : TIOEvent ) : Boolean;
-    procedure ResetVideoMode;
+    procedure DisplayChanged( const aMetrics : TIODisplayMetrics ); override;
     procedure RecalculateScaling( aInitialize : Boolean );
     procedure CalculateConsoleParams;
     procedure SetMinimapScale( aScale : Byte );
@@ -113,7 +112,6 @@ type
     FCellY       : Integer;
     FFontSizeX   : Integer;
     FFontSizeY   : Integer;
-    FFullscreen  : Boolean;
 
     FGPLeft      : TVec2f;
     FGPRight     : TVec2f;
@@ -166,11 +164,14 @@ uses {$IFDEF WINDOWS}windows,{$ENDIF}
 procedure TDRLGFXIO.RecalculateScaling( aInitialize : Boolean );
 var iWidth        : Integer;
     iHeight       : Integer;
+    iDisplay      : TIOPoint;
     iOldFontMult  : Integer;
     iOldMiniScale : Integer;
 begin
   iWidth      := FIODriver.GetSizeX;
   iHeight     := FIODriver.GetSizeY;
+  // Automatic follows the display, so resizing the window keeps it.
+  iDisplay    := TSDLIODriver( FIODriver ).DisplaySize;
   iOldFontMult  := FFontMult;
   iOldMiniScale := FMiniScale;
   FFontMult   := FUserConfig.GetInteger( 'font_multiplier' );
@@ -181,22 +182,25 @@ begin
   begin
     if FFontSizeX = 8 then
     begin
-      if (iWidth >= 1920) and (iHeight >= 1080)
+      if (iDisplay.X >= 1920) and (iDisplay.Y >= 1080)
         then FFontMult := 3
         else FFontMult := 2;
     end
     else
-      if (iWidth >= 1600) and (iHeight >= 900)
+      if (iDisplay.X >= 1600) and (iDisplay.Y >= 900)
         then FFontMult := 2
         else FFontMult := 1;
   end;
+  // A window too small for the console drops to the largest scale that fits.
+  FFontMult := TGLConsoleRenderer.FitScale( FFontMult, vutil.Point( FConsoleSizeX, FConsoleSizeY ),
+    vutil.Point( FFontSizeX, FFontSizeY ), vutil.Point( iWidth, iHeight - 2 * FVPadding ) );
   if FTileMult  = 0 then
-    if (iWidth >= 1050) and (iHeight >= 1050)
+    if (iDisplay.X >= 1050) and (iDisplay.Y >= 1050)
       then FTileMult := 3
       else FTileMult := 1;
   if FMiniScale = 0 then
   begin
-    FMiniScale := iWidth div 220;
+    FMiniScale := iDisplay.X div 220;
     FMiniScale := Max( 3, FMiniScale );
     FMiniScale := Min(10, FMiniScale );
   end
@@ -229,7 +233,7 @@ begin
 end;
 
 class function TDRLGFXIO.CreateDriver( aSettings : TDRLConfiguration ) : TSDLIODriver;
-var iSDLFlags : TSDLIOFlags;
+var iSetup : TIOWindowSetup;
 begin
   {$IFDEF WINDOWS}
   if not GodMode then
@@ -241,31 +245,16 @@ begin
     Logger.AddSink( TConsoleLogSink.Create( LOGDEBUG, True ) );
   end;
   {$ENDIF}
-  iSDLFlags := [ SDLIO_OpenGL ];
-  if aSettings.GetBoolean( 'fullscreen' ) and not ForceWindowed then
-    Include( iSDLFlags, SDLIO_Fullscreen );
-  Result := TSDLIODriver.Create( aSettings.GetInteger( 'screen_width' ),
-    aSettings.GetInteger( 'screen_height' ), 32, iSDLFlags );
+  iSetup := TIO.WindowSetup( aSettings );
+  if ForceWindowed then iSetup.Fullscreen := False;
+  // The launcher console; Initialize sets the module's.
+  iSetup.MinimumPixels := vutil.Point( 80 * 10, 25 * 19 );
+  Result := TSDLIODriver.CreateWindow( iSetup, False );
 end;
 
 constructor TDRLGFXIO.Create( aDriver : TSDLIODriver; aSettings : TDRLConfiguration; aConfig : TDRLConfig );
-var iMode       : TIODisplayMode;
-    iWidth      : Integer;
-    iHeight     : Integer;
 begin
   FIODriver   := aDriver;
-  FFullscreen := aSettings.GetBoolean( 'fullscreen' );
-  if ForceWindowed then FFullscreen := False;
-  iWidth      := aSettings.GetInteger( 'screen_width' );
-  iHeight     := aSettings.GetInteger( 'screen_height' );
-
-  begin
-    Log('Display modes (%d)', [FIODriver.DisplayModes.Size] );
-    Log('-------');
-    for iMode in FIODriver.DisplayModes do
-      Log('%d x %d @%d', [ iMode.Width, iMode.Height, iMode.Refresh ] );
-    Log('-------');
-  end;
 
   FTextures  := TTextureManager.Create( False );
   TSDLIODriver( FIODriver ).ShowMouse( False );
@@ -277,12 +266,13 @@ begin
   FQuadRenderer := TGLQuadRenderer.Create;
 
   FAnimations := TAnimationManager.Create;
-  FSpriteMap  := TDRLSpriteMap.Create( Self, FTextures, FMCursor, FAnimations, Vec2i( iWidth, iHeight ) );
+  FSpriteMap  := TDRLSpriteMap.Create( Self, FTextures, FMCursor, FAnimations, Vec2i( FIODriver.GetSizeX, FIODriver.GetSizeY ) );
   FMinimap    := TMinimap.Create;
   inherited Create( aSettings, aConfig );
   FParticleEngine := TParticleEngine.Create( VisualRNG );
   FSpriteMap.Glow := FSettings.Glow;
   TSDLIODriver( FIODriver ).MouseSupport := FSettings.Mouse;
+  BindWindowSettings( aSettings );
 end;
 
 procedure TDRLGFXIO.PrepareGraphics;
@@ -458,6 +448,14 @@ begin
 
   iFont := TBitmapFont.CreateFromGrid( FTextures[ iFontTexture ], 32, 256-32, 32 );
 
+  TSDLIODriver( FIODriver ).SetMinimumPixels( vutil.Point( FConsoleSizeX * FFontSizeX,
+    FConsoleSizeY * FFontSizeY + 2 * FVPadding ) );
+  // Steam Deck is fullscreen only, so its settings do not offer the toggle.
+  if Store.IsSteamDeck then
+  begin
+    TSDLIODriver( FIODriver ).AllowWindowed := False;
+    FUserConfig.CastBoolean( 'fullscreen' ).SetName( '' );
+  end;
   RecalculateScaling( True );
 
   CalculateConsoleParams;
@@ -477,27 +475,15 @@ begin
 end;
 
 procedure TDRLGFXIO.DoReconfigure( aConfig : TLuaConfig );
-var iWidth   : Integer;
-    iHeight  : Integer;
-    iOpacity : Integer;
+var iOpacity : Integer;
 begin
   FadeReset;
   FSpriteMap.Glow := FSettings.Glow;
-  iWidth  := FUserConfig.GetInteger('screen_width');
-  iHeight := FUserConfig.GetInteger('screen_height');
   iOpacity:= FUserConfig.GetInteger( 'minimap_opacity' );
   FMinimap.SetOpacity( iOpacity );
   UpdateMinimap;
 
-  if ( ( iWidth > 0 ) and ( iWidth <> FIODriver.GetSizeX ) ) or
-     ( ( iHeight > 0 ) and ( iHeight <> FIODriver.GetSizeY ) ) or
-     ( ( not ForceWindowed) and  ( FUserConfig.GetBoolean('fullscreen') <> FFullscreen ) ) then
-  begin
-    FFullscreen := FUserConfig.GetBoolean('fullscreen');
-    ResetVideoMode;
-  end
-  else
-    RecalculateScaling( False );
+  RecalculateScaling( False );
   DeviceChanged;
   TGLConsoleRenderer( FConsole ).HideCursor;
   TSDLIODriver(FIODriver).GamePadSupport := Store.IsSteamDeck or FUserConfig.GetBoolean( 'enable_gamepad' );
@@ -880,9 +866,6 @@ end;
 procedure TDRLGFXIO.Configure( aConfig : TDRLConfig; aReload : Boolean );
 begin
   inherited Configure( aConfig, aReload );
-
-  FIODriver.RegisterInterrupt( IOKeyCode( VKEY_ENTER, [ VKMOD_ALT ] ), @FullScreenCallback );
-  FIODriver.RegisterInterrupt( IOKeyCode( VKEY_F12, [ VKMOD_CTRL ] ), @FullScreenCallback );
   DeviceChanged;
 end;
 
@@ -1069,32 +1052,22 @@ begin
   if  FPostSheet <> nil             then FQuadRenderer.Render( FPostSheet );
 end;
 
-procedure TDRLGFXIO.ResetVideoMode;
-var iSDLFlags   : TSDLIOFlags;
-    iWidth      : Integer;
-    iHeight     : Integer;
+// The console keeps its size; only its scale and placement follow the drawable.
+procedure TDRLGFXIO.DisplayChanged( const aMetrics : TIODisplayMetrics );
 begin
-  iSDLFlags := [ SDLIO_OpenGL ];
-  iWidth    := FUserConfig.GetInteger('screen_width');
-  iHeight   := FUserConfig.GetInteger('screen_height');
-  if FFullscreen then Include( iSDLFlags, SDLIO_Fullscreen );
-  TSDLIODriver(FIODriver).ResetVideoMode( iWidth, iHeight, 32, iSDLFlags );
   RecalculateScaling( True );
-  CalculateConsoleParams;
-  TGLConsoleRenderer( FConsole ).SetPositionScale( (FIODriver.GetSizeX - FConsoleSizeX*FFontSizeX*FFontMult) div 2, 0, FLineSpace, FFontMult );
-  TGLConsoleRenderer( FConsole ).HideCursor;
+  // No console between the launcher and Initialize.
+  if FConsole <> nil then
+  begin
+    CalculateConsoleParams;
+    TGLConsoleRenderer( FConsole ).SetPositionScale( (FIODriver.GetSizeX - FConsoleSizeX*FFontSizeX*FFontMult) div 2, 0, FLineSpace, FFontMult );
+    TGLConsoleRenderer( FConsole ).HideCursor;
+    DeviceChanged;
+  end;
   SetMinimapScale(FMiniScale);
-  DeviceChanged;
   FSpriteMap.Recalculate( FTileScale, FFontMult, FScaledScreen );
   if Player <> nil then
     FSpriteMap.NewShift := FSpriteMap.ShiftValue( Player.Position );
-end;
-
-function TDRLGFXIO.FullScreenCallback ( aEvent : TIOEvent ) : Boolean;
-begin
-  FFullscreen := not TSDLIODriver(FIODriver).FullScreen;
-  ResetVideoMode;
-  Exit( True );
 end;
 
 procedure TDRLGFXIO.CalculateConsoleParams;

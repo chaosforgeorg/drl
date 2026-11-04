@@ -154,6 +154,10 @@ end;
 
 destructor TDRLRuntime.Destroy;
 begin
+  // The IO keeps the window mode and size in the user settings, which also
+  // change outside the settings view (Alt+Enter, resizing).
+  if ( IO <> nil ) and GraphicsVersion then
+    ( Configuration as TDRLConfiguration ).Write( Paths.SettingsPath );
   // IO is nil when CreateIO failed during construction; no session or IO
   // bindings exist then.
   if IO <> nil then ReleaseSession;
