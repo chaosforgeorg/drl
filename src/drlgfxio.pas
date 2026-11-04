@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlgfxio;
 interface
 uses vglquadrenderer, vgltypes, vluaconfig, vioevent, viotypes, vimage,
-     vrltools, vutil, vtextures, vvector, vbitmapfont, vio, vparticleengine, vluamapnode, vlua, vdf,
+     vrltools, vutil, vtextures, vvector, vbitmapfont, vio, vsdlio, vparticleengine, vluamapnode, vlua, vdf,
      drlio, drlspritemapbase, drlspritemap, drlanimation, drlminimap, dfdata, dfthing, dflevel, drlconfig, drlconfiguration, drlmodule;
 
 type
@@ -18,7 +18,9 @@ type
 // animation backend. Gameplay policy belongs outside this adapter.
 
  TDRLGFXIO = class( TDRLIO )
-    constructor Create( aSettings : TDRLConfiguration; aConfig : TDRLConfig ); reintroduce;
+    // Creates the SDL driver the constructor takes ownership of.
+    class function CreateDriver( aSettings : TDRLConfiguration ) : TSDLIODriver;
+    constructor Create( aDriver : TSDLIODriver; aSettings : TDRLConfiguration; aConfig : TDRLConfig ); reintroduce;
     procedure Reset; override;
     procedure SetLevel( aLevel : TLuaMapNode ); override;
     procedure EnterLevel( aCoord : TCoord2D ); override;
@@ -156,7 +158,7 @@ implementation
 uses {$IFDEF WINDOWS}windows,{$ENDIF}
      classes, sysutils, math,
      vdebug, vlog, vmath, vgl3library, vuid, vvision, vrandom, vlualibrary, vluagamestack,
-     vglimage, vsdlio, vcolor, vglconsole, vioconsole,
+     vglimage, vcolor, vglconsole, vioconsole,
      vtig, vtigstyle, vtigio,
      dfitem, drlcontrollerbindings;
 
@@ -226,11 +228,8 @@ begin
   end;
 end;
 
-constructor TDRLGFXIO.Create( aSettings : TDRLConfiguration; aConfig : TDRLConfig );
-var iSDLFlags   : TSDLIOFlags;
-    iMode       : TIODisplayMode;
-    iWidth      : Integer;
-    iHeight     : Integer;
+class function TDRLGFXIO.CreateDriver( aSettings : TDRLConfiguration ) : TSDLIODriver;
+var iSDLFlags : TSDLIOFlags;
 begin
   {$IFDEF WINDOWS}
   if not GodMode then
@@ -242,14 +241,23 @@ begin
     Logger.AddSink( TConsoleLogSink.Create( LOGDEBUG, True ) );
   end;
   {$ENDIF}
+  iSDLFlags := [ SDLIO_OpenGL ];
+  if aSettings.GetBoolean( 'fullscreen' ) and not ForceWindowed then
+    Include( iSDLFlags, SDLIO_Fullscreen );
+  Result := TSDLIODriver.Create( aSettings.GetInteger( 'screen_width' ),
+    aSettings.GetInteger( 'screen_height' ), 32, iSDLFlags );
+end;
+
+constructor TDRLGFXIO.Create( aDriver : TSDLIODriver; aSettings : TDRLConfiguration; aConfig : TDRLConfig );
+var iMode       : TIODisplayMode;
+    iWidth      : Integer;
+    iHeight     : Integer;
+begin
+  FIODriver   := aDriver;
   FFullscreen := aSettings.GetBoolean( 'fullscreen' );
   if ForceWindowed then FFullscreen := False;
   iWidth      := aSettings.GetInteger( 'screen_width' );
   iHeight     := aSettings.GetInteger( 'screen_height' );
-
-  iSDLFlags := [ SDLIO_OpenGL ];
-  if FFullscreen then Include( iSDLFlags, SDLIO_Fullscreen );
-  FIODriver := TSDLIODriver.Create( iWidth, iHeight, 32, iSDLFlags );
 
   begin
     Log('Display modes (%d)', [FIODriver.DisplayModes.Size] );
