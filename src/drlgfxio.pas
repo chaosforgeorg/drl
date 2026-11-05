@@ -89,8 +89,8 @@ type
     procedure DrawHUD; override;
     function ReadDefaultFont : TBitmapFont;
     procedure ExplosionMark( aCoord : TCoord2D; aColor : Byte; aDuration : DWord; aDelay : DWord ); override;
-    procedure DisplayChanged( const aMetrics : TIODisplayMetrics ); override;
-    procedure RecalculateScaling( aInitialize : Boolean );
+    procedure DisplayChanged; override;
+    procedure RecalculateScaling;
     procedure CalculateConsoleParams;
     procedure SetMinimapScale( aScale : Byte );
   private
@@ -161,19 +161,16 @@ uses {$IFDEF WINDOWS}windows,{$ENDIF}
      dfitem, drlcontrollerbindings;
 
 
-procedure TDRLGFXIO.RecalculateScaling( aInitialize : Boolean );
+// Scales from the settings and the drawable; DisplayChanged applies them.
+procedure TDRLGFXIO.RecalculateScaling;
 var iWidth        : Integer;
     iHeight       : Integer;
     iDisplay      : TIOPoint;
-    iOldFontMult  : Integer;
-    iOldMiniScale : Integer;
 begin
   iWidth      := FIODriver.GetSizeX;
   iHeight     := FIODriver.GetSizeY;
   // Automatic follows the display, so resizing the window keeps it.
   iDisplay    := TSDLIODriver( FIODriver ).DisplaySize;
-  iOldFontMult  := FFontMult;
-  iOldMiniScale := FMiniScale;
   FFontMult   := FUserConfig.GetInteger( 'font_multiplier' );
   FTileMult   := FUserConfig.GetInteger( 'tile_multi' );
   FMiniScale  := FUserConfig.GetInteger( 'minimap_multi' );
@@ -215,21 +212,6 @@ begin
   if FTileMult = 1 then FTileScale := 1.0;
   if FTileMult = 2 then FTileScale := 1.5;
   FScaledScreen.Init( Round( iWidth / FTileScale ), Round( iHeight / FTileScale ) );
-
-  if aInitialize then Exit;
-
-  if FMiniScale <> iOldMiniScale then
-    SetMinimapScale( FMiniScale );
-
-  FSpriteMap.Recalculate( FTileScale, FFontMult, FScaledScreen );
-  if Player <> nil then
-    FSpriteMap.NewShift := FSpriteMap.ShiftValue( Player.Position );
-
-  if FFontMult <> iOldFontMult then
-  begin
-    CalculateConsoleParams;
-    TGLConsoleRenderer( FConsole ).SetPositionScale( (FIODriver.GetSizeX - FConsoleSizeX*FFontSizeX*FFontMult) div 2, 0, FLineSpace, FFontMult );
-  end;
 end;
 
 class function TDRLGFXIO.CreateDriver( aSettings : TDRLConfiguration ) : TSDLIODriver;
@@ -450,13 +432,7 @@ begin
 
   TSDLIODriver( FIODriver ).SetMinimumPixels( vutil.Point( FConsoleSizeX * FFontSizeX,
     FConsoleSizeY * FFontSizeY + 2 * FVPadding ) );
-  // Steam Deck is fullscreen only, so its settings do not offer the toggle.
-  if Store.IsSteamDeck then
-  begin
-    TSDLIODriver( FIODriver ).AllowWindowed := False;
-    FUserConfig.CastBoolean( 'fullscreen' ).SetName( '' );
-  end;
-  RecalculateScaling( True );
+  RecalculateScaling;
 
   CalculateConsoleParams;
   iRenderer := TGLConsoleRenderer.Create( FIODriver, iFont, FConsoleSizeX, FConsoleSizeY, FLineSpace, [VIO_CON_CURSOR, VIO_CON_BGCOLOR, VIO_CON_EXTCOLOR ] );
@@ -483,10 +459,7 @@ begin
   FMinimap.SetOpacity( iOpacity );
   UpdateMinimap;
 
-  ApplyWindowSettings;
-  RecalculateScaling( False );
-  DeviceChanged;
-  TGLConsoleRenderer( FConsole ).HideCursor;
+  ApplyDisplaySettings;
   TSDLIODriver(FIODriver).GamePadSupport := Store.IsSteamDeck or FUserConfig.GetBoolean( 'enable_gamepad' );
   TSDLIODriver(FIODriver).MouseSupport := FSettings.Mouse;
   if not FSettings.Mouse then FMCursor.Active := False;
@@ -1054,15 +1027,14 @@ begin
 end;
 
 // The console keeps its size; only its scale and placement follow the drawable.
-procedure TDRLGFXIO.DisplayChanged( const aMetrics : TIODisplayMetrics );
+procedure TDRLGFXIO.DisplayChanged;
 begin
-  RecalculateScaling( True );
+  RecalculateScaling;
   // No console between the launcher and Initialize.
   if FConsole <> nil then
   begin
     CalculateConsoleParams;
     TGLConsoleRenderer( FConsole ).SetPositionScale( (FIODriver.GetSizeX - FConsoleSizeX*FFontSizeX*FFontMult) div 2, 0, FLineSpace, FFontMult );
-    TGLConsoleRenderer( FConsole ).HideCursor;
     DeviceChanged;
   end;
   SetMinimapScale(FMiniScale);
@@ -1303,7 +1275,7 @@ procedure TDRLGFXIO.RunLauncherLayer( aLayer : TIOLayer );
 var iRenderer : TGLConsoleRenderer;
     iTIGStyle : TTIGStyle;
 begin
-  RecalculateScaling( True );
+  RecalculateScaling;
   FConsoleSizeY := 25;
   FFontSizeY    := 19;
   FConsoleSizeX := 80;
