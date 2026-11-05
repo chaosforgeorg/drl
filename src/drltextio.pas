@@ -57,11 +57,6 @@ type TDRLTextIO = class( TDRLIO, ITextMap )
 implementation
 
 uses sysutils,
-     {$IFDEF WINDOWS}
-     vtextio, vtextconsole,
-     {$ELSE}
-     vcursesio, vcursesconsole,
-     {$ENDIF}
      vioconsole, vtig, vvision, vutil, vlualibrary, vluagamestack,
      drlanimation,
      dfbeing, dfitem;
@@ -74,16 +69,7 @@ const IntuitionChar  = '*';
 
 class function TDRLTextIO.CreateDriver : TIODriver;
 begin
-  {$IFDEF WINDOWS}
-  Result := TTextIODriver.Create( 80, 25 );
-  {$ELSE}
-  Result := TCursesIODriver.Create( 80, 25 );
-  {$ENDIF}
-  if (Result.GetSizeX < 80) or (Result.GetSizeY < 25) then
-  begin
-    FreeAndNil( Result );
-    raise EIOException.Create('Too small console available, resize your console to 80x25!');
-  end;
+  Result := CreateTerminalDriver( 80, 25 );
 end;
 
 constructor TDRLTextIO.Create( aDriver : TIODriver; aSettings : TDRLConfiguration; aConfig : TDRLConfig );
@@ -107,14 +93,8 @@ begin
 end;
 
 procedure TDRLTextIO.Initialize( aCoreModule : TDRLModule );
-var iRenderer : TIOConsoleRenderer;
 begin
-  {$IFDEF WINDOWS}
-  iRenderer := TTextConsoleRenderer.Create( 80, 25, [VIO_CON_BGCOLOR, VIO_CON_CURSOR] );
-  {$ELSE}
-  iRenderer := TCursesConsoleRenderer.Create( 80, 25, [VIO_CON_BGCOLOR, VIO_CON_CURSOR] );
-  {$ENDIF}
-  inherited Initialize( iRenderer );
+  inherited Initialize( CreateTerminalRenderer( 80, 25 ) );
   FTextMap       := TTextMap.Create( FConsole, Rectangle( 2,3,MAXX,MAXY ) );
 end;
 
@@ -253,14 +233,8 @@ begin
 end;
 
 procedure TDRLTextIO.RunLauncherLayer( aLayer : TIOLayer );
-var iRenderer : TIOConsoleRenderer;
 begin
-  {$IFDEF WINDOWS}
-  iRenderer := TTextConsoleRenderer.Create( 80, 25, [VIO_CON_BGCOLOR, VIO_CON_CURSOR] );
-  {$ELSE}
-  iRenderer := TCursesConsoleRenderer.Create( 80, 25, [VIO_CON_BGCOLOR, VIO_CON_CURSOR] );
-  {$ENDIF}
-  inherited Initialize( iRenderer );
+  inherited Initialize( CreateTerminalRenderer( 80, 25 ) );
   inherited RunLauncherLayer( aLayer );
   inherited Initialize( TIOConsoleRenderer( nil ) );
   Reset;
