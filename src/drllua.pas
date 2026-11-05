@@ -334,6 +334,7 @@ begin
   iTop := lua_gettop( L );
   if iTop > 2 then
   begin
+    Initialize( iParams );
     SetLength( iParams, iTop - 2 );
     for i := 3 to iTop do
     begin

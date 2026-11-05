@@ -123,6 +123,7 @@ var iEmitters : array of Integer;
 begin
   UpdateBindings( nil );
   if FEngine = nil then Exit;
+  System.Initialize( iEmitters );
   SetLength( iEmitters, FBindingCount );
   for i := 0 to FBindingCount - 1 do
     iEmitters[i] := FBindings[i].PoolIndex;
