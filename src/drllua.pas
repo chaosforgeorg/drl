@@ -58,7 +58,7 @@ TDRLLua = class(TLua)
 implementation
 
 uses typinfo, variants,
-     vdebug, vluatools, vluadungen, vluaentitynode, vluatype, vtigstyle, vparticleengine,
+     vdebug, vluatools, vluadungen, vluaentitynode, vtigstyle, vparticleengine,
      dfplayer, dflevel, drlhooks;
 
 function lua_statistics_get_date(L: Plua_State): Integer; cdecl;

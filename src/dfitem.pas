@@ -115,7 +115,7 @@ procedure SwapItem(var a, b: TItem);
 
 implementation
 
-uses vluaentitynode, vutil, vdebug, vmath,
+uses vluaentitynode, vutil, vdebug,
      dfbeing, drllua, drlhooks;
 
 procedure SwapItem(var a, b: TItem);
@@ -416,7 +416,6 @@ end;
 
 function TItem.GetFirstPerkDescription : AnsiString;
 var iPerks : TPerkList;
-    i      : Integer;
 begin
   GetFirstPerkDescription := '';
   if FPerks <> nil then

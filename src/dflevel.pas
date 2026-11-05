@@ -1525,7 +1525,6 @@ procedure TLevel.NukeRun;
 var iCount     : Integer;
     iExplosion : TExplosionData;
 begin
-  Initialize( iExplosion );
   iExplosion := Default( TExplosionData );
   iExplosion.Range      := 8;
   iExplosion.Delay      := 10;
@@ -1941,7 +1940,7 @@ begin
   end;
 
   iTable := iState.ToTable( iTableIndex );
-  Initialize( iData );
+  iData  := Default( TExplosionData );
   ReadExplosion( iLevel.Context.Lua, iTable, iData );
   iTable.Free;
 

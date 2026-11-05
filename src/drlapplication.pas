@@ -99,7 +99,7 @@ implementation
 
 uses {$IFDEF WINDOWS}windows,{$ENDIF}
      {$IFDEF WINDOWS}vos,{$ENDIF} vdebug, vlog, vluastate, vluastore,
-     dfmap, drlconfiguration, drlgfxio, drlhooks, drllua, drltextio, drlworkshop;
+     drlconfiguration, drlgfxio, drlhooks, drllua, drltextio, drlworkshop;
 
 type TDRLConfigurationState = class( TDRLConfiguration )
   private

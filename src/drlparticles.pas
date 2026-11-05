@@ -46,7 +46,7 @@ type
       aSpreadScale : Single );
 
     // Save/Load
-    procedure WriteToStream( aStream : TStream );
+    procedure WriteToStream( aStream : TStream ); override;
     procedure ReadFromStream( aStream : TStream );
 
   private

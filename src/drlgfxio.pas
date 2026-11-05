@@ -155,7 +155,7 @@ implementation
 
 uses {$IFDEF WINDOWS}windows,{$ENDIF}
      classes, sysutils, math,
-     vdebug, vlog, vmath, vgl3library, vuid, vvision, vrandom, vlualibrary, vluagamestack,
+     vdebug, vlog, vmath, vgl3library, vuid, vvision, vlualibrary, vluagamestack,
      vglimage, vcolor, vglconsole, vioconsole,
      vtig, vtigstyle, vtigio,
      dfitem, drlcontrollerbindings;

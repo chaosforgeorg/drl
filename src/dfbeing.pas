@@ -1407,7 +1407,6 @@ var iLevel       : TLevel;
     iShotCost    : Integer;
     iShotsCost   : Integer;
     iFreeShot    : Boolean;
-    iResult      : Boolean;
     iSecond      : Boolean;
     iTargetBeing : TBeing;
 begin
@@ -3388,8 +3387,7 @@ begin
   iTargetUID := 0;
   if iTarget <> nil then iTargetUID := iTarget.UID;
   if not iState.IsTable( 3 ) then Exit( 0 );
-  FillChar( iSprite, SizeOf( iSprite), 0 );
-  Initialize( iSprite );
+  iSprite := Default( TSprite );
   iTable := iState.ToTable( 3 );
   try
     if ReadSprite( iTable, iSprite )

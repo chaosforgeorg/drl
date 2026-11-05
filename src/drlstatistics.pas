@@ -6,7 +6,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drlstatistics;
 interface
-uses classes, vutil, vnode, dfdata, dfbeing;
+uses classes, vnode, dfdata, dfbeing;
 
 type TStatistics = class(TVObject)
   constructor Create;

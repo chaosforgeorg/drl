@@ -287,8 +287,8 @@ procedure EmitCrashInfo( const aInfo : AnsiString; aInGame : Boolean  );
 implementation
 
 uses math, video, dateutils,
-     vsound, vlualibrary, vluastate, vuid, vlog, vdebug, vmath, vsdlio, vglconsole, vtig, vtigio, vvector,
-     drluibindings, drlmoreview, drlchoiceview, drlmodulechoiceview, drlhudviews, drlplotview, drlplayerview;
+     vsound, vlualibrary, vluastate, vuid, vlog, vdebug, vmath, vglconsole, vtig, vtigio, vvector,
+     drluibindings, drlmoreview, drlchoiceview, drlmodulechoiceview, drlhudviews, drlplotview;
 
 // Messages kept in the message history.
 const MessageBufferSize = 100;
@@ -1737,11 +1737,13 @@ end;
 var CrashInfoEmitted : Boolean = False;
 
 procedure EmitCrashInfo ( const aInfo : AnsiString; aInGame : Boolean ) ;
+{$IFDEF WINDOWS}
 function Iff(expr : Boolean; const str : AnsiString) : AnsiString;
 begin
   if expr then exit(str) else exit('');
 end;
 var iErrorMessage : AnsiString;
+{$ENDIF}
 begin
   if CrashInfoEmitted then Exit;
   CrashInfoEmitted := True;

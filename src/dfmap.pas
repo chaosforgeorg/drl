@@ -126,8 +126,7 @@ begin
     iCell.MoveCost  := getFloat('move_cost', 1.0 );
     FillChar( iCell.Sprite,      SizeOf(iCell.Sprite),      0 );
     FillChar( iCell.Deco,        SizeOf(iCell.Deco),        0 );
-    Initialize( iBase );
-    FillChar( iBase,             SizeOf(iBase),             0 );
+    iBase := Default( TSprite );
     ReadSprite( iTable, iBase );
     if iTable.IsTable( 'sprite' ) then
     begin

@@ -6,7 +6,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 }
 unit drldecals;
 interface
-uses classes, vutil, vnode, vgenerics, vvector, dfdata;
+uses classes, vnode, vgenerics, vvector, dfdata;
 
 type TDecal = record
   Sprite   : DWord;

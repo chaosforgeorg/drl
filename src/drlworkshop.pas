@@ -12,7 +12,7 @@ procedure WorkshopPublish( const aModID, aDataPath : Ansistring );
 implementation
 
 uses classes, sysutils,
-     vlog, vutil, vdebug, vrandom, vstoreinterface,
+     vlog, vutil, vdebug, vstoreinterface,
      drlmodule, dfdata;
 
 procedure WriteModuleFile( aPath : Ansistring; aModule : TDRLModule );

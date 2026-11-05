@@ -38,7 +38,7 @@ end;
 
 implementation
 
-uses sysutils, vutil, vtig;
+uses sysutils, vtig;
 
 constructor THelpEntry.Create;
 begin
