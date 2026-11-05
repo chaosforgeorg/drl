@@ -1123,13 +1123,6 @@ begin
               FSpriteMap.NewShift.Y - iEvent.MouseMove.RelPos.Y
             )
             , FSpriteMap.MinShift, FSpriteMap.MaxShift );
-
-          //SDL_WarpMouseInWindow( TSDLIODriver( FIODriver ).NativeWindow,
-          //  iEvent.MouseMove.Pos.X - iEvent.MouseMove.RelPos.X,
-          //  iEvent.MouseMove.Pos.Y - iEvent.MouseMove.RelPos.Y
-          //);
-          // Immediately remove the synthetic event
-          //while ( SDL_PeepEvents( @iDiscardEvent, 1, SDL_GETEVENT, SDL_MOUSEMOTION, SDL_MOUSEMOTION) > 0 ) do;
         end;
   end;
 
