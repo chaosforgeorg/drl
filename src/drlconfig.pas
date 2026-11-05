@@ -49,21 +49,10 @@ begin
      FSoundEngine := 'NONE';
 
   // synchro
-  if ForceConsole or ForceGraphics then
-  begin
-    if ForceConsole
-      then Option_Graphics := 'CONSOLE'
-      else Option_Graphics := 'TILES';
-    GraphicsVersion := not ForceConsole;
-  end
-  else
-  begin
-    if (Option_Graphics <> 'TILES') and (Option_Graphics <> 'CONSOLE') then
-      Option_Graphics := 'TILES';
-    if Option_Graphics = 'TILES'
-      then GraphicsVersion := True
-      else GraphicsVersion := False;
-  end;
+  GraphicsVersion := DisplayLaunch.GraphicsMode( Option_Graphics <> 'CONSOLE' );
+  if GraphicsVersion
+    then Option_Graphics := 'TILES'
+    else Option_Graphics := 'CONSOLE';
 end;
 
 end.

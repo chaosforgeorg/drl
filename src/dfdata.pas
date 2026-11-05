@@ -8,7 +8,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit dfdata;
 interface
 uses classes, sysutils, idea,
-     vlua, vgenerics, vcolor, vutil, vrltools, vtigstyle, vluatable, vioevent, vvector, vrandom,
+     vlua, vgenerics, vcolor, vutil, vrltools, vtigstyle, vluatable, vioevent, viotypes, vvector, vrandom,
      drlkeybindings;
 
 const PlayerSafeZone = 6;
@@ -89,11 +89,11 @@ end;
 const
   GraphicsVersion : Boolean = True;
   ForceNoAudio    : Boolean = False;
-  ForceConsole    : Boolean = False;
-  ForceGraphics   : Boolean = False;
-  ForceWindowed   : Boolean = False;
   ForcePlayerName : AnsiString = '';
   GodMode         : Boolean = False;
+
+var
+  DisplayLaunch   : TIOLaunchOptions;
 
 const
   AnimationSpeedMove   = 135;

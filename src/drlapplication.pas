@@ -427,12 +427,10 @@ end;
 
 procedure TDRLApplication.DefineOptions;
 begin
+  inherited DefineOptions;
   AddFlag('god', #0, 'Enable god mode.');
   AddValueOption('publish', #0, 'WORKSHOP_ID', 'Publish WORKSHOP_ID to Steam Workshop.');
   AddFlag('no-sound', #0, 'Disable sound and music.');
-  AddFlag('windowed', #0, 'Force windowed mode.');
-  AddFlag('graphics', #0, 'Force graphical mode.');
-  AddFlag('console', #0, 'Force console mode.');
   AddValueOption('name', #0, 'PLAYER_NAME', 'Use PLAYER_NAME for every game.');
   AddValueOption('module', #0, 'MODULE_ID', 'Use MODULE_ID as the core module.');
   AddValueOption('modules-file', #0, 'FILE', 'Load external module paths from FILE.');
@@ -463,13 +461,9 @@ begin
       aPaths.ConfigurationPath := aPaths.ResourcePath + 'godmode.lua';
   end;
 
-  ForceNoAudio  := HasOption('no-sound');
-  ForceWindowed := HasOption('windowed');
-  ForceGraphics := HasOption('graphics');
-  ForceConsole  := HasOption('console');
-
-  if ForceGraphics then GraphicsVersion := True;
-  if ForceConsole then GraphicsVersion := False;
+  ForceNoAudio    := HasOption('no-sound');
+  DisplayLaunch   := Launch;
+  GraphicsVersion := DisplayLaunch.GraphicsMode( GraphicsVersion );
 end;
 
 function TDRLApplication.CreateConfiguration( var aPaths : TGamePaths ) : TObject;

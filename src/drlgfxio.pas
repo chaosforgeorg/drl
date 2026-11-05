@@ -153,8 +153,7 @@ type
 
 implementation
 
-uses {$IFDEF WINDOWS}windows,{$ENDIF}
-     classes, sysutils, math,
+uses classes, sysutils, math,
      vdebug, vlog, vmath, vgl3library, vuid, vvision, vlualibrary, vluagamestack,
      vglimage, vcolor, vglconsole, vioconsole,
      vtig, vtigstyle, vtigio,
@@ -217,18 +216,8 @@ end;
 class function TDRLGFXIO.CreateDriver( aSettings : TDRLConfiguration ) : TSDLIODriver;
 var iSetup : TIOWindowSetup;
 begin
-  {$IFDEF WINDOWS}
-  if not GodMode then
-  begin
-    FreeConsole;
-  end
-  else
-  begin
-    Logger.AddSink( TConsoleLogSink.Create( LOGDEBUG, True ) );
-  end;
-  {$ENDIF}
-  iSetup := TIO.WindowSetup( aSettings );
-  if ForceWindowed then iSetup.Fullscreen := False;
+  ReleaseConsole( GodMode );
+  iSetup := TIO.WindowSetup( aSettings, DisplayLaunch );
   // The launcher console; Initialize sets the module's.
   iSetup.MinimumPixels := vutil.Point( 80 * 10, 25 * 19 );
   Result := TSDLIODriver.CreateWindow( iSetup, False );
