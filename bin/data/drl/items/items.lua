@@ -1384,7 +1384,7 @@ function drl.register_regular_items()
 
 		flags  = { IF_FEATURENAME },
 
-		properties = { TARGET_AREA = area.FULL_SHRINKED },
+		properties = { TARGET_AREA = false },
 		perks      = { "perk_lever_description" },
 		runtime    = {
 			OnUse = function(self,being)
@@ -1413,7 +1413,7 @@ function drl.register_regular_items()
 
 		flags  = { IF_FEATURENAME },
 
-		properties = { TARGET_AREA = area.FULL_SHRINKED },
+		properties = { TARGET_AREA = false },
 		perks      = { "perk_lever_description" },
 		runtime    = {
 			OnUse = function(self,being)
@@ -1447,7 +1447,7 @@ function drl.register_regular_items()
 
 		flags  = { IF_FEATURENAME },
 
-		properties = { TARGET_AREA = area.FULL_SHRINKED },
+		properties = { TARGET_AREA = false },
 		perks      = { "perk_lever_description" },
 		runtime    = {
 			OnUse = function(self,being)
@@ -1480,7 +1480,7 @@ function drl.register_regular_items()
 
 		flags  = { IF_FEATURENAME },
 
-		properties = { TARGET_AREA = area.FULL_SHRINKED },
+		properties = { TARGET_AREA = false },
 		perks      = { "perk_lever_description" },
 		runtime    = {
 			OnUse = function(self,being)
@@ -1512,7 +1512,7 @@ function drl.register_regular_items()
 
 		flags  = { IF_FEATURENAME },
 
-		properties = { TARGET_AREA = area.FULL_SHRINKED },
+		properties = { TARGET_AREA = false },
 		perks      = { "perk_lever_description" },
 		runtime    = {
 			OnUse = function(self,being)
@@ -1545,7 +1545,7 @@ function drl.register_regular_items()
 
 		flags  = { IF_FEATURENAME },
 
-		properties = { TARGET_AREA = area.FULL_SHRINKED },
+		properties = { TARGET_AREA = false },
 		perks      = { "perk_lever_description" },
 		runtime    = {
 			OnUse = function(self,being)
@@ -1581,7 +1581,7 @@ function drl.register_regular_items()
 
 		flags  = { IF_FEATURENAME },
 
-		properties = { TARGET_AREA = area.FULL_SHRINKED },
+		properties = { TARGET_AREA = false },
 		perks      = { "perk_lever_description" },
 		runtime    = {
 			OnUseCheck = function( self )

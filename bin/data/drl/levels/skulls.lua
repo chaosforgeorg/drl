@@ -96,6 +96,7 @@ register_level "city_of_skulls"
 		generator.place_tile( translation, map, 2,2 )
 		local lever = level:drop_item( "lever_walls", coord( 35, 11 ) )
 		lever.flags[ IF_NODESTROY ]	= true
+		lever.TARGET_AREA = level:get_area():shrinked()
 		generator.set_permanence( level:get_area() )
 		level:drop_being( player, coord( 2,2 ) )
 		level.status = 1
