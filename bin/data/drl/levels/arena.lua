@@ -216,7 +216,7 @@ register_level "hells_arena"
 		core.special_create()
 		level:set_generator_style( 1 )
 		level:fill( "rwall" )
-		level:fill( "floor", area.FULL_SHRINKED )
+		level:fill( "floor", level:get_area():shrinked() )
 		local translation = {
 			['.'] = "floor",
 			[','] = "water",
@@ -301,15 +301,15 @@ register_level "hells_arena"
 
 		generator.place_tile( translation, map, 2, 8 )
 		generator.place_symmetry_quad( table.random_pick( corners ), translation )
-		generator.set_permanence( area.FULL )
+		generator.set_permanence( level:get_area() )
 
 		generator.scatter_put( area( 5,3,68,15 ), translation, table.random_pick( column ), "floor",8+math.random(8))
 		for c in level:each( "water" ) do
 			level.map[ c ] = "floor"
 			level:add_blood( c, ui.visual_random(3) )
 		end
-		generator.scatter_blood(area.FULL_SHRINKED,"floor",100)
-		level.data.drop_zone = level.data.drop_zone or area.FULL_SHRINKED
+		generator.scatter_blood(level:get_area():shrinked(),"floor",100)
+		level.data.drop_zone = level.data.drop_zone or level:get_area():shrinked()
 		level.data.final_reward =
 		{
 			{ id = "rocket",  amount = 3 },

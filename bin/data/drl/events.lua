@@ -16,7 +16,7 @@ function drl.register_events()
 
 			generator.wall_to_ice[ generator.styles[ level.style ].wall ] = "iwall"
 
-			for c in area.FULL:coords() do
+			for c in level:get_area():coords() do
 				local cell = generator.wall_to_ice[ cells[level:get_cell( c )].id ]
 				if cell then
 					level:set_cell( c, cell )
@@ -38,7 +38,7 @@ function drl.register_events()
 		OnAdd = function( self )
 			ui.msg_feel( "The walls here seem tough!" )
 			player:add_history( "@1 was a hard nut to crack!" )
-			generator.set_permanence( area.FULL )
+			generator.set_permanence( level:get_area() )
 		end,
 	}
 

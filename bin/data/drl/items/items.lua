@@ -292,7 +292,7 @@ function drl.register_regular_items()
 			OnPickup = function(self,being)
 				being:msg( "Everything seems clear now." )
 				ui.blink(WHITE,50)
-				for c in area.FULL() do
+				for c in level:get_area():coords() do
 					local cell = cells[ level.map[ c ] ]
 					if cell.flags[ CF_BLOCKMOVE ] or cell.flags[ CF_NOCHANGE ] then
 						level:set_light_flag( c, LFEXPLORED, true )
@@ -322,7 +322,7 @@ function drl.register_regular_items()
 			OnPickup = function(self,being)
 				being:msg( "You download tracking data to your PDA." )
 				ui.blink(LIGHTGREEN,50)
-				for c in area.FULL() do
+				for c in level:get_area():coords() do
 					local cell = cells[ level.map[ c ] ]
 					if cell.flags[ CF_BLOCKMOVE ] or cell.flags[ CF_NOCHANGE ] then
 						level:set_light_flag( c, LFEXPLORED, true )
@@ -1418,7 +1418,7 @@ function drl.register_regular_items()
 		runtime    = {
 			OnUse = function(self,being)
 				statistics.levers_pulled = statistics.levers_pulled + 1
-				if self.TARGET_AREA:size() >= area.FULL_SHRINKED:size() then
+				if self.TARGET_AREA:size() >= level:get_area():shrinked():size() then
 					-- Really?  Censoring "f***" when the plot has it?
 					ui.msg("WTF?! Acid splashes everywhere!")
 					being:add_history("He flooded the entire @1 with acid!")
@@ -1452,7 +1452,7 @@ function drl.register_regular_items()
 		runtime    = {
 			OnUse = function(self,being)
 				statistics.levers_pulled = statistics.levers_pulled + 1
-				if self.TARGET_AREA:size() >= area.FULL_SHRINKED:size() then
+				if self.TARGET_AREA:size() >= level:get_area():shrinked():size() then
 					ui.msg("Oh shit... oh shit... OH SHIT!!!!")
 					being:add_history("He flooded the entire @1 with lava!")
 				else
@@ -1550,7 +1550,7 @@ function drl.register_regular_items()
 		runtime    = {
 			OnUse = function(self,being)
 				statistics.levers_pulled = statistics.levers_pulled + 1
-				local room = self.TARGET_AREA:clamped( area.FULL_SHRINKED )
+				local room = self.TARGET_AREA:clamped( level:get_area():shrinked() )
 				level:play_sound( "barrel.explode", being.position )
 				for c in room() do
 					local tile = cells[level.map[c]]

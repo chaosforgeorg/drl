@@ -96,7 +96,7 @@ register_level "military_base"
 ]=]
 		generator.place_tile( translation, map, 1, 1 )
 
-		--generator.set_permanence( area.FULL )
+		--generator.set_permanence( level:get_area() )
 
 		level:drop_being( player, coord( 38,19 ) )
 	end,

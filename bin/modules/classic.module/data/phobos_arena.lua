@@ -6,7 +6,7 @@ register_level "phobos_arena"
 
   Create = function ()
     level:fill( "wall" )
-    level:fill( "floor", area.FULL_SHRINKED )
+    level:fill( "floor", level:get_area():shrinked() )
     local scatter_area = area( 5,3,68,15 )
     local translation = {
         ['.'] = { "floor", flags = { LFBLOOD } },
@@ -22,8 +22,8 @@ register_level "phobos_arena"
     ]],"floor",12)
 
     level.flags[ LF_NOHOMING ] = true
-    generator.scatter_blood(area.FULL_SHRINKED,"floor",100)
-    generator.set_permanence( area.FULL )
+    generator.scatter_blood(level:get_area():shrinked(),"floor",100)
+    generator.set_permanence( level:get_area() )
   end,
 
   OnEnter = function ()

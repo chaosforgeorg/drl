@@ -156,7 +156,7 @@ function generator.generate_lava_dungeon()
 	local tries = 3
 	local dim_max = coord( 70, 18 )
 	local dim_min = coord( 10, 8 )
-	local a = area.shrinked( area.FULL, 2 )
+	local a = level:get_area():shrinked( 2 )
 	local even_coord = function ( c )
 		local result = c:clone()
 		if result.x % 2 == 1 then result.x = result.x+1 end
@@ -189,7 +189,7 @@ function generator.generate_lava_dungeon()
 	local tries = 8
 	local dim_max = coord( 20, 16 )
 	local dim_min = coord( 12, 10 )
-	local a = area.shrinked( area.FULL, 2 )
+	local a = level:get_area():shrinked( 2 )
 	local list = {}
 	for i=1,tries do
 		local quad = area.random_subarea( a, coord.random( dim_min, dim_max ) ):clamped( a )
@@ -246,7 +246,7 @@ function generator.generate_caves_dungeon()
 
 	level:fill( wall_cell )
 
-	generator.run_drunkard_walk( level, area.FULL_SHRINKED, coord( 38, 10 ), math.random(40)+100, floor_cell, nil, true )
+	generator.run_drunkard_walk( level, level:get_area():shrinked(), coord( 38, 10 ), math.random(40)+100, floor_cell, nil, true )
 	drunk( 5,  math.random(40)+35, floor_cell )
 	drunk( amount, step,   fluid )
 	drunk( 40, math.random(40)+25, floor_cell )
@@ -325,7 +325,7 @@ function generator.generate_caves_dungeon()
 
   	ui.msg_feel( set.feeling or "Twisted passages carry the smell of death..." )
 
-	generator.set_permanence( area.FULL )
+	generator.set_permanence( level:get_area() )
 end
 
 function generator.place_blob( start, size, cell )
@@ -366,7 +366,7 @@ function generator.generate_caves_2_dungeon()
 	if math.random(4) == 1 then fluid = cells["water"].nid end
 	if math.random(4) == 1 then fluid = cells["acid"].nid end
 	if dlevel > 30 and math.random(3) == 1 then fluid = cells["blood"].nid end
-	local level_area = area.FULL
+	local level_area = level:get_area()
 	local w,h = level_area.b.x, level_area.b.y
 
 	local drunk = function( amount, step, cell )
@@ -399,7 +399,7 @@ function generator.generate_caves_2_dungeon()
 	level:transmute( marker, floor_cell )
 
 	-- rest of the level will be destructible
-	generator.set_permanence( area.FULL, true, cave_cell )
+	generator.set_permanence( level_area, true, cave_cell )
 
 
 	local bcount = math.random(3) + 2
@@ -411,11 +411,12 @@ function generator.generate_caves_2_dungeon()
 
 	level:transmute( marker, cave_cell )
 
+	local inner_area = level_area:shrinked()
 	local cmax  = math.random( 5, 7 )
 	local count = 0
 	for i = 1,1000 do
 		local dim = coord( math.random( 7,9 ), math.random( 6,9 ) )
-		local a = area.FULL_SHRINKED:random_subarea( dim )
+		local a = inner_area:random_subarea( dim )
 		if level:scan( a, floor_cell ) then
 			a:shrink()
 			level:fill( wall_cell, a )

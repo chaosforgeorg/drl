@@ -234,7 +234,7 @@ register_level "toxin_refinery"
 
 		generator.place_tile( translation, map, 2, 2 )
 
-		generator.set_permanence( area.FULL )
+		generator.set_permanence( level:get_area() )
 		level.data.kill_all  = false
 		level.data.old_darkness = player.flags [ BF_DARKNESS ]
 		level.data.darkness_end_time = 0

@@ -467,7 +467,7 @@ end
 function level:push_feature( who, what, c, target, quiet, stupid )
 	local item_id = what.id
 	local name    = what.name
-	if not area.FULL:contains(target) then
+	if not self:get_area():contains(target) then
 		if not quiet then ui.msg( "It doesn't seem to move there." ) end
 		self:play_sound( item_id .. ".movefail", c )
 		return false

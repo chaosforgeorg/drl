@@ -46,7 +46,7 @@ Keytable["F4"] = function()
 end
 Keytable["F5"] = function() 
 	ui.msg("Visibility! "..player.x.."x"..player.y)
-	for c in area.FULL() do
+	for c in level:get_area():coords() do
 		local cell = cells[ level.map[ c ] ]
 		if cell.flags[ CF_BLOCKMOVE ] or cell.flags[ CF_NOCHANGE ] then
 			level:set_light_flag( c, LFEXPLORED, true )

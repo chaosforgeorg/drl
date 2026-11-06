@@ -143,7 +143,7 @@ register_ai "archvile_ai"
 			if dist < 4  then
 				local pos = self.position
 				target = pos + (pos - target)
-				area.FULL:clamp_coord( target )
+				level:clamp_coord( target )
 			end
 			if self.move_to == target then
 				if aitk.move_path( self ) then
@@ -208,7 +208,7 @@ register_ai "spawner_ai"
 			if dist < 4  then
 				local pos = self.position
 				target = pos + (pos - target)
-				area.FULL:clamp_coord( target )
+				level:clamp_coord( target )
 			end
 			if self:direct_seek( target ) ~= MOVEOK then
 				self.scount  = self.scount - 1000
@@ -357,7 +357,7 @@ register_ai "jc_ai"
 		self.attacked = true
 		if self.ai_state == "wait" then
 			if not self:in_sight( player ) then
-				local surround = area.around(player.position,7):clamped( area.FULL_SHRINKED )
+				local surround = area.around(player.position,7):clamped( level:get_area():shrinked() )
 				level:summon{ "baron", 6, area = surround }
 				ui.msg("A voice bellows: \"Don't think you can surprise me!\"")
 			end
@@ -377,7 +377,7 @@ register_ai "jc_ai"
 		
 			if self.attacked and math.random(3) == 1 then
 				self.attacked = false
-				local tp  = area.around( self.position, 10 ):clamped( area.FULL_SHRINKED ):random_coord()
+				local tp  = area.around( self.position, 10 ):clamped( level:get_area():shrinked() ):random_coord()
 				local mob = level:get_being( tp )
 				if mob then
 					if mob:is_player() or mob == self then
@@ -428,7 +428,7 @@ register_ai "jc_ai"
 				end
 			end
 
-			local mt = area.around( self.position, 3 ):clamped( area.FULL ):random_coord()
+			local mt = area.around( self.position, 3 ):clamped( level:get_area() ):random_coord()
 			if self:distance_to( mt ) > 0 then
 				if self:direct_seek( mt ) == MOVEOK then
 					return "hunt"
@@ -472,12 +472,12 @@ register_ai "teleboss_ai"
 			if dist <= self.teleradius then
 				local flee = coord( 2*(s.x-p.x), 2*(s.y-p.y))
 				phase = table.random_pick{ p + flee, p - flee }
-				area.FULL_SHRINKED:clamp_coord( phase )
+				level:get_area():shrinked():clamp_coord( phase )
 				phase = level:drop_coord( phase, { EF_NOBEINGS, EF_NOBLOCK } )
 			end
 
 			if not phase then
-				local parea = area.around( p, self.teleradius ):clamped( area.FULL_SHRINKED )
+				local parea = area.around( p, self.teleradius ):clamped( level:get_area():shrinked() )
 				local limit = 0
 				repeat
 					limit = limit + 1
@@ -563,7 +563,7 @@ register_ai "mastermind_ai"
 							self:action_fire( player, self.eq.weapon, animseq )
 						else
 							local hit = spray:random_coord()
-							area.FULL:clamp_coord(hit)
+							level:clamp_coord(hit)
 							self:action_fire( hit, self.eq.weapon, animseq )
 						end
 						if shot ~= 1 then

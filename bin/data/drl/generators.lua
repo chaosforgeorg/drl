@@ -217,7 +217,7 @@ function drl.register_generators()
 			local tries = 100
 			local dim_max = coord( 16, 12 )
 			local dim_min = coord( 7, 6 )
-			local city = area.shrinked( area.FULL, 2 )
+			local city = level:get_area():shrinked( 2 )
 
 			if math.random(3) == 1 then	generator.handle_rivers{ vertical_only = true } end
 		

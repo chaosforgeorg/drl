@@ -1190,8 +1190,9 @@ function drl.register_unique_items()
 				local use    = self.usetime
 				self.usetime = 4
 				ui.msg("Whirlwind!")
+				local level_area = level:get_area()
 				for c in area.around( pos, 1 )() do
-					if c ~= pos and area.FULL:contains( c ) then
+					if c ~= pos and level_area:contains( c ) then
 						being:attack( c )
 					end
 				end

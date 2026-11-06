@@ -72,7 +72,7 @@ register_level "the_mortuary"
 		core.special_create()
 		level:set_generator_style( 1 )
 		level:fill( "rwall" )
-		level:fill( "floor", area.FULL_SHRINKED )
+		level:fill( "floor", level:get_area():shrinked() )
 
 		local translation = {
 			['.'] = "floor",
@@ -111,7 +111,7 @@ XX.XX
 
 		generator.place_tile( translation, center, 36,8 )
 
-		for c in area.FULL_SHRINKED:coords() do
+		for c in level:get_area():shrinked():coords() do
 			level:add_blood( c, ui.visual_random(3) )
 		end
 
@@ -122,7 +122,7 @@ XX.XX
 
 		for cnt = 1,DIFFICULTY+25 do
 			local corpse = corpses[math.random(7+DIFFICULTY)].."corpse";
-			generator.scatter(area.FULL_SHRINKED,"floor",corpse,math.random(10)+4)
+			generator.scatter(level:get_area():shrinked(),"floor",corpse,math.random(10)+4)
 		end
 
 		level:drop_being( player, coord( 38,10 ) )

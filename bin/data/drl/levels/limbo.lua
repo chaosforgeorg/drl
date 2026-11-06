@@ -84,7 +84,7 @@ register_level "limbo"
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1
-					level:transmute_by_flag( "blood", "bridge", LFMARKER1, area.FULL)
+					level:transmute_by_flag( "blood", "bridge", LFMARKER1)
 					ui.msg("The west bridges rise!")
 					level:recalc_fluids()
 					return true
@@ -110,7 +110,7 @@ register_level "limbo"
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1
-					level:transmute_by_flag( "blood", "bridge", LFMARKER2, area.FULL)
+					level:transmute_by_flag( "blood", "bridge", LFMARKER2)
 					ui.msg("The east bridges rise!")
 					level:recalc_fluids()
 					return true
@@ -176,7 +176,7 @@ register_level "limbo"
 
 		for cnt = 1,5*DIFFICULTY+60 do
 			local corpse = corpses[math.random(6+DIFFICULTY)].."corpse";
-			generator.scatter(area.FULL_SHRINKED,"floor",corpse,math.random(10)+4)
+			generator.scatter(level:get_area():shrinked(),"floor",corpse,math.random(10)+4)
 		end
 
 		level:drop_being( player, coord( 38,10 ) )

@@ -100,7 +100,7 @@ function generator.scatter_cross_item(scatter_area,good,item_id,count)
 end
 
 function generator.transmute_style( from, to, fstyle, tstyle, ar )
-	local a    = ar or area.FULL
+	local a    = ar or level:get_area()
 	local from = cells[from].nid
 	for c in a() do 
 		if level.map[ c ] == from and level:get_raw_style( c ) == fstyle then
@@ -113,7 +113,7 @@ function generator.transmute_style( from, to, fstyle, tstyle, ar )
 end
 
 function generator.transmute_to_object( from, object, ar, floor )
-	local a     = ar or area.FULL
+	local a     = ar or level:get_area()
 	local from  = cells[from].nid
 	local floor = floor or generator.styles[ level.style ].floor
 	for c in a() do 
@@ -309,6 +309,7 @@ function generator.scatter_tiles( settings, amount )
 		tiles[ #tiles + 1 ] = generator.tile_new( level, block, pure_translation, true )
 	end
 
+	local inner_area = level:get_area():shrinked()
 	while amount > 0 and #tiles > 0 do
 		local index = math.random( #tiles )
 		local tile = tiles[ index ]
@@ -318,7 +319,7 @@ function generator.scatter_tiles( settings, amount )
 		local tile_size = tile:get_size_coord()
 		local placed = false
 		for i = 1, 100 do
-			local c = area.FULL_SHRINKED:random_coord()
+			local c = inner_area:random_coord()
 			if level:scan( area( c, c + tile_size - coord.UNIT ), floor_cell ) then
 				generator.place_dungen_tile( translation, tile, c )
 				amount = amount - 1
@@ -370,7 +371,7 @@ end
 function generator.drunkard_walks( amount, steps, cell, ignore, break_on_edge, drunk_area )
 	core.log("generator.drunkard_walks("..amount..","..steps..","..cell.."...)")
 	if amount <= 0 then return end
-	drunk_area = drunk_area or area.FULL_SHRINKED
+	drunk_area = drunk_area or level:get_area():shrinked()
 	for i=1,amount do
 		generator.run_drunkard_walk( level, drunk_area, drunk_area:random_coord(), steps, cell, ignore, break_on_edge )
 	end
@@ -379,7 +380,7 @@ end
 function generator.contd_drunkard_walks( amount, steps, cell, edges1, edges2, ignore, break_on_edge, drunk_area )
 	core.log("generator.contd_drunkard_walks("..amount..","..steps..","..cell.."...)")
 	if amount <= 0 then return end
-	drunk_area = drunk_area or area.FULL_SHRINKED
+	drunk_area = drunk_area or level:get_area():shrinked()
 	local c
 	for i=1,amount do
 		repeat
@@ -393,7 +394,7 @@ end
 function generator.maze_dungeon( floor_cell, wall_cell, granularity, tries, minl, maxl, maze_area )
 	core.log("generator.maze_dungeon()")
 	if type(floor_cell) == "string" then floor_cell = cells[floor_cell].nid end
-	maze_area = maze_area or area.FULL
+	maze_area = maze_area or level:get_area()
 	local rx = math.floor( ( maze_area.b.x - maze_area.a.x ) / granularity )
 	local ry = math.floor( ( maze_area.b.y - maze_area.a.y ) / granularity )
 	local rl = math.floor( ( maxl - minl ) / granularity + 1 )
@@ -460,7 +461,7 @@ function generator.read_room_list()
 		return false
 	end
 
-	for start in area.coords( area.FULL ) do
+	for start in level:get_area():coords() do
 		if room_begin( start ) then
 			local ec = coord.clone( start )
 			repeat
@@ -518,7 +519,7 @@ end
 function generator.restore_walls( wall_cell, skip_cells )
 	core.log("generator.restore_walls("..wall_cell..")")
 	if skip_cells then
-		for c in area.edges( area.FULL ) do
+		for c in level:get_area():edges() do
 			if not skip_cells[ cells[level:get_cell( c )].id ] then
 				level:set_cell( c, wall_cell )
 			end
@@ -805,7 +806,7 @@ function generator.generate_tiled_level( settings )
 	local door_positions = {}
 	local priority_doors = {}
 	
-	for c in area.coords( area.FULL_SHRINKED ) do
+	for c in level:get_area():shrinked():coords() do
 		if level:get_cell( c ) == wall_cell
 		and level:around( c, door_cell ) == 0 
 		and level:cross_around( c, wall_cell ) == 2
@@ -987,7 +988,7 @@ end
 
 function generator.clear_dead_ends( iterations, ar, wall )
 	iterations = iterations or 1
-	local ar      = ar or area.FULL_SHRINKED
+	local ar      = ar or level:get_area():shrinked()
 	local applied = false
 	local floor   = generator.styles[ level.style ].floor
 	local door    = generator.styles[ level.style ].door
@@ -1026,13 +1027,14 @@ function generator.remove_needless_doors()
 	local walls = generator.cell_lists[ CELLSET_WALLS ]
 	local did   = cells[ door ].nid
 
-	for c in area.FULL:edges() do
+	local level_area = level:get_area()
+	for c in level_area:edges() do
 		if level:get_cell( c ) == did then
 			level:set_cell( c, wall )
 		end
 	end
 
-	for c in level:each( door, area.FULL_SHRINKED ) do
+	for c in level:each( door, level_area:shrinked() ) do
 		local wcaround = level:cross_around( c, walls )
 		if wcaround > 2 then
 			level:set_cell( c, wall )

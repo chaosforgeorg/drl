@@ -176,8 +176,8 @@ register_level "house_of_pain"
 ############################$$$$$$$$$$$$$$$$$$$$$$$$ZZZZZZZZZZZZZZZZZZZZZZZZZZ
 ]=]
 		generator.place_tile( translation, map, 1, 1 )
-		generator.set_permanence( area.FULL )
-		generator.set_permanence( area.FULL, true, "ldoor" )
+		generator.set_permanence( level:get_area() )
+		generator.set_permanence( level:get_area(), true, "ldoor" )
 
 		level:drop_being( player, coord( 14,10 ) )
 		player:add_perk( "perk_player_house_of_pain" )

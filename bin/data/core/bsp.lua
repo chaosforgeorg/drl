@@ -54,7 +54,7 @@ function generator.bsp( self, ar, bsp_settings )
 		if arh_diff.x > gmin.x or arh_diff.y > gmin.y then
 			local hcntr = cntr / 2
 			local arh_diff3 = ( arh_diff + coord(hcntr,hcntr) ) / cntr
-			local ar_half  = area( arh_a + arh_diff3, arh_b - arh_diff3 ):clamped( area.FULL )
+			local ar_half  = area( arh_a + arh_diff3, arh_b - arh_diff3 ):clamped( level:get_area() )
 			if ar_half:proper() then
 				local c = ar_half:random_coord() * grid
 				local ori = true

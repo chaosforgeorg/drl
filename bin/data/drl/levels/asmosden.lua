@@ -201,7 +201,7 @@ register_level "the_asmos_den"
 ]=]
 		generator.place_tile( translation, map, 2, 2 )
 
-		generator.set_permanence( area.FULL )
+		generator.set_permanence( level:get_area() )
 
 		level:drop_being( player, coord( 77,19 ) )
 	end,

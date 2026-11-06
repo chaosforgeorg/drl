@@ -41,13 +41,13 @@ function aitk.get_patrol_area( self, range, can_wander )
         if core.options.maintain_groups and self:has_property("LEADER") then
             local leader = uids.get( self.LEADER )
             if leader then
-                return area.around( leader.position, math.max( math.floor(range / 2), 2 ) ):clamped( area.FULL )
+                return area.around( leader.position, math.max( math.floor(range / 2), 2 ) ):clamped( level:get_area() )
             end
         end
         if can_wander and (not self:has_property("GROUPED")) and ( math.random(2) == 1 ) then
-            self.patrol_area = area.FULL_SHRINKED
+            self.patrol_area = level:get_area():shrinked()
         else
-            self.patrol_area = area.around( self.position, range ):clamped( area.FULL )
+            self.patrol_area = area.around( self.position, range ):clamped( level:get_area() )
         end
     end
     return self.patrol_area
@@ -623,7 +623,7 @@ function aitk.evade_hunt( self )
     local walk
     if dist < 4 then
         walk = s + (s - t)
-        area.FULL:clamp_coord( walk )
+        level:clamp_coord( walk )
         if coord.distance( t, s ) >= coord.distance( t, walk ) then
             walk = area.around( s, 1 ):random_edge_coord()
         end
@@ -631,7 +631,7 @@ function aitk.evade_hunt( self )
         local v = s - t
         walk = table.random_pick{ t+coord( -v.y, v.x ), t+coord( v.y, -v.x ) }
     end
-    area.FULL:clamp_coord( walk )
+    level:clamp_coord( walk )
     self.move_to = walk
     if not self:path_find( self.move_to, 10, 40 ) or ( not aitk.move_path( self ) ) then
         self.scount  = self.scount - 500
@@ -669,7 +669,7 @@ function aitk.ranged_hunt( self )
     if dist < 6 and math.random(3) > 1 then
         local block_flag = self.flags[ BF_FLY ] and CF_BLOCKFLY or CF_BLOCKMOVE
         for _=1,3 do
-            local c = area.around( self.position, 1 ):clamped( area.FULL ):random_coord() 
+            local c = area.around( self.position, 1 ):clamped( level:get_area() ):random_coord() 
             if level:is_passable_ext( c, block_flag ) then
                 target = c
                 break
