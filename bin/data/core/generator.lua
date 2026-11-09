@@ -993,6 +993,8 @@ function generator.place_extra_doors( count, wall_cell, floor_cell, door_cell )
 		return level:get_cell( c ) == wall_cell
 			and level:cross_around( c, wall_cell ) == 2
 			and level:cross_around( c, floor_cell ) == 2
+			-- straight wall, not an L-corner: both horizontal neighbours match
+			and level:get_cell( c.x - 1, c.y ) == level:get_cell( c.x + 1, c.y )
 			and level:around( c, door_cell ) == 0
 	end
 	local ar = level:get_area():shrinked()
