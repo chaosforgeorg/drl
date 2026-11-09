@@ -665,7 +665,6 @@ function generator.generate_special_stairs( stairs_id, feelings )
 	return pos
 end
 
-
 function generator.generate_nutiled_level( settings )
 	core.log("generator.generate_nutiled_level()")
 	local settings     = settings or {}
@@ -673,6 +672,7 @@ function generator.generate_nutiled_level( settings )
 	local door_cell    = settings.door_cell  or cells[generator.styles[ level.style ].door].nid
 	local floor_cell   = settings.floor_cell or cells[generator.styles[ level.style ].floor].nid
 	wall_cell = cells[wall_cell].nid
+	door_cell = cells[door_cell].nid
 	level:fill( wall_cell )
 	local larea = area( 1, 1, MAXX, MAXY )
 	local result = { area = larea:shrinked(1) }
@@ -683,102 +683,118 @@ function generator.generate_nutiled_level( settings )
 		level:fill( wall_cell, result.area )
 	end
 	local corridor = settings.corridor or 2
-	local rbsp_settings = {
-		subdiv   = settings.subdiv or 5,
-		grid     = settings.grid or coord( 4,4 ),
-		gmin     = settings.gmin or coord( 2,2 ),
-		corridor = corridor,
-		room_min = settings.room_min or coord( 4, 4 ),
-	}
-	local rooms = generator.rbsp( level, result.area:expanded(1), rbsp_settings )
+	if corridor == 0 then
+		-- no corridors: split the whole area directly into rooms
+		core.log("generator.generate_nutiled_level() - direct split" )
+		level:fill( wall_cell, result.area:expanded(1) )
+		level:fill( floor_cell, result.area )
+		generator.bsp( level, result.area:expanded(1), {
+			subdiv = settings.subdiv or 5,
+			grid   = settings.grid,
+			gmin   = settings.gmin,
+		} )
+	else
+		local rbsp_settings = {
+			subdiv   = settings.subdiv or 5,
+			grid     = settings.grid or coord( 4,4 ),
+			gmin     = settings.gmin or coord( 2,2 ),
+			corridor = corridor,
+			room_min = settings.room_min or coord( 4, 4 ),
+		}
+		local rooms = generator.rbsp( level, result.area:expanded(1), rbsp_settings )
 
-	level:fill( floor_cell, result.area )
+		level:fill( floor_cell, result.area )
 
-	local rec_settings = settings.rec_settings or {
-		subdiv = 1,
-		return_all = true,
-		rec_single = 8,
-		rec_min = coord( 5, 5 )
-	}
-	-- untrimmed corridors only connect through the rooms bordering them
-	rec_settings.door_sides = settings.trim == false
-	if settings.trim ~= false then
-		for _,r in ipairs( rooms ) do
-			if r.a.y == 1 and r.b.y == MAXY then
-				local roll = math.random(3)
-				if roll == 2 then
-					r.a = coord( r.a.x, r.a.y + corridor + 1 )
-				elseif roll == 3 then
-					r.b = coord( r.b.x, r.b.y - corridor - 1 )
-				else
-					r.a = coord( r.a.x, r.a.y + corridor + 1 )
-					r.b = coord( r.b.x, r.b.y - corridor - 1 )
-				end
-			end
-		end
-	end
-
-	if settings.fluid and corridor > 1 then
-		core.log("generator.generate_nutiled_level() - processing fluid" )
-		for _,r in ipairs( rooms ) do
-			level:fill( wall_cell, r )
-		end
-		core.log("generator.generate_nutiled_level() - fluid placement" )
-		local fluid_cell = cells[settings.fluid].nid
-		for c in level:each( floor_cell, larea:shrinked( 2 ) ) do
-			if level:around( c, { floor_cell, fluid_cell } ) == 8 then
-				level:set_cell( c, fluid_cell )
-			end
-		end
-
-		if settings.bridge then
-			core.log("generator.generate_nutiled_level() - bridge placement" )
-			for c in level:each( fluid_cell, larea:shrinked( 2 ) ) do
-				if level:cross_around( c, fluid_cell ) == 2 and level:around( c, { floor_cell, settings.bridge } ) == 6 then
-					if math.random(10) == 1 then
-						level:set_cell( c, settings.bridge )
+		local rec_settings = settings.rec_settings or {
+			subdiv = 1,
+			return_all = true,
+			rec_single = 8,
+			rec_min = coord( 5, 5 )
+		}
+		-- untrimmed corridors only connect through the rooms bordering them
+		rec_settings.door_sides = settings.trim == false
+		if settings.trim ~= false then
+			for _,r in ipairs( rooms ) do
+				if r.a.y == 1 and r.b.y == MAXY then
+					local roll = math.random(3)
+					if roll == 2 then
+						r.a = coord( r.a.x, r.a.y + corridor + 1 )
+					elseif roll == 3 then
+						r.b = coord( r.b.x, r.b.y - corridor - 1 )
+					else
+						r.a = coord( r.a.x, r.a.y + corridor + 1 )
+						r.b = coord( r.b.x, r.b.y - corridor - 1 )
 					end
 				end
 			end
 		end
 
-		for _,r in ipairs( rooms ) do
-			level:fill( floor_cell, r )
-		end
-	end
+		if settings.fluid and corridor > 1 then
+			core.log("generator.generate_nutiled_level() - processing fluid" )
+			for _,r in ipairs( rooms ) do
+				level:fill( wall_cell, r )
+			end
+			core.log("generator.generate_nutiled_level() - fluid placement" )
+			local fluid_cell = cells[settings.fluid].nid
+			for c in level:each( floor_cell, larea:shrinked( 2 ) ) do
+				if level:around( c, { floor_cell, fluid_cell } ) == 8 then
+					level:set_cell( c, fluid_cell )
+				end
+			end
 
-	core.log("generator.generate_nutiled_level() - recursive split" )
-	local split_rooms
-	local rec_rooms
-	rec_rooms, split_rooms = generator.bsp_recursive( level, rooms, rec_settings )
-	for _,room in ipairs( rooms ) do
-		local nonwall = 0
-		for c in room:edges() do
-			if level:get_cell( c ) ~= wall_cell then
-				nonwall = nonwall + 1
+			if settings.bridge then
+				core.log("generator.generate_nutiled_level() - bridge placement" )
+				for c in level:each( fluid_cell, larea:shrinked( 2 ) ) do
+					if level:cross_around( c, fluid_cell ) == 2 and level:around( c, { floor_cell, settings.bridge } ) == 6 then
+						if math.random(10) == 1 then
+							level:set_cell( c, settings.bridge )
+						end
+					end
+				end
+			end
+
+			for _,r in ipairs( rooms ) do
+				level:fill( floor_cell, r )
 			end
 		end
-		if nonwall == 0 then
-			generator.place_doors( level, room, 2 )
+
+		core.log("generator.generate_nutiled_level() - recursive split" )
+		local split_rooms
+		local rec_rooms
+		rec_rooms, split_rooms = generator.bsp_recursive( level, rooms, rec_settings )
+		for _,room in ipairs( rooms ) do
+			local nonwall = 0
+			for c in room:edges() do
+				if level:get_cell( c ) ~= wall_cell then
+					nonwall = nonwall + 1
+				end
+			end
+			if nonwall == 0 then
+				generator.place_doors( level, room, 2 )
+			end
 		end
-	end
 
 --[[
-	rooms = {}
-	local small_rooms = {}
-	for _,r in ipairs( rec_rooms ) do
-		local d = r:dim()
-		if d.x < 7 or d.y < 7 then
-			table.insert( small_rooms, r )
-		else
-			table.insert( rooms, r )
+		rooms = {}
+		local small_rooms = {}
+		for _,r in ipairs( rec_rooms ) do
+			local d = r:dim()
+			if d.x < 7 or d.y < 7 then
+				table.insert( small_rooms, r )
+			else
+				table.insert( rooms, r )
+			end
 		end
-	end
 --]]
 
---	if corridor > 1 then
---		generator.ring_clear( self, result.area, 25, coord( corridor, corridor ), false, nil, true )
---	end
+--		if corridor > 1 then
+--			generator.ring_clear( self, result.area, 25, coord( corridor, corridor ), false, nil, true )
+--		end
+	end
+
+	if settings.extra_doors then
+		generator.place_extra_doors( settings.extra_doors, wall_cell, floor_cell, door_cell )
+	end
 
 	generator.restore_walls( wall_cell )
 	generator.clear_dead_ends( settings.dead_ends )
@@ -1040,6 +1056,43 @@ function generator.clear_dead_ends( iterations, ar, wall )
 		for c in level:each( door, ar ) do
 			if level:cross_around( c, wall ) < 2 then
 				level:set_cell( c, floor )
+			end
+		end
+	end
+end
+
+-- Adds up to count doors in straight walls with floor on both sides and no
+-- door around, so tree-shaped layouts get some loops. Each door is picked
+-- uniformly by counting spots and rescanning, instead of collecting them.
+function generator.place_extra_doors( count, wall_cell, floor_cell, door_cell )
+	core.log("generator.place_extra_doors()")
+	local style = generator.styles[ level.style ]
+	wall_cell  = wall_cell  or cells[ style.wall ].nid
+	floor_cell = floor_cell or cells[ style.floor ].nid
+	door_cell  = door_cell  or cells[ style.door ].nid
+	local function is_spot( c )
+		return level:get_cell( c ) == wall_cell
+			and level:cross_around( c, wall_cell ) == 2
+			and level:cross_around( c, floor_cell ) == 2
+			and level:around( c, door_cell ) == 0
+	end
+	local ar = level:get_area():shrinked()
+	for _ = 1, count do
+		local total = 0
+		for c in ar:coords() do
+			if is_spot( c ) then
+				total = total + 1
+			end
+		end
+		if total == 0 then return end
+		local pick = math.random( total )
+		for c in ar:coords() do
+			if is_spot( c ) then
+				pick = pick - 1
+				if pick == 0 then
+					level:set_cell( c, door_cell )
+					break
+				end
 			end
 		end
 	end
