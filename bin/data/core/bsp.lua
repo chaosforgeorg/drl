@@ -139,6 +139,51 @@ function generator.place_doors( self, room, doors )
     return true
 end
 
+-- Places one door on every side of the room that faces floor. Doors are kept
+-- off the split grid of generator.bsp ( horizontal walls at y % grid.y == 1,
+-- vertical walls at x % grid.x == 0 ), so a later split of the room never
+-- ends on one of them.
+function generator.place_side_doors( self, room, grid )
+    local door_cell  = generator.styles[ level.style ].door
+    local wall_cell  = generator.styles[ level.style ].wall
+    local floor_cell = generator.styles[ level.style ].floor
+    local fid = cells[ floor_cell ].nid
+    local did = cells[ door_cell ].nid
+    local wid = cells[ wall_cell ].nid
+    local gx, gy = 2, 2
+    if grid then gx, gy = grid.x, grid.y end
+    -- rows of horizontal split walls; 1 % gy keeps grid 1 ( every row ) correct
+    local hwall = 1 % gy
+    local sides = {
+        area( coord( room.a.x, room.a.y + 1 ), coord( room.a.x, room.b.y - 1 ) ),
+        area( coord( room.b.x, room.a.y + 1 ), coord( room.b.x, room.b.y - 1 ) ),
+        area( coord( room.a.x + 1, room.a.y ), coord( room.b.x - 1, room.a.y ) ),
+        area( coord( room.a.x + 1, room.b.y ), coord( room.b.x - 1, room.b.y ) ),
+    }
+    for i,side in ipairs( sides ) do
+        local vertical = i <= 2
+        local door
+        local count = 0
+        for c in side:coords() do
+            local off_grid
+            if vertical then
+                off_grid = c.y % gy ~= hwall
+            else
+                off_grid = c.x % gx ~= 0
+            end
+            if off_grid and self:cross_around( c, wid ) == 2 and self:cross_around( c, fid ) == 2 then
+                -- keep each candidate with chance 1/count: a uniform pick
+                -- without collecting a candidate list
+                count = count + 1
+                if math.random( count ) == 1 then door = c:clone() end
+            end
+        end
+        if door then
+            self:set_cell( door, did )
+        end
+    end
+end
+
 function generator.bsp_recursive( self, rooms, bsp_settings )
    	bsp_settings.tiles = bsp_settings.tiles or {
 		floor = generator.styles[ self.style ].floor,
@@ -152,6 +197,7 @@ function generator.bsp_recursive( self, rooms, bsp_settings )
 	local single   = bsp_settings.rec_single        or 11
 	local doors    = bsp_settings.rec_doors         or 2
 	local max_side = bsp_settings.max_reserved_side or 100
+	local sides    = bsp_settings.door_sides
 	local count    = #rooms
 	local reserved_split_settings = {
 		grid       = bsp_settings.grid,
@@ -185,10 +231,14 @@ function generator.bsp_recursive( self, rooms, bsp_settings )
 			if reserved or match_bsp then 
 				self:fill( bsp_settings.tiles.wall, room )
 				self:fill( bsp_settings.tiles.floor, room:shrinked(1) )
-				generator.place_doors( self, room, doors )
 				local settings = bsp_settings
 				if reserved then
 					settings = reserved_split_settings
+				end
+				if sides then
+					generator.place_side_doors( self, room, settings.grid )
+				else
+					generator.place_doors( self, room, doors )
 				end
 				local srooms
 				local attempt = 0

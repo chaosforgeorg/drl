@@ -700,6 +700,8 @@ function generator.generate_nutiled_level( settings )
 		rec_single = 8,
 		rec_min = coord( 5, 5 )
 	}
+	-- untrimmed corridors only connect through the rooms bordering them
+	rec_settings.door_sides = settings.trim == false
 	if settings.trim ~= false then
 		for _,r in ipairs( rooms ) do
 			if r.a.y == 1 and r.b.y == MAXY then
