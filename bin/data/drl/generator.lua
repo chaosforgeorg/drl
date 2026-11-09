@@ -93,6 +93,7 @@ function generator.run( gen )
 	if gen.post_run then gen.post_run() end
 
 	core.log("generator.run > level generated successfully.")
+	generator.last = gen
 end
 
 function generator.being_weight()

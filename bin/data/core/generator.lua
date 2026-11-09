@@ -596,6 +596,29 @@ function generator.reset()
 	level:fill_edges( generator.styles[ level.style ].wall )
 end
 
+-- God-mode level regeneration. Reruns generator.last, which each module's
+-- generator.run must record on success.
+function generator.regenerate( reveal )
+	core.log("generator.regenerate()")
+	if generator.last then
+		game.reset_level()
+		generator.run( generator.last )
+		if reveal then
+			for c in level:get_area():coords() do
+				local cell = cells[ level.map[ c ] ]
+				if cell.flags[ CF_BLOCKMOVE ] or cell.flags[ CF_NOCHANGE ] then
+					level:set_light_flag( c, LFEXPLORED, true )
+				end
+			end
+			level.flags[ LF_BEINGSVISIBLE ] = true
+			level.flags[ LF_ITEMSVISIBLE  ] = not level.flags[ LF_ITEMSVISIBLE  ]
+		end
+		game.post_regenerate()
+	else
+		core.log("generator.regenerate() > no last generator to run.")
+	end
+end
+
 function generator.place_player()
 	core.log("generator.place_player()")
 	local safe_zone = 3
