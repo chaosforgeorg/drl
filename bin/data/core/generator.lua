@@ -677,16 +677,18 @@ function generator.generate_nutiled_level( settings )
 		rec_single = 8,
 		rec_min = coord( 5, 5 )
 	}
-	for _,r in ipairs( rooms ) do
-		if r.a.y == 1 and r.b.y == MAXY then
-			local roll = math.random(3)
-			if roll == 2 then
-				r.a = coord( r.a.x, r.a.y + corridor + 1 )
-			elseif roll == 3 then
-				r.b = coord( r.b.x, r.b.y - corridor - 1 )
-			else
-				r.a = coord( r.a.x, r.a.y + corridor + 1 )
-				r.b = coord( r.b.x, r.b.y - corridor - 1 )
+	if settings.trim ~= false then
+		for _,r in ipairs( rooms ) do
+			if r.a.y == 1 and r.b.y == MAXY then
+				local roll = math.random(3)
+				if roll == 2 then
+					r.a = coord( r.a.x, r.a.y + corridor + 1 )
+				elseif roll == 3 then
+					r.b = coord( r.b.x, r.b.y - corridor - 1 )
+				else
+					r.a = coord( r.a.x, r.a.y + corridor + 1 )
+					r.b = coord( r.b.x, r.b.y - corridor - 1 )
+				end
 			end
 		end
 	end
@@ -753,10 +755,9 @@ function generator.generate_nutiled_level( settings )
 --		generator.ring_clear( self, result.area, 25, coord( corridor, corridor ), false, nil, true )
 --	end
 
-	generator.clear_dead_ends()
-	generator.remove_needless_doors()
-
 	generator.restore_walls( wall_cell )
+	generator.clear_dead_ends( settings.dead_ends )
+	generator.remove_needless_doors()
 end
 
 function generator.generate_tiled_level( settings )
