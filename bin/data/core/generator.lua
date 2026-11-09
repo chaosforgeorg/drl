@@ -665,8 +665,8 @@ function generator.generate_special_stairs( stairs_id, feelings )
 	return pos
 end
 
-function generator.generate_nutiled_level( settings )
-	core.log("generator.generate_nutiled_level()")
+function generator.generate_tiled_level( settings )
+	core.log("generator.generate_tiled_level()")
 	local settings     = settings or {}
 	local wall_cell    = settings.wall_cell  or cells[generator.styles[ level.style ].wall].nid
 	local door_cell    = settings.door_cell  or cells[generator.styles[ level.style ].door].nid
@@ -685,7 +685,7 @@ function generator.generate_nutiled_level( settings )
 	local corridor = settings.corridor or 2
 	if corridor == 0 then
 		-- no corridors: split the whole area directly into rooms
-		core.log("generator.generate_nutiled_level() - direct split" )
+		core.log("generator.generate_tiled_level() - direct split" )
 		level:fill( wall_cell, result.area:expanded(1) )
 		level:fill( floor_cell, result.area )
 		generator.bsp( level, result.area:expanded(1), {
@@ -730,11 +730,11 @@ function generator.generate_nutiled_level( settings )
 		end
 
 		if settings.fluid and corridor > 1 then
-			core.log("generator.generate_nutiled_level() - processing fluid" )
+			core.log("generator.generate_tiled_level() - processing fluid" )
 			for _,r in ipairs( rooms ) do
 				level:fill( wall_cell, r )
 			end
-			core.log("generator.generate_nutiled_level() - fluid placement" )
+			core.log("generator.generate_tiled_level() - fluid placement" )
 			local fluid_cell = cells[settings.fluid].nid
 			for c in level:each( floor_cell, larea:shrinked( 2 ) ) do
 				if level:around( c, { floor_cell, fluid_cell } ) == 8 then
@@ -743,7 +743,7 @@ function generator.generate_nutiled_level( settings )
 			end
 
 			if settings.bridge then
-				core.log("generator.generate_nutiled_level() - bridge placement" )
+				core.log("generator.generate_tiled_level() - bridge placement" )
 				for c in level:each( fluid_cell, larea:shrinked( 2 ) ) do
 					if level:cross_around( c, fluid_cell ) == 2 and level:around( c, { floor_cell, settings.bridge } ) == 6 then
 						if math.random(10) == 1 then
@@ -758,7 +758,7 @@ function generator.generate_nutiled_level( settings )
 			end
 		end
 
-		core.log("generator.generate_nutiled_level() - recursive split" )
+		core.log("generator.generate_tiled_level() - recursive split" )
 		local split_rooms
 		local rec_rooms
 		rec_rooms, split_rooms = generator.bsp_recursive( level, rooms, rec_settings )
@@ -797,91 +797,10 @@ function generator.generate_nutiled_level( settings )
 	end
 
 	generator.restore_walls( wall_cell )
-	generator.clear_dead_ends( settings.dead_ends )
+	if settings.dead_ends ~= false then
+		generator.clear_dead_ends( settings.dead_ends )
+	end
 	generator.remove_needless_doors()
-end
-
-function generator.generate_tiled_level( settings )
-	core.log("generator.generate_tiled_level()")
-	local settings     = settings or {}
-	local wall_cell    = settings.wall_cell  or cells[generator.styles[ level.style ].wall].nid
-	local door_cell    = settings.door_cell  or cells[generator.styles[ level.style ].door].nid
-	local floor_cell   = settings.floor_cell or cells[generator.styles[ level.style ].floor].nid
-
-	local plot = function( horiz, where )
-		generator.plot_line( level, where, horiz, wall_cell )
-		level:set_cell( where, door_cell )
-	end
-
-	local div_point = function( x, yrange, ymult, ymod )
-		return coord( x, math.random(yrange)*ymult+ymod )
-	end
-
-	local MAX2 = math.floor(MAXX / 2)
-	local MAX4 = math.floor(MAXX / 4)
-	local MAX8 = math.floor(MAXX / 8)
-
-	local nfirst = settings.subdiv      or 5
-	local ndoors = settings.extra_doors or 4
-	local pdoors = settings.add_doors   or 8
-
-	if math.random(3) == 1 then
-		plot( false, div_point( math.random(MAX4-8)*2+4,       8,2,2 ) )
-		plot( false, div_point( math.random(MAX4-8)*2+4+MAX4*2,8,2,2 ) )
-	else
-		plot( false, div_point( math.random(MAX4-12)*2+4,            8,2,2 ) )
-		plot( false, div_point( math.random(MAX4-4)*2 + MAX2 - MAX4, 8,2,2 ) )
-		plot( false, div_point( math.random(MAX4-12)*2+8+MAX4*2,     8,2,2 ) )
-	end
-	for i = 1,4 do
-		plot( true, div_point( math.random(MAX8-3)*2+(MAX4+1)*(i-1)+3,4,4,1 ) )
-	end
-
-	for i = 1,nfirst do
-		if math.random(3) == 3 then
-			plot( true, div_point( math.random(MAX2-2)*2+1, 8,2,1 ) )
-		else
-			plot( false, div_point( math.random(MAX2-2)*2+2, 6,2,2 ) )
-		end
-	end
-
-	local door_positions = {}
-	local priority_doors = {}
-	
-	for c in level:get_area():shrinked():coords() do
-		if level:get_cell( c ) == wall_cell
-		and level:around( c, door_cell ) == 0 
-		and level:cross_around( c, wall_cell ) == 2
-		and level:cross_around( c, floor_cell ) == 2
-		then
-			local walls = level:around( c, wall_cell )
-			if walls > 4 then
-				if level:around( c, door_cell ) == 0 then
-					level:set_cell( c, door_cell )
-				end
-			elseif walls > 3 then
-				table.insert( priority_doors, c:clone() )
-			else
-				table.insert( door_positions, c:clone() )
-			end
-		end
-	end
-
-	for i = 1,pdoors do
-		local pos = table.random_remove( priority_doors )
-		if pos and level:around( pos, door_cell ) == 0 then
-			level:set_cell( pos, door_cell )
-		end
-	end
-
-	for i = 1,ndoors do
-		local pos = table.random_remove( door_positions )
-		if pos and level:around( pos, door_cell ) == 0 then
-			level:set_cell( pos, door_cell )
-		end
-	end
-
-	generator.restore_walls( wall_cell )
 end
 
 function generator.generate_archi_level( settings )

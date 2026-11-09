@@ -23,6 +23,48 @@ core.register_blueprint "generator"
 }
 
 function drl.register_generators()
+	local function generate_tiled_level()
+		local setting_list = {
+			{
+				corridor     = 1,
+				subdiv       = 2,
+				trim         = false,
+				dead_ends    = 16,
+				rec_settings = {
+					subdiv     = 3,
+					rec_single = 8,
+					rec_min    = coord( 5, 5 ),
+				},
+			},
+			{
+				corridor     = 2,
+				subdiv       = 2,
+				trim         = false,
+				dead_ends    = 16,
+				rec_settings = {
+					subdiv     = 3,
+					rec_single = 8,
+					rec_min    = coord( 5, 5 ),
+				},
+			},
+			{
+				corridor    = 0,
+				subdiv      = 16,
+				extra_doors = 8,
+			},
+			{
+				corridor    = 0,
+				subdiv      = 10,
+				extra_doors = 12,
+				dead_ends   = false,
+			},
+			{ corridor = 1, border = 1, },
+			{ corridor = 1, },
+			{ corridor = 2, },
+		}
+		generator.generate_tiled_level( table.random_pick( setting_list ) )
+		return generator.create_room_list()
+	end
 
 	register_generator "gen_tiled"
 	{
@@ -33,9 +75,8 @@ function drl.register_generators()
 		fluids  = 60,
 		rivers  = 60,
 
-		run        = function() 
-			generator.generate_tiled_level()
-			return generator.create_room_list()
+		run        = function()
+			return generate_tiled_level()
 		end
 	}
 
@@ -291,8 +332,7 @@ function drl.register_generators()
 			player:add_history("On @1 he stumbled into a complex full of "..beings[monster].name_plural.."!")
 		end,
 		run        = function() 
-			generator.generate_tiled_level()
-			return generator.create_room_list()
+			return generate_tiled_level()
 		end
 
 	}
@@ -320,8 +360,7 @@ function drl.register_generators()
 			player:add_history("On @1 he stumbled into a complex full of "..beings[monster].name_plural.."!")
 		end,
 		run        = function() 
-			generator.generate_tiled_level()
-			return generator.create_room_list()
+			return generate_tiled_level()
 		end
 	}
 
