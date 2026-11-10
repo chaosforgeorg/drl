@@ -28,6 +28,7 @@ function generator.bsp( self, ar, bsp_settings )
 	local gmin  = settings.gmin or coord(1,1)
 	local cntr  = settings.centering or 4
 	local sdiv  = settings.subdiv or 8
+	local limit_area = settings.limit_area
 	local tiles = settings.tiles or {
 		wall  = generator.styles[ level.style ].wall,
 		floor = generator.styles[ level.style ].floor,
@@ -68,7 +69,8 @@ function generator.bsp( self, ar, bsp_settings )
 					c = c + coord( 1, 1 )
 				end
 				if self:get_cell( c ) == fid then
-					local e1, e2 = generator.get_endpoint_coords( self, c, ori, fid )
+					-- walls must end on a wall; a split meeting a door is rejected
+					local e1, e2 = generator.get_endpoint_coords( self, c, ori, fid, wid, limit_area )
 					if e1 then
 						generator.bsp_place_wall( self, c, wid, did, e1, e2 )
 						counter = counter + 1
@@ -103,6 +105,7 @@ function generator.rbsp( self, larea, rbsp_settings )
 		floor = generator.styles[ level.style ].wall,
 		door  = generator.styles[ level.style ].door,
 	}
+	rbsp_settings.limit_area = rbsp_settings.limit_area or larea:shrinked( 1 )
 
 	local corridor  = rbsp_settings.corridor or 1
 	local room_min  = rbsp_settings.room_min or coord( 2, 2 )
@@ -141,8 +144,8 @@ end
 
 -- Places one door on every side of the room that faces floor. Doors are kept
 -- off the split grid of generator.bsp ( horizontal walls at y % grid.y == 1,
--- vertical walls at x % grid.x == 0 ), so a later split of the room never
--- ends on one of them.
+-- vertical walls at x % grid.x == 0 ), so they never block a later split of
+-- the room ( bsp rejects walls ending on a door ).
 function generator.place_side_doors( self, room, grid )
     local door_cell  = generator.styles[ level.style ].door
     local wall_cell  = generator.styles[ level.style ].wall

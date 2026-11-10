@@ -762,17 +762,6 @@ function generator.generate_tiled_level( settings )
 		local split_rooms
 		local rec_rooms
 		rec_rooms, split_rooms = generator.bsp_recursive( level, rooms, rec_settings )
-		for _,room in ipairs( rooms ) do
-			local nonwall = 0
-			for c in room:edges() do
-				if level:get_cell( c ) ~= wall_cell then
-					nonwall = nonwall + 1
-				end
-			end
-			if nonwall == 0 then
-				generator.place_doors( level, room, 2 )
-			end
-		end
 
 --[[
 		rooms = {}
