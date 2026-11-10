@@ -70,7 +70,7 @@ function generator.bsp( self, ar, bsp_settings )
 				end
 				if self:get_cell( c ) == fid then
 					-- walls must end on a wall; a split meeting a door is rejected
-					local e1, e2 = generator.get_endpoint_coords( self, c, ori, fid, wid, limit_area )
+					local e1, e2 = generator.get_endpoints( self, c, ori, fid, wid, limit_area )
 					if e1 then
 						generator.bsp_place_wall( self, c, wid, did, e1, e2 )
 						counter = counter + 1
