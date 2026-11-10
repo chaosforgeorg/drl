@@ -696,11 +696,13 @@ function generator.generate_tiled_level( settings )
 		} )
 	else
 		local rbsp_settings = {
-			subdiv   = settings.subdiv or 5,
-			grid     = settings.grid or coord( 4,4 ),
-			gmin     = settings.gmin or coord( 2,2 ),
-			corridor = corridor,
-			room_min = settings.room_min or coord( 4, 4 ),
+			subdiv     = settings.subdiv or 5,
+			grid       = settings.grid or coord( 4,4 ),
+			gmin       = settings.gmin or coord( 2,2 ),
+			corridor   = corridor,
+			room_min   = settings.room_min or coord( 4, 4 ),
+			-- rbsp gets the area expanded to the map edge; keep lines inside it as JH does
+			limit_area = result.area:shrinked( 1 ),
 		}
 		local rooms = generator.rbsp( level, result.area:expanded(1), rbsp_settings )
 
