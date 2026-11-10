@@ -9,10 +9,19 @@ generator.wall_to_ice = {
 
 ---@diagnostic disable: duplicate-set-field
 
+-- gen.run returns false when generation failed; the level is then reset and
+-- generated again. The RNG is not reseeded, so each retry differs.
 function generator.run( gen )
-	generator.reset()
 	core.log("generator.run > generating level type : "..gen.id)
-	local room_list = gen.run()
+	local room_list
+	repeat
+		generator.reset()
+		room_list = gen.run()
+		if room_list == false then
+			core.log("generator.run > level generation failed, retrying...")
+			game.reset_level()
+		end
+	until room_list ~= false
 
 	if gen.fluids then
 		if type( gen.fluids ) == "function" then

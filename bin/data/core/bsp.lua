@@ -125,6 +125,8 @@ function generator.rbsp( self, larea, rbsp_settings )
 	return rooms
 end
 
+-- Places doors on random valid edge cells of the room. Returns false if not
+-- all doors could be placed within the attempt limit.
 function generator.place_doors( self, room, doors )
     local door_cell  = generator.styles[ level.style ].door
     local wall_cell  = generator.styles[ level.style ].wall
@@ -132,7 +134,13 @@ function generator.place_doors( self, room, doors )
     local fid = cells[ floor_cell ].nid
     local did = cells[ door_cell ].nid
     local wid = cells[ wall_cell ].nid
+    local attempts = 1000
     while doors > 0 do
+        if attempts == 0 then
+            core.log("generator.place_doors() > attempt limit reached for room "..tostring( room ) )
+            return false
+        end
+        attempts = attempts - 1
         local c = room:random_inner_edge_coord()
         if self:cross_around( c, wid ) == 2 and self:cross_around( c, fid ) == 2 then
             doors = doors - 1
@@ -187,6 +195,8 @@ function generator.place_side_doors( self, room, grid )
     end
 end
 
+-- Returns the resulting rooms and the set of split ones, or nil if door
+-- placement failed.
 function generator.bsp_recursive( self, rooms, bsp_settings )
    	bsp_settings.tiles = bsp_settings.tiles or {
 		floor = generator.styles[ self.style ].floor,
@@ -240,8 +250,8 @@ function generator.bsp_recursive( self, rooms, bsp_settings )
 				end
 				if sides then
 					generator.place_side_doors( self, room, settings.grid )
-				else
-					generator.place_doors( self, room, doors )
+				elseif not generator.place_doors( self, room, doors ) then
+					return nil
 				end
 				local srooms
 				local attempt = 0

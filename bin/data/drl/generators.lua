@@ -62,7 +62,9 @@ function drl.register_generators()
 			{ corridor = 1, },
 			{ corridor = 2, },
 		}
-		generator.generate_tiled_level( table.random_pick( setting_list ) )
+		if not generator.generate_tiled_level( table.random_pick( setting_list ) ) then
+			return false
+		end
 		return generator.create_room_list()
 	end
 

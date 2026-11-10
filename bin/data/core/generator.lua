@@ -665,6 +665,7 @@ function generator.generate_special_stairs( stairs_id, feelings )
 	return pos
 end
 
+-- Returns false if generation failed and the level should be regenerated.
 function generator.generate_tiled_level( settings )
 	core.log("generator.generate_tiled_level()")
 	local settings     = settings or {}
@@ -762,6 +763,7 @@ function generator.generate_tiled_level( settings )
 		local split_rooms
 		local rec_rooms
 		rec_rooms, split_rooms = generator.bsp_recursive( level, rooms, rec_settings )
+		if not rec_rooms then return false end
 
 --[[
 		rooms = {}
@@ -790,6 +792,7 @@ function generator.generate_tiled_level( settings )
 		generator.clear_dead_ends( settings.dead_ends )
 	end
 	generator.remove_needless_doors()
+	return true
 end
 
 function generator.generate_archi_level( settings )
@@ -959,14 +962,6 @@ function generator.clear_dead_ends( iterations, ar, wall )
 		end
 		iterations = iterations - 1
 	until iterations == 0 or (not applied)
-
-	if not wall then
-		for c in level:each( door, ar ) do
-			if level:cross_around( c, wall ) < 2 then
-				level:set_cell( c, floor )
-			end
-		end
-	end
 end
 
 -- Adds up to count doors in straight walls with floor on both sides and no
