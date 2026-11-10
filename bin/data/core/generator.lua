@@ -778,9 +778,9 @@ function generator.generate_tiled_level( settings )
 		end
 --]]
 
---		if corridor > 1 then
---			generator.ring_clear( self, result.area, 25, coord( corridor, corridor ), false, nil, true )
---		end
+		if settings.ring_clear and corridor > 1 then
+			generator.ring_clear( result.area, 25, coord( corridor, corridor ), false, nil, true )
+		end
 	end
 
 	if settings.extra_doors then
@@ -962,6 +962,106 @@ function generator.clear_dead_ends( iterations, ar, wall )
 		end
 		iterations = iterations - 1
 	until iterations == 0 or (not applied)
+end
+
+-- Port of JH's ring_clear. Fills floor runs bounded by walls on scan lines
+-- moving inward from each edge of a, up to count lines per edge, which removes
+-- dead-end stubs of wide corridors at the edges. Only runs whose length is
+-- within fill_range ( a number for the maximum, or a coord as min, max ) are
+-- filled. Each edge stops at the first line with a candidate run that was not
+-- filled, unless force is set. With safe, runs next to doors are kept.
+function generator.ring_clear( a, count, fill_range, force, wall_id, safe )
+	core.log("generator.ring_clear()")
+	local style = generator.styles[ level.style ]
+	local door  = cells[ style.door ].nid
+	local wall  = cells[ wall_id or style.wall ].nid
+	local walls      = generator.cell_sets[ CELLSET_WALLS ]
+	local wall_list  = generator.cell_lists[ CELLSET_WALLS ]
+	local floors     = generator.cell_sets[ CELLSET_FLOORS ]
+	local floor_list = generator.cell_lists[ CELLSET_FLOORS ]
+	if wall_id then
+		walls     = { [wall] = true }
+		wall_list = { wall }
+	end
+
+	local min_fill, max_fill = 0, 1000000
+	if fill_range then
+		if type( fill_range ) == "number" then
+			max_fill = fill_range
+		else
+			min_fill = fill_range.x
+			max_fill = fill_range.y
+		end
+	end
+
+	-- returns false if the line had a candidate run but nothing was filled
+	local function scan( line )
+		local start   = line.a
+		local stage   = 0
+		local work    = false
+		local attempt = false
+		local cell    = level:get_cell( start )
+		if floors[cell] or walls[cell] then
+			stage = 1
+		end
+		for c in line:coords() do
+			cell = level:get_cell( c )
+			if stage == 0 then
+				if walls[cell] then
+					stage = 1
+				end
+			elseif stage == 1 then
+				if floors[cell] then
+					if safe and level:cross_around( c, door ) > 0 then
+						stage = 0
+					elseif level:around( c, wall_list ) > 3 then
+						stage   = 2
+						start   = c:clone()
+						attempt = true
+					else
+						stage = 0
+					end
+				elseif not walls[cell] then
+					stage = 0
+				end
+			elseif stage == 2 then
+				if level:cross_around( c, floor_list ) == 4 then
+					stage = 0
+				elseif safe and floors[cell] and level:cross_around( c, door ) > 0 then
+					stage = 0
+				elseif walls[cell] then
+					local run = area( start, c:clone() )
+					local dim = math.max( run:dim().x, run:dim().y ) - 1
+					if dim <= max_fill and dim >= min_fill then
+						level:fill( wall, run )
+					end
+					stage = 1
+					work  = true
+				elseif not floors[cell] or
+					( level:cross_around( c, wall_list ) + level:cross_around( c, floor_list ) + level:cross_around( c, door ) ~= 4 ) then
+					stage = 0
+				end
+			end
+		end
+		return ( not attempt ) or work
+	end
+
+	for i = 0,count-1 do
+		local la = a:shrinked( coord( 0, i ) )
+		if not scan( area( la.a, coord( la.b.x, la.a.y ) ) ) and not force then break end
+	end
+	for i = 0,count-1 do
+		local la = a:shrinked( coord( 0, i ) )
+		if not scan( area( coord( la.a.x, la.b.y ), la.b ) ) and not force then break end
+	end
+	for i = 0,count-1 do
+		local la = a:shrinked( coord( i, 0 ) )
+		if not scan( area( la.a, coord( la.a.x, la.b.y ) ) ) and not force then break end
+	end
+	for i = 0,count-1 do
+		local la = a:shrinked( coord( i, 0 ) )
+		if not scan( area( coord( la.b.x, la.a.y ), la.b ) ) and not force then break end
+	end
 end
 
 -- Adds up to count doors in straight walls with floor on both sides and no
