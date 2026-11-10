@@ -125,27 +125,17 @@ function generator.rbsp( self, larea, rbsp_settings )
 	return rooms
 end
 
--- Places doors on random valid edge cells of the room. Returns false if not
--- all doors could be placed within the attempt limit.
+-- Places doors on random door spots of the room's edge. Returns false if the
+-- edge has no door spot left.
 function generator.place_doors( self, room, doors )
-    local door_cell  = generator.styles[ level.style ].door
-    local wall_cell  = generator.styles[ level.style ].wall
-    local floor_cell = generator.styles[ level.style ].floor
-    local fid = cells[ floor_cell ].nid
-    local did = cells[ door_cell ].nid
-    local wid = cells[ wall_cell ].nid
-    local attempts = 1000
-    while doors > 0 do
-        if attempts == 0 then
-            core.log("generator.place_doors() > attempt limit reached for room "..tostring( room ) )
+    local style = generator.styles[ level.style ]
+    for _ = 1, doors do
+        local c = generator.random_door_spot( self, { style.wall }, { style.floor }, nil, nil, room, true )
+        if not c then
+            core.log("generator.place_doors() > no door spot left in room "..tostring( room ) )
             return false
         end
-        attempts = attempts - 1
-        local c = room:random_inner_edge_coord()
-        if self:cross_around( c, wid ) == 2 and self:cross_around( c, fid ) == 2 then
-            doors = doors - 1
-            self:set_cell( c, did )
-        end
+        self:set_cell( c, style.door )
     end
     return true
 end

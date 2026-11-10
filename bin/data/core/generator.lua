@@ -1050,41 +1050,17 @@ function generator.ring_clear( a, count, fill_range, force, wall_id, safe )
 end
 
 -- Adds up to count doors in straight walls with floor on both sides and no
--- door around, so tree-shaped layouts get some loops. Each door is picked
--- uniformly by counting spots and rescanning, instead of collecting them.
+-- door around, so tree-shaped layouts get some loops.
 function generator.place_extra_doors( count, wall_cell, floor_cell, door_cell )
 	core.log("generator.place_extra_doors()")
 	local style = generator.styles[ level.style ]
-	wall_cell  = wall_cell  or cells[ style.wall ].nid
-	floor_cell = floor_cell or cells[ style.floor ].nid
-	door_cell  = door_cell  or cells[ style.door ].nid
-	local function is_spot( c )
-		return level:get_cell( c ) == wall_cell
-			and level:cross_around( c, wall_cell ) == 2
-			and level:cross_around( c, floor_cell ) == 2
-			-- straight wall, not an L-corner: both horizontal neighbours match
-			and level:get_cell( c.x - 1, c.y ) == level:get_cell( c.x + 1, c.y )
-			and level:around( c, door_cell ) == 0
-	end
-	local ar = level:get_area():shrinked()
+	wall_cell  = wall_cell  or style.wall
+	floor_cell = floor_cell or style.floor
+	door_cell  = door_cell  or style.door
 	for _ = 1, count do
-		local total = 0
-		for c in ar:coords() do
-			if is_spot( c ) then
-				total = total + 1
-			end
-		end
-		if total == 0 then return end
-		local pick = math.random( total )
-		for c in ar:coords() do
-			if is_spot( c ) then
-				pick = pick - 1
-				if pick == 0 then
-					level:set_cell( c, door_cell )
-					break
-				end
-			end
-		end
+		local c = generator.random_door_spot( level, { wall_cell }, { floor_cell }, { door_cell } )
+		if not c then return end
+		level:set_cell( c, door_cell )
 	end
 end
 
