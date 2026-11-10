@@ -29,7 +29,6 @@ function drl.register_generators()
 				corridor     = 1,
 				subdiv       = 2,
 				trim         = false,
-				dead_ends    = 16,
 				rec_settings = {
 					subdiv     = 3,
 					rec_single = 8,
@@ -40,7 +39,6 @@ function drl.register_generators()
 				corridor     = 2,
 				subdiv       = 2,
 				trim         = false,
-				dead_ends    = 16,
 				rec_settings = {
 					subdiv     = 3,
 					rec_single = 8,

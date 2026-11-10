@@ -791,7 +791,7 @@ function generator.generate_tiled_level( settings )
 
 	generator.restore_walls( wall_cell )
 	if settings.dead_ends ~= false then
-		generator.clear_dead_ends( settings.dead_ends )
+		generator.clear_dead_ends()
 	end
 	generator.remove_needless_doors()
 	return true
@@ -941,29 +941,12 @@ function generator.wallin_cell( c, cell_id )
 	return true
 end
 
-function generator.clear_dead_ends( iterations, ar, wall )
-	iterations = iterations or 1
-	local ar      = ar or level:get_area():shrinked()
-	local applied = false
-	local floor   = generator.styles[ level.style ].floor
-	local door    = generator.styles[ level.style ].door
-	local wall    = wall or generator.styles[ level.style ].wall
-	repeat
-		applied = false
-		for c in level:each( floor, ar ) do
-			if level:cross_around( c, wall ) >= 3 then
-				applied = true
-				level:set_cell( c, wall )
-			end
-		end
-		for c in level:each( door, ar ) do
-			if level:cross_around( c, wall ) >= 3 then
-				applied = true
-				level:set_cell( c, wall )
-			end
-		end
-		iterations = iterations - 1
-	until iterations == 0 or (not applied)
+-- Fills dead ends ( floor or door cells with at least 3 wall neighbours ) with
+-- wall, one layer per pass, until none are left or after passes passes.
+function generator.clear_dead_ends( passes, ar, wall )
+	local style = generator.styles[ level.style ]
+	wall = wall or style.wall
+	generator.fill_dead_ends( level, { style.floor, style.door }, { wall }, wall, ar, passes )
 end
 
 -- Port of JH's ring_clear. Fills floor runs bounded by walls on scan lines
