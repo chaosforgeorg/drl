@@ -100,7 +100,7 @@ function generator.scatter_cross_item(scatter_area,good,item_id,count)
 end
 
 function generator.transmute_style( from, to, fstyle, tstyle, ar )
-	local a    = ar or area.FULL
+	local a    = ar or level:get_area()
 	local from = cells[from].nid
 	for c in a() do 
 		if level.map[ c ] == from and level:get_raw_style( c ) == fstyle then
@@ -113,7 +113,7 @@ function generator.transmute_style( from, to, fstyle, tstyle, ar )
 end
 
 function generator.transmute_to_object( from, object, ar, floor )
-	local a     = ar or area.FULL
+	local a     = ar or level:get_area()
 	local from  = cells[from].nid
 	local floor = floor or generator.styles[ level.style ].floor
 	for c in a() do 
@@ -309,6 +309,7 @@ function generator.scatter_tiles( settings, amount )
 		tiles[ #tiles + 1 ] = generator.tile_new( level, block, pure_translation, true )
 	end
 
+	local inner_area = level:get_area():shrinked()
 	while amount > 0 and #tiles > 0 do
 		local index = math.random( #tiles )
 		local tile = tiles[ index ]
@@ -318,7 +319,7 @@ function generator.scatter_tiles( settings, amount )
 		local tile_size = tile:get_size_coord()
 		local placed = false
 		for i = 1, 100 do
-			local c = area.FULL_SHRINKED:random_coord()
+			local c = inner_area:random_coord()
 			if level:scan( area( c, c + tile_size - coord.UNIT ), floor_cell ) then
 				generator.place_dungen_tile( translation, tile, c )
 				amount = amount - 1
@@ -370,7 +371,7 @@ end
 function generator.drunkard_walks( amount, steps, cell, ignore, break_on_edge, drunk_area )
 	core.log("generator.drunkard_walks("..amount..","..steps..","..cell.."...)")
 	if amount <= 0 then return end
-	drunk_area = drunk_area or area.FULL_SHRINKED
+	drunk_area = drunk_area or level:get_area():shrinked()
 	for i=1,amount do
 		generator.run_drunkard_walk( level, drunk_area, drunk_area:random_coord(), steps, cell, ignore, break_on_edge )
 	end
@@ -379,7 +380,7 @@ end
 function generator.contd_drunkard_walks( amount, steps, cell, edges1, edges2, ignore, break_on_edge, drunk_area )
 	core.log("generator.contd_drunkard_walks("..amount..","..steps..","..cell.."...)")
 	if amount <= 0 then return end
-	drunk_area = drunk_area or area.FULL_SHRINKED
+	drunk_area = drunk_area or level:get_area():shrinked()
 	local c
 	for i=1,amount do
 		repeat
@@ -393,7 +394,7 @@ end
 function generator.maze_dungeon( floor_cell, wall_cell, granularity, tries, minl, maxl, maze_area )
 	core.log("generator.maze_dungeon()")
 	if type(floor_cell) == "string" then floor_cell = cells[floor_cell].nid end
-	maze_area = maze_area or area.FULL
+	maze_area = maze_area or level:get_area()
 	local rx = math.floor( ( maze_area.b.x - maze_area.a.x ) / granularity )
 	local ry = math.floor( ( maze_area.b.y - maze_area.a.y ) / granularity )
 	local rl = math.floor( ( maxl - minl ) / granularity + 1 )
@@ -460,7 +461,7 @@ function generator.read_room_list()
 		return false
 	end
 
-	for start in area.coords( area.FULL ) do
+	for start in level:get_area():coords() do
 		if room_begin( start ) then
 			local ec = coord.clone( start )
 			repeat
@@ -518,7 +519,7 @@ end
 function generator.restore_walls( wall_cell, skip_cells )
 	core.log("generator.restore_walls("..wall_cell..")")
 	if skip_cells then
-		for c in area.edges( area.FULL ) do
+		for c in level:get_area():edges() do
 			if not skip_cells[ cells[level:get_cell( c )].id ] then
 				level:set_cell( c, wall_cell )
 			end
@@ -595,6 +596,29 @@ function generator.reset()
 	level:fill_edges( generator.styles[ level.style ].wall )
 end
 
+-- God-mode level regeneration. Reruns generator.last, which each module's
+-- generator.run must record on success.
+function generator.regenerate( reveal )
+	core.log("generator.regenerate()")
+	if generator.last then
+		game.reset_level()
+		generator.run( generator.last )
+		if reveal then
+			for c in level:get_area():coords() do
+				local cell = cells[ level.map[ c ] ]
+				if cell.flags[ CF_BLOCKMOVE ] or cell.flags[ CF_NOCHANGE ] then
+					level:set_light_flag( c, LFEXPLORED, true )
+				end
+			end
+			level.flags[ LF_BEINGSVISIBLE ] = true
+			level.flags[ LF_ITEMSVISIBLE  ] = not level.flags[ LF_ITEMSVISIBLE  ]
+		end
+		game.post_regenerate()
+	else
+		core.log("generator.regenerate() > no last generator to run.")
+	end
+end
+
 function generator.place_player()
 	core.log("generator.place_player()")
 	local safe_zone = 3
@@ -641,14 +665,15 @@ function generator.generate_special_stairs( stairs_id, feelings )
 	return pos
 end
 
-
-function generator.generate_nutiled_level( settings )
-	core.log("generator.generate_nutiled_level()")
+-- Returns false if generation failed and the level should be regenerated.
+function generator.generate_tiled_level( settings )
+	core.log("generator.generate_tiled_level()")
 	local settings     = settings or {}
 	local wall_cell    = settings.wall_cell  or cells[generator.styles[ level.style ].wall].nid
 	local door_cell    = settings.door_cell  or cells[generator.styles[ level.style ].door].nid
 	local floor_cell   = settings.floor_cell or cells[generator.styles[ level.style ].floor].nid
 	wall_cell = cells[wall_cell].nid
+	door_cell = cells[door_cell].nid
 	level:fill( wall_cell )
 	local larea = area( 1, 1, MAXX, MAXY )
 	local result = { area = larea:shrinked(1) }
@@ -659,186 +684,117 @@ function generator.generate_nutiled_level( settings )
 		level:fill( wall_cell, result.area )
 	end
 	local corridor = settings.corridor or 2
-	local rbsp_settings = {
-		subdiv   = settings.subdiv or 5,
-		grid     = settings.grid or coord( 4,4 ),
-		gmin     = settings.gmin or coord( 2,2 ),
-		corridor = corridor,
-		room_min = settings.room_min or coord( 4, 4 ),
-	}
-	local rooms = generator.rbsp( level, result.area:expanded(1), rbsp_settings )
+	if corridor == 0 then
+		-- no corridors: split the whole area directly into rooms
+		core.log("generator.generate_tiled_level() - direct split" )
+		level:fill( wall_cell, result.area:expanded(1) )
+		level:fill( floor_cell, result.area )
+		generator.bsp( level, result.area:expanded(1), {
+			subdiv = settings.subdiv or 5,
+			grid   = settings.grid,
+			gmin   = settings.gmin,
+		} )
+	else
+		local rbsp_settings = {
+			subdiv     = settings.subdiv or 5,
+			grid       = settings.grid or coord( 4,4 ),
+			gmin       = settings.gmin or coord( 2,2 ),
+			corridor   = corridor,
+			room_min   = settings.room_min or coord( 4, 4 ),
+			-- rbsp gets the area expanded to the map edge; keep lines inside it as JH does
+			limit_area = result.area:shrinked( 1 ),
+		}
+		local rooms = generator.rbsp( level, result.area:expanded(1), rbsp_settings )
 
-	level:fill( floor_cell, result.area )
+		level:fill( floor_cell, result.area )
 
-	local rec_settings = settings.rec_settings or {
-		subdiv = 1,
-		return_all = true,
-		rec_single = 8,
-		rec_min = coord( 5, 5 )
-	}
-	for _,r in ipairs( rooms ) do
-		if r.a.y == 1 and r.b.y == MAXY then
-			local roll = math.random(3)
-			if roll == 2 then
-				r.a = coord( r.a.x, r.a.y + corridor + 1 )
-			elseif roll == 3 then
-				r.b = coord( r.b.x, r.b.y - corridor - 1 )
-			else
-				r.a = coord( r.a.x, r.a.y + corridor + 1 )
-				r.b = coord( r.b.x, r.b.y - corridor - 1 )
-			end
-		end
-	end
-
-	if settings.fluid and corridor > 1 then
-		core.log("generator.generate_nutiled_level() - processing fluid" )
-		for _,r in ipairs( rooms ) do
-			level:fill( wall_cell, r )
-		end
-		core.log("generator.generate_nutiled_level() - fluid placement" )
-		local fluid_cell = cells[settings.fluid].nid
-		for c in level:each( floor_cell, larea:shrinked( 2 ) ) do
-			if level:around( c, { floor_cell, fluid_cell } ) == 8 then
-				level:set_cell( c, fluid_cell )
-			end
-		end
-
-		if settings.bridge then
-			core.log("generator.generate_nutiled_level() - bridge placement" )
-			for c in level:each( fluid_cell, larea:shrinked( 2 ) ) do
-				if level:cross_around( c, fluid_cell ) == 2 and level:around( c, { floor_cell, settings.bridge } ) == 6 then
-					if math.random(10) == 1 then
-						level:set_cell( c, settings.bridge )
+		local rec_settings = settings.rec_settings or {
+			subdiv = 1,
+			return_all = true,
+			rec_single = 8,
+			rec_min = coord( 5, 5 )
+		}
+		-- untrimmed corridors only connect through the rooms bordering them
+		rec_settings.door_sides = settings.trim == false
+		if settings.trim ~= false then
+			for _,r in ipairs( rooms ) do
+				if r.a.y == 1 and r.b.y == MAXY then
+					local roll = math.random(3)
+					if roll == 2 then
+						r.a = coord( r.a.x, r.a.y + corridor + 1 )
+					elseif roll == 3 then
+						r.b = coord( r.b.x, r.b.y - corridor - 1 )
+					else
+						r.a = coord( r.a.x, r.a.y + corridor + 1 )
+						r.b = coord( r.b.x, r.b.y - corridor - 1 )
 					end
 				end
 			end
 		end
 
-		for _,r in ipairs( rooms ) do
-			level:fill( floor_cell, r )
-		end
-	end
+		if settings.fluid and corridor > 1 then
+			core.log("generator.generate_tiled_level() - processing fluid" )
+			for _,r in ipairs( rooms ) do
+				level:fill( wall_cell, r )
+			end
+			core.log("generator.generate_tiled_level() - fluid placement" )
+			local fluid_cell = cells[settings.fluid].nid
+			for c in level:each( floor_cell, larea:shrinked( 2 ) ) do
+				if level:around( c, { floor_cell, fluid_cell } ) == 8 then
+					level:set_cell( c, fluid_cell )
+				end
+			end
 
-	core.log("generator.generate_nutiled_level() - recursive split" )
-	local split_rooms
-	local rec_rooms
-	rec_rooms, split_rooms = generator.bsp_recursive( level, rooms, rec_settings )
-	for _,room in ipairs( rooms ) do
-		local nonwall = 0
-		for c in room:edges() do
-			if level:get_cell( c ) ~= wall_cell then
-				nonwall = nonwall + 1
+			if settings.bridge then
+				core.log("generator.generate_tiled_level() - bridge placement" )
+				for c in level:each( fluid_cell, larea:shrinked( 2 ) ) do
+					if level:cross_around( c, fluid_cell ) == 2 and level:around( c, { floor_cell, settings.bridge } ) == 6 then
+						if math.random(10) == 1 then
+							level:set_cell( c, settings.bridge )
+						end
+					end
+				end
+			end
+
+			for _,r in ipairs( rooms ) do
+				level:fill( floor_cell, r )
 			end
 		end
-		if nonwall == 0 then
-			generator.place_doors( level, room, 2 )
-		end
-	end
+
+		core.log("generator.generate_tiled_level() - recursive split" )
+		local split_rooms
+		local rec_rooms
+		rec_rooms, split_rooms = generator.bsp_recursive( level, rooms, rec_settings )
+		if not rec_rooms then return false end
 
 --[[
-	rooms = {}
-	local small_rooms = {}
-	for _,r in ipairs( rec_rooms ) do
-		local d = r:dim()
-		if d.x < 7 or d.y < 7 then
-			table.insert( small_rooms, r )
-		else
-			table.insert( rooms, r )
-		end
-	end
---]]
-
---	if corridor > 1 then
---		generator.ring_clear( self, result.area, 25, coord( corridor, corridor ), false, nil, true )
---	end
-
-	generator.clear_dead_ends()
-	generator.remove_needless_doors()
-
-	generator.restore_walls( wall_cell )
-end
-
-function generator.generate_tiled_level( settings )
-	core.log("generator.generate_tiled_level()")
-	local settings     = settings or {}
-	local wall_cell    = settings.wall_cell  or cells[generator.styles[ level.style ].wall].nid
-	local door_cell    = settings.door_cell  or cells[generator.styles[ level.style ].door].nid
-	local floor_cell   = settings.floor_cell or cells[generator.styles[ level.style ].floor].nid
-
-	local plot = function( horiz, where )
-		generator.plot_line( level, where, horiz, wall_cell )
-		level:set_cell( where, door_cell )
-	end
-
-	local div_point = function( x, yrange, ymult, ymod )
-		return coord( x, math.random(yrange)*ymult+ymod )
-	end
-
-	local MAX2 = math.floor(MAXX / 2)
-	local MAX4 = math.floor(MAXX / 4)
-	local MAX8 = math.floor(MAXX / 8)
-
-	local nfirst = settings.subdiv      or 5
-	local ndoors = settings.extra_doors or 4
-	local pdoors = settings.add_doors   or 8
-
-	if math.random(3) == 1 then
-		plot( false, div_point( math.random(MAX4-8)*2+4,       8,2,2 ) )
-		plot( false, div_point( math.random(MAX4-8)*2+4+MAX4*2,8,2,2 ) )
-	else
-		plot( false, div_point( math.random(MAX4-12)*2+4,            8,2,2 ) )
-		plot( false, div_point( math.random(MAX4-4)*2 + MAX2 - MAX4, 8,2,2 ) )
-		plot( false, div_point( math.random(MAX4-12)*2+8+MAX4*2,     8,2,2 ) )
-	end
-	for i = 1,4 do
-		plot( true, div_point( math.random(MAX8-3)*2+(MAX4+1)*(i-1)+3,4,4,1 ) )
-	end
-
-	for i = 1,nfirst do
-		if math.random(3) == 3 then
-			plot( true, div_point( math.random(MAX2-2)*2+1, 8,2,1 ) )
-		else
-			plot( false, div_point( math.random(MAX2-2)*2+2, 6,2,2 ) )
-		end
-	end
-
-	local door_positions = {}
-	local priority_doors = {}
-	
-	for c in area.coords( area.FULL_SHRINKED ) do
-		if level:get_cell( c ) == wall_cell
-		and level:around( c, door_cell ) == 0 
-		and level:cross_around( c, wall_cell ) == 2
-		and level:cross_around( c, floor_cell ) == 2
-		then
-			local walls = level:around( c, wall_cell )
-			if walls > 4 then
-				if level:around( c, door_cell ) == 0 then
-					level:set_cell( c, door_cell )
-				end
-			elseif walls > 3 then
-				table.insert( priority_doors, c:clone() )
+		rooms = {}
+		local small_rooms = {}
+		for _,r in ipairs( rec_rooms ) do
+			local d = r:dim()
+			if d.x < 7 or d.y < 7 then
+				table.insert( small_rooms, r )
 			else
-				table.insert( door_positions, c:clone() )
+				table.insert( rooms, r )
 			end
 		end
-	end
+--]]
 
-	for i = 1,pdoors do
-		local pos = table.random_remove( priority_doors )
-		if pos and level:around( pos, door_cell ) == 0 then
-			level:set_cell( pos, door_cell )
+		if settings.ring_clear and corridor > 1 then
+			generator.ring_clear( result.area, 25, coord( corridor, corridor ), false, nil, true )
 		end
 	end
 
-	for i = 1,ndoors do
-		local pos = table.random_remove( door_positions )
-		if pos and level:around( pos, door_cell ) == 0 then
-			level:set_cell( pos, door_cell )
-		end
+	if settings.extra_doors then
+		generator.place_extra_doors( settings.extra_doors, wall_cell, floor_cell, door_cell )
 	end
 
 	generator.restore_walls( wall_cell )
+	if settings.dead_ends ~= false then
+		generator.clear_dead_ends()
+	end
+	generator.remove_needless_doors()
+	return true
 end
 
 function generator.generate_archi_level( settings )
@@ -985,36 +941,126 @@ function generator.wallin_cell( c, cell_id )
 	return true
 end
 
-function generator.clear_dead_ends( iterations, ar, wall )
-	iterations = iterations or 1
-	local ar      = ar or area.FULL_SHRINKED
-	local applied = false
-	local floor   = generator.styles[ level.style ].floor
-	local door    = generator.styles[ level.style ].door
-	local wall    = wall or generator.styles[ level.style ].wall
-	repeat
-		applied = false
-		for c in level:each( floor, ar ) do
-			if level:cross_around( c, wall ) >= 3 then
-				applied = true
-				level:set_cell( c, wall )
-			end
-		end
-		for c in level:each( door, ar ) do
-			if level:cross_around( c, wall ) >= 3 then
-				applied = true
-				level:set_cell( c, wall )
-			end
-		end
-		iterations = iterations - 1
-	until iterations == 0 or (not applied)
+-- Fills dead ends ( floor or door cells with at least 3 wall neighbours ) with
+-- wall, one layer per pass, until none are left or after passes passes.
+function generator.clear_dead_ends( passes, ar, wall )
+	local style = generator.styles[ level.style ]
+	wall = wall or style.wall
+	generator.fill_dead_ends( level, { style.floor, style.door }, { wall }, wall, ar, passes )
+end
 
-	if not wall then
-		for c in level:each( door, ar ) do
-			if level:cross_around( c, wall ) < 2 then
-				level:set_cell( c, floor )
+-- Port of JH's ring_clear. Fills floor runs bounded by walls on scan lines
+-- moving inward from each edge of a, up to count lines per edge, which removes
+-- dead-end stubs of wide corridors at the edges. Only runs whose length is
+-- within fill_range ( a number for the maximum, or a coord as min, max ) are
+-- filled. Each edge stops at the first line with a candidate run that was not
+-- filled, unless force is set. With safe, runs next to doors are kept.
+function generator.ring_clear( a, count, fill_range, force, wall_id, safe )
+	core.log("generator.ring_clear()")
+	local style = generator.styles[ level.style ]
+	local door  = cells[ style.door ].nid
+	local wall  = cells[ wall_id or style.wall ].nid
+	local walls      = generator.cell_sets[ CELLSET_WALLS ]
+	local wall_list  = generator.cell_lists[ CELLSET_WALLS ]
+	local floors     = generator.cell_sets[ CELLSET_FLOORS ]
+	local floor_list = generator.cell_lists[ CELLSET_FLOORS ]
+	if wall_id then
+		walls     = { [wall] = true }
+		wall_list = { wall }
+	end
+
+	local min_fill, max_fill = 0, 1000000
+	if fill_range then
+		if type( fill_range ) == "number" then
+			max_fill = fill_range
+		else
+			min_fill = fill_range.x
+			max_fill = fill_range.y
+		end
+	end
+
+	-- returns false if the line had a candidate run but nothing was filled
+	local function scan( line )
+		local start   = line.a
+		local stage   = 0
+		local work    = false
+		local attempt = false
+		local cell    = level:get_cell( start )
+		if floors[cell] or walls[cell] then
+			stage = 1
+		end
+		for c in line:coords() do
+			cell = level:get_cell( c )
+			if stage == 0 then
+				if walls[cell] then
+					stage = 1
+				end
+			elseif stage == 1 then
+				if floors[cell] then
+					if safe and level:cross_around( c, door ) > 0 then
+						stage = 0
+					elseif level:around( c, wall_list ) > 3 then
+						stage   = 2
+						start   = c:clone()
+						attempt = true
+					else
+						stage = 0
+					end
+				elseif not walls[cell] then
+					stage = 0
+				end
+			elseif stage == 2 then
+				if level:cross_around( c, floor_list ) == 4 then
+					stage = 0
+				elseif safe and floors[cell] and level:cross_around( c, door ) > 0 then
+					stage = 0
+				elseif walls[cell] then
+					local run = area( start, c:clone() )
+					local dim = math.max( run:dim().x, run:dim().y ) - 1
+					if dim <= max_fill and dim >= min_fill then
+						level:fill( wall, run )
+					end
+					stage = 1
+					work  = true
+				elseif not floors[cell] or
+					( level:cross_around( c, wall_list ) + level:cross_around( c, floor_list ) + level:cross_around( c, door ) ~= 4 ) then
+					stage = 0
+				end
 			end
 		end
+		return ( not attempt ) or work
+	end
+
+	for i = 0,count-1 do
+		local la = a:shrinked( coord( 0, i ) )
+		if not scan( area( la.a, coord( la.b.x, la.a.y ) ) ) and not force then break end
+	end
+	for i = 0,count-1 do
+		local la = a:shrinked( coord( 0, i ) )
+		if not scan( area( coord( la.a.x, la.b.y ), la.b ) ) and not force then break end
+	end
+	for i = 0,count-1 do
+		local la = a:shrinked( coord( i, 0 ) )
+		if not scan( area( la.a, coord( la.a.x, la.b.y ) ) ) and not force then break end
+	end
+	for i = 0,count-1 do
+		local la = a:shrinked( coord( i, 0 ) )
+		if not scan( area( coord( la.b.x, la.a.y ), la.b ) ) and not force then break end
+	end
+end
+
+-- Adds up to count doors in straight walls with floor on both sides and no
+-- door around, so tree-shaped layouts get some loops.
+function generator.place_extra_doors( count, wall_cell, floor_cell, door_cell )
+	core.log("generator.place_extra_doors()")
+	local style = generator.styles[ level.style ]
+	wall_cell  = wall_cell  or style.wall
+	floor_cell = floor_cell or style.floor
+	door_cell  = door_cell  or style.door
+	for _ = 1, count do
+		local c = generator.random_door_spot( level, { wall_cell }, { floor_cell }, { door_cell } )
+		if not c then return end
+		level:set_cell( c, door_cell )
 	end
 end
 
@@ -1026,13 +1072,14 @@ function generator.remove_needless_doors()
 	local walls = generator.cell_lists[ CELLSET_WALLS ]
 	local did   = cells[ door ].nid
 
-	for c in area.FULL:edges() do
+	local level_area = level:get_area()
+	for c in level_area:edges() do
 		if level:get_cell( c ) == did then
 			level:set_cell( c, wall )
 		end
 	end
 
-	for c in level:each( door, area.FULL_SHRINKED ) do
+	for c in level:each( door, level_area:shrinked() ) do
 		local wcaround = level:cross_around( c, walls )
 		if wcaround > 2 then
 			level:set_cell( c, wall )

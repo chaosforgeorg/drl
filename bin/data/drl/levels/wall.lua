@@ -14,7 +14,7 @@ register_level "the_wall"
 
 		OnKillAll = function ( self )
 			if self.status == 2 then return end
-			self:transmute_by_flag("wall", "floor", LFMARKER1, area.FULL)
+			self:transmute_by_flag("wall", "floor", LFMARKER1)
 			self:play_sound( "revenant.die", self.data.sound_crack)
 			ui.msg("Peace comes back to this evil place. Cracks begin to appear as if in deference to your achievement.")
 			self.status = 2

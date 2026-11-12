@@ -1232,7 +1232,7 @@ function drl.register_exotic_items()
 			OnUse = function(self,being)
 				ui.blink(LIGHTRED,50)
 				local p = being.position
-				for c in area.around( p, 8 ):clamped( area.FULL ):coords() do
+				for c in area.around( p, 8 ):clamped( level:get_area() ):coords() do
 					if coord.distance( c, p ) <= 8 and level:is_corpse( c ) then
 						level.map[ c ] = "bloodpool"
 						being:play_sound( "gib" )
@@ -1263,7 +1263,7 @@ function drl.register_exotic_items()
 			OnUse = function(self,being)
 				ui.blink(YELLOW,50)
 				local p = being.position
-				for c in area.around( p, 8 ):clamped( area.FULL ):coords() do
+				for c in area.around( p, 8 ):clamped( level:get_area() ):coords() do
 					if coord.distance( c, p ) <= 8 and level:is_corpse( c ) then
 						level.map[ c ] = "bloodpool"
 						being:play_sound( "gib" )
@@ -1294,7 +1294,7 @@ function drl.register_exotic_items()
 				ui.blink(LIGHTRED,50)
 				local p = being.position
 				local count = 0
-				for c in area.around( p, 8 ):clamped( area.FULL ):coords() do
+				for c in area.around( p, 8 ):clamped( level:get_area() ):coords() do
 					if coord.distance( c, p ) <= 8 and level:is_corpse( c ) then
 						level.map[ c ] = "bloodpool"
 						being:play_sound( "gib" )

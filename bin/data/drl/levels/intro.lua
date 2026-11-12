@@ -242,7 +242,7 @@ register_level "intro"
 		else
 			generator.place_proto_map( coord( 12, 3 ), proto_map, proto_key, translation )
 		end
-		generator.scatter_item( area.FULL:shrinked(3),"rock","tree", 20)
+		generator.scatter_item( level:get_area():shrinked(3),"rock","tree", 20)
 		for c in area.around( coord( 4, 10 ), 3 )() do
 			level:try_destroy_item( c )
 		end

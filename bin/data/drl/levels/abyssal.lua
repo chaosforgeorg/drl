@@ -16,8 +16,8 @@ register_level "abyssal_plains"
 				ui.msg("Suddenly you're trapped in!")
 				self:play_sound( "door.close", player.position )
 				self:transmute( "gwall", "floor" )
-				self:transmute_by_flag("floor", "rwall", LFMARKER1, area.FULL)
-				generator.set_permanence( area.FULL )
+				self:transmute_by_flag("floor", "rwall", LFMARKER1)
+				generator.set_permanence( level:get_area() )
 
 				ui.msg("You hear a howl of agony!")
 				local agony = self:drop_being("agony",coord(42,11))
@@ -30,8 +30,8 @@ register_level "abyssal_plains"
 			end
 			if res == 1 and (time - 400 > self.data.drop_time or self.data.kill_all) then
 				ui.msg("Finally, the walls retract into the ground.")
-				self:transmute_by_flag( "rwall", "floor", LFMARKER1, area.FULL )
-				generator.set_permanence( area.FULL )
+				self:transmute_by_flag( "rwall", "floor", LFMARKER1 )
+				generator.set_permanence( level:get_area() )
 				self.status = 2
 			end
 		end,
@@ -136,7 +136,7 @@ register_level "abyssal_plains"
 ]=]
 		generator.place_tile( translation, map, 2, 2 )
 
-		generator.set_permanence( area.FULL )
+		generator.set_permanence( level:get_area() )
 		level.data.drop_time = 0
 		level.data.inner_room = area(29, 7, 49, 14)
 		level.data.kill_all  = false

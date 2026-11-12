@@ -31,7 +31,7 @@ function drl.register_rooms()
 			level:drop_item( lever, pos )
 
 			if proto.fullchance and math.random(100) < proto.fullchance then
-				lever.TARGET_AREA = area.FULL:clone()
+				lever.TARGET_AREA = level:get_area()
 				if proto.warning then
 					ui.msg_feel( proto.warning )
 				end

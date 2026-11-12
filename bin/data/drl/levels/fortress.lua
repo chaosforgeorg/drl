@@ -235,7 +235,7 @@ register_level "unholy_cathedral"
 ###############...............................................##############
 ]]
 		generator.place_tile( translation, map, 2, 2 )
-		generator.set_permanence( area.FULL )
+		generator.set_permanence( level:get_area() )
 
 		level:drop_being( player, coord( 3,10 ) )
 		level.status = 0

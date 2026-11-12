@@ -108,7 +108,7 @@ register_level "hellgate"
 
 	Create = function ()
 		level:fill( "wall" )
-		level:fill( "floor", area.FULL_SHRINKED )
+		level:fill( "floor", level:get_area():shrinked() )
 
 		local translation = {
 			['.'] = "floor",
@@ -202,7 +202,7 @@ register_level "tower_of_babel"
 
 	Create = function ()
 		level:fill( "wall" )
-		level:fill( "floor", area.FULL_SHRINKED )
+		level:fill( "floor", level:get_area():shrinked() )
 		local scatter_area = area( 5,3,68,15 )
 		local translation = {
 			['.'] = { "floor", blood = { 1, 3 } },
@@ -221,7 +221,7 @@ register_level "tower_of_babel"
 
 		level.flags[ LF_NOHOMING      ] = true
 		level.flags[ LF_NOBEINGREVEAL ] = true
-		generator.scatter_blood(area.FULL_SHRINKED,"floor",100)
+		generator.scatter_blood(level:get_area():shrinked(),"floor",100)
 		level:drop_being( player, coord( 2,2 ) )
 		player:add_history( "He found the Tower of Babel." )
 	end,
@@ -285,7 +285,7 @@ register_level "dis"
 
 	Create = function ()
 		level:fill( "rwall" )
-		level:fill( "floor", area.FULL_SHRINKED )
+		level:fill( "floor", level:get_area():shrinked() )
 		local translation = {
 			['.'] = "floor",
 			[','] = { "floor", blood = { 1, 3 } },
@@ -344,7 +344,7 @@ register_level "hell_fortress"
 
 	Create = function ()
 		level:fill( "rwall" )
-		level:fill( "floor", area.FULL_SHRINKED )
+		level:fill( "floor", level:get_area():shrinked() )
 		local translation = {
 			[','] = { "floor", blood = { 1, 3 } },
 			['.'] = "floor",

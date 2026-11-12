@@ -232,14 +232,14 @@ function being:flock_target( range, mind, maxd, parea )
 			return closest
 		elseif cdist <= mind then
 			closest = 2*pos - closest
-			area.FULL:clamp_coord(closest)
+			level:clamp_coord(closest)
 			if ( not level:get_being(closest) ) or ( not level:is_passable( closest ) ) then
 				return closest
 			end
 		end
 	end
 
-	local scan = parea or area.around( pos, range ):clamped( area.FULL )
+	local scan = parea or area.around( pos, range ):clamped( level:get_area() )
 	return scan:random_coord()
 end
 
@@ -269,7 +269,7 @@ function being:phase( cell )
 	if cell then
 		cell = cells[ cell ].nid
 		local targets = {}
-		for c in ( level.data.phase_zone or area.FULL_SHRINKED)() do
+		for c in ( level.data.phase_zone or level:get_area():shrinked())() do
 			if level:get_cell( c ) == cell then
 				table.insert( targets, c:clone() )
 			end

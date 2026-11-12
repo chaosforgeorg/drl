@@ -8,7 +8,7 @@ unit drllua;
 interface
 
 uses sysutils, classes,
-     vluagamestack, vlua, vlualibrary, vrltools, vutil, vdf, viotypes, vnode,
+     vluagamestack, vlua, vlualibrary, vutil, vdf, viotypes, vnode,
      dfitem, dfbeing, dfthing, dfdata, drlmodule, drlhelp, drlio;
 
 type
@@ -391,7 +391,6 @@ begin
   RegisterUIDClass( Raw );
   RegisterCoordClass( Raw );
   RegisterAreaClass( Raw );
-  RegisterAreaFull( Raw, NewArea( NewCoord2D(1,1), NewCoord2D(MaxX,MaxY) ) );
   RegisterWeightTableClass( Raw );
 
   SetValue('WINDOWSVERSION', {$IFDEF WINDOWS}1{$ELSE}0{$ENDIF});

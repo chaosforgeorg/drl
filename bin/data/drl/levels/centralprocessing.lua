@@ -331,7 +331,7 @@ register_level "central_processing"
 
 		generator.place_tile( translation, map, 2, 2 )
 
-		generator.set_permanence( area.FULL )
+		generator.set_permanence( level:get_area() )
 		level.data.kill_all  = false
 
 		local id = core.get_unknown_assembly( 0 )

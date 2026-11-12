@@ -28,6 +28,7 @@ function generator.bsp( self, ar, bsp_settings )
 	local gmin  = settings.gmin or coord(1,1)
 	local cntr  = settings.centering or 4
 	local sdiv  = settings.subdiv or 8
+	local limit_area = settings.limit_area
 	local tiles = settings.tiles or {
 		wall  = generator.styles[ level.style ].wall,
 		floor = generator.styles[ level.style ].floor,
@@ -54,7 +55,7 @@ function generator.bsp( self, ar, bsp_settings )
 		if arh_diff.x > gmin.x or arh_diff.y > gmin.y then
 			local hcntr = cntr / 2
 			local arh_diff3 = ( arh_diff + coord(hcntr,hcntr) ) / cntr
-			local ar_half  = area( arh_a + arh_diff3, arh_b - arh_diff3 ):clamped( area.FULL )
+			local ar_half  = area( arh_a + arh_diff3, arh_b - arh_diff3 ):clamped( level:get_area() )
 			if ar_half:proper() then
 				local c = ar_half:random_coord() * grid
 				local ori = true
@@ -68,7 +69,8 @@ function generator.bsp( self, ar, bsp_settings )
 					c = c + coord( 1, 1 )
 				end
 				if self:get_cell( c ) == fid then
-					local e1, e2 = generator.get_endpoint_coords( self, c, ori, fid )
+					-- walls must end on a wall; a split meeting a door is rejected
+					local e1, e2 = generator.get_endpoints( self, c, ori, fid, wid, limit_area )
 					if e1 then
 						generator.bsp_place_wall( self, c, wid, did, e1, e2 )
 						counter = counter + 1
@@ -103,6 +105,7 @@ function generator.rbsp( self, larea, rbsp_settings )
 		floor = generator.styles[ level.style ].wall,
 		door  = generator.styles[ level.style ].door,
 	}
+	rbsp_settings.limit_area = rbsp_settings.limit_area or larea:shrinked( 1 )
 
 	local corridor  = rbsp_settings.corridor or 1
 	local room_min  = rbsp_settings.room_min or coord( 2, 2 )
@@ -122,23 +125,68 @@ function generator.rbsp( self, larea, rbsp_settings )
 	return rooms
 end
 
+-- Places doors on random door spots of the room's edge. Returns false if the
+-- edge has no door spot left.
 function generator.place_doors( self, room, doors )
+    local style = generator.styles[ level.style ]
+    for _ = 1, doors do
+        local c = generator.random_door_spot( self, { style.wall }, { style.floor }, nil, nil, room, true )
+        if not c then
+            core.log("generator.place_doors() > no door spot left in room "..tostring( room ) )
+            return false
+        end
+        self:set_cell( c, style.door )
+    end
+    return true
+end
+
+-- Places one door on every side of the room that faces floor. Doors are kept
+-- off the split grid of generator.bsp ( horizontal walls at y % grid.y == 1,
+-- vertical walls at x % grid.x == 0 ), so they never block a later split of
+-- the room ( bsp rejects walls ending on a door ).
+function generator.place_side_doors( self, room, grid )
     local door_cell  = generator.styles[ level.style ].door
     local wall_cell  = generator.styles[ level.style ].wall
     local floor_cell = generator.styles[ level.style ].floor
     local fid = cells[ floor_cell ].nid
     local did = cells[ door_cell ].nid
     local wid = cells[ wall_cell ].nid
-    while doors > 0 do
-        local c = room:random_inner_edge_coord()
-        if self:cross_around( c, wid ) == 2 and self:cross_around( c, fid ) == 2 then
-            doors = doors - 1
-            self:set_cell( c, did )
+    local gx, gy = 2, 2
+    if grid then gx, gy = grid.x, grid.y end
+    -- rows of horizontal split walls; 1 % gy keeps grid 1 ( every row ) correct
+    local hwall = 1 % gy
+    local sides = {
+        area( coord( room.a.x, room.a.y + 1 ), coord( room.a.x, room.b.y - 1 ) ),
+        area( coord( room.b.x, room.a.y + 1 ), coord( room.b.x, room.b.y - 1 ) ),
+        area( coord( room.a.x + 1, room.a.y ), coord( room.b.x - 1, room.a.y ) ),
+        area( coord( room.a.x + 1, room.b.y ), coord( room.b.x - 1, room.b.y ) ),
+    }
+    for i,side in ipairs( sides ) do
+        local vertical = i <= 2
+        local door
+        local count = 0
+        for c in side:coords() do
+            local off_grid
+            if vertical then
+                off_grid = c.y % gy ~= hwall
+            else
+                off_grid = c.x % gx ~= 0
+            end
+            if off_grid and self:cross_around( c, wid ) == 2 and self:cross_around( c, fid ) == 2 then
+                -- keep each candidate with chance 1/count: a uniform pick
+                -- without collecting a candidate list
+                count = count + 1
+                if math.random( count ) == 1 then door = c:clone() end
+            end
+        end
+        if door then
+            self:set_cell( door, did )
         end
     end
-    return true
 end
 
+-- Returns the resulting rooms and the set of split ones, or nil if door
+-- placement failed.
 function generator.bsp_recursive( self, rooms, bsp_settings )
    	bsp_settings.tiles = bsp_settings.tiles or {
 		floor = generator.styles[ self.style ].floor,
@@ -152,6 +200,7 @@ function generator.bsp_recursive( self, rooms, bsp_settings )
 	local single   = bsp_settings.rec_single        or 11
 	local doors    = bsp_settings.rec_doors         or 2
 	local max_side = bsp_settings.max_reserved_side or 100
+	local sides    = bsp_settings.door_sides
 	local count    = #rooms
 	local reserved_split_settings = {
 		grid       = bsp_settings.grid,
@@ -185,10 +234,14 @@ function generator.bsp_recursive( self, rooms, bsp_settings )
 			if reserved or match_bsp then 
 				self:fill( bsp_settings.tiles.wall, room )
 				self:fill( bsp_settings.tiles.floor, room:shrinked(1) )
-				generator.place_doors( self, room, doors )
 				local settings = bsp_settings
 				if reserved then
 					settings = reserved_split_settings
+				end
+				if sides then
+					generator.place_side_doors( self, room, settings.grid )
+				elseif not generator.place_doors( self, room, doors ) then
+					return nil
 				end
 				local srooms
 				local attempt = 0

@@ -58,7 +58,7 @@ register_level "the_chained_court"
 					if level.id == "the_vaults" and level.status < 2 then
 						ui.msg("With a sudden inspiration you yell \"OPEN SESAME!\"!")
 						player:play_sound( "lever.use" )
-						for c in level:each( "rwall", area.FULL_SHRINKED ) do
+						for c in level:each( "rwall", level:get_area():shrinked() ) do
 							if level:get_light_flag( c, LFMARKER1 ) then
 								level:set_light_flag( c, LFPERMANENT, false )
 								level.map[ c ] = "floor"
@@ -324,7 +324,7 @@ register_level "the_chained_court"
 
 
 		generator.place_tile( translation, map, 2, 2 )
-		generator.set_permanence( area.FULL )
+		generator.set_permanence( level:get_area() )
 		local player_pos
 		if level.status == 0 then
 			player_pos = coord( 52,10 )
