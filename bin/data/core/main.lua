@@ -1,5 +1,5 @@
-core.declare( "VERSION_ENGINE",      "0.10.12c" )
-core.declare( "VERSION_ENGINE_SAVE", "0.10.12" )
+core.declare( "VERSION_ENGINE",      "0.10.13" )
+core.declare( "VERSION_ENGINE_SAVE", "0.10.13" )
 
 require( "core:constants" )
 require( "core:commands" )

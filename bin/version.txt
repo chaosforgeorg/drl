@@ -1,3 +1,7 @@
+0.10.13
+GHJ#509 [new] -- Visual - new fullscreen and resolution handling
+GHJ#500 [mod] -- Game - basic BSP level generation improved
+
 0.10.12
 GHJ#501 [new] -- Visual - blood splatter, blood decals
 GHJ#492 [new] -- Visual - better edges between different fluids
