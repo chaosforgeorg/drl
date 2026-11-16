@@ -331,6 +331,8 @@ end;
 
 procedure TGFXMissileAnimation.OnDraw;
 var iPos    : TVec2i;
+    iCoord  : TCoord2D;
+    iSize   : Word;
     iLength : Single;
     iStep   : Single;
 begin
@@ -344,22 +346,25 @@ begin
     FLevel.Particles.Engine.EmitSetSpriteRotation( FEmitter, ( FHeading + PI / 2 ) * 180 / PI );
   end;
 
-  if ( not FLevel.isProperCoord( FPath.Current ) ) or (not FLevel.isVisible( FPath.Current ) ) then
-    Exit;
   if FRay then
   begin
+    iSize   := FSpriteMap.GetGridSize;
     iLength := FSource.Distance( FTarget );
-    iStep := FSpriteMap.GetGridSize div 2;
+    iStep   := iSize div 2;
     while iStep < iLength do
     begin
       iStep += 20.0;
       iPos := Lerp( FSource, FTarget, iStep / iLength );
-      FSpriteMap.PushSpriteFXRotated( iPos, FSprite, FHeading + PI/2)
+      iCoord.Create( iPos.X div iSize + 1, iPos.Y div iSize + 1 );
+      if FLevel.isProperCoord( iCoord ) and FLevel.isVisible( iCoord ) then
+        FSpriteMap.PushSpriteFXRotated( iPos, FSprite, FHeading + PI/2 );
     end;
     Exit;
-  end
-  else
-    FSpriteMap.PushSpriteFXRotated( iPos, FSprite, FHeading + PI/2);
+  end;
+
+  if ( not FLevel.isProperCoord( FPath.Current ) ) or ( not FLevel.isVisible( FPath.Current ) ) then
+    Exit;
+  FSpriteMap.PushSpriteFXRotated( iPos, FSprite, FHeading + PI/2 );
 end;
 
 { TMessageAnimation }
