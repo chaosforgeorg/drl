@@ -83,6 +83,7 @@ type TTargetModeView = class( TDRLLayer )
 protected
   procedure Setup; override;
   procedure ConfirmTarget;
+  function ClampTarget( aTarget : TCoord2D ) : TCoord2D;
   function MoveTarget( aNew : TCoord2D ) : Boolean;
   procedure Finalize;
   procedure UpdateTarget;
@@ -319,12 +320,12 @@ constructor TTargetModeView.Create( aSession : TDRLSession; aItem : TItem; aComm
 begin
   FSession      := aSession;
   FFirst        := True;
-  FTarget       := FSession.Targeting.List.Current;
   FActionName   := aActionName;
   FNameLen      := VTIG_Length( aActionName );
   FLimitRange   := aLimitRange;
   FRange        := aRange;
   FPosition     := FSession.Player.Position;
+  FTarget       := ClampTarget( FSession.Targeting.List.Current );
   FColor        := Green;
   FItem         := aItem;
   FCommand      := aCommand;
@@ -347,10 +348,8 @@ begin
 end;
 
 function TTargetModeView.HandleInput( aInput : Integer ) : Boolean;
-var iDir        : TDirection;
-    iDist       : Byte;
-    iTargetLine : TVisionRay;
-    iInput      : TInputKey;
+var iDir   : TDirection;
+    iInput : TInputKey;
 begin
   iInput := TInputKey( aInput );
   if iInput in [ INPUT_ESCAPE, INPUT_MRIGHT, INPUT_QUIT, INPUT_HARDQUIT ] then
@@ -362,27 +361,13 @@ begin
   if iInput = INPUT_TOGGLEGRID then IO.ToggleGrid;
   if iInput = INPUT_TARGETNEXT then
   begin
-    FTarget := FSession.Targeting.List.Next;
+    FTarget := ClampTarget( FSession.Targeting.List.Next );
     UpdateTarget;
   end;
 
   if iInput in [ INPUT_MMOVE, INPUT_MRIGHT, INPUT_MLEFT ] then
   begin
-    FTarget := IO.MTarget;
-    iDist   := Distance( FTarget, FPosition );
-    if FLimitRange and ( iDist > FRange - 1 ) then
-    begin
-      iDist := 0;
-      iTargetLine.Init( FSession.Level, FPosition, FTarget);
-      while iDist < (FRange - 1) do
-      begin
-        iTargetLine.Next;
-        iDist := Distance( iTargetLine.Source, iTargetLine.Current );
-      end;
-      if Distance(iTargetLine.Source, iTargetLine.Current ) > FRange-1
-        then FTarget := iTargetLine.Previous
-        else FTarget := iTargetLine.Current;
-    end;
+    FTarget := ClampTarget( IO.MTarget );
     UpdateTarget;
   end;
   if iInput in INPUT_MOVE then
@@ -443,11 +428,11 @@ begin
         end;
     CONTROLLER_FIRE : ConfirmTarget;
     CONTROLLER_TARGET_NEXT : begin
-      FTarget := FSession.Targeting.List.Next;
+      FTarget := ClampTarget( FSession.Targeting.List.Next );
       UpdateTarget;
     end;
     CONTROLLER_TARGET_PREV : begin
-      FTarget := FSession.Targeting.List.Prev;
+      FTarget := ClampTarget( FSession.Targeting.List.Prev );
       UpdateTarget;
     end;
     CONTROLLER_UP    : MoveTarget( FTarget + NewCoord2D(0,-1) );
@@ -485,6 +470,26 @@ begin
     FSession.Targeting.OnTarget( FTarget, False );
     FSession.QueueCommand( TCommand.Create( FCommand, FTarget, FItem ) );
   end;
+end;
+
+// Pulls an out-of-range target back along the line of fire to the last
+// cell within range, so the cursor always starts where MoveTarget can act.
+function TTargetModeView.ClampTarget( aTarget : TCoord2D ) : TCoord2D;
+var iDist       : Byte;
+    iTargetLine : TVisionRay;
+begin
+  if ( not FLimitRange ) or ( Distance( aTarget, FPosition ) <= FRange - 1 ) then
+    Exit( aTarget );
+  iDist := 0;
+  iTargetLine.Init( FSession.Level, FPosition, aTarget );
+  while iDist < ( FRange - 1 ) do
+  begin
+    iTargetLine.Next;
+    iDist := Distance( iTargetLine.Source, iTargetLine.Current );
+  end;
+  if Distance( iTargetLine.Source, iTargetLine.Current ) > FRange - 1
+    then Exit( iTargetLine.Previous )
+    else Exit( iTargetLine.Current );
 end;
 
 function TTargetModeView.MoveTarget( aNew : TCoord2D ) : Boolean;
