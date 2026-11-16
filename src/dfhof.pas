@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit dfhof;
 interface
 uses classes, dom,
-     vlua, vapp, vnode, vxml, vxmldata, vstoreinterface,
+     vlua, vapp, vnode, vutil, vxml, vxmldata, vstoreinterface,
      dfdata, dfplayer;
 
 const MaxHofEntries = 500;
@@ -25,6 +25,9 @@ type THOF = class
   procedure Add( aPlayer : TPlayer; aDifficulty : Integer; aGameWon : Boolean;
     const aChallenge, aLevelAbbr : AnsiString );
   function RankCheck( aStore : TStoreInterface; out aResult : THOFRank ) : Boolean;
+  // Achievements the recorded progress has earned: the achievement of every
+  // recorded badge, and of every rank up to each recorded rank.
+  function GetEarnedAchievements : TAnsiStringArray;
   function GetPagedPlayerReport : TPagedReport;
   function GetPagedScoreReport : TPagedReport;
   procedure Save( aElapsedSeconds : DWord );
@@ -71,13 +74,15 @@ private
 
   function GameResultBetter( const ResultOld, ResultNew : String ) : boolean;
   function GameResultAtLeast( const ResultAtLeast, ResultNew : String ) : boolean;
+  // Achievements of rank levels 1..aRankLevel of aRankArray.
+  function GetRankAchievements( const aRankArray : Ansistring; aRankLevel : Integer ) : TAnsiStringArray;
   procedure HandleAchievements( aStore : TStoreInterface; const aRankArray : Ansistring; aRankLevel : Integer );
 end;
 
 implementation
 
 uses math, sysutils, strutils, variants,
-     vluatable, vlualibrary, vluagamestack, vdebug, vtig, vutil, vrltools,
+     vluatable, vlualibrary, vluagamestack, vdebug, vtig, vrltools,
      drllua;
 
 // Old copies of player.wad and score.wad kept, at most one per day.
@@ -1114,17 +1119,78 @@ begin
   Exit( True );
 end;
 
-procedure THOF.HandleAchievements( aStore : TStoreInterface; const aRankArray : Ansistring; aRankLevel : Integer );
-var i    : Integer;
-    iAch : AnsiString;
+function THOF.GetRankAchievements( const aRankArray : Ansistring; aRankLevel : Integer ) : TAnsiStringArray;
+var iCount : Integer;
+    iAch   : AnsiString;
+    i      : Integer;
 begin
+  // Player data may record a rank beyond the current table.
+  iCount := FLua.Get( ['ranks', aRankArray, '__counter'], 0 );
+  aRankLevel := Min( aRankLevel, iCount - 1 );
+  Result := nil;
+  SetLength( Result, Max( aRankLevel, 0 ) );
+  iCount := 0;
   for i := 1 to aRankLevel do
   begin
     iAch := FLua.Get( [ 'ranks', aRankArray, i+1, 'achievement' ], '' );
-    if iAch <> '' then
-        if aStore.SetAchievement( iAch ) then
-          Log( LOGINFO, iAch+' awarded!');
+    if iAch = '' then Continue;
+    Result[iCount] := iAch;
+    Inc( iCount );
   end;
+  SetLength( Result, iCount );
+end;
+
+procedure THOF.HandleAchievements( aStore : TStoreInterface; const aRankArray : Ansistring; aRankLevel : Integer );
+var iAch : AnsiString;
+begin
+  for iAch in GetRankAchievements( aRankArray, aRankLevel ) do
+    if aStore.SetAchievement( iAch ) then
+      Log( LOGINFO, iAch+' awarded!');
+end;
+
+function THOF.GetEarnedAchievements : TAnsiStringArray;
+var iCount   : Integer;
+    iBadges  : Integer;
+    iPair    : TLuaIndexVariant;
+    iAch     : AnsiString;
+    i        : Integer;
+
+  procedure Push( const aID : AnsiString );
+  begin
+    if iCount = Length( Result ) then
+      SetLength( Result, Max( 16, 2 * iCount ) );
+    Result[iCount] := aID;
+    Inc( iCount );
+  end;
+
+begin
+  Result := nil;
+  iCount := 0;
+
+  // Badge levels are independent; each badge is checked by its own record.
+  iBadges := FLua.Get( ['badges','__counter'], 0 );
+  for i := 1 to iBadges do
+    with FLua.GetTable( ['badges', i] ) do
+    try
+      iAch := GetString( 'achievement', '' );
+      if ( iAch <> '' ) and ( GetCounted( 'badges', 'badge', GetString( 'id' ) ) > 0 ) then
+        Push( iAch );
+    finally
+      Free;
+    end;
+
+  // A rank requires all lower ranks, so the recorded rank earns the
+  // achievements of every level up to it.
+  with FLua.GetTable( ['ranks'] ) do
+  try
+    for iPair in IndexVariants do
+      for iAch in GetRankAchievements( iPair.Value, GetRank( iPair.Value ) ) do
+        Push( iAch );
+  finally
+    Free;
+  end;
+
+  SetLength( Result, iCount );
 end;
 
 function LuaHOF( L : PLua_State ) : THOF; inline;

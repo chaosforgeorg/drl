@@ -323,6 +323,8 @@ begin
   FLua.CallDefaultResult := True;
   FSessionHooks := LoadHooks( FLua, [FCoreModuleID], SessionHooks );
   SafeCallModuleHook(Hook_OnLoad, []);
+  // Restores achievements whose unlock did not reach the store when earned.
+  FStore.ReconcileAchievements( FHOF.GetEarnedAchievements );
   IO.Reconfigure(Config);
   IO.PrepareGraphics;
 
