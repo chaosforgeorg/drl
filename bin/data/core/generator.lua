@@ -739,11 +739,7 @@ function generator.generate_tiled_level( settings )
 			end
 			core.log("generator.generate_tiled_level() - fluid placement" )
 			local fluid_cell = cells[settings.fluid].nid
-			for c in level:each( floor_cell, larea:shrinked( 2 ) ) do
-				if level:around( c, { floor_cell, fluid_cell } ) == 8 then
-					level:set_cell( c, fluid_cell )
-				end
-			end
+			generator.transform_around( level, { floor_cell }, fluid_cell, { floor_cell, fluid_cell }, 8, 8, larea:shrinked( 2 ) )
 
 			if settings.bridge then
 				core.log("generator.generate_tiled_level() - bridge placement" )

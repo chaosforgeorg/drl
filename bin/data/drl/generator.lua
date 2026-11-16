@@ -399,11 +399,7 @@ function generator.generate_caves_2_dungeon()
 	drunk( 10, math.random(10)+40, floor_cell )
 	drunk( 50, math.random(10)+20, floor_cell )
 
-	for c in level_area:shrinked()() do
-		if level:get_cell(c) == cave_cell and level:around( c, cave_cell ) < 4 then
-			level:set_cell( c, floor_cell )
-		end
-	end
+	generator.transform_around( level, { cave_cell }, floor_cell, { cave_cell }, 0, 3 )
 
 	for c in level_area:shrinked(2)() do
 		if level:get_cell(c) == floor_cell and level:cross_around( c, cave_cell ) > 2 then
@@ -454,11 +450,7 @@ function generator.generate_caves_2_dungeon()
 
 	level:transmute( marker, floor_cell )
 
-	for c in level_area:shrinked()() do
-		if level:get_cell(c) == fluid and level:around( c, fluid ) < 4 then
-			level:set_cell( c, floor_cell )
-		end
-	end
+	generator.transform_around( level, { fluid }, floor_cell, { fluid }, 0, 3 )
 end
 
 function generator.generate_fluids( drunk_area )
