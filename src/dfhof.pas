@@ -43,6 +43,9 @@ private
   FLua        : TLua;
   FScore      : TScoreFile;
   FPlayerInfo : TVXMLDataFile;
+  // Holds the last recorded result when it did not qualify for the score
+  // table, so the report can still show it; nil otherwise.
+  FUnranked   : TXMLDocument;
 
   procedure SetRank( const aRankName: Ansistring; aValue : Integer );
   // TODO : remove
@@ -635,20 +638,7 @@ var iChals     : TIntHashMap;
     iPages     : array[0..99] of TStringGArray;
     iCount     : DWord;
     iAmount    : DWord;
-    iElement   : TScoreEntry;
-    iChal      : Ansistring;
-    iChalIdx   : DWord;
-    iDiff      : DWord;
-
-    iScore     : DWord;
-    iLevel     : DWord;
-    iDlev      : AnsiString;
-    iString    : AnsiString;
-    iName      : AnsiString;
-    iKill      : AnsiString;
-    iColor     : AnsiString;
     iHeader    : AnsiString;
-    iKlassChar : Char;
 
   procedure Push( aIndex : DWord; aString : AnsiString );
   begin
@@ -656,36 +646,46 @@ var iChals     : TIntHashMap;
     iPages[ aIndex ].Push( aString );
   end;
 
-begin
-  FillChar( iPages, Sizeof( iPages ), 0 );
-  iChals := TIntHashMap.Create;
-  if FLua.Defined(['chal','__counter']) then
-  begin
-    iCCount := FLua.Get(['chal','__counter']);
-    for iCount := 1 to iCCount do
-      iChals[ FLua.Get(['chal',iCount,'abbr']) ] := iCount;
-  end;
+  procedure AddEntry( aElement : TScoreEntry; aHighlight, aUnranked : Boolean );
+  var iChal      : Ansistring;
+      iChalIdx   : DWord;
+      iDiff      : DWord;
+      iScore     : DWord;
+      iLevel     : DWord;
+      iDlev      : AnsiString;
+      iString    : AnsiString;
+      iName      : AnsiString;
+      iKill      : AnsiString;
+      iColor     : AnsiString;
+      iKlassChar : Char;
 
-  iAmount := FScore.Entries;
-  for iCount := 1 to iAmount do
+    procedure PushLines( aIndex : DWord );
+    begin
+      // Page 0 is the only unfiltered page; the limit applies to it alone.
+      if aUnranked then
+        if aIndex = 0
+          then Push( aIndex, '{d  (not in top '+IntToStr( MaxHOFEntries )+')}' )
+          else Push( aIndex, '{d  (not in unfiltered top '+IntToStr( MaxHOFEntries )+')}' );
+      Push( aIndex, iString );
+    end;
+
   begin
-    iElement := FScore[ iCount ];
-    iDiff    := StrToInt( iElement.GetAttribute('difficulty') );
-    iChal    := iElement.GetAttribute('challenge');
+    iDiff    := StrToInt( aElement.GetAttribute('difficulty') );
+    iChal    := aElement.GetAttribute('challenge');
     iChalIDX := 0;
     if iChal <> '' then
     begin
       iChalIDX := iChals.Get( iChal, 0 );
-      if iChalIDX = 0 then Continue;
+      if iChalIDX = 0 then Exit;
     end;
 
-    iScore := math.Max( StrToInt( iElement.GetAttribute('score') ), 0 );
-    iLevel := StrToInt( iElement.GetAttribute('level') );
-    iDLev  := iElement.GetAttribute('depth');
-    iName  := iElement.GetAttribute('name');
-    iKill  := iElement.GetAttribute('killed');
+    iScore := math.Max( StrToInt( aElement.GetAttribute('score') ), 0 );
+    iLevel := StrToInt( aElement.GetAttribute('level') );
+    iDLev  := aElement.GetAttribute('depth');
+    iName  := aElement.GetAttribute('name');
+    iKill  := aElement.GetAttribute('killed');
 
-    if iCount = FScore.LastEntry then
+    if aHighlight then
       iColor := '{L'
     else
       iColor := '{!';
@@ -695,7 +695,7 @@ begin
     iString += Padded(iName,17) + ' ';
 
     iKlassChar := 'C';
-    if iElement.hasAttribute('klass') then iKlassChar := FLua.Get(['klasses',AnsiString(iElement.GetAttribute('klass')),'char']);
+    if aElement.hasAttribute('klass') then iKlassChar := FLua.Get(['klasses',AnsiString(aElement.GetAttribute('klass')),'char']);
 
     iString += iKlassChar + '{L'+Padded(IntToStr(iLevel),3)+'}';
     iString += Padded(iKill,34);
@@ -712,12 +712,28 @@ begin
 
     if iChalIDX = 0 then
     begin
-      Push( 0, iString );
+      PushLines( 0 );
       if iDiff <> 0 then
-        Push( iDiff, iString );
+        PushLines( iDiff );
     end
-    else Push( iChalIDX + 10, iString );
+    else PushLines( iChalIDX + 10 );
   end;
+
+begin
+  FillChar( iPages, Sizeof( iPages ), 0 );
+  iChals := TIntHashMap.Create;
+  if FLua.Defined(['chal','__counter']) then
+  begin
+    iCCount := FLua.Get(['chal','__counter']);
+    for iCount := 1 to iCCount do
+      iChals[ FLua.Get(['chal',iCount,'abbr']) ] := iCount;
+  end;
+
+  iAmount := FScore.Entries;
+  for iCount := 1 to iAmount do
+    AddEntry( FScore[ iCount ], iCount = FScore.LastEntry, False );
+  if FUnranked <> nil then
+    AddEntry( TScoreEntry( FUnranked.DocumentElement ), True, True );
 
   iHeader := '';
   Result := TPagedReport.Create( 'Hall of fame', True );
@@ -929,24 +945,29 @@ begin
 
   iDescription := FLua.ProtectedCall([TDRLLua( FLua ).CoreModuleID,'GetResultDescription'],[iGameResultID,true]);
 
+  FreeAndNil( FUnranked );
   FScore.Lock;
   try
     FScore.Load;
     iScoreEntry := FScore.Add( aPlayer.Score );
-    if iScoreEntry <> nil then
+    if iScoreEntry = nil then
     begin
-      iScoreEntry.SetAttribute('name', aPlayer.Name );
-      iScoreEntry.SetAttribute('level', IntToStr(aPlayer.ExpLevel) );
-      if aLevelAbbr <> ''
-        then iScoreEntry.SetAttribute('depth', aLevelAbbr )
-        else iScoreEntry.SetAttribute('depth', IntToStr(aPlayer.Level_Index) );
-      iScoreEntry.SetAttribute('klass', FLua.Get(['klasses',aPlayer.Klass,'id']) );
-      iScoreEntry.SetAttribute('killed', iDescription );
-      iScoreEntry.SetAttribute('difficulty', IntToStr(aDifficulty) );
-      if aChallenge <> '' then
-        iScoreEntry.SetAttribute('challenge', FLua.Get(['chal',aChallenge,'abbr']) );
-      FScore.Save;
+      FUnranked   := TXMLDocument.Create;
+      iScoreEntry := FUnranked.CreateElement('entry');
+      FUnranked.AppendChild( iScoreEntry );
+      iScoreEntry.SetAttribute('score', IntToStr(aPlayer.Score) );
     end;
+    iScoreEntry.SetAttribute('name', aPlayer.Name );
+    iScoreEntry.SetAttribute('level', IntToStr(aPlayer.ExpLevel) );
+    if aLevelAbbr <> ''
+      then iScoreEntry.SetAttribute('depth', aLevelAbbr )
+      else iScoreEntry.SetAttribute('depth', IntToStr(aPlayer.Level_Index) );
+    iScoreEntry.SetAttribute('klass', FLua.Get(['klasses',aPlayer.Klass,'id']) );
+    iScoreEntry.SetAttribute('killed', iDescription );
+    iScoreEntry.SetAttribute('difficulty', IntToStr(aDifficulty) );
+    if aChallenge <> '' then
+      iScoreEntry.SetAttribute('challenge', FLua.Get(['chal',aChallenge,'abbr']) );
+    if FUnranked = nil then FScore.Save;
   finally
     FScore.Unlock;
   end;
@@ -1005,6 +1026,7 @@ end;
 
 destructor THOF.Destroy;
 begin
+  FreeAndNil( FUnranked );
   FreeAndNil( FScore );
   FreeAndNil( FPlayerInfo );
   inherited Destroy;

@@ -2,6 +2,7 @@
 GHJ#509 [new] -- Visual - new fullscreen and resolution handling
 GHJ#500 [mod] -- Game - basic BSP level generation improved
 GHJ#487 [fix] -- Game - ray weapons fired out of vision will be rendered
+GHJ#493 [fix] -- UI - highscore will still show on table even if it didn't get into top 500
 
 0.10.12
 GHJ#501 [new] -- Visual - blood splatter, blood decals
