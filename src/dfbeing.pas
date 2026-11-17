@@ -1595,6 +1595,7 @@ var iItem      : TItem;
     iDir       : TDirection;
     iLevel     : TLevel;
     iMeleeKill : Boolean;
+    iHookDelay : Integer;
 begin
   if FDying or Dead then Exit;
   iLevel := TLevel(Parent);
@@ -1610,8 +1611,11 @@ begin
   if ( not ( BF_FRIENDLY in FFlags ) ) and ( not ( BF_ILLUSION in FFlags ) ) and ( not ( BF_NOKILL in FFlags ) ) then
     iLevel.Player.RegisterKill( FID, aKiller, aWeapon, not Flags[ BF_RESPAWN ] );
 
+  iHookDelay := iLevel.HookDelay;
+  iLevel.HookDelay := aDelay;
+
   if (aKiller <> nil) and (aWeapon <> nil) then
-    aWeapon.CallHook(Hook_OnKill, [ aKiller, Self, aDelay ]);
+    aWeapon.CallHook(Hook_OnKill, [ aKiller, Self ]);
 
   if ( aKiller <> nil ) and aKiller.Dead then aKiller := nil;
 
@@ -1619,7 +1623,7 @@ begin
   if (aKiller <> nil) then
   begin
     iMeleeKill := aKiller.MeleeAttack;
-    aKiller.CallHook( Hook_OnKill, [ Self, aWeapon, iMeleeKill, aDelay ] );
+    aKiller.CallHook( Hook_OnKill, [ Self, aWeapon, iMeleeKill ] );
   end;
 
   if iLevel.RunStatus.Undecided then
@@ -1652,7 +1656,8 @@ begin
   if not ( BF_NOBLEED in FFlags ) then
     iLevel.Blood( FPosition, iDir, iBlood, not IsPlayer, aDelay, aOverkill );
 
-  CallHook( Hook_OnDie, [ aOverkill, iMeleeKill, aDelay ] );
+  CallHook( Hook_OnDie, [ aOverkill, iMeleeKill ] );
+  iLevel.HookDelay := iHookDelay;
 
   if not aOverkill then
   begin

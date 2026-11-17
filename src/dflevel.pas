@@ -73,8 +73,8 @@ TLevel = class(TLuaMapNode)
     procedure CallHook( aHook : Byte; const aParams : array of const );
 
     procedure DropCorpse( aCoord : TCoord2D; CellID : Byte );
-    // Delays are presentation delays on the current action's timeline; aDelay
-    // is passed on to the destroy hooks.
+    // Delays are presentation delays on the current action's timeline; the
+    // destroy hooks run with HookDelay set to aDelay.
     function DamageTile( aCoord : TCoord2D; aDamage : Integer; aDamageType : TDamageType; aDelay : Integer; aFloor : Boolean = True ) : Boolean;
     // aKilledBy, if set, names the player's killer while it resolves.
     procedure Explosion( aDelay : Integer; aCoord : TCoord2D; aData : TExplosionData; aItem : TItem; aKnockback : TDirection; aDamageMult : Single = 1.0; const aKilledBy : AnsiString = '' );
@@ -167,6 +167,7 @@ TLevel = class(TLuaMapNode)
     FAccuracyBonus : Integer;
 
     FActiveBeing   : TBeing;
+    FHookDelay     : Integer;
 
     FFeeling       : AnsiString;
     FMusicID       : AnsiString;
@@ -197,6 +198,10 @@ TLevel = class(TLuaMapNode)
     property Particles : TParticleStore             read FParticles;
     property Decals    : TDecalStore                read FDecals;
     property AccuracyBonus : Integer                read FAccuracyBonus;
+    // Presentation delay of the event whose destroy or death hooks are
+    // running; Lua explosion delays are relative to it. Set and restored by
+    // DamageTile and TBeing.Kill around those hooks.
+    property HookDelay     : Integer                read FHookDelay write FHookDelay;
     property Item     [ Index : TCoord2D ] : TItem  read getItem;
     property Being    [ Index : TCoord2D ] : TBeing read getBeing;
     property CellBottom [ Index : TCoord2D ] : Byte read getCellBottom;
@@ -807,16 +812,20 @@ begin
 end;
 
 function TLevel.DamageTile( aCoord : TCoord2D; aDamage : Integer; aDamageType : TDamageType; aDelay : Integer; aFloor : Boolean = True ) : Boolean;
-var iCellID  : Byte;
-    iHeavy   : Boolean;
-    iFeature : TItem;
-    iNode    : TNode;
-    iDamage  : Integer;
+var iCellID    : Byte;
+    iHeavy     : Boolean;
+    iFeature   : TItem;
+    iNode      : TNode;
+    iDamage    : Integer;
+    iHookDelay : Integer;
 begin
   Result := False;
   if not isProperCoord( aCoord )      then Exit;
   if LightFlag[ aCoord, lfPermanent ] then Exit;
   if LightFlag[ aCoord, lfFresh ]     then Exit;
+
+  iHookDelay := FHookDelay;
+  FHookDelay := aDelay;
 
   iHeavy   := aDamageType in [Damage_Acid, Damage_Fire, Damage_Plasma, Damage_SPlasma];
   iCellID  := Cell[ aCoord ];
@@ -865,7 +874,7 @@ begin
       Result := True;
       SetItem( aCoord, nil );
       iFeature.Detach;
-      iFeature.CallHook( Hook_OnDestroy, [ LuaCoord( aCoord ), aDelay ] );
+      iFeature.CallHook( Hook_OnDestroy, [ LuaCoord( aCoord ) ] );
       // The hook may discard the feature together with its contents.
       if not iFeature.Dead then
         for iNode in iFeature do
@@ -885,6 +894,8 @@ begin
       CallHook( aCoord, iCellID, CellHook_OnDestroy );
     end;
   end;
+
+  FHookDelay := iHookDelay;
 end;
 
 
@@ -2042,7 +2053,7 @@ begin
   iKilledBy := '';
   if iState.IsString(iSourceIndex) then
     iKilledBy := iState.ToString(iSourceIndex);
-  iLevel.Explosion( iDelay, iState.ToPosition(2), iData, iSource, NewDirection(0), 1.0, iKilledBy );
+  iLevel.Explosion( iLevel.HookDelay + iDelay, iState.ToPosition(2), iData, iSource, NewDirection(0), 1.0, iKilledBy );
   Result := 0;
 end;
 
