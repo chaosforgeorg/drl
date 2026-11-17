@@ -980,16 +980,21 @@ begin
 end;
 
 procedure TLevel.Explosion( aDelay : Integer; aCoord : TCoord2D; aData : TExplosionData; aItem : TItem; aKnockback : TDirection; aDirectHit : Boolean = False; aDamageMult : Single = 1.0 );
+type TExplosionTarget = record
+       Coord : TCoord2D;
+       Being : TBeing;
+     end;
 var iC          : TCoord2D;
     iDamage     : Integer;
     iDir        : TDirection;
     iKnockback  : Byte;
     iBeing      : TBeing;
-    iBeingUID   : TUID;
     iChain      : TExplosionData;
     iPointDelay : Integer;
     iDistance   : Integer;
-    iProcessed  : TProcessedUIDList;
+    iTargets    : array of TExplosionTarget;
+    iCount      : Integer;
+    iIndex      : Integer;
 
   function ShotContact( aTarget : TCoord2D ) : Boolean;
   var iRay : TVisionRay;
@@ -1011,75 +1016,82 @@ begin
 
   FPresentation.Explosion( aDelay, aCoord, aData );
 
-  iProcessed := TProcessedUIDList.Create;
-  try
-    ClearLightMapBits( [lfFresh] );
+  ClearLightMapBits( [lfFresh] );
 
-    if efChain in aData.Flags then
-    begin
-      iChain         := aData;
-      iChain.Range   := Max( aData.Range div 2 - 1, 1 );
-      iChain.SoundID := '';
-      iChain.Flags   := [];
-      iChain.Damage.Reset;
-      iChain.ContentID := 0;
-    end;
-
-    if not aData.Damage.IsZero then
-    for iC in NewArea( aCoord, aData.Range ).Clamped( FArea ) do
-      if Distance( iC, aCoord ) <= aData.Range then
-        begin
-          if not ShotContact( iC ) then Continue;
-          iDamage   := aData.Damage.Roll( FGameRNG );
-          iDistance := Distance( iC, aCoord );
-          iPointDelay := aDelay + iDistance * aData.Delay;
-          if not (efNoDistanceDrop in aData.Flags) then
-            iDamage := iDamage div Max(1,(iDistance+1) div 2);
-          iDamage := Math.Floor( iDamage * aDamageMult );
-          DamageTile( iC, iDamage, aData.DamageType );
-          iBeing := Being[iC];
-          if iBeing <> nil then
-          begin
-            iBeingUID := iBeing.UID;
-            if iProcessed.IndexOf( iBeingUID ) >= 0 then Continue;
-            if (efSelfSafe in aData.Flags) and ( iBeing = FActiveBeing ) then Continue;
-            iProcessed.Push( iBeingUID );
-            if efChain in aData.Flags then
-              Explosion( iPointDelay, iC, iChain, nil, NewDirection(0) );
-            iKnockback := aData.Knockback;
-            if (efSelfKnockback in aData.Flags) and ( iBeing = FActiveBeing ) then iKnockback := 2;
-            if iKnockback > 0 then
-            begin
-              if aCoord = iC
-                then iDir := aKnockback
-                else iDir.CreateSmooth( aCoord, iC );
-              iBeing.Knockback( iDir, iDamage / iKnockback );
-            end;
-            if not iBeing.Dead then
-            begin
-              if (iBeing.Flags[BF_SPLASHIMMUNE]) and (aCoord <> iC) then Continue;
-              if (efSelfHalf in aData.Flags) and ( iBeing = FActiveBeing ) then iDamage := iDamage div 2;
-              iBeing.ApplyDamage( iDamage, Target_Torso, aData.DamageType, aItem, iPointDelay );
-            end;
-          end;
-          if ( iDamage > 10 ) and ( Item[iC] <> nil ) and (not Item[iC].isFeature) then
-          begin
-            if efChain in aData.Flags then Explosion( iPointDelay, iC, iChain, nil, NewDirection(0) );
-            DestroyItem( iC );
-          end;
-          if (aData.ContentID <> 0) and isEmpty( iC, [ EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM ] ) then
-          begin
-            if (iDamage > 20) or ((efRandomContent in aData.Flags) and (FGameRNG.RLongInt( 2 ) = 1)) then
-            begin
-              Cell[iC]      := aData.ContentID;
-              HitPoints[iC] := FData.Cells[ aData.ContentID ].HP;
-            end;
-          end;
-        end;
-    if aData.ContentID <> 0 then RecalcFluids;
-  finally
-    FreeAndNil( iProcessed );
+  if efChain in aData.Flags then
+  begin
+    iChain         := aData;
+    iChain.Range   := Max( aData.Range div 2 - 1, 1 );
+    iChain.SoundID := '';
+    iChain.Flags   := [];
+    iChain.Damage.Reset;
+    iChain.ContentID := 0;
   end;
+
+  if not aData.Damage.IsZero then
+  begin
+    // Resolve contact and the beings caught in the blast against the
+    // pre-blast state. Damage below may destroy walls, and knockback may move
+    // beings into cells processed later. Killed beings are destroyed deferred,
+    // so the recorded references stay valid and are checked through Dead.
+    SetLength( iTargets, Sqr( 2 * aData.Range + 1 ) );
+    iCount := 0;
+    for iC in NewArea( aCoord, aData.Range ).Clamped( FArea ) do
+      if ( Distance( iC, aCoord ) <= aData.Range ) and ShotContact( iC ) then
+      begin
+        iTargets[ iCount ].Coord := iC;
+        iTargets[ iCount ].Being := Being[ iC ];
+        Inc( iCount );
+      end;
+
+    for iIndex := 0 to iCount - 1 do
+    begin
+      iC        := iTargets[ iIndex ].Coord;
+      iBeing    := iTargets[ iIndex ].Being;
+      iDamage   := aData.Damage.Roll( FGameRNG );
+      iDistance := Distance( iC, aCoord );
+      iPointDelay := aDelay + iDistance * aData.Delay;
+      if not (efNoDistanceDrop in aData.Flags) then
+        iDamage := iDamage div Max(1,(iDistance+1) div 2);
+      iDamage := Math.Floor( iDamage * aDamageMult );
+      DamageTile( iC, iDamage, aData.DamageType );
+      if ( iBeing <> nil ) and ( not iBeing.Dead ) then
+      begin
+        if (efSelfSafe in aData.Flags) and ( iBeing = FActiveBeing ) then Continue;
+        if efChain in aData.Flags then
+          Explosion( iPointDelay, iC, iChain, nil, NewDirection(0) );
+        iKnockback := aData.Knockback;
+        if (efSelfKnockback in aData.Flags) and ( iBeing = FActiveBeing ) then iKnockback := 2;
+        if iKnockback > 0 then
+        begin
+          if aCoord = iC
+            then iDir := aKnockback
+            else iDir.CreateSmooth( aCoord, iC );
+          iBeing.Knockback( iDir, iDamage / iKnockback );
+        end;
+        if not iBeing.Dead then
+        begin
+          if (iBeing.Flags[BF_SPLASHIMMUNE]) and (aCoord <> iC) then Continue;
+          if (efSelfHalf in aData.Flags) and ( iBeing = FActiveBeing ) then iDamage := iDamage div 2;
+          iBeing.ApplyDamage( iDamage, Target_Torso, aData.DamageType, aItem, iPointDelay );
+        end;
+      end;
+      if ( iDamage > 10 ) and ( Item[iC] <> nil ) and (not Item[iC].isFeature) then
+      begin
+        if efChain in aData.Flags then Explosion( iPointDelay, iC, iChain, nil, NewDirection(0) );
+        DestroyItem( iC );
+      end;
+      if (aData.ContentID <> 0) and isEmpty( iC, [ EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM ] ) then
+      begin
+        if (iDamage > 20) or ((efRandomContent in aData.Flags) and (FGameRNG.RLongInt( 2 ) = 1)) then
+        begin
+          Cell[iC]      := aData.ContentID;
+          HitPoints[iC] := FData.Cells[ aData.ContentID ].HP;
+        end;
+      end;
+    end;
+  end;
+  if aData.ContentID <> 0 then RecalcFluids;
 end;
 
 procedure TLevel.Shotgun( aSource, aTarget : TCoord2D; aDamage : TDiceRoll; aDamageMul : Single; aDamageType : TDamageType; aItem : TItem; aDelay : DWord );
