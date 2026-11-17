@@ -1611,7 +1611,7 @@ begin
     iLevel.Player.RegisterKill( FID, aKiller, aWeapon, not Flags[ BF_RESPAWN ] );
 
   if (aKiller <> nil) and (aWeapon <> nil) then
-    aWeapon.CallHook(Hook_OnKill, [ aKiller, Self ]);
+    aWeapon.CallHook(Hook_OnKill, [ aKiller, Self, aDelay ]);
 
   if ( aKiller <> nil ) and aKiller.Dead then aKiller := nil;
 
@@ -1619,7 +1619,7 @@ begin
   if (aKiller <> nil) then
   begin
     iMeleeKill := aKiller.MeleeAttack;
-    aKiller.CallHook( Hook_OnKill, [ Self, aWeapon, iMeleeKill ] );
+    aKiller.CallHook( Hook_OnKill, [ Self, aWeapon, iMeleeKill, aDelay ] );
   end;
 
   if iLevel.RunStatus.Undecided then
@@ -1652,7 +1652,7 @@ begin
   if not ( BF_NOBLEED in FFlags ) then
     iLevel.Blood( FPosition, iDir, iBlood, not IsPlayer, aDelay, aOverkill );
 
-  CallHook( Hook_OnDie, [ aOverkill, iMeleeKill ] );
+  CallHook( Hook_OnDie, [ aOverkill, iMeleeKill, aDelay ] );
 
   if not aOverkill then
   begin
@@ -1661,9 +1661,9 @@ begin
   end;
 
   if aOverkill then
-    playSound( 'gib', iLevel.Presentation.VisualRNG.RLongInt( 400 ) )
+    playSound( 'gib', aDelay + iLevel.Presentation.VisualRNG.RLongInt( 400 ) )
   else
-    playSound( 'die', iLevel.Presentation.VisualRNG.RLongInt( 400 ) );
+    playSound( 'die', aDelay + iLevel.Presentation.VisualRNG.RLongInt( 400 ) );
 
   iLevel.Presentation.addKillAnimation( 400, aDelay, FUID, Sprite );
 
@@ -1741,7 +1741,7 @@ begin
     end;
 
     if not ( BF_ILLUSION in FFlags ) then
-      Result := iLevel.DamageTile( aWhere, rollMeleeDamage( iWeapon ), Damage_Melee );
+      Result := iLevel.DamageTile( aWhere, rollMeleeDamage( iWeapon ), Damage_Melee, 0 );
     Dec( FSpeedCount, iAttackCost )
   end;
   if not Dead then
@@ -2008,9 +2008,9 @@ begin
     if isPlayer then
     begin
       if ( aTarget = Target_Torso ) and ( aDamage > 4 ) then
-        PlaySound( 'pain' )
+        PlaySound( 'pain', aDelay )
     end
-    else PlaySound( 'hit' );
+    else PlaySound( 'hit', aDelay );
   end;
 
   iArmor := nil;
@@ -2191,7 +2191,6 @@ var iGameRNG    : TRNG;
     iSteps      : DWord;
     iDelay      : DWord;
     iSound      : DWord;
-    iDirectHit  : Boolean;
     iHit        : Boolean;
     iLevel      : TLevel;
     iStart      : TCoord2D;
@@ -2201,6 +2200,18 @@ var iGameRNG    : TRNG;
     iCover      : TLuaEntityNode;
     iCoverValue : Integer;
     iExplosion  : TExplosionData;
+    iWall       : TCoord2D;
+    iWallHit    : Boolean;
+    iWallDamage : Integer;
+
+  // Delay at which the missile reaches the current cell of its path, as its
+  // animation shows it. Rays and instant hits arrive when fired.
+  function ImpactDelay : Integer;
+  begin
+    if aItem.Flags[ IF_RAYGUN ] then Exit( aSequence );
+    Exit( aSequence + ( iSource - iMisslePath.Current ).LargerLength * iDelay );
+  end;
+
 begin
   if not TLevel( Parent ).IsActive then Exit( False );
   if aItem = nil then Exit( False );
@@ -2209,8 +2220,8 @@ begin
 
   iLevel     := TLevel(Parent);
   iGameRNG   := iLevel.GameRNG;
-  iDirectHit := False;
   iDodged    := False;
+  iWallHit   := False;
   iBeing := nil;
   if iLevel.isProperCoord( aTarget ) then
     iBeing := iLevel.Being[ aTarget ];
@@ -2302,9 +2313,15 @@ begin
       begin
         if iDodged then iLevel.Presentation.Msg('You dodge!');
 
+        iWall    := iCoord;
+        iWallHit := True;
         if aItem.Flags[ IF_DESTRUCTIVE ]
-          then iLevel.DamageTile( iCoord, iDamage * 2, aItem.DamageType )
-          else iLevel.DamageTile( iCoord, iDamage, aItem.DamageType );
+          then iWallDamage := iDamage * 2
+          else iWallDamage := iDamage;
+        // An explosive missile damages the wall after its explosion, so that
+        // the blast cannot pass through a hole the missile itself made.
+        if iRadius = 0 then
+          iLevel.DamageTile( iWall, iWallDamage, aItem.DamageType, ImpactDelay );
 
         if iLevel.isVisible( iCoord ) then
           iLevel.Presentation.Msg('Boom!');
@@ -2342,9 +2359,8 @@ begin
 
       if iIsHit then
       begin
-        if iLevel.Being[ iCoord ] is TPlayer
-          then iDirectHit := True
-          else if iDodged then iLevel.Presentation.Msg('You dodge!');
+        if iDodged and not ( iLevel.Being[ iCoord ] is TPlayer ) then
+          iLevel.Presentation.Msg('You dodge!');
         if iLevel.isVisible( iCoord ) then
             if iBeing.IsPlayer then
             begin
@@ -2367,7 +2383,7 @@ begin
             iRunDamage    := aItem.CallHookCheck(Hook_OnHitBeing,[Self,iBeing]);
           end;
           if iRunDamage then
-            iBeing.ApplyDamage( iDamage, Target_Torso, aItem.DamageType, aItem, aSequence );
+            iBeing.ApplyDamage( iDamage, Target_Torso, aItem.DamageType, aItem, ImpactDelay );
         end;
 
         if aItem.Dead or Dead then
@@ -2421,16 +2437,10 @@ begin
 
   if not aItem.Flags[ IF_INSTANTHIT ] then
   begin
-    if aItem.Flags[ IF_RAYGUN ] then
-    begin
-      iDuration := iDelay;
-      iMarkSeq  := 0;
-    end
-    else
-    begin
-      iDuration := (iSource - iMisslePath.Current).LargerLength * iDelay;
-      iMarkSeq  := iDuration + aSequence;
-    end;
+    if aItem.Flags[ IF_RAYGUN ]
+      then iDuration := iDelay
+      else iDuration := (iSource - iMisslePath.Current).LargerLength * iDelay;
+    iMarkSeq := ImpactDelay;
     iLevel.Presentation.addMissileAnimation( iDuration, aSequence,iSource,iMisslePath.Current,iColor,aItem.MisASCII,iDelay,iSprite,aItem.Flags[ IF_RAYGUN ],aItem.MissTrail);
     if iHit and iLevel.isVisible( iMisslePath.Current ) then
     begin
@@ -2460,8 +2470,13 @@ begin
       else iExplosion.SoundID := Iif( aItem.SoundID <> '', aItem.SoundID, 'explode' );
     iExplosion.Damage     := iRoll;
     iExplosion.DamageType := aItem.DamageType;
-    iDirection.CreateSmooth( FPosition, iCoord );
-    iLevel.Explosion( iDelay*(iSteps+(aShotCount*2)), iCoord, iExplosion, aItem, iDirection, iDirectHit, iDamageMul );
+    // Stepped back from a wall, the blast pushes away from it, not into it.
+    if iWallHit
+      then iDirection.CreateSmooth( iWall, iCoord )
+      else iDirection.CreateSmooth( FPosition, iCoord );
+    iLevel.Explosion( ImpactDelay, iCoord, iExplosion, aItem, iDirection, iDamageMul );
+    if iWallHit then
+      iLevel.DamageTile( iWall, iWallDamage, aItem.DamageType, ImpactDelay );
   end;
   if iDodged then TPlayer( iAimedBeing ).LastTurnDodge := True;
   Exit( not Dead );

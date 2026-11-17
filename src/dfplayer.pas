@@ -302,7 +302,7 @@ begin
     FDamagedLastTurn := True;
     if ( aDamage >= Max( FHPMax div 3, 10 ) ) then
     begin
-      TLevel( Parent ).Presentation.Blink( Red, 100 );
+      TLevel( Parent ).Presentation.Blink( Red, 100, aDelay );
       TLevel( Parent ).Presentation.addRumbleAnimation( aDelay, $6000, $4000, 250 );
     end
     else
@@ -517,8 +517,8 @@ begin
   iLevel.DropCorpse( FPosition, GetLuaProtoValue('corpse') );
 
   if aOverkill
-     then iLevel.playSound( 'gib',FPosition )
-     else PlaySound( 'die' );
+     then iLevel.playSound( 'gib', FPosition, aDelay )
+     else PlaySound( 'die', aDelay );
 
   iLevel.Presentation.addKillAnimation( 1000, aDelay, FUID, Sprite );
   if NukeActivated > 0 then

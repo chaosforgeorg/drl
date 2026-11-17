@@ -32,7 +32,7 @@ type TDRLTextIO = class( TDRLIO, ITextMap )
     procedure addMissileAnimation( aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aColor : Byte; aPic : Char; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False; aTrailNID : Word = 0 ); override;
     procedure addMarkAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aColor : Byte; aPic : Char ); override;
     procedure addSoundAnimation( aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord ); override;
-    procedure Explosion( aDelay : Integer; aWhere : TCoord2D; aData : TExplosionData ); override;
+    procedure Explosion( aDelay : Integer; aWhere : TCoord2D; const aData : TExplosionData; const aCells : array of TCoord2D ); override;
 
     procedure SetLevel( aLevel : TLuaMapNode ); override;
     function GetGylph( const aCoord : TCoord2D ) : TIOGylph;
@@ -392,7 +392,7 @@ begin
   Result.Color := GetColor( iColor, aCoord, CF_HIGHLIGHT in iLevel.Data.Cells[ iCell ].Flags );
 end;
 
-procedure TDRLTextIO.Explosion( aDelay : Integer; aWhere: TCoord2D; aData : TExplosionData );
+procedure TDRLTextIO.Explosion( aDelay : Integer; aWhere: TCoord2D; const aData : TExplosionData; const aCells : array of TCoord2D );
 begin
   FTextMap.FreezeMarks;
   FExpl := nil;
@@ -409,7 +409,7 @@ begin
      else     begin FExpl[3].Color := Red;     FExpl[0].Color := LightRed;   FExpl[1].Color := Yellow; end;
   end;
   FExpl[2].Color := FExpl[0].Color;
-  inherited Explosion( aDelay, aWhere, aData );
+  inherited Explosion( aDelay, aWhere, aData, aCells );
   FTextMap.AddAnimation( TTextClearMarkAnimation.Create( aDelay + aData.Range*aData.Delay ) );
 end;
 

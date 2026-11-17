@@ -139,7 +139,7 @@ type TDRLIO = class( TIORL, IDRLPresentation )
     aDirection : TDirection; aCount : Word; aDistanceScale, aSpreadScale : Single ); virtual;
   procedure addSoundAnimation( aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord ); virtual; abstract;
   procedure addRumbleAnimation( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord );
-  procedure Explosion( aDelay : Integer; aWhere : TCoord2D; aData : TExplosionData ); reintroduce; virtual;
+  procedure Explosion( aDelay : Integer; aWhere : TCoord2D; const aData : TExplosionData; const aCells : array of TCoord2D ); reintroduce; virtual;
   procedure PulseBlood( aValue : Single ); virtual;
   function ShowsDecals : Boolean; virtual;
   // Reads ui.engine_sprites after a data load.
@@ -401,15 +401,16 @@ begin
   FIODriver.Rumble( aLow, aHigh, aDuration );
 end;
 
-procedure TDRLIO.Explosion( aDelay : Integer; aWhere: TCoord2D; aData : TExplosionData );
+procedure TDRLIO.Explosion( aDelay : Integer; aWhere: TCoord2D; const aData : TExplosionData; const aCells : array of TCoord2D );
 var iCoord    : TCoord2D;
-    iDistance : Byte;
+    iDistance : Integer;
     iVisible  : boolean;
     iLevel    : TLevel;
     iSound    : Word;
 begin
   iLevel := Level;
   if not iLevel.isProperCoord( aWhere ) then Exit;
+  iVisible := ( efAlwaysVisible in aData.Flags ) or ( aData.Range >= 10 );
 
   if aData.SoundID <> '' then
   begin
@@ -420,7 +421,7 @@ begin
 
   if aData.Range > 0 then
   begin
-    addScreenShakeAnimation( Clamp( 100 * aData.Range, 300, 500 ), aData.Delay, Clampf( 2.0 * aData.Range, 2.0, 5.0 ) );
+    addScreenShakeAnimation( Clamp( 100 * aData.Range, 300, 500 ), aDelay, Clampf( 2.0 * aData.Range, 2.0, 5.0 ) );
     addRumbleAnimation( aDelay, Clamp( $2000 * aData.Range, $2000, $E000 ), $6000, Clamp( 100 * aData.Range, 100, 300 ) );
   end;
 
@@ -428,20 +429,15 @@ begin
     iLevel.Particles.AddEmitterDirect( aData.EmitterID,
       Vec3f( ( aWhere.X - 1 ) * 32 + 16, ( aWhere.Y - 1 ) * 32 + 16, 0 ) );
 
-  for iCoord in NewArea( aWhere, aData.Range ).Clamped( iLevel.Area ) do
+  for iCoord in aCells do
     begin
       if not ( efAlwaysVisible in aData.Flags ) then
-      begin
-        if iLevel.isVisible(iCoord) then iVisible := True else Continue;
-        if not iLevel.isEyeContact( iCoord, aWhere ) then Continue;
-      end;
-      iDistance := Distance(iCoord, aWhere);
-      if iDistance > aData.Range then Continue;
+        if iLevel.isVisible( iCoord ) then iVisible := True else Continue;
+      iDistance := Distance( iCoord, aWhere );
       if GraphicsVersion and ( aData.Sprite.SpriteID[0] <> 0 )
         then addMarkAnimation( aData.Sprite.Frametime * aData.Sprite.Frames - 1, aDelay+iDistance*aData.Delay, iCoord, aData.Sprite, 0, ' ' )
         else ExplosionMark( iCoord, aData.Color, 3*aData.Delay, aDelay+iDistance*aData.Delay );
     end;
-  if aData.Range >= 10 then iVisible := True;
 
   if efAfterBlink in aData.Flags then
   begin

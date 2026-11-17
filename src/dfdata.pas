@@ -212,7 +212,8 @@ type IDRLPresentation = interface( IRLPresentation )
   function EngineSprites : TEngineSprites;
   // Sound ID an item plays when equipped: 'pickup' or 'reload'.
   function EquipSound : AnsiString;
-  procedure Explosion( aDelay : Integer; aWhere : TCoord2D; aData : TExplosionData );
+  // aCells are the cells the explosion reaches, in any order.
+  procedure Explosion( aDelay : Integer; aWhere : TCoord2D; const aData : TExplosionData; const aCells : array of TCoord2D );
   procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ); overload;
   procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single ); overload;
   procedure addMoveAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aWipeBump : Boolean; aFinishBeforeNext : Boolean = False );

@@ -73,8 +73,11 @@ TLevel = class(TLuaMapNode)
     procedure CallHook( aHook : Byte; const aParams : array of const );
 
     procedure DropCorpse( aCoord : TCoord2D; CellID : Byte );
-    function DamageTile( aCoord : TCoord2D; aDamage : Integer; aDamageType : TDamageType; aFloor : Boolean = True ) : Boolean;
-    procedure Explosion( aDelay : Integer; aCoord : TCoord2D; aData : TExplosionData; aItem : TItem; aKnockback : TDirection; aDirectHit : Boolean = False; aDamageMult : Single = 1.0 );
+    // Delays are presentation delays on the current action's timeline; aDelay
+    // is passed on to the destroy hooks.
+    function DamageTile( aCoord : TCoord2D; aDamage : Integer; aDamageType : TDamageType; aDelay : Integer; aFloor : Boolean = True ) : Boolean;
+    // aKilledBy, if set, names the player's killer while it resolves.
+    procedure Explosion( aDelay : Integer; aCoord : TCoord2D; aData : TExplosionData; aItem : TItem; aKnockback : TDirection; aDamageMult : Single = 1.0; const aKilledBy : AnsiString = '' );
     procedure Shotgun( aSource, aTarget : TCoord2D; aDamage : TDiceRoll; aDamageMul : Single; aDamageType : TDamageType; aItem : TItem; aDelay : DWord );
     function Respawn( aCoord : TCoord2D ) : TBeing; overload;
     procedure Respawn( aChance : byte ); overload;
@@ -226,9 +229,7 @@ TLevel = class(TLuaMapNode)
 implementation
 
 uses math, typinfo,
-     vlualibrary, vgenerics, vluatools, vdebug, vmath;
-
-type TProcessedUIDList = specialize TGArray<TUID>;
+     vlualibrary, vluatools, vdebug, vmath;
 
 procedure TLevel.ScriptLevel(script : string);
 begin
@@ -805,7 +806,7 @@ begin
   FPerks.CallHook( aHook, aParams );
 end;
 
-function TLevel.DamageTile( aCoord : TCoord2D; aDamage : Integer; aDamageType : TDamageType; aFloor : Boolean = True ) : Boolean;
+function TLevel.DamageTile( aCoord : TCoord2D; aDamage : Integer; aDamageType : TDamageType; aDelay : Integer; aFloor : Boolean = True ) : Boolean;
 var iCellID  : Byte;
     iHeavy   : Boolean;
     iFeature : TItem;
@@ -841,7 +842,7 @@ begin
     begin
 
       if CF_CORPSE in FData.Cells[ iCellID ].Flags then
-        playSound( 'gib', aCoord );
+        playSound( 'gib', aCoord, aDelay );
 
       if FData.Cells[ iCellID ].destroyto = '' then
       begin
@@ -864,7 +865,7 @@ begin
       Result := True;
       SetItem( aCoord, nil );
       iFeature.Detach;
-      iFeature.CallHook( Hook_OnDestroy, [ LuaCoord( aCoord ) ] );
+      iFeature.CallHook( Hook_OnDestroy, [ LuaCoord( aCoord ), aDelay ] );
       // The hook may discard the feature together with its contents.
       if not iFeature.Dead then
         for iNode in iFeature do
@@ -979,25 +980,37 @@ begin
   end;
 end;
 
-procedure TLevel.Explosion( aDelay : Integer; aCoord : TCoord2D; aData : TExplosionData; aItem : TItem; aKnockback : TDirection; aDirectHit : Boolean = False; aDamageMult : Single = 1.0 );
+procedure TLevel.Explosion( aDelay : Integer; aCoord : TCoord2D; aData : TExplosionData; aItem : TItem; aKnockback : TDirection; aDamageMult : Single = 1.0; const aKilledBy : AnsiString = '' );
 type TExplosionTarget = record
-       Coord : TCoord2D;
-       Being : TBeing;
+       Coord    : TCoord2D;
+       Distance : Integer;
+       Delay    : Integer;
+       Damage   : Integer;
+       Being    : TBeing;
+       Item     : TItem;
      end;
-var iC          : TCoord2D;
-    iDamage     : Integer;
-    iDir        : TDirection;
-    iKnockback  : Byte;
-    iBeing      : TBeing;
-    iChain      : TExplosionData;
-    iPointDelay : Integer;
-    iDistance   : Integer;
-    iTargets    : array of TExplosionTarget;
-    iCount      : Integer;
-    iIndex      : Integer;
+var iC            : TCoord2D;
+    iChain        : TExplosionData;
+    iCells        : array of TCoord2D;
+    iTargets      : array of TExplosionTarget;
+    iTarget       : TExplosionTarget;
+    iBeings       : array of Integer;
+    iCount        : Integer;
+    iBeingCount   : Integer;
+    iIndex        : Integer;
+    iSwap         : Integer;
+    iTemp         : Integer;
+    iDamage       : Integer;
+    iDistance     : Integer;
+    iDir          : TDirection;
+    iKnockback    : Byte;
+    iBeing        : TBeing;
+    iKilledBy     : Boolean;
+    iPrevKilledBy : AnsiString;
+    iPrevMelee    : Boolean;
 
   function ShotContact( aTarget : TCoord2D ) : Boolean;
-  var iRay : TVisionRay;
+  var iRay      : TVisionRay;
       iRayCoord : TCoord2D;
   begin
     if aTarget = aCoord then Exit( True );
@@ -1011,90 +1024,153 @@ var iC          : TCoord2D;
     until iRay.Done;
     Exit( True );
   end;
+
+  // Fills iCells with the cells in range the explosion reaches, or all of
+  // them if aAll; returns their count.
+  function CollectCells( aAll : Boolean ) : Integer;
+  var iCell : TCoord2D;
+  begin
+    SetLength( iCells, Sqr( 2 * aData.Range + 1 ) );
+    Result := 0;
+    for iCell in NewArea( aCoord, aData.Range ).Clamped( FArea ) do
+      if ( Distance( iCell, aCoord ) <= aData.Range ) and ( aAll or ShotContact( iCell ) ) then
+      begin
+        iCells[ Result ] := iCell;
+        Inc( Result );
+      end;
+  end;
+
 begin
   if not isProperCoord( aCoord ) then Exit;
 
-  FPresentation.Explosion( aDelay, aCoord, aData );
+  if aData.Damage.IsZero then
+  begin
+    // Only visual; no gameplay follows.
+    iCount := CollectCells( efAlwaysVisible in aData.Flags );
+    FPresentation.Explosion( aDelay, aCoord, aData, Slice( iCells, iCount ) );
+    Exit;
+  end;
 
   ClearLightMapBits( [lfFresh] );
 
   if efChain in aData.Flags then
   begin
-    iChain         := aData;
-    iChain.Range   := Max( aData.Range div 2 - 1, 1 );
-    iChain.SoundID := '';
-    iChain.Flags   := [];
+    iChain           := aData;
+    iChain.Range     := Max( aData.Range div 2 - 1, 1 );
+    iChain.SoundID   := '';
+    iChain.Flags     := [];
     iChain.Damage.Reset;
     iChain.ContentID := 0;
   end;
 
-  if not aData.Damage.IsZero then
+  iKilledBy := ( aKilledBy <> '' ) and ( not FPlayer.Dying );
+  if iKilledBy then
   begin
-    // Resolve contact and the beings caught in the blast against the
-    // pre-blast state. Damage below may destroy walls, and knockback may move
-    // beings into cells processed later. Killed beings are destroyed deferred,
-    // so the recorded references stay valid and are checked through Dead.
-    SetLength( iTargets, Sqr( 2 * aData.Range + 1 ) );
-    iCount := 0;
-    for iC in NewArea( aCoord, aData.Range ).Clamped( FArea ) do
-      if ( Distance( iC, aCoord ) <= aData.Range ) and ShotContact( iC ) then
-      begin
-        iTargets[ iCount ].Coord := iC;
-        iTargets[ iCount ].Being := Being[ iC ];
-        Inc( iCount );
-      end;
+    iPrevKilledBy := FPlayer.KilledBy;
+    iPrevMelee    := FPlayer.KilledMelee;
+    FPlayer.SetKilledBy( aKilledBy, False );
+  end;
 
-    for iIndex := 0 to iCount - 1 do
+  // Resolve contact, damage, and what each cell holds against the state at
+  // the start of the blast, so that destroyed walls, knockback, and kills
+  // cannot change which cells and things it reaches. Destruction is
+  // deferred, so the recorded references stay valid and are checked through
+  // Dead.
+  iCount := CollectCells( False );
+  SetLength( iTargets, iCount );
+  SetLength( iBeings, iCount );
+  iBeingCount := 0;
+  for iIndex := 0 to iCount - 1 do
+  begin
+    iC        := iCells[ iIndex ];
+    iDistance := Distance( iC, aCoord );
+    iDamage   := aData.Damage.Roll( FGameRNG );
+    if not ( efNoDistanceDrop in aData.Flags ) then
+      iDamage := iDamage div Max( 1, ( iDistance + 1 ) div 2 );
+    iTarget.Coord    := iC;
+    iTarget.Distance := iDistance;
+    iTarget.Delay    := aDelay + iDistance * aData.Delay;
+    iTarget.Damage   := Math.Floor( iDamage * aDamageMult );
+    iTarget.Being    := Being[ iC ];
+    iTarget.Item     := Item[ iC ];
+    iTargets[ iIndex ] := iTarget;
+    if iTarget.Being <> nil then
     begin
-      iC        := iTargets[ iIndex ].Coord;
-      iBeing    := iTargets[ iIndex ].Being;
-      iDamage   := aData.Damage.Roll( FGameRNG );
-      iDistance := Distance( iC, aCoord );
-      iPointDelay := aDelay + iDistance * aData.Delay;
-      if not (efNoDistanceDrop in aData.Flags) then
-        iDamage := iDamage div Max(1,(iDistance+1) div 2);
-      iDamage := Math.Floor( iDamage * aDamageMult );
-      DamageTile( iC, iDamage, aData.DamageType );
-      if ( iBeing <> nil ) and ( not iBeing.Dead ) then
-      begin
-        if (efSelfSafe in aData.Flags) and ( iBeing = FActiveBeing ) then Continue;
-        if efChain in aData.Flags then
-          Explosion( iPointDelay, iC, iChain, nil, NewDirection(0) );
-        iKnockback := aData.Knockback;
-        if (efSelfKnockback in aData.Flags) and ( iBeing = FActiveBeing ) then iKnockback := 2;
-        if iKnockback > 0 then
-        begin
-          if aCoord = iC
-            then iDir := aKnockback
-            else iDir.CreateSmooth( aCoord, iC );
-          iBeing.Knockback( iDir, iDamage / iKnockback );
-        end;
-        if not iBeing.Dead then
-        begin
-          if (iBeing.Flags[BF_SPLASHIMMUNE]) and (aCoord <> iC) then Continue;
-          if (efSelfHalf in aData.Flags) and ( iBeing = FActiveBeing ) then iDamage := iDamage div 2;
-          iBeing.ApplyDamage( iDamage, Target_Torso, aData.DamageType, aItem, iPointDelay );
-        end;
-      end;
-      if ( iDamage > 10 ) and ( Item[iC] <> nil ) and (not Item[iC].isFeature) then
-      begin
-        if efChain in aData.Flags then Explosion( iPointDelay, iC, iChain, nil, NewDirection(0) );
-        DestroyItem( iC );
-      end;
-      if (aData.ContentID <> 0) and isEmpty( iC, [ EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM ] ) then
-      begin
-        if (iDamage > 20) or ((efRandomContent in aData.Flags) and (FGameRNG.RLongInt( 2 ) = 1)) then
-        begin
-          Cell[iC]      := aData.ContentID;
-          HitPoints[iC] := FData.Cells[ aData.ContentID ].HP;
-        end;
-      end;
+      iBeings[ iBeingCount ] := iIndex;
+      Inc( iBeingCount );
     end;
   end;
+
+  FPresentation.Explosion( aDelay, aCoord, aData, Slice( iCells, iCount ) );
+
+  // Farthest first, so that knockback clears the way for the beings behind.
+  for iIndex := 1 to iBeingCount - 1 do
+  begin
+    iSwap := iIndex;
+    while ( iSwap > 0 ) and ( iTargets[ iBeings[ iSwap - 1 ] ].Distance < iTargets[ iBeings[ iSwap ] ].Distance ) do
+    begin
+      iTemp                := iBeings[ iSwap ];
+      iBeings[ iSwap ]     := iBeings[ iSwap - 1 ];
+      iBeings[ iSwap - 1 ] := iTemp;
+      Dec( iSwap );
+    end;
+  end;
+
+  for iIndex := 0 to iBeingCount - 1 do
+  begin
+    iTarget := iTargets[ iBeings[ iIndex ] ];
+    iBeing  := iTarget.Being;
+    if iBeing.Dead then Continue;
+    if ( efSelfSafe in aData.Flags ) and ( iBeing = FActiveBeing ) then Continue;
+    if efChain in aData.Flags then
+      Explosion( iTarget.Delay, iTarget.Coord, iChain, nil, NewDirection( 0 ) );
+    iKnockback := aData.Knockback;
+    if ( efSelfKnockback in aData.Flags ) and ( iBeing = FActiveBeing ) then iKnockback := 2;
+    if iKnockback > 0 then
+    begin
+      if aCoord = iTarget.Coord
+        then iDir := aKnockback
+        else iDir.CreateSmooth( aCoord, iTarget.Coord );
+      iBeing.Knockback( iDir, iTarget.Damage / iKnockback );
+    end;
+    if iBeing.Dead then Continue;
+    if iBeing.Flags[ BF_SPLASHIMMUNE ] and ( aCoord <> iTarget.Coord ) then Continue;
+    iDamage := iTarget.Damage;
+    if ( efSelfHalf in aData.Flags ) and ( iBeing = FActiveBeing ) then iDamage := iDamage div 2;
+    iBeing.ApplyDamage( iDamage, Target_Torso, aData.DamageType, aItem, iTarget.Delay );
+  end;
+
+  for iIndex := 0 to iCount - 1 do
+  begin
+    iTarget := iTargets[ iIndex ];
+    DamageTile( iTarget.Coord, iTarget.Damage, aData.DamageType, iTarget.Delay );
+    // Only items lying here before the blast; drops from its kills survive.
+    if ( iTarget.Damage > 10 ) and ( iTarget.Item <> nil ) and ( not iTarget.Item.isFeature )
+      and ( Item[ iTarget.Coord ] = iTarget.Item ) then
+    begin
+      if efChain in aData.Flags then
+        Explosion( iTarget.Delay, iTarget.Coord, iChain, nil, NewDirection( 0 ) );
+      DestroyItem( iTarget.Coord );
+    end;
+    if ( aData.ContentID <> 0 ) and isEmpty( iTarget.Coord, [ EF_NOITEMS, EF_NOSTAIRS, EF_NOBLOCK, EF_NOHARM ] ) then
+      if ( iTarget.Damage > 20 ) or ( ( efRandomContent in aData.Flags ) and ( FGameRNG.RLongInt( 2 ) = 1 ) ) then
+      begin
+        Cell[ iTarget.Coord ]      := aData.ContentID;
+        HitPoints[ iTarget.Coord ] := FData.Cells[ aData.ContentID ].HP;
+      end;
+  end;
+
   if aData.ContentID <> 0 then RecalcFluids;
+
+  if iKilledBy and ( not FPlayer.Dying ) then
+    FPlayer.SetKilledBy( iPrevKilledBy, iPrevMelee );
 end;
 
 procedure TLevel.Shotgun( aSource, aTarget : TCoord2D; aDamage : TDiceRoll; aDamageMul : Single; aDamageType : TDamageType; aItem : TItem; aDelay : DWord );
+type TShotgunTarget = record
+       Coord : TCoord2D;
+       Being : TBeing;
+     end;
 var iDiff,iC : TCoord2D;
     iTC      : TCoord2D;
     iDist    : Single;
@@ -1106,8 +1182,9 @@ var iDiff,iC : TCoord2D;
     iFalloff : Integer;
     iDir     : TDirection;
     iBeing   : TBeing;
-    iBeingUID  : TUID;
-    iProcessed : TProcessedUIDList;
+    iTargets : array of TShotgunTarget;
+    iCount   : Integer;
+    iIndex   : Integer;
 
     procedure SendShotgunBeam( aSrc : TCoord2D; aTgt : TCoord2D );
     var iSRay  : TVisionRay;
@@ -1139,49 +1216,56 @@ begin
   iC.y := Round((iDiff.y*iRange)/iDist);
   iC   += aSource;
 
-  iProcessed := TProcessedUIDList.Create;
-  try
-    for iTC in NewArea( iC, iSpread ) do
-      SendShotGunBeam( aSource, iTC );
+  for iTC in NewArea( iC, iSpread ) do
+    SendShotGunBeam( aSource, iTC );
 
-    // A wide spread can overlap the firing tile.
-    LightFlag[ aSource, lfDamage ] := False;
+  // A wide spread can overlap the firing tile.
+  LightFlag[ aSource, lfDamage ] := False;
 
-    for iTC in FArea do
-      if LightFlag[ iTC, lfDamage ] then
+  // Resolve the cells hit and the beings in them before any damage, so that
+  // knockback and kills cannot change who is hit. Destruction is deferred,
+  // so the recorded references stay valid and are checked through Dead.
+  SetLength( iTargets, 16 );
+  iCount := 0;
+  for iTC in FArea do
+    if LightFlag[ iTC, lfDamage ] then
+    begin
+      if iCount = Length( iTargets ) then
+        SetLength( iTargets, 2 * iCount );
+      iTargets[ iCount ].Coord := iTC;
+      iTargets[ iCount ].Being := Being[ iTC ];
+      Inc( iCount );
+    end;
+  ClearLightMapBits( [lfDamage] );
+
+  for iIndex := 0 to iCount - 1 do
+  begin
+    iTC  := iTargets[ iIndex ].Coord;
+    iDmg := Round( aDamage.Roll( FGameRNG ) * (1.0-0.01*iFalloff*Max(0,Distance( aSource, iTC )-1)) );
+    iDmg := Math.Floor( iDmg * aDamageMul );
+
+    if iDmg < 1 then iDmg := 1;
+
+    iBeing := iTargets[ iIndex ].Being;
+    if ( iBeing <> nil ) and ( not iBeing.Dead ) then
+    begin
+      if iBeing.isVisible then
       begin
-        iDmg := Round( aDamage.Roll( FGameRNG ) * (1.0-0.01*iFalloff*Max(0,Distance( aSource, iTC )-1)) );
-        iDmg := Math.Floor( iDmg * aDamageMul );
-
-        if iDmg < 1 then iDmg := 1;
-        
-        iBeing := Being[ iTC ];
-        if iBeing <> nil then
-        begin
-          iBeingUID := iBeing.UID;
-          if iProcessed.IndexOf( iBeingUID ) >= 0 then Continue;
-          iProcessed.Push( iBeingUID );
-          if iBeing.isVisible then
-          begin
-            if iDmg > 10 then FPresentation.addMarkAnimation( 199, aDelay, iTC, iHSprite, Red, '*' )
-              else if iDmg > 4 then FPresentation.addMarkAnimation( 199, aDelay, iTC, iHSprite, LightRed, '*' )
-                else FPresentation.addMarkAnimation( 199, aDelay, iTC, iHSprite, LightGray, '*' );
-          end;
-          if iKnock > 0 then
-          begin
-            iDir.CreateSmooth( aSource, iTC );
-            iBeing.Knockback( iDir, iDmg / iKnock );
-          end;
-          iBeing.ApplyDamage( iDmg, Target_Torso, aDamageType, aItem, aDelay );
-        end;
-
-        DamageTile( iTC, iDmg, aDamageType, False );
-        if isVisible( iTC ) and ( not isShotPassable( iTC ) ) then
-          FPresentation.addMarkAnimation( 199, aDelay, iTC, iHSprite, LightGray,'*' );
+        if iDmg > 10 then FPresentation.addMarkAnimation( 199, aDelay, iTC, iHSprite, Red, '*' )
+          else if iDmg > 4 then FPresentation.addMarkAnimation( 199, aDelay, iTC, iHSprite, LightRed, '*' )
+            else FPresentation.addMarkAnimation( 199, aDelay, iTC, iHSprite, LightGray, '*' );
       end;
-  finally
-    FreeAndNil( iProcessed );
-    ClearLightMapBits([lfDamage]);
+      if iKnock > 0 then
+      begin
+        iDir.CreateSmooth( aSource, iTC );
+        iBeing.Knockback( iDir, iDmg / iKnock );
+      end;
+      iBeing.ApplyDamage( iDmg, Target_Torso, aDamageType, aItem, aDelay );
+    end;
+
+    DamageTile( iTC, iDmg, aDamageType, aDelay, False );
+    if isVisible( iTC ) and ( not isShotPassable( iTC ) ) then
+      FPresentation.addMarkAnimation( 199, aDelay, iTC, iHSprite, LightGray,'*' );
   end;
 end;
 
@@ -1923,8 +2007,6 @@ var iState            : TLuaGameStack;
     iTable            : TLuaTable;
     iSource           : TItem;
     iKilledBy         : AnsiString;
-    iPreviousKilledBy : AnsiString;
-    iPreviousMelee    : Boolean;
     iDelay            : Integer;
     iTableIndex       : Integer;
     iSourceIndex      : Integer;
@@ -1958,19 +2040,9 @@ begin
 
   iSource := iState.ToObjectOrNil(iSourceIndex) as TItem;
   iKilledBy := '';
-  if iState.IsString(iSourceIndex) and ( not iLevel.FPlayer.Dying ) then
-  begin
+  if iState.IsString(iSourceIndex) then
     iKilledBy := iState.ToString(iSourceIndex);
-    if iKilledBy <> '' then
-    begin
-      iPreviousKilledBy := iLevel.FPlayer.KilledBy;
-      iPreviousMelee    := iLevel.FPlayer.KilledMelee;
-      iLevel.FPlayer.SetKilledBy( iKilledBy, False );
-    end;
-  end;
-  iLevel.Explosion( iDelay, iState.ToPosition(2), iData, iSource, NewDirection(0) );
-  if ( iKilledBy <> '' ) and ( not iLevel.FPlayer.Dying ) then
-    iLevel.FPlayer.SetKilledBy( iPreviousKilledBy, iPreviousMelee );
+  iLevel.Explosion( iDelay, iState.ToPosition(2), iData, iSource, NewDirection(0), 1.0, iKilledBy );
   Result := 0;
 end;
 
@@ -2219,7 +2291,7 @@ var State : TLuaGameStack;
 begin
   State.Init(L);
   Level := State.ToObject(1) as TLevel;
-  Level.DamageTile( State.ToCoord(2), State.ToInteger(3), TDamageType( State.ToInteger(4,Byte(Damage_Bullet)) ) );
+  Level.DamageTile( State.ToCoord(2), State.ToInteger(3), TDamageType( State.ToInteger(4,Byte(Damage_Bullet)) ), 0 );
   Exit( 0 );
 end;
 
