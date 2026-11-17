@@ -90,18 +90,6 @@ begin
   Exit(1);
 end;
 
-function lua_core_add_to_cell_set(L: Plua_State): Integer; cdecl;
-var State : TLuaGameStack;
-begin
-  State.Init(L);
-  case State.ToInteger(1) of
-    0 : State.Error('Bad Cellset in Lua!');
-    CELLSET_FLOORS  : Include(CellFloors,State.ToInteger(2));
-    CELLSET_WALLS   : Include(CellWalls ,State.ToInteger(2));
-  end;
-  Result := 0;
-end;
-
 // ************************************************************************ //
 // ************************************************************************ //
 
@@ -360,10 +348,9 @@ begin
   Result := 0;
 end;
 
-const lua_core_lib : array[0..2] of luaL_Reg = (
-    ( name : 'add_to_cell_set'; func : @lua_core_add_to_cell_set),
-    ( name : 'callback';        func : @lua_core_callback),
-    ( name : nil;               func : nil; )
+const lua_core_lib : array[0..1] of luaL_Reg = (
+    ( name : 'callback'; func : @lua_core_callback),
+    ( name : nil;        func : nil; )
 );
 
 function TDRLLua.GetCoreModuleID : AnsiString;

@@ -1,3 +1,9 @@
+CELLSET_WALLS    = 1
+CELLSET_FLOORS   = 2
+CELLSET_DOORS    = 4
+CELLSET_FLUIDS   = 5
+CELLSET_PASSABLE = 6
+
 generator.styles = {}
 generator.cell_sets = {}
 generator.cell_lists = {}

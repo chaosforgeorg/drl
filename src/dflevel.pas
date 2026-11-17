@@ -11,9 +11,6 @@ uses sysutils, classes,
      vluagamestack, vluaentitynode, vutil, vvision, vrltools, vnode, vluamapnode, vlua, vrandom, vvector, vparticleengine,
      dfdata, dfmap, dfthing, dfbeing, dfitem, dfplayer, drlhooks, drlperk, drlmarkers, drldecals, drlparticles, drlgamedata;
 
-const CellWalls   : TCellSet = [];
-      CellFloors  : TCellSet = [];
-
 type
 
 { TLevel }
@@ -970,8 +967,10 @@ begin
 end;
 
 procedure TLevel.DropCorpse(aCoord: TCoord2D; CellID: Byte);
+var iFlags : TFlags;
 begin
-  if Cell[ aCoord ] in CellFloors then
+  iFlags := FData.Cells[ Cell[ aCoord ] ].Flags;
+  if ( CF_CORPSE in iFlags ) or not ( ( CF_BLOCKMOVE in iFlags ) or ( CF_NOCHANGE in iFlags ) ) then
   begin
     Cell[ aCoord ] := CellID;
     LightFlag[ aCoord, lfFresh ]     := True;
