@@ -16,17 +16,6 @@ function generator.cell_set( list )
 	return s
 end
 
-function generator.merge_cell_sets( list1, list2 )
-	local s = {}
-	for k,v in pairs( list1 ) do
-		s[k] = v
-	end
-	for k,v in pairs( list2 ) do
-		s[k] = v
-	end
-	return s
-end
-
 function generator.merge_cell_lists( list1, list2 )
 	local s = {}
 	for _,v in ipairs( list1 ) do
@@ -449,37 +438,17 @@ function generator.warehouse_fill( wall_cell, fill_area, boxsize, amount, specia
 	end
 end
 
+-- Rooms framed by walls and doors, as areas including the frame, in row order.
+-- Frames enclosing walls ( corridor space around room blocks ) are dropped.
 function generator.read_room_list()
 	core.log("generator.read_room_list()")
-	local room_list      = {}
-	local cell_meta      = generator.merge_cell_sets( generator.cell_sets[ CELLSET_WALLS ], generator.cell_sets[ CELLSET_DOORS ] )
-	local cell_meta_list = generator.merge_cell_lists( generator.cell_lists[ CELLSET_WALLS ], generator.cell_lists[ CELLSET_DOORS ] )
-	local room_begin = function(c)
-		if c.x == MAXX or c.y == MAXY then return false end
-		if c.x == 1 then return cell_meta[ level:get_cell( 2, c.y ) ] end
-		if c.y == 1 then return cell_meta[ level:get_cell( c.x, 2 ) ] end
-		local meta_count = level:cross_around( c, cell_meta_list )
-		if meta_count == 4 then return true end
-		if meta_count == 3
-			and cell_meta[ level:get_cell( c.x + 1, c.y ) ]
-			and cell_meta[ level:get_cell( c.x, c.y + 1 ) ]
-			then return true end
-		return false
-	end
-
-	for start in level:get_area():coords() do
-		if room_begin( start ) then
-			local ec = coord.clone( start )
-			repeat
-				ec.x = ec.x + 1
-			until ec.x == MAXX or cell_meta[ level:get_cell( ec.x, start.y + 1 ) ]
-			repeat
-				ec.y = ec.y + 1
-			until ec.y == MAXY or cell_meta[ level:get_cell( start.x + 1, ec.y ) ]
-			local ar = area( start, ec )
-			if not level:find_coord( generator.cell_lists[ CELLSET_WALLS ], ar:shrinked() ) then
-				table.insert( room_list, ar )
-			end
+	local room_cells = generator.merge_cell_lists( generator.cell_lists[ CELLSET_FLOORS ], generator.cell_lists[ CELLSET_FLUIDS ] )
+	local walls      = generator.cell_lists[ CELLSET_WALLS ]
+	local room_list  = {}
+	-- expanded, so frames may lie on the map edge
+	for _,ar in ipairs( generator.read_rooms( level, room_cells, level:get_area():expanded( 1 ) ) ) do
+		if not level:find_coord( walls, ar:shrinked() ) then
+			table.insert( room_list, ar )
 		end
 	end
 	return room_list
