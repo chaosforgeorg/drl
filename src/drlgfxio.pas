@@ -94,6 +94,8 @@ type
     procedure CalculateConsoleParams;
     procedure SetMinimapScale( aScale : Byte );
   private
+    procedure UpdateStickMenuNav( aValue : Integer );
+  private
     FQuadSheet   : TGLQuadList;
     FTextSheet   : TGLQuadList;
     FPostSheet   : TGLQuadList;
@@ -116,6 +118,8 @@ type
     FGPLeft      : TVec2f;
     FGPRight     : TVec2f;
     FGPLeftDir   : TCoord2D;
+    FGPStickUp   : Boolean;
+    FGPStickDown : Boolean;
     FGPCamera    : Single;
     FGPDetected  : Boolean;
 
@@ -1037,6 +1041,30 @@ begin
   FLineSpace := Max((FIODriver.GetSizeY - FConsoleSizeY*FFontSizeY*FFontMult - 2*FVPadding) div FConsoleSizeY div FFontMult,0);
 end;
 
+// Optionally presents the left stick's vertical axis as held UI up/down, so
+// menus get their usual press and repeat behavior. Outside menus, or while
+// targeting, the stick keeps its gameplay role and any held state is released.
+procedure TDRLGFXIO.UpdateStickMenuNav( aValue : Integer );
+const StickPress   = 16000;
+      StickRelease = 12000;
+var iUp   : Boolean;
+    iDown : Boolean;
+begin
+  iUp   := False;
+  iDown := False;
+  if FSettings.StickMenuNav and isModal and ( not FTargeting ) then
+  begin
+    iUp   := ( aValue < -StickPress ) or ( FGPStickUp   and ( aValue < -StickRelease ) );
+    iDown := ( aValue >  StickPress ) or ( FGPStickDown and ( aValue >  StickRelease ) );
+  end;
+  if iUp <> FGPStickUp then
+    VTIG_GetIOState.EventState.SetState( VTIG_IE_UP, iUp );
+  if iDown <> FGPStickDown then
+    VTIG_GetIOState.EventState.SetState( VTIG_IE_DOWN, iDown );
+  FGPStickUp   := iUp;
+  FGPStickDown := iDown;
+end;
+
 function TDRLGFXIO.OnEvent( const iEvent : TIOEvent ) : Boolean;
 var
   iValue                : Integer;
@@ -1057,6 +1085,8 @@ begin
 
     if iEvent.PadAxis.Axis in [ VPAD_AXIS_LEFT_X, VPAD_AXIS_LEFT_Y] then
       FGPLeftDir := AxisToDirection( FGPLeft );
+    if iEvent.PadAxis.Axis = VPAD_AXIS_LEFT_Y then
+      UpdateStickMenuNav( iEvent.PadAxis.Value );
   end;
 
   if ( iEvent.EType = VEVENT_PADDEVICE ) then
@@ -1064,6 +1094,7 @@ begin
     FGPRight.Init();
     FGPLeft.Init();
     FGPLeftDir.Create(0,0);
+    UpdateStickMenuNav( 0 );
   end;
 
   if ( iEvent.EType = VEVENT_PADDOWN ) then FGPDetected := True;

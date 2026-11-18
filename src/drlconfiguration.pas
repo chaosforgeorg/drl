@@ -222,6 +222,10 @@ begin
     .SetName('Gamepad rumble')
     .SetDescription('Setting to {!Disabled} will turn off gamepad rumble effects.')
     ;
+  iGroup.AddToggle( 'stick_menu_navigation', False )
+    .SetName('Stick menu navigation')
+    .SetDescription('Setting to {!Enabled} lets the left analog stick move up and down in menus.')
+    ;
 
   iGroup := AddGroup( CONTROLLER_BINDINGS_GAMEPLAY_GROUP );
   FControllerBindings.RegisterGroup(iGroup, CONTROLLER_BINDING_INFO_GROUP);

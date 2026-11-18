@@ -47,6 +47,7 @@ type TIOSettings = record
   Mouse             : Boolean;
   MouseEdgePan      : Boolean;
   GamepadRumble     : Boolean;
+  StickMenuNav      : Boolean;
   WaitSound         : Boolean;
   GroupMessages     : Boolean;
   MorePrompt        : Boolean;
@@ -774,6 +775,7 @@ begin
   FSettings.Mouse             := FUserConfig.GetBoolean( 'enable_mouse' );
   FSettings.MouseEdgePan      := FUserConfig.GetBoolean( 'mouse_edge_pan' );
   FSettings.GamepadRumble     := FUserConfig.GetBoolean( 'enable_rumble' );
+  FSettings.StickMenuNav      := FUserConfig.GetBoolean( 'stick_menu_navigation' );
   FSettings.WaitSound         := FUserConfig.GetBoolean( 'wait_sound' );
   FSettings.GroupMessages     := FUserConfig.GetBoolean( 'group_messages' );
   FSettings.MorePrompt        := FUserConfig.GetBoolean( 'more_prompt' );
