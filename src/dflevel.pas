@@ -1308,7 +1308,7 @@ begin
   for iItem in iBeing.Inv do
     iItem.Flags[ IF_NODROP ] := True;
   if BeingVisible( aCoord, iBeing ) or BeingExplored( aCoord, iBeing ) then
-    FPresentation.addKillAnimation( 1000, 0, iBeing.UID, iBeing.Sprite, True );
+    FPresentation.addKillAnimation( 1000, 0, iBeing.UID, iBeing.Sprite, KillAnimRaise );
   Exit( iBeing );
 end;
 

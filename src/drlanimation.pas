@@ -222,7 +222,7 @@ private
 end;
 
 TGFXKillAnimation = class(TGFXLevelAnimation)
-  constructor Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aDuration : DWord; aDelay : DWord; aUID : TUID; aReverse : Boolean = False );
+  constructor Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aDuration : DWord; aDelay : DWord; aUID : TUID; aKind : TKillAnimation = KillAnimDeath );
   procedure OnStart; override;
   procedure OnDraw; override;
   destructor Destroy; override;
@@ -235,7 +235,7 @@ private
   FSprites    : array[0..3] of Integer;
   FCount      : Integer;
   FLeadDelay  : DWord;
-  FReverse    : Boolean;
+  FKind       : TKillAnimation;
 end;
 
 
@@ -834,16 +834,16 @@ begin
   inherited Destroy;
 end;
 
-constructor TGFXKillAnimation.Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aDuration : DWord; aDelay : DWord; aUID : TUID; aReverse : Boolean = False );
+constructor TGFXKillAnimation.Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aDuration : DWord; aDelay : DWord; aUID : TUID; aKind : TKillAnimation = KillAnimDeath );
 var iBeing      : TBeing;
     iCols       : Integer;
     iPlayerHack : Integer;
 begin
   inherited Create( aSpriteMap, aDuration, aDelay, aUID );
   FLevel := aLevel;
-  FReverse := aReverse;
+  FKind  := aKind;
   FLeadDelay := 0;
-  if not aReverse then
+  if aKind <> KillAnimRaise then
   begin
     FLeadDelay := aDelay;
     FDelay := 0;
@@ -853,7 +853,7 @@ begin
   if iBeing = nil then Exit;
   FCount      := 2;
   // TODO: remove hack!
-  if iBeing.GetLuaProtoValue('corpse') = 0 then FCount := 3;
+  if ( aKind = KillAnimDeath ) and ( iBeing.GetLuaProtoValue('corpse') = 0 ) then FCount := 3;
   FSprite     := iBeing.Sprite;
   FCoord      := iBeing.Position;
 
@@ -870,9 +870,8 @@ begin
   iCols := DRL_COLS;
   if SF_LARGE in FSprite.Flags then iCols *= 2;
 
-  if aReverse then
+  if aKind = KillAnimRaise then
   begin
-    FCount := 2;
     FSprites[0] := FSprite.SpriteID[0] + (FSprite.Frames + 1)* iCols;
     FSprites[1] := FSprite.SpriteID[0] + (FSprite.Frames + 0) * iCols;
   end
@@ -893,7 +892,10 @@ var iBeing : TBeing;
 begin
   iBeing := FLevel.Context.UIDs.Get( FUID ) as TBeing;
   if iBeing <> nil then iBeing.AnimCount := iBeing.AnimCount + 1;
-  FLevel.LightFlag[ FCoord, LFCORPSING ] := True;
+  // a transition also hides the remains left at its position until it ends
+  if FKind = KillAnimTransition
+    then FLevel.LightFlag[ FCoord, LFANIMATING ] := True
+    else FLevel.LightFlag[ FCoord, LFCORPSING ] := True;
 end;
 
 procedure TGFXKillAnimation.OnDraw;
@@ -909,7 +911,7 @@ begin
   iBeing    := FLevel.Context.UIDs.Get( FUID ) as TBeing;
   if iBeing <> nil then
     iPosition.Init( (iBeing.Position.X - 1)*FLevelMap.GetGridSize,(iBeing.Position.Y - 1)*FLevelMap.GetGridSize);
-  if ( not FReverse ) and ( FLeadDelay > 0 ) then
+  if ( FKind <> KillAnimRaise ) and ( FLeadDelay > 0 ) then
   begin
     if FTime <= FLeadDelay then
       iSegment := 0
@@ -930,13 +932,15 @@ destructor TGFXKillAnimation.Destroy;
 var iBeing : TBeing;
 begin
   // NOTE : we explicitly don't enable drawing of the dead enemy again
-  if FReverse then
+  if FKind <> KillAnimDeath then
   begin
     iBeing := FLevel.Context.UIDs.Get( FUID ) as TBeing;
     if iBeing <> nil then iBeing.AnimCount := Max( 0, iBeing.AnimCount - 1 );
   end;
   if FLevel <> nil then
-    FLevel.LightFlag[ FCoord, LFCORPSING ] := False;
+    if FKind = KillAnimTransition
+      then FLevel.LightFlag[ FCoord, LFANIMATING ] := False
+      else FLevel.LightFlag[ FCoord, LFCORPSING ] := False;
   inherited Destroy;
 end;
 constructor TGFXScreenShakeAnimation.Create( aSpriteMap : TSpriteMap; aRNG : TRNG; aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection );

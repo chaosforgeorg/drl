@@ -1599,8 +1599,11 @@ var iItem      : TItem;
 begin
   if FDying or Dead then Exit;
   iLevel := TLevel(Parent);
+  iHookDelay := iLevel.HookDelay;
+  iLevel.HookDelay := aDelay;
   if not CallHookCheck( Hook_OnDieCheck, [ aOverkill ] ) then
   begin
+    iLevel.HookDelay := iHookDelay;
     HP := Max(1,HP);
     Exit;
   end;
@@ -1610,9 +1613,6 @@ begin
 
   if ( not ( BF_FRIENDLY in FFlags ) ) and ( not ( BF_ILLUSION in FFlags ) ) and ( not ( BF_NOKILL in FFlags ) ) then
     iLevel.Player.RegisterKill( FID, aKiller, aWeapon, not Flags[ BF_RESPAWN ] );
-
-  iHookDelay := iLevel.HookDelay;
-  iLevel.HookDelay := aDelay;
 
   if (aKiller <> nil) and (aWeapon <> nil) then
     aWeapon.CallHook(Hook_OnKill, [ aKiller, Self ]);
@@ -3434,6 +3434,22 @@ begin
       TLevel( iBeing.Parent ).Presentation.addBumpAnimation( VisualTime( iState.ToInteger( 4, 1000 ) ) , 0, UID, Position, iCoord, Sprite, iAmount );
 end;
 
+// Plays the current sprite's death frames, then shows the being again with
+// whatever sprite and cell changes were made after this call.
+function lua_being_animate_transition( L: Plua_State ): Integer; cdecl;
+var iState : TLuaGameStack;
+    iBeing : TBeing;
+    iLevel : TLevel;
+begin
+  iState.Init(L);
+  iBeing := iState.ToObject(1) as TBeing;
+  if iBeing = nil then Exit( 0 );
+  iLevel := TLevel( iBeing.Parent );
+  if iLevel.AnimationVisible( iBeing.Position, iBeing ) then
+    iLevel.Presentation.addKillAnimation( iState.ToInteger( 2, 400 ), iLevel.HookDelay, iBeing.UID, iBeing.Sprite, KillAnimTransition );
+  Result := 0;
+end;
+
 function lua_being_send_missile( L: Plua_State ): Integer; cdecl;
 var iState     : TLuaGameStack;
     iBeing     : TBeing;
@@ -3499,7 +3515,7 @@ begin
   Result := 1;
 end;
 
-const lua_being_lib : array[0..42] of luaL_Reg = (
+const lua_being_lib : array[0..43] of luaL_Reg = (
       ( name : 'kill';          func : @lua_being_kill),
       ( name : 'resurrect';     func : @lua_being_resurrect),
       ( name : 'apply_damage';  func : @lua_being_apply_damage),
@@ -3542,6 +3558,7 @@ const lua_being_lib : array[0..42] of luaL_Reg = (
       ( name : 'wipe_marker';  func : @lua_being_wipe_marker),
 
       ( name : 'animate_bump';  func : @lua_being_animate_bump),
+      ( name : 'animate_transition'; func : @lua_being_animate_transition),
       ( name : 'send_missile';  func : @lua_being_send_missile),
       ( name : 'get_last_position'; func : @lua_being_get_last_position),
       ( name : 'get_target';         func : @lua_being_get_target),
