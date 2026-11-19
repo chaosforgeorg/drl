@@ -274,7 +274,7 @@ function drl.register_generators()
 					generator.add_room( list, room:expanded() )
 				end
 			end
-			level:transmute( "crate", floor_cell )
+			level:transform( "crate", floor_cell )
 			return list
 		end
 	}

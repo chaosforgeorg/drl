@@ -227,7 +227,7 @@ function generator.generate_lava_dungeon()
 			generator.add_room( list, quad:expanded() )
 		end
 	end
-	level:transmute( "crate", floor_cell )
+	level:transform( "crate", floor_cell )
 	return list
 end
 
@@ -409,7 +409,7 @@ function generator.generate_caves_2_dungeon()
 		end
 	end
 
-	level:transmute( marker, floor_cell )
+	level:transform( marker, floor_cell )
 
 	-- rest of the level will be destructible
 	generator.set_permanence( level_area, true, cave_cell )
@@ -422,7 +422,7 @@ function generator.generate_caves_2_dungeon()
 		generator.place_blob( start, count, marker )
 	end
 
-	level:transmute( marker, cave_cell )
+	level:transform( marker, cave_cell )
 
 	local inner_area = level_area:shrinked()
 	local cmax  = math.random( 5, 7 )
@@ -448,7 +448,7 @@ function generator.generate_caves_2_dungeon()
 		generator.place_blob( start, count, fluid )
 	end
 
-	level:transmute( marker, floor_cell )
+	level:transform( marker, floor_cell )
 
 	generator.transform_around( level, { fluid }, floor_cell, { fluid }, 0, 3 )
 end

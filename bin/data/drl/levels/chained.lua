@@ -19,7 +19,7 @@ register_level "the_chained_court"
 		OnKillAll = function ( self )
 			if self.status == 0 then
 				ui.msg("So much for hellish fair-play.")
-				self:transmute( "wall", "floor", area(7,5,11,16) )
+				self:transform( "wall", "floor", area(7,5,11,16) )
 				player:add_history("He defeated the Hell Arena Master!")
 				self.status = 3
 			end
@@ -58,7 +58,7 @@ register_level "the_chained_court"
 					if level.id == "the_vaults" and level.status < 2 then
 						ui.msg("With a sudden inspiration you yell \"OPEN SESAME!\"!")
 						player:play_sound( "lever.use" )
-						for c in level:each( "rwall", level:get_area():shrinked() ) do
+						for c in level:coords( "rwall", level:get_area():shrinked() ) do
 							if level:get_light_flag( c, LFMARKER1 ) then
 								level:set_light_flag( c, LFPERMANENT, false )
 								level.map[ c ] = "floor"
@@ -72,7 +72,7 @@ register_level "the_chained_court"
 						ui.msg("You brandish the staff. The voice echoes: \"So, it seems that ")
 						ui.msg("you have bested one of my offspring. Very well, you are allowed ")
 						ui.msg("full access to my domain as you traverse through it.\"")
-						level:transmute( "ldoor", "odoor" )
+						level:transform( "ldoor", "odoor" )
 						level:play_sound( "door.open", player.position)
 						being.scount = being.scount - 1000
 						return true
@@ -107,12 +107,12 @@ register_level "the_chained_court"
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1
-					level:transmute( "wall", "floor", level.data.cage1 )
+					level:transform( "wall", "floor", level.data.cage1 )
 					ui.msg("The cage rises!")
 					level.status = level.status + 1
 					if level.status == 4 then
-						level:transmute( "wall", "floor", level.data.prize1 )
-						level:transmute( "wall", "floor", level.data.prize2 )
+						level:transform( "wall", "floor", level.data.prize1 )
+						level:transform( "wall", "floor", level.data.prize2 )
 					end
 					return true
 				end,
@@ -136,12 +136,12 @@ register_level "the_chained_court"
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1
-					level:transmute( "wall", "floor", level.data.cage2 )
+					level:transform( "wall", "floor", level.data.cage2 )
 					ui.msg("The cage rises!")
 					level.status = level.status + 1
 					if level.status == 4 then
-						level:transmute( "wall", "floor", level.data.prize1 )
-						level:transmute( "wall", "floor", level.data.prize2 )
+						level:transform( "wall", "floor", level.data.prize1 )
+						level:transform( "wall", "floor", level.data.prize2 )
 					end
 					return true
 				end,
@@ -166,12 +166,12 @@ register_level "the_chained_court"
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1
-					level:transmute( "wall", "floor", level.data.cage3 )
+					level:transform( "wall", "floor", level.data.cage3 )
 					ui.msg("The cage rises!")
 					level.status = level.status + 1
 					if level.status == 4 then
-						level:transmute( "wall", "floor", level.data.prize1 )
-						level:transmute( "wall", "floor", level.data.prize2 )
+						level:transform( "wall", "floor", level.data.prize1 )
+						level:transform( "wall", "floor", level.data.prize2 )
 					end
 					return true
 				end,

@@ -350,7 +350,7 @@ function generator.set_permanence( ar, val, tile )
 	if type(val) ~= "boolean" then val = true end
 	if tile then
 		tile = cells[ tile ].nid
-		for c in level:each( tile, ar ) do
+		for c in level:coords( tile, ar ) do
 			level:set_light_flag( c, LFPERMANENT, val )
 		end
 	else
@@ -718,7 +718,7 @@ function generator.generate_tiled_level( settings )
 
 			if settings.bridge then
 				core.log("generator.generate_tiled_level() - bridge placement" )
-				for c in level:each( fluid_cell, larea:shrinked( 2 ) ) do
+				for c in level:coords( fluid_cell, larea:shrinked( 2 ) ) do
 					if level:cross_around( c, fluid_cell ) == 2 and level:around( c, { floor_cell, settings.bridge } ) == 6 then
 						if math.random(10) == 1 then
 							level:set_cell( c, settings.bridge )
@@ -865,7 +865,7 @@ function generator.generate_archi_level( settings )
 		end
 	end
 
-	for c in level:each( generator.styles[ level.style ].door ) do
+	for c in level:coords( generator.styles[ level.style ].door ) do
 		if level:cross_around( c, wall_cell ) > 2 then
 			level:set_cell( c, wall_cell )
 		end
@@ -1050,7 +1050,7 @@ function generator.remove_needless_doors()
 		end
 	end
 
-	for c in level:each( door, level_area:shrinked() ) do
+	for c in level:coords( door, level_area:shrinked() ) do
 		local wcaround = level:cross_around( c, walls )
 		if wcaround > 2 then
 			level:set_cell( c, wall )
@@ -1305,7 +1305,7 @@ function generator.generate_rivers( settings )
 
 	if destroy_items then
 		local floor = generator.styles[ level.style ].floor
-		for c in level:each( cell ) do
+		for c in level:coords( cell ) do
 			local item = level:get_item(c)
 			if item then
 				if not item.flags[ IF_NODESTROY] then
@@ -1316,7 +1316,7 @@ function generator.generate_rivers( settings )
 			end
 		end
 		if bridge then
-			for c in level:each( bridge ) do
+			for c in level:coords( bridge ) do
 				local item = level:get_item(c)
 				if item and ( not item.flags[ IF_NODESTROY] ) then item:destroy() end
 			end
@@ -1347,7 +1347,7 @@ function generator.event_flood_setup( params )
 	local left  = generator.safe_empty_coord( area(2,2,20,19) )
 	local right = generator.safe_empty_coord( area(60,2,78,19) )
 
-	for c in level:each( params.stairs ) do
+	for c in level:coords( params.stairs ) do
 		level.map[ c ] = generator.styles[ level.style ].floor
 	end
 

@@ -24,7 +24,7 @@ register_level "deimos_lab"
 					end
 				end
 
-				self:transmute( "gwall", "floor", self.data.vault2 )
+				self:transform( "gwall", "floor", self.data.vault2 )
 				ui.msg("The lab caches open.")
 
 				local reward1,reward2 = generator.roll_pair{ "umod_sniper","umod_firestorm","umod_nano","umod_onyx","ucarmor" }
@@ -89,14 +89,14 @@ register_level "deimos_lab"
 					level.status = level.status + 1
 					if level.status == 2 then
 						ui.msg("The walls rise!")
-						level:transmute( "rwall", "acid" )
-						level:transmute( "acid", "bridge", level.data.bridge )
+						level:transform( "rwall", "acid" )
+						level:transform( "acid", "bridge", level.data.bridge )
 						level:recalc_fluids()
 					elseif level.status == 6 then
 						ui.msg("The vault opens!")
 						level:play_sound( "shambler.act", player.position, 100 )
 						ui.msg("You hear a loud wail!")
-						level:transmute( "gwall", "floor", level.data.vault1 )
+						level:transform( "gwall", "floor", level.data.vault1 )
 						level:drop_being("shambler",coord(39,10))
 						level:drop_being("shambler",coord(40,11))
 						level:recalc_fluids()

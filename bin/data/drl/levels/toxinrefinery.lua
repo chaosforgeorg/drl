@@ -19,7 +19,7 @@ register_level "toxin_refinery"
 				self.map[self.data.half_wall_coord] = "wall"
 				self.data.half_wall_down_time = 0
 			elseif self.data.half_wall_down_time == 0 and (self.data.half_wall_trigger:contains(player.position) or self.data.half_wall_trigger2:contains(player.position)) then
-				self:transmute("wall", "floor", self.data.half_wall)
+				self:transform("wall", "floor", self.data.half_wall)
 				self.data.half_wall_down_time = game.time() + 150
 			end
 			if self.data.darkness_end_time > 0 and self.data.darkness_end_time < game.time() then
@@ -28,10 +28,10 @@ register_level "toxin_refinery"
 				self.data.darkness_end_time = 0
 			end
 			if self.data.half_wall:contains(player.position) then
-				self:transmute( "wall", "floor", self.data.secret1)
+				self:transform( "wall", "floor", self.data.secret1)
 			elseif not self.data.trap2_triggered and self.data.trap2_trigger:contains(player.position) then
 				self:play_sound("door.open", player.position)
-				self:transmute( "wall", "floor", self.data.trap2_wall1)
+				self:transform( "wall", "floor", self.data.trap2_wall1)
 				self.data.trap2_triggered = true
 			end
 		end,
@@ -79,8 +79,8 @@ register_level "toxin_refinery"
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1
-					level:transmute( "ldoor", "floor", level.data.door1 )
-					level:transmute( "wall", "floor", level.data.trap1 )
+					level:transform( "ldoor", "floor", level.data.door1 )
+					level:transform( "wall", "floor", level.data.trap1 )
 					level.data.darkness_end_time = game.time() + 150
 					level.data.old_darkness = player.flags[ BF_DARKNESS ]
 					player.flags[ BF_DARKNESS ]   = true
@@ -108,7 +108,7 @@ register_level "toxin_refinery"
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1
-					level:transmute( "ldoor", "floor", level.data.door2 )
+					level:transform( "ldoor", "floor", level.data.door2 )
 					ui.msg("Smoking area unlocked.")
 					return true
 				end,
@@ -132,8 +132,8 @@ register_level "toxin_refinery"
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1
-					level:transmute( "wall", "floor", level.data.door3 )
-					level:transmute( "acid", "bridge", level.data.bridge )
+					level:transform( "wall", "floor", level.data.door3 )
+					level:transform( "acid", "bridge", level.data.bridge )
 					ui.msg("Shortcut unlocked.")
 					return true
 				end,

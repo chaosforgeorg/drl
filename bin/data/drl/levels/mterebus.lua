@@ -12,7 +12,7 @@ register_level "mt_erebus"
 			local newStatus = 0
 			local msg
 	--		ui.msg( level.status )
-	--		if level.data.zoneReset:contains( player.position ) then level:transmute("floor", "cwall", level.data.zoneOfEffect)
+	--		if level.data.zoneReset:contains( player.position ) then level:transform("floor", "cwall", level.data.zoneOfEffect)
 	--		    level.status = 0
 	--			return
 	--		end
@@ -52,7 +52,7 @@ register_level "mt_erebus"
 				--In the event of a nuke disable the need to open up the walls (unlike Limbo).
 				--This inconsistency is partly due to historical reasons but also because the spawning of the elemental shouldn'can't be behind a wall.
 				--However the elemental is killed immediately in practice because it appears at the end of the monster list.
-				self:transmute( "cwall", "floor", self.data.mountain )
+				self:transform( "cwall", "floor", self.data.mountain )
 				self.status = 4
 				local element = self:summon("lava_elemental")
 				element.inv:add( item.new("lava_element") )

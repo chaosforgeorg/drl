@@ -15,7 +15,7 @@ register_level "abyssal_plains"
 			if res == 0 and self.data.inner_room:contains(player.position) then
 				ui.msg("Suddenly you're trapped in!")
 				self:play_sound( "door.close", player.position )
-				self:transmute( "gwall", "floor" )
+				self:transform( "gwall", "floor" )
 				self:transmute_by_flag("floor", "rwall", LFMARKER1)
 				generator.set_permanence( level:get_area() )
 
@@ -44,7 +44,7 @@ register_level "abyssal_plains"
 				end
 			end
 			--on the off-chance the player nuke/invulns through the level
-			self:transmute( "gwall", "floor" )
+			self:transform( "gwall", "floor" )
 		end,
 
 		OnNuked = function ( self )

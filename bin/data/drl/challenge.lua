@@ -1059,7 +1059,7 @@ function drl.register_challenges()
 						end
 					end
 					local apostle = level:summon("apostle")
-					level:transmute("stairs", "floor")
+					level:transform("stairs", "floor")
 				end
 			end,
 			OnExitLevel = function( self, l )
