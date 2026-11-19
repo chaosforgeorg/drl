@@ -332,7 +332,7 @@ core.register_blueprint "cell"
 	destroyto  = { false, core.TIDIN("cells"), "" },
 	raiseto    = { false, core.TIDIN("beings"), "" },
 	hp         = { false, core.TNUMBER },
-	affected_by = { false, core.TNUMBER, DAMAGE_NONE },
+	affected_by= { false, core.TFLAGS, {} },
 	set        = { false, core.TNUMBER },
 	move_cost  = { false, core.TNUMBER, 1.0 },
 

@@ -68,7 +68,6 @@ TLevel = class(TLuaMapNode)
 
     function CallHook( aHook : TCellHook; aCellID : Word; aWhat : TThing ) : Variant; overload;
     function CallHook( coord : TCoord2D;  Hook : TCellHook ) : Variant; overload;
-    function CallHook( coord : TCoord2D; aCellID : Word; Hook : TCellHook ) : Variant; overload;
     function CallHook( coord : TCoord2D; What : TThing; Hook : TCellHook ) : Variant; overload;
     procedure CallHook( aHook : Byte; const aParams : array of const );
 
@@ -149,6 +148,8 @@ TLevel = class(TLuaMapNode)
     procedure putCell( const aWhere : TCoord2D; const aWhat : byte ); override;
     function  getBeing( const coord : TCoord2D ) : TBeing; override;
     function  getItem( const coord : TCoord2D ) : TItem; override;
+    // Calls the cell's OnDestroy( coord, damage_type ) hook, if defined.
+    procedure CallDestroyHook( aCoord : TCoord2D; aCellID : Word; aDamageType : TDamageType );
   private
     FPlayer        : TPlayer; // Borrowed from Session; nil before/after a run.
     FRunStatus     : TRunStatus; // Borrowed from Session, which outlives the level.
@@ -766,15 +767,18 @@ begin
 end;
 
 function TLevel.CallHook( coord : TCoord2D; Hook: TCellHook ) : Variant;
+var iCellID : Byte;
 begin
-  Exit( CallHook( Coord, GetCell(coord), Hook ) );
+  iCellID := GetCell( coord );
+  if Hook in FData.Cells[ iCellID ].Hooks
+    then CallHook := FContext.Lua.ProtectedCall( [ 'cells', iCellID, CellHooks[ Hook ] ], [LuaCoord(coord)] )
+    else CallHook := False;
 end;
 
-function TLevel.CallHook( coord : TCoord2D; aCellID : Word; Hook: TCellHook ) : Variant;
+procedure TLevel.CallDestroyHook( aCoord : TCoord2D; aCellID : Word; aDamageType : TDamageType );
 begin
-  if Hook in FData.Cells[ aCellID ].Hooks
-    then CallHook := FContext.Lua.ProtectedCall( [ 'cells', aCellID, CellHooks[ Hook ] ], [LuaCoord(coord)] )
-    else CallHook := False;
+  if CellHook_OnDestroy in FData.Cells[ aCellID ].Hooks then
+    FContext.Lua.ProtectedCall( [ 'cells', aCellID, CellHooks[ CellHook_OnDestroy ] ], [ LuaCoord( aCoord ), Ord( aDamageType ) ] );
 end;
 
 function TLevel.CallHook(coord: TCoord2D; What: TThing; Hook: TCellHook) : Variant;
@@ -862,7 +866,7 @@ begin
         Cell[ aCoord ] := FContext.Lua.Defines[ FData.Cells[ iCellID ].destroyto ];
 
       Result := True;
-      CallHook( aCoord, iCellID, CellHook_OnDestroy );
+      CallDestroyHook( aCoord, iCellID, aDamageType );
     end;
   end;
 
@@ -884,14 +888,13 @@ begin
   end;
 
   iCellID := Cell[ aCoord ];
-  if ( aDamage > 0 ) and ( FData.Cells[ iCellID ].AffectedBy <> Damage_None ) and
-    ( FData.Cells[ iCellID ].AffectedBy = aDamageType ) and ( HitPoints[ aCoord ] > 0 ) then
+  if ( aDamage > 0 ) and ( aDamageType in FData.Cells[ iCellID ].AffectedBy ) and ( HitPoints[ aCoord ] > 0 ) then
   begin
     HitPoints[ aCoord ] := Max( 0, HitPoints[ aCoord ] - aDamage );
     if HitPoints[ aCoord ] = 0 then
     begin
       Result := True;
-      CallHook( aCoord, iCellID, CellHook_OnDestroy );
+      CallDestroyHook( aCoord, iCellID, aDamageType );
     end;
   end;
 

@@ -34,7 +34,7 @@ type TCell = class
   BlDesc      : AnsiString;
   DR          : Byte;
   HP          : Byte;
-  AffectedBy  : TDamageType;
+  AffectedBy  : TDamageTypes;
   Flags       : TFlags;
   Hooks       : TCellHooks;
   MoveCost    : Single;
@@ -66,13 +66,15 @@ implementation
 uses sysutils, vdebug;
 
 procedure TCells.RegisterCell( aLua : TLua; aCellNum : byte );
-var iHook    : TCellHook;
-    iCell    : TCell;
-    iTable   : TLuaTable;
-    iSubTable: TLuaTable;
-    iBase    : TSprite;
-    iSprite  : TSprite;
-    iSize, i : Integer;
+var iHook          : TCellHook;
+    iCell          : TCell;
+    iTable         : TLuaTable;
+    iSubTable      : TLuaTable;
+    iBase          : TSprite;
+    iSprite        : TSprite;
+    iSize, i       : Integer;
+    iAffectedFlags : TFlags;
+    iAffectedBy    : TDamageTypes absolute iAffectedFlags;
 begin
   if aCellNum >= High( FData ) then
   begin
@@ -118,7 +120,8 @@ begin
     iCell.BlDesc    := getString('blname');
     iCell.DR        := getInteger('armor');
     iCell.HP        := getInteger('hp');
-    iCell.AffectedBy := TDamageType( getInteger( 'affected_by', Ord( Damage_None ) ) );
+    iAffectedFlags  := getFlags( 'affected_by', [] );
+    iCell.AffectedBy:= iAffectedBy;
     iCell.Flags     := getFlags('flags');
     iCell.bloodto   := getString('bloodto');
     iCell.destroyto := getString('destroyto');
