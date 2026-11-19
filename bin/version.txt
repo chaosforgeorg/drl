@@ -9,6 +9,11 @@ GHJ#493 [fix] -- UI - highscore will still show on table even if it didn't get i
 GHJ#471 [fix] -- Game - firing an explosive right onto a wall will now knockback properly (also rocket jump!)
 GHJ#471 [fix] -- Game - fixed explosion damage bleeding through walls
 GHJ#471 [fix] -- Game - fixed some explosion ordering issues
+GHD#288 [fix] -- Audio - melee weapons without their own sound no longer use the fireball sound
+GHD#288 [fix] -- Audio - thrown melee weapons no longer play their attack sound
+GHD#288 [fix] -- Audio - enemy projectile sounds can be overridden per enemy
+GHD#288 [fix] -- Audio - Shambler release in Hell's Armory is audible again
+GHD#288 [fix] -- Audio - all levers play the lever sound again
 
 0.10.12
 GHJ#501 [new] -- Visual - blood splatter, blood decals

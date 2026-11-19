@@ -104,7 +104,7 @@ register_level "hells_armory"
 					local b = level:drop_being("shambler",coord(6,10))
 					level.status = 1
 					if b then
-						b:play_sound("act")
+						b:play_sound( "act", player.position )
 					end
 					ui.msg("You hear a loud wail!")
 					return true

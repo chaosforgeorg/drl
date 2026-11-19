@@ -60,7 +60,6 @@ register_level "phobos_lab"
 			desc = "unlocks door",
 
 			color_id = false,
-			sound_id = "lever",
 			perks   = { "perk_lever_description" },
 			runtime = {
 				OnUse = function(self,being)
@@ -86,7 +85,6 @@ register_level "phobos_lab"
 			desc = "unlocks door",
 
 			color_id = false,
-			sound_id = "lever",
 			perks   = { "perk_lever_description" },
 			runtime = {
 				OnUse = function(self,being)

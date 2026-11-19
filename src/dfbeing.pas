@@ -129,6 +129,7 @@ TBeing = class(TThing,IPathQuery)
     procedure LuaLoad( aTable : TLuaTable; aGameRNG : TRNG ); reintroduce;
     // private
     procedure PlayEquipSound( aItem : TItem );
+    procedure PlayMeleeSound( aWeapon : TItem );
     procedure AnnounceDeath;
     function FireRanged( aTarget : TCoord2D; aGun : TItem; aAlt : Boolean = False; aDelay : Integer = 0 ) : Boolean;
     function getAmmoItem( Weapon : TItem ) : TItem;
@@ -609,6 +610,21 @@ begin
   aItem.PlaySound( TLevel( Parent ).Presentation.EquipSound, FPosition );
 end;
 
+// A melee weapon without a fire sound of its own falls back to this being's
+// melee sound, not to the generic (ranged) fire sound.
+procedure TBeing.PlayMeleeSound( aWeapon : TItem );
+var iPresentation : IDRLPresentation;
+    iSound        : Word;
+begin
+  iPresentation := TLevel( Parent ).Presentation;
+  iSound        := 0;
+  if aWeapon <> nil then
+    iSound := iPresentation.ResolveSoundID( [ aWeapon.ID+'.fire', aWeapon.SoundID+'.fire' ] );
+  if iSound <> 0
+    then iPresentation.PlaySound( iSound, FPosition )
+    else PlaySound( 'melee' );
+end;
+
 // The prototype's death_desc (or death_oov_desc when unseen) formats the name
 // with %s; an empty description stays silent.
 procedure TBeing.AnnounceDeath;
@@ -1072,7 +1088,10 @@ begin
     aItem.PlaySound( 'pickup', FPosition );
     Inv.setSlot( iSlot, aItem );
   end;
-  if isUsable and (not isURanged) then
+  // Every lever sounds the same, so the sound never reveals its effect.
+  if isLever then
+    TLevel( Parent ).playSound( 'lever.use', FPosition )
+  else if isUsable and (not isURanged) then
     aItem.PlaySound( 'use', FPosition );
   if isEquip or isUsable then
     begin
@@ -1728,9 +1747,7 @@ begin
     iSlot := meleeWeaponSlot;
     if iSlot in [ efWeapon, efWeapon2 ] then
 	  iWeapon := Inv.Slot[ iSlot ];
-	if iWeapon <> nil
-      then iWeapon.PlaySound( 'fire', FPosition )
-      else PlaySound( 'melee' );
+    PlayMeleeSound( iWeapon );
 
     // Attack cost
     iAttackCost := getFireCost( False, True );
@@ -1797,14 +1814,9 @@ begin
     if ( aWeapon <> nil ) and ( not aWeapon.isMelee ) then aWeapon := nil;
   end;
   
-  // Play Sound
+  PlayMeleeSound( aWeapon );
   if aWeapon <> nil then
-  begin
-    aWeapon.PlaySound( 'fire', FPosition );
     iDamageType := aWeapon.DamageType;
-  end
-  else
-    PlaySound( 'melee' );
 
   // Attack cost
   iAttackCost := getFireCost( False, True );
@@ -2433,7 +2445,15 @@ begin
 
   if ( not aItem.Flags[ IF_SERIESSOUND ] ) or ( aShotCount = 0 ) then
   begin
-    iSound  := iLevel.Presentation.ResolveSoundID([aItem.ID+'.fire',aItem.SoundID+'.fire','fire']);
+    // A thrown melee weapon has no throw sound unless one is defined; its fire
+    // sound is the swing. A natural weapon checks its owner before the weapon's
+    // shared sound_id, so per-being entries override the shared ones.
+    if aItem.isMelee then
+      iSound := iLevel.Presentation.ResolveSoundID([aItem.ID+'.throw',aItem.SoundID+'.throw','throw'])
+    else if aItem.IType = ITEMTYPE_NRANGED then
+      iSound := iLevel.Presentation.ResolveSoundID([aItem.ID+'.fire',FID+'.fire',aItem.SoundID+'.fire','fire'])
+    else
+      iSound := iLevel.Presentation.ResolveSoundID([aItem.ID+'.fire',aItem.SoundID+'.fire','fire']);
     if iSound <> 0 then
       iLevel.Presentation.addSoundAnimation( aSequence, iSource, iSound );
   end;
@@ -2470,9 +2490,12 @@ begin
 
     iExplosion            := aItem.Explosion;
     iExplosion.Range      := iRadius;
-    if iLevel.Presentation.ResolveSoundID( [ aItem.ID+'.explode' ] ) > 0
-      then iExplosion.SoundID := aItem.ID
-      else iExplosion.SoundID := Iif( aItem.SoundID <> '', aItem.SoundID, 'explode' );
+    if iLevel.Presentation.ResolveSoundID( [ aItem.ID+'.explode' ] ) > 0 then
+      iExplosion.SoundID := aItem.ID
+    else if ( aItem.IType = ITEMTYPE_NRANGED ) and ( iLevel.Presentation.ResolveSoundID( [ FID+'.explode' ] ) > 0 ) then
+      iExplosion.SoundID := FID
+    else
+      iExplosion.SoundID := Iif( aItem.SoundID <> '', aItem.SoundID, 'explode' );
     iExplosion.Damage     := iRoll;
     iExplosion.DamageType := aItem.DamageType;
     // Stepped back from a wall, the blast pushes away from it, not into it.

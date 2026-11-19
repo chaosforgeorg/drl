@@ -87,7 +87,6 @@ register_level "central_processing"
 			desc = "unlocks door",
 
 			color_id = false,
-			sound_id = "lever",
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1
@@ -117,7 +116,6 @@ register_level "central_processing"
 			desc = "unlocks door",
 
 			color_id = false,
-			sound_id = "lever",
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1
@@ -142,7 +140,6 @@ register_level "central_processing"
 			desc = "unlocks door",
 
 			color_id = false,
-			sound_id = "lever",
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1
@@ -170,7 +167,6 @@ register_level "central_processing"
 			desc = "unlocks door",
 
 			color_id = false,
-			sound_id = "lever",
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1
@@ -195,7 +191,6 @@ register_level "central_processing"
 			desc = "unlocks door",
 
 			color_id = false,
-			sound_id = "lever",
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1

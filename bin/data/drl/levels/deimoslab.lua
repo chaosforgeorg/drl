@@ -80,7 +80,6 @@ register_level "deimos_lab"
 			desc = "opens the lab",
 
 			color_id = false,
-			sound_id = "lever",
 			perks   = { "perk_lever_description" },
 			runtime = {
 				OnUse = function(self,being)
