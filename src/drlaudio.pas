@@ -39,6 +39,7 @@ type
     FSoundVolume       : Byte;
     FMusicVolume       : Byte;
     FMenuSound         : Boolean;
+    FSoundPositioning  : TSoundPositioning;
     FLastMusic         : AnsiString;
     FTime              : QWord;
     FSoundEvents       : TSoundEventHeap;
@@ -153,6 +154,8 @@ begin
   iOldMusic := FMusicVolume;
   FHeartbeatEnabled := FSettings.GetBoolean('heartbeat_sound');
   FMenuSound := FSettings.GetBoolean('menu_sound');
+  FSoundPositioning := TSoundPositioning( Clamp( FSettings.GetInteger('sound_positioning'),
+    Ord(Low(TSoundPositioning)), Ord(High(TSoundPositioning)) ) );
   FMusicVolume := FSettings.GetInteger('volume_music');
   FSoundVolume := FSettings.GetInteger('volume_sound');
   FAudio.SetSoundVolumePercent(FSoundVolume);
@@ -411,6 +414,8 @@ var iEvent    : TSoundEvent;
     iDistance : Integer;
     iVolume   : Integer;
     iDelay    : Integer;
+    iOffsetX  : Integer;
+    iPan      : Single;
 begin
   if (aSoundID = 0) or (FAudio = nil) or
      FSoundMuted or (FSoundVolume = 0) then Exit;
@@ -434,7 +439,20 @@ begin
   iDistance := Distance( aCoord, aListenerPosition );
   if iDistance <= 1 then iVolume := 127 else iVolume := Clamp((25-iDistance)*6, 0, 127);
   if (iVolume > 0) and (iVolume < 30) then iVolume := 30;
-  if iVolume > 0 then FAudio.Play(aSoundID, Round(iVolume * 100.0 / 127.0));
+  if iVolume > 0 then
+  begin
+    iVolume := Round( iVolume * 100.0 / 127.0 );
+    iOffsetX := aCoord.X - aListenerPosition.X;
+    case FSoundPositioning of
+      spSpatial : FAudio.PlayAt( aSoundID, Vec3f( iOffsetX, 0.0, aCoord.Y - aListenerPosition.Y ), iVolume );
+      spStereo  :
+        begin
+          iPan := Clamp( iOffsetX * 15, -128, 127 ) / 128.0;
+          FAudio.PlayPanned( aSoundID, iPan, iVolume );
+        end;
+      spOff     : FAudio.Play( aSoundID, iVolume );
+    end;
+  end;
 end;
 
 function TDRLAudio.ResolveSoundID( const aResolveIDs : array of AnsiString ) : Word;

@@ -1,7 +1,9 @@
 0.10.13
 GHJ#509 [new] -- Visual - new fullscreen and resolution handling
 GHJ#125 [new] -- UI - new settings option to use analog stick for menu navigation
+GHJ#000 [new] -- Audio - positional settings - spatial, stereo or none
 GHJ#500 [mod] -- Game - basic BSP level generation improved
+GHJ#000 [fix] -- Audio - restored spatial audio functionality
 GHJ#487 [fix] -- Game - ray weapons fired out of vision will be rendered
 GHJ#493 [fix] -- UI - highscore will still show on table even if it didn't get into top 500
 GHJ#471 [fix] -- Game - firing an explosive right onto a wall will now knockback properly (also rocket jump!)

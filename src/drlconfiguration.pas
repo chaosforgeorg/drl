@@ -8,6 +8,8 @@ unit drlconfiguration;
 interface
 uses vconfiguration, vbindings, drlcontrollerbindings;
 
+type TSoundPositioning = ( spSpatial, spStereo, spOff );
+
 type TDRLConfiguration = class( TConfigurationManager )
   constructor Create;
   destructor Destroy; override;
@@ -144,6 +146,12 @@ begin
     .SetRange(0,100,5)
     .SetName('Music volume')
     .SetDescription('Control music volume. Set to {!0} to turn off music.')
+    ;
+  iGroup.AddInteger( 'sound_positioning', Ord(spSpatial) )
+    .SetRange( Ord(Low(TSoundPositioning)), Ord(High(TSoundPositioning)) )
+    .SetNames( ['Spatial', 'Stereo', 'Off'] )
+    .SetName('Sound positioning')
+    .SetDescription('Place map sounds around the player, pan them left or right, or play them without directional placement.')
     ;
   iGroup.AddToggle( 'menu_sound', True )
     .SetName('Menu sounds')
