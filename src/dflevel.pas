@@ -1984,7 +1984,7 @@ begin
   Result := 0;
 end;
 
-function lua_level_transmute_and_hp( L : Plua_State ) : Integer; cdecl;
+function lua_level_transform_and_hp( L : Plua_State ) : Integer; cdecl;
 var iState  : TLuaMapStack;
     iLevel  : TLevel;
     iFrom   : TFlags;
@@ -2289,7 +2289,7 @@ const lua_level_lib : array[0..27] of luaL_Reg = (
       ( name : 'nuke';       func : @lua_level_nuke),
       ( name : 'explosion';  func : @lua_level_explosion),
       ( name : 'set_cell_and_hp'; func : @lua_level_set_cell_and_hp),
-      ( name : 'transmute_and_hp'; func : @lua_level_transmute_and_hp),
+      ( name : 'transform_and_hp'; func : @lua_level_transform_and_hp),
       ( name : 'recalc_fluids';func : @lua_level_recalc_fluids),
       ( name : 'animate_cell'; func : @lua_level_animate_cell),
       ( name : 'animate_item'; func : @lua_level_animate_item),

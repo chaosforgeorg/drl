@@ -84,7 +84,7 @@ register_level "limbo"
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1
-					level:transmute_by_flag( "blood", "bridge", LFMARKER1)
+					level:transform_by_flag( "blood", "bridge", LFMARKER1)
 					ui.msg("The west bridges rise!")
 					level:recalc_fluids()
 					return true
@@ -110,7 +110,7 @@ register_level "limbo"
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1
-					level:transmute_by_flag( "blood", "bridge", LFMARKER2)
+					level:transform_by_flag( "blood", "bridge", LFMARKER2)
 					ui.msg("The east bridges rise!")
 					level:recalc_fluids()
 					return true

@@ -210,13 +210,7 @@ function generator.generate_lava_dungeon()
 	local list = {}
 	for i=1,tries do
 		local quad = area.random_subarea( a, coord.random( dim_min, dim_max ) ):clamped( a )
-		local good = true
-		for c in quad() do 
-			if level:get_cell(c) == wall_nid then 
-				good = false
-				break
-			end
-		end
+		local good = not level:find_coord( wall_nid, quad )
 		if good then
 			level:fill( floor_cell, quad )
 			quad:shrink(1)
@@ -401,8 +395,8 @@ function generator.generate_caves_2_dungeon()
 
 	generator.transform_around( level, { cave_cell }, floor_cell, { cave_cell }, 0, 3 )
 
-	for c in level_area:shrinked(2)() do
-		if level:get_cell(c) == floor_cell and level:cross_around( c, cave_cell ) > 2 then
+	for c in level:coords( floor_cell, level_area:shrinked(2) ) do
+		if level:cross_around( c, cave_cell ) > 2 then
 			for k in c:cross_coords() do
 				level:set_cell( k, marker )
 			end

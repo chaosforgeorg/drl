@@ -22,14 +22,14 @@ register_level "mt_erebus"
 					msg = "The molten cliffs give way leaving you tremendously exposed."
 					newStatus = 3
 				end
-				self:transmute_by_flag( "cwall", "floor", LFMARKER3, self.data.mountain)
+				self:transform_by_flag( "cwall", "floor", LFMARKER3, self.data.mountain)
 			end
 			if self.status < 2 and self.data.zone2:contains( player.position ) then
 				if newStatus == 0 then
 					msg = "A violent earthquake shakes your being."
 					newStatus = 2
 				end
-				self:transmute_by_flag( "cwall", "floor", LFMARKER2, self.data.mountain)
+				self:transform_by_flag( "cwall", "floor", LFMARKER2, self.data.mountain)
 				newStatus = 2
 			end
 			if self.status < 1 and (self.data.zone1a:contains( player.position ) or self.data.zone1b:contains( player.position )) then
@@ -37,7 +37,7 @@ register_level "mt_erebus"
 					msg = "The safety of the earth dissolves in front of you."
 					newStatus = 1
 				end
-				self:transmute_by_flag( "cwall", "floor", LFMARKER1, self.data.mountain)
+				self:transform_by_flag( "cwall", "floor", LFMARKER1, self.data.mountain)
 			end
 			if newStatus == 0 then return false end
 			ui.msg( msg )
@@ -109,7 +109,7 @@ register_level "mt_erebus"
 					elseif level.status == 2 then
 						raise = LFMARKER3
 					end
-					level:transmute_by_flag( "cwall", "floor", raise, level.data.mountain)
+					level:transform_by_flag( "cwall", "floor", raise, level.data.mountain)
 					level.status = level.status + 1
 					return true
 				end,

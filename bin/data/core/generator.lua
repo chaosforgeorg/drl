@@ -1,8 +1,9 @@
-CELLSET_WALLS    = 1
-CELLSET_FLOORS   = 2
-CELLSET_DOORS    = 4
-CELLSET_FLUIDS   = 5
-CELLSET_PASSABLE = 6
+CELLSET_WALLS     = 1
+CELLSET_FLOORS    = 2
+CELLSET_DOORS     = 4
+CELLSET_FLUIDS    = 5
+CELLSET_PASSABLE  = 6
+CELLSET_STRUCTURE = 7
 
 generator.styles = {}
 generator.cell_sets = {}
@@ -94,11 +95,9 @@ function generator.scatter_cross_item(scatter_area,good,item_id,count)
 	end
 end
 
-function generator.transmute_style( from, to, fstyle, tstyle, ar )
-	local a    = ar or level:get_area()
-	local from = cells[from].nid
-	for c in a() do 
-		if level.map[ c ] == from and level:get_raw_style( c ) == fstyle then
+function generator.transform_style( from, to, fstyle, tstyle, ar )
+	for c in level:coords( from, ar ) do
+		if level:get_raw_style( c ) == fstyle then
 			level.map[ c ] = to
 			if tstyle then
 				level:set_raw_style( c, tstyle )
@@ -107,15 +106,11 @@ function generator.transmute_style( from, to, fstyle, tstyle, ar )
 	end
 end
 
-function generator.transmute_to_object( from, object, ar, floor )
-	local a     = ar or level:get_area()
-	local from  = cells[from].nid
+function generator.transform_to_object( from, object, ar, floor )
 	local floor = floor or generator.styles[ level.style ].floor
-	for c in a() do 
-		if level.map[ c ] == from then
-			level.map[ c ] = floor
-			level:drop_item_ext( object, c )
-		end
+	for c in level:coords( from, ar ) do
+		level.map[ c ] = floor
+		level:drop_item_ext( object, c )
 	end
 end
 
@@ -354,11 +349,8 @@ function generator.set_permanence( ar, val, tile )
 			level:set_light_flag( c, LFPERMANENT, val )
 		end
 	else
-		for c in ar:coords() do
-			local id = level:get_cell( c )
-			if generator.cell_sets[ CELLSET_WALLS ][ id ] then
-				level:set_light_flag( c, LFPERMANENT, val )
-			end
+		for c in level:coords( generator.cell_lists[ CELLSET_WALLS ], ar ) do
+			level:set_light_flag( c, LFPERMANENT, val )
 		end
 	end
 end
@@ -579,12 +571,7 @@ function generator.regenerate( reveal )
 		game.reset_level()
 		generator.run( generator.last )
 		if reveal then
-			for c in level:get_area():coords() do
-				local cell = cells[ level.map[ c ] ]
-				if cell.flags[ CF_BLOCKMOVE ] or cell.flags[ CF_NOCHANGE ] then
-					level:set_light_flag( c, LFEXPLORED, true )
-				end
-			end
+			level:reveal_structure()
 			level.flags[ LF_BEINGSVISIBLE ] = true
 			level.flags[ LF_ITEMSVISIBLE  ] = not level.flags[ LF_ITEMSVISIBLE  ]
 		end

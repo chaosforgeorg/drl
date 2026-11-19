@@ -33,7 +33,7 @@ register_level "central_processing"
 			elseif self.data.trapSC:contains(player.position) then
 				self:transform( "wall", "floor", self.data.trapSC1)
 			elseif self.data.trap6:contains(player.position) and not self.data.trap6_triggered then
-				--This avoids the transmute situation if the floor is actually a bloodpool
+				--This avoids the transform situation if the floor is actually a bloodpool
 				for iCoord in self.data.trap6P.coords(self.data.trap6P) do
 					self.map[iCoord] = "gwall"
 				end

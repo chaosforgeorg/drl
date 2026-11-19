@@ -53,6 +53,9 @@ register_cell = core.register_storage( "cells", "cell", function( c )
 		if c.flags[ CF_OPENABLE ] or not c.flags[ CF_BLOCKMOVE ] then
 			add_to_generator_cell_set( CELLSET_PASSABLE, c )
 		end
+		if c.flags[ CF_BLOCKMOVE ] or c.flags[ CF_NOCHANGE ] then
+			add_to_generator_cell_set( CELLSET_STRUCTURE, c )
+		end
 		core.register_cell( c.nid )
 	end	
 )

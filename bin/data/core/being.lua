@@ -268,12 +268,7 @@ function being:phase( cell )
 	end
 	if cell then
 		cell = cells[ cell ].nid
-		local targets = {}
-		for c in ( level.data.phase_zone or level:get_area():shrinked())() do
-			if level:get_cell( c ) == cell then
-				table.insert( targets, c:clone() )
-			end
-		end
+		local targets = level:find_coords( cell, level.data.phase_zone or level:get_area():shrinked() )
 		if #targets ~= 0 then
 			target = level:drop_coord( table.random_pick( targets ), {EF_NOITEMS,EF_NOBEINGS,block_flag,EF_CANTELE}  )
 		end
