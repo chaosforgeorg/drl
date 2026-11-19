@@ -59,7 +59,6 @@ register_level "phobos_lab"
 			good = "neutral",
 			desc = "unlocks door",
 
-			color_id = false,
 			perks   = { "perk_lever_description" },
 			runtime = {
 				OnUse = function(self,being)
@@ -84,7 +83,6 @@ register_level "phobos_lab"
 			good = "neutral",
 			desc = "unlocks door",
 
-			color_id = false,
 			perks   = { "perk_lever_description" },
 			runtime = {
 				OnUse = function(self,being)

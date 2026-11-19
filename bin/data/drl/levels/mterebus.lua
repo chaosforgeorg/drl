@@ -93,7 +93,6 @@ register_level "mt_erebus"
 			good = "dangerous",
 			desc = "raises the mountain",
 
-			color_id = false,
 			perks   = { "perk_lever_description" },
 			runtime = {
 				OnUse = function(self,being)

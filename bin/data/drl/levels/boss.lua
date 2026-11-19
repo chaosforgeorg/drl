@@ -267,7 +267,6 @@ register_level "dis"
 
 			type     = ITEMTYPE_LEVER,
 			flags  = { IF_NODESTROY, IF_FEATURENAME },
-			color_id = false,
 
 			good = "dangerous",
 			desc = "woah!",

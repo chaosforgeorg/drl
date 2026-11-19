@@ -78,7 +78,6 @@ register_level "limbo"
 			good = "neutral",
 			desc = "raises the bridges",
 
-			color_id = false,
 			perks   = { "perk_lever_description" },
 			runtime = {
 				OnUse = function(self,being)
@@ -103,7 +102,6 @@ register_level "limbo"
 			good = "neutral",
 			desc = "raises the bridges",
 
-			color_id = false,
 			perks   = { "perk_lever_description" },
 			runtime = {
 				OnUse = function(self,being)

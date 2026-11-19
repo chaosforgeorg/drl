@@ -1371,7 +1371,6 @@ function drl.register_regular_items()
 	register_item "lever_flood_water"
 	{
 		name     = "lever",
-		color_id = "lever",
 		color    = WHITE,
 		sprite   = SPRITE_LEVER,
 		weight   = 0,
@@ -1400,7 +1399,6 @@ function drl.register_regular_items()
 	register_item "lever_flood_acid"
 	{
 		name     = "lever",
-		color_id = "lever",
 		color    = WHITE,
 		sprite   = SPRITE_LEVER,
 		weight   = 0,
@@ -1437,7 +1435,6 @@ function drl.register_regular_items()
 		color    = WHITE,
 		sprite   = SPRITE_LEVER,
 		weight   = 0,
-		color_id = "lever",
 
 		type       = ITEMTYPE_LEVER,
 		good       = "dangerous",
@@ -1470,7 +1467,6 @@ function drl.register_regular_items()
 		color    = WHITE,
 		sprite   = SPRITE_LEVER,
 		weight   = 0,
-		color_id = "lever",
 
 		type       = ITEMTYPE_LEVER,
 		good       = "beneficial",
@@ -1503,7 +1499,6 @@ function drl.register_regular_items()
 		color    = WHITE,
 		sprite   = SPRITE_LEVER,
 		weight   = 0,
-		color_id = "lever",
 
 		type       = ITEMTYPE_LEVER,
 		good       = "neutral",
@@ -1535,7 +1530,6 @@ function drl.register_regular_items()
 		color    = WHITE,
 		sprite   = SPRITE_LEVER,
 		weight   = 0,
-		color_id = "lever",
 
 		type       = ITEMTYPE_LEVER,
 		good       = "dangerous",
@@ -1573,7 +1567,6 @@ function drl.register_regular_items()
 		color    = WHITE,
 		sprite   = SPRITE_LEVER,
 		weight   = 0,
-		color_id = "lever",
 
 		type       = ITEMTYPE_LEVER,
 		good       = "dangerous",
@@ -1615,7 +1608,6 @@ function drl.register_regular_items()
 		color    = WHITE,
 		sprite   = SPRITE_LEVER,
 		weight   = 0,
-		color_id = "lever",
 
 		type       = ITEMTYPE_LEVER,
 		good       = "beneficial",
@@ -1678,7 +1670,6 @@ function drl.register_regular_items()
 		color    = WHITE,
 		sprite   = SPRITE_LEVER,
 		weight   = 0,
-		color_id = "lever",
 
 		type       = ITEMTYPE_LEVER,
 		good       = "beneficial",
@@ -1723,7 +1714,6 @@ function drl.register_regular_items()
 		color    = WHITE,
 		sprite   = SPRITE_LEVER,
 		weight   = 0,
-		color_id = "lever",
 
 		type       = ITEMTYPE_LEVER,
 		good       = "beneficial",

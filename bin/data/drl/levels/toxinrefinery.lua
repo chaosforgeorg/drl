@@ -74,7 +74,6 @@ register_level "toxin_refinery"
 			good = "neutral",
 			desc = "unlocks door",
 
-			color_id = false,
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1
@@ -102,7 +101,6 @@ register_level "toxin_refinery"
 			good = "neutral",
 			desc = "unlocks door",
 
-			color_id = false,
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1
@@ -125,7 +123,6 @@ register_level "toxin_refinery"
 			good = "neutral",
 			desc = "unlocks door",
 
-			color_id = false,
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1

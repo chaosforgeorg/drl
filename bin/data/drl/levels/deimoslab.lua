@@ -79,7 +79,6 @@ register_level "deimos_lab"
 			good = "dangerous",
 			desc = "opens the lab",
 
-			color_id = false,
 			perks   = { "perk_lever_description" },
 			runtime = {
 				OnUse = function(self,being)

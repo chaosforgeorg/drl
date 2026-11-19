@@ -89,7 +89,6 @@ register_level "hells_armory"
 			good = "dangerous",
 			desc = "opens the lab",
 
-			color_id = false,
 			perks   = { "perk_lever_description" },
 			runtime = {
 				OnUse = function(self,being)

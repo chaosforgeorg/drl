@@ -102,7 +102,6 @@ register_level "the_chained_court"
 			good = "dangerous",
 			desc = "opens cage",
 
-			color_id = false,
 			perks   = { "perk_lever_description" },
 			runtime = {
 				OnUse = function(self,being)
@@ -131,7 +130,6 @@ register_level "the_chained_court"
 			good = "dangerous",
 			desc = "opens cage",
 
-			color_id = false,
 			perks   = { "perk_lever_description" },
 			runtime = {
 				OnUse = function(self,being)
@@ -161,7 +159,6 @@ register_level "the_chained_court"
 			good = "dangerous",
 			desc = "opens cage",
 
-			color_id = false,
 			perks   = { "perk_lever_description" },
 			runtime = {
 				OnUse = function(self,being)
