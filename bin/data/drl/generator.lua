@@ -66,7 +66,7 @@ function generator.run( gen )
 		elseif type( gen.rooms ) == "table" and room_list then
 			local settings = { count = math.random( gen.rooms[1], gen.rooms[2] ) }
 			generator.handle_rooms( room_list, settings )
-			generator.restore_walls( generator.styles[ level.style ].wall, generator.cell_sets[ CELLSET_FLUIDS ] )
+			generator.fill_edges( generator.styles[ level.style ].wall, nil, generator.cell_sets[ CELLSET_FLUIDS ] )
 		end
 	end
 

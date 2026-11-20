@@ -430,20 +430,18 @@ function generator.warehouse_fill( wall_cell, fill_area, boxsize, amount, specia
 	end
 end
 
--- Rooms framed by walls and doors, as areas including the frame, in row order.
--- Frames enclosing walls ( corridor space around room blocks ) are dropped.
-function generator.read_room_list()
-	core.log("generator.read_room_list()")
-	local room_cells = generator.merge_cell_lists( generator.cell_lists[ CELLSET_FLOORS ], generator.cell_lists[ CELLSET_FLUIDS ] )
-	local walls      = generator.cell_lists[ CELLSET_WALLS ]
-	local room_list  = {}
-	-- expanded, so frames may lie on the map edge
-	for _,ar in ipairs( generator.read_rooms( level, room_cells, level:get_area():expanded( 1 ) ) ) do
-		if not level:find_coord( walls, ar:shrinked() ) then
-			table.insert( room_list, ar )
+-- Rooms of floor_tile ( a cell or a list of cells ) in ar, as areas including
+-- their frame, in row order ( see read_rooms on the map for the rules ),
+-- shrinked by shrink if given. Frames smaller than min_room ( default 5x5 )
+-- are dropped. JH's generator.read_rooms, on the current level.
+function generator.read_rooms( ar, floor_tile, shrink, min_room )
+	local rooms = generator.read_room_frames( level, floor_tile, ar, min_room or coord( 5, 5 ) )
+	if shrink then
+		for i,room in ipairs( rooms ) do
+			rooms[i] = room:shrinked( shrink )
 		end
 	end
-	return room_list
+	return rooms
 end
 
 function generator.add_room( list, room )
@@ -456,12 +454,18 @@ function generator.add_room( list, room )
 	table.insert( list, rm )
 end
 
+-- Room list of a tiled level: rooms framed by walls and doors ( floors and
+-- fluids are room cells ), including frames on the map edge. Frames enclosing
+-- walls ( corridor space around room blocks ) are dropped.
 function generator.create_room_list( list )
-	core.log("generator.add_rooms()")
-	local room_list = generator.read_room_list()
-	local list = list or {}
-	for _,room in ipairs( room_list ) do
-		generator.add_room( list, room )	
+	core.log("generator.create_room_list()")
+	local room_cells = generator.merge_cell_lists( generator.cell_lists[ CELLSET_FLOORS ], generator.cell_lists[ CELLSET_FLUIDS ] )
+	local walls      = generator.cell_lists[ CELLSET_WALLS ]
+	local list       = list or {}
+	for _,room in ipairs( generator.read_rooms( level:get_area():expanded( 1 ), room_cells, nil, coord( 0, 0 ) ) ) do
+		if not level:find_coord( walls, room:shrinked() ) then
+			generator.add_room( list, room )
+		end
 	end
 	return list
 end
@@ -483,16 +487,15 @@ function generator.get_room( room_list, min_size, max_x, max_y, max_area, class 
 	return table.random_pick( choice_list )
 end
 
-function generator.restore_walls( wall_cell, skip_cells )
-	core.log("generator.restore_walls("..wall_cell..")")
-	if skip_cells then
-		for c in level:get_area():edges() do
-			if not skip_cells[ cells[level:get_cell( c )].id ] then
-				level:set_cell( c, wall_cell )
-			end
+-- Sets the edge cells of a ( default: the map ) to wall_tile, except cells
+-- whose nid is a key of skip. JH's generator.fill_edges, on the current
+-- level.
+function generator.fill_edges( wall_tile, a, skip )
+	local full = a or level:get_area()
+	for c in full:edges() do
+		if not skip or not skip[ level:get_cell( c ) ] then
+			level:set_cell( c, wall_tile )
 		end
-	else
-		level:fill_edges( wall_cell )
 	end
 end
 
@@ -747,9 +750,9 @@ function generator.generate_tiled_level( settings )
 		generator.place_extra_doors( settings.extra_doors, wall_cell, floor_cell, door_cell )
 	end
 
-	generator.restore_walls( wall_cell )
+	generator.fill_edges( wall_cell )
 	if settings.dead_ends ~= false then
-		generator.clear_dead_ends()
+		generator.fill_dead_ends()
 	end
 	generator.remove_needless_doors()
 	return true
@@ -865,11 +868,11 @@ function generator.generate_archi_level( settings )
 	end
 
 	if data.clear_dead_ends then
-		generator.clear_dead_ends( data.clear_dead_ends )
+		generator.fill_dead_ends()
 	end
 
 	if not data.no_fill and ( not data.restore_edges )  then
-		generator.restore_walls( wall_cell )
+		generator.fill_edges( wall_cell )
 	end
 	return result
 end
@@ -899,12 +902,18 @@ function generator.wallin_cell( c, cell_id )
 	return true
 end
 
--- Fills dead ends ( floor or door cells with at least 3 wall neighbours ) with
--- wall, one layer per pass, until none are left or after passes passes.
-function generator.clear_dead_ends( passes, ar, wall )
+-- Fills dead ends ( floor or door cells with at least 3 neighbours that are
+-- wall or in wall_list ) with wall ( default: the style's wall ), one layer
+-- per pass, for at most max_depth passes ( omitted or negative: no limit ).
+-- scan_area defaults to the map without its edge. JH's generator.fill_dead_ends
+-- with DRL's open cells, on the current level.
+function generator.fill_dead_ends( wall, scan_area, max_depth, wall_list )
 	local style = generator.styles[ level.style ]
 	wall = wall or style.wall
-	generator.fill_dead_ends( level, { style.floor, style.door }, { wall }, wall, ar, passes )
+	local walls = { wall }
+	for _,v in ipairs( wall_list or {} ) do table.insert( walls, v ) end
+	if max_depth and max_depth < 0 then max_depth = nil end
+	return generator.fill_dead_end_cells( level, { style.floor, style.door }, walls, wall, scan_area, max_depth )
 end
 
 -- Port of JH's ring_clear. Fills floor runs bounded by walls on scan lines
