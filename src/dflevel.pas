@@ -2175,7 +2175,7 @@ begin
   if Destroy then
   begin
     if not ( CF_LIQUID in Level.FData.Cells[ aCellID ].Flags ) then
-      Level.CallHook( aCoord, aCellID, CellHook_OnDestroy );
+      Level.CallDestroyHook( aCoord, aCellID, Damage_None );
     iItem := Level.Item[ aCoord ];
     if Assigned( iItem ) and not ( iItem.Flags[ IF_UNIQUE ] or iItem.Flags[ IF_NODESTROY ] ) then
       iItem.Discard;
