@@ -304,7 +304,7 @@ register_level "hells_arena"
 		generator.set_permanence( level:get_area() )
 
 		generator.scatter_put( area( 5,3,68,15 ), translation, table.random_pick( column ), "floor",8+math.random(8))
-		for c in level:each( "water" ) do
+		for c in level:coords( "water" ) do
 			level.map[ c ] = "floor"
 			level:add_blood( c, ui.visual_random(3) )
 		end

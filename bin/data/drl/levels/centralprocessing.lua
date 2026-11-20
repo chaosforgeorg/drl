@@ -12,7 +12,7 @@ register_level "central_processing"
 			local platform_up = (game.time() % 500 > 249)
 			if not self.data.platform:contains(player.position) then
 				if not self.data.platform_up and platform_up then
-					self:transmute( "wall", "floor", self.data.platform)
+					self:transform( "wall", "floor", self.data.platform)
 					self:play_sound( "door.open", self.data.platform_coord )
 				elseif self.data.platform_up and not platform_up then
 					--Transmute fails if the wall is actually a bloodpool
@@ -24,30 +24,30 @@ register_level "central_processing"
 			end
 
 			if self.data.trap2:contains(player.position) then
-				self:transmute( "wall", "floor", self.data.trap21)
+				self:transform( "wall", "floor", self.data.trap21)
 			elseif self.data.trapSA:contains(player.position) then
-				self:transmute( "wall", "floor", self.data.trapSA1)
+				self:transform( "wall", "floor", self.data.trapSA1)
 			elseif self.data.trapSB:contains(player.position) then
-				self:transmute( "wall", "floor", self.data.trapSB1)
-				self:transmute( "wall", "floor", self.data.trapSB2)
+				self:transform( "wall", "floor", self.data.trapSB1)
+				self:transform( "wall", "floor", self.data.trapSB2)
 			elseif self.data.trapSC:contains(player.position) then
-				self:transmute( "wall", "floor", self.data.trapSC1)
+				self:transform( "wall", "floor", self.data.trapSC1)
 			elseif self.data.trap6:contains(player.position) and not self.data.trap6_triggered then
-				--This avoids the transmute situation if the floor is actually a bloodpool
+				--This avoids the transform situation if the floor is actually a bloodpool
 				for iCoord in self.data.trap6P.coords(self.data.trap6P) do
 					self.map[iCoord] = "gwall"
 				end
 				self.data.trap6_expiry = game.time() + 300
 				self.data.trap6_triggered = true
 				self:play_sound("door.close", self.data.door4_coord)
-				self:transmute( "wall", "floor", self.data.trap61)
-				self:transmute( "wall", "floor", self.data.trap62)
-				self:transmute( "wall", "floor", self.data.trap63)
-				self:transmute( "wall", "floor", self.data.trap64)
-				self:transmute( "wall", "floor", self.data.trap65)
+				self:transform( "wall", "floor", self.data.trap61)
+				self:transform( "wall", "floor", self.data.trap62)
+				self:transform( "wall", "floor", self.data.trap63)
+				self:transform( "wall", "floor", self.data.trap64)
+				self:transform( "wall", "floor", self.data.trap65)
 			end
 			if self.data.trap6_expiry > 0 and game.time() > self.data.trap6_expiry then
-				self:transmute( "gwall", "floor", self.data.trap6P )
+				self:transform( "gwall", "floor", self.data.trap6P )
 				self.data.trap6_expiry = 0
 				self:play_sound("door.open", self.data.door4_coord)
 			end
@@ -89,11 +89,11 @@ register_level "central_processing"
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1
-					level:transmute( "ldoor", "floor", level.data.door1 )
-					level:transmute( "wall", "floor", level.data.trap11 )
-					level:transmute( "wall", "floor", level.data.trap12 )
-					level:transmute( "wall", "floor", level.data.trap13 )
-					level:transmute( "wall", "floor", level.data.trap14 )
+					level:transform( "ldoor", "floor", level.data.door1 )
+					level:transform( "wall", "floor", level.data.trap11 )
+					level:transform( "wall", "floor", level.data.trap12 )
+					level:transform( "wall", "floor", level.data.trap13 )
+					level:transform( "wall", "floor", level.data.trap14 )
 					level:play_sound( "door.open", level.data.door1_coord )
 
 					ui.msg("North door unlocked.")
@@ -117,7 +117,7 @@ register_level "central_processing"
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1
-					level:transmute( "ldoor", "floor", level.data.door2 )
+					level:transform( "ldoor", "floor", level.data.door2 )
 					level:play_sound( "door.open", level.data.door2_coord )
 					ui.msg("Central area unlocked.")
 					return true
@@ -140,10 +140,10 @@ register_level "central_processing"
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1
-					level:transmute( "ldoor", "floor", level.data.door3 )
-					level:transmute( "wall", "floor", level.data.trap31 )
-					level:transmute( "wall", "floor", level.data.trap32 )
-					level:transmute( "wall", "floor", level.data.wall22 )
+					level:transform( "ldoor", "floor", level.data.door3 )
+					level:transform( "wall", "floor", level.data.trap31 )
+					level:transform( "wall", "floor", level.data.trap32 )
+					level:transform( "wall", "floor", level.data.wall22 )
 					level:play_sound( "door.open", level.data.door3_coord )
 					ui.msg("Processing area unlocked.")
 					return true
@@ -166,7 +166,7 @@ register_level "central_processing"
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1
-					level:transmute( "ldoor", "floor", level.data.door4 )
+					level:transform( "ldoor", "floor", level.data.door4 )
 					level:play_sound( "door.open", level.data.door4_coord )
 					ui.msg("East door unlocked.")
 					return true
@@ -189,7 +189,7 @@ register_level "central_processing"
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1
-					level:transmute( "ldoor", "door", level.data.door5 )
+					level:transform( "ldoor", "door", level.data.door5 )
 					ui.msg("Exit unlocked.")
 					return true
 				end,

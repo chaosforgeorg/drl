@@ -44,7 +44,7 @@ register_level "house_of_pain"
 				end
 				if not self.data.is_staff then
 					self:play_sound( "door.close", player.position )
-					self:transmute({"door","odoor"},"ldoor")
+					self:transform({"door","odoor"},"ldoor")
 					ui.msg("The doors shut violently!")
 				end
 			end
@@ -54,7 +54,7 @@ register_level "house_of_pain"
 			local choice = ui.query("A deathly high-pitched voice cackles!\n{R\"Well, who do we have here?\"} it begins. {R\"It seems that you've stumbled into my luxurious home. Would you care to have access?\"}")
 			if choice then
 				ui.msg("Well then, enjoy yourself. Just be wary of my other guests!")
-				self:transmute( "iwall", "floor", area(13,9,15,12) )
+				self:transform( "iwall", "floor", area(13,9,15,12) )
 			else
 				ui.msg("No? All right, I'll see you out then.")
 				self:set_cell( 14, 11, "stairs" )
@@ -66,7 +66,7 @@ register_level "house_of_pain"
 			if res < 5 then
 				if not self.data.is_staff then
 					ui.msg("The doors unlock.")
-					self:transmute("ldoor","door")
+					self:transform("ldoor","door")
 				end
 				if res == 0 then
 					self.status = 1
@@ -74,7 +74,7 @@ register_level "house_of_pain"
 					self.status = 3
 				elseif res == 4 then
 					ui.continue("The voice wails:\n{R\"I'm impressed! Why don't you come back to the first room and we'll see if I can't give you a just reward.\"}")
-					self:transmute( { "iwall", "gwall" }, "rwall")
+					self:transform( { "iwall", "gwall" }, "rwall")
 					self.status = 5
 				end
 			end

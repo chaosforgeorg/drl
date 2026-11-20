@@ -507,6 +507,14 @@ function level:items()
 	return self:children("item")
 end
 
+-- Marks every cell that blocks movement or cannot change ( CELLSET_STRUCTURE:
+-- walls, doors, stairs and the like ) as explored.
+function level:reveal_structure()
+	for c in self:coords( generator.cell_lists[ CELLSET_STRUCTURE ] ) do
+		self:set_light_flag( c, LFEXPLORED, true )
+	end
+end
+
 function level:reveal_powerups()
 	for item in self:items() do
 		if item.itype == ITEMTYPE_POWER then

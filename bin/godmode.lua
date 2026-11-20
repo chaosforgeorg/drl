@@ -111,26 +111,4 @@ Keytable["SHIFT+F8"] = function()
 			b:kill()
 		end
 	end
-end 
-
-Keytable["SHIFT+F2"] = function() 
-	local function query( c )
-		local cell = cells[ level:get_cell( c ) ]
-		if not cell.flags[ CF_BLOCKMOVE ] then
-			return true
-		end
-		if cell.flags[ CF_OPENABLE ] then 
-			return true
-		end
-		return false
-	end
-	local function to( c )
-		if not cells[ level:get_cell( c ) ].flags[ CF_NOCHANGE ] then
-			level:set_cell( c, "water" )
-		end
-	end
-
-	local c = level:find_coord( generator.styles[ level.style ].floor )
-
-	generator.flood_fill( level, c, to, query )
 end

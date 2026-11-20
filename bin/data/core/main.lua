@@ -32,20 +32,29 @@ core.options = {
 
 module = false
 
+local function add_to_generator_cell_set( set, c )
+	if not generator.cell_sets[ set ] then
+		generator.cell_sets[ set ] = {}
+	end
+	generator.cell_sets[ set ][ c.id ] = true
+	generator.cell_sets[ set ][ c.nid ] = true
+	if not generator.cell_lists[ set ] then
+		generator.cell_lists[ set ] = {}
+	end
+	table.insert( generator.cell_lists[ set ], c.nid )
+end
+
 register_cell = core.register_storage( "cells", "cell", function( c )
 		c.asciilow   = c.asciilow or c.ascii
 		c.hp         = c.hp or c.armor
 		if c.set then
-			core.add_to_cell_set( c.set, c.nid )
-			if not generator.cell_sets[ c.set ] then
-				generator.cell_sets[ c.set ] = {}
-			end
-			generator.cell_sets[ c.set ][ c.id ] = true
-			generator.cell_sets[ c.set ][ c.nid ] = true
-			if not generator.cell_lists[ c.set ] then
-				generator.cell_lists[ c.set ] = {}
-			end
-			table.insert( generator.cell_lists[ c.set ], c.nid )
+			add_to_generator_cell_set( c.set, c )
+		end
+		if c.flags[ CF_OPENABLE ] or not c.flags[ CF_BLOCKMOVE ] then
+			add_to_generator_cell_set( CELLSET_PASSABLE, c )
+		end
+		if c.flags[ CF_BLOCKMOVE ] or c.flags[ CF_NOCHANGE ] then
+			add_to_generator_cell_set( CELLSET_STRUCTURE, c )
 		end
 		core.register_cell( c.nid )
 	end	

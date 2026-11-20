@@ -12,8 +12,8 @@ register_level "phobos_lab"
 			if self.status == 1 then
 				if player.x < 12 then
 					ui.msg("The walls lower!")
-					self:transmute( "wall", "floor", self.data.trap11 )
-					self:transmute( "wall", "floor", self.data.trap12 )
+					self:transform( "wall", "floor", self.data.trap11 )
+					self:transform( "wall", "floor", self.data.trap12 )
 					player:remove_perk("enviro")
 					self:play_sound( "door.open", player.position )
 					self.status = 2
@@ -21,8 +21,8 @@ register_level "phobos_lab"
 			elseif self.status == 2 then
 				if player.x > 30 then
 					ui.msg("The walls lower!")
-					self:transmute( "wall", "floor", self.data.trap21 )
-					self:transmute( "wall", "floor", self.data.trap22 )
+					self:transform( "wall", "floor", self.data.trap21 )
+					self:transform( "wall", "floor", self.data.trap22 )
 					player:remove_perk("enviro")
 					self:play_sound( "door.open", player.position )
 					self.status = 3
@@ -63,8 +63,8 @@ register_level "phobos_lab"
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1
-					level:transmute( "ldoor", "floor", level.data.door1 )
-					level:transmute( "floor", "door",  level.data.door1 )
+					level:transform( "ldoor", "floor", level.data.door1 )
+					level:transform( "floor", "door",  level.data.door1 )
 					ui.msg("Green access granted, west doors unlocked.")
 					return true
 				end,
@@ -87,11 +87,11 @@ register_level "phobos_lab"
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1
-					level:transmute( "ldoor", "floor", level.data.door1 )
-					level:transmute( "floor", "door",  level.data.door1 )
-					level:transmute( "ldoor", "floor", level.data.door2 )
-					level:transmute( "floor", "door",  level.data.door2 )
-					level:transmute( "acid",  "bridge",level.data.bridge )
+					level:transform( "ldoor", "floor", level.data.door1 )
+					level:transform( "floor", "door",  level.data.door1 )
+					level:transform( "ldoor", "floor", level.data.door2 )
+					level:transform( "floor", "door",  level.data.door2 )
+					level:transform( "acid",  "bridge",level.data.bridge )
 					ui.msg("Blue access granted, east doors unlocked.")
 					level.status = 1
 					return true

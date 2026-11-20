@@ -1,3 +1,10 @@
+CELLSET_WALLS     = 1
+CELLSET_FLOORS    = 2
+CELLSET_DOORS     = 4
+CELLSET_FLUIDS    = 5
+CELLSET_PASSABLE  = 6
+CELLSET_STRUCTURE = 7
+
 generator.styles = {}
 generator.cell_sets = {}
 generator.cell_lists = {}
@@ -6,17 +13,6 @@ function generator.cell_set( list )
 	local s = {}
 	for _,v in ipairs( list ) do
 		s[cells[v].nid] = true
-	end
-	return s
-end
-
-function generator.merge_cell_sets( list1, list2 )
-	local s = {}
-	for k,v in pairs( list1 ) do
-		s[k] = v
-	end
-	for k,v in pairs( list2 ) do
-		s[k] = v
 	end
 	return s
 end
@@ -99,11 +95,9 @@ function generator.scatter_cross_item(scatter_area,good,item_id,count)
 	end
 end
 
-function generator.transmute_style( from, to, fstyle, tstyle, ar )
-	local a    = ar or level:get_area()
-	local from = cells[from].nid
-	for c in a() do 
-		if level.map[ c ] == from and level:get_raw_style( c ) == fstyle then
+function generator.transform_style( from, to, fstyle, tstyle, ar )
+	for c in level:coords( from, ar ) do
+		if level:get_raw_style( c ) == fstyle then
 			level.map[ c ] = to
 			if tstyle then
 				level:set_raw_style( c, tstyle )
@@ -112,15 +106,11 @@ function generator.transmute_style( from, to, fstyle, tstyle, ar )
 	end
 end
 
-function generator.transmute_to_object( from, object, ar, floor )
-	local a     = ar or level:get_area()
-	local from  = cells[from].nid
+function generator.transform_to_object( from, object, ar, floor )
 	local floor = floor or generator.styles[ level.style ].floor
-	for c in a() do 
-		if level.map[ c ] == from then
-			level.map[ c ] = floor
-			level:drop_item_ext( object, c )
-		end
+	for c in level:coords( from, ar ) do
+		level.map[ c ] = floor
+		level:drop_item_ext( object, c )
 	end
 end
 
@@ -355,15 +345,12 @@ function generator.set_permanence( ar, val, tile )
 	if type(val) ~= "boolean" then val = true end
 	if tile then
 		tile = cells[ tile ].nid
-		for c in level:each( tile, ar ) do
+		for c in level:coords( tile, ar ) do
 			level:set_light_flag( c, LFPERMANENT, val )
 		end
 	else
-		for c in ar:coords() do
-			local id = level:get_cell( c )
-			if generator.cell_sets[ CELLSET_WALLS ][ id ] then
-				level:set_light_flag( c, LFPERMANENT, val )
-			end
+		for c in level:coords( generator.cell_lists[ CELLSET_WALLS ], ar ) do
+			level:set_light_flag( c, LFPERMANENT, val )
 		end
 	end
 end
@@ -443,40 +430,18 @@ function generator.warehouse_fill( wall_cell, fill_area, boxsize, amount, specia
 	end
 end
 
-function generator.read_room_list()
-	core.log("generator.read_room_list()")
-	local room_list      = {}
-	local cell_meta      = generator.merge_cell_sets( generator.cell_sets[ CELLSET_WALLS ], generator.cell_sets[ CELLSET_DOORS ] )
-	local cell_meta_list = generator.merge_cell_lists( generator.cell_lists[ CELLSET_WALLS ], generator.cell_lists[ CELLSET_DOORS ] )
-	local room_begin = function(c)
-		if c.x == MAXX or c.y == MAXY then return false end
-		if c.x == 1 then return cell_meta[ level:get_cell( 2, c.y ) ] end
-		if c.y == 1 then return cell_meta[ level:get_cell( c.x, 2 ) ] end
-		local meta_count = level:cross_around( c, cell_meta_list )
-		if meta_count == 4 then return true end
-		if meta_count == 3
-			and cell_meta[ level:get_cell( c.x + 1, c.y ) ]
-			and cell_meta[ level:get_cell( c.x, c.y + 1 ) ]
-			then return true end
-		return false
-	end
-
-	for start in level:get_area():coords() do
-		if room_begin( start ) then
-			local ec = coord.clone( start )
-			repeat
-				ec.x = ec.x + 1
-			until ec.x == MAXX or cell_meta[ level:get_cell( ec.x, start.y + 1 ) ]
-			repeat
-				ec.y = ec.y + 1
-			until ec.y == MAXY or cell_meta[ level:get_cell( start.x + 1, ec.y ) ]
-			local ar = area( start, ec )
-			if not level:find_coord( generator.cell_lists[ CELLSET_WALLS ], ar:shrinked() ) then
-				table.insert( room_list, ar )
-			end
+-- Rooms of floor_tile ( a cell or a list of cells ) in ar, as areas including
+-- their frame, in row order ( see read_rooms on the map for the rules ),
+-- shrinked by shrink if given. Frames smaller than min_room ( default 5x5 )
+-- are dropped. JH's generator.read_rooms, on the current level.
+function generator.read_rooms( ar, floor_tile, shrink, min_room )
+	local rooms = generator.read_room_frames( level, floor_tile, ar, min_room or coord( 5, 5 ) )
+	if shrink then
+		for i,room in ipairs( rooms ) do
+			rooms[i] = room:shrinked( shrink )
 		end
 	end
-	return room_list
+	return rooms
 end
 
 function generator.add_room( list, room )
@@ -489,12 +454,18 @@ function generator.add_room( list, room )
 	table.insert( list, rm )
 end
 
+-- Room list of a tiled level: rooms framed by walls and doors ( floors and
+-- fluids are room cells ), including frames on the map edge. Frames enclosing
+-- walls ( corridor space around room blocks ) are dropped.
 function generator.create_room_list( list )
-	core.log("generator.add_rooms()")
-	local room_list = generator.read_room_list()
-	local list = list or {}
-	for _,room in ipairs( room_list ) do
-		generator.add_room( list, room )	
+	core.log("generator.create_room_list()")
+	local room_cells = generator.merge_cell_lists( generator.cell_lists[ CELLSET_FLOORS ], generator.cell_lists[ CELLSET_FLUIDS ] )
+	local walls      = generator.cell_lists[ CELLSET_WALLS ]
+	local list       = list or {}
+	for _,room in ipairs( generator.read_rooms( level:get_area():expanded( 1 ), room_cells, nil, coord( 0, 0 ) ) ) do
+		if not level:find_coord( walls, room:shrinked() ) then
+			generator.add_room( list, room )
+		end
 	end
 	return list
 end
@@ -516,16 +487,15 @@ function generator.get_room( room_list, min_size, max_x, max_y, max_area, class 
 	return table.random_pick( choice_list )
 end
 
-function generator.restore_walls( wall_cell, skip_cells )
-	core.log("generator.restore_walls("..wall_cell..")")
-	if skip_cells then
-		for c in level:get_area():edges() do
-			if not skip_cells[ cells[level:get_cell( c )].id ] then
-				level:set_cell( c, wall_cell )
-			end
+-- Sets the edge cells of a ( default: the map ) to wall_tile, except cells
+-- whose nid is a key of skip. JH's generator.fill_edges, on the current
+-- level.
+function generator.fill_edges( wall_tile, a, skip )
+	local full = a or level:get_area()
+	for c in full:edges() do
+		if not skip or not skip[ level:get_cell( c ) ] then
+			level:set_cell( c, wall_tile )
 		end
-	else
-		level:fill_edges( wall_cell )
 	end
 end
 
@@ -604,12 +574,7 @@ function generator.regenerate( reveal )
 		game.reset_level()
 		generator.run( generator.last )
 		if reveal then
-			for c in level:get_area():coords() do
-				local cell = cells[ level.map[ c ] ]
-				if cell.flags[ CF_BLOCKMOVE ] or cell.flags[ CF_NOCHANGE ] then
-					level:set_light_flag( c, LFEXPLORED, true )
-				end
-			end
+			level:reveal_structure()
 			level.flags[ LF_BEINGSVISIBLE ] = true
 			level.flags[ LF_ITEMSVISIBLE  ] = not level.flags[ LF_ITEMSVISIBLE  ]
 		end
@@ -739,15 +704,11 @@ function generator.generate_tiled_level( settings )
 			end
 			core.log("generator.generate_tiled_level() - fluid placement" )
 			local fluid_cell = cells[settings.fluid].nid
-			for c in level:each( floor_cell, larea:shrinked( 2 ) ) do
-				if level:around( c, { floor_cell, fluid_cell } ) == 8 then
-					level:set_cell( c, fluid_cell )
-				end
-			end
+			generator.transform_around( level, { floor_cell }, fluid_cell, { floor_cell, fluid_cell }, 8, 8, larea:shrinked( 2 ) )
 
 			if settings.bridge then
 				core.log("generator.generate_tiled_level() - bridge placement" )
-				for c in level:each( fluid_cell, larea:shrinked( 2 ) ) do
+				for c in level:coords( fluid_cell, larea:shrinked( 2 ) ) do
 					if level:cross_around( c, fluid_cell ) == 2 and level:around( c, { floor_cell, settings.bridge } ) == 6 then
 						if math.random(10) == 1 then
 							level:set_cell( c, settings.bridge )
@@ -789,9 +750,9 @@ function generator.generate_tiled_level( settings )
 		generator.place_extra_doors( settings.extra_doors, wall_cell, floor_cell, door_cell )
 	end
 
-	generator.restore_walls( wall_cell )
+	generator.fill_edges( wall_cell )
 	if settings.dead_ends ~= false then
-		generator.clear_dead_ends()
+		generator.fill_dead_ends()
 	end
 	generator.remove_needless_doors()
 	return true
@@ -894,7 +855,7 @@ function generator.generate_archi_level( settings )
 		end
 	end
 
-	for c in level:each( generator.styles[ level.style ].door ) do
+	for c in level:coords( generator.styles[ level.style ].door ) do
 		if level:cross_around( c, wall_cell ) > 2 then
 			level:set_cell( c, wall_cell )
 		end
@@ -907,11 +868,11 @@ function generator.generate_archi_level( settings )
 	end
 
 	if data.clear_dead_ends then
-		generator.clear_dead_ends( data.clear_dead_ends )
+		generator.fill_dead_ends()
 	end
 
 	if not data.no_fill and ( not data.restore_edges )  then
-		generator.restore_walls( wall_cell )
+		generator.fill_edges( wall_cell )
 	end
 	return result
 end
@@ -941,12 +902,18 @@ function generator.wallin_cell( c, cell_id )
 	return true
 end
 
--- Fills dead ends ( floor or door cells with at least 3 wall neighbours ) with
--- wall, one layer per pass, until none are left or after passes passes.
-function generator.clear_dead_ends( passes, ar, wall )
+-- Fills dead ends ( floor or door cells with at least 3 neighbours that are
+-- wall or in wall_list ) with wall ( default: the style's wall ), one layer
+-- per pass, for at most max_depth passes ( omitted or negative: no limit ).
+-- scan_area defaults to the map without its edge. JH's generator.fill_dead_ends
+-- with DRL's open cells, on the current level.
+function generator.fill_dead_ends( wall, scan_area, max_depth, wall_list )
 	local style = generator.styles[ level.style ]
 	wall = wall or style.wall
-	generator.fill_dead_ends( level, { style.floor, style.door }, { wall }, wall, ar, passes )
+	local walls = { wall }
+	for _,v in ipairs( wall_list or {} ) do table.insert( walls, v ) end
+	if max_depth and max_depth < 0 then max_depth = nil end
+	return generator.fill_dead_end_cells( level, { style.floor, style.door }, walls, wall, scan_area, max_depth )
 end
 
 -- Port of JH's ring_clear. Fills floor runs bounded by walls on scan lines
@@ -1079,7 +1046,7 @@ function generator.remove_needless_doors()
 		end
 	end
 
-	for c in level:each( door, level_area:shrinked() ) do
+	for c in level:coords( door, level_area:shrinked() ) do
 		local wcaround = level:cross_around( c, walls )
 		if wcaround > 2 then
 			level:set_cell( c, wall )
@@ -1334,7 +1301,7 @@ function generator.generate_rivers( settings )
 
 	if destroy_items then
 		local floor = generator.styles[ level.style ].floor
-		for c in level:each( cell ) do
+		for c in level:coords( cell ) do
 			local item = level:get_item(c)
 			if item then
 				if not item.flags[ IF_NODESTROY] then
@@ -1345,7 +1312,7 @@ function generator.generate_rivers( settings )
 			end
 		end
 		if bridge then
-			for c in level:each( bridge ) do
+			for c in level:coords( bridge ) do
 				local item = level:get_item(c)
 				if item and ( not item.flags[ IF_NODESTROY] ) then item:destroy() end
 			end
@@ -1376,7 +1343,7 @@ function generator.event_flood_setup( params )
 	local left  = generator.safe_empty_coord( area(2,2,20,19) )
 	local right = generator.safe_empty_coord( area(60,2,78,19) )
 
-	for c in level:each( params.stairs ) do
+	for c in level:coords( params.stairs ) do
 		level.map[ c ] = generator.styles[ level.style ].floor
 	end
 

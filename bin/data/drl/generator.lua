@@ -10,15 +10,22 @@ generator.wall_to_ice = {
 ---@diagnostic disable: duplicate-set-field
 
 -- gen.run returns false when generation failed; the level is then reset and
--- generated again. The RNG is not reseeded, so each retry differs.
+-- generated again, up to max_attempts times. The RNG is not reseeded, so each
+-- retry differs.
 function generator.run( gen )
 	core.log("generator.run > generating level type : "..gen.id)
+	local max_attempts = 50
+	local attempt      = 0
 	local room_list
 	repeat
+		attempt = attempt + 1
 		generator.reset()
 		room_list = gen.run()
 		if room_list == false then
-			core.log("generator.run > level generation failed, retrying...")
+			if attempt >= max_attempts then
+				error( "generator.run > level type "..gen.id.." failed "..max_attempts.." times" )
+			end
+			core.log("generator.run > level generation failed, retrying ("..attempt.."/"..max_attempts..")...")
 			game.reset_level()
 		end
 	until room_list ~= false
@@ -59,7 +66,7 @@ function generator.run( gen )
 		elseif type( gen.rooms ) == "table" and room_list then
 			local settings = { count = math.random( gen.rooms[1], gen.rooms[2] ) }
 			generator.handle_rooms( room_list, settings )
-			generator.restore_walls( generator.styles[ level.style ].wall, generator.cell_sets[ CELLSET_FLUIDS ] )
+			generator.fill_edges( generator.styles[ level.style ].wall, nil, generator.cell_sets[ CELLSET_FLUIDS ] )
 		end
 	end
 
@@ -203,13 +210,7 @@ function generator.generate_lava_dungeon()
 	local list = {}
 	for i=1,tries do
 		local quad = area.random_subarea( a, coord.random( dim_min, dim_max ) ):clamped( a )
-		local good = true
-		for c in quad() do 
-			if level:get_cell(c) == wall_nid then 
-				good = false
-				break
-			end
-		end
+		local good = not level:find_coord( wall_nid, quad )
 		if good then
 			level:fill( floor_cell, quad )
 			quad:shrink(1)
@@ -220,7 +221,7 @@ function generator.generate_lava_dungeon()
 			generator.add_room( list, quad:expanded() )
 		end
 	end
-	level:transmute( "crate", floor_cell )
+	level:transform( "crate", floor_cell )
 	return list
 end
 
@@ -392,21 +393,17 @@ function generator.generate_caves_2_dungeon()
 	drunk( 10, math.random(10)+40, floor_cell )
 	drunk( 50, math.random(10)+20, floor_cell )
 
-	for c in level_area:shrinked()() do
-		if level:get_cell(c) == cave_cell and level:around( c, cave_cell ) < 4 then
-			level:set_cell( c, floor_cell )
-		end
-	end
+	generator.transform_around( level, { cave_cell }, floor_cell, { cave_cell }, 0, 3 )
 
-	for c in level_area:shrinked(2)() do
-		if level:get_cell(c) == floor_cell and level:cross_around( c, cave_cell ) > 2 then
+	for c in level:coords( floor_cell, level_area:shrinked(2) ) do
+		if level:cross_around( c, cave_cell ) > 2 then
 			for k in c:cross_coords() do
 				level:set_cell( k, marker )
 			end
 		end
 	end
 
-	level:transmute( marker, floor_cell )
+	level:transform( marker, floor_cell )
 
 	-- rest of the level will be destructible
 	generator.set_permanence( level_area, true, cave_cell )
@@ -419,7 +416,7 @@ function generator.generate_caves_2_dungeon()
 		generator.place_blob( start, count, marker )
 	end
 
-	level:transmute( marker, cave_cell )
+	level:transform( marker, cave_cell )
 
 	local inner_area = level_area:shrinked()
 	local cmax  = math.random( 5, 7 )
@@ -445,13 +442,9 @@ function generator.generate_caves_2_dungeon()
 		generator.place_blob( start, count, fluid )
 	end
 
-	level:transmute( marker, floor_cell )
+	level:transform( marker, floor_cell )
 
-	for c in level_area:shrinked()() do
-		if level:get_cell(c) == fluid and level:around( c, fluid ) < 4 then
-			level:set_cell( c, floor_cell )
-		end
-	end
+	generator.transform_around( level, { fluid }, floor_cell, { fluid }, 0, 3 )
 end
 
 function generator.generate_fluids( drunk_area )

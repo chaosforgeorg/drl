@@ -11,9 +11,6 @@ uses sysutils, classes,
      vluagamestack, vluaentitynode, vutil, vvision, vrltools, vnode, vluamapnode, vlua, vrandom, vvector, vparticleengine,
      dfdata, dfmap, dfthing, dfbeing, dfitem, dfplayer, drlhooks, drlperk, drlmarkers, drldecals, drlparticles, drlgamedata;
 
-const CellWalls   : TCellSet = [];
-      CellFloors  : TCellSet = [];
-
 type
 
 { TLevel }
@@ -985,8 +982,10 @@ begin
 end;
 
 procedure TLevel.DropCorpse(aCoord: TCoord2D; CellID: Byte);
+var iFlags : TFlags;
 begin
-  if Cell[ aCoord ] in CellFloors then
+  iFlags := FData.Cells[ Cell[ aCoord ] ].Flags;
+  if ( CF_CORPSE in iFlags ) or not ( ( CF_BLOCKMOVE in iFlags ) or ( CF_NOCHANGE in iFlags ) ) then
   begin
     Cell[ aCoord ] := CellID;
     LightFlag[ aCoord, lfFresh ]     := True;
@@ -2083,7 +2082,7 @@ begin
   Result := 0;
 end;
 
-function lua_level_transmute_and_hp( L : Plua_State ) : Integer; cdecl;
+function lua_level_transform_and_hp( L : Plua_State ) : Integer; cdecl;
 var iState  : TLuaMapStack;
     iLevel  : TLevel;
     iFrom   : TFlags;
@@ -2119,6 +2118,180 @@ begin
   Level := State.ToObject(1) as TLevel;
   Level.RecalcFluids;
   Exit( 0 );
+end;
+
+// Shared state of one flood_step or flood_front_step call: the fluid, its
+// hit points and hazard rule, and the cells flooded in this step.
+type TFloodStep = object
+  Level   : TLevel;
+  Fluid   : Byte;
+  HP      : Byte;
+  Destroy : Boolean;
+  Count   : Integer;
+  procedure Init( aLevel : TLevel; aFluid : Byte );
+  function Flooded( const aCoord : TCoord2D ) : Boolean;
+  function Flood( const aCoord : TCoord2D; aCellID : Byte ) : Boolean;
+private
+  FWidth   : Integer;
+  FFlooded : array of Boolean;
+  function Index( const aCoord : TCoord2D ) : Integer;
+end;
+
+const FloodStepX : array[0..3] of Integer = ( -1, 1,  0, 0 );
+      FloodStepY : array[0..3] of Integer = (  0, 0, -1, 1 );
+
+procedure TFloodStep.Init( aLevel : TLevel; aFluid : Byte );
+begin
+  Level   := aLevel;
+  Fluid   := aFluid;
+  HP      := Level.FData.Cells[ Fluid ].HP;
+  Destroy := CF_HAZARD in Level.FData.Cells[ Fluid ].Flags;
+  Count   := 0;
+  FWidth  := Level.Area.B.X - Level.Area.A.X + 1;
+  Initialize( FFlooded );
+  SetLength( FFlooded, FWidth * ( Level.Area.B.Y - Level.Area.A.Y + 1 ) );
+end;
+
+function TFloodStep.Index( const aCoord : TCoord2D ) : Integer;
+begin
+  Exit( ( aCoord.Y - Level.Area.A.Y ) * FWidth + ( aCoord.X - Level.Area.A.X ) );
+end;
+
+function TFloodStep.Flooded( const aCoord : TCoord2D ) : Boolean;
+begin
+  Exit( FFlooded[ Index( aCoord ) ] );
+end;
+
+// Floods aCoord, whose cell is aCellID, as level:flood_tile does; returns
+// False for a CF_CRITICAL cell, which is left unchanged.
+function TFloodStep.Flood( const aCoord : TCoord2D; aCellID : Byte ) : Boolean;
+var iItem : TItem;
+begin
+  if CF_CRITICAL in Level.FData.Cells[ aCellID ].Flags then Exit( False );
+  Level.PutCell( aCoord, Fluid );
+  Level.HitPoints[ aCoord ] := HP;
+  FFlooded[ Index( aCoord ) ] := True;
+  Inc( Count );
+  if Destroy then
+  begin
+    if not ( CF_LIQUID in Level.FData.Cells[ aCellID ].Flags ) then
+      Level.CallHook( aCoord, aCellID, CellHook_OnDestroy );
+    iItem := Level.Item[ aCoord ];
+    if Assigned( iItem ) and not ( iItem.Flags[ IF_UNIQUE ] or iItem.Flags[ IF_NODESTROY ] ) then
+      iItem.Discard;
+  end;
+  Exit( True );
+end;
+
+// flood_step( level, fluid, blocked_cells [, area ] ) -> count
+// One step of fluid spread. Each cell of area that is fluid when the row
+// order scan reaches it, and was not flooded in this step, floods its
+// orthogonal neighbours inside the map ( left, right, up, down ) that are
+// neither fluid nor in blocked_cells. A flooded cell becomes fluid with
+// fluid's hit points, unless it is CF_CRITICAL. With a CF_HAZARD fluid, a
+// flooded cell that was not CF_LIQUID calls its OnDestroy hook ( after the
+// change, as level:flood_tile does ), and an item on it that is neither
+// IF_UNIQUE nor IF_NODESTROY is destroyed. Fluid edges are recalculated
+// afterwards. area defaults to the map. Returns the number of flooded cells.
+function lua_level_flood_step( L : Plua_State ) : Integer; cdecl;
+var iState   : TLuaMapStack;
+    iFlood   : TFloodStep;
+    iBlocked : TFlags;
+    iArea    : TArea;
+    iCoord   : TCoord2D;
+    iTarget  : TCoord2D;
+    iCellID  : Byte;
+    iStep    : Integer;
+begin
+  iState.Init( L );
+  iFlood.Init( iState.Map as TLevel, iState.ToCell( 2 ) );
+  iBlocked := iState.ToCellSet( 3 );
+  iArea    := iState.ToOptionalArea( 4 );
+  iFlood.Level.Area.Clamp( iArea );
+
+  for iCoord in iArea do
+    if ( iFlood.Level.GetCell( iCoord ) = iFlood.Fluid ) and not iFlood.Flooded( iCoord ) then
+      for iStep := 0 to 3 do
+      begin
+        iTarget := NewCoord2D( iCoord.X + FloodStepX[ iStep ], iCoord.Y + FloodStepY[ iStep ] );
+        if not iFlood.Level.isProperCoord( iTarget ) then Continue;
+        iCellID := iFlood.Level.GetCell( iTarget );
+        if ( iCellID <> iFlood.Fluid ) and not ( iCellID in iBlocked ) then
+          iFlood.Flood( iTarget, iCellID );
+      end;
+
+  iFlood.Level.RecalcFluids;
+  iState.Push( iFlood.Count );
+  Exit( 1 );
+end;
+
+// flood_front_step( level, fluid, blocked_cells, area ) -> count
+// One step of a flood that spreads only from its front, the fluid cells of
+// area marked with LFFLOOD. Front cells are taken in row order, as the scan
+// reaches them; cells flooded in this step are not taken. Each front cell
+// looks at its orthogonal neighbours ( left, right, up, down ):
+// - a neighbour outside area, flooded in this step, or in blocked_cells is
+//   closed;
+// - a CF_LIQUID neighbour marked LFFLOOD is closed if it is fluid, flooded if
+//   its nid is lower than fluid's, and otherwise left alone ( another flood's
+//   front that wins );
+// - any other neighbour ( including unmarked liquid, even fluid itself ) is
+//   flooded, as in flood_step, and marked LFFLOOD; a CF_CRITICAL one stays as
+//   it is.
+// A front cell whose four neighbours are all closed loses LFFLOOD at once.
+// Fluid edges are recalculated afterwards. Returns the number of flooded
+// cells.
+function lua_level_flood_front_step( L : Plua_State ) : Integer; cdecl;
+var iState   : TLuaMapStack;
+    iFlood   : TFloodStep;
+    iBlocked : TFlags;
+    iArea    : TArea;
+    iCoord   : TCoord2D;
+    iClosed  : Integer;
+    iStep    : Integer;
+
+  // Floods aCoord if it can take the fluid; returns whether it is closed.
+  function Closed( const aCoord : TCoord2D ) : Boolean;
+  var iCellID : Byte;
+      iLiquid : Boolean;
+  begin
+    if not iArea.Contains( aCoord ) then Exit( True );
+    if iFlood.Flooded( aCoord ) then Exit( True );
+    iCellID := iFlood.Level.GetCell( aCoord );
+    if iCellID in iBlocked then Exit( True );
+    iLiquid := CF_LIQUID in iFlood.Level.FData.Cells[ iCellID ].Flags;
+    if iLiquid and iFlood.Level.LightFlag[ aCoord, LFFLOOD ] then
+    begin
+      if iCellID = iFlood.Fluid then Exit( True );
+      if iFlood.Fluid <= iCellID then Exit( False );
+    end;
+    if iFlood.Flood( aCoord, iCellID ) then
+      iFlood.Level.LightFlag[ aCoord, LFFLOOD ] := True;
+    Exit( False );
+  end;
+
+begin
+  iState.Init( L );
+  iFlood.Init( iState.Map as TLevel, iState.ToCell( 2 ) );
+  iBlocked := iState.ToCellSet( 3 );
+  iArea    := iState.ToArea( 4 );
+  iFlood.Level.Area.Clamp( iArea );
+
+  for iCoord in iArea do
+    if ( iFlood.Level.GetCell( iCoord ) = iFlood.Fluid ) and not iFlood.Flooded( iCoord )
+       and iFlood.Level.LightFlag[ iCoord, LFFLOOD ] then
+    begin
+      iClosed := 0;
+      for iStep := 0 to 3 do
+        if Closed( NewCoord2D( iCoord.X + FloodStepX[ iStep ], iCoord.Y + FloodStepY[ iStep ] ) ) then
+          Inc( iClosed );
+      if iClosed = 4 then
+        iFlood.Level.LightFlag[ iCoord, LFFLOOD ] := False;
+    end;
+
+  iFlood.Level.RecalcFluids;
+  iState.Push( iFlood.Count );
+  Exit( 1 );
 end;
 
 function lua_level_animate_cell(L: Plua_State): Integer; cdecl;
@@ -2380,7 +2553,7 @@ begin
   Result := 1;
 end;
 
-const lua_level_lib : array[0..27] of luaL_Reg = (
+const lua_level_lib : array[0..29] of luaL_Reg = (
       ( name : 'drop_item';  func : @lua_level_drop_item),
       ( name : 'drop_being'; func : @lua_level_drop_being),
       ( name : 'respawn';    func : @lua_level_respawn),
@@ -2388,8 +2561,10 @@ const lua_level_lib : array[0..27] of luaL_Reg = (
       ( name : 'nuke';       func : @lua_level_nuke),
       ( name : 'explosion';  func : @lua_level_explosion),
       ( name : 'set_cell_and_hp'; func : @lua_level_set_cell_and_hp),
-      ( name : 'transmute_and_hp'; func : @lua_level_transmute_and_hp),
+      ( name : 'transform_and_hp'; func : @lua_level_transform_and_hp),
       ( name : 'recalc_fluids';func : @lua_level_recalc_fluids),
+      ( name : 'flood_step';   func : @lua_level_flood_step),
+      ( name : 'flood_front_step'; func : @lua_level_flood_front_step),
       ( name : 'animate_cell'; func : @lua_level_animate_cell),
       ( name : 'animate_item'; func : @lua_level_animate_item),
       ( name : 'set_generator_style';func : @lua_level_set_generator_style),

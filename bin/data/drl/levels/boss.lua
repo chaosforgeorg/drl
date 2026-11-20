@@ -52,15 +52,15 @@ register_level "hellgate"
 				if DIFFICULTY > DIFF_EASY then
 					ui.msg("Suddenly the walls lower!")
 					self:play_sound( "door.close", player.position )
-					self:transmute( "wall", "floor", area( 9, 4, 29, 16 ) )
+					self:transform( "wall", "floor", area( 9, 4, 29, 16 ) )
 				end
 				self.status = 2
 			end
 			if res == 2 and player.x > 50 then
 				ui.msg("Suddenly the walls disappear!")
 				self:play_sound( "barrel.explode", player.position )
-				self:transmute( "rwall", "floor", area( 53, 7, 60, 13 ) )
-				self:transmute( "wall", "floor",  area( 60, 7, 74, 13 ) )
+				self:transform( "rwall", "floor", area( 53, 7, 60, 13 ) )
+				self:transform( "wall", "floor",  area( 60, 7, 74, 13 ) )
 				self.status = 3
 			end
 		end,
@@ -274,7 +274,7 @@ register_level "dis"
 			runtime = {
 				OnUse = function(self,being)
 					statistics.levers_pulled = statistics.levers_pulled + 1
-					level:transmute( "wall", "floor" )
+					level:transform( "wall", "floor" )
 					return true
 				end,
 			},

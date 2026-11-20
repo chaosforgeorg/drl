@@ -292,12 +292,7 @@ function drl.register_regular_items()
 			OnPickup = function(self,being)
 				being:msg( "Everything seems clear now." )
 				ui.blink(WHITE,50)
-				for c in level:get_area():coords() do
-					local cell = cells[ level.map[ c ] ]
-					if cell.flags[ CF_BLOCKMOVE ] or cell.flags[ CF_NOCHANGE ] then
-						level:set_light_flag( c, LFEXPLORED, true )
-					end
-				end
+				level:reveal_structure()
 				level.flags[ LF_ITEMSVISIBLE ] = true
 				if being:has_property( "MAP_EXPERT" ) then
 					being:msg( "You download tracking data to your PDA." )
@@ -322,12 +317,7 @@ function drl.register_regular_items()
 			OnPickup = function(self,being)
 				being:msg( "You download tracking data to your PDA." )
 				ui.blink(LIGHTGREEN,50)
-				for c in level:get_area():coords() do
-					local cell = cells[ level.map[ c ] ]
-					if cell.flags[ CF_BLOCKMOVE ] or cell.flags[ CF_NOCHANGE ] then
-						level:set_light_flag( c, LFEXPLORED, true )
-					end
-				end
+				level:reveal_structure()
 				level.flags[ LF_ITEMSVISIBLE ] = true
 				level.flags[ LF_BEINGSVISIBLE ] = true
 			end,
@@ -1546,14 +1536,11 @@ function drl.register_regular_items()
 				statistics.levers_pulled = statistics.levers_pulled + 1
 				local room = self.TARGET_AREA:clamped( level:get_area():shrinked() )
 				level:play_sound( "barrel.explode", being.position )
-				for c in room() do
-					local tile = cells[level.map[c]]
-					if tile.set == CELLSET_WALLS or tile.set == CELLSET_DOORS then
-						if math.random(10) == 1 then
-							level:play_sound( "barrel.explode", c, math.random(500) + 500 )
-						end
-						generator.destroy_cell( c )
+				for c in level:coords( generator.merge_cell_lists( generator.cell_lists[ CELLSET_WALLS ], generator.cell_lists[ CELLSET_DOORS ] ), room ) do
+					if math.random(10) == 1 then
+						level:play_sound( "barrel.explode", c, math.random(500) + 500 )
 					end
+					generator.destroy_cell( c )
 				end
 				ui.msg("The walls explode!")
 				return true

@@ -17,7 +17,7 @@ register_level "containment_area"
 			end
 			if self.data.right:contains( player.position ) then
 				ui.msg( "\"It's a trap!\"" )
-				self:transmute("ldoor","door")
+				self:transform("ldoor","door")
 				res = 3
 				self:play_sound( "phasing", player.position )
 
@@ -42,7 +42,7 @@ register_level "containment_area"
 
 		OnKillAll = function ( self )
 			if self.status ~= 3 then return end
-			self:transmute_by_flag( "wall", "floor", LFMARKER1)
+			self:transform_by_flag( "wall", "floor", LFMARKER1)
 			self:play_sound( "door.close", self.data.sound_location)
 			ui.msg("I guess I prefered the Wall. The air seems less claustrophic now.")
 			self.status = 4
