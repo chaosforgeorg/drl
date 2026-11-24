@@ -40,8 +40,6 @@ type TDRLVisualMapBase = specialize TGVisualMap<TDRLVisualCell>;
 // Terrain, vision and blood marks of the presented level.
 TDRLVisualMap = class( TDRLVisualMapBase )
   constructor Create( aLevel : TLevel );
-  procedure Update( aTime : DWord ); override;
-  procedure Synchronize; override;
   function Visible( const aCoord : TCoord2D ) : Boolean;
   function Explored( const aCoord : TCoord2D ) : Boolean;
   // A clip that draws a cell's top layer itself covers it while it exists;
@@ -50,12 +48,17 @@ TDRLVisualMap = class( TDRLVisualMapBase )
   procedure Uncover( const aCoord : TCoord2D );
   function Covered( const aCoord : TCoord2D ) : Boolean;
 protected
+  function SourceChanged : Boolean; override;
+  procedure BeginCompare; override;
   function Sample( const aCoord : TCoord2D; const aTarget : TDRLVisualCell ) : TDRLVisualCell; override;
   function FadeTime( const aCoord : TCoord2D; const aFrom, aTo : TDRLVisualCell ) : DWord; override;
 private
   FLevel      : TLevel; // Borrowed from the IO, which drops this map before the level.
   FCovers     : array of Byte;
   FVisionHold : QWord;
+  // Level.Revision and player flags CellExplored reads, as last compared.
+  FRevision   : DWord;
+  FPlayer     : Byte;
   function BlocksVision( const aCell : TDRLVisualCell ) : Boolean;
   function CoverIndex( const aCoord : TCoord2D ) : Integer; inline;
 end;
@@ -174,27 +177,34 @@ begin
   Exit( ( aCell.Top <> 0 ) and ( CF_BLOCKLOS in FLevel.Data.Cells[ aCell.Top ].Flags ) );
 end;
 
-procedure TDRLVisualMap.Update( aTime : DWord );
+function TDRLVisualMap.SourceChanged : Boolean;
+var iPlayer : Byte;
+begin
+  // The player's flags are set through the generic flag API, so they are
+  // compared rather than counted.
+  iPlayer := 0;
+  if FLevel.Player.Flags[ BF_DARKNESS ]   then iPlayer := iPlayer or 1;
+  if FLevel.Player.Flags[ BF_STAIRSENSE ] then iPlayer := iPlayer or 2;
+  Result := ( FLevel.Revision <> FRevision ) or ( iPlayer <> FPlayer );
+  FRevision := FLevel.Revision;
+  FPlayer   := iPlayer;
+end;
+
+procedure TDRLVisualMap.BeginCompare;
 var iCoord : TCoord2D;
     iCell  : PVisualCell;
 begin
   // Vision computed after an action sees through walls whose destruction
-  // is still held; newly seen cells wait for the latest such wall.
+  // is still held; newly seen cells wait for the latest such wall. Its end
+  // is when that wall's hold ends, at which cells are compared again.
   FVisionHold := 0;
   for iCoord in Area do
   begin
     iCell := Cell( iCoord );
-    if ( iCell^.HoldUntil > FTime + aTime ) and ( iCell^.HoldUntil > FVisionHold ) then
+    if ( iCell^.HoldUntil > FTime ) and ( iCell^.HoldUntil > FVisionHold ) then
       if BlocksVision( iCell^.Target ) <> BlocksVision( Sample( iCoord, iCell^.Target ) ) then
         FVisionHold := iCell^.HoldUntil;
   end;
-  inherited Update( aTime );
-end;
-
-procedure TDRLVisualMap.Synchronize;
-begin
-  FVisionHold := 0;
-  inherited Synchronize;
 end;
 
 function TDRLVisualMap.Sample( const aCoord : TCoord2D; const aTarget : TDRLVisualCell ) : TDRLVisualCell;

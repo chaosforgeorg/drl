@@ -614,6 +614,7 @@ begin
     iFlags := FData.Cells[iCell].Sprite[0].Flags;
     if SF_DOORHACK in iFlags then FMap.Rotation[aCoord.x,aCoord.y] := GetCellDoorRotation( aCoord );
   end;
+  NoteChange;
 end;
 
 procedure TLevel.RecalcFluids;
@@ -649,6 +650,7 @@ begin
 
       FMap.Rotation[iC.x,iC.y] := iValue;
   end;
+  NoteChange;
 end;
 
 procedure TLevel.Clear;
@@ -858,6 +860,7 @@ begin
       if FData.Cells[ iCellID ].destroyto = '' then
       begin
         FMap.Style[aCoord.x,aCoord.y] := FlrStyle[aCoord];
+        NoteChange;
         Cell[ aCoord ] := Floor[aCoord];
       end
       else
@@ -1687,6 +1690,7 @@ begin
   if FData.Cells[ GetCell(where) ].destroyto = '' then
   begin
     FMap.Style[where.x,where.y] := FlrStyle[where];
+    NoteChange;
     Cell[ where ] := Floor[where];
   end
   else
@@ -1735,6 +1739,7 @@ begin
     FMap.Floor[aWhere.x, aWhere.y]  := aWhat;
     FMap.FStyle[aWhere.x, aWhere.y] := FMap.Style[aWhere.x, aWhere.y];
   end;
+  NoteChange;
   HoldCellChange( aWhere );
 end;
 
@@ -2371,6 +2376,7 @@ begin
     iLevel.FMap.Floor[iCoord.X,iCoord.Y]  := iFloor;
     iLevel.FMap.FStyle[iCoord.X,iCoord.Y] := iFStyle;
   end;
+  iLevel.NoteChange;
   Result := 0;
 end;
 
@@ -2396,6 +2402,7 @@ begin
     iCoord := iState.ToCoord(2);
     iLevel.FMap.Style[iCoord.X,iCoord.Y] := iValue;
   end;
+  iLevel.NoteChange;
   Result := 0;
 end;
 
@@ -2460,6 +2467,7 @@ begin
     iCoord := iState.ToCoord(2);
     iLevel.FMap.Deco[iCoord.X,iCoord.Y] := iValue;
   end;
+  iLevel.NoteChange;
   Result := 0;
 end;
 
