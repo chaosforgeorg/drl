@@ -8,7 +8,7 @@ unit drlgfxio;
 interface
 uses vglquadrenderer, vgltypes, vluaconfig, vioevent, viotypes, vimage,
      vrltools, vutil, vtextures, vvector, vbitmapfont, vio, vsdlio, vparticleengine, vluamapnode, vlua, vdf,
-     drlio, drlspritemapbase, drlspritemap, drlanimation, drlminimap, dfdata, dfthing, dflevel, drlconfig, drlconfiguration, drlmodule;
+     drlio, drlspritemapbase, drlspritemap, drlanimation, drlminimap, dfdata, dfthing, dflevel, drlconfig, drlconfiguration, drlmodule, drlvisual;
 
 type
 
@@ -22,7 +22,7 @@ type
     class function CreateDriver( aSettings : TDRLConfiguration ) : TSDLIODriver;
     constructor Create( aDriver : TSDLIODriver; aSettings : TDRLConfiguration; aConfig : TDRLConfig ); reintroduce;
     procedure Reset; override;
-    procedure SetLevel( aLevel : TLuaMapNode ); override;
+    procedure VisualChanged; override;
     procedure EnterLevel( aCoord : TCoord2D ); override;
     procedure Initialize( aCoreModule : TDRLModule ); override;
     procedure PrepareGraphics; override;
@@ -41,9 +41,9 @@ type
     procedure ClearAnimations; override;
     procedure Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0); override;
     procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ); override;
-    procedure addMoveAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aWipeBump : Boolean; aFinishBeforeNext : Boolean = False ); override;
-    procedure addBumpAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aAmount : Single ); override;
-    procedure addScreenMoveAnimation( aDuration : DWord; aTo : TCoord2D ); override;
+    procedure addMoveAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aBeing : Boolean; aWipeBump : Boolean; aFinishBeforeNext : Boolean = False ); override;
+    procedure addBumpAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aAmount : Single ); override;
+    procedure addScreenMoveAnimation( aDuration : DWord; aTo : TCoord2D; aDelay : DWord = 0 ); override;
     procedure addCellAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aValue : Integer ); override;
     procedure addItemAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aValue : Integer ); override;
     procedure addKillAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aSprite : TSprite; aKind : TKillAnimation = KillAnimDeath ); override;
@@ -88,7 +88,7 @@ type
     procedure QueueRumble( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord ); override;
     procedure DrawHUD; override;
     function ReadDefaultFont : TBitmapFont;
-    procedure ExplosionMark( aCoord : TCoord2D; aColor : Byte; aDuration : DWord; aDelay : DWord ); override;
+    procedure ExplosionMark( aCoord : TCoord2D; const aData : TExplosionData; aDelay : DWord; aSeen : Boolean ); override;
     procedure DisplayChanged; override;
     procedure RecalculateScaling;
     procedure CalculateConsoleParams;
@@ -161,7 +161,7 @@ uses classes, sysutils, math,
      vdebug, vlog, vmath, vgl3library, vuid, vvision, vlualibrary, vluagamestack,
      vglimage, vcolor, vglconsole, vioconsole,
      vtig, vtigstyle, vtigio,
-     dfitem, drlcontrollerbindings;
+     dfbeing, dfitem, drlcontrollerbindings;
 
 
 // Scales from the settings and the drawable; DisplayChanged applies them.
@@ -241,7 +241,7 @@ begin
   FQuadRenderer := TGLQuadRenderer.Create;
 
   FAnimations := TAnimationManager.Create;
-  FSpriteMap  := TDRLSpriteMap.Create( Self, FTextures, FMCursor, FAnimations, Vec2i( FIODriver.GetSizeX, FIODriver.GetSizeY ) );
+  FSpriteMap  := TDRLSpriteMap.Create( Self, FTextures, FMCursor, Vec2i( FIODriver.GetSizeX, FIODriver.GetSizeY ) );
   FMinimap    := TMinimap.Create;
   inherited Create( aSettings, aConfig );
   FParticleEngine := TParticleEngine.Create( VisualRNG );
@@ -481,7 +481,7 @@ end;
 function TDRLGFXIO.AnimationsRunning : Boolean;
 begin
   if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit(False);
-  Exit( not FAnimations.Finished );
+  Exit( ( not FAnimations.Finished ) or PresentationBusy );
 end;
 
 function TDRLGFXIO.AnimationsBlockingFinished : Boolean;
@@ -493,6 +493,7 @@ end;
 procedure TDRLGFXIO.ClearAnimations;
 begin
   FAnimations.Clear;
+  inherited ClearAnimations;
 end;
 
 procedure TDRLGFXIO.Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0);
@@ -509,7 +510,7 @@ begin
       FAnimations.addAnimation( TGFXScreenShakeAnimation.Create( FSpriteMap, FVisualRNG, aDuration, aDelay, aStrength, aDirection ) );
 end;
 
-procedure TDRLGFXIO.addMoveAnimation ( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aWipeBump : Boolean; aFinishBeforeNext : Boolean );
+procedure TDRLGFXIO.addMoveAnimation ( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aBeing : Boolean; aWipeBump : Boolean; aFinishBeforeNext : Boolean );
 var iCount : Integer;
 begin
   if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
@@ -523,41 +524,51 @@ begin
           then Animations.Delete( iCount )
           else Inc( iCount );
       until iCount >= Animations.Size;
-  FAnimations.AddAnimation( TGFXMoveAnimation.Create( FSpriteMap, Level, aDuration, aDelay, aUID, aFrom, aTo, aSprite, aBeing, 0.0, aFinishBeforeNext ),
+  FAnimations.AddAnimation( TGFXMoveAnimation.Create( FSpriteMap, Level, FVisual.Things, aDuration, aDelay, aUID, aFrom, aTo, aBeing, 0.0, aFinishBeforeNext ),
     FSettings.AnimationBlending and ( not aWipeBump ) );
 end;
 
-procedure TDRLGFXIO.addBumpAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aAmount : Single );
+procedure TDRLGFXIO.addBumpAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aAmount : Single );
 begin
   if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
-  FAnimations.AddAnimation( TGFXBumpAnimation.Create( FSpriteMap, Level, aDuration, aDelay, aUID,
-    aFrom, aTo, aSprite, True, aAmount, FSettings.AnimationBlending ), FSettings.AnimationBlending );
+  FAnimations.AddAnimation( TGFXBumpAnimation.Create( FSpriteMap, Level, FVisual.Things, aDuration, aDelay, aUID,
+    aFrom, aTo, True, aAmount, FSettings.AnimationBlending ), FSettings.AnimationBlending );
 end;
 
-procedure TDRLGFXIO.addScreenMoveAnimation(aDuration: DWord; aTo: TCoord2D);
+procedure TDRLGFXIO.addScreenMoveAnimation( aDuration : DWord; aTo : TCoord2D; aDelay : DWord );
 begin
   if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
-  if not TGFXScreenMoveAnimation.Update( aDuration, aTo ) then
-    FAnimations.addAnimation( TGFXScreenMoveAnimation.Create( FSpriteMap, aDuration, aTo ) );
+  if not TGFXScreenMoveAnimation.Update( aDuration, aDelay, aTo ) then
+    FAnimations.addAnimation( TGFXScreenMoveAnimation.Create( FSpriteMap, aDuration, aDelay, aTo ) );
 end;
 
 procedure TDRLGFXIO.addCellAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aValue : Integer );
 begin
   if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
-  FAnimations.addAnimation( TGFXCellAnimation.Create( FSpriteMap, Level, aDuration, aDelay, aCoord, aSprite, aValue ) );
+  FAnimations.addAnimation( TGFXCellAnimation.Create( FSpriteMap, Level, FVisual.Map, aDuration, aDelay, aCoord, aSprite, aValue ) );
 end;
 
 procedure TDRLGFXIO.addItemAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aValue : Integer );
 begin
   if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
-  FAnimations.addAnimation( TGFXItemAnimation.Create( FSpriteMap, FLevel.Context.UIDs, aDuration, aDelay, aUID, aValue ) );
+  FAnimations.addAnimation( TGFXItemAnimation.Create( FSpriteMap, FLevel.Context.UIDs, FVisual.Things, aDuration, aDelay, aUID, aValue ) );
 end;
 
 procedure TDRLGFXIO.addKillAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aSprite : TSprite; aKind : TKillAnimation = KillAnimDeath );
+var iBeing : TBeing;
+    iCoord : TCoord2D;
+    iStart : DWord;
 begin
   if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
-  if SF_PAINANIM in aSprite.Flags then
-    FAnimations.addAnimation( TGFXKillAnimation.Create( FSpriteMap, Level, aDuration, aDelay, aUID, aKind ) );
+  if not ( SF_PAINANIM in aSprite.Flags ) then Exit;
+  iBeing := Level.Context.UIDs.Get( aUID ) as TBeing;
+  if iBeing = nil then Exit;
+  iCoord := iBeing.Position;
+  // Clips of the same being run in sequence, so the start may be later.
+  iStart := FAnimations.AddAnimation( TGFXKillAnimation.Create( FSpriteMap, Level, FVisual, aDuration, aDelay, aUID, aKind ) );
+  // The remains appear as the death clip ends.
+  if aKind = KillAnimDeath then
+    FVisual.HoldCell( iCoord, iStart + aDuration );
 end;
 
 
@@ -567,7 +578,7 @@ procedure TDRLGFXIO.addMissileAnimation(aDuration: DWord; aDelay: DWord; aSource
 begin
   if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
   FAnimations.addAnimation(
-    TGFXMissileAnimation.Create( FSpriteMap, Level, aDuration, aDelay, aSource,
+    TGFXMissileAnimation.Create( FSpriteMap, Level, FVisual.Map, aDuration, aDelay, aSource,
       aTarget, aDrawDelay, aSprite, aRay, aTrailNID ) );
 end;
 
@@ -575,7 +586,7 @@ procedure TDRLGFXIO.addMarkAnimation(aDuration: DWord; aDelay: DWord;
   aCoord: TCoord2D; aSprite : TSprite; aColor: Byte; aPic: Char);
 begin
   if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
-  FAnimations.addAnimation( TGFXMarkAnimation.Create( FSpriteMap, aDuration, aDelay, aCoord, aSprite ) )
+  FAnimations.addAnimation( TGFXMarkAnimation.Create( FSpriteMap, FVisual.Map, aDuration, aDelay, aCoord, aSprite ) )
 end;
 
 procedure TDRLGFXIO.addFXAnimation(aDuration: DWord; aDelay: DWord;
@@ -622,9 +633,19 @@ begin
   Exit( True );
 end;
 
-procedure TDRLGFXIO.ExplosionMark( aCoord : TCoord2D; aColor : Byte; aDuration : DWord; aDelay : DWord );
+procedure TDRLGFXIO.ExplosionMark( aCoord : TCoord2D; const aData : TExplosionData; aDelay : DWord; aSeen : Boolean );
+var iVisualMap : TDRLVisualMap;
 begin
-  FAnimations.AddAnimation( TGFXExplodeMarkAnimation.Create( FSpriteMap, aDuration, aDelay, aCoord, aColor, FEngine.Explosion ) )
+  if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
+  // Each mark is shown while its cell is presented as visible, so cells
+  // revealed by the blast itself show it once their walls are gone.
+  iVisualMap := FVisual.Map;
+  if efAlwaysVisible in aData.Flags then iVisualMap := nil;
+  if aData.Sprite.SpriteID[0] <> 0
+    then FAnimations.AddAnimation( TGFXMarkAnimation.Create( FSpriteMap, iVisualMap,
+      aData.Sprite.Frametime * aData.Sprite.Frames - 1, aDelay, aCoord, aData.Sprite ) )
+    else FAnimations.AddAnimation( TGFXExplodeMarkAnimation.Create( FSpriteMap, iVisualMap,
+      3 * aData.Delay, aDelay, aCoord, aData.Color, FEngine.Explosion ) );
 end;
 
 procedure TDRLGFXIO.SetTarget( aTarget : TCoord2D; aColor : Byte; aRange : Byte );
@@ -916,6 +937,9 @@ begin
     FSpriteMap.Marker := NewCoord2D(-1,-1);
 
   FAnimations.Update( aMSec );
+  // After the clips, so things a finished clip released follow the level
+  // in the same frame.
+  UpdatePresentation( aMSec );
 
   iSizeY    := FIODriver.GetSizeY-2*FVPadding;
   iSizeX    := FIODriver.GetSizeX;
@@ -927,7 +951,7 @@ begin
   glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
   FProjection := GLCreateOrtho( 0, iSizeX, iSizeY, 0, -16384, 16384 );
 
-  iDrawLevel := ( FRunStatus <> nil ) and ( FLevel <> nil )
+  iDrawLevel := ( FRunStatus <> nil ) and ( FVisual <> nil )
     and ( ( FRunStatus.State in [ DSPlaying, DSEnding, DSFinished ] ) or ( FFadeDirection < 0 ) );
   if iDrawLevel then
   begin
@@ -936,7 +960,7 @@ begin
     //if not UI.AnimationsRunning then FSpriteMap.NewShift := FSpriteMap.ShiftValue( Player.Position );
 
     FSpriteMap.Update( aMSec, FProjection, Player.Flags[ BF_DARKNESS ] );
-    Level.Particles.Update( aMSec * 0.001, FSpriteMap.Engine );
+    Level.Particles.Update( aMSec * 0.001, @FSpriteMap.ParticlePlacement );
     FParticleEngine.Render( FSpriteMap.Engine );
     FAnimations.Draw;
     glEnable( GL_DEPTH_TEST );
@@ -1197,10 +1221,9 @@ begin
   Result := inherited PushLayer( aLayer );
 end;
 
-procedure TDRLGFXIO.SetLevel( aLevel : TLuaMapNode );
+procedure TDRLGFXIO.VisualChanged;
 begin
-  inherited SetLevel( aLevel );
-  FSpriteMap.SetLevel( TLevel( aLevel ) );
+  FSpriteMap.SetVisual( FVisual );
 end;
 
 procedure TDRLGFXIO.EnterLevel( aCoord : TCoord2D );

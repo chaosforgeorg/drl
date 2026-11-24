@@ -43,8 +43,6 @@ protected
   FSprite       : TSprite;
   FMelSprite    : TSprite;
   FSoundID      : String16;
-  FAnimCount    : Word;
-  FDrawPosition : TVec2i;
   FPerks        : TPerks;
   {$TYPEINFO ON}
 public
@@ -52,8 +50,6 @@ public
   property SoundID      : String16 read FSoundID          write FSoundID;
   property Sprite       : TSprite  read GetSprite         write FSprite;
   property MelSprite    : TSprite  read FMelSprite        write FMelSprite;
-  property AnimCount    : Word     read FAnimCount        write FAnimCount;
-  property DrawPosition : TVec2i   read FDrawPosition     write FDrawPosition;
 published
   property SpriteID   : DWord    read FSprite.SpriteID[0] write FSprite.SpriteID[0];
   property Frames     : Word     read FSprite.Frames      write FSprite.Frames;
@@ -70,14 +66,11 @@ uses typinfo, variants,
 constructor TThing.Create( const aID : AnsiString; aContext : TNodeContext );
 begin
   inherited Create( aID, aContext );
-  FAnimCount    := 0;
-  FDrawPosition := Vec2i( 0, 0 );
   FPerks        := nil;
 end;
 
 procedure TThing.LuaLoad( aTable : TLuaTable );
 begin
-  FAnimCount   := 0;
   FPerks       := nil;
   FGylph.ASCII := aTable.getChar('ascii');
   FGylph.Color := aTable.getInteger('color');
@@ -263,7 +256,6 @@ begin
   FPerks := nil;
   if aStream.ReadByte > 0 then
     FPerks           := TPerks.CreateFromStream( aStream, Self, aPerkDefinitions );
-  FAnimCount := 0;
 end;
 
 destructor TThing.Destroy;

@@ -34,7 +34,7 @@ type TDRLTextIO = class( TDRLIO, ITextMap )
     procedure addSoundAnimation( aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord ); override;
     procedure Explosion( aDelay : Integer; aWhere : TCoord2D; const aData : TExplosionData; const aCells : array of TCoord2D ); override;
 
-    procedure SetLevel( aLevel : TLuaMapNode ); override;
+    procedure VisualChanged; override;
     function GetGylph( const aCoord : TCoord2D ) : TIOGylph;
     procedure SetTarget( aTarget : TCoord2D; aColor : Byte; aRange : Byte ); override;
     procedure SetAutoTarget( aTarget : TCoord2D ); override;
@@ -42,7 +42,7 @@ type TDRLTextIO = class( TDRLIO, ITextMap )
 
   protected
     procedure RunLauncherLayer( aLayer : TIOLayer ); override;
-    procedure ExplosionMark( aCoord : TCoord2D; aColor : Byte; aDuration : DWord; aDelay : DWord ); override;
+    procedure ExplosionMark( aCoord : TCoord2D; const aData : TExplosionData; aDelay : DWord; aSeen : Boolean ); override;
     procedure DrawHud; override;
   protected
     FTextMap        : TTextMap;
@@ -57,8 +57,8 @@ type TDRLTextIO = class( TDRLIO, ITextMap )
 implementation
 
 uses sysutils,
-     vioconsole, vtig, vvision, vutil, vlualibrary, vluagamestack,
-     drlanimation,
+     vioconsole, vtig, vvision, vutil, vlualibrary, vluagamestack, vvisualmap,
+     drlanimation, drlvisual,
      dfbeing, dfitem;
 
 // How a being sensed only by Intuition is drawn.
@@ -141,6 +141,7 @@ procedure TDRLTextIO.Update( aMSec : DWord );
 begin
   if FTextMap <> nil then
     FTextMap.Update( aMSec );
+  UpdatePresentation( aMSec );
   if FTargeting and FLayers.IsEmpty
      then FConsole.ShowCursor;
   inherited Update( aMSec );
@@ -161,7 +162,7 @@ end;
 function TDRLTextIO.AnimationsRunning : Boolean;
 begin
   if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit(False);
-  Exit( not FTextMap.AnimationsFinished );
+  Exit( ( not FTextMap.AnimationsFinished ) or PresentationBusy );
 end;
 
 function TDRLTextIO.AnimationsBlockingFinished : Boolean;
@@ -173,6 +174,7 @@ end;
 procedure TDRLTextIO.ClearAnimations;
 begin
   FTextMap.ClearAnimations;
+  inherited ClearAnimations;
 end;
 
 procedure TDRLTextIO.Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0 );
@@ -206,9 +208,10 @@ begin
   FTextMap.AddAnimation( TSoundEventAnimation.Create( Self, aDelay, aPosition, aSoundID ) )
 end;
 
-procedure TDRLTextIO.ExplosionMark( aCoord : TCoord2D; aColor : Byte; aDuration : DWord; aDelay : DWord );
+procedure TDRLTextIO.ExplosionMark( aCoord : TCoord2D; const aData : TExplosionData; aDelay : DWord; aSeen : Boolean );
 begin
-  FTextMap.AddAnimation( TTextExplosionAnimation.Create( aCoord, '*', FExpl, aDelay ) );
+  if aSeen then
+    FTextMap.AddAnimation( TTextExplosionAnimation.Create( aCoord, '*', FExpl, aDelay ) );
 end;
 
 procedure TDRLTextIO.SetTarget( aTarget : TCoord2D; aColor : Byte; aRange : Byte );
@@ -285,10 +288,10 @@ begin
   end;
 end;
 
-procedure TDRLTextIO.SetLevel( aLevel : TLuaMapNode );
+procedure TDRLTextIO.VisualChanged;
 begin
-  inherited SetLevel( aLevel );
-  if aLevel <> nil
+  // Glyphs are read from the visual state.
+  if FVisual <> nil
     then FTextMap.SetMap( Self )
     else FTextMap.SetMap( nil );
 end;
@@ -341,27 +344,44 @@ var iColor    : TIOColor;
     iBlood    : Boolean;
     iItem     : TItem;
     iBeing    : TBeing;
+    iVisual   : TDRLVisualThing;
+    iMap      : TDRLVisualMap;
+    iState    : TDRLVisualCell;
 begin
   iLevel   := Level;
-  iBeing   := iLevel.Being[ aCoord ];
+  iMap     := FVisual.Map;
+  iVisible := iMap.Visible( aCoord );
 
-  if iLevel.BeingVisible( aCoord, iBeing ) or iLevel.BeingExplored( aCoord, iBeing) then
-    Exit( IOGylph( iBeing.Picture, GetColor( iBeing.Color, aCoord, True ) ) );
+  // Things and terrain are read from the presented level; the live being
+  // or item, while it exists, decides how it may be sensed.
+  iVisual  := FVisual.BeingAt( aCoord );
+  if iVisual <> nil then
+  begin
+    iBeing := iLevel.Context.UIDs.Get( iVisual.UID ) as TBeing;
+    if iVisible or ( ( iBeing <> nil ) and iLevel.BeingExplored( aCoord, iBeing ) ) then
+      Exit( IOGylph( iVisual.Gylph.ASCII, GetColor( iVisual.Gylph.Color, aCoord, True ) ) );
+    if ( iBeing <> nil ) and iLevel.BeingIntuited( aCoord, iBeing ) then
+      Exit( IOGylph( IntuitionChar, GetColor( IntuitionColor, aCoord, True ) ) );
+  end;
 
-  if iLevel.BeingIntuited( aCoord, iBeing ) then
-    Exit( IOGylph( IntuitionChar, GetColor( IntuitionColor, aCoord, True ) ) );
+  iVisual  := FVisual.ItemAt( aCoord );
+  if iVisual <> nil then
+  begin
+    iItem := iLevel.Context.UIDs.Get( iVisual.UID ) as TItem;
+    if iVisible or ( ( iItem <> nil ) and iLevel.ItemVisible( aCoord, iItem ) ) then
+      Exit( IOGylph( iVisual.Gylph.ASCII, GetColor( iVisual.Gylph.Color, aCoord, True ) ) );
+    if ( ( iItem <> nil ) and iLevel.ItemExplored( aCoord, iItem ) ) or ( ( iItem = nil ) and iMap.Explored( aCoord ) ) then
+      Exit( IOGylph( iVisual.Gylph.ASCII, GetColor( DarkGray, aCoord, True ) ) );
+  end;
 
-  iItem    := iLevel.Item[ aCoord ];
-
-  if iLevel.ItemVisible( aCoord, iItem ) then
-    Exit( IOGylph( iItem.Picture, GetColor( iItem.Color, aCoord, True ) ) );
-
-  if iLevel.ItemExplored( aCoord, iItem ) then
-    Exit( IOGylph( iItem.Picture, GetColor( DarkGray, aCoord, True ) ) );
-
-  iVisible  := iLevel.isVisible( aCoord );
-  iExplored := iLevel.CellExplored( aCoord );
-  iCell     := iLevel.Cell[ aCoord ];
+  // A fading cell switches glyphs halfway through.
+  if iMap.Progress( aCoord ) >= 0.5
+    then iState := iMap.State( aCoord, vlTarget )
+    else iState := iMap.State( aCoord, vlShown );
+  iExplored := iState.Flags and VCF_EXPLORED <> 0;
+  if iState.Top <> 0
+    then iCell := iState.Top
+    else iCell := iState.Bottom;
 
   iColor   := LightGray;
   iChar    := ' ';
@@ -375,12 +395,12 @@ begin
       iChar := iPic;
     if iVisible then
     begin
-      iBlood := iLevel.LightFlag[ aCoord, LFBLOOD ] and (BloodColor <> 0);
+      iBlood := ( iState.Flags and VCF_BLOOD <> 0 ) and (BloodColor <> 0);
       if iBlood
          then iColor := BloodColor
          else
          begin
-           iStyle := iLevel.CStyle[ aCoord ];
+           iStyle := iState.Style;
            iColor := LightColor[ iStyle ];
            if iColor = 0 then
              iColor := LightColor[ 0 ];

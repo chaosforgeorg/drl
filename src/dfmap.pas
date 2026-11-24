@@ -38,6 +38,8 @@ type TCell = class
   Flags       : TFlags;
   Hooks       : TCellHooks;
   MoveCost    : Single;
+  // Time in ms a change to or from this cell takes to be shown.
+  Fade        : Word;
   bloodto     : AnsiString;
   destroyto   : AnsiString;
   raiseto     : AnsiString;
@@ -127,6 +129,10 @@ begin
     iCell.destroyto := getString('destroyto');
     iCell.raiseto   := getString('raiseto');
     iCell.MoveCost  := getFloat('move_cost', 1.0 );
+    // Corpses appear as their death clip ends, which already shows them.
+    if CF_CORPSE in iCell.Flags
+      then iCell.Fade := getInteger( 'fade', 0 )
+      else iCell.Fade := getInteger( 'fade', 200 );
     FillChar( iCell.Sprite,      SizeOf(iCell.Sprite),      0 );
     FillChar( iCell.Deco,        SizeOf(iCell.Deco),        0 );
     iBase := Default( TSprite );

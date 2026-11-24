@@ -216,11 +216,17 @@ type IDRLPresentation = interface( IRLPresentation )
   function EquipSound : AnsiString;
   // aCells are the cells the explosion reaches, in any order.
   procedure Explosion( aDelay : Integer; aWhere : TCoord2D; const aData : TExplosionData; const aCells : array of TCoord2D );
+  // A change made now to the cell is shown, with the neighbours derived
+  // from it, once aDelay ms of the current action have been presented.
+  procedure HoldCell( const aCoord : TCoord2D; aDelay : Integer );
+  // The thing keeps its presented state for aDelay ms; a thing added now
+  // appears and a removed one disappears then.
+  procedure HoldThing( aUID : TUID; aDelay : Integer );
   procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ); overload;
   procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single ); overload;
-  procedure addMoveAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aWipeBump : Boolean; aFinishBeforeNext : Boolean = False );
-  procedure addBumpAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aAmount : Single );
-  procedure addScreenMoveAnimation( aDuration : DWord; aTo : TCoord2D );
+  procedure addMoveAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aBeing : Boolean; aWipeBump : Boolean; aFinishBeforeNext : Boolean = False );
+  procedure addBumpAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aAmount : Single );
+  procedure addScreenMoveAnimation( aDuration : DWord; aTo : TCoord2D; aDelay : DWord = 0 );
   procedure addCellAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aValue : Integer );
   procedure addItemAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aValue : Integer );
   procedure addKillAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aSprite : TSprite; aKind : TKillAnimation = KillAnimDeath );

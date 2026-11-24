@@ -1847,7 +1847,6 @@ begin
       FIO.WaitForAnimation;
       if FPlayer.Dying then
       begin
-        FPlayer.AnimCount := 1;
         FIO.Msg( 'You die!...' );
         FIO.RunLayer( TMoreLayer.Create( False ) );
       end;

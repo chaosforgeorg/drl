@@ -2,7 +2,7 @@
 unit drlparticles;
 interface
 uses classes, sysutils,
-     vlua, vvector, vobject, vcolor, vutil, vrltools, vparticleengine, vlualibrary, vuid, vspriteengine;
+     vlua, vvector, vobject, vcolor, vutil, vrltools, vparticleengine, vlualibrary, vuid;
 
 type
   // Module data, borrowed by each level's particle store.
@@ -21,14 +21,18 @@ type
     PoolIndex : Integer;
   end;
 
+  // Where the thing aUID is presented, in cell units from the map's top-left,
+  // and whether it is seen; False while it is not presented at all.
+  TParticlePlacement = function( aUID : TUID; out aPosition : TVec2f; out aVisible : Boolean ) : Boolean of object;
+
 { TParticleStore }
 
   TParticleStore = class( TVObject )
     constructor Create( aUIDs : TUIDStore );
     procedure BindUIDs( aUIDs : TUIDStore );
     procedure Initialize( aEmitters : TEmitterData; aEngine : TParticleEngine );
-    // Moves bound emitters to their things' drawn positions in aSprites.
-    procedure Update( aDeltaSec : Single; aSprites : TSpriteEngine );
+    // Moves bound emitters to their things' presented positions.
+    procedure Update( aDeltaSec : Single; aPlacement : TParticlePlacement );
     procedure Reset;
     // Clear floor effects, retaining bindings and emitter timing for surviving entities.
     procedure Clear;
@@ -58,8 +62,8 @@ type
 
     function  FindBinding( aNID : Word; aUID : TUID ) : Integer;
     procedure RemoveBinding( aIndex : Integer );
-    // Drops bindings of destroyed things; with aSprites, also places the emitters.
-    procedure UpdateBindings( aSprites : TSpriteEngine );
+    // Drops bindings of destroyed things; with aPlacement, also places the emitters.
+    procedure UpdateBindings( aPlacement : TParticlePlacement );
   public
     property Engine : TParticleEngine read FEngine;
   end;
@@ -68,7 +72,7 @@ implementation
 
 uses math,
      vluatable,
-     dfdata, dfthing;
+     dfdata;
 
 function FlagsToParticleFlags( const aFlags : TFlags ) : TParticleFlags;
 var i : Byte;
@@ -103,10 +107,10 @@ begin
   FEngine := aEngine;
 end;
 
-procedure TParticleStore.Update( aDeltaSec : Single; aSprites : TSpriteEngine );
+procedure TParticleStore.Update( aDeltaSec : Single; aPlacement : TParticlePlacement );
 begin
   if FEngine = nil then Exit;
-  UpdateBindings( aSprites );
+  UpdateBindings( aPlacement );
   FEngine.Update( aDeltaSec );
 end;
 
@@ -364,12 +368,11 @@ begin
     end;
 end;
 
-procedure TParticleStore.UpdateBindings( aSprites : TSpriteEngine );
-var i      : Integer;
-    iNode  : TVObject;
-    iThing : TThing;
-    iDraw  : TVec2i;
-    iSize  : Word;
+procedure TParticleStore.UpdateBindings( aPlacement : TParticlePlacement );
+var i         : Integer;
+    iNode     : TVObject;
+    iPosition : TVec2f;
+    iVisible  : Boolean;
 begin
   for i := FBindingCount - 1 downto 0 do
   begin
@@ -387,19 +390,16 @@ begin
         FEngine.EmitKill( FBindings[i].PoolIndex );
       RemoveBinding( i );
     end
-    else if ( aSprites <> nil ) and ( iNode is TThing ) and ( FBindings[i].PoolIndex >= 0 ) then
+    else if Assigned( aPlacement ) and ( FBindings[i].PoolIndex >= 0 ) then
     begin
-      iThing := TThing( iNode );
-      FEngine.EmitSetVisible( FBindings[i].PoolIndex, iThing.isVisible );
-      // Move animations set the drawn position; otherwise the thing is drawn on its cell.
-      iDraw := iThing.DrawPosition;
-      if ( iDraw.X = 0 ) and ( iDraw.Y = 0 ) then
+      if aPlacement( FBindings[i].UID, iPosition, iVisible ) then
       begin
-        iSize := aSprites.Grid.X;
-        iDraw.Init( ( iThing.Position.X - 1 ) * iSize, ( iThing.Position.Y - 1 ) * iSize );
-      end;
-      FEngine.EmitSetPosition( FBindings[i].PoolIndex,
-        Vec3f( iDraw.X / aSprites.Scale + 16.0, iDraw.Y / aSprites.Scale + 16.0, 0 ) );
+        FEngine.EmitSetVisible( FBindings[i].PoolIndex, iVisible );
+        FEngine.EmitSetPosition( FBindings[i].PoolIndex,
+          Vec3f( iPosition.X * 32.0 + 16.0, iPosition.Y * 32.0 + 16.0, 0 ) );
+      end
+      else
+        FEngine.EmitSetVisible( FBindings[i].PoolIndex, False );
     end;
   end;
 end;

@@ -113,7 +113,6 @@ TLevel = class(TLuaMapNode)
     procedure CalculateVision( aCoord : TCoord2D; aVisionRange : Byte );
 
     procedure Place( aThing : TThing; aCoord : TCoord2D );
-    procedure RevealBeings;
     function EntityFromStream( aStream : TStream; aEntityID : Byte ) : TLuaEntityNode; override;
     constructor CreateFromStream( aStream : TStream; aContext : TNodeContext; aGameRNG : TRNG; aData : TGameData ); reintroduce;
     procedure WriteToStream( aStream : TStream ); override;
@@ -147,6 +146,8 @@ TLevel = class(TLuaMapNode)
     function  getItem( const coord : TCoord2D ) : TItem; override;
     // Calls the cell's OnDestroy( coord, damage_type ) hook, if defined.
     procedure CallDestroyHook( aCoord : TCoord2D; aCellID : Word; aDamageType : TDamageType );
+    // Presents a change of the cell with the current HookDelay.
+    procedure HoldCellChange( const aCoord : TCoord2D );
   private
     FPlayer        : TPlayer; // Borrowed from Session; nil before/after a run.
     FRunStatus     : TRunStatus; // Borrowed from Session, which outlives the level.
@@ -196,9 +197,11 @@ TLevel = class(TLuaMapNode)
     property Particles : TParticleStore             read FParticles;
     property Decals    : TDecalStore                read FDecals;
     property AccuracyBonus : Integer                read FAccuracyBonus;
-    // Presentation delay of the event whose destroy or death hooks are
-    // running; Lua explosion delays are relative to it. Set and restored by
-    // DamageTile and TBeing.Kill around those hooks.
+    // Presentation delay of the event being resolved, on the current
+    // action's timeline. Cell changes and things added or removed meanwhile
+    // are presented after it, and Lua explosion delays are relative to it.
+    // Set and restored by the routines that know the timing: DamageTile,
+    // Explosion, Shotgun, TBeing.Kill and TBeing.Knockback.
     property HookDelay     : Integer                read FHookDelay write FHookDelay;
     property Item     [ Index : TCoord2D ] : TItem  read getItem;
     property Being    [ Index : TCoord2D ] : TBeing read getBeing;
@@ -332,13 +335,6 @@ begin
   Add( aThing, aCoord );
 end;
 
-procedure TLevel.RevealBeings;
-var iNode : TNode;
-begin
-  for iNode in Self do
-    if iNode is TBeing then
-      TBeing(iNode).AnimCount := 0;
-end;
 
 function TLevel.EntityFromStream ( aStream : TStream; aEntityID : Byte ) : TLuaEntityNode;
 begin
@@ -778,6 +774,11 @@ begin
     FContext.Lua.ProtectedCall( [ 'cells', aCellID, CellHooks[ CellHook_OnDestroy ] ], [ LuaCoord( aCoord ), Ord( aDamageType ) ] );
 end;
 
+procedure TLevel.HoldCellChange( const aCoord : TCoord2D );
+begin
+  if FHookDelay > 0 then FPresentation.HoldCell( aCoord, FHookDelay );
+end;
+
 function TLevel.CallHook(coord: TCoord2D; What: TThing; Hook: TCellHook) : Variant;
 begin
   if Hook in FData.Cells[ GetCell(coord) ].Hooks
@@ -969,6 +970,8 @@ end;
 procedure TLevel.Remove ( Node : TNode ) ;
 begin
   if FActiveBeing = Node then FActiveBeing := nil;
+  if ( FHookDelay > 0 ) and ( Node is TThing ) then
+    FPresentation.HoldThing( Node.UID, FHookDelay );
   inherited Remove( Node );
 end;
 
@@ -979,6 +982,8 @@ begin
   if aThing is TBeing then
     TBeing(aThing).LastPos := aWhere;
   Displace( aThing, aWhere );
+  if FHookDelay > 0 then
+    FPresentation.HoldThing( aThing.UID, FHookDelay );
 end;
 
 procedure TLevel.DropCorpse(aCoord: TCoord2D; CellID: Byte);
@@ -1021,6 +1026,7 @@ var iC            : TCoord2D;
     iKilledBy     : Boolean;
     iPrevKilledBy : AnsiString;
     iPrevMelee    : Boolean;
+    iHookDelay    : Integer;
 
   function ShotContact( aTarget : TCoord2D ) : Boolean;
   var iRay      : TVisionRay;
@@ -1116,6 +1122,9 @@ begin
 
   FPresentation.Explosion( aDelay, aCoord, aData, Slice( iCells, iCount ) );
 
+  // What happens to each target is presented when the blast reaches it.
+  iHookDelay := FHookDelay;
+
   // Farthest first, so that knockback clears the way for the beings behind.
   for iIndex := 1 to iBeingCount - 1 do
   begin
@@ -1133,6 +1142,7 @@ begin
   begin
     iTarget := iTargets[ iBeings[ iIndex ] ];
     iBeing  := iTarget.Being;
+    FHookDelay := iTarget.Delay;
     if iBeing.Dead then Continue;
     if ( efSelfSafe in aData.Flags ) and ( iBeing = FActiveBeing ) then Continue;
     if efChain in aData.Flags then
@@ -1144,7 +1154,7 @@ begin
       if aCoord = iTarget.Coord
         then iDir := aKnockback
         else iDir.CreateSmooth( aCoord, iTarget.Coord );
-      iBeing.Knockback( iDir, iTarget.Damage / iKnockback );
+      iBeing.Knockback( iDir, iTarget.Damage / iKnockback, iTarget.Delay );
     end;
     if iBeing.Dead then Continue;
     if iBeing.Flags[ BF_SPLASHIMMUNE ] and ( aCoord <> iTarget.Coord ) then Continue;
@@ -1156,6 +1166,7 @@ begin
   for iIndex := 0 to iCount - 1 do
   begin
     iTarget := iTargets[ iIndex ];
+    FHookDelay := iTarget.Delay;
     DamageTile( iTarget.Coord, iTarget.Damage, aData.DamageType, iTarget.Delay );
     // Only items lying here before the blast; drops from its kills survive.
     if ( iTarget.Damage > 10 ) and ( iTarget.Item <> nil ) and ( not iTarget.Item.isFeature )
@@ -1173,6 +1184,8 @@ begin
       end;
   end;
 
+  FHookDelay := iHookDelay;
+  // Rotations derive from neighbours, which the cell holds cover.
   if aData.ContentID <> 0 then RecalcFluids;
 
   if iKilledBy and ( not FPlayer.Dying ) then
@@ -1198,6 +1211,7 @@ var iDiff,iC : TCoord2D;
     iTargets : array of TShotgunTarget;
     iCount   : Integer;
     iIndex   : Integer;
+    iHookDelay : Integer;
 
     procedure SendShotgunBeam( aSrc : TCoord2D; aTgt : TCoord2D );
     var iSRay  : TVisionRay;
@@ -1251,6 +1265,8 @@ begin
     end;
   ClearLightMapBits( [lfDamage] );
 
+  iHookDelay := FHookDelay;
+  FHookDelay := aDelay;
   for iIndex := 0 to iCount - 1 do
   begin
     iTC  := iTargets[ iIndex ].Coord;
@@ -1271,7 +1287,7 @@ begin
       if iKnock > 0 then
       begin
         iDir.CreateSmooth( aSource, iTC );
-        iBeing.Knockback( iDir, iDmg / iKnock );
+        iBeing.Knockback( iDir, iDmg / iKnock, aDelay );
       end;
       iBeing.ApplyDamage( iDmg, Target_Torso, aDamageType, aItem, aDelay );
     end;
@@ -1280,6 +1296,7 @@ begin
     if isVisible( iTC ) and ( not isShotPassable( iTC ) ) then
       FPresentation.addMarkAnimation( 199, aDelay, iTC, iHSprite, LightGray,'*' );
   end;
+  FHookDelay := iHookDelay;
 end;
 
 
@@ -1367,7 +1384,11 @@ begin
   iCell := GetCell( aCoord );
   if (FData.Cells[ iCell ].bloodto <> '') and (LightFlag[ aCoord, LFBLOOD ] or (FData.Cells[ iCell ].BloodColor = 0))
     then Cell[ aCoord ] := FContext.Lua.Defines[ FData.Cells[ iCell ].bloodto ]
-    else LightFlag[ aCoord, LFBLOOD ] := True;
+    else
+    begin
+      LightFlag[ aCoord, LFBLOOD ] := True;
+      HoldCellChange( aCoord );
+    end;
 end;
 
 procedure TLevel.Blood( aPosition : TCoord2D; aFrom : TDirection; aAmount : LongInt; aSpray : Boolean; aDelay : Integer;
@@ -1714,6 +1735,7 @@ begin
     FMap.Floor[aWhere.x, aWhere.y]  := aWhat;
     FMap.FStyle[aWhere.x, aWhere.y] := FMap.Style[aWhere.x, aWhere.y];
   end;
+  HoldCellChange( aWhere );
 end;
 
 function TLevel.getBeing( const coord : TCoord2D ) : TBeing;
@@ -1851,7 +1873,7 @@ function TLevel.PushItem( aWho : TBeing; aWhat : TItem; aFrom, aTo : TCoord2D ) 
 var iItemOld : TItem;
 begin
   if ( aWho = nil ) or ( aWhat = nil ) or ( aWhat.Position <> aFrom ) then Exit( False );
-  FPresentation.addMoveAnimation( aWho.VisualTime( aWho.getMoveCost, AnimationSpeedPush ), 0, aWhat.UID, aFrom, aTo, aWhat.Sprite, False, False );
+  FPresentation.addMoveAnimation( aWho.VisualTime( aWho.getMoveCost, AnimationSpeedPush ), 0, aWhat.UID, aFrom, aTo, False, False );
   iItemOld := Item[ aTo ];
   SetItem( aTo, aWhat );
   SetItem( aFrom, nil );
@@ -2478,7 +2500,7 @@ var State : TLuaGameStack;
 begin
   State.Init(L);
   Level := State.ToObject(1) as TLevel;
-  Level.DamageTile( State.ToCoord(2), State.ToInteger(3), TDamageType( State.ToInteger(4,Byte(Damage_Bullet)) ), 0 );
+  Level.DamageTile( State.ToCoord(2), State.ToInteger(3), TDamageType( State.ToInteger(4,Byte(Damage_Bullet)) ), Level.HookDelay );
   Exit( 0 );
 end;
 
