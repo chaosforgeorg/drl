@@ -103,18 +103,11 @@ TDRLVisualState = class
   procedure HoldThing( aUID : TUID; aDelay : DWord );
   // Something presented still differs from the level.
   function Busy : Boolean;
-  // The shown being or item presented in aCoord, if any; valid since the
-  // last Update.
-  function BeingAt( const aCoord : TCoord2D ) : TDRLVisualThing;
-  function ItemAt( const aCoord : TCoord2D ) : TDRLVisualThing;
 private
   FLevel   : TLevel; // Borrowed from the IO.
   FMap     : TDRLVisualMap;
   FThings  : TDRLVisualThings;
-  FBeingAt : array of TDRLVisualThing;
-  FItemAt  : array of TDRLVisualThing;
   procedure SyncThings;
-  function Index( const aCoord : TCoord2D ) : Integer; inline;
 public
   property Level  : TLevel           read FLevel;
   property Map    : TDRLVisualMap    read FMap;
@@ -286,26 +279,7 @@ begin
   FLevel  := aLevel;
   FMap    := TDRLVisualMap.Create( aLevel );
   FThings := TDRLVisualThings.Create;
-  SetLength( FBeingAt, ( FMap.Area.B.X - FMap.Area.A.X + 1 ) * ( FMap.Area.B.Y - FMap.Area.A.Y + 1 ) );
-  SetLength( FItemAt, Length( FBeingAt ) );
   SyncThings;
-end;
-
-function TDRLVisualState.Index( const aCoord : TCoord2D ) : Integer; inline;
-begin
-  Exit( ( aCoord.Y - FMap.Area.A.Y ) * ( FMap.Area.B.X - FMap.Area.A.X + 1 ) + ( aCoord.X - FMap.Area.A.X ) );
-end;
-
-function TDRLVisualState.BeingAt( const aCoord : TCoord2D ) : TDRLVisualThing;
-begin
-  if not FMap.Contains( aCoord ) then Exit( nil );
-  Exit( FBeingAt[ Index( aCoord ) ] );
-end;
-
-function TDRLVisualState.ItemAt( const aCoord : TCoord2D ) : TDRLVisualThing;
-begin
-  if not FMap.Contains( aCoord ) then Exit( nil );
-  Exit( FItemAt[ Index( aCoord ) ] );
 end;
 
 destructor TDRLVisualState.Destroy;
@@ -320,7 +294,6 @@ var iNode    : TNode;
     iThing   : TThing;
     iVisual  : TDRLVisualThing;
     iFollows : Boolean;
-    i        : Integer;
 begin
   FThings.BeginSync( FMap.Time );
   for iNode in FLevel do
@@ -335,17 +308,6 @@ begin
       iVisual.Gylph   := iThing.Gylph;
     end;
   FThings.EndSync;
-
-  FillChar( FBeingAt[0], Length( FBeingAt ) * SizeOf( TDRLVisualThing ), 0 );
-  FillChar( FItemAt[0], Length( FItemAt ) * SizeOf( TDRLVisualThing ), 0 );
-  for i := 0 to FThings.Count - 1 do
-  begin
-    iVisual := TDRLVisualThing( FThings.Things[i] );
-    if ( not iVisual.Shown ) or ( not FMap.Contains( iVisual.Coord ) ) then Continue;
-    if iVisual.IsBeing
-      then FBeingAt[ Index( iVisual.Coord ) ] := iVisual
-      else FItemAt[ Index( iVisual.Coord ) ] := iVisual;
-  end;
 end;
 
 procedure TDRLVisualState.Update( aTime : DWord );

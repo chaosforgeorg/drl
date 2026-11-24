@@ -52,6 +52,11 @@ type TDRLTextIO = class( TDRLIO, ITextMap )
     FTargetRange    : Byte;
     // Sprite sheets have no textures in text mode; only their IDs are issued.
     FSpriteSheets   : Integer;
+  private
+    // Glyph of the presented thing the player senses in each cell, with its
+    // unresolved color; #0 where none. Rebuilt after each presentation update.
+    FThingGlyphs    : array[1..MAXX,1..MAXY] of TIOGylph;
+    procedure UpdateThingGlyphs;
   end;
 
 implementation
@@ -142,6 +147,7 @@ begin
   if FTextMap <> nil then
     FTextMap.Update( aMSec );
   UpdatePresentation( aMSec );
+  UpdateThingGlyphs;
   if FTargeting and FLayers.IsEmpty
      then FConsole.ShowCursor;
   inherited Update( aMSec );
@@ -288,6 +294,61 @@ begin
   end;
 end;
 
+procedure TDRLTextIO.UpdateThingGlyphs;
+var iLevel   : TLevel;
+    iMap     : TDRLVisualMap;
+    iVisual  : TDRLVisualThing;
+    iCoord   : TCoord2D;
+    iBeings  : Boolean;
+    iPresent : Boolean;
+    iVisible : Boolean;
+    iBeing   : TBeing;
+    iItem    : TItem;
+    i        : Integer;
+
+  procedure Put( aASCII : Char; aColor : TIOColor );
+  begin
+    FThingGlyphs[ iCoord.X, iCoord.Y ].Init( aASCII, aColor );
+  end;
+
+begin
+  FillChar( FThingGlyphs, SizeOf( FThingGlyphs ), 0 );
+  if FVisual = nil then Exit;
+  iLevel := Level;
+  iMap   := FVisual.Map;
+  // Later passes draw over earlier ones: beings over items, and things in
+  // the level over things only clips or holds still present. A thing the
+  // player does not sense leaves what is below it.
+  for iBeings in Boolean do
+    for iPresent in Boolean do
+      for i := 0 to FVisual.Things.Count - 1 do
+      begin
+        iVisual := TDRLVisualThing( FVisual.Things.Things[i] );
+        if ( not iVisual.Shown ) or ( iVisual.IsBeing <> iBeings ) or
+           ( iVisual.Present <> iPresent ) or ( not iMap.Contains( iVisual.Coord ) ) then Continue;
+        iCoord   := iVisual.Coord;
+        iVisible := iMap.Visible( iCoord );
+        // The live thing, while it exists, decides how it may be sensed.
+        if iBeings then
+        begin
+          iBeing := iLevel.Context.UIDs.Get( iVisual.UID ) as TBeing;
+          if iVisible or ( ( iBeing <> nil ) and iLevel.BeingExplored( iCoord, iBeing ) ) then
+            Put( iVisual.Gylph.ASCII, iVisual.Gylph.Color )
+          else if ( iBeing <> nil ) and iLevel.BeingIntuited( iCoord, iBeing ) then
+            Put( IntuitionChar, IntuitionColor );
+        end
+        else
+        begin
+          iItem := iLevel.Context.UIDs.Get( iVisual.UID ) as TItem;
+          if iVisible or ( ( iItem <> nil ) and iLevel.ItemVisible( iCoord, iItem ) ) then
+            Put( iVisual.Gylph.ASCII, iVisual.Gylph.Color )
+          else if ( ( iItem <> nil ) and iLevel.ItemExplored( iCoord, iItem ) ) or
+                  ( ( iItem = nil ) and iMap.Explored( iCoord ) ) then
+            Put( iVisual.Gylph.ASCII, DarkGray );
+        end;
+      end;
+end;
+
 procedure TDRLTextIO.VisualChanged;
 begin
   // Glyphs are read from the visual state.
@@ -342,9 +403,7 @@ var iColor    : TIOColor;
     iVisible  : Boolean;
     iExplored : Boolean;
     iBlood    : Boolean;
-    iItem     : TItem;
-    iBeing    : TBeing;
-    iVisual   : TDRLVisualThing;
+    iThing    : TIOGylph;
     iMap      : TDRLVisualMap;
     iState    : TDRLVisualCell;
 begin
@@ -352,26 +411,12 @@ begin
   iMap     := FVisual.Map;
   iVisible := iMap.Visible( aCoord );
 
-  // Things and terrain are read from the presented level; the live being
-  // or item, while it exists, decides how it may be sensed.
-  iVisual  := FVisual.BeingAt( aCoord );
-  if iVisual <> nil then
+  // Things, then terrain, both from the presented level.
+  if iMap.Contains( aCoord ) then
   begin
-    iBeing := iLevel.Context.UIDs.Get( iVisual.UID ) as TBeing;
-    if iVisible or ( ( iBeing <> nil ) and iLevel.BeingExplored( aCoord, iBeing ) ) then
-      Exit( IOGylph( iVisual.Gylph.ASCII, GetColor( iVisual.Gylph.Color, aCoord, True ) ) );
-    if ( iBeing <> nil ) and iLevel.BeingIntuited( aCoord, iBeing ) then
-      Exit( IOGylph( IntuitionChar, GetColor( IntuitionColor, aCoord, True ) ) );
-  end;
-
-  iVisual  := FVisual.ItemAt( aCoord );
-  if iVisual <> nil then
-  begin
-    iItem := iLevel.Context.UIDs.Get( iVisual.UID ) as TItem;
-    if iVisible or ( ( iItem <> nil ) and iLevel.ItemVisible( aCoord, iItem ) ) then
-      Exit( IOGylph( iVisual.Gylph.ASCII, GetColor( iVisual.Gylph.Color, aCoord, True ) ) );
-    if ( ( iItem <> nil ) and iLevel.ItemExplored( aCoord, iItem ) ) or ( ( iItem = nil ) and iMap.Explored( aCoord ) ) then
-      Exit( IOGylph( iVisual.Gylph.ASCII, GetColor( DarkGray, aCoord, True ) ) );
+    iThing := FThingGlyphs[ aCoord.X, aCoord.Y ];
+    if iThing.ASCII <> #0 then
+      Exit( IOGylph( iThing.ASCII, GetColor( iThing.Color, aCoord, True ) ) );
   end;
 
   // A fading cell switches glyphs halfway through.
