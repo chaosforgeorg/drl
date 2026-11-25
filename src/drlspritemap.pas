@@ -1397,7 +1397,7 @@ begin
         iClip := ThingAnimation( FAnimations, iBeing.UID );
         if PresentedPosition( iBeing.UID, iPos ) then iV := PixelPosition( iPos );
       end;
-      if ( iBeing <> nil ) and ( iBeing.isVisible or ( ( iClip <> nil ) and not iClip.Hides ) )
+      if ( iBeing <> nil ) and ( iBeing.isVisible or ( ( iClip <> nil ) and not ( iClip is TGFXAppearAnimation ) ) )
         then PushTarget( FIO.EngineSprites.Select, iV, NewColor( Yellow ), 1.0 + iBeing.TargetSize * 0.1 )
         else PushTarget( FIO.EngineSprites.Select, iV, NewColor( Yellow ), 1.0 );
     end;

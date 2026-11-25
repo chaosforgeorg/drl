@@ -23,9 +23,6 @@ type
     constructor Create( aDriver : TSDLIODriver; aSettings : TDRLConfiguration; aConfig : TDRLConfig ); reintroduce;
     procedure Reset; override;
     procedure VisualChanged; override;
-    // Adds a clip presenting a thing; a thing still to appear then shows for
-    // good.
-    function AddThingAnimation( aAnimation : TGFXThingAnimation; aBlend : Boolean = False ) : DWord;
     procedure EnterLevel( aCoord : TCoord2D ); override;
     procedure Initialize( aCoreModule : TDRLModule ); override;
     procedure PrepareGraphics; override;
@@ -529,14 +526,14 @@ begin
           then Animations.Delete( iCount )
           else Inc( iCount );
       until iCount >= Animations.Size;
-  AddThingAnimation( TGFXMoveAnimation.Create( FSpriteMap, Level, FVisual, aDuration, aDelay, aUID, aFrom, aTo, aBeing, 0.0, aFinishBeforeNext ),
+  FAnimations.AddAnimation( TGFXMoveAnimation.Create( FSpriteMap, Level, FVisual, aDuration, aDelay, aUID, aFrom, aTo, aBeing, 0.0, aFinishBeforeNext ),
     FSettings.AnimationBlending and ( not aWipeBump ) );
 end;
 
 procedure TDRLGFXIO.addBumpAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aAmount : Single );
 begin
   if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
-  AddThingAnimation( TGFXBumpAnimation.Create( FSpriteMap, Level, FVisual, aDuration, aDelay, aUID,
+  FAnimations.AddAnimation( TGFXBumpAnimation.Create( FSpriteMap, Level, FVisual, aDuration, aDelay, aUID,
     aFrom, aTo, True, aAmount, FSettings.AnimationBlending ), FSettings.AnimationBlending );
 end;
 
@@ -557,7 +554,7 @@ procedure TDRLGFXIO.addItemAnimation( aDuration : DWord; aDelay : DWord; aUID : 
 begin
   if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
   if Level.Context.UIDs.Get( aUID ) = nil then Exit;
-  AddThingAnimation( TGFXItemAnimation.Create( FSpriteMap, Level, FVisual, aDuration, aDelay, aUID, aValue ) );
+  FAnimations.AddAnimation( TGFXItemAnimation.Create( FSpriteMap, Level, FVisual, aDuration, aDelay, aUID, aValue ) );
 end;
 
 procedure TDRLGFXIO.addKillAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aSprite : TSprite; aKind : TKillAnimation = KillAnimDeath );
@@ -571,7 +568,7 @@ begin
   if iBeing = nil then Exit;
   iCoord := iBeing.Position;
   // Clips of the same being run in sequence, so the start may be later.
-  iStart := AddThingAnimation( TGFXKillAnimation.Create( FSpriteMap, Level, FVisual, aDuration, aDelay, aUID, aKind ) );
+  iStart := FAnimations.AddAnimation( TGFXKillAnimation.Create( FSpriteMap, Level, FVisual, aDuration, aDelay, aUID, aKind ) );
   // The remains appear as the death clip ends.
   if aKind = KillAnimDeath then
     FVisual.Hold( iCoord, iStart + aDuration );
@@ -595,15 +592,6 @@ begin
   // A thing removed before it appeared is never shown.
   if ThingAnimation( FAnimations, aUID ) is TGFXAppearAnimation then Exit;
   FAnimations.AddAnimation( TGFXLingerAnimation.Create( FSpriteMap, Level, FVisual, aDelay, aUID, iThing.Position ) );
-end;
-
-function TDRLGFXIO.AddThingAnimation( aAnimation : TGFXThingAnimation; aBlend : Boolean ) : DWord;
-var iAnimation : TAnimation;
-begin
-  for iAnimation in FAnimations.Animations do
-    if ( iAnimation is TGFXAppearAnimation ) and ( TGFXAppearAnimation( iAnimation ).Thing = aAnimation.Thing ) then
-      TGFXAppearAnimation( iAnimation ).Reveal;
-  Exit( FAnimations.AddAnimation( aAnimation, aBlend ) );
 end;
 
 

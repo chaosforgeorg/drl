@@ -37,7 +37,8 @@ end;
 
 // Presents one thing of the level, or one just removed from it, from the
 // clip's creation until its destruction, also while it waits to start.
-// Renderers draw a claimed thing only through its clip; see ThingAnimation.
+// Renderers draw a claimed thing only through the first clip claiming it;
+// see ThingAnimation.
 TGFXThingAnimation = class(TGFXLevelAnimation)
   // aChain queues the clip after earlier clips of the thing. The thing, if it
   // exists, is captured for drawing once it is gone.
@@ -47,8 +48,6 @@ TGFXThingAnimation = class(TGFXLevelAnimation)
   procedure PushThing; virtual; abstract;
   // Where the thing is presented, in cell units; False when it is not.
   function Position( out aPosition : TVec2f ) : Boolean; virtual; abstract;
-  // A clip that only hides its thing yields to any other clip claiming it.
-  function Hides : Boolean; virtual;
 protected
   FLevel     : TLevel;        // Borrowed from the IO, which clears its animations first.
   FVisualMap : TDRLVisualMap; // Borrowed from the IO, which clears its animations first.
@@ -61,19 +60,16 @@ protected
   // Draws the thing at aPosition with aLight, or with its cell's when -1.
   procedure PushAt( const aPosition : TVec2f; aLight : Integer );
 public
-  property Thing : TUID     read FThing;
-  property Coord : TCoord2D read FCoord;
+  property Thing : TUID read FThing;
 end;
 
-// Hides a thing added under a presentation delay until the delay ends.
+// Hides a thing added under a presentation delay until the delay ends. It
+// is the first clip of its thing, so later ones present it only afterwards.
 TGFXAppearAnimation = class(TGFXThingAnimation)
   constructor Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aVisualMap : TDRLVisualMap; aDuration : DWord;
     aThing : TUID; const aCoord : TCoord2D );
   procedure PushThing; override;
   function Position( out aPosition : TVec2f ) : Boolean; override;
-  function Hides : Boolean; override;
-  // Another clip took the thing, which stays shown once that clip ends.
-  procedure Reveal;
 end;
 
 // Presents a thing removed under a presentation delay, as captured, until
@@ -316,14 +312,13 @@ protected
 end;
 
 
-// The clip presenting a thing, if any: the first claiming it that does not
-// only hide it, else one that does.
+// The clip presenting a thing, if any: the first one claiming it.
 function ThingAnimation( aAnimations : TAnimationManager; aUID : TUID ) : TGFXThingAnimation;
 
 implementation
 
 uses vlog, vdebug,
-     dfbeing, dfitem;
+     dfbeing;
 
 { TGFXAnimation }
 
@@ -362,11 +357,6 @@ begin
   FIsBeing := iThing is TBeing;
 end;
 
-function TGFXThingAnimation.Hides : Boolean;
-begin
-  Exit( False );
-end;
-
 function TGFXThingAnimation.LiveThing : TThing;
 begin
   Result := FLevel.Context.UIDs.Get( FThing ) as TThing;
@@ -402,18 +392,11 @@ end;
 
 function ThingAnimation( aAnimations : TAnimationManager; aUID : TUID ) : TGFXThingAnimation;
 var iAnimation : TAnimation;
-    iThing     : TGFXThingAnimation;
 begin
-  Result := nil;
-  if aUID = 0 then Exit;
   for iAnimation in aAnimations.Animations do
-    if iAnimation is TGFXThingAnimation then
-    begin
-      iThing := TGFXThingAnimation( iAnimation );
-      if iThing.FThing <> aUID then Continue;
-      if not iThing.Hides then Exit( iThing );
-      if Result = nil then Result := iThing;
-    end;
+    if ( iAnimation is TGFXThingAnimation ) and ( TGFXThingAnimation( iAnimation ).FThing = aUID ) then
+      Exit( TGFXThingAnimation( iAnimation ) );
+  Exit( nil );
 end;
 
 { TGFXAppearAnimation }
@@ -434,16 +417,6 @@ function TGFXAppearAnimation.Position( out aPosition : TVec2f ) : Boolean;
 begin
   aPosition := Vec2f( 0, 0 );
   Exit( False );
-end;
-
-function TGFXAppearAnimation.Hides : Boolean;
-begin
-  Exit( True );
-end;
-
-procedure TGFXAppearAnimation.Reveal;
-begin
-  FThing := 0;
 end;
 
 { TGFXLingerAnimation }
