@@ -12,7 +12,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 // clips present the few that differ from the level.
 unit drlvisual;
 interface
-uses vutil, vrltools, vvisualmap,
+uses vrltools, vvisualmap,
      dfdata, dflevel;
 
 const

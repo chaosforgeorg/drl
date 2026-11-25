@@ -220,6 +220,9 @@ protected
   // Advances the visual state; the IO calls it after its animations update,
   // so things a finished clip released follow the level in the same frame.
   procedure UpdatePresentation( aMSec : DWord );
+  // A level is presented: the visual map exists and the run is in play.
+  // Level clips borrow the visual map, so they are added only then.
+  function CanAnimateLevel : Boolean;
   // The visual state still differs from the level.
   function PresentationBusy : Boolean;
   // Called after the visual state was replaced; renderers attach to it.
@@ -407,6 +410,11 @@ end;
 function TDRLIO.PresentationBusy : Boolean;
 begin
   Exit( ( FVisual <> nil ) and FVisual.Busy );
+end;
+
+function TDRLIO.CanAnimateLevel : Boolean;
+begin
+  Exit( ( FVisual <> nil ) and ( FRunStatus.State in [ DSPlaying, DSEnding ] ) );
 end;
 
 procedure TDRLIO.HoldCell( const aCoord : TCoord2D; aDelay : Integer );
@@ -1016,7 +1024,9 @@ end;
 procedure TDRLIO.PreUpdate;
 begin
   VTIG_Clear;
-  if FHudEnabled and ( FLevel <> nil ) then DrawHud;
+  // The HUD shows the presented level; without the visual map the text map
+  // has no glyph source.
+  if FHudEnabled and ( FVisual <> nil ) then DrawHud;
   inherited PreUpdate;
 end;
 

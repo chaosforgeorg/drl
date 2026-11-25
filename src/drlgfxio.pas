@@ -515,7 +515,7 @@ end;
 procedure TDRLGFXIO.addMoveAnimation ( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aBeing : Boolean; aWipeBump : Boolean; aFinishBeforeNext : Boolean );
 var iCount : Integer;
 begin
-  if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
+  if not CanAnimateLevel then Exit;
   iCount := 0;
   if aWipeBump then
     with FAnimations do
@@ -532,7 +532,7 @@ end;
 
 procedure TDRLGFXIO.addBumpAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aAmount : Single );
 begin
-  if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
+  if not CanAnimateLevel then Exit;
   FAnimations.AddAnimation( TGFXBumpAnimation.Create( FSpriteMap, Level, FVisual, aDuration, aDelay, aUID,
     aFrom, aTo, True, aAmount, FSettings.AnimationBlending ), FSettings.AnimationBlending );
 end;
@@ -546,13 +546,13 @@ end;
 
 procedure TDRLGFXIO.addCellAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aValue : Integer );
 begin
-  if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
+  if not CanAnimateLevel then Exit;
   FAnimations.addAnimation( TGFXCellAnimation.Create( FSpriteMap, Level, FVisual, aDuration, aDelay, aCoord, aSprite, aValue ) );
 end;
 
 procedure TDRLGFXIO.addItemAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aValue : Integer );
 begin
-  if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
+  if not CanAnimateLevel then Exit;
   if Level.Context.UIDs.Get( aUID ) = nil then Exit;
   FAnimations.AddAnimation( TGFXItemAnimation.Create( FSpriteMap, Level, FVisual, aDuration, aDelay, aUID, aValue ) );
 end;
@@ -562,7 +562,7 @@ var iBeing : TBeing;
     iCoord : TCoord2D;
     iStart : DWord;
 begin
-  if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
+  if not CanAnimateLevel then Exit;
   if not ( SF_PAINANIM in aSprite.Flags ) then Exit;
   iBeing := Level.Context.UIDs.Get( aUID ) as TBeing;
   if iBeing = nil then Exit;
@@ -577,7 +577,7 @@ end;
 procedure TDRLGFXIO.HideThing( aUID : TUID; aDelay : Integer );
 var iThing : TThing;
 begin
-  if ( FVisual = nil ) or ( aDelay <= 0 ) or not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
+  if ( aDelay <= 0 ) or not CanAnimateLevel then Exit;
   iThing := Level.Context.UIDs.Get( aUID ) as TThing;
   if iThing = nil then Exit;
   FAnimations.AddAnimation( TGFXAppearAnimation.Create( FSpriteMap, Level, FVisual, aDelay, aUID, iThing.Position ) );
@@ -586,7 +586,7 @@ end;
 procedure TDRLGFXIO.LingerThing( aUID : TUID; aDelay : Integer );
 var iThing : TThing;
 begin
-  if ( FVisual = nil ) or ( aDelay <= 0 ) or not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
+  if ( aDelay <= 0 ) or not CanAnimateLevel then Exit;
   iThing := Level.Context.UIDs.Get( aUID ) as TThing;
   if iThing = nil then Exit;
   // A thing removed before it appeared is never shown.
@@ -599,7 +599,7 @@ procedure TDRLGFXIO.addMissileAnimation(aDuration: DWord; aDelay: DWord; aSource
   aTarget: TCoord2D; aColor: Byte; aPic: Char; aDrawDelay: Word;
   aSprite: TSprite; aRay: Boolean; aTrailNID : Word);
 begin
-  if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
+  if not CanAnimateLevel then Exit;
   FAnimations.addAnimation(
     TGFXMissileAnimation.Create( FSpriteMap, Level, FVisual, aDuration, aDelay, aSource,
       aTarget, aDrawDelay, aSprite, aRay, aTrailNID ) );
@@ -608,14 +608,14 @@ end;
 procedure TDRLGFXIO.addMarkAnimation(aDuration: DWord; aDelay: DWord;
   aCoord: TCoord2D; aSprite : TSprite; aColor: Byte; aPic: Char);
 begin
-  if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
+  if not CanAnimateLevel then Exit;
   FAnimations.addAnimation( TGFXMarkAnimation.Create( FSpriteMap, FVisual, aDuration, aDelay, aCoord, aSprite ) )
 end;
 
 procedure TDRLGFXIO.addFXAnimation(aDuration: DWord; aDelay: DWord;
   aCoord: TCoord2D; aSprite : TSprite);
 begin
-  if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
+  if not CanAnimateLevel then Exit;
   FAnimations.addAnimation( TGFXFXAnimation.Create( FSpriteMap, aDuration, aDelay, aCoord, aSprite ) )
 end;
 
@@ -623,7 +623,7 @@ procedure TDRLGFXIO.addParticleBurstAnimation( aDelay : DWord; aEmitterID : Word
   aPosition : TCoord2D; aDirection : TDirection; aCount : Word;
   aDistanceScale, aSpreadScale : Single );
 begin
-  if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
+  if not CanAnimateLevel then Exit;
   if ( aEmitterID = 0 ) or ( aCount = 0 ) then Exit;
   FAnimations.AddAnimation( TGFXParticleBurstAnimation.Create(
     Level.Particles, aDelay, aEmitterID, aPosition, aDirection, aCount, aDistanceScale, aSpreadScale,
@@ -659,7 +659,7 @@ end;
 procedure TDRLGFXIO.ExplosionMark( aCoord : TCoord2D; const aData : TExplosionData; aDelay : DWord; aSeen : Boolean );
 var iVisualMap : TDRLVisualMap;
 begin
-  if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
+  if not CanAnimateLevel then Exit;
   // Each mark is shown while its cell is presented as visible, so cells
   // revealed by the blast itself show it once their walls are gone.
   iVisualMap := FVisual;
@@ -991,7 +991,7 @@ begin
     glDisable( GL_DEPTH_TEST );
   end;
 
-  if FHudEnabled and ( FLevel <> nil ) then
+  if FHudEnabled and ( FVisual <> nil ) then
   begin
     FMinimap.Render( FQuadSheet );
 

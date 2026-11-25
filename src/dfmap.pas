@@ -52,6 +52,9 @@ type
 
 TCells = class
          public
+           // Cell 0, "no cell" in a map (an empty or cleared level, no
+           // overlay), is defined as an inert cell without flags or look.
+           constructor Create;
            procedure RegisterCell( aLua : TLua; aCellNum : Byte );
            destructor Destroy; override;
          private
@@ -66,6 +69,17 @@ TCells = class
 implementation
 
 uses sysutils, vdebug;
+
+constructor TCells.Create;
+begin
+  inherited Create;
+  SetLength( FData, 100 );
+  FData[0] := TCell.Create;
+  FData[0].PicChr   := ' ';
+  FData[0].PicLow   := ' ';
+  FData[0].MoveCost := 1.0;
+  FMaxCells := 0;
+end;
 
 procedure TCells.RegisterCell( aLua : TLua; aCellNum : byte );
 var iHook          : TCellHook;

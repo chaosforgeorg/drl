@@ -236,7 +236,7 @@ procedure TDRLTextIO.addMissileAnimation(aDuration: DWord; aDelay: DWord; aSourc
   aTarget: TCoord2D; aColor: Byte; aPic: Char; aDrawDelay: Word;
   aSprite: TSprite; aRay: Boolean; aTrailNID : Word);
 begin
-  if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
+  if not CanAnimateLevel then Exit;
   if aRay
     then FTextMap.AddAnimation( TTextRayAnimation.Create( Level, aSource, aTarget, IOGylph( aPic, aColor ), aDuration, aDelay, Player.Vision ) )
     else FTextMap.AddAnimation( TTextBulletAnimation.Create( Level, aSource, aTarget, IOGylph( aPic, aColor ), aDuration, aDelay, Player.Vision ) );
@@ -245,7 +245,7 @@ end;
 procedure TDRLTextIO.addMarkAnimation(aDuration: DWord; aDelay: DWord;
   aCoord: TCoord2D; aSprite : TSprite; aColor: Byte; aPic: Char);
 begin
-  if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
+  if not CanAnimateLevel then Exit;
   FTextMap.AddAnimation( TTextMarkAnimation.Create( aCoord, IOGylph( aPic, aColor ), aDuration, aDelay ) );
 end;
 
@@ -405,14 +405,14 @@ end;
 
 procedure TDRLTextIO.HideThing( aUID : TUID; aDelay : Integer );
 begin
-  if ( FVisual = nil ) or ( aDelay <= 0 ) or not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
+  if ( aDelay <= 0 ) or not CanAnimateLevel then Exit;
   FTextMap.AddAnimation( TTextAppearAnimation.Create( aUID, aDelay ) );
 end;
 
 procedure TDRLTextIO.LingerThing( aUID : TUID; aDelay : Integer );
 var iThing : TThing;
 begin
-  if ( FVisual = nil ) or ( aDelay <= 0 ) or not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
+  if ( aDelay <= 0 ) or not CanAnimateLevel then Exit;
   iThing := Level.Context.UIDs.Get( aUID ) as TThing;
   // A thing removed before it appeared is never shown.
   if ( iThing = nil ) or Appearing( aUID ) then Exit;
