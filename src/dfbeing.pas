@@ -2213,6 +2213,7 @@ var iGameRNG    : TRNG;
     iSound      : DWord;
     iHit        : Boolean;
     iLevel      : TLevel;
+    iHookDelay  : Integer;
     iStart      : TCoord2D;
     iDamageMod  : Integer;
     iDamageMul  : Single;
@@ -2400,7 +2401,10 @@ begin
           iRunDamage := True;
           if aItem.Hooks[ Hook_OnHitBeing ] then
           begin
-            iRunDamage    := aItem.CallHookCheck(Hook_OnHitBeing,[Self,iBeing]);
+            iHookDelay := iLevel.HookDelay;
+            iLevel.HookDelay := ImpactDelay;
+            iRunDamage := aItem.CallHookCheck(Hook_OnHitBeing,[Self,iBeing]);
+            iLevel.HookDelay := iHookDelay;
           end;
           if iRunDamage then
             iBeing.ApplyDamage( iDamage, Target_Torso, aItem.DamageType, aItem, ImpactDelay );
@@ -2789,7 +2793,7 @@ var State       : TLuaGameStack;
 begin
   State.Init(L);
   Being := State.ToObject(1) as TBeing;
-  Being.Kill( 15, State.ToBoolean( 2 ), nil, nil, 0, False );
+  Being.Kill( 15, State.ToBoolean( 2 ), nil, nil, TLevel( Being.Parent ).HookDelay, False );
   Result := 0;
 end;
 
@@ -2843,7 +2847,7 @@ begin
       end;
     end;
   end;
-  iBeing.ApplyDamage( iState.ToInteger( 2 ), TBodyTarget( iState.ToInteger( 3 ) ), TDamageType( iState.ToInteger( 4, Byte( Damage_Bullet ) ) ), iSource, 0 );
+  iBeing.ApplyDamage( iState.ToInteger( 2 ), TBodyTarget( iState.ToInteger( 3 ) ), TDamageType( iState.ToInteger( 4, Byte( Damage_Bullet ) ) ), iSource, TLevel( iBeing.Parent ).HookDelay );
   if ( iKilledBy <> '' ) and ( not iPlayer.Dying ) then
     iPlayer.SetKilledBy( iPreviousKilledBy, iPreviousMelee );
   Result := 0;
@@ -3261,17 +3265,23 @@ begin
 end;
 
 function lua_being_relocate(L: Plua_State): Integer; cdecl;
-var State  : TLuaGameStack;
-    Thing  : TThing;
-    Target : TCoord2D;
+var iState  : TLuaGameStack;
+    iThing  : TThing;
+    iTarget : TCoord2D;
+    iLevel  : TLevel;
 begin
-  State.Init(L);
-  Thing := State.ToObject(1) as TThing;
-  if State.IsNil(2) then Exit(0);
-  Target := State.ToCoord(2);
-  if Thing is TPlayer then
-    TLevel( Thing.Parent ).Presentation.addScreenMoveAnimation(Distance(Thing.Position,Target)*10,Target);
-  Thing.Displace(Target);
+  iState.Init( L );
+  iThing := iState.ToObject( 1 ) as TThing;
+  if iState.IsNil( 2 ) then Exit( 0 );
+  iTarget := iState.ToCoord( 2 );
+  iLevel  := TLevel( iThing.Parent );
+  if iThing is TPlayer then
+    iLevel.Presentation.addScreenMoveAnimation( Distance( iThing.Position, iTarget ) * 10, iTarget, iLevel.HookDelay );
+  // Under a hook delay a being stays at its cell until the delay, then jumps.
+  if ( iLevel.HookDelay > 0 ) and ( iThing is TBeing ) and
+    ( iLevel.AnimationVisible( iThing.Position, TBeing( iThing ) ) or iLevel.AnimationVisible( iTarget, TBeing( iThing ) ) ) then
+    iLevel.Presentation.addMoveAnimation( 1, iLevel.HookDelay, iThing, iThing.Position, iTarget, True, True );
+  iThing.Displace( iTarget );
   Result := 0;
 end;
 

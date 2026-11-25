@@ -2337,7 +2337,7 @@ begin
   if iLevel.isVisible( iCoord ) then
   begin
     iSprite := iLevel.GetSpriteTop( iCoord );
-    iLevel.Presentation.addCellAnimation( iSprite.Frametime * Abs( iValue ), 0, iCoord, iSprite, iValue );
+    iLevel.Presentation.addCellAnimation( iSprite.Frametime * Abs( iValue ), iLevel.HookDelay, iCoord, iSprite, iValue );
   end;
   Result := 0;
 end;
@@ -2354,7 +2354,7 @@ begin
   iItem  := State.ToObject(2) as TItem;
   iValue := State.ToInteger(3);
   if iLevel.isVisible( iItem.Position ) then
-    iLevel.Presentation.addItemAnimation( iItem.Sprite.Frametime * Abs( iValue ), 0, iItem, iValue );
+    iLevel.Presentation.addItemAnimation( iItem.Sprite.Frametime * Abs( iValue ), iLevel.HookDelay, iItem, iValue );
   Result := 0;
 end;
 
