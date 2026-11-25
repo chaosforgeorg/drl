@@ -1188,7 +1188,7 @@ begin
   iVisualTime := Ceil( VisualTime( iMoveCost, AnimationSpeedMove ) * aVisualMultiplier );
   if isPlayer then
     TLevel( Parent ).Presentation.addScreenMoveAnimation( iVisualTime, aTarget );
-  TLevel( Parent ).Presentation.addMoveAnimation( iVisualTime, 0, FUID, Position, aTarget, True, isPlayer and ( aMoveCost = 0 ) );
+  TLevel( Parent ).Presentation.addMoveAnimation( iVisualTime, 0, Self, Position, aTarget, isPlayer and ( aMoveCost = 0 ) );
   Displace( aTarget );
   if aMoveCost = -1
     then Dec( FSpeedCount, iMoveCost )
@@ -1357,7 +1357,7 @@ begin
   if iLevel.AnimationVisible( FPosition, Self ) or iLevel.AnimationVisible( LastMove, Self ) then
   begin
     iVisualMult := ( 100.0 / FSpeed ) * ( iMoveCost / 1000.0 ) * aVisualMultiplier;
-    iLevel.Presentation.addMoveAnimation( Ceil( iVisualMult * 100 ), 0, FUID, Position, LastMove, True, False );
+    iLevel.Presentation.addMoveAnimation( Ceil( iVisualMult * 100 ), 0, Self, Position, LastMove, False );
   end;
   Displace( FMovePos );
   if BF_WALKSOUND in FFlags then
@@ -1690,7 +1690,7 @@ begin
   else
     playSound( 'die', aDelay + iLevel.Presentation.VisualRNG.RLongInt( 400 ) );
 
-  iLevel.Presentation.addKillAnimation( 400, aDelay, FUID, Sprite );
+  iLevel.Presentation.addKillAnimation( 400, aDelay, Self );
 
   if not (BF_NOEXP in FFlags) then iLevel.Player.AddExp(FExpValue);
 
@@ -1757,7 +1757,7 @@ begin
 
     if iLevel.AnimationVisible( Position, Self ) then
     begin
-      iLevel.Presentation.addBumpAnimation( VisualTime( iAttackCost, AnimationSpeedAttack ), 0, FUID, iPosition, aWhere, 0.5 );
+      iLevel.Presentation.addBumpAnimation( VisualTime( iAttackCost, AnimationSpeedAttack ), 0, Self, iPosition, aWhere, 0.5 );
       // Melee FX animation - weapon sprite takes priority, fallback to attacker's melsprite
       if ( iWeapon <> nil ) and ( iWeapon.MelSprite.SpriteID[0] > 0 ) then
         iLevel.Presentation.addFXAnimation( VisualTime( iAttackCost, iWeapon.MelSprite.Frames * iWeapon.MelSprite.Frametime ), 0, aWhere, iWeapon.MelSprite )
@@ -1828,7 +1828,7 @@ begin
   begin
     // Bump animation only on first attack
     if not aSecond then
-      iLevel.Presentation.addBumpAnimation( VisualTime( iAttackCost, AnimationSpeedAttack ), 0, FUID, Position, aTarget.Position, 0.5 );
+      iLevel.Presentation.addBumpAnimation( VisualTime( iAttackCost, AnimationSpeedAttack ), 0, Self, Position, aTarget.Position, 0.5 );
     // Melee FX animation - weapon sprite takes priority, fallback to attacker's melsprite
     if ( aWeapon <> nil ) and ( aWeapon.MelSprite.SpriteID[0] > 0 ) then
       iLevel.Presentation.addFXAnimation( VisualTime( iAttackCost, aWeapon.MelSprite.Frames * aWeapon.MelSprite.Frametime ) div Iif( aSecond, 2, 1 ), Iif( aSecond, VisualTime( iAttackCost, aWeapon.MelSprite.Frames * aWeapon.MelSprite.Frametime ) div 2, 0 ), aTarget.Position, aWeapon.MelSprite )
@@ -2565,7 +2565,7 @@ begin
     if isPlayer then
       iLevel.Presentation.addScreenMoveAnimation( 100, iKnock, aDelay );
     if iLevel.AnimationVisible( FPosition, Self ) or iLevel.AnimationVisible( iKnock, Self ) then
-      iLevel.Presentation.addMoveAnimation( 100, aDelay, FUID, Position, iKnock, True, True, True );
+      iLevel.Presentation.addMoveAnimation( 100, aDelay, Self, Position, iKnock, True, True );
     if isPlayer then
       iLevel.Presentation.addScreenShakeAnimation( 400, aDelay, Clampf( iStrength * 1.0, 2.0, 10.0 ) );
     iHookDelay := iLevel.HookDelay;
@@ -3461,7 +3461,7 @@ begin
   iAmount := iState.ToFloat( 3, 0.5 );
   with iBeing do
     if TLevel( iBeing.Parent ).AnimationVisible( Position, iBeing ) then
-      TLevel( iBeing.Parent ).Presentation.addBumpAnimation( VisualTime( iState.ToInteger( 4, 1000 ) ) , 0, UID, Position, iCoord, iAmount );
+      TLevel( iBeing.Parent ).Presentation.addBumpAnimation( VisualTime( iState.ToInteger( 4, 1000 ) ) , 0, iBeing, Position, iCoord, iAmount );
 end;
 
 // Plays the current sprite's death frames, then shows the being again with
@@ -3476,7 +3476,7 @@ begin
   if iBeing = nil then Exit( 0 );
   iLevel := TLevel( iBeing.Parent );
   if iLevel.AnimationVisible( iBeing.Position, iBeing ) then
-    iLevel.Presentation.addKillAnimation( iState.ToInteger( 2, 400 ), iLevel.HookDelay, iBeing.UID, iBeing.Sprite, KillAnimTransition );
+    iLevel.Presentation.addKillAnimation( iState.ToInteger( 2, 400 ), iLevel.HookDelay, iBeing, KillAnimTransition );
   Result := 0;
 end;
 

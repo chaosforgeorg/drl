@@ -1308,8 +1308,7 @@ begin
   iClip := ThingAnimation( FAnimations, aUID );
   if iClip <> nil then Exit( iClip.Position( aPosition ) );
   iThing := FLevel.Context.UIDs.Get( aUID ) as TThing;
-  if ( iThing = nil ) or ( iThing.Parent <> FLevel ) or ( ( iThing is TBeing ) and TBeing( iThing ).Killed ) then
-    Exit( False );
+  if ( iThing = nil ) or not FVisualMap.Presentable( iThing ) then Exit( False );
   aPosition := Vec2f( iThing.Position.X - 1, iThing.Position.Y - 1 );
   Exit( True );
 end;
@@ -1327,14 +1326,12 @@ begin
       iClip := TGFXThingAnimation( iAnimation );
       if ThingAnimation( FAnimations, iClip.Thing ) = iClip then iClip.PushThing;
     end;
-  // The other things of the level; a killed being is shown only by its
-  // death clip.
+  // The other things of the level.
   for iNode in FLevel do
     if iNode is TThing then
     begin
       iThing := TThing( iNode );
-      if not FLevel.isProperCoord( iThing.Position ) then Continue;
-      if ( iThing is TBeing ) and TBeing( iThing ).Killed then Continue;
+      if not ( FLevel.isProperCoord( iThing.Position ) and FVisualMap.Presentable( iThing ) ) then Continue;
       if ThingAnimation( FAnimations, iThing.UID ) <> nil then Continue;
       if iThing is TBeing then
         PushPresentedBeing( iThing.Position, TBeing( iThing ), iThing.Sprite )

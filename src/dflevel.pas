@@ -974,7 +974,7 @@ procedure TLevel.Remove ( Node : TNode ) ;
 begin
   if FActiveBeing = Node then FActiveBeing := nil;
   if ( FHookDelay > 0 ) and ( Node is TThing ) then
-    FPresentation.LingerThing( Node.UID, FHookDelay );
+    FPresentation.LingerThing( TThing( Node ), FHookDelay );
   inherited Remove( Node );
 end;
 
@@ -986,7 +986,7 @@ begin
     TBeing(aThing).LastPos := aWhere;
   Displace( aThing, aWhere );
   if FHookDelay > 0 then
-    FPresentation.HideThing( aThing.UID, FHookDelay );
+    FPresentation.HideThing( aThing, FHookDelay );
 end;
 
 procedure TLevel.DropCorpse(aCoord: TCoord2D; CellID: Byte);
@@ -1330,7 +1330,7 @@ begin
   for iItem in iBeing.Inv do
     iItem.Flags[ IF_NODROP ] := True;
   if BeingVisible( aCoord, iBeing ) or BeingExplored( aCoord, iBeing ) then
-    FPresentation.addKillAnimation( 1000, 0, iBeing.UID, iBeing.Sprite, KillAnimRaise );
+    FPresentation.addKillAnimation( 1000, 0, iBeing, KillAnimRaise );
   Exit( iBeing );
 end;
 
@@ -1878,7 +1878,7 @@ function TLevel.PushItem( aWho : TBeing; aWhat : TItem; aFrom, aTo : TCoord2D ) 
 var iItemOld : TItem;
 begin
   if ( aWho = nil ) or ( aWhat = nil ) or ( aWhat.Position <> aFrom ) then Exit( False );
-  FPresentation.addMoveAnimation( aWho.VisualTime( aWho.getMoveCost, AnimationSpeedPush ), 0, aWhat.UID, aFrom, aTo, False, False );
+  FPresentation.addMoveAnimation( aWho.VisualTime( aWho.getMoveCost, AnimationSpeedPush ), 0, aWhat, aFrom, aTo, False );
   iItemOld := Item[ aTo ];
   SetItem( aTo, aWhat );
   SetItem( aFrom, nil );
@@ -2353,7 +2353,7 @@ begin
   iItem  := State.ToObject(2) as TItem;
   iValue := State.ToInteger(3);
   if iLevel.isVisible( iItem.Position ) then
-    iLevel.Presentation.addItemAnimation( iItem.Sprite.Frametime * Abs( iValue ), 0, iItem.UID, iValue );
+    iLevel.Presentation.addItemAnimation( iItem.Sprite.Frametime * Abs( iValue ), 0, iItem, iValue );
   Result := 0;
 end;
 

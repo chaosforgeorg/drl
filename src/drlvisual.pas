@@ -13,7 +13,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlvisual;
 interface
 uses vrltools, vvisualmap,
-     dfdata, dflevel;
+     dfdata, dfthing, dflevel;
 
 const
   // Cell flags of TDRLVisualCell.
@@ -50,6 +50,10 @@ TDRLVisualMap = class( TDRLVisualMapBase )
   procedure Cover( const aCoord : TCoord2D );
   procedure Uncover( const aCoord : TCoord2D );
   function Covered( const aCoord : TCoord2D ) : Boolean;
+  // Whether aThing is presented as a thing of the level, unless a clip
+  // claims it: it is in the level and, as a being, not killed. A killed being
+  // is shown only by its death clip.
+  function Presentable( aThing : TThing ) : Boolean;
 protected
   function SourceChanged : Boolean; override;
   procedure BeginCompare; override;
@@ -70,7 +74,8 @@ end;
 
 implementation
 
-uses math;
+uses math,
+     dfbeing;
 
 { TDRLVisualMap }
 
@@ -104,6 +109,11 @@ end;
 function TDRLVisualMap.Covered( const aCoord : TCoord2D ) : Boolean;
 begin
   Exit( Contains( aCoord ) and ( FCovers[ CoverIndex( aCoord ) ] > 0 ) );
+end;
+
+function TDRLVisualMap.Presentable( aThing : TThing ) : Boolean;
+begin
+  Exit( ( aThing.Parent = FLevel ) and not ( ( aThing is TBeing ) and TBeing( aThing ).Killed ) );
 end;
 
 function TDRLVisualMap.Visible( const aCoord : TCoord2D ) : Boolean;

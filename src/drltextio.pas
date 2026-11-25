@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drltextio;
 interface
 
-uses vutil, vrltools, vtextmap, vioevent, vio, viotypes, vluamapnode, vlua,
+uses vutil, vrltools, vtextmap, vioevent, vio, viotypes, vluamapnode, vluaentitynode, vlua,
      drlio, dfdata, dflevel, drlconfig, drlconfiguration, drlmodule;
 
 // TDRLTextIO
@@ -33,8 +33,8 @@ type TDRLTextIO = class( TDRLIO, ITextMap )
     procedure addMarkAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aColor : Byte; aPic : Char ); override;
     procedure addSoundAnimation( aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord ); override;
     procedure Explosion( aDelay : Integer; aWhere : TCoord2D; const aData : TExplosionData; const aCells : array of TCoord2D ); override;
-    procedure HideThing( aUID : TUID; aDelay : Integer ); override;
-    procedure LingerThing( aUID : TUID; aDelay : Integer ); override;
+    procedure HideThing( aThing : TLuaEntityNode; aDelay : Integer ); override;
+    procedure LingerThing( aThing : TLuaEntityNode; aDelay : Integer ); override;
 
     procedure VisualChanged; override;
     function GetGylph( const aCoord : TCoord2D ) : TIOGylph;
@@ -386,9 +386,7 @@ begin
       if ( iNode is TThing ) and ( ( iNode is TBeing ) = iBeings ) then
       begin
         iThing := TThing( iNode );
-        // A killed being is no longer shown.
-        if ( iThing is TBeing ) and TBeing( iThing ).Killed then Continue;
-        if not Appearing( iThing.UID ) then
+        if iMap.Presentable( iThing ) and not Appearing( iThing.UID ) then
           Put( iThing.Position, iThing, iBeings, iThing.Gylph );
       end;
   end;
@@ -403,20 +401,18 @@ begin
   Exit( False );
 end;
 
-procedure TDRLTextIO.HideThing( aUID : TUID; aDelay : Integer );
+procedure TDRLTextIO.HideThing( aThing : TLuaEntityNode; aDelay : Integer );
 begin
-  if ( aDelay <= 0 ) or not CanAnimateLevel then Exit;
-  FTextMap.AddAnimation( TTextAppearAnimation.Create( aUID, aDelay ) );
+  if not CanAnimateLevel then Exit;
+  FTextMap.AddAnimation( TTextAppearAnimation.Create( aThing.UID, aDelay ) );
 end;
 
-procedure TDRLTextIO.LingerThing( aUID : TUID; aDelay : Integer );
-var iThing : TThing;
+procedure TDRLTextIO.LingerThing( aThing : TLuaEntityNode; aDelay : Integer );
 begin
-  if ( aDelay <= 0 ) or not CanAnimateLevel then Exit;
-  iThing := Level.Context.UIDs.Get( aUID ) as TThing;
+  if not CanAnimateLevel then Exit;
   // A thing removed before it appeared is never shown.
-  if ( iThing = nil ) or Appearing( aUID ) then Exit;
-  FTextMap.AddAnimation( TTextLingerAnimation.Create( iThing, aDelay ) );
+  if Appearing( aThing.UID ) then Exit;
+  FTextMap.AddAnimation( TTextLingerAnimation.Create( aThing as TThing, aDelay ) );
 end;
 
 procedure TDRLTextIO.VisualChanged;

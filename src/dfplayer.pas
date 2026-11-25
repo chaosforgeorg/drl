@@ -520,7 +520,7 @@ begin
      then iLevel.playSound( 'gib', FPosition, aDelay )
      else PlaySound( 'die', aDelay );
 
-  iLevel.Presentation.addKillAnimation( 1000, aDelay, FUID, Sprite );
+  iLevel.Presentation.addKillAnimation( 1000, aDelay, Self );
   if NukeActivated > 0 then
   begin
     NukeActivated := 1;
