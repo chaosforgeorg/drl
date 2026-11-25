@@ -261,7 +261,10 @@ private
   FDest   : TVec2i;
   FTo     : TCoord2D;
 protected
+  // The latest move created, which immediate moves retarget.
   class var CCurrent : TGFXScreenMoveAnimation;
+  // The latest move started; only it moves the camera.
+  class var CActive  : TGFXScreenMoveAnimation;
 end;
 
 // Draws a cell's top layer frame by frame, covering the presented cell
@@ -876,21 +879,24 @@ begin
   CCurrent.FDest     := CCurrent.FSpriteMap.ShiftValue( aTo );
   CCurrent.FTime     := 0;
   CCurrent.FDuration := Max( aDuration, Round( Sqrt( CCurrent.FSource.Distance( CCurrent.FDest ) ) ) );;
+  // Its clock restarts, so OnStart runs again and it takes over the camera.
   Exit( True );
 end;
 
 procedure TGFXScreenMoveAnimation.OnStart;
 begin
-  // The camera starts from where earlier moves have left it.
+  // The camera starts from where earlier moves have left it, and this move
+  // takes it over from any still running.
   FSource   := FSpriteMap.NewShift;
   FDest     := FSpriteMap.ShiftValue( FTo );
   FDuration := Max( FDuration, Round( Sqrt( FSource.Distance( FDest ) ) ) );
+  CActive   := Self;
 end;
 
 procedure TGFXScreenMoveAnimation.OnUpdate( aTime : DWord );
 begin
   inherited OnUpdate( aTime );
-  if Started then
+  if CActive = Self then
     FSpriteMap.NewShift := Lerp( FSource, FDest, Minf(FTime/FDuration,1.0) );
 end;
 
@@ -900,11 +906,12 @@ end;
 
 destructor TGFXScreenMoveAnimation.Destroy;
 begin
-  if CCurrent = Self then
+  if CActive = Self then
   begin
     FSpriteMap.NewShift := FDest;
-    CCurrent := nil;
+    CActive := nil;
   end;
+  if CCurrent = Self then CCurrent := nil;
   inherited Destroy;
 end;
 
