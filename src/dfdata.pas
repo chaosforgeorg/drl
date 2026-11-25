@@ -219,9 +219,11 @@ type IDRLPresentation = interface( IRLPresentation )
   // A change made now to the cell is shown, with the neighbours derived
   // from it, once aDelay ms of the current action have been presented.
   procedure HoldCell( const aCoord : TCoord2D; aDelay : Integer );
-  // The thing keeps its presented state for aDelay ms; a thing added now
-  // appears and a removed one disappears then.
-  procedure HoldThing( aUID : TUID; aDelay : Integer );
+  // A thing just added appears after aDelay ms.
+  procedure HideThing( aUID : TUID; aDelay : Integer );
+  // A thing about to be removed, still in the level, disappears after
+  // aDelay ms.
+  procedure LingerThing( aUID : TUID; aDelay : Integer );
   procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ); overload;
   procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single ); overload;
   procedure addMoveAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aBeing : Boolean; aWipeBump : Boolean; aFinishBeforeNext : Boolean = False );

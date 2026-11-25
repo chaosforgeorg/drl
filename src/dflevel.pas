@@ -974,7 +974,7 @@ procedure TLevel.Remove ( Node : TNode ) ;
 begin
   if FActiveBeing = Node then FActiveBeing := nil;
   if ( FHookDelay > 0 ) and ( Node is TThing ) then
-    FPresentation.HoldThing( Node.UID, FHookDelay );
+    FPresentation.LingerThing( Node.UID, FHookDelay );
   inherited Remove( Node );
 end;
 
@@ -986,7 +986,7 @@ begin
     TBeing(aThing).LastPos := aWhere;
   Displace( aThing, aWhere );
   if FHookDelay > 0 then
-    FPresentation.HoldThing( aThing.UID, FHookDelay );
+    FPresentation.HideThing( aThing.UID, FHookDelay );
 end;
 
 procedure TLevel.DropCorpse(aCoord: TCoord2D; CellID: Byte);

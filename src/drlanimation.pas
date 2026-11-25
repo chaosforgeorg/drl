@@ -9,7 +9,7 @@ interface
 uses
   classes, sysutils, math,
   vnode, vuid, vutil, vcolor, vmath, vvector, vrltools, vvision, vanimation, vrandom, viotypes, vglquadrenderer,
-  dfdata, dflevel, drlparticles, drlio, drlspritemapbase, drlspritemap, drlvisual;
+  dfdata, dfthing, dflevel, drlparticles, drlio, drlspritemapbase, drlspritemap, drlvisual;
 
 type TAnimation        = vanimation.TAnimation;
      TAnimationManager = vanimation.TAnimations;
@@ -31,6 +31,58 @@ TGFXLevelAnimation = class(TGFXAnimation)
   constructor Create( aSpriteMap : TDRLSpriteMap; aDuration : DWord; aDelay : DWord; aUID : TUID );
 protected
   FLevelMap : TDRLSpriteMap; // The same map as FSpriteMap, typed for level drawing.
+end;
+
+{ TGFXThingAnimation }
+
+// Presents one thing of the level, or one just removed from it, from the
+// clip's creation until its destruction, also while it waits to start.
+// Renderers draw a claimed thing only through its clip; see ThingAnimation.
+TGFXThingAnimation = class(TGFXLevelAnimation)
+  // aChain queues the clip after earlier clips of the thing. The thing, if it
+  // exists, is captured for drawing once it is gone.
+  constructor Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aVisualMap : TDRLVisualMap; aDuration : DWord; aDelay : DWord;
+    aThing : TUID; const aCoord : TCoord2D; aChain : Boolean );
+  // Draws the thing as presented now.
+  procedure PushThing; virtual; abstract;
+  // Where the thing is presented, in cell units; False when it is not.
+  function Position( out aPosition : TVec2f ) : Boolean; virtual; abstract;
+  // A clip that only hides its thing yields to any other clip claiming it.
+  function Hides : Boolean; virtual;
+protected
+  FLevel     : TLevel;        // Borrowed from the IO, which clears its animations first.
+  FVisualMap : TDRLVisualMap; // Borrowed from the IO, which clears its animations first.
+  FThing     : TUID;
+  FCoord     : TCoord2D;
+  FSprite    : TSprite;
+  FIsBeing   : Boolean;
+  // The thing while it is in the level and has not been killed.
+  function LiveThing : TThing;
+  // Draws the thing at aPosition with aLight, or with its cell's when -1.
+  procedure PushAt( const aPosition : TVec2f; aLight : Integer );
+public
+  property Thing : TUID     read FThing;
+  property Coord : TCoord2D read FCoord;
+end;
+
+// Hides a thing added under a presentation delay until the delay ends.
+TGFXAppearAnimation = class(TGFXThingAnimation)
+  constructor Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aVisualMap : TDRLVisualMap; aDuration : DWord;
+    aThing : TUID; const aCoord : TCoord2D );
+  procedure PushThing; override;
+  function Position( out aPosition : TVec2f ) : Boolean; override;
+  function Hides : Boolean; override;
+  // Another clip took the thing, which stays shown once that clip ends.
+  procedure Reveal;
+end;
+
+// Presents a thing removed under a presentation delay, as captured, until
+// the delay ends.
+TGFXLingerAnimation = class(TGFXThingAnimation)
+  constructor Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aVisualMap : TDRLVisualMap; aDuration : DWord;
+    aThing : TUID; const aCoord : TCoord2D );
+  procedure PushThing; override;
+  function Position( out aPosition : TVec2f ) : Boolean; override;
 end;
 
 { TGFXMissileAnimation }
@@ -153,17 +205,18 @@ end;
 
 { TGFXMoveAnimation }
 
-// Moves a visual thing, which it owns from creation: until it starts, the
-// thing stays where it is presented.
-TGFXMoveAnimation = class(TGFXLevelAnimation)
-  constructor Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aThings : TDRLVisualThings; aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aBeing : Boolean; aPartial : Single = 0.0; aFinishBeforeNext : Boolean = False );
+// Moves a thing, which it presents from creation: until it starts, the
+// thing stays in the cell it moves from.
+TGFXMoveAnimation = class(TGFXThingAnimation)
+  constructor Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aVisualMap : TDRLVisualMap; aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aBeing : Boolean; aPartial : Single = 0.0; aFinishBeforeNext : Boolean = False );
   procedure OnUpdate( aTime : DWord ); override;
-  destructor Destroy; override;
+  procedure PushThing; override;
+  function Position( out aPosition : TVec2f ) : Boolean; override;
 protected
   function TryBlend( aAnimation : TAnimation ) : Boolean; override;
 private
-  FThings        : TDRLVisualThings; // Borrowed from the IO, which clears its animations first.
-  FThing         : TDRLVisualThing;
+  // Interpolated light of a moving being once started; -1 otherwise.
+  FLight         : Integer;
   FLightStart    : Byte;
   FLightEnd      : Byte;
   FPosition      : TVec2f;
@@ -182,7 +235,7 @@ public
 end;
 
 TGFXBumpAnimation = class(TGFXMoveAnimation)
-  constructor Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aThings : TDRLVisualThings; aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D;
+  constructor Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aVisualMap : TDRLVisualMap; aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D;
     aBeing : Boolean; aAmount : Single; aBlend : Boolean );
 end;
 
@@ -218,38 +271,30 @@ private
   FRotation  : Byte;
 end;
 
-// Steps an item's sprite frames; its visual thing draws the result.
-TGFXItemAnimation = class(TGFXAnimation)
-  constructor Create( aSpriteMap : TSpriteMap; aUIDs : TUIDStore; aThings : TDRLVisualThings; aDuration : DWord; aDelay : DWord; aUID : TUID; aValue : Integer );
+// Steps the sprite frames of an item, which must exist, presenting it
+// meanwhile.
+TGFXItemAnimation = class(TGFXThingAnimation)
+  constructor Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aVisualMap : TDRLVisualMap; aDuration : DWord; aDelay : DWord; aUID : TUID; aValue : Integer );
   procedure OnUpdate( aTime : DWord ); override;
-  destructor Destroy; override;
+  procedure PushThing; override;
+  function Position( out aPosition : TVec2f ) : Boolean; override;
 private
-  FUIDs   : TUIDStore;
-  FThings : TDRLVisualThings; // Borrowed from the IO, which clears its animations first.
-  FThing  : TDRLVisualThing;
-  FSprite : TSprite;
   FValue  : Integer;
 end;
 
-// Shows a being's death, raise or transition frames on its visual thing,
-// which it owns from creation: until it starts, the being stays as shown.
-TGFXKillAnimation = class(TGFXLevelAnimation)
-  constructor Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aVisual : TDRLVisualState; aDuration : DWord; aDelay : DWord; aUID : TUID; aKind : TKillAnimation = KillAnimDeath );
-  procedure OnUpdate( aTime : DWord ); override;
+// Shows the death, raise or transition frames of a being, which must exist,
+// presenting it from creation: until it starts, the being stays as shown.
+// Coord is the cell it dies in; its corpse is presented when the clip ends.
+TGFXKillAnimation = class(TGFXThingAnimation)
+  constructor Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aVisualMap : TDRLVisualMap; aDuration : DWord; aDelay : DWord; aUID : TUID; aKind : TKillAnimation = KillAnimDeath );
+  procedure PushThing; override;
+  function Position( out aPosition : TVec2f ) : Boolean; override;
   destructor Destroy; override;
 private
-  FLevel      : TLevel;
-  FVisual     : TDRLVisualState; // Borrowed from the IO, which clears its animations first.
-  FThing      : TDRLVisualThing;
-  FSprite     : TSprite;
   FLight      : Byte;
-  FCoord      : TCoord2D;
   FSprites    : array[0..3] of Integer;
   FCount      : Integer;
   FKind       : TKillAnimation;
-public
-  // Cell the being dies in; its corpse is presented when the clip ends.
-  property Coord : TCoord2D read FCoord;
 end;
 
 
@@ -271,10 +316,14 @@ protected
 end;
 
 
+// The clip presenting a thing, if any: the first claiming it that does not
+// only hide it, else one that does.
+function ThingAnimation( aAnimations : TAnimationManager; aUID : TUID ) : TGFXThingAnimation;
+
 implementation
 
 uses vlog, vdebug,
-     dfbeing, dfthing;
+     dfbeing, dfitem;
 
 { TGFXAnimation }
 
@@ -290,6 +339,134 @@ constructor TGFXLevelAnimation.Create( aSpriteMap : TDRLSpriteMap; aDuration : D
 begin
   inherited Create( aSpriteMap, aDuration, aDelay, aUID );
   FLevelMap := aSpriteMap;
+end;
+
+{ TGFXThingAnimation }
+
+constructor TGFXThingAnimation.Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aVisualMap : TDRLVisualMap; aDuration : DWord; aDelay : DWord;
+  aThing : TUID; const aCoord : TCoord2D; aChain : Boolean );
+var iThing : TThing;
+begin
+  if aChain
+    then inherited Create( aSpriteMap, aDuration, aDelay, aThing )
+    else inherited Create( aSpriteMap, aDuration, aDelay, 0 );
+  FLevel     := aLevel;
+  FVisualMap := aVisualMap;
+  FThing     := aThing;
+  FCoord     := aCoord;
+  FSprite    := Default( TSprite );
+  FIsBeing   := False;
+  iThing     := FLevel.Context.UIDs.Get( aThing ) as TThing;
+  if iThing = nil then Exit;
+  FSprite  := iThing.Sprite;
+  FIsBeing := iThing is TBeing;
+end;
+
+function TGFXThingAnimation.Hides : Boolean;
+begin
+  Exit( False );
+end;
+
+function TGFXThingAnimation.LiveThing : TThing;
+begin
+  Result := FLevel.Context.UIDs.Get( FThing ) as TThing;
+  if ( Result <> nil ) and ( ( Result.Parent <> FLevel ) or ( ( Result is TBeing ) and TBeing( Result ).Killed ) ) then
+    Result := nil;
+end;
+
+procedure TGFXThingAnimation.PushAt( const aPosition : TVec2f; aLight : Integer );
+var iWorld : TThing;
+    iPixel : TVec2i;
+begin
+  // The thing, while it is in the level, gives its current look.
+  iWorld := LiveThing;
+  iPixel := FLevelMap.PixelPosition( aPosition );
+  if not FIsBeing then
+  begin
+    if aLight < 0 then aLight := 255;
+    if iWorld <> nil
+      then FLevelMap.PushSpriteItem( iPixel, iWorld.Sprite, aLight )
+      else FLevelMap.PushSpriteItem( iPixel, FSprite, aLight );
+    Exit;
+  end;
+  if aLight < 0 then
+    if FVisualMap.Visible( FCoord ) then aLight := FLevelMap.VariableLight( FCoord, 30 ) else aLight := 0;
+  if iWorld <> nil then
+  begin
+    FLevelMap.PushSpriteBeing( iPixel, FLevelMap.GetBeingSprite( TBeing( iWorld ) ), aLight );
+    FLevelMap.PushBeingOverlay( iPixel, TBeing( iWorld ), aLight );
+  end
+  else
+    FLevelMap.PushSpriteBeing( iPixel, FSprite, aLight );
+end;
+
+function ThingAnimation( aAnimations : TAnimationManager; aUID : TUID ) : TGFXThingAnimation;
+var iAnimation : TAnimation;
+    iThing     : TGFXThingAnimation;
+begin
+  Result := nil;
+  if aUID = 0 then Exit;
+  for iAnimation in aAnimations.Animations do
+    if iAnimation is TGFXThingAnimation then
+    begin
+      iThing := TGFXThingAnimation( iAnimation );
+      if iThing.FThing <> aUID then Continue;
+      if not iThing.Hides then Exit( iThing );
+      if Result = nil then Result := iThing;
+    end;
+end;
+
+{ TGFXAppearAnimation }
+
+constructor TGFXAppearAnimation.Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aVisualMap : TDRLVisualMap; aDuration : DWord;
+  aThing : TUID; const aCoord : TCoord2D );
+begin
+  inherited Create( aSpriteMap, aLevel, aVisualMap, aDuration, 0, aThing, aCoord, False );
+  // Only strict waits wait for things to appear.
+  FBlocking := False;
+end;
+
+procedure TGFXAppearAnimation.PushThing;
+begin
+end;
+
+function TGFXAppearAnimation.Position( out aPosition : TVec2f ) : Boolean;
+begin
+  aPosition := Vec2f( 0, 0 );
+  Exit( False );
+end;
+
+function TGFXAppearAnimation.Hides : Boolean;
+begin
+  Exit( True );
+end;
+
+procedure TGFXAppearAnimation.Reveal;
+begin
+  FThing := 0;
+end;
+
+{ TGFXLingerAnimation }
+
+constructor TGFXLingerAnimation.Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aVisualMap : TDRLVisualMap; aDuration : DWord;
+  aThing : TUID; const aCoord : TCoord2D );
+begin
+  inherited Create( aSpriteMap, aLevel, aVisualMap, aDuration, 0, aThing, aCoord, False );
+  // Only strict waits wait for things to go.
+  FBlocking := False;
+end;
+
+procedure TGFXLingerAnimation.PushThing;
+begin
+  if FIsBeing
+    then FLevelMap.PushPresentedBeing( FCoord, nil, FSprite )
+    else FLevelMap.PushPresentedItem( FCoord, nil, FSprite );
+end;
+
+function TGFXLingerAnimation.Position( out aPosition : TVec2f ) : Boolean;
+begin
+  aPosition := Vec2f( FCoord.X - 1, FCoord.Y - 1 );
+  Exit( True );
 end;
 
 { TGFXMissileAnimation }
@@ -557,13 +734,12 @@ end;
 
 { TGFXMoveAnimation }
 
-constructor TGFXMoveAnimation.Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aThings : TDRLVisualThings; aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D;
+constructor TGFXMoveAnimation.Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aVisualMap : TDRLVisualMap; aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D;
   aBeing : Boolean; aPartial : Single; aFinishBeforeNext : Boolean ) ;
 var iBeing : TThing;
 begin
-  inherited Create( aSpriteMap, aDuration, aDelay, 0 );
-  FUID           := aUID;
-  FThings        := aThings;
+  inherited Create( aSpriteMap, aLevel, aVisualMap, aDuration, aDelay, aUID, aFrom, True );
+  FLight         := -1;
   FBeing         := aBeing;
   FMustFinish    := aFinishBeforeNext;
   FMoveStartTime := 0;
@@ -593,7 +769,6 @@ begin
   if aPartial < 0.0 then
     FSource := Lerp( FSource, FTarget, 1.0+aPartial );
   FPosition := FSource;
-  FThing := FThings.Acquire( FUID, aFrom );
 end;
 
 function TGFXMoveAnimation.TryBlend( aAnimation : TAnimation ) : Boolean;
@@ -660,10 +835,10 @@ begin
   end;
 end;
 
-constructor TGFXBumpAnimation.Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aThings : TDRLVisualThings; aDuration : DWord; aDelay : DWord; aUID : TUID;
+constructor TGFXBumpAnimation.Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aVisualMap : TDRLVisualMap; aDuration : DWord; aDelay : DWord; aUID : TUID;
   aFrom, aTo : TCoord2D; aBeing : Boolean; aAmount : Single; aBlend : Boolean );
 begin
-  inherited Create( aSpriteMap, aLevel, aThings, aDuration, aDelay, aUID, aFrom, aTo, aBeing, aAmount );
+  inherited Create( aSpriteMap, aLevel, aVisualMap, aDuration, aDelay, aUID, aFrom, aTo, aBeing, aAmount );
   FReturnTarget := FSource;
   FLightReturn := FLightStart;
   FReturnDuration := aDuration;
@@ -677,17 +852,18 @@ begin
   inherited OnUpdate( aTime );
   if not Started then Exit;
   Interpolate( FPosition, iLight );
-  FThing.Position := FPosition;
-  if FBeing
-    then FThing.Light := iLight
-    else FThing.Light := -1;
+  if FBeing then FLight := iLight;
 end;
 
-destructor TGFXMoveAnimation.Destroy;
+procedure TGFXMoveAnimation.PushThing;
 begin
-  if Started then FThing.Light := -1;
-  FThings.Release( FThing );
-  inherited Destroy;
+  PushAt( FPosition, FLight );
+end;
+
+function TGFXMoveAnimation.Position( out aPosition : TVec2f ) : Boolean;
+begin
+  aPosition := FPosition;
+  Exit( True );
 end;
 
 { TGFXScreenMoveAnimation }
@@ -786,18 +962,11 @@ begin
   inherited Destroy;
 end;
 
-constructor TGFXItemAnimation.Create( aSpriteMap : TSpriteMap; aUIDs : TUIDStore; aThings : TDRLVisualThings; aDuration : DWord; aDelay : DWord; aUID : TUID; aValue : Integer );
-var iThing : TThing;
+constructor TGFXItemAnimation.Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aVisualMap : TDRLVisualMap; aDuration : DWord; aDelay : DWord; aUID : TUID; aValue : Integer );
 begin
-  inherited Create( aSpriteMap, aDuration, aDelay, aUID );
-  FUIDs   := aUIDs;
-  FThings := aThings;
-  FValue  := aValue;
-  iThing  := FUIDs.Get( FUID ) as TThing;
-  FThing  := nil;
-  if iThing = nil then Exit;
-  FSprite := iThing.Sprite;
-  FThing  := FThings.Acquire( FUID, iThing.Position );
+  inherited Create( aSpriteMap, aLevel, aVisualMap, aDuration, aDelay, aUID,
+    ( aLevel.Context.UIDs.Get( aUID ) as TThing ).Position, True );
+  FValue := aValue;
 end;
 
 procedure TGFXItemAnimation.OnUpdate( aTime : DWord );
@@ -807,7 +976,7 @@ var iThing    : TThing;
 begin
   inherited OnUpdate( aTime );
   if not Started then Exit;
-  iThing := FUIDs.Get( FUID ) as TThing;
+  iThing := FLevel.Context.UIDs.Get( FThing ) as TThing;
   if iThing = nil then Exit;
   iSprite  := FSprite;
   iSegment := ( FTime * FValue ) div FDuration;
@@ -821,32 +990,32 @@ begin
   else
     iSprite.SpriteID[0] += ( FValue - iSegment ) * DRL_COLS;
   iThing.Sprite := iSprite;
-  if FThing <> nil then FThing.Sprite := iSprite;
 end;
 
-destructor TGFXItemAnimation.Destroy;
+procedure TGFXItemAnimation.PushThing;
+var iPosition : TVec2f;
 begin
-  if FThing <> nil then FThings.Release( FThing );
-  inherited Destroy;
+  Position( iPosition );
+  PushAt( iPosition, -1 );
 end;
 
-constructor TGFXKillAnimation.Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aVisual : TDRLVisualState; aDuration : DWord; aDelay : DWord; aUID : TUID; aKind : TKillAnimation = KillAnimDeath );
+function TGFXItemAnimation.Position( out aPosition : TVec2f ) : Boolean;
+begin
+  aPosition := Vec2f( FCoord.X - 1, FCoord.Y - 1 );
+  Exit( True );
+end;
+
+constructor TGFXKillAnimation.Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aVisualMap : TDRLVisualMap; aDuration : DWord; aDelay : DWord; aUID : TUID; aKind : TKillAnimation = KillAnimDeath );
 var iBeing      : TBeing;
     iCols       : Integer;
     iPlayerHack : Integer;
 begin
-  inherited Create( aSpriteMap, aDuration, aDelay, aUID );
-  FLevel  := aLevel;
-  FVisual := aVisual;
-  FKind   := aKind;
-  FThing  := nil;
-  iBeing  := FLevel.Context.UIDs.Get( FUID ) as TBeing;
-  if iBeing = nil then Exit;
+  iBeing := aLevel.Context.UIDs.Get( aUID ) as TBeing;
+  inherited Create( aSpriteMap, aLevel, aVisualMap, aDuration, aDelay, aUID, iBeing.Position, True );
+  FKind       := aKind;
   FCount      := 2;
   // TODO: remove hack!
   if ( aKind = KillAnimDeath ) and ( iBeing.GetLuaProtoValue('corpse') = 0 ) then FCount := 3;
-  FSprite     := iBeing.Sprite;
-  FCoord      := iBeing.Position;
 
   // TODO : remove hack!
   iPlayerHack := 0;
@@ -876,39 +1045,42 @@ begin
       FSprites[2] := FSprite.SpriteID[0] + (FSprite.Frames + 2) * iCols;
   end;
 
-  FThing := FVisual.Things.Acquire( FUID, FCoord );
   // A transition also hides the remains left at its position until it ends.
-  if FKind = KillAnimTransition then FVisual.Map.Cover( FCoord );
+  if FKind = KillAnimTransition then FVisualMap.Cover( FCoord );
 end;
 
-procedure TGFXKillAnimation.OnUpdate( aTime : DWord );
-var iBeing    : TBeing;
-    iSegment  : Integer;
+procedure TGFXKillAnimation.PushThing;
+var iPosition : TVec2f;
+    iFrame    : TSprite;
 begin
-  inherited OnUpdate( aTime );
-  if ( FThing = nil ) or not Started then Exit;
-  iBeing := FLevel.Context.UIDs.Get( FUID ) as TBeing;
+  Position( iPosition );
+  if not Started then
+  begin
+    PushAt( iPosition, -1 );
+    Exit;
+  end;
+  iFrame := FSprite;
+  iFrame.SpriteID[0] := FSprites[ Min( ( FTime * FCount ) div FDuration, FCount - 1 ) ];
+  FLevelMap.PushSpriteBeing( FLevelMap.PixelPosition( iPosition ), iFrame, FLight );
+end;
+
+function TGFXKillAnimation.Position( out aPosition : TVec2f ) : Boolean;
+var iBeing : TBeing;
+begin
+  // A raised or transformed being may still move.
+  iBeing := FLevel.Context.UIDs.Get( FThing ) as TBeing;
   if ( iBeing <> nil ) and not iBeing.Killed
-    then FThing.Position := Vec2f( iBeing.Position.X - 1, iBeing.Position.Y - 1 )
-    else FThing.Position := Vec2f( FCoord.X - 1, FCoord.Y - 1 );
-  iSegment := Min( ( FTime * FCount ) div FDuration, FCount - 1 );
-  FThing.Frame := FSprite;
-  FThing.Frame.SpriteID[0] := FSprites[iSegment];
-  FThing.HasFrame := True;
-  FThing.Light    := FLight;
+    then aPosition := Vec2f( iBeing.Position.X - 1, iBeing.Position.Y - 1 )
+    else aPosition := Vec2f( FCoord.X - 1, FCoord.Y - 1 );
+  Exit( True );
 end;
 
 destructor TGFXKillAnimation.Destroy;
 begin
-  if FThing <> nil then
-  begin
-    FThing.HasFrame := False;
-    FThing.Light    := -1;
-    FVisual.Things.Release( FThing );
-    if FKind = KillAnimTransition then FVisual.Map.Uncover( FCoord );
-  end;
+  if FKind = KillAnimTransition then FVisualMap.Uncover( FCoord );
   inherited Destroy;
 end;
+
 constructor TGFXScreenShakeAnimation.Create( aSpriteMap : TSpriteMap; aRNG : TRNG; aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection );
 begin
   inherited Create( aSpriteMap, aDuration, aDelay, 0 );

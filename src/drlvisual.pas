@@ -4,14 +4,15 @@
 Copyright (c) 2002-2025 by Kornel Kisielewicz
 ----------------------------------------------------
 }
-// The presented level: what the renderers draw instead of the live level.
+// The presented terrain: what the renderers draw instead of the live cells.
 // Gameplay resolves an action at once; holds placed with the presentation
 // delay of each change keep it hidden until its effect arrives on screen,
-// and fades then show it. Without holds or fades the presented level equals
-// the live one, so nothing needs to be flushed back into sync.
+// and fades then show it. Without holds or fades it equals the live level,
+// so nothing needs to be flushed back into sync. Things need no such state:
+// clips present the few that differ from the level.
 unit drlvisual;
 interface
-uses vutil, vrltools, viotypes, vvisualmap, vvisualthings,
+uses vutil, vrltools, vvisualmap,
      dfdata, dflevel;
 
 const
@@ -37,7 +38,9 @@ type TDRLVisualMapBase = specialize TGVisualMap<TDRLVisualCell>;
 
 { TDRLVisualMap }
 
-// Terrain, vision and blood marks of the presented level.
+// Terrain, vision and blood marks of the presented level. Owned by the IO
+// while it has both a level and a player; clips borrow it and are cleared
+// before it is destroyed.
 TDRLVisualMap = class( TDRLVisualMapBase )
   constructor Create( aLevel : TLevel );
   function Visible( const aCoord : TCoord2D ) : Boolean;
@@ -61,64 +64,13 @@ private
   FPlayer     : Byte;
   function BlocksVision( const aCell : TDRLVisualCell ) : Boolean;
   function CoverIndex( const aCoord : TCoord2D ) : Integer; inline;
-end;
-
-{ TDRLVisualThing }
-
-TDRLVisualThing = class( TVisualThing )
 public
-  // Last state of the world thing, kept for drawing after it is gone.
-  Sprite   : TSprite;
-  Gylph    : TIOGylph;
-  IsBeing  : Boolean;
-  // Written by owning clips: a light level overriding the presented cell's
-  // (-1 for none) and a frame replacing the thing's sprite.
-  Light    : Integer;
-  HasFrame : Boolean;
-  Frame    : TSprite;
-  constructor Create( aUID : TUID );
-end;
-
-{ TDRLVisualThings }
-
-TDRLVisualThings = class( TVisualThings )
-  function Get( aUID : TUID ) : TDRLVisualThing;
-  function Acquire( aUID : TUID; const aCoord : TCoord2D ) : TDRLVisualThing;
-protected
-  function CreateThing( aUID : TUID ) : TVisualThing; override;
-end;
-
-{ TDRLVisualState }
-
-// Owned by the IO for its current level; clips borrow it and are cleared
-// before it is destroyed.
-TDRLVisualState = class
-  constructor Create( aLevel : TLevel );
-  destructor Destroy; override;
-  // Advances presentation time, then follows the level.
-  procedure Update( aTime : DWord );
-  // Ends holds and fades; clips must have been cleared.
-  procedure Synchronize;
-  procedure HoldCell( const aCoord : TCoord2D; aDelay : DWord );
-  procedure HoldThing( aUID : TUID; aDelay : DWord );
-  // Something presented still differs from the level.
-  function Busy : Boolean;
-private
-  FLevel   : TLevel; // Borrowed from the IO.
-  FMap     : TDRLVisualMap;
-  FThings  : TDRLVisualThings;
-  procedure SyncThings;
-public
-  property Level  : TLevel           read FLevel;
-  property Map    : TDRLVisualMap    read FMap;
-  property Things : TDRLVisualThings read FThings;
+  property Level : TLevel read FLevel;
 end;
 
 implementation
 
-uses sysutils, math,
-     vnode,
-     dfthing, dfbeing;
+uses math;
 
 { TDRLVisualMap }
 
@@ -238,104 +190,6 @@ begin
   if ( aFrom.Style <> aTo.Style ) or ( aFrom.FStyle <> aTo.FStyle ) or ( aFrom.Deco <> aTo.Deco ) or
      ( aFrom.Floor <> aTo.Floor ) or ( aFrom.Rotation <> aTo.Rotation ) then
     Result := Max( Result, FLevel.Data.Cells[ aTo.Bottom ].Fade );
-end;
-
-{ TDRLVisualThing }
-
-constructor TDRLVisualThing.Create( aUID : TUID );
-begin
-  inherited Create( aUID );
-  Sprite   := Default( TSprite );
-  Gylph.ASCII := ' ';
-  Gylph.Color := 0;
-  IsBeing  := False;
-  Light    := -1;
-  HasFrame := False;
-  Frame    := Default( TSprite );
-end;
-
-{ TDRLVisualThings }
-
-function TDRLVisualThings.CreateThing( aUID : TUID ) : TVisualThing;
-begin
-  Exit( TDRLVisualThing.Create( aUID ) );
-end;
-
-function TDRLVisualThings.Get( aUID : TUID ) : TDRLVisualThing;
-begin
-  Exit( TDRLVisualThing( Find( aUID ) ) );
-end;
-
-function TDRLVisualThings.Acquire( aUID : TUID; const aCoord : TCoord2D ) : TDRLVisualThing;
-begin
-  Exit( TDRLVisualThing( inherited Acquire( aUID, aCoord ) ) );
-end;
-
-{ TDRLVisualState }
-
-constructor TDRLVisualState.Create( aLevel : TLevel );
-begin
-  inherited Create;
-  FLevel  := aLevel;
-  FMap    := TDRLVisualMap.Create( aLevel );
-  FThings := TDRLVisualThings.Create;
-  SyncThings;
-end;
-
-destructor TDRLVisualState.Destroy;
-begin
-  FreeAndNil( FThings );
-  FreeAndNil( FMap );
-  inherited Destroy;
-end;
-
-procedure TDRLVisualState.SyncThings;
-var iNode    : TNode;
-    iThing   : TThing;
-    iVisual  : TDRLVisualThing;
-    iFollows : Boolean;
-begin
-  FThings.BeginSync( FMap.Time );
-  for iNode in FLevel do
-    if iNode is TThing then
-    begin
-      iThing := TThing( iNode );
-      // A killed being is shown only by its death clip.
-      if ( iThing is TBeing ) and TBeing( iThing ).Killed then Continue;
-      iVisual := TDRLVisualThing( FThings.Report( iThing.UID, iThing.Position, iFollows ) );
-      iVisual.IsBeing := iThing is TBeing;
-      iVisual.Sprite  := iThing.Sprite;
-      iVisual.Gylph   := iThing.Gylph;
-    end;
-  FThings.EndSync;
-end;
-
-procedure TDRLVisualState.Update( aTime : DWord );
-begin
-  FMap.Update( aTime );
-  SyncThings;
-end;
-
-procedure TDRLVisualState.Synchronize;
-begin
-  FMap.Synchronize;
-  FThings.Clear;
-  SyncThings;
-end;
-
-procedure TDRLVisualState.HoldCell( const aCoord : TCoord2D; aDelay : DWord );
-begin
-  FMap.Hold( aCoord, aDelay );
-end;
-
-procedure TDRLVisualState.HoldThing( aUID : TUID; aDelay : DWord );
-begin
-  FThings.Hold( aUID, FMap.Time + aDelay );
-end;
-
-function TDRLVisualState.Busy : Boolean;
-begin
-  Exit( FMap.Busy or FThings.Busy );
 end;
 
 end.

@@ -149,7 +149,9 @@ type TDRLIO = class( TIORL, IDRLPresentation )
   procedure addRumbleAnimation( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord );
   procedure Explosion( aDelay : Integer; aWhere : TCoord2D; const aData : TExplosionData; const aCells : array of TCoord2D ); reintroduce; virtual;
   procedure HoldCell( const aCoord : TCoord2D; aDelay : Integer );
-  procedure HoldThing( aUID : TUID; aDelay : Integer );
+  // Each IO presents a thing added or removed under a delay with its clips.
+  procedure HideThing( aUID : TUID; aDelay : Integer ); virtual; abstract;
+  procedure LingerThing( aUID : TUID; aDelay : Integer ); virtual; abstract;
   procedure PulseBlood( aValue : Single ); virtual;
   function ShowsDecals : Boolean; virtual;
   // Reads ui.engine_sprites after a data load.
@@ -263,7 +265,7 @@ protected
   FTIGDefault     : TTIGStyle;
 
   // The presented level; exists while a level and a player are set.
-  FVisual         : TDRLVisualState;
+  FVisual         : TDRLVisualMap;
 private
   // Replaces the visual state after the level or player changed.
   procedure RebuildVisual;
@@ -287,7 +289,7 @@ public
   property SShotPath    : AnsiString      read FSShotPath write FSShotPath;
   property RunStatus    : TRunStatus      read FRunStatus;
   property AutoTarget   : TAutoTarget     read FAutoTarget;
-  property Visual       : TDRLVisualState read FVisual;
+  property Visual       : TDRLVisualMap   read FVisual;
   function GetPlayer : TPlayer;
   function GetLevel : TLevel;
   // The Session's player and level, set through SetPlayer and SetLevel.
@@ -374,7 +376,7 @@ begin
 end;
 
 procedure TDRLIO.RebuildVisual;
-var iOutgoing : TDRLVisualState;
+var iOutgoing : TDRLVisualMap;
 begin
   // Clips borrow the outgoing state, which is not synchronized again: its
   // level may already have lost its player.
@@ -383,7 +385,7 @@ begin
   ClearAnimations;
   iOutgoing.Free;
   if ( FLevel <> nil ) and ( FPlayer <> nil ) then
-    FVisual := TDRLVisualState.Create( FLevel as TLevel );
+    FVisual := TDRLVisualMap.Create( FLevel as TLevel );
   VisualChanged;
 end;
 
@@ -409,12 +411,7 @@ end;
 
 procedure TDRLIO.HoldCell( const aCoord : TCoord2D; aDelay : Integer );
 begin
-  if ( FVisual <> nil ) and ( aDelay > 0 ) then FVisual.HoldCell( aCoord, aDelay );
-end;
-
-procedure TDRLIO.HoldThing( aUID : TUID; aDelay : Integer );
-begin
-  if ( FVisual <> nil ) and ( aDelay > 0 ) then FVisual.HoldThing( aUID, aDelay );
+  if ( FVisual <> nil ) and ( aDelay > 0 ) then FVisual.Hold( aCoord, aDelay );
 end;
 
 procedure TDRLIO.addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection );

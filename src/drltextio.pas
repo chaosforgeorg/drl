@@ -7,7 +7,7 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drltextio;
 interface
 
-uses vrltools, vtextmap, vioevent, vio, viotypes, vluamapnode, vlua,
+uses vutil, vrltools, vtextmap, vioevent, vio, viotypes, vluamapnode, vlua,
      drlio, dfdata, dflevel, drlconfig, drlconfiguration, drlmodule;
 
 // TDRLTextIO
@@ -33,6 +33,8 @@ type TDRLTextIO = class( TDRLIO, ITextMap )
     procedure addMarkAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aColor : Byte; aPic : Char ); override;
     procedure addSoundAnimation( aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord ); override;
     procedure Explosion( aDelay : Integer; aWhere : TCoord2D; const aData : TExplosionData; const aCells : array of TCoord2D ); override;
+    procedure HideThing( aUID : TUID; aDelay : Integer ); override;
+    procedure LingerThing( aUID : TUID; aDelay : Integer ); override;
 
     procedure VisualChanged; override;
     function GetGylph( const aCoord : TCoord2D ) : TIOGylph;
@@ -57,14 +59,53 @@ type TDRLTextIO = class( TDRLIO, ITextMap )
     // unresolved color; #0 where none. Rebuilt after each presentation update.
     FThingGlyphs    : array[1..MAXX,1..MAXY] of TIOGylph;
     procedure UpdateThingGlyphs;
+    // Whether a clip hides the thing until it appears.
+    function Appearing( aUID : TUID ) : Boolean;
   end;
 
 implementation
 
 uses sysutils,
-     vioconsole, vtig, vvision, vutil, vlualibrary, vluagamestack, vvisualmap,
+     vioconsole, vtig, vvision, vnode, vanimation, vlualibrary, vluagamestack, vvisualmap,
      drlanimation, drlvisual,
-     dfbeing, dfitem;
+     dfthing, dfbeing, dfitem;
+
+type
+
+// Hides a thing added under a presentation delay until the delay ends.
+TTextAppearAnimation = class( TTextAnimation )
+  constructor Create( aThing : TUID; aDuration : DWord );
+private
+  FThing : TUID;
+end;
+
+// Shows the glyph of a thing removed under a presentation delay, as
+// captured, until the delay ends.
+TTextLingerAnimation = class( TTextAnimation )
+  constructor Create( aThing : TThing; aDuration : DWord );
+private
+  FCoord   : TCoord2D;
+  FGylph   : TIOGylph;
+  FIsBeing : Boolean;
+end;
+
+constructor TTextAppearAnimation.Create( aThing : TUID; aDuration : DWord );
+begin
+  inherited Create( aDuration, 0 );
+  FThing    := aThing;
+  // Only strict waits wait for things to appear.
+  FBlocking := False;
+end;
+
+constructor TTextLingerAnimation.Create( aThing : TThing; aDuration : DWord );
+begin
+  inherited Create( aDuration, 0 );
+  FCoord    := aThing.Position;
+  FGylph    := aThing.Gylph;
+  FIsBeing  := aThing is TBeing;
+  // Only strict waits wait for things to go.
+  FBlocking := False;
+end;
 
 // How a being sensed only by Intuition is drawn.
 const IntuitionChar  = '*';
@@ -295,58 +336,87 @@ begin
 end;
 
 procedure TDRLTextIO.UpdateThingGlyphs;
-var iLevel   : TLevel;
-    iMap     : TDRLVisualMap;
-    iVisual  : TDRLVisualThing;
-    iCoord   : TCoord2D;
-    iBeings  : Boolean;
-    iPresent : Boolean;
-    iVisible : Boolean;
-    iBeing   : TBeing;
-    iItem    : TItem;
-    i        : Integer;
+var iLevel     : TLevel;
+    iMap       : TDRLVisualMap;
+    iNode      : TNode;
+    iThing     : TThing;
+    iAnimation : TAnimation;
+    iBeings    : Boolean;
 
-  procedure Put( aASCII : Char; aColor : TIOColor );
+  // aThing is the live thing, or nil once it has been removed; it decides
+  // how the thing may be sensed.
+  procedure Put( const aCoord : TCoord2D; aThing : TThing; aBeing : Boolean; const aGylph : TIOGylph );
+  var iVisible : Boolean;
   begin
-    FThingGlyphs[ iCoord.X, iCoord.Y ].Init( aASCII, aColor );
+    if not iMap.Contains( aCoord ) then Exit;
+    iVisible := iMap.Visible( aCoord );
+    with FThingGlyphs[ aCoord.X, aCoord.Y ] do
+      if aBeing then
+      begin
+        if iVisible or ( ( aThing <> nil ) and iLevel.BeingExplored( aCoord, TBeing( aThing ) ) ) then
+          Init( aGylph.ASCII, aGylph.Color )
+        else if ( aThing <> nil ) and iLevel.BeingIntuited( aCoord, TBeing( aThing ) ) then
+          Init( IntuitionChar, IntuitionColor );
+      end
+      else
+      begin
+        if iVisible or ( ( aThing <> nil ) and iLevel.ItemVisible( aCoord, TItem( aThing ) ) ) then
+          Init( aGylph.ASCII, aGylph.Color )
+        else if ( ( aThing <> nil ) and iLevel.ItemExplored( aCoord, TItem( aThing ) ) ) or
+                ( ( aThing = nil ) and iMap.Explored( aCoord ) ) then
+          Init( aGylph.ASCII, DarkGray );
+      end;
   end;
 
 begin
   FillChar( FThingGlyphs, SizeOf( FThingGlyphs ), 0 );
   if FVisual = nil then Exit;
   iLevel := Level;
-  iMap   := FVisual.Map;
-  // Later passes draw over earlier ones: beings over items, and things in
-  // the level over things only clips or holds still present. A thing the
-  // player does not sense leaves what is below it.
+  iMap   := FVisual;
+  // Items first, then beings over them; a removed thing still presented is
+  // drawn under a thing of the level. A thing the player does not sense
+  // leaves what is below it.
   for iBeings in Boolean do
-    for iPresent in Boolean do
-      for i := 0 to FVisual.Things.Count - 1 do
+  begin
+    for iAnimation in FTextMap.Animations.Animations do
+      if iAnimation is TTextLingerAnimation then
+        with TTextLingerAnimation( iAnimation ) do
+          if FIsBeing = iBeings then Put( FCoord, nil, iBeings, FGylph );
+    for iNode in iLevel do
+      if ( iNode is TThing ) and ( ( iNode is TBeing ) = iBeings ) then
       begin
-        iVisual := TDRLVisualThing( FVisual.Things.Things[i] );
-        if ( not iVisual.Shown ) or ( iVisual.IsBeing <> iBeings ) or
-           ( iVisual.Present <> iPresent ) or ( not iMap.Contains( iVisual.Coord ) ) then Continue;
-        iCoord   := iVisual.Coord;
-        iVisible := iMap.Visible( iCoord );
-        // The live thing, while it exists, decides how it may be sensed.
-        if iBeings then
-        begin
-          iBeing := iLevel.Context.UIDs.Get( iVisual.UID ) as TBeing;
-          if iVisible or ( ( iBeing <> nil ) and iLevel.BeingExplored( iCoord, iBeing ) ) then
-            Put( iVisual.Gylph.ASCII, iVisual.Gylph.Color )
-          else if ( iBeing <> nil ) and iLevel.BeingIntuited( iCoord, iBeing ) then
-            Put( IntuitionChar, IntuitionColor );
-        end
-        else
-        begin
-          iItem := iLevel.Context.UIDs.Get( iVisual.UID ) as TItem;
-          if iVisible or ( ( iItem <> nil ) and iLevel.ItemVisible( iCoord, iItem ) ) then
-            Put( iVisual.Gylph.ASCII, iVisual.Gylph.Color )
-          else if ( ( iItem <> nil ) and iLevel.ItemExplored( iCoord, iItem ) ) or
-                  ( ( iItem = nil ) and iMap.Explored( iCoord ) ) then
-            Put( iVisual.Gylph.ASCII, DarkGray );
-        end;
+        iThing := TThing( iNode );
+        // A killed being is no longer shown.
+        if ( iThing is TBeing ) and TBeing( iThing ).Killed then Continue;
+        if not Appearing( iThing.UID ) then
+          Put( iThing.Position, iThing, iBeings, iThing.Gylph );
       end;
+  end;
+end;
+
+function TDRLTextIO.Appearing( aUID : TUID ) : Boolean;
+var iAnimation : TAnimation;
+begin
+  for iAnimation in FTextMap.Animations.Animations do
+    if ( iAnimation is TTextAppearAnimation ) and ( TTextAppearAnimation( iAnimation ).FThing = aUID ) then
+      Exit( True );
+  Exit( False );
+end;
+
+procedure TDRLTextIO.HideThing( aUID : TUID; aDelay : Integer );
+begin
+  if ( FVisual = nil ) or ( aDelay <= 0 ) or not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
+  FTextMap.AddAnimation( TTextAppearAnimation.Create( aUID, aDelay ) );
+end;
+
+procedure TDRLTextIO.LingerThing( aUID : TUID; aDelay : Integer );
+var iThing : TThing;
+begin
+  if ( FVisual = nil ) or ( aDelay <= 0 ) or not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
+  iThing := Level.Context.UIDs.Get( aUID ) as TThing;
+  // A thing removed before it appeared is never shown.
+  if ( iThing = nil ) or Appearing( aUID ) then Exit;
+  FTextMap.AddAnimation( TTextLingerAnimation.Create( iThing, aDelay ) );
 end;
 
 procedure TDRLTextIO.VisualChanged;
@@ -408,7 +478,7 @@ var iColor    : TIOColor;
     iState    : TDRLVisualCell;
 begin
   iLevel   := Level;
-  iMap     := FVisual.Map;
+  iMap     := FVisual;
   iVisible := iMap.Visible( aCoord );
 
   // Things, then terrain, both from the presented level.
