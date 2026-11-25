@@ -496,6 +496,7 @@ end;
 procedure TDRLGFXIO.ClearAnimations;
 begin
   FAnimations.Clear;
+  FSpriteMap.Offset := Vec2i( 0, 0 );
   inherited ClearAnimations;
 end;
 
@@ -509,8 +510,7 @@ procedure TDRLGFXIO.addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; 
 begin
   if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
   if FSettings.ScreenShake then
-    if not TGFXScreenShakeAnimation.Update( aDuration, aDelay, aStrength, aDirection ) then
-      FAnimations.addAnimation( TGFXScreenShakeAnimation.Create( FSpriteMap, FVisualRNG, aDuration, aDelay, aStrength, aDirection ) );
+    FAnimations.addAnimation( TGFXScreenShakeAnimation.Create( FSpriteMap, FVisualRNG, aDuration, aDelay, aStrength, aDirection ) );
 end;
 
 procedure TDRLGFXIO.addMoveAnimation ( aDuration : DWord; aDelay : DWord; aThing : TThing; aFrom, aTo : TCoord2D; aWipeBump : Boolean; aFinishBeforeNext : Boolean );
@@ -960,6 +960,8 @@ begin
   else
     FSpriteMap.Marker := NewCoord2D(-1,-1);
 
+  // Running screen shakes add their offsets to this.
+  FSpriteMap.Offset := Vec2i( 0, 0 );
   FAnimations.Update( aMSec );
   UpdatePresentation( aMSec );
 

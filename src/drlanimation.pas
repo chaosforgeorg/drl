@@ -306,19 +306,17 @@ end;
 
 { TGFXScreenShakeAnimation }
 
+// Adds its offset to the sprite map's, which the IO resets before each
+// animation update, so running shakes add up.
 TGFXScreenShakeAnimation = class(TGFXAnimation)
   constructor Create( aSpriteMap : TSpriteMap; aRNG : TRNG; aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection );
-  class function Update( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ) : Boolean;
   procedure OnUpdate( aTime : DWord ); override;
   procedure OnDraw; override;
-  destructor Destroy; override;
 private
   FStrength   : Single;
   FFrequencyX : Single;
   FFrequencyY : Single;
   FDirection  : TDirection;
-protected
-  class var CCurrent : TGFXScreenShakeAnimation;
 end;
 
 
@@ -1079,17 +1077,6 @@ begin
   FBlocking   := False;
 end;
 
-class function TGFXScreenShakeAnimation.Update( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ) : Boolean;
-begin
-  if CCurrent = nil then Exit( False );
-  CCurrent.FStrength := Maxf( CCurrent.FStrength, aStrength );
-  CCurrent.FDelay    := Min( CCurrent.FDelay, aDelay );
-  CCurrent.FDuration := Max( CCurrent.FDuration, aDuration );
-  if CCurrent.FDirection.code <> 0 then
-    CCurrent.FDirection := aDirection;
-  Exit( True );
-end;
-
 procedure TGFXScreenShakeAnimation.OnUpdate( aTime : DWord );
 var iFactor : Single;
     iFade   : Single;
@@ -1098,8 +1085,7 @@ var iFactor : Single;
     iMaxY   : Single;
 begin
   inherited OnUpdate( aTime );
-  iOffset := Vec2i(0,0);
-  if FTime < FDuration then
+  if Started and ( FTime < FDuration ) then
   begin
     iFactor := Minf( FTime / FDuration, 1.0 );
     iFade   := 1.0 - iFactor * iFactor;
@@ -1116,18 +1102,12 @@ begin
       iOffset.X := Round( FDirection.X * iMaxY * Sin( FTime * FFrequencyX * 2 * Pi ) );
       iOffset.Y := Round( FDirection.Y * iMaxY * Sin( FTime * FFrequencyX * 2 * Pi ) );
     end;
+    FSpriteMap.Offset := FSpriteMap.Offset + iOffset;
   end;
-  FSpriteMap.Offset := iOffset;
 end;
 
 procedure TGFXScreenShakeAnimation.OnDraw;
 begin
-end;
-
-destructor TGFXScreenShakeAnimation.Destroy;
-begin
-  FSpriteMap.Offset := Vec2i(0,0);
-  inherited Destroy;
 end;
 
 
