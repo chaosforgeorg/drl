@@ -45,6 +45,7 @@ type TDRLTextIO = class( TDRLIO, ITextMap )
   protected
     procedure RunLauncherLayer( aLayer : TIOLayer ); override;
     procedure ExplosionMark( aCoord : TCoord2D; const aData : TExplosionData; aDelay : DWord; aSeen : Boolean ); override;
+    procedure ExplosionEmitter( aWhere : TCoord2D; const aData : TExplosionData; aDelay : DWord ); override;
     procedure DrawHud; override;
   protected
     FTextMap        : TTextMap;
@@ -259,6 +260,10 @@ procedure TDRLTextIO.ExplosionMark( aCoord : TCoord2D; const aData : TExplosionD
 begin
   if aSeen then
     FTextMap.AddAnimation( TTextExplosionAnimation.Create( aCoord, '*', FExpl, aDelay ) );
+end;
+
+procedure TDRLTextIO.ExplosionEmitter( aWhere : TCoord2D; const aData : TExplosionData; aDelay : DWord );
+begin
 end;
 
 procedure TDRLTextIO.SetTarget( aTarget : TCoord2D; aColor : Byte; aRange : Byte );

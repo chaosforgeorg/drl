@@ -174,6 +174,20 @@ private
   FSpreadScale   : Single;
 end;
 
+{ TGFXEmitterAnimation }
+
+// Starts an unbound emitter at its cell once the delay ends, if the cell is
+// then presented as visible, or always if aVisualMap is nil.
+TGFXEmitterAnimation = class(TAnimation)
+  constructor Create( aParticles : TParticleStore; aVisualMap : TDRLVisualMap; aDelay : DWord; aEmitterID : Word; aCoord : TCoord2D );
+  procedure OnStart; override;
+private
+  FParticles : TParticleStore; // Borrowed from the level; the IO clears its animations first.
+  FVisualMap : TDRLVisualMap;  // Borrowed from the IO, which clears its animations first.
+  FEmitterID : Word;
+  FCoord     : TCoord2D;
+end;
+
 { TGFXBlinkAnimation }
 
 TGFXBlinkAnimation = class(TAnimation)
@@ -656,6 +670,25 @@ begin
     iDirection, FCount, FDecals,
     NewFloatRange( 0.25 * FDistanceScale, FDistanceScale ),
     NewFloatRange( 0.5, 1.0 ), FSpreadScale );
+end;
+
+{ TGFXEmitterAnimation }
+
+constructor TGFXEmitterAnimation.Create( aParticles : TParticleStore; aVisualMap : TDRLVisualMap; aDelay : DWord; aEmitterID : Word; aCoord : TCoord2D );
+begin
+  inherited Create( 1, aDelay, 0 );
+  FParticles := aParticles;
+  FVisualMap := aVisualMap;
+  FEmitterID := aEmitterID;
+  FCoord     := aCoord;
+  FBlocking  := False;
+end;
+
+procedure TGFXEmitterAnimation.OnStart;
+begin
+  if ( FVisualMap <> nil ) and ( not FVisualMap.Visible( FCoord ) ) then Exit;
+  FParticles.AddEmitterDirect( FEmitterID,
+    Vec3f( ( FCoord.X - 1 ) * 32 + 16, ( FCoord.Y - 1 ) * 32 + 16, 0 ) );
 end;
 
 { TGFXBlinkAnimation }

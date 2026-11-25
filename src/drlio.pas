@@ -217,6 +217,8 @@ protected
   // One cell of an explosion, reached after aDelay. aSeen is whether the
   // player sees the cell now, which a renderer may refine when drawing.
   procedure ExplosionMark( aCoord : TCoord2D; const aData : TExplosionData; aDelay : DWord; aSeen : Boolean ); virtual; abstract;
+  // The explosion's particle emitter at aWhere, started after aDelay.
+  procedure ExplosionEmitter( aWhere : TCoord2D; const aData : TExplosionData; aDelay : DWord ); virtual; abstract;
   // Advances the visual map's presentation time and follows the level.
   procedure UpdatePresentation( aMSec : DWord );
   // A level is presented: the visual map exists and the run is in play.
@@ -508,9 +510,7 @@ begin
     addRumbleAnimation( aDelay, Clamp( $2000 * aData.Range, $2000, $E000 ), $6000, Clamp( 100 * aData.Range, 100, 300 ) );
   end;
 
-  if GraphicsVersion and ( aData.EmitterID > 0 ) then
-    iLevel.Particles.AddEmitterDirect( aData.EmitterID,
-      Vec3f( ( aWhere.X - 1 ) * 32 + 16, ( aWhere.Y - 1 ) * 32 + 16, 0 ) );
+  ExplosionEmitter( aWhere, aData, aDelay );
 
   for iCoord in aCells do
   begin

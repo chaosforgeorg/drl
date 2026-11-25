@@ -91,6 +91,7 @@ type
     procedure DrawHUD; override;
     function ReadDefaultFont : TBitmapFont;
     procedure ExplosionMark( aCoord : TCoord2D; const aData : TExplosionData; aDelay : DWord; aSeen : Boolean ); override;
+    procedure ExplosionEmitter( aWhere : TCoord2D; const aData : TExplosionData; aDelay : DWord ); override;
     procedure DisplayChanged; override;
     procedure RecalculateScaling;
     procedure CalculateConsoleParams;
@@ -659,6 +660,16 @@ begin
       aData.Sprite.Frametime * aData.Sprite.Frames - 1, aDelay, aCoord, aData.Sprite ) )
     else FAnimations.AddAnimation( TGFXExplodeMarkAnimation.Create( FSpriteMap, iVisualMap,
       3 * aData.Delay, aDelay, aCoord, aData.Color, FEngine.Explosion ) );
+end;
+
+procedure TDRLGFXIO.ExplosionEmitter( aWhere : TCoord2D; const aData : TExplosionData; aDelay : DWord );
+var iVisualMap : TDRLVisualMap;
+begin
+  if not CanAnimateLevel then Exit;
+  if aData.EmitterID = 0 then Exit;
+  iVisualMap := FVisual;
+  if efAlwaysVisible in aData.Flags then iVisualMap := nil;
+  FAnimations.AddAnimation( TGFXEmitterAnimation.Create( Level.Particles, iVisualMap, aDelay, aData.EmitterID, aWhere ) );
 end;
 
 procedure TDRLGFXIO.SetTarget( aTarget : TCoord2D; aColor : Byte; aRange : Byte );
