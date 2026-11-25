@@ -217,7 +217,7 @@ implementation
 
 uses math,
      vlualibrary, vluaentitynode, vdebug, vluatools, vcolor, vvector,
-     dfplayer, dflevel, dfmap, drlhooks, drllua, drlgamedata;
+     dfplayer, dflevel, dfmap, drlhooks, drllua, drlgamedata, drlpresentation;
 
 
 function TBeing.getStrayChance( aDefender : TBeing; aWeapon : TItem ) : Byte;

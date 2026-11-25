@@ -9,7 +9,8 @@ unit dflevel;
 interface
 uses sysutils, classes,
      vluagamestack, vluaentitynode, vutil, vvision, vrltools, vnode, vluamapnode, vlua, vrandom, vvector, vparticleengine,
-     dfdata, dfmap, dfthing, dfbeing, dfitem, dfplayer, drlhooks, drlperk, drlmarkers, drldecals, drlparticles, drlgamedata;
+     dfdata, dfmap, dfthing, dfbeing, dfitem, dfplayer, drlhooks, drlperk, drlmarkers, drldecals, drlparticles, drlgamedata,
+     drlpresentation;
 
 type
 

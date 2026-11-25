@@ -7,8 +7,8 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlgfxio;
 interface
 uses vglquadrenderer, vgltypes, vluaconfig, vioevent, viotypes, vimage,
-     vrltools, vutil, vtextures, vvector, vbitmapfont, vio, vsdlio, vparticleengine, vluamapnode, vluaentitynode, vlua, vdf,
-     drlio, drlspritemapbase, drlspritemap, drlanimation, drlminimap, dfdata, dfthing, dflevel, drlconfig, drlconfiguration, drlmodule, drlvisual;
+     vrltools, vutil, vtextures, vvector, vbitmapfont, vio, vsdlio, vparticleengine, vluamapnode, vlua, vdf,
+     drlio, drlspritemapbase, drlspritemap, drlanimation, drlminimap, dfdata, dfthing, dfitem, dfbeing, dflevel, drlconfig, drlconfiguration, drlmodule, drlvisual;
 
 type
 
@@ -41,14 +41,14 @@ type
     procedure ClearAnimations; override;
     procedure Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0); override;
     procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ); override;
-    procedure addMoveAnimation( aDuration : DWord; aDelay : DWord; aThing : TLuaEntityNode; aFrom, aTo : TCoord2D; aWipeBump : Boolean; aFinishBeforeNext : Boolean = False ); override;
-    procedure addBumpAnimation( aDuration : DWord; aDelay : DWord; aBeing : TLuaEntityNode; aFrom, aTo : TCoord2D; aAmount : Single ); override;
+    procedure addMoveAnimation( aDuration : DWord; aDelay : DWord; aThing : TThing; aFrom, aTo : TCoord2D; aWipeBump : Boolean; aFinishBeforeNext : Boolean = False ); override;
+    procedure addBumpAnimation( aDuration : DWord; aDelay : DWord; aBeing : TBeing; aFrom, aTo : TCoord2D; aAmount : Single ); override;
     procedure addScreenMoveAnimation( aDuration : DWord; aTo : TCoord2D; aDelay : DWord = 0 ); override;
     procedure addCellAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aValue : Integer ); override;
-    procedure addItemAnimation( aDuration : DWord; aDelay : DWord; aItem : TLuaEntityNode; aValue : Integer ); override;
-    procedure addKillAnimation( aDuration : DWord; aDelay : DWord; aBeing : TLuaEntityNode; aKind : TKillAnimation = KillAnimDeath ); override;
-    procedure HideThing( aThing : TLuaEntityNode; aDelay : Integer ); override;
-    procedure LingerThing( aThing : TLuaEntityNode; aDelay : Integer ); override;
+    procedure addItemAnimation( aDuration : DWord; aDelay : DWord; aItem : TItem; aValue : Integer ); override;
+    procedure addKillAnimation( aDuration : DWord; aDelay : DWord; aBeing : TBeing; aKind : TKillAnimation = KillAnimDeath ); override;
+    procedure HideThing( aThing : TThing; aDelay : Integer ); override;
+    procedure LingerThing( aThing : TThing; aDelay : Integer ); override;
     procedure addMissileAnimation( aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aColor : Byte; aPic : Char; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False; aTrailNID : Word = 0 ); override;
     procedure addMarkAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aColor : Byte; aPic : Char ); override;
     procedure addFXAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite ); override;
@@ -163,7 +163,7 @@ uses classes, sysutils, math,
      vdebug, vlog, vmath, vgl3library, vuid, vvision, vlualibrary, vluagamestack,
      vglimage, vcolor, vglconsole, vioconsole,
      vtig, vtigstyle, vtigio,
-     dfbeing, dfitem, drlcontrollerbindings;
+     drlcontrollerbindings;
 
 
 // Scales from the settings and the drawable; DisplayChanged applies them.
@@ -512,7 +512,7 @@ begin
       FAnimations.addAnimation( TGFXScreenShakeAnimation.Create( FSpriteMap, FVisualRNG, aDuration, aDelay, aStrength, aDirection ) );
 end;
 
-procedure TDRLGFXIO.addMoveAnimation ( aDuration : DWord; aDelay : DWord; aThing : TLuaEntityNode; aFrom, aTo : TCoord2D; aWipeBump : Boolean; aFinishBeforeNext : Boolean );
+procedure TDRLGFXIO.addMoveAnimation ( aDuration : DWord; aDelay : DWord; aThing : TThing; aFrom, aTo : TCoord2D; aWipeBump : Boolean; aFinishBeforeNext : Boolean );
 var iCount : Integer;
 begin
   if not CanAnimateLevel then Exit;
@@ -526,14 +526,14 @@ begin
           then Animations.Delete( iCount )
           else Inc( iCount );
       until iCount >= Animations.Size;
-  FAnimations.AddAnimation( TGFXMoveAnimation.Create( FSpriteMap, Level, FVisual, aDuration, aDelay, aThing as TThing, aFrom, aTo, 0.0, aFinishBeforeNext ),
+  FAnimations.AddAnimation( TGFXMoveAnimation.Create( FSpriteMap, Level, FVisual, aDuration, aDelay, aThing, aFrom, aTo, 0.0, aFinishBeforeNext ),
     FSettings.AnimationBlending and ( not aWipeBump ) );
 end;
 
-procedure TDRLGFXIO.addBumpAnimation( aDuration : DWord; aDelay : DWord; aBeing : TLuaEntityNode; aFrom, aTo : TCoord2D; aAmount : Single );
+procedure TDRLGFXIO.addBumpAnimation( aDuration : DWord; aDelay : DWord; aBeing : TBeing; aFrom, aTo : TCoord2D; aAmount : Single );
 begin
   if not CanAnimateLevel then Exit;
-  FAnimations.AddAnimation( TGFXBumpAnimation.Create( FSpriteMap, Level, FVisual, aDuration, aDelay, aBeing as TBeing,
+  FAnimations.AddAnimation( TGFXBumpAnimation.Create( FSpriteMap, Level, FVisual, aDuration, aDelay, aBeing,
     aFrom, aTo, aAmount, FSettings.AnimationBlending ), FSettings.AnimationBlending );
 end;
 
@@ -550,40 +550,38 @@ begin
   FAnimations.addAnimation( TGFXCellAnimation.Create( FSpriteMap, Level, FVisual, aDuration, aDelay, aCoord, aSprite, aValue ) );
 end;
 
-procedure TDRLGFXIO.addItemAnimation( aDuration : DWord; aDelay : DWord; aItem : TLuaEntityNode; aValue : Integer );
+procedure TDRLGFXIO.addItemAnimation( aDuration : DWord; aDelay : DWord; aItem : TItem; aValue : Integer );
 begin
   if not CanAnimateLevel then Exit;
-  FAnimations.AddAnimation( TGFXItemAnimation.Create( FSpriteMap, Level, FVisual, aDuration, aDelay, aItem as TThing, aValue ) );
+  FAnimations.AddAnimation( TGFXItemAnimation.Create( FSpriteMap, Level, FVisual, aDuration, aDelay, aItem, aValue ) );
 end;
 
-procedure TDRLGFXIO.addKillAnimation( aDuration : DWord; aDelay : DWord; aBeing : TLuaEntityNode; aKind : TKillAnimation = KillAnimDeath );
-var iBeing : TBeing;
-    iCoord : TCoord2D;
+procedure TDRLGFXIO.addKillAnimation( aDuration : DWord; aDelay : DWord; aBeing : TBeing; aKind : TKillAnimation = KillAnimDeath );
+var iCoord : TCoord2D;
     iStart : DWord;
 begin
   if not CanAnimateLevel then Exit;
-  iBeing := aBeing as TBeing;
-  if not ( SF_PAINANIM in iBeing.Sprite.Flags ) then Exit;
-  iCoord := iBeing.Position;
+  if not ( SF_PAINANIM in aBeing.Sprite.Flags ) then Exit;
+  iCoord := aBeing.Position;
   // Clips of the same being run in sequence, so the start may be later.
-  iStart := FAnimations.AddAnimation( TGFXKillAnimation.Create( FSpriteMap, Level, FVisual, aDuration, aDelay, iBeing, aKind ) );
+  iStart := FAnimations.AddAnimation( TGFXKillAnimation.Create( FSpriteMap, Level, FVisual, aDuration, aDelay, aBeing, aKind ) );
   // The remains appear as the death clip ends.
   if aKind = KillAnimDeath then
     FVisual.Hold( iCoord, iStart + aDuration );
 end;
 
-procedure TDRLGFXIO.HideThing( aThing : TLuaEntityNode; aDelay : Integer );
+procedure TDRLGFXIO.HideThing( aThing : TThing; aDelay : Integer );
 begin
   if not CanAnimateLevel then Exit;
-  FAnimations.AddAnimation( TGFXAppearAnimation.Create( FSpriteMap, Level, FVisual, aDelay, aThing as TThing ) );
+  FAnimations.AddAnimation( TGFXAppearAnimation.Create( FSpriteMap, Level, FVisual, aDelay, aThing ) );
 end;
 
-procedure TDRLGFXIO.LingerThing( aThing : TLuaEntityNode; aDelay : Integer );
+procedure TDRLGFXIO.LingerThing( aThing : TThing; aDelay : Integer );
 begin
   if not CanAnimateLevel then Exit;
   // A thing removed before it appeared is never shown.
   if ThingAnimation( FAnimations, aThing.UID ) is TGFXAppearAnimation then Exit;
-  FAnimations.AddAnimation( TGFXLingerAnimation.Create( FSpriteMap, Level, FVisual, aDelay, aThing as TThing ) );
+  FAnimations.AddAnimation( TGFXLingerAnimation.Create( FSpriteMap, Level, FVisual, aDelay, aThing ) );
 end;
 
 

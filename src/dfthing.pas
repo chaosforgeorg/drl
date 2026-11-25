@@ -61,7 +61,7 @@ implementation
 
 uses typinfo, variants,
      vdebug, vtig,
-     drlgamedata, dflevel, drllua;
+     drlgamedata, dflevel, drllua, drlpresentation;
 
 constructor TThing.Create( const aID : AnsiString; aContext : TNodeContext );
 begin

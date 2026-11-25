@@ -7,8 +7,8 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drltextio;
 interface
 
-uses vutil, vrltools, vtextmap, vioevent, vio, viotypes, vluamapnode, vluaentitynode, vlua,
-     drlio, dfdata, dflevel, drlconfig, drlconfiguration, drlmodule;
+uses vutil, vrltools, vtextmap, vioevent, vio, viotypes, vluamapnode, vlua,
+     drlio, dfdata, dfthing, dflevel, drlconfig, drlconfiguration, drlmodule;
 
 // TDRLTextIO
 //
@@ -33,8 +33,8 @@ type TDRLTextIO = class( TDRLIO, ITextMap )
     procedure addMarkAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aColor : Byte; aPic : Char ); override;
     procedure addSoundAnimation( aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord ); override;
     procedure Explosion( aDelay : Integer; aWhere : TCoord2D; const aData : TExplosionData; const aCells : array of TCoord2D ); override;
-    procedure HideThing( aThing : TLuaEntityNode; aDelay : Integer ); override;
-    procedure LingerThing( aThing : TLuaEntityNode; aDelay : Integer ); override;
+    procedure HideThing( aThing : TThing; aDelay : Integer ); override;
+    procedure LingerThing( aThing : TThing; aDelay : Integer ); override;
 
     procedure VisualChanged; override;
     function GetGylph( const aCoord : TCoord2D ) : TIOGylph;
@@ -68,7 +68,7 @@ implementation
 uses sysutils,
      vioconsole, vtig, vvision, vnode, vanimation, vlualibrary, vluagamestack, vvisualmap,
      drlanimation, drlvisual,
-     dfthing, dfbeing, dfitem;
+     dfbeing, dfitem;
 
 type
 
@@ -401,18 +401,18 @@ begin
   Exit( False );
 end;
 
-procedure TDRLTextIO.HideThing( aThing : TLuaEntityNode; aDelay : Integer );
+procedure TDRLTextIO.HideThing( aThing : TThing; aDelay : Integer );
 begin
   if not CanAnimateLevel then Exit;
   FTextMap.AddAnimation( TTextAppearAnimation.Create( aThing.UID, aDelay ) );
 end;
 
-procedure TDRLTextIO.LingerThing( aThing : TLuaEntityNode; aDelay : Integer );
+procedure TDRLTextIO.LingerThing( aThing : TThing; aDelay : Integer );
 begin
   if not CanAnimateLevel then Exit;
   // A thing removed before it appeared is never shown.
   if Appearing( aThing.UID ) then Exit;
-  FTextMap.AddAnimation( TTextLingerAnimation.Create( aThing as TThing, aDelay ) );
+  FTextMap.AddAnimation( TTextLingerAnimation.Create( aThing, aDelay ) );
 end;
 
 procedure TDRLTextIO.VisualChanged;
