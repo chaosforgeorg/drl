@@ -282,14 +282,18 @@ private
   FRotation  : Byte;
 end;
 
-// Steps the sprite frames of an item, presenting it meanwhile.
+// Steps the sprite frames of an item, presenting it meanwhile with its own
+// frame, from the first one until it starts; the item is not changed.
 TGFXItemAnimation = class(TGFXThingAnimation)
   constructor Create( aSpriteMap : TDRLSpriteMap; aLevel : TLevel; aVisualMap : TDRLVisualMap; aDuration : DWord; aDelay : DWord; aItem : TThing; aValue : Integer );
   procedure OnUpdate( aTime : DWord ); override;
   procedure PushThing; override;
   function Position( out aPosition : TVec2f ) : Boolean; override;
 private
+  function FrameAt( aTime : DWord ) : TSprite;
+private
   FValue  : Integer;
+  FFrame  : TSprite;
 end;
 
 // Shows the death, raise or transition frames of a being, presenting it
@@ -956,36 +960,36 @@ constructor TGFXItemAnimation.Create( aSpriteMap : TDRLSpriteMap; aLevel : TLeve
 begin
   inherited Create( aSpriteMap, aLevel, aVisualMap, aDuration, aDelay, aItem, True );
   FValue := aValue;
+  FFrame := FrameAt( 0 );
+end;
+
+function TGFXItemAnimation.FrameAt( aTime : DWord ) : TSprite;
+var iSegment : Integer;
+begin
+  Result   := FSprite;
+  iSegment := ( aTime * FValue ) div FDuration;
+  if ( iSegment <> FValue ) then
+    iSegment += Sgn( FValue );
+  if Result.SCount > 1 then
+  begin
+    iSegment := Abs( iSegment );
+    Result.SpriteID[0] := Result.SpriteID[ iSegment ];
+  end
+  else
+    Result.SpriteID[0] += ( FValue - iSegment ) * DRL_COLS;
 end;
 
 procedure TGFXItemAnimation.OnUpdate( aTime : DWord );
-var iThing    : TThing;
-    iSprite   : TSprite;
-    iSegment  : Integer;
 begin
   inherited OnUpdate( aTime );
-  if not Started then Exit;
-  iThing := FLevel.Context.UIDs.Get( FThing ) as TThing;
-  if iThing = nil then Exit;
-  iSprite  := FSprite;
-  iSegment := ( FTime * FValue ) div FDuration;
-  if ( iSegment <> FValue ) then
-    iSegment += Sgn( FValue );
-  if iSprite.SCount > 1 then
-  begin
-    iSegment := Abs( iSegment );
-    iSprite.SpriteID[0] := iSprite.SpriteID[ iSegment ];
-  end
-  else
-    iSprite.SpriteID[0] += ( FValue - iSegment ) * DRL_COLS;
-  iThing.Sprite := iSprite;
+  if Started then FFrame := FrameAt( FTime );
 end;
 
 procedure TGFXItemAnimation.PushThing;
 var iPosition : TVec2f;
 begin
   Position( iPosition );
-  PushAt( iPosition, -1 );
+  FLevelMap.PushSpriteItem( FLevelMap.PixelPosition( iPosition ), FFrame, 255 );
 end;
 
 function TGFXItemAnimation.Position( out aPosition : TVec2f ) : Boolean;
