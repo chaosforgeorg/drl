@@ -1649,7 +1649,7 @@ begin
       NukeRun;
 
       FPlayer.NukeActivated := 0;
-      FPlayer.ApplyDamage( 6000, Target_Internal, Damage_Plasma, nil, 0 );
+      FPlayer.ApplyDamage( 6000, Target_Internal, Damage_Plasma, nil, NukeDuration div 2 );
 
       CallHook(Hook_OnNuked,[FIndex,FID]);
     end;
@@ -1658,6 +1658,7 @@ end;
 
 procedure TLevel.NukeRun;
 var iCount     : Integer;
+    iHookDelay : Integer;
     iExplosion : TExplosionData;
 begin
   iExplosion := Default( TExplosionData );
@@ -1677,7 +1678,11 @@ begin
     end;
   end;
   FPresentation.Blink( White, NukeDuration div 2, NukeDuration div 2 );
+  // What the blasts did not reach is flattened under the final flash.
+  iHookDelay := FHookDelay;
+  FHookDelay := NukeDuration div 2;
   FArea.ForAllCells( @NukeCell );
+  FHookDelay := iHookDelay;
 end;
 
 procedure TLevel.NukeCell(where: TCoord2D);
@@ -1701,7 +1706,7 @@ begin
   CellItem  := Item [ where ];
 
   if ( CellBeing <> nil ) and ( not CellBeing.isPlayer ) then
-    CellBeing.Kill( 15, True, nil, nil, 0, False );
+    CellBeing.Kill( 15, True, nil, nil, FHookDelay, False );
   if ( CellItem <> nil ) and ( not ( CellItem.Flags[ IF_NUKERESIST ] ) ) then
     DestroyItem( where );
 end;
