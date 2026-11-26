@@ -97,6 +97,7 @@ private
   FSprite    : TSprite;
   FStepDelay : DWord;
   FStep      : Word;
+  FTrail     : Word;
   FEmitter   : Integer;
 end;
 
@@ -458,6 +459,7 @@ begin
   FStepDelay := Max( FDuration div Max( ( aSource - aTarget ).LargerLength, 1 ), 1 );
   FRay    := aRay;
   FStep   := 0;
+  FTrail  := aTrailNID;
   FEmitter := -1;
   FPath.Next;
   iSize := FSpriteMap.GetGridSize;
@@ -466,10 +468,6 @@ begin
   FTarget.Init( aTarget.X*iSize-iSize div 2, aTarget.Y*iSize-iSize div 2 );
   FHeading := -arctan2( aTarget.X - aSource.X, aTarget.Y - aSource.Y );
   if FHeading < 0 then FHeading := FHeading + 2*PI;
-
-  if ( aTrailNID > 0 ) and ( not aRay ) then
-    FEmitter := FLevel.Particles.AddEmitterDirect( aTrailNID,
-      Vec3f( FSource.X / FSpriteMap.Engine.Scale, FSource.Y / FSpriteMap.Engine.Scale, 0 ) );
 end;
 
 destructor TGFXMissileAnimation.Destroy;
@@ -481,6 +479,7 @@ end;
 
 procedure TGFXMissileAnimation.OnUpdate( aTime : DWord );
 var iOldStep : Word;
+    iPos     : TVec2i;
 begin
   inherited OnUpdate( aTime );
   iOldStep := FStep;
@@ -492,6 +491,14 @@ begin
     begin
       FPath.Next;
       if FPath.Done then Break;
+    end;
+
+    // The trail starts where the missile first comes into sight.
+    if ( FTrail > 0 ) and ( FEmitter < 0 ) and Started and FVisualMap.Visible( FPath.Current ) then
+    begin
+      iPos := Lerp( FSource, FTarget, Minf( FTime / FDuration, 1.0 ) );
+      FEmitter := FLevel.Particles.AddEmitterDirect( FTrail,
+        Vec3f( iPos.X / FSpriteMap.Engine.Scale, iPos.Y / FSpriteMap.Engine.Scale, 0 ) );
     end;
   end;
 end;
