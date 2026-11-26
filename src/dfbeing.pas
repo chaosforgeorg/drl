@@ -57,7 +57,9 @@ TBeing = class(TThing,IPathQuery)
     function GetBonus( aHook : Byte; const aParams : array of Const ) : Integer; override;
     function GetBonusMul( aHook : Byte; const aParams : array of Const ) : Single; override;
     procedure BloodFloor;
-    procedure Knockback( aDir : TDirection; aStrength : Single );
+    // aDelay is the presentation delay of the push on the current action's
+    // timeline; the move and what it causes are shown from then.
+    procedure Knockback( aDir : TDirection; aStrength : Single; aDelay : Integer );
     destructor Destroy; override;
     function rollMeleeDamage( aWeapon : TItem = nil; aTarget : TBeing = nil ) : Integer;
     function getMoveCost : LongInt;
@@ -166,6 +168,7 @@ TBeing = class(TThing,IPathQuery)
     FKnockBacked   : Boolean;
     FDying         : Boolean;
 
+    FOverlayFrom   : QWord;
     FOverlayUntil  : QWord;
   public
     property Inv       : TInventory  read FInv       write FInv;
@@ -180,8 +183,8 @@ TBeing = class(TThing,IPathQuery)
     // depleted HP while the hooks decide.
     property Killed       : Boolean read FDying;
 
-    // Presentation time until which the pain sprite shows.
-    property OverlayUntil : QWord   read FOverlayUntil;
+    // Whether the pain sprite shows at presentation time aTime.
+    function InPain( aTime : QWord ) : Boolean;
   published
 
     property can_dual_wield       : Boolean read canDualWield;
@@ -215,7 +218,7 @@ implementation
 
 uses math,
      vlualibrary, vluaentitynode, vdebug, vluatools, vcolor, vvector,
-     dfplayer, dflevel, dfmap, drlhooks, drllua, drlgamedata;
+     dfplayer, dflevel, dfmap, drlhooks, drllua, drlgamedata, drlpresentation;
 
 
 function TBeing.getStrayChance( aDefender : TBeing; aWeapon : TItem ) : Byte;
@@ -353,7 +356,13 @@ begin
   FMeleeAttack  := False;
   FDying        := False;
 
+  FOverlayFrom  := 0;
   FOverlayUntil := 0;
+end;
+
+function TBeing.InPain( aTime : QWord ) : Boolean;
+begin
+  Exit( ( aTime >= FOverlayFrom ) and ( aTime < FOverlayUntil ) );
 end;
 
 procedure TBeing.LuaLoad( aTable : TLuaTable; aGameRNG : TRNG );
@@ -1186,7 +1195,7 @@ begin
   iVisualTime := Ceil( VisualTime( iMoveCost, AnimationSpeedMove ) * aVisualMultiplier );
   if isPlayer then
     TLevel( Parent ).Presentation.addScreenMoveAnimation( iVisualTime, aTarget );
-  TLevel( Parent ).Presentation.addMoveAnimation( iVisualTime, 0, FUID, Position, aTarget, Sprite, True, isPlayer and ( aMoveCost = 0 ) );
+  TLevel( Parent ).Presentation.addMoveAnimation( iVisualTime, 0, Self, Position, aTarget, isPlayer and ( aMoveCost = 0 ) );
   Displace( aTarget );
   if aMoveCost = -1
     then Dec( FSpeedCount, iMoveCost )
@@ -1355,7 +1364,7 @@ begin
   if iLevel.AnimationVisible( FPosition, Self ) or iLevel.AnimationVisible( LastMove, Self ) then
   begin
     iVisualMult := ( 100.0 / FSpeed ) * ( iMoveCost / 1000.0 ) * aVisualMultiplier;
-    iLevel.Presentation.addMoveAnimation( Ceil( iVisualMult * 100 ), 0, FUID,Position,LastMove,Sprite, True, False );
+    iLevel.Presentation.addMoveAnimation( Ceil( iVisualMult * 100 ), 0, Self, Position, LastMove, False );
   end;
   Displace( FMovePos );
   if BF_WALKSOUND in FFlags then
@@ -1676,7 +1685,6 @@ begin
     iLevel.Blood( FPosition, iDir, iBlood, not IsPlayer, aDelay, aOverkill );
 
   CallHook( Hook_OnDie, [ aOverkill, iMeleeKill ] );
-  iLevel.HookDelay := iHookDelay;
 
   if not aOverkill then
   begin
@@ -1689,11 +1697,13 @@ begin
   else
     playSound( 'die', aDelay + iLevel.Presentation.VisualRNG.RLongInt( 400 ) );
 
-  iLevel.Presentation.addKillAnimation( 400, aDelay, FUID, Sprite );
+  iLevel.Presentation.addKillAnimation( 400, aDelay, Self );
 
   if not (BF_NOEXP in FFlags) then iLevel.Player.AddExp(FExpValue);
 
+  // The removal is presented with the death, not when it was decided.
   iLevel.Kill( Self );
+  iLevel.HookDelay := iHookDelay;
 end;
 
 function TBeing.rollMeleeDamage( aWeapon : TItem = nil; aTarget : TBeing = nil ) : Integer;
@@ -1754,7 +1764,7 @@ begin
 
     if iLevel.AnimationVisible( Position, Self ) then
     begin
-      iLevel.Presentation.addBumpAnimation( VisualTime( iAttackCost, AnimationSpeedAttack ), 0, FUID, iPosition, aWhere, Sprite, 0.5 );
+      iLevel.Presentation.addBumpAnimation( VisualTime( iAttackCost, AnimationSpeedAttack ), 0, Self, iPosition, aWhere, 0.5 );
       // Melee FX animation - weapon sprite takes priority, fallback to attacker's melsprite
       if ( iWeapon <> nil ) and ( iWeapon.MelSprite.SpriteID[0] > 0 ) then
         iLevel.Presentation.addFXAnimation( VisualTime( iAttackCost, iWeapon.MelSprite.Frames * iWeapon.MelSprite.Frametime ), 0, aWhere, iWeapon.MelSprite )
@@ -1825,7 +1835,7 @@ begin
   begin
     // Bump animation only on first attack
     if not aSecond then
-      iLevel.Presentation.addBumpAnimation( VisualTime( iAttackCost, AnimationSpeedAttack ), 0, FUID, Position, aTarget.Position, Sprite, 0.5 );
+      iLevel.Presentation.addBumpAnimation( VisualTime( iAttackCost, AnimationSpeedAttack ), 0, Self, Position, aTarget.Position, 0.5 );
     // Melee FX animation - weapon sprite takes priority, fallback to attacker's melsprite
     if ( aWeapon <> nil ) and ( aWeapon.MelSprite.SpriteID[0] > 0 ) then
       iLevel.Presentation.addFXAnimation( VisualTime( iAttackCost, aWeapon.MelSprite.Frames * aWeapon.MelSprite.Frametime ) div Iif( aSecond, 2, 1 ), Iif( aSecond, VisualTime( iAttackCost, aWeapon.MelSprite.Frames * aWeapon.MelSprite.Frametime ) div 2, 0 ), aTarget.Position, aWeapon.MelSprite )
@@ -1959,6 +1969,8 @@ var iLevel         : TLevel;
     iForceOverkill : Boolean;
     iMeleeAttack   : Boolean;
     iOldDurability : LongInt;
+    iPainFrom      : QWord;
+    iPainUntil     : QWord;
 begin
   if ( aDamage < 0 ) or (BF_INV in FFlags) or Dying then Exit;
   // A source destroyed by an earlier callback no longer takes part.
@@ -2135,7 +2147,12 @@ begin
     then Kill( Min( aDamage div 2, 15), (aDamage >= iOverKillValue) or iForceOverkill, iActive, aSource, aDelay, True )
     else begin
       CallHook( Hook_OnAttacked, [ iActive, aSource ] );
-      FOverlayUntil := Max( FOverlayUntil, iLevel.Presentation.PainUntil( aDelay ) );
+      // A window overlapping or touching the current one extends it.
+      iLevel.Presentation.PainWindow( aDelay, iPainFrom, iPainUntil );
+      if FOverlayUntil < iPainFrom
+        then FOverlayFrom := iPainFrom
+        else FOverlayFrom := Min( FOverlayFrom, iPainFrom );
+      FOverlayUntil := Max( FOverlayUntil, iPainUntil );
       // Survivors report HP damage after resolution, with no continuation.
       CallHook( Hook_OnDamageReceived, [ aDamage, aSource, iActive, Byte( aDamageType ) ] );
     end;
@@ -2210,6 +2227,7 @@ var iGameRNG    : TRNG;
     iSound      : DWord;
     iHit        : Boolean;
     iLevel      : TLevel;
+    iHookDelay  : Integer;
     iStart      : TCoord2D;
     iDamageMod  : Integer;
     iDamageMul  : Single;
@@ -2392,12 +2410,15 @@ begin
           if ( not aItem.Flags[ IF_PIERCEHIT ] ) and ( aItem.Knockback > 0 ) then
           begin
             iDirection.CreateSmooth( Self.FPosition, iCoord );
-            iBeing.KnockBack( iDirection, iDamage / aItem.Knockback );
+            iBeing.KnockBack( iDirection, iDamage / aItem.Knockback, ImpactDelay );
           end;
           iRunDamage := True;
           if aItem.Hooks[ Hook_OnHitBeing ] then
           begin
-            iRunDamage    := aItem.CallHookCheck(Hook_OnHitBeing,[Self,iBeing]);
+            iHookDelay := iLevel.HookDelay;
+            iLevel.HookDelay := ImpactDelay;
+            iRunDamage := aItem.CallHookCheck(Hook_OnHitBeing,[Self,iBeing]);
+            iLevel.HookDelay := iHookDelay;
           end;
           if iRunDamage then
             iBeing.ApplyDamage( iDamage, Target_Torso, aItem.DamageType, aItem, ImpactDelay );
@@ -2467,9 +2488,10 @@ begin
       else iDuration := (iSource - iMisslePath.Current).LargerLength * iDelay;
     iMarkSeq := ImpactDelay;
     iLevel.Presentation.addMissileAnimation( iDuration, aSequence,iSource,iMisslePath.Current,iColor,aItem.MisASCII,iDelay,iSprite,aItem.Flags[ IF_RAYGUN ],aItem.MissTrail);
-    if iHit and iLevel.isVisible( iMisslePath.Current ) then
+    if iHit then
     begin
-      iLevel.Presentation.addSoundAnimation( iMarkSeq, iMisslePath.Current, iLevel.Presentation.ResolveSoundID([Iif( iIsHit, 'flesh_bullet_hit', 'concrete_bullet_hit' )]) );
+      if iLevel.isVisible( iMisslePath.Current ) then
+        iLevel.Presentation.addSoundAnimation( iMarkSeq, iMisslePath.Current, iLevel.Presentation.ResolveSoundID([Iif( iIsHit, 'flesh_bullet_hit', 'concrete_bullet_hit' )]) );
       iLevel.Presentation.addMarkAnimation(199, iMarkSeq, iMisslePath.Current, aItem.HitSprite, Iif( iIsHit, LightRed, LightGray ), '*' );
     end;
   end;
@@ -2524,14 +2546,15 @@ begin
   if FBloodBoots > 0 then Dec( FBloodBoots );
   if FBloodBoots = 0 then Exit;
   iLevel.Blood( FPosition );
-  iLevel.BloodDecal( FPosition, NewDirection( 0 ), iLevel.Presentation.VisualRNG.RLongInt( 1, 2 ), 0.4 );
+  iLevel.BloodDecal( FPosition, NewDirection( 0 ), iLevel.Presentation.VisualRNG.RLongInt( 1, 2 ), 0.4, 0 );
 end;
 
-procedure TBeing.Knockback( aDir : TDirection; aStrength : Single );
+procedure TBeing.Knockback( aDir : TDirection; aStrength : Single; aDelay : Integer );
 var iKnock     : TCoord2D;
     iLevel     : TLevel;
     iStrength  : Integer;
     iBlockFlag : Byte;
+    iHookDelay : Integer;
 begin
   if Dead                    then Exit;
   iLevel := TLevel(Parent);
@@ -2559,13 +2582,16 @@ begin
   if iLevel.isEmpty(iKnock,[EF_NOBEINGS,iBlockFlag]) then
   begin
     if isPlayer then
-      iLevel.Presentation.addScreenMoveAnimation(100, iKnock );
+      iLevel.Presentation.addScreenMoveAnimation( 100, iKnock, aDelay );
     if iLevel.AnimationVisible( FPosition, Self ) or iLevel.AnimationVisible( iKnock, Self ) then
-      iLevel.Presentation.addMoveAnimation( 100, 0, FUID, Position, iKnock, Sprite, True, True, True );
+      iLevel.Presentation.addMoveAnimation( 100, aDelay, Self, Position, iKnock, True, True );
     if isPlayer then
-      iLevel.Presentation.addScreenShakeAnimation( 400, 0, Clampf( iStrength * 1.0, 2.0, 10.0 ) );
+      iLevel.Presentation.addScreenShakeAnimation( 400, aDelay, Clampf( iStrength * 1.0, 2.0, 10.0 ) );
+    iHookDelay := iLevel.HookDelay;
+    iLevel.HookDelay := aDelay;
     Displace( iKnock );
     HandlePostDisplace;
+    iLevel.HookDelay := iHookDelay;
   end;
 end;
 
@@ -2782,7 +2808,7 @@ var State       : TLuaGameStack;
 begin
   State.Init(L);
   Being := State.ToObject(1) as TBeing;
-  Being.Kill( 15, State.ToBoolean( 2 ), nil, nil, 0, False );
+  Being.Kill( 15, State.ToBoolean( 2 ), nil, nil, TLevel( Being.Parent ).HookDelay, False );
   Result := 0;
 end;
 
@@ -2836,7 +2862,7 @@ begin
       end;
     end;
   end;
-  iBeing.ApplyDamage( iState.ToInteger( 2 ), TBodyTarget( iState.ToInteger( 3 ) ), TDamageType( iState.ToInteger( 4, Byte( Damage_Bullet ) ) ), iSource, 0 );
+  iBeing.ApplyDamage( iState.ToInteger( 2 ), TBodyTarget( iState.ToInteger( 3 ) ), TDamageType( iState.ToInteger( 4, Byte( Damage_Bullet ) ) ), iSource, TLevel( iBeing.Parent ).HookDelay );
   if ( iKilledBy <> '' ) and ( not iPlayer.Dying ) then
     iPlayer.SetKilledBy( iPreviousKilledBy, iPreviousMelee );
   Result := 0;
@@ -3254,17 +3280,23 @@ begin
 end;
 
 function lua_being_relocate(L: Plua_State): Integer; cdecl;
-var State  : TLuaGameStack;
-    Thing  : TThing;
-    Target : TCoord2D;
+var iState  : TLuaGameStack;
+    iThing  : TThing;
+    iTarget : TCoord2D;
+    iLevel  : TLevel;
 begin
-  State.Init(L);
-  Thing := State.ToObject(1) as TThing;
-  if State.IsNil(2) then Exit(0);
-  Target := State.ToCoord(2);
-  if Thing is TPlayer then
-    TLevel( Thing.Parent ).Presentation.addScreenMoveAnimation(Distance(Thing.Position,Target)*10,Target);
-  Thing.Displace(Target);
+  iState.Init( L );
+  iThing := iState.ToObject( 1 ) as TThing;
+  if iState.IsNil( 2 ) then Exit( 0 );
+  iTarget := iState.ToCoord( 2 );
+  iLevel  := TLevel( iThing.Parent );
+  if iThing is TPlayer then
+    iLevel.Presentation.addScreenMoveAnimation( Distance( iThing.Position, iTarget ) * 10, iTarget, iLevel.HookDelay );
+  // Under a hook delay a being stays at its cell until the delay, then jumps.
+  if ( iLevel.HookDelay > 0 ) and ( iThing is TBeing ) and
+    ( iLevel.AnimationVisible( iThing.Position, TBeing( iThing ) ) or iLevel.AnimationVisible( iTarget, TBeing( iThing ) ) ) then
+    iLevel.Presentation.addMoveAnimation( 1, iLevel.HookDelay, iThing, iThing.Position, iTarget, True, True );
+  iThing.Displace( iTarget );
   Result := 0;
 end;
 
@@ -3454,7 +3486,7 @@ begin
   iAmount := iState.ToFloat( 3, 0.5 );
   with iBeing do
     if TLevel( iBeing.Parent ).AnimationVisible( Position, iBeing ) then
-      TLevel( iBeing.Parent ).Presentation.addBumpAnimation( VisualTime( iState.ToInteger( 4, 1000 ) ) , 0, UID, Position, iCoord, Sprite, iAmount );
+      TLevel( iBeing.Parent ).Presentation.addBumpAnimation( VisualTime( iState.ToInteger( 4, 1000 ) ) , 0, iBeing, Position, iCoord, iAmount );
 end;
 
 // Plays the current sprite's death frames, then shows the being again with
@@ -3469,7 +3501,7 @@ begin
   if iBeing = nil then Exit( 0 );
   iLevel := TLevel( iBeing.Parent );
   if iLevel.AnimationVisible( iBeing.Position, iBeing ) then
-    iLevel.Presentation.addKillAnimation( iState.ToInteger( 2, 400 ), iLevel.HookDelay, iBeing.UID, iBeing.Sprite, KillAnimTransition );
+    iLevel.Presentation.addKillAnimation( iState.ToInteger( 2, 400 ), iLevel.HookDelay, iBeing, KillAnimTransition );
   Result := 0;
 end;
 

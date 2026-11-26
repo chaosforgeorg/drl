@@ -1844,10 +1844,11 @@ begin
     // Finish the outgoing effects before recording an accepted outcome.
     if State = DSEnding then
     begin
-      FIO.WaitForAnimation;
+      if FLevel.Flags[ LF_NUKED ]
+        then FIO.WaitForAnimation( True, NukeDuration + 2000 )
+        else FIO.WaitForAnimation;
       if FPlayer.Dying then
       begin
-        FPlayer.AnimCount := 1;
         FIO.Msg( 'You die!...' );
         FIO.RunLayer( TMoreLayer.Create( False ) );
       end;

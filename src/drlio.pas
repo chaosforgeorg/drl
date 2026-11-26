@@ -7,9 +7,9 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlio;
 interface
 uses {$IFDEF WINDOWS}windows,{$ENDIF} classes, sysutils,
-     vluagamestack, vio, vbindings, viorl, vrltools, vluaconfig, vglquadrenderer, vstoreinterface, vtextures, vtigstyle, vlua, viotypes, vioevent, vioconsole, vgenerics, vutil, vdf,
+     vluagamestack, vio, vbindings, viorl, vrltools, vluaconfig, vglquadrenderer, vstoreinterface, vtextures, vtigstyle, vlua, viotypes, vioevent, vioconsole, vgenerics, vutil, vdf, vluaentitynode, vluamapnode,
      dfdata, dfthing, dfitem, dfbeing, dfplayer, dflevel, drlaudio, drlkeybindings, drlcontrollerbindings, drlloadingview, drlmodule,
-     drlconfig, drlconfiguration;
+     drlconfig, drlconfiguration, drlvisual, drlpresentation;
 
 const TIG_EV_NONE      = 0;
       TIG_EV_INVENTORY = 2;
@@ -78,6 +78,13 @@ type TDRLIO = class( TIORL, IDRLPresentation )
   procedure RunLayer( aLayer : TIOLayer; aHideHUD : Boolean = False ); reintroduce;
   procedure FadeLevel( aFadeTime : Single = 0.0 );
   procedure PreUpdate; override;
+  // The visual map exists while both a level and a player are set: it
+  // presents the level's terrain as the player perceives it.
+  procedure SetLevel( aLevel : TLuaMapNode ); override;
+  procedure SetPlayer( aPlayer : TLuaEntityNode ); override;
+  // Also ends the visual map's holds and fades, which the cleared
+  // animations were presenting.
+  procedure ClearAnimations; override;
   destructor Destroy; override;
   procedure Screenshot;
 
@@ -123,16 +130,16 @@ type TDRLIO = class( TIORL, IDRLPresentation )
 
   procedure BloodSlideDown( aDelayTime : Word ); virtual;
 
-  procedure WaitForAnimation( aStrict : Boolean = True ); virtual;
+  procedure WaitForAnimation( aStrict : Boolean = True; aBudget : DWord = 2000 ); virtual;
   procedure Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0); virtual; abstract;
   procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ); virtual;
   procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single );
-  procedure addMoveAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aWipeBump : Boolean; aFinishBeforeNext : Boolean = False ); virtual;
-  procedure addBumpAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aAmount : Single ); virtual;
-  procedure addScreenMoveAnimation( aDuration : DWord; aTo : TCoord2D ); virtual;
+  procedure addMoveAnimation( aDuration : DWord; aDelay : DWord; aThing : TThing; aFrom, aTo : TCoord2D; aWipeBump : Boolean; aFinishBeforeNext : Boolean = False ); virtual;
+  procedure addBumpAnimation( aDuration : DWord; aDelay : DWord; aBeing : TBeing; aFrom, aTo : TCoord2D; aAmount : Single ); virtual;
+  procedure addScreenMoveAnimation( aDuration : DWord; aTo : TCoord2D; aDelay : DWord = 0 ); virtual;
   procedure addCellAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aValue : Integer ); virtual;
-  procedure addItemAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aValue : Integer ); virtual;
-  procedure addKillAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aSprite : TSprite; aKind : TKillAnimation = KillAnimDeath ); virtual;
+  procedure addItemAnimation( aDuration : DWord; aDelay : DWord; aItem : TItem; aValue : Integer ); virtual;
+  procedure addKillAnimation( aDuration : DWord; aDelay : DWord; aBeing : TBeing; aKind : TKillAnimation = KillAnimDeath ); virtual;
   procedure addMissileAnimation( aDuration : DWord; aDelay : DWord; aSource, aTarget : TCoord2D; aColor : Byte; aPic : Char; aDrawDelay : Word; aSprite : TSprite; aRay : Boolean = False; aTrailNID : Word = 0 ); virtual; abstract;
   procedure addMarkAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aColor : Byte; aPic : Char ); reintroduce; virtual; abstract;
   procedure addFXAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite ); virtual;
@@ -141,6 +148,11 @@ type TDRLIO = class( TIORL, IDRLPresentation )
   procedure addSoundAnimation( aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord ); virtual; abstract;
   procedure addRumbleAnimation( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord );
   procedure Explosion( aDelay : Integer; aWhere : TCoord2D; const aData : TExplosionData; const aCells : array of TCoord2D ); reintroduce; virtual;
+  procedure HoldCell( const aCoord : TCoord2D; aDelay : Integer );
+  procedure HoldDecals( aFirst, aLast : QWord; aDelay : Integer );
+  // Each IO presents a thing added or removed under a delay with its clips.
+  procedure HideThing( aThing : TThing; aDelay : Integer ); virtual; abstract;
+  procedure LingerThing( aThing : TThing; aDelay : Integer ); virtual; abstract;
   procedure PulseBlood( aValue : Single ); virtual;
   function ShowsDecals : Boolean; virtual;
   // Reads ui.engine_sprites after a data load.
@@ -150,7 +162,7 @@ type TDRLIO = class( TIORL, IDRLPresentation )
   function EquipSound : AnsiString;
   // Menu colour of an item, light gray when inventory colouring is off.
   function ItemMenuColor( aItem : TItem ) : Byte;
-  function PainUntil( aDelay : Integer ) : QWord;
+  procedure PainWindow( aDelay : Integer; out aFrom, aUntil : QWord );
 
   // IO outlives Lua; its natives capture it as upvalue 1.
   procedure RegisterLuaAPI( aLua : TLua ); virtual;
@@ -203,7 +215,20 @@ protected
   // Rumbles now or after aDelay; called only when rumble is enabled and a gamepad is in use.
   procedure QueueRumble( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord ); virtual;
   procedure UpdateStyles;
-  procedure ExplosionMark( aCoord : TCoord2D; aColor : Byte; aDuration : DWord; aDelay : DWord ); virtual; abstract;
+  // One cell of an explosion, reached after aDelay. aSeen is whether the
+  // player sees the cell now, which a renderer may refine when drawing.
+  procedure ExplosionMark( aCoord : TCoord2D; const aData : TExplosionData; aDelay : DWord; aSeen : Boolean ); virtual; abstract;
+  // The explosion's particle emitter at aWhere, started after aDelay.
+  procedure ExplosionEmitter( aWhere : TCoord2D; const aData : TExplosionData; aDelay : DWord ); virtual; abstract;
+  // Advances the visual map's presentation time and follows the level.
+  procedure UpdatePresentation( aMSec : DWord );
+  // A level is presented: the visual map exists and the run is in play.
+  // Level clips borrow the visual map, so they are added only then.
+  function CanAnimateLevel : Boolean;
+  // The visual map still differs from the level.
+  function PresentationBusy : Boolean;
+  // Called after the visual map was replaced; renderers attach to it.
+  procedure VisualChanged; virtual;
   procedure DrawHud; virtual;
   function ScreenshotCallback( aEvent : TIOEvent ) : Boolean;
 protected
@@ -243,6 +268,12 @@ protected
   FPadSubMap      : TStringHashMap;
 
   FTIGDefault     : TTIGStyle;
+
+  // The presented level; exists while a level and a player are set.
+  FVisual         : TDRLVisualMap;
+private
+  // Replaces the visual state after the level or player changed.
+  procedure RebuildVisual;
 public
   property KeyCode      : TIOKeyCode      read FKeyCode    write FKeyCode;
   property Audio        : TDRLAudio       read FAudio;
@@ -263,6 +294,7 @@ public
   property SShotPath    : AnsiString      read FSShotPath write FSShotPath;
   property RunStatus    : TRunStatus      read FRunStatus;
   property AutoTarget   : TAutoTarget     read FAutoTarget;
+  property Visual       : TDRLVisualMap   read FVisual;
   function GetPlayer : TPlayer;
   function GetLevel : TLevel;
   // The Session's player and level, set through SetPlayer and SetLevel.
@@ -324,19 +356,77 @@ begin
 }
 end;
 
-procedure TDRLIO.WaitForAnimation( aStrict : Boolean = True );
+procedure TDRLIO.WaitForAnimation( aStrict : Boolean = True; aBudget : DWord = 2000 );
 begin
   if ( FRunStatus = nil ) or not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then
   begin
     if MsgPending then MsgUpdate;
     Exit;
   end;
-  if not WaitForAnimationCompletion( aStrict, 2000 ) then
+  if not WaitForAnimationCompletion( aStrict, aBudget ) then
     Log( LOGWARN, 'Emergency animation break!' );
   if aStrict then ClearAnimations;
-  // Partial waits can leave nonblocking clips drawing beings.
-  if ( Level <> nil ) and ( not AnimationsRunning ) then
-    Level.RevealBeings;
+end;
+
+procedure TDRLIO.SetLevel( aLevel : TLuaMapNode );
+begin
+  inherited SetLevel( aLevel );
+  RebuildVisual;
+end;
+
+procedure TDRLIO.SetPlayer( aPlayer : TLuaEntityNode );
+begin
+  inherited SetPlayer( aPlayer );
+  RebuildVisual;
+end;
+
+procedure TDRLIO.RebuildVisual;
+var iOutgoing : TDRLVisualMap;
+begin
+  // Clips borrow the outgoing state, which is not synchronized again: its
+  // level may already have lost its player.
+  iOutgoing := FVisual;
+  FVisual   := nil;
+  ClearAnimations;
+  iOutgoing.Free;
+  if ( FLevel <> nil ) and ( FPlayer <> nil ) then
+    FVisual := TDRLVisualMap.Create( FLevel as TLevel );
+  VisualChanged;
+end;
+
+procedure TDRLIO.VisualChanged;
+begin
+end;
+
+procedure TDRLIO.ClearAnimations;
+begin
+  inherited ClearAnimations;
+  if FVisual <> nil then FVisual.Synchronize;
+end;
+
+procedure TDRLIO.UpdatePresentation( aMSec : DWord );
+begin
+  if FVisual <> nil then FVisual.Update( aMSec );
+end;
+
+function TDRLIO.PresentationBusy : Boolean;
+begin
+  Exit( ( FVisual <> nil ) and FVisual.Busy );
+end;
+
+function TDRLIO.CanAnimateLevel : Boolean;
+begin
+  Exit( ( FVisual <> nil ) and ( FRunStatus.State in [ DSPlaying, DSEnding ] ) );
+end;
+
+procedure TDRLIO.HoldCell( const aCoord : TCoord2D; aDelay : Integer );
+begin
+  if FVisual <> nil then FVisual.Hold( aCoord, aDelay );
+end;
+
+procedure TDRLIO.HoldDecals( aFirst, aLast : QWord; aDelay : Integer );
+begin
+  if ( FVisual <> nil ) and ( aDelay > 0 ) then FVisual.HoldDecals( aFirst, aLast, aDelay );
 end;
 
 procedure TDRLIO.addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection );
@@ -349,17 +439,17 @@ begin
   addScreenShakeAnimation( aDuration, aDelay, aStrength, NewDirection(0) );
 end;
 
-procedure TDRLIO.addMoveAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aBeing : Boolean; aWipeBump : Boolean; aFinishBeforeNext : Boolean );
+procedure TDRLIO.addMoveAnimation( aDuration : DWord; aDelay : DWord; aThing : TThing; aFrom, aTo : TCoord2D; aWipeBump : Boolean; aFinishBeforeNext : Boolean );
 begin
 
 end;
 
-procedure TDRLIO.addBumpAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aFrom, aTo : TCoord2D; aSprite : TSprite; aAmount : Single );
+procedure TDRLIO.addBumpAnimation( aDuration : DWord; aDelay : DWord; aBeing : TBeing; aFrom, aTo : TCoord2D; aAmount : Single );
 begin
 
 end;
 
-procedure TDRLIO.addScreenMoveAnimation( aDuration : DWord; aTo : TCoord2D );
+procedure TDRLIO.addScreenMoveAnimation( aDuration : DWord; aTo : TCoord2D; aDelay : DWord );
 begin
 
 end;
@@ -369,12 +459,12 @@ begin
 
 end;
 
-procedure TDRLIO.addItemAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aValue : Integer );
+procedure TDRLIO.addItemAnimation( aDuration : DWord; aDelay : DWord; aItem : TItem; aValue : Integer );
 begin
 
 end;
 
-procedure TDRLIO.addKillAnimation( aDuration : DWord; aDelay : DWord; aUID : TUID; aSprite : TSprite; aKind : TKillAnimation = KillAnimDeath );
+procedure TDRLIO.addKillAnimation( aDuration : DWord; aDelay : DWord; aBeing : TBeing; aKind : TKillAnimation = KillAnimDeath );
 begin
 
 end;
@@ -404,8 +494,8 @@ end;
 
 procedure TDRLIO.Explosion( aDelay : Integer; aWhere: TCoord2D; const aData : TExplosionData; const aCells : array of TCoord2D );
 var iCoord    : TCoord2D;
-    iDistance : Integer;
-    iVisible  : boolean;
+    iVisible  : Boolean;
+    iSeen     : Boolean;
     iLevel    : TLevel;
     iSound    : Word;
 begin
@@ -426,19 +516,14 @@ begin
     addRumbleAnimation( aDelay, Clamp( $2000 * aData.Range, $2000, $E000 ), $6000, Clamp( 100 * aData.Range, 100, 300 ) );
   end;
 
-  if GraphicsVersion and ( aData.EmitterID > 0 ) then
-    iLevel.Particles.AddEmitterDirect( aData.EmitterID,
-      Vec3f( ( aWhere.X - 1 ) * 32 + 16, ( aWhere.Y - 1 ) * 32 + 16, 0 ) );
+  ExplosionEmitter( aWhere, aData, aDelay );
 
   for iCoord in aCells do
-    begin
-      if not ( efAlwaysVisible in aData.Flags ) then
-        if iLevel.isVisible( iCoord ) then iVisible := True else Continue;
-      iDistance := Distance( iCoord, aWhere );
-      if GraphicsVersion and ( aData.Sprite.SpriteID[0] <> 0 )
-        then addMarkAnimation( aData.Sprite.Frametime * aData.Sprite.Frames - 1, aDelay+iDistance*aData.Delay, iCoord, aData.Sprite, 0, ' ' )
-        else ExplosionMark( iCoord, aData.Color, 3*aData.Delay, aDelay+iDistance*aData.Delay );
-    end;
+  begin
+    iSeen := ( efAlwaysVisible in aData.Flags ) or iLevel.isVisible( iCoord );
+    if iSeen then iVisible := True;
+    ExplosionMark( iCoord, aData, aDelay + Distance( iCoord, aWhere ) * aData.Delay, iSeen );
+  end;
 
   if efAfterBlink in aData.Flags then
   begin
@@ -500,10 +585,11 @@ begin
   Exit( aItem.MenuColor );
 end;
 
-function TDRLIO.PainUntil( aDelay : Integer ) : QWord;
+procedure TDRLIO.PainWindow( aDelay : Integer; out aFrom, aUntil : QWord );
 const PAIN_DURATION = 500;
 begin
-  Exit( FTime + aDelay + PAIN_DURATION );
+  aFrom  := FTime + Max( aDelay, 0 );
+  aUntil := aFrom + PAIN_DURATION;
 end;
 
 {
@@ -944,7 +1030,9 @@ end;
 procedure TDRLIO.PreUpdate;
 begin
   VTIG_Clear;
-  if FHudEnabled and ( FLevel <> nil ) then DrawHud;
+  // The HUD shows the presented level; without the visual map the text map
+  // has no glyph source.
+  if FHudEnabled and ( FVisual <> nil ) then DrawHud;
   inherited PreUpdate;
 end;
 
@@ -958,6 +1046,8 @@ end;
 
 destructor TDRLIO.Destroy;
 begin
+  // Descendants have freed their animations, the visual state's borrowers.
+  FreeAndNil( FVisual );
   FreeAndNil( FAudio );
   FreeAndNil( FASCII );
   FreeAndNil( FKeySubMap );

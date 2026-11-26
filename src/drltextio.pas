@@ -7,8 +7,8 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drltextio;
 interface
 
-uses vrltools, vtextmap, vioevent, vio, viotypes, vluamapnode, vlua,
-     drlio, dfdata, dflevel, drlconfig, drlconfiguration, drlmodule;
+uses vutil, vrltools, vtextmap, vioevent, vio, viotypes, vluamapnode, vlua,
+     drlio, dfdata, dfthing, dflevel, drlconfig, drlconfiguration, drlmodule;
 
 // TDRLTextIO
 //
@@ -33,8 +33,10 @@ type TDRLTextIO = class( TDRLIO, ITextMap )
     procedure addMarkAnimation( aDuration : DWord; aDelay : DWord; aCoord : TCoord2D; aSprite : TSprite; aColor : Byte; aPic : Char ); override;
     procedure addSoundAnimation( aDelay : DWord; aPosition : TCoord2D; aSoundID : DWord ); override;
     procedure Explosion( aDelay : Integer; aWhere : TCoord2D; const aData : TExplosionData; const aCells : array of TCoord2D ); override;
+    procedure HideThing( aThing : TThing; aDelay : Integer ); override;
+    procedure LingerThing( aThing : TThing; aDelay : Integer ); override;
 
-    procedure SetLevel( aLevel : TLuaMapNode ); override;
+    procedure VisualChanged; override;
     function GetGylph( const aCoord : TCoord2D ) : TIOGylph;
     procedure SetTarget( aTarget : TCoord2D; aColor : Byte; aRange : Byte ); override;
     procedure SetAutoTarget( aTarget : TCoord2D ); override;
@@ -42,7 +44,8 @@ type TDRLTextIO = class( TDRLIO, ITextMap )
 
   protected
     procedure RunLauncherLayer( aLayer : TIOLayer ); override;
-    procedure ExplosionMark( aCoord : TCoord2D; aColor : Byte; aDuration : DWord; aDelay : DWord ); override;
+    procedure ExplosionMark( aCoord : TCoord2D; const aData : TExplosionData; aDelay : DWord; aSeen : Boolean ); override;
+    procedure ExplosionEmitter( aWhere : TCoord2D; const aData : TExplosionData; aDelay : DWord ); override;
     procedure DrawHud; override;
   protected
     FTextMap        : TTextMap;
@@ -52,14 +55,58 @@ type TDRLTextIO = class( TDRLIO, ITextMap )
     FTargetRange    : Byte;
     // Sprite sheets have no textures in text mode; only their IDs are issued.
     FSpriteSheets   : Integer;
+  private
+    // Glyph of the presented thing the player senses in each cell, with its
+    // unresolved color; #0 where none. Rebuilt after each presentation update.
+    FThingGlyphs    : array[1..MAXX,1..MAXY] of TIOGylph;
+    procedure UpdateThingGlyphs;
+    // Whether a clip hides the thing until it appears.
+    function Appearing( aUID : TUID ) : Boolean;
   end;
 
 implementation
 
 uses sysutils,
-     vioconsole, vtig, vvision, vutil, vlualibrary, vluagamestack,
-     drlanimation,
+     vioconsole, vtig, vvision, vnode, vanimation, vlualibrary, vluagamestack, vvisualmap,
+     drlanimation, drlvisual,
      dfbeing, dfitem;
+
+type
+
+// Hides a thing added under a presentation delay until the delay ends.
+TTextAppearAnimation = class( TTextAnimation )
+  constructor Create( aThing : TUID; aDuration : DWord );
+private
+  FThing : TUID;
+end;
+
+// Shows the glyph of a thing removed under a presentation delay, as
+// captured, until the delay ends.
+TTextLingerAnimation = class( TTextAnimation )
+  constructor Create( aThing : TThing; aDuration : DWord );
+private
+  FCoord   : TCoord2D;
+  FGylph   : TIOGylph;
+  FIsBeing : Boolean;
+end;
+
+constructor TTextAppearAnimation.Create( aThing : TUID; aDuration : DWord );
+begin
+  inherited Create( aDuration, 0 );
+  FThing    := aThing;
+  // Only strict waits wait for things to appear.
+  FBlocking := False;
+end;
+
+constructor TTextLingerAnimation.Create( aThing : TThing; aDuration : DWord );
+begin
+  inherited Create( aDuration, 0 );
+  FCoord    := aThing.Position;
+  FGylph    := aThing.Gylph;
+  FIsBeing  := aThing is TBeing;
+  // Only strict waits wait for things to go.
+  FBlocking := False;
+end;
 
 // How a being sensed only by Intuition is drawn.
 const IntuitionChar  = '*';
@@ -141,6 +188,8 @@ procedure TDRLTextIO.Update( aMSec : DWord );
 begin
   if FTextMap <> nil then
     FTextMap.Update( aMSec );
+  UpdatePresentation( aMSec );
+  UpdateThingGlyphs;
   if FTargeting and FLayers.IsEmpty
      then FConsole.ShowCursor;
   inherited Update( aMSec );
@@ -161,7 +210,7 @@ end;
 function TDRLTextIO.AnimationsRunning : Boolean;
 begin
   if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit(False);
-  Exit( not FTextMap.AnimationsFinished );
+  Exit( ( not FTextMap.AnimationsFinished ) or PresentationBusy );
 end;
 
 function TDRLTextIO.AnimationsBlockingFinished : Boolean;
@@ -173,6 +222,7 @@ end;
 procedure TDRLTextIO.ClearAnimations;
 begin
   FTextMap.ClearAnimations;
+  inherited ClearAnimations;
 end;
 
 procedure TDRLTextIO.Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0 );
@@ -187,7 +237,7 @@ procedure TDRLTextIO.addMissileAnimation(aDuration: DWord; aDelay: DWord; aSourc
   aTarget: TCoord2D; aColor: Byte; aPic: Char; aDrawDelay: Word;
   aSprite: TSprite; aRay: Boolean; aTrailNID : Word);
 begin
-  if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
+  if not CanAnimateLevel then Exit;
   if aRay
     then FTextMap.AddAnimation( TTextRayAnimation.Create( Level, aSource, aTarget, IOGylph( aPic, aColor ), aDuration, aDelay, Player.Vision ) )
     else FTextMap.AddAnimation( TTextBulletAnimation.Create( Level, aSource, aTarget, IOGylph( aPic, aColor ), aDuration, aDelay, Player.Vision ) );
@@ -196,7 +246,9 @@ end;
 procedure TDRLTextIO.addMarkAnimation(aDuration: DWord; aDelay: DWord;
   aCoord: TCoord2D; aSprite : TSprite; aColor: Byte; aPic: Char);
 begin
-  if not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then Exit;
+  if not CanAnimateLevel then Exit;
+  // Text marks are not culled when drawn, so the cell must be visible now.
+  if not Level.isVisible( aCoord ) then Exit;
   FTextMap.AddAnimation( TTextMarkAnimation.Create( aCoord, IOGylph( aPic, aColor ), aDuration, aDelay ) );
 end;
 
@@ -206,9 +258,14 @@ begin
   FTextMap.AddAnimation( TSoundEventAnimation.Create( Self, aDelay, aPosition, aSoundID ) )
 end;
 
-procedure TDRLTextIO.ExplosionMark( aCoord : TCoord2D; aColor : Byte; aDuration : DWord; aDelay : DWord );
+procedure TDRLTextIO.ExplosionMark( aCoord : TCoord2D; const aData : TExplosionData; aDelay : DWord; aSeen : Boolean );
 begin
-  FTextMap.AddAnimation( TTextExplosionAnimation.Create( aCoord, '*', FExpl, aDelay ) );
+  if aSeen then
+    FTextMap.AddAnimation( TTextExplosionAnimation.Create( aCoord, '*', FExpl, aDelay ) );
+end;
+
+procedure TDRLTextIO.ExplosionEmitter( aWhere : TCoord2D; const aData : TExplosionData; aDelay : DWord );
+begin
 end;
 
 procedure TDRLTextIO.SetTarget( aTarget : TCoord2D; aColor : Byte; aRange : Byte );
@@ -285,10 +342,90 @@ begin
   end;
 end;
 
-procedure TDRLTextIO.SetLevel( aLevel : TLuaMapNode );
+procedure TDRLTextIO.UpdateThingGlyphs;
+var iLevel     : TLevel;
+    iMap       : TDRLVisualMap;
+    iNode      : TNode;
+    iThing     : TThing;
+    iAnimation : TAnimation;
+    iBeings    : Boolean;
+
+  // aThing is the live thing, or nil once it has been removed; it decides
+  // how the thing may be sensed.
+  procedure Put( const aCoord : TCoord2D; aThing : TThing; aBeing : Boolean; const aGylph : TIOGylph );
+  var iVisible : Boolean;
+  begin
+    if not iMap.Contains( aCoord ) then Exit;
+    iVisible := iMap.Visible( aCoord );
+    with FThingGlyphs[ aCoord.X, aCoord.Y ] do
+      if aBeing then
+      begin
+        if iVisible or ( ( aThing <> nil ) and iLevel.BeingExplored( aCoord, TBeing( aThing ) ) ) then
+          Init( aGylph.ASCII, aGylph.Color )
+        else if ( aThing <> nil ) and iLevel.BeingIntuited( aCoord, TBeing( aThing ) ) then
+          Init( IntuitionChar, IntuitionColor );
+      end
+      else
+      begin
+        if iVisible or ( ( aThing <> nil ) and iLevel.ItemVisible( aCoord, TItem( aThing ) ) ) then
+          Init( aGylph.ASCII, aGylph.Color )
+        else if ( ( aThing <> nil ) and iLevel.ItemExplored( aCoord, TItem( aThing ) ) ) or
+                ( ( aThing = nil ) and iMap.Explored( aCoord ) ) then
+          Init( aGylph.ASCII, DarkGray );
+      end;
+  end;
+
 begin
-  inherited SetLevel( aLevel );
-  if aLevel <> nil
+  FillChar( FThingGlyphs, SizeOf( FThingGlyphs ), 0 );
+  if FVisual = nil then Exit;
+  iLevel := Level;
+  iMap   := FVisual;
+  // Items first, then beings over them; a removed thing still presented is
+  // drawn under a thing of the level. A thing the player does not sense
+  // leaves what is below it.
+  for iBeings in Boolean do
+  begin
+    for iAnimation in FTextMap.Animations.Animations do
+      if iAnimation is TTextLingerAnimation then
+        with TTextLingerAnimation( iAnimation ) do
+          if FIsBeing = iBeings then Put( FCoord, nil, iBeings, FGylph );
+    for iNode in iLevel do
+      if ( iNode is TThing ) and ( ( iNode is TBeing ) = iBeings ) then
+      begin
+        iThing := TThing( iNode );
+        if iMap.Presentable( iThing ) and not Appearing( iThing.UID ) then
+          Put( iThing.Position, iThing, iBeings, iThing.Gylph );
+      end;
+  end;
+end;
+
+function TDRLTextIO.Appearing( aUID : TUID ) : Boolean;
+var iAnimation : TAnimation;
+begin
+  for iAnimation in FTextMap.Animations.Animations do
+    if ( iAnimation is TTextAppearAnimation ) and ( TTextAppearAnimation( iAnimation ).FThing = aUID ) then
+      Exit( True );
+  Exit( False );
+end;
+
+procedure TDRLTextIO.HideThing( aThing : TThing; aDelay : Integer );
+begin
+  if not CanAnimateLevel then Exit;
+  FTextMap.AddAnimation( TTextAppearAnimation.Create( aThing.UID, aDelay ) );
+end;
+
+procedure TDRLTextIO.LingerThing( aThing : TThing; aDelay : Integer );
+begin
+  if not CanAnimateLevel then Exit;
+  // A thing removed before it appeared is never shown.
+  if Appearing( aThing.UID ) then Exit;
+  FTextMap.AddAnimation( TTextLingerAnimation.Create( aThing, aDelay ) );
+end;
+
+procedure TDRLTextIO.VisualChanged;
+begin
+  // Glyphs are read from the visual state.
+  if FVisual <> nil
     then FTextMap.SetMap( Self )
     else FTextMap.SetMap( nil );
 end;
@@ -339,29 +476,30 @@ var iColor    : TIOColor;
     iVisible  : Boolean;
     iExplored : Boolean;
     iBlood    : Boolean;
-    iItem     : TItem;
-    iBeing    : TBeing;
+    iThing    : TIOGylph;
+    iMap      : TDRLVisualMap;
+    iState    : TDRLVisualCell;
 begin
   iLevel   := Level;
-  iBeing   := iLevel.Being[ aCoord ];
+  iMap     := FVisual;
+  iVisible := iMap.Visible( aCoord );
 
-  if iLevel.BeingVisible( aCoord, iBeing ) or iLevel.BeingExplored( aCoord, iBeing) then
-    Exit( IOGylph( iBeing.Picture, GetColor( iBeing.Color, aCoord, True ) ) );
+  // Things, then terrain, both from the presented level.
+  if iMap.Contains( aCoord ) then
+  begin
+    iThing := FThingGlyphs[ aCoord.X, aCoord.Y ];
+    if iThing.ASCII <> #0 then
+      Exit( IOGylph( iThing.ASCII, GetColor( iThing.Color, aCoord, True ) ) );
+  end;
 
-  if iLevel.BeingIntuited( aCoord, iBeing ) then
-    Exit( IOGylph( IntuitionChar, GetColor( IntuitionColor, aCoord, True ) ) );
-
-  iItem    := iLevel.Item[ aCoord ];
-
-  if iLevel.ItemVisible( aCoord, iItem ) then
-    Exit( IOGylph( iItem.Picture, GetColor( iItem.Color, aCoord, True ) ) );
-
-  if iLevel.ItemExplored( aCoord, iItem ) then
-    Exit( IOGylph( iItem.Picture, GetColor( DarkGray, aCoord, True ) ) );
-
-  iVisible  := iLevel.isVisible( aCoord );
-  iExplored := iLevel.CellExplored( aCoord );
-  iCell     := iLevel.Cell[ aCoord ];
+  // A fading cell switches glyphs halfway through.
+  if iMap.Progress( aCoord ) >= 0.5
+    then iState := iMap.State( aCoord, vlTarget )
+    else iState := iMap.State( aCoord, vlShown );
+  iExplored := iState.Flags and VCF_EXPLORED <> 0;
+  if iState.Top <> 0
+    then iCell := iState.Top
+    else iCell := iState.Bottom;
 
   iColor   := LightGray;
   iChar    := ' ';
@@ -375,12 +513,12 @@ begin
       iChar := iPic;
     if iVisible then
     begin
-      iBlood := iLevel.LightFlag[ aCoord, LFBLOOD ] and (BloodColor <> 0);
+      iBlood := ( iState.Flags and VCF_BLOOD <> 0 ) and (BloodColor <> 0);
       if iBlood
          then iColor := BloodColor
          else
          begin
-           iStyle := iLevel.CStyle[ aCoord ];
+           iStyle := iState.Style;
            iColor := LightColor[ iStyle ];
            if iColor = 0 then
              iColor := LightColor[ 0 ];

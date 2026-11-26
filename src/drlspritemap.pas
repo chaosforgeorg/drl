@@ -7,8 +7,8 @@ Copyright (c) 2002-2025 by Kornel Kisielewicz
 unit drlspritemap;
 interface
 uses classes, sysutils, math,
-     vutil, vgltypes, vrltools, vgenerics, vvector, vcolor, vspriteengine, vtextures, vanimation, vuid,
-     dfdata, dfbeing, dflevel, drlio, drlspritemapbase;
+     vutil, vgltypes, vrltools, vgenerics, vvector, vcolor, vspriteengine, vtextures, vuid, vvisualmap, vanimation,
+     dfdata, dfbeing, dfitem, dflevel, drlio, drlspritemapbase, drlvisual;
 
 // TODO : remove
 const SpriteCellRow = 16;
@@ -23,11 +23,15 @@ type
 
 { TDRLSpriteMap }
 
+ // Draws the presented terrain of a visual map, the level's things no clip
+ // claims, and claimed things through their clips.
  TDRLSpriteMap = class( TSpriteMap )
-  // The graphics IO owns the map and everything it borrows.
+  // The graphics IO owns the map and everything it borrows, including the
+  // animations whose clips claim things.
   constructor Create( aIO : TDRLIO; aTextures : TTextureManager; aCursor : TDRLMouseCursor;
     aAnimations : TAnimations; aFramebuffer : TVec2i );
-  procedure SetLevel( aLevel : TLevel );
+  // aVisual is the IO's visual map of its level, or nil without one.
+  procedure SetVisual( aVisual : TDRLVisualMap );
   // Called by the graphics IO whenever its scaling changes, before rendering.
   procedure Recalculate( aTileScale : Single; aFontMult : Byte; aScaledScreen : TGLVec2i ); overload;
   procedure Update( aTime : DWord; aProjection : TMatrix44; aDarkness : Boolean ); overload;
@@ -42,11 +46,25 @@ type
   function VariableLight( aWhere : TCoord2D; aBonus : ShortInt = 0 ) : Byte;
   destructor Destroy; override;
   function GetBeingSprite( aBeing : TBeing ) : TSprite;
+  // Pixel position of a presented position in cell units.
+  function PixelPosition( const aPosition : TVec2f ) : TVec2i;
+  // A thing drawn in its cell as the player perceives it; aBeing or aItem is
+  // the live thing, or nil once it has been removed.
+  procedure PushPresentedBeing( const aCoord : TCoord2D; aBeing : TBeing; const aSprite : TSprite );
+  procedure PushPresentedItem( const aCoord : TCoord2D; aItem : TItem; const aSprite : TSprite; aDTime : Integer = 0 );
+  // TParticlePlacement for the level's particle store.
+  function ParticlePlacement( aUID : TUID; out aPosition : TVec2f; out aVisible : Boolean ) : Boolean;
+  // Whether the thing is hidden by a clip until it appears.
+  function Appearing( aUID : TUID ) : Boolean;
 private
   FIO             : TDRLIO;
   FTextures       : TTextureManager;
   FCursor         : TDRLMouseCursor;
-  FAnimations     : TAnimations;
+  FAnimations     : TAnimations;     // Borrowed from the graphics IO.
+  FVisualMap      : TDRLVisualMap;   // Borrowed from the graphics IO with its level.
+  // The state terrain is drawn from: vlShown and vlTarget in turn near a
+  // fading cell, vlTarget otherwise.
+  FLayer          : TVisualLayer;
   FLevel          : TLevel;
   FGridActive     : Boolean;
   FFluidX         : Single;
@@ -60,10 +78,19 @@ private
   FAutoTarget     : TCoord2D;
   FMarker         : TCoord2D;
   FLightMap       : array[0..MAXX] of array[0..MAXY] of Byte;
+  // Presented light of each cell, moving towards its current value.
+  FCellLight      : array[0..MAXX] of array[0..MAXY] of Single;
+  FLightSnap      : Boolean;
 private
   procedure ApplyEffect;
-  procedure UpdateLightMap;
+  procedure UpdateLightMap( aTime : DWord );
+  function CellLightTarget( aCoord : TCoord2D ) : Single;
+  function VCell( const aCoord : TCoord2D ) : TDRLVisualCell; inline;
+  // Where a thing is presented, in cell units; False when it is not.
+  function PresentedPosition( aUID : TUID; out aPosition : TVec2f ) : Boolean;
   procedure PushTerrain;
+  procedure PushCell( aCoord : TCoord2D );
+  procedure PushThings( aDTime : Integer );
   function PushFluidTerrain( aCoord : TCoord2D; const aSprite : TSprite; aZ : Integer ) : Boolean;
   function PushWallDebrisTerrain( aCoord : TCoord2D; const aSprite : TSprite; aZ : Integer ) : Boolean;
   function GetTerrainSprite( aCoord : TCoord2D; aCell : Byte; out aDeco : Byte ) : TSprite;
@@ -71,15 +98,14 @@ private
   function GetTerrainLight( aCoord : TCoord2D ) : TGLRawQColor;
   function GetTransitionMaterial( const aSprite : TSprite ) : TSpriteTransitionMaterial;
   procedure PushDecals( aDarkness : Boolean );
-  procedure PushObjects( aDTime : Integer );
+  // Targeting marks and the grid.
+  procedure PushObjects;
   procedure PushMultiSpriteTerrain( aCoord : TCoord2D; const aSprite : TSprite; aZ : Integer; aRotation : Byte );
   procedure PushFloorTerrainNewLayout( aCoord : TCoord2D; const aSprite : TSprite; aZ : Integer; aRotation : Byte );
   procedure PushSpriteTerrainPart( aCoord : TCoord2D; const aSprite : TSprite; aZ : Integer; aStart, aEnd : TVec2f );
   procedure PushTarget( aSpriteID : DWord; aPosition : TVec2i; aColor : TColor; aSize : Float );
   function GetSprite( aCell, aStyle : Byte ) : TSprite; overload;
   procedure DrawMarker;
-  // Position of a being while it is moving; False when it is not.
-  function GetMovePosition( aUID : TUID; var aPosition : TVec2i ) : Boolean;
 public
   property Marker : TCoord2D read FMarker write FMarker;
   property Target : TCoord2D read FTarget;
@@ -88,9 +114,19 @@ end;
 
 implementation
 
-uses vmath, viotypes, vvision, vgl3library,
-     dfmap, dfthing, dfitem, drlanimation, drlcontrollerbindings,
-     drlmarkers, drldecals;
+uses vmath, viotypes, vvision, vgl3library, vnode,
+     dfmap, dfthing, drlcontrollerbindings,
+     drlmarkers, drldecals, drlanimation;
+
+// The clip presenting a thing, if any: the first one claiming it.
+function ThingClip( aAnimations : TAnimationManager; aUID : TUID ) : TGFXThingAnimation;
+var iAnimation : TAnimation;
+begin
+  for iAnimation in aAnimations.Animations do
+    if ( iAnimation is TGFXThingAnimation ) and ( TGFXThingAnimation( iAnimation ).Thing = aUID ) then
+      Exit( TGFXThingAnimation( iAnimation ) );
+  Exit( nil );
+end;
 
 function SpritePartSetFill( aPart : TSpritePart ) : TSpritePartSet;
 begin
@@ -123,6 +159,10 @@ begin
   FTextures   := aTextures;
   FCursor     := aCursor;
   FAnimations := aAnimations;
+  FVisualMap  := nil;
+  FLevel      := nil;
+  FLayer      := vlTarget;
+  FLightSnap  := True;
   FTargeting := False;
   FTargetList := TCoord2DArray.Create();
   //FOldTargetList := TCoord2DArray.Create();
@@ -155,10 +195,38 @@ begin
   end;
 end;
 
-procedure TDRLSpriteMap.SetLevel( aLevel : TLevel );
+procedure TDRLSpriteMap.SetVisual( aVisual : TDRLVisualMap );
 begin
-  if FLevel <> aLevel then FSpriteEngine.Clear;
-  FLevel := aLevel;
+  FSpriteEngine.Clear;
+  FVisualMap := aVisual;
+  FLevel     := nil;
+  if aVisual = nil then Exit;
+  FLevel     := aVisual.Level;
+  FLightSnap := True;
+end;
+
+function TDRLSpriteMap.VCell( const aCoord : TCoord2D ) : TDRLVisualCell; inline;
+begin
+  Exit( FVisualMap.State( aCoord, FLayer ) );
+end;
+
+function TDRLSpriteMap.PixelPosition( const aPosition : TVec2f ) : TVec2i;
+begin
+  Result.Init( Round( aPosition.X * FSpriteEngine.Grid.X ), Round( aPosition.Y * FSpriteEngine.Grid.Y ) );
+end;
+
+function TDRLSpriteMap.ParticlePlacement( aUID : TUID; out aPosition : TVec2f; out aVisible : Boolean ) : Boolean;
+begin
+  aPosition := Vec2f( 0, 0 );
+  aVisible  := False;
+  if ( FVisualMap = nil ) or not PresentedPosition( aUID, aPosition ) then Exit( False );
+  aVisible  := FVisualMap.Visible( NewCoord2D( Round( aPosition.X ) + 1, Round( aPosition.Y ) + 1 ) );
+  Exit( True );
+end;
+
+function TDRLSpriteMap.Appearing( aUID : TUID ) : Boolean;
+begin
+  Exit( ThingClip( FAnimations, aUID ) is TGFXAppearAnimation );
 end;
 
 procedure TDRLSpriteMap.Update( aTime : DWord; aProjection : TMatrix44; aDarkness : Boolean );
@@ -167,7 +235,7 @@ var iUIDs     : TUIDStore;
     iPixel    : Integer;
     iMark     : TMarker;
     iTarget   : TBeing;
-    iPosition : TVec2i;
+    iPosition : TVec2f;
 begin
   inherited Update( aTime, aProjection );
   iUIDs := FLevel.Context.UIDs;
@@ -180,27 +248,25 @@ begin
   FFluidX := 1-iShift;
   FFluidY := iShift;
   ApplyEffect;
-  UpdateLightMap;
+  UpdateLightMap( aTime );
   PushTerrain;
   PushDecals( aDarkness );
-  PushObjects( aTime );
+  PushThings( aTime );
+  PushObjects;
 
   for iMark in FLevel.Markers.Data do
     if iMark.Target = 0 then
     begin
-      if FLevel.isVisible( iMark.Coord ) then
+      if FVisualMap.Visible( iMark.Coord ) then
         PushSpriteFX( iMark.Coord, iMark.Sprite, FTimer, -1 );
     end
     else
     begin
+      // Marks follow their being as it is presented.
       iTarget := iUIDs[ iMark.Target ] as TBeing;
-      if ( iTarget <> nil ) and ( not iTarget.Dying ) and FLevel.isVisible( iTarget.Position ) then
-      begin
-        iPosition := Vec2i( iTarget.Position.X-1, iTarget.Position.Y-1 ) * FSpriteEngine.Grid;
-        if iTarget.AnimCount > 0 then
-          GetMovePosition( iTarget.UID, iPosition );
-        PushSpriteFX( iPosition, iMark.Sprite, FTimer, -1 );
-      end;
+      if ( iTarget <> nil ) and ( not iTarget.Dying ) and PresentedPosition( iMark.Target, iPosition )
+        and FVisualMap.Visible( NewCoord2D( Round( iPosition.X ) + 1, Round( iPosition.Y ) + 1 ) ) then
+        PushSpriteFX( PixelPosition( iPosition ), iMark.Sprite, FTimer, -1 );
     end;
 
   DrawMarker;
@@ -245,18 +311,6 @@ begin
   PushSpriteFX( FMarker, MarkerSprite );
 end;
 
-function TDRLSpriteMap.GetMovePosition( aUID : TUID; var aPosition : TVec2i ) : Boolean;
-var iAnimation : TAnimation;
-begin
-  for iAnimation in FAnimations.Animations do
-    if ( iAnimation.UID = aUID ) and ( iAnimation.Delay = 0 ) then
-      if iAnimation is TGFXMoveAnimation then
-      begin
-        aPosition := ( iAnimation as TGFXMoveAnimation ).LastPosition;
-        Exit( True );
-      end;
-  Exit( False );
-end;
 
 procedure TDRLSpriteMap.Draw;
 var iPoint   : TPoint;
@@ -282,7 +336,7 @@ begin
     if FLevel.isProperCoord( iCoord ) then
     begin
       TargetSprite.Color := ColorBlack;
-      if FLevel.isVisible( iCoord ) then
+      if FVisualMap.Visible( iCoord ) then
         TargetSprite.Color.G := Floor(100*(Sin( FFluidTime*50 )+1)+50)
       else
         TargetSprite.Color.R := Floor(100*(Sin( FFluidTime*50 )+1)+50);
@@ -623,7 +677,7 @@ begin
   iSprite := aBeing.Sprite;
   iSprite.SpriteID[0] := iOverlay.Sprite.SpriteID[0];
 
-  if ( aBeing.OverlayUntil > FIO.Time ) and ( SF_PAINANIM in iSprite.Flags ) then
+  if aBeing.InPain( FIO.Time ) and ( SF_PAINANIM in iSprite.Flags ) then
   begin
     if SF_LARGE in iSprite.Flags then
       iSprite.SpriteID[0] += DRL_COLS * 2 * iSprite.Frames
@@ -754,17 +808,39 @@ begin
   end;
 end;
 
-procedure TDRLSpriteMap.UpdateLightMap;
-var Y,X : DWord;
+function TDRLSpriteMap.CellLightTarget( aCoord : TCoord2D ) : Single;
+begin
+  if not FVisualMap.Explored( aCoord ) then Exit( 0 );
+  if not FVisualMap.Visible( aCoord ) then Exit( 70 );
+  Exit( Min( 100 + FLevel.Vision.getLight( aCoord ) * 20, 255 ) );
+end;
+
+procedure TDRLSpriteMap.UpdateLightMap( aTime : DWord );
+var Y,X   : DWord;
+    iStep : Single;
+    iGoal : Single;
   function Get( X, Y : Byte ) : Byte;
-  var c : TCoord2D;
   begin
-    c.Create( X, Y );
-    if not FLevel.isExplored( c ) then Exit( 0 );
-    Exit( VariableLight(c) );
+    if ( X < 1 ) or ( Y < 1 ) or ( X > MAXX ) or ( Y > MAXY ) then Exit( 0 );
+    Exit( Round( FCellLight[X,Y] ) );
   end;
 
 begin
+  // Presented light moves to its value at a fixed rate, so vision changes fade.
+  iStep := 255.0 * aTime / VisualLightFadeTime;
+  for X := 1 to MAXX do
+    for Y := 1 to MAXY do
+    begin
+      iGoal := CellLightTarget( NewCoord2D( X, Y ) );
+      if FLightSnap then
+        FCellLight[X,Y] := iGoal
+      else if FCellLight[X,Y] < iGoal then
+        FCellLight[X,Y] := Minf( FCellLight[X,Y] + iStep, iGoal )
+      else
+        FCellLight[X,Y] := Maxf( FCellLight[X,Y] - iStep, iGoal );
+    end;
+  FLightSnap := False;
+
   for X := 0 to MAXX do
     for Y := 0 to MAXY do
       if (X*Y = 0) or (X = MAXX) or (Y = MAXY) then
@@ -776,10 +852,12 @@ begin
 end;
 
 function TDRLSpriteMap.GetExploredTerrainCell( aCoord : TCoord2D ) : Byte;
+var iCell : TDRLVisualCell;
 begin
   if not FLevel.isProperCoord( aCoord ) then Exit( 0 );
-  if not FLevel.CellExplored( aCoord ) then Exit( 0 );
-  Result := FLevel.CellBottom[aCoord];
+  iCell := VCell( aCoord );
+  if iCell.Flags and VCF_EXPLORED = 0 then Exit( 0 );
+  Result := iCell.Bottom;
 end;
 
 function TDRLSpriteMap.GetTerrainLight( aCoord : TCoord2D ) : TGLRawQColor;
@@ -803,9 +881,11 @@ end;
 function TDRLSpriteMap.GetTerrainSprite( aCoord : TCoord2D; aCell : Byte; out aDeco : Byte ) : TSprite;
 var iCell  : TCell;
     iColor : TColor;
+    iState : TDRLVisualCell;
 begin
-  Result := GetSprite( aCell, FLevel.CStyle[aCoord] );
-  aDeco := FLevel.Deco[aCoord];
+  iState := VCell( aCoord );
+  Result := GetSprite( aCell, iState.Style );
+  aDeco := iState.Deco;
   if (aDeco > 0) and (SF_FULLDECO in Result.Flags) then
   begin
     iCell := FLevel.Data.Cells[aCell];
@@ -991,7 +1071,7 @@ var iSurfaces  : array[0..2,0..2] of TSurface;
 
 begin
   Result := False;
-  iOwnKind := SurfaceKind( FLevel.CellBottom[aCoord], aSprite );
+  iOwnKind := SurfaceKind( VCell( aCoord ).Bottom, aSprite );
   if iOwnKind = skNone then Exit;
   iLayerID := aSprite.SpriteID[0] div 100000;
   iLayer := FSpriteEngine.Layers[iLayerID];
@@ -999,7 +1079,7 @@ begin
   FillChar( iSurfaces, SizeOf( iSurfaces ), 0 );
   iSurfaces[1,1].Kind := iOwnKind;
   iSurfaces[1,1].Material := GetTransitionMaterial( aSprite );
-  iSurfaces[1,1].Rotation := FLevel.Rotation[aCoord];
+  iSurfaces[1,1].Rotation := VCell( aCoord ).Rotation;
   for iY := 0 to 2 do
     for iX := 0 to 2 do
     begin
@@ -1012,7 +1092,7 @@ begin
       iSurfaces[iX,iY].Kind := SurfaceKind( iCell, iSprite );
       if (iSurfaces[iX,iY].Kind = skNone) or (iSurfaces[iX,iY].Kind = iOwnKind) then Continue;
       iSurfaces[iX,iY].Material := GetTransitionMaterial( iSprite );
-      iSurfaces[iX,iY].Rotation := FLevel.Rotation[iNeighbour];
+      iSurfaces[iX,iY].Rotation := VCell( iNeighbour ).Rotation;
       if (iX = 1) or (iY = 1) then Result := True;
     end;
   // Only tiles sharing an edge with the opposite kind need transition geometry.
@@ -1040,14 +1120,43 @@ begin
 end;
 
 procedure TDRLSpriteMap.PushTerrain;
-var iDMinX     : Word;
-    iDMaxX     : Word;
-    iBottom    : Word;
+var iDMinX    : Word;
+    iDMaxX    : Word;
+    iY,iX     : DWord;
+    iCoord    : TCoord2D;
+    iProgress : Single;
+begin
+  iDMinX := FShift.X div FSpriteEngine.Grid.X + 1;
+  iDMaxX := Min(FShift.X div FSpriteEngine.Grid.X + (FDriver.GetSizeX div FSpriteEngine.Grid.X + 1),MAXX);
+
+  for iY := 1 to MAXY do
+    for iX := iDMinX to iDMaxX do
+    begin
+      iCoord.Create(iX,iY);
+      // A tile drawn from a fading neighbourhood is drawn from both states,
+      // each on its share of game pixels.
+      if FVisualMap.NeighbourhoodFade( iCoord, iProgress ) then
+      begin
+        FLayer := vlShown;
+        FSpriteEngine.SetDither( sdOutgoing, iProgress );
+        PushCell( iCoord );
+        FLayer := vlTarget;
+        FSpriteEngine.SetDither( sdIncoming, iProgress );
+        PushCell( iCoord );
+        FSpriteEngine.SetDither( sdNone );
+      end
+      else
+        PushCell( iCoord );
+    end;
+end;
+
+procedure TDRLSpriteMap.PushCell( aCoord : TCoord2D );
+var iBottom    : Word;
+    iTop       : Word;
     iZ         : Integer;
-    iY,iX      : DWord;
     iSpr       : TSprite;
     iFSpr      : TSprite;
-    iCoord     : TCoord2D;
+    iState     : TDRLVisualCell;
     iDeco      : Byte;
     iFloor     : Byte;
     iCell      : TCell;
@@ -1055,192 +1164,212 @@ var iDMinX     : Word;
     iMixFluids : Boolean;
     iMixedWall : Boolean;
     iNewLayout : Boolean;
-
 begin
+  iState := VCell( aCoord );
+  if iState.Flags and VCF_EXPLORED = 0 then Exit;
   iMixFluids := not FLevel.Flags[ LF_SHARPFLUID ];
   iNewLayout := FLevel.Data.Rules.NewFloorLayout;
-  iDMinX := FShift.X div FSpriteEngine.Grid.X + 1;
-  iDMaxX := Min(FShift.X div FSpriteEngine.Grid.X + (FDriver.GetSizeX div FSpriteEngine.Grid.X + 1),MAXX);
-
-  for iY := 1 to MAXY do
-    for iX := iDMinX to iDMaxX do
+  iZ         := aCoord.Y * DRL_Z_LINE;
+  iBottom := iState.Bottom;
+  if iBottom <> 0 then
+  begin
+    iSpr := GetTerrainSprite( aCoord, iBottom, iDeco );
+    iMixedWall := (SF_MULTI in iSpr.Flags) and PushWallDebrisTerrain( aCoord, iSpr, iZ );
+    if not iMixedWall and not (iMixFluids and (CF_LIQUID in FLevel.Data.Cells[iBottom].Flags) and
+      (SF_FLUID in iSpr.Flags) and PushFluidTerrain( aCoord, iSpr, iZ )) then
+      if SF_FLOW in iSpr.Flags
+        then PushSpriteTerrain( aCoord, iSpr, iZ, FFluidX, FFluidY )
+        else
+        begin
+          if SF_MULTI in iSpr.Flags then
+            PushMultiSpriteTerrain( aCoord, iSpr, iZ, iState.Rotation )
+          else
+            PushSpriteTerrain( aCoord, iSpr, iZ );
+        end;
+    if (SF_FLUID in iSpr.Flags) and (iState.Rotation <> 0) then
     begin
-      iCoord.Create(iX,iY);
-      if not FLevel.CellExplored(iCoord) then Continue;
-      iBottom := FLevel.CellBottom[iCoord];
-      if iBottom <> 0 then
+      iFloor := iState.Floor;
+      if iFloor <> 0 then
       begin
-        iZ     := iY * DRL_Z_LINE;
-        iSpr := GetTerrainSprite( iCoord, iBottom, iDeco );
-        iMixedWall := (SF_MULTI in iSpr.Flags) and PushWallDebrisTerrain( iCoord, iSpr, iZ );
-        if not iMixedWall and not (iMixFluids and (CF_LIQUID in FLevel.Data.Cells[iBottom].Flags) and
-          (SF_FLUID in iSpr.Flags) and PushFluidTerrain( iCoord, iSpr, iZ )) then
-          if SF_FLOW in iSpr.Flags
-            then PushSpriteTerrain( iCoord, iSpr, iZ, FFluidX, FFluidY )
-            else
-            begin
-              if SF_MULTI in iSpr.Flags then
-                PushMultiSpriteTerrain( iCoord, iSpr, iZ, FLevel.Rotation[ iCoord ] )
-              else
-                PushSpriteTerrain( iCoord, iSpr, iZ );
-            end;
-        if (SF_FLUID in iSpr.Flags) and (FLevel.Rotation[ iCoord ] <> 0) then
-        begin
-          iFloor := FLevel.Floor[ iCoord ];
-          if iFloor <> 0 then
+        iFSpr := GetSprite( iFloor, iState.FStyle );
+        if SF_HASALTEDGE in iFSpr.Flags then
+          if SF_USEALTEDGE in iSpr.Flags then
+            iFSpr.SpriteID[0] += DRL_COLS;
+        if SF_HASALTEDGE2 in iFSpr.Flags then
+          if SF_USEALTEDGE2 in iSpr.Flags then
+            iFSpr.SpriteID[0] += 2*DRL_COLS;
+        if iNewLayout
+          then PushFloorTerrainNewLayout( aCoord, iFSpr, iZ + DRL_Z_ENVIRO, iState.Rotation )
+          else
           begin
-            iFSpr := GetSprite( iFloor, FLevel.FlrStyle[ iCoord ] );
-            if SF_HASALTEDGE in iFSpr.Flags then
-              if SF_USEALTEDGE in iSpr.Flags then
-                iFSpr.SpriteID[0] += DRL_COLS;
-            if SF_HASALTEDGE2 in iFSpr.Flags then
-              if SF_USEALTEDGE2 in iSpr.Flags then
-                iFSpr.SpriteID[0] += 2*DRL_COLS;
-            if iNewLayout
-              then PushFloorTerrainNewLayout( iCoord, iFSpr, iZ + DRL_Z_ENVIRO, FLevel.Rotation[iCoord] )
-              else
-              begin
-                iFSpr.SpriteID[0] += FLevel.Rotation[iCoord];
-                PushSpriteTerrain( iCoord, iFSpr, iZ + DRL_Z_ENVIRO );
-              end;
+            iFSpr.SpriteID[0] += iState.Rotation;
+            PushSpriteTerrain( aCoord, iFSpr, iZ + DRL_Z_ENVIRO );
           end;
-        end;
-        if iDeco <> 0 then
-        begin
-          iCell := FLevel.Data.Cells[ iBottom ];
-          if iCell.Deco[ iDeco ].SpriteID[0] <> 0 then
-          begin
-            if SF_COSPLAY in iSpr.Flags then
-            begin
-              iColor     := iSpr.Color;
-              iSpr       := GetSprite( iCell.Deco[ iDeco ], iCoord );
-              iSpr.Color := iColor;
-              Include( iSpr.Flags, SF_COSPLAY );
-            end
-            else
-              iSpr := GetSprite( iCell.Deco[ iDeco ], iCoord );
-            PushSpriteTerrain( iCoord, iSpr, iZ + DRL_Z_ENVIRO + 1 );
-          end;
-        end;
-        if (SF_FLOOR in iSpr.Flags) or iMixedWall then
-        begin
-          iFloor := FLevel.Floor[ iCoord ];
-          if iFloor <> 0 then
-          begin
-            iSpr := GetSprite( iFloor, FLevel.FlrStyle[ iCoord ] );
-            PushSpriteTerrain( iCoord, iSpr, iZ - 1 );
-          end;
-        end;
       end;
+    end;
+    if iDeco <> 0 then
+    begin
+      iCell := FLevel.Data.Cells[ iBottom ];
+      if iCell.Deco[ iDeco ].SpriteID[0] <> 0 then
+      begin
+        if SF_COSPLAY in iSpr.Flags then
+        begin
+          iColor     := iSpr.Color;
+          iSpr       := GetSprite( iCell.Deco[ iDeco ], aCoord );
+          iSpr.Color := iColor;
+          Include( iSpr.Flags, SF_COSPLAY );
+        end
+        else
+          iSpr := GetSprite( iCell.Deco[ iDeco ], aCoord );
+        PushSpriteTerrain( aCoord, iSpr, iZ + DRL_Z_ENVIRO + 1 );
+      end;
+    end;
+    if (SF_FLOOR in iSpr.Flags) or iMixedWall then
+    begin
+      iFloor := iState.Floor;
+      if iFloor <> 0 then
+      begin
+        iSpr := GetSprite( iFloor, iState.FStyle );
+        PushSpriteTerrain( aCoord, iSpr, iZ - 1 );
+      end;
+    end;
+  end;
+
+  // The top layer; a clip drawing it covers the cell.
+  iTop := iState.Top;
+  if ( iTop = 0 ) or FVisualMap.Covered( aCoord ) then Exit;
+  if CF_STAIRS in FLevel.Data.Cells[iTop].Flags then
+    PushSpriteDoodad( aCoord, FLevel.Data.Cells[iTop].Sprite[0], 255 )
+  else
+  begin
+    iSpr := GetSprite( iTop, iState.Style );
+    if ( SF_DOORHACK in iSpr.Flags ) and ( iState.Rotation > 0 ) then
+    begin
+      iSpr.SpriteID[0] := iSpr.SpriteID[ iSpr.SCount div 2 ];
+      Include( iSpr.Flags, SF_HIGHSPRITE );
+    end;
+    PushSpriteDoodad( aCoord, iSpr );
+    iDeco := iState.Deco;
+    if iDeco <> 0 then
+    begin
+      iCell := FLevel.Data.Cells[ iTop ];
+      if iCell.Deco[ iDeco ].SpriteID[0] <> 0 then
+        PushSpriteDoodad( aCoord, iCell.Deco[ iDeco ], -1, 1 );
+    end;
+  end;
+end;
+
+procedure TDRLSpriteMap.PushPresentedBeing( const aCoord : TCoord2D; aBeing : TBeing; const aSprite : TSprite );
+var iPosition : TVec2i;
+    iLight    : Integer;
+begin
+  iPosition := Vec2i( aCoord.X-1, aCoord.Y-1 ) * FSpriteEngine.Grid;
+  if FVisualMap.Visible( aCoord ) then iLight := VariableLight( aCoord, 30 )
+  else if ( aBeing <> nil ) and FLevel.BeingExplored( aCoord, aBeing ) then iLight := 40
+  else
+  begin
+    if ( aBeing <> nil ) and FLevel.BeingIntuited( aCoord, aBeing ) then
+      with FSpriteEngine.Layers[ FIO.EngineSprites.Mark div 100000 ] do
+        Push( FIO.EngineSprites.Mark mod 100000, aCoord, ColorWhite, NewColor( Magenta ), ColorZero, NewColor( Magenta ), DRL_Z_FX-1 );
+    Exit;
+  end;
+  if aBeing <> nil then
+  begin
+    PushSprite( iPosition, GetBeingSprite( aBeing ), iLight, aCoord.Y * DRL_Z_LINE + DRL_Z_BEINGS );
+    PushBeingOverlay( iPosition, aBeing, iLight );
+  end
+  else
+    PushSprite( iPosition, GetSprite( aSprite, aCoord ), iLight, aCoord.Y * DRL_Z_LINE + DRL_Z_BEINGS );
+end;
+
+procedure TDRLSpriteMap.PushPresentedItem( const aCoord : TCoord2D; aItem : TItem; const aSprite : TSprite; aDTime : Integer );
+var iVisible : Boolean;
+    iLight   : Integer;
+    iOff     : Integer;
+    iD       : Single;
+    iRange   : Single;
+begin
+  // Sight of the cell comes from the presented level; other ways of seeing
+  // the item from the live one.
+  iVisible := FVisualMap.Visible( aCoord );
+  if not iVisible then
+    iVisible := ( aItem <> nil ) and ( not FLevel.isVisible( aCoord ) ) and FLevel.ItemVisible( aCoord, aItem );
+  if not ( iVisible or FVisualMap.Explored( aCoord ) ) then Exit;
+  iOff := 0;
+  if ( aItem <> nil ) and ( aItem.Appear > 0 ) then
+  begin
+    if ( aItem.Appear < 500 ) and FIO.Settings.ItemDropAnimation then
+    begin
+      iRange := 6.0 * FSpriteEngine.Scale;
+      aItem.Appear := Min( aItem.Appear + aDTime, 500 );
+      iD := aItem.Appear / 500;
+      iOff := Round( -iRange + iRange * ( 1.0 - Exp( -5.0 * iD ) * Cos( 4.0 * Pi * iD ) ) );
+    end
+    else aItem.Appear := 0;
+  end;
+  iLight := 70;
+  if iVisible then
+  begin
+    iLight := 255;
+    if ( aItem <> nil ) and aItem.isFeature then iLight := VariableLight( aCoord );
+  end;
+  PushSprite( Vec2i( aCoord.X-1, aCoord.Y-1 ) * FSpriteEngine.Grid + Vec2i( 0, iOff ), GetSprite( aSprite, aCoord ),
+    iLight, aCoord.Y * DRL_Z_LINE + DRL_Z_ITEMS );
+end;
+
+function TDRLSpriteMap.PresentedPosition( aUID : TUID; out aPosition : TVec2f ) : Boolean;
+var iClip  : TGFXThingAnimation;
+    iThing : TThing;
+begin
+  aPosition := Vec2f( 0, 0 );
+  iClip := ThingClip( FAnimations, aUID );
+  if iClip <> nil then Exit( iClip.Position( aPosition ) );
+  iThing := FLevel.Context.UIDs.Get( aUID ) as TThing;
+  if ( iThing = nil ) or not FVisualMap.Presentable( iThing ) then Exit( False );
+  aPosition := Vec2f( iThing.Position.X - 1, iThing.Position.Y - 1 );
+  Exit( True );
+end;
+
+procedure TDRLSpriteMap.PushThings( aDTime : Integer );
+var iNode      : TNode;
+    iThing     : TThing;
+    iAnimation : TAnimation;
+    iClip      : TGFXThingAnimation;
+begin
+  // Things a clip claims are drawn through that clip.
+  for iAnimation in FAnimations.Animations do
+    if iAnimation is TGFXThingAnimation then
+    begin
+      iClip := TGFXThingAnimation( iAnimation );
+      if ThingClip( FAnimations, iClip.Thing ) = iClip then iClip.PushThing;
+    end;
+  // The other things of the level.
+  for iNode in FLevel do
+    if iNode is TThing then
+    begin
+      iThing := TThing( iNode );
+      if not ( FLevel.isProperCoord( iThing.Position ) and FVisualMap.Presentable( iThing ) ) then Continue;
+      if ThingClip( FAnimations, iThing.UID ) <> nil then Continue;
+      if iThing is TBeing then
+        PushPresentedBeing( iThing.Position, TBeing( iThing ), iThing.Sprite )
+      else if iThing is TItem then
+        PushPresentedItem( iThing.Position, TItem( iThing ), iThing.Sprite, aDTime );
     end;
 end;
 
-procedure TDRLSpriteMap.PushObjects( aDTime : Integer );
+procedure TDRLSpriteMap.PushObjects;
 var iDMinX   : Word;
     iDMaxX   : Word;
     iY,iX    : DWord;
-    iTop, iL : DWord;
+    iL       : DWord;
     iV       : TVec2i;
-    iZ       : Integer;
-    iCoord   : TCoord2D;
     iBeing   : TBeing;
-    iItem    : TItem;
+    iClip    : TGFXThingAnimation;
+    iPos     : TVec2f;
     iColor   : TColor;
-    iDeco    : Byte;
-    iCell    : TCell;
-    iVisible : Boolean;
-    iD       : Single;
-    iRange   : Single;
-    iOff     : Integer;
-    iSprite  : TSprite;
 begin
   iDMinX := FShift.X div FSpriteEngine.Grid.X + 1;
   iDMaxX := Min(FShift.X div FSpriteEngine.Grid.X + (FDriver.GetSizeX div FSpriteEngine.Grid.X + 1),MAXX);
-
-  for iY := 1 to MAXY do
-    for iX := iDMinX to iDMaxX do
-    begin
-      iCoord.Create(iX,iY);
-      iZ   := iY * DRL_Z_LINE;
-      iTop := FLevel.CellTop[iCoord];
-      if (iTop <> 0) and FLevel.CellExplored(iCoord) and ( not FLevel.LightFlag[ iCoord, LFANIMATING ] ) then
-      begin
-        if CF_STAIRS in FLevel.Data.Cells[iTop].Flags then
-          PushSpriteDoodad( iCoord, FLevel.Data.Cells[iTop].Sprite[0], 255 )
-        else
-        begin
-          if not ( ( CF_CORPSE in FLevel.Data.Cells[iTop].Flags ) and ( FLevel.LightFlag[ iCoord, LFCORPSING ] ) ) then
-          begin
-            iSprite := GetSprite( iTop, FLevel.CStyle[iCoord] );
-            if ( SF_DOORHACK in iSprite.Flags ) and ( FLevel.Rotation[iCoord] > 0 ) then
-            begin
-              iSprite.SpriteID[0] := iSprite.SpriteID[ iSprite.SCount div 2 ];
-              Include( iSprite.Flags, SF_HIGHSPRITE );
-            end;
-            PushSpriteDoodad( iCoord, iSprite );
-          end;
-          iDeco := FLevel.Deco[iCoord];
-          if iDeco <> 0 then
-          begin
-            iCell := FLevel.Data.Cells[ iTop ];
-            if iCell.Deco[ iDeco ].SpriteID[0] <> 0 then
-              PushSpriteDoodad( iCoord, iCell.Deco[ iDeco ], -1, 1 );
-          end;
-
-        end;
-      end;
-
-      iItem    := FLevel.Item[ iCoord ];
-      iVisible := FLevel.ItemVisible( iCoord, iItem );
-      if iVisible or FLevel.ItemExplored(iCoord, iItem) then
-        if (iItem.AnimCount = 0) then
-        begin
-          iSprite := GetSprite( iItem.Sprite, iCoord );
-          iOff := 0;
-          if iItem.Appear > 0 then
-          begin
-            if ( iItem.Appear < 500 ) and FIO.Settings.ItemDropAnimation then
-            begin
-              iRange := 6.0 * FSpriteEngine.Scale;
-              iItem.Appear := Min( iItem.Appear + aDTime, 500 );
-              iD := iItem.Appear / 500;
-              iOff := Round( -iRange + iRange * ( 1.0 - Exp( -5.0 * iD ) * Cos( 4.0 * Pi * iD ) ) );
-            end
-            else iItem.Appear := 0;
-          end;
-          iL := 70;
-          if iVisible then
-          begin
-            iL := 255;
-            if iItem.isFeature then iL := VariableLight( iCoord );
-          end;
-          PushSprite( Vec2i( iX-1, iY-1 ) * FSpriteEngine.Grid + Vec2i( 0, iOff ), iSprite, iL, iZ + DRL_Z_ITEMS );
-        end;
-    end;
-
-  for iY := 1 to MAXY do
-    for iX := iDMinX to iDMaxX do
-    begin
-      iCoord.Create(iX,iY);
-      iZ     := iY * DRL_Z_LINE;
-      iBeing := FLevel.Being[iCoord];
-      if (iBeing <> nil) and (iBeing.AnimCount = 0) then
-        if FLevel.BeingVisible(iCoord, iBeing) then
-        begin
-          PushSprite( Vec2i( iX-1, iY-1 ) * FSpriteEngine.Grid, GetBeingSprite( iBeing ), VariableLight( iCoord, 30 ), iZ + DRL_Z_BEINGS );
-          PushBeingOverlay( Vec2i( iX-1, iY-1 ) * FSpriteEngine.Grid, iBeing, VariableLight( iCoord, 30 ) );
-        end
-        else if FLevel.BeingExplored(iCoord, iBeing) then
-        begin
-          PushSprite( Vec2i( iX-1, iY-1 ) * FSpriteEngine.Grid, GetBeingSprite( iBeing ), 40, iZ + DRL_Z_BEINGS );
-          PushBeingOverlay( Vec2i( iX-1, iY-1 ) * FSpriteEngine.Grid, iBeing, 40 );
-        end
-        else if FLevel.BeingIntuited(iCoord, iBeing) then
-        begin
-          with FSpriteEngine.Layers[ FIO.EngineSprites.Mark div 100000 ] do
-            Push( FIO.EngineSprites.Mark mod 100000, iCoord, ColorWhite, NewColor( Magenta ), ColorZero, NewColor( Magenta ), DRL_Z_FX-1 );
-        end;
-    end;
 
   if FTargeting then
     begin
@@ -1273,11 +1402,16 @@ begin
   else
     if FAutoTarget.X * FAutoTarget.Y <> 0 then
     begin
-      iBeing := FLevel.Being[FAutoTarget];
-      iV     := Vec2i( FAutoTarget.X-1, FAutoTarget.Y-1 ) * FSpriteEngine.Grid;
-      if ( iBeing <> nil ) and ( iBeing.AnimCount > 0 ) then
-         GetMovePosition( iBeing.UID, iV );
-      if ( iBeing <> nil ) and ( iBeing.isVisible or ( iBeing.AnimCount > 0 ) ) 
+      iBeing  := FLevel.Being[FAutoTarget];
+      iV      := Vec2i( FAutoTarget.X-1, FAutoTarget.Y-1 ) * FSpriteEngine.Grid;
+      iClip := nil;
+      // The target follows its being as it is presented.
+      if iBeing <> nil then
+      begin
+        iClip := ThingClip( FAnimations, iBeing.UID );
+        if PresentedPosition( iBeing.UID, iPos ) then iV := PixelPosition( iPos );
+      end;
+      if ( iBeing <> nil ) and ( iBeing.isVisible or ( ( iClip <> nil ) and not ( iClip is TGFXAppearAnimation ) ) )
         then PushTarget( FIO.EngineSprites.Select, iV, NewColor( Yellow ), 1.0 + iBeing.TargetSize * 0.1 )
         else PushTarget( FIO.EngineSprites.Select, iV, NewColor( Yellow ), 1.0 );
     end;
@@ -1296,6 +1430,9 @@ var iData  : TDecalArray;
     iPos   : TVec2i;
     iCoord : TCoord2D;
     iLight : Byte;
+    iHeld  : Boolean;
+    iFirst : QWord;
+    i      : Integer;
 //    iLQuad : TGLRawQColor;
   function GetLight( aPos : TVec2i ) : Byte;
   var iCoord   : TCoord2D;
@@ -1311,13 +1448,16 @@ var iData  : TDecalArray;
   end;
 
   begin
-  iData := FLevel.Decals.Data;
-  for iDecal in iData do
+  iData  := FLevel.Decals.Data;
+  iHeld  := FVisualMap.HoldsDecals;
+  iFirst := FLevel.Decals.Total - QWord( iData.Size );
+  for i := 0 to iData.Size - 1 do
   begin
+    if iHeld and FVisualMap.DecalHeld( iFirst + QWord( i ) ) then Continue;
+    iDecal := iData[i];
     iCoord := NewCoord2D( ( iDecal.Position.X + 16 ) div 32, ( iDecal.Position.Y + 16 ) div 32 );
-    with FLevel do
-      if ( not isProperCoord( iCoord ) ) or ( aDarkness and ( not isVisible( iCoord ) ) ) or ( not isExplored( iCoord ) ) then
-          Continue;
+    if ( not FLevel.isProperCoord( iCoord ) ) or ( aDarkness and ( not FVisualMap.Visible( iCoord ) ) ) or ( not FVisualMap.Explored( iCoord ) ) then
+      Continue;
 
     iPos.Init( Floor( ( iDecal.Position.X - 32 ) * FSpriteEngine.Scale ), Floor( ( iDecal.Position.Y - 32 ) * FSpriteEngine.Scale ) );
     iLight := GetLight( Vec2i( iDecal.Position.X + 16, iDecal.Position.Y + 16 ) );
@@ -1338,15 +1478,17 @@ end;
 
 function TDRLSpriteMap.VariableLight( aWhere: TCoord2D; aBonus : ShortInt = 0 ): Byte;
 begin
-  if not FLevel.isVisible( aWhere ) then Exit( 70 ); //20
-  Exit( Min( 100+aBonus+FLevel.Vision.getLight(aWhere)*20, 255 ) );
+  if not FLevel.isProperCoord( aWhere ) then Exit( 70 );
+  if not FVisualMap.Visible( aWhere ) then aBonus := 0;
+  // Unexplored cells only reach this through things revealed some other way.
+  Exit( Min( Max( Round( FCellLight[aWhere.X,aWhere.Y] ), 70 ) + aBonus, 255 ) );
 end;
 
 function TDRLSpriteMap.GetBeingSprite( aBeing : TBeing ) : TSprite;
 begin
   Assert( Assigned( aBeing ) );
   Result := aBeing.Sprite;
-  if (aBeing.OverlayUntil > FIO.Time) and (SF_PAINANIM in Result.Flags) then
+  if aBeing.InPain( FIO.Time ) and (SF_PAINANIM in Result.Flags) then
   begin
     if SF_LARGE in Result.Flags then
       Result.SpriteID[0] += DRL_COLS * 2 * Result.Frames
