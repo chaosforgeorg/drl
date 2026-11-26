@@ -19,8 +19,8 @@ uses vrltools,
 type IDRLPresentation = interface( IRLPresentation )
   function ResolveSoundID( const aResolveIDs : array of AnsiString ) : Word;
   procedure PlaySound( aSoundID : Word; aCoord : TCoord2D; aDelay : DWord = 0 );
-  // Presentation time until which a pain sprite shows when hit after aDelay.
-  function PainUntil( aDelay : Integer ) : QWord;
+  // Presentation times between which a pain sprite shows when hit after aDelay.
+  procedure PainWindow( aDelay : Integer; out aFrom, aUntil : QWord );
   procedure Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0 );
   procedure PulseBlood( aValue : Single );
   // Whether the level's decals are drawn; placing them draws visual randomness.

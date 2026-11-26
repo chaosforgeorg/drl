@@ -161,7 +161,7 @@ type TDRLIO = class( TIORL, IDRLPresentation )
   function EquipSound : AnsiString;
   // Menu colour of an item, light gray when inventory colouring is off.
   function ItemMenuColor( aItem : TItem ) : Byte;
-  function PainUntil( aDelay : Integer ) : QWord;
+  procedure PainWindow( aDelay : Integer; out aFrom, aUntil : QWord );
 
   // IO outlives Lua; its natives capture it as upvalue 1.
   procedure RegisterLuaAPI( aLua : TLua ); virtual;
@@ -579,10 +579,11 @@ begin
   Exit( aItem.MenuColor );
 end;
 
-function TDRLIO.PainUntil( aDelay : Integer ) : QWord;
+procedure TDRLIO.PainWindow( aDelay : Integer; out aFrom, aUntil : QWord );
 const PAIN_DURATION = 500;
 begin
-  Exit( FTime + aDelay + PAIN_DURATION );
+  aFrom  := FTime + Max( aDelay, 0 );
+  aUntil := aFrom + PAIN_DURATION;
 end;
 
 {

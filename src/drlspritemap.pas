@@ -660,7 +660,7 @@ begin
   iSprite := aBeing.Sprite;
   iSprite.SpriteID[0] := iOverlay.Sprite.SpriteID[0];
 
-  if ( aBeing.OverlayUntil > FIO.Time ) and ( SF_PAINANIM in iSprite.Flags ) then
+  if aBeing.InPain( FIO.Time ) and ( SF_PAINANIM in iSprite.Flags ) then
   begin
     if SF_LARGE in iSprite.Flags then
       iSprite.SpriteID[0] += DRL_COLS * 2 * iSprite.Frames
@@ -1464,7 +1464,7 @@ function TDRLSpriteMap.GetBeingSprite( aBeing : TBeing ) : TSprite;
 begin
   Assert( Assigned( aBeing ) );
   Result := aBeing.Sprite;
-  if (aBeing.OverlayUntil > FIO.Time) and (SF_PAINANIM in Result.Flags) then
+  if aBeing.InPain( FIO.Time ) and (SF_PAINANIM in Result.Flags) then
   begin
     if SF_LARGE in Result.Flags then
       Result.SpriteID[0] += DRL_COLS * 2 * Result.Frames

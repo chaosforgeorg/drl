@@ -168,6 +168,7 @@ TBeing = class(TThing,IPathQuery)
     FKnockBacked   : Boolean;
     FDying         : Boolean;
 
+    FOverlayFrom   : QWord;
     FOverlayUntil  : QWord;
   public
     property Inv       : TInventory  read FInv       write FInv;
@@ -182,8 +183,8 @@ TBeing = class(TThing,IPathQuery)
     // depleted HP while the hooks decide.
     property Killed       : Boolean read FDying;
 
-    // Presentation time until which the pain sprite shows.
-    property OverlayUntil : QWord   read FOverlayUntil;
+    // Whether the pain sprite shows at presentation time aTime.
+    function InPain( aTime : QWord ) : Boolean;
   published
 
     property can_dual_wield       : Boolean read canDualWield;
@@ -355,7 +356,13 @@ begin
   FMeleeAttack  := False;
   FDying        := False;
 
+  FOverlayFrom  := 0;
   FOverlayUntil := 0;
+end;
+
+function TBeing.InPain( aTime : QWord ) : Boolean;
+begin
+  Exit( ( aTime >= FOverlayFrom ) and ( aTime < FOverlayUntil ) );
 end;
 
 procedure TBeing.LuaLoad( aTable : TLuaTable; aGameRNG : TRNG );
@@ -1962,6 +1969,8 @@ var iLevel         : TLevel;
     iForceOverkill : Boolean;
     iMeleeAttack   : Boolean;
     iOldDurability : LongInt;
+    iPainFrom      : QWord;
+    iPainUntil     : QWord;
 begin
   if ( aDamage < 0 ) or (BF_INV in FFlags) or Dying then Exit;
   // A source destroyed by an earlier callback no longer takes part.
@@ -2138,7 +2147,12 @@ begin
     then Kill( Min( aDamage div 2, 15), (aDamage >= iOverKillValue) or iForceOverkill, iActive, aSource, aDelay, True )
     else begin
       CallHook( Hook_OnAttacked, [ iActive, aSource ] );
-      FOverlayUntil := Max( FOverlayUntil, iLevel.Presentation.PainUntil( aDelay ) );
+      // A window overlapping or touching the current one extends it.
+      iLevel.Presentation.PainWindow( aDelay, iPainFrom, iPainUntil );
+      if FOverlayUntil < iPainFrom
+        then FOverlayFrom := iPainFrom
+        else FOverlayFrom := Min( FOverlayFrom, iPainFrom );
+      FOverlayUntil := Max( FOverlayUntil, iPainUntil );
       // Survivors report HP damage after resolution, with no continuation.
       CallHook( Hook_OnDamageReceived, [ aDamage, aSource, iActive, Byte( aDamageType ) ] );
     end;
