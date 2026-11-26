@@ -36,6 +36,14 @@ end;
 
 type TDRLVisualMapBase = specialize TGVisualMap<TDRLVisualCell>;
 
+// Decals numbered aFirst to aLast - 1 (see TDecalStore.Total) stay hidden
+// until presentation time EndAt.
+type TDecalHold = record
+  First : QWord;
+  Last  : QWord;
+  EndAt : QWord;
+end;
+
 { TDRLVisualMap }
 
 // Terrain, vision and blood marks of the presented level. Owned by the IO
@@ -54,6 +62,13 @@ TDRLVisualMap = class( TDRLVisualMapBase )
   // claims it: it is in the level and, as a being, not killed. A killed being
   // is shown only by its death clip.
   function Presentable( aThing : TThing ) : Boolean;
+  // Hides decals aFirst to aLast - 1 for aDelay ms.
+  procedure HoldDecals( aFirst, aLast : QWord; aDelay : DWord );
+  // Whether any decal is hidden now; DecalHeld is valid only then.
+  function HoldsDecals : Boolean;
+  function DecalHeld( aDecal : QWord ) : Boolean;
+  procedure Synchronize; override;
+  function Busy : Boolean; override;
 protected
   function SourceChanged : Boolean; override;
   procedure BeginCompare; override;
@@ -63,6 +78,7 @@ private
   FLevel      : TLevel; // Borrowed from the IO, which drops this map before the level.
   FCovers     : array of Byte;
   FVisionHold : QWord;
+  FDecalHolds : array of TDecalHold;
   // Level.Revision and player flags CellExplored reads, as last compared.
   FRevision   : DWord;
   FPlayer     : Byte;
@@ -114,6 +130,52 @@ end;
 function TDRLVisualMap.Presentable( aThing : TThing ) : Boolean;
 begin
   Exit( ( aThing.Parent = FLevel ) and not ( ( aThing is TBeing ) and TBeing( aThing ).Killed ) );
+end;
+
+procedure TDRLVisualMap.HoldDecals( aFirst, aLast : QWord; aDelay : DWord );
+var i, iCount : Integer;
+begin
+  if ( aDelay = 0 ) or ( aFirst >= aLast ) then Exit;
+  // Expired holds are dropped here, where the list changes anyway.
+  iCount := 0;
+  for i := 0 to High( FDecalHolds ) do
+    if FDecalHolds[i].EndAt > FTime then
+    begin
+      FDecalHolds[iCount] := FDecalHolds[i];
+      Inc( iCount );
+    end;
+  SetLength( FDecalHolds, iCount + 1 );
+  FDecalHolds[iCount].First := aFirst;
+  FDecalHolds[iCount].Last  := aLast;
+  FDecalHolds[iCount].EndAt := FTime + aDelay;
+end;
+
+function TDRLVisualMap.HoldsDecals : Boolean;
+var iHold : TDecalHold;
+begin
+  for iHold in FDecalHolds do
+    if iHold.EndAt > FTime then Exit( True );
+  Exit( False );
+end;
+
+function TDRLVisualMap.DecalHeld( aDecal : QWord ) : Boolean;
+var iHold : TDecalHold;
+begin
+  for iHold in FDecalHolds do
+    if ( iHold.EndAt > FTime ) and ( aDecal >= iHold.First ) and ( aDecal < iHold.Last ) then
+      Exit( True );
+  Exit( False );
+end;
+
+procedure TDRLVisualMap.Synchronize;
+begin
+  FDecalHolds := nil;
+  inherited Synchronize;
+end;
+
+function TDRLVisualMap.Busy : Boolean;
+begin
+  Exit( inherited Busy or HoldsDecals );
 end;
 
 function TDRLVisualMap.Visible( const aCoord : TCoord2D ) : Boolean;

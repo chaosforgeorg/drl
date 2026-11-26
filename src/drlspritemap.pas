@@ -1413,6 +1413,9 @@ var iData  : TDecalArray;
     iPos   : TVec2i;
     iCoord : TCoord2D;
     iLight : Byte;
+    iHeld  : Boolean;
+    iFirst : QWord;
+    i      : Integer;
 //    iLQuad : TGLRawQColor;
   function GetLight( aPos : TVec2i ) : Byte;
   var iCoord   : TCoord2D;
@@ -1428,9 +1431,13 @@ var iData  : TDecalArray;
   end;
 
   begin
-  iData := FLevel.Decals.Data;
-  for iDecal in iData do
+  iData  := FLevel.Decals.Data;
+  iHeld  := FVisualMap.HoldsDecals;
+  iFirst := FLevel.Decals.Total - QWord( iData.Size );
+  for i := 0 to iData.Size - 1 do
   begin
+    if iHeld and FVisualMap.DecalHeld( iFirst + QWord( i ) ) then Continue;
+    iDecal := iData[i];
     iCoord := NewCoord2D( ( iDecal.Position.X + 16 ) div 32, ( iDecal.Position.Y + 16 ) div 32 );
     if ( not FLevel.isProperCoord( iCoord ) ) or ( aDarkness and ( not FVisualMap.Visible( iCoord ) ) ) or ( not FVisualMap.Explored( iCoord ) ) then
       Continue;

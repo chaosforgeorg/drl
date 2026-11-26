@@ -149,6 +149,7 @@ type TDRLIO = class( TIORL, IDRLPresentation )
   procedure addRumbleAnimation( aDelay : DWord; aLow, aHigh : Word; aDuration : DWord );
   procedure Explosion( aDelay : Integer; aWhere : TCoord2D; const aData : TExplosionData; const aCells : array of TCoord2D ); reintroduce; virtual;
   procedure HoldCell( const aCoord : TCoord2D; aDelay : Integer );
+  procedure HoldDecals( aFirst, aLast : QWord; aDelay : Integer );
   // Each IO presents a thing added or removed under a delay with its clips.
   procedure HideThing( aThing : TThing; aDelay : Integer ); virtual; abstract;
   procedure LingerThing( aThing : TThing; aDelay : Integer ); virtual; abstract;
@@ -421,6 +422,11 @@ end;
 procedure TDRLIO.HoldCell( const aCoord : TCoord2D; aDelay : Integer );
 begin
   if FVisual <> nil then FVisual.Hold( aCoord, aDelay );
+end;
+
+procedure TDRLIO.HoldDecals( aFirst, aLast : QWord; aDelay : Integer );
+begin
+  if ( FVisual <> nil ) and ( aDelay > 0 ) then FVisual.HoldDecals( aFirst, aLast, aDelay );
 end;
 
 procedure TDRLIO.addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection );

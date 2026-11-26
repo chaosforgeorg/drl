@@ -23,9 +23,13 @@ type TDecalStore = class( TVObject )
   procedure Clear;
   destructor Destroy; override;
 protected
-  FData : TDecalArray;
+  FData  : TDecalArray;
+  FTotal : QWord;
 public
   property Data : TDecalArray read FData;
+  // Decals added so far; Data[i] is decal number Total - Data.Size + i.
+  // Not saved: after loading it counts the loaded decals.
+  property Total : QWord read FTotal;
 end;
 
 implementation
@@ -34,12 +38,14 @@ uses sysutils;
 
 constructor TDecalStore.Create;
 begin
-  FData := TDecalArray.Create( 4096 );
+  FData  := TDecalArray.Create( 4096 );
+  FTotal := 0;
 end;
 
 constructor TDecalStore.CreateFromStream( aStream: TStream );
 begin
-  FData := TDecalArray.CreateFromStream( aStream );
+  FData  := TDecalArray.CreateFromStream( aStream );
+  FTotal := FData.Size;
 end;
 
 procedure TDecalStore.WriteToStream( aStream: TStream );
@@ -53,6 +59,7 @@ begin
   iDecal.Sprite   := aSprite;
   iDecal.Position := aPosition;
   FData.PushBack( iDecal );
+  Inc( FTotal );
 end;
 
 procedure TDecalStore.Clear;

@@ -107,7 +107,8 @@ TLevel = class(TLuaMapNode)
     procedure Blood( aCoord : TCoord2D ); overload;
     procedure Blood( aPosition : TCoord2D; aFrom : TDirection; aAmount : LongInt; aSpray : Boolean;
       aDelay : Integer = 0; aOverkill : Boolean = False ); overload;
-    procedure BloodDecal( aPosition : TCoord2D; aFrom : TDirection; aAmount : LongInt; aRange : Single = 1.0 );
+    // Decals placed now appear after aDelay ms.
+    procedure BloodDecal( aPosition : TCoord2D; aFrom : TDirection; aAmount : LongInt; aRange : Single; aDelay : Integer );
     procedure Kill( aBeing : TBeing );
     procedure UpdateKillState;
     function ActiveBeing : TBeing;
@@ -1432,7 +1433,7 @@ begin
       iParticleAmount, iDistanceScale, iSpreadScale );
   end
   else
-    BloodDecal( aPosition, aFrom, iAmount );
+    BloodDecal( aPosition, aFrom, iAmount, 1.0, aDelay );
 end;
 
 function TLevel.GetBloodDecalSprite( aCoord, aOrigin : TCoord2D; aFloorSprite : DWord ) : DWord;
@@ -1455,8 +1456,9 @@ begin
   Exit( FPresentation.EngineSprites.BloodDecals[1 + FPresentation.VisualRNG.RLongInt( 3 )] );
 end;
 
-procedure TLevel.BloodDecal( aPosition : TCoord2D; aFrom : TDirection; aAmount : LongInt; aRange : Single );
-var iCount    : Integer;
+procedure TLevel.BloodDecal( aPosition : TCoord2D; aFrom : TDirection; aAmount : LongInt; aRange : Single; aDelay : Integer );
+var iFirst    : QWord;
+    iCount    : Integer;
     iPosition : TVec2i;
     iOffset   : TVec2f;
     iDirOffset: TVec2f;
@@ -1491,6 +1493,7 @@ begin
   if CF_BLOCKMOVE in FData.Cells[ CellBottom[ aPosition ] ].Flags then Inc( iOrigin.Y );
   iCanBleed := GetBloodDecalSprite( aPosition, iOrigin );
   iDirOffset.Init( aFrom.X * 0.5, aFrom.Y * 0.5 );
+  iFirst := FDecals.Total;
   for iCount := 1 to aAmount do
   begin
     iOffset := RandGuassian( iRange );
@@ -1506,6 +1509,7 @@ begin
     if iSprite <> 0 then
       FDecals.Add( iPosition, iSprite );
   end;
+  FPresentation.HoldDecals( iFirst, FDecals.Total, aDelay );
 end;
 
 procedure TLevel.Kill( aBeing : TBeing );
@@ -2499,7 +2503,7 @@ begin
   iRange := iState.ToFloat( 4, 1.0 );
   if not iLevel.isProperCoord( iCoord ) then Exit( 0 );
   iLevel.LightFlag[ iCoord, LFBLOOD ] := True;
-  iLevel.BloodDecal( iCoord, NewDirection( 0 ), iAmount, iRange );
+  iLevel.BloodDecal( iCoord, NewDirection( 0 ), iAmount, iRange, iLevel.HookDelay );
   Result := 0;
 end;
 

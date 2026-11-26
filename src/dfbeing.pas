@@ -2545,7 +2545,7 @@ begin
   if FBloodBoots > 0 then Dec( FBloodBoots );
   if FBloodBoots = 0 then Exit;
   iLevel.Blood( FPosition );
-  iLevel.BloodDecal( FPosition, NewDirection( 0 ), iLevel.Presentation.VisualRNG.RLongInt( 1, 2 ), 0.4 );
+  iLevel.BloodDecal( FPosition, NewDirection( 0 ), iLevel.Presentation.VisualRNG.RLongInt( 1, 2 ), 0.4, 0 );
 end;
 
 procedure TBeing.Knockback( aDir : TDirection; aStrength : Single; aDelay : Integer );

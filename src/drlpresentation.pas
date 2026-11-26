@@ -33,6 +33,9 @@ type IDRLPresentation = interface( IRLPresentation )
   // A change made now to the cell is shown, with the neighbours derived
   // from it, once aDelay ms of the current action have been presented.
   procedure HoldCell( const aCoord : TCoord2D; aDelay : Integer );
+  // Decals numbered aFirst to aLast - 1, just added to the level's store,
+  // appear after aDelay ms.
+  procedure HoldDecals( aFirst, aLast : QWord; aDelay : Integer );
   // A thing just added appears after aDelay ms.
   procedure HideThing( aThing : TThing; aDelay : Integer );
   // A thing about to be removed, still in the level, disappears after
