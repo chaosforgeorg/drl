@@ -247,6 +247,8 @@ procedure TDRLTextIO.addMarkAnimation(aDuration: DWord; aDelay: DWord;
   aCoord: TCoord2D; aSprite : TSprite; aColor: Byte; aPic: Char);
 begin
   if not CanAnimateLevel then Exit;
+  // Text marks are not culled when drawn, so the cell must be visible now.
+  if not Level.isVisible( aCoord ) then Exit;
   FTextMap.AddAnimation( TTextMarkAnimation.Create( aCoord, IOGylph( aPic, aColor ), aDuration, aDelay ) );
 end;
 

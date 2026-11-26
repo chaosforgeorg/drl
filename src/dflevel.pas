@@ -1283,12 +1283,9 @@ begin
     iBeing := iTargets[ iIndex ].Being;
     if ( iBeing <> nil ) and ( not iBeing.Dead ) then
     begin
-      if iBeing.isVisible then
-      begin
-        if iDmg > 10 then FPresentation.addMarkAnimation( 199, aDelay, iTC, iHSprite, Red, '*' )
-          else if iDmg > 4 then FPresentation.addMarkAnimation( 199, aDelay, iTC, iHSprite, LightRed, '*' )
-            else FPresentation.addMarkAnimation( 199, aDelay, iTC, iHSprite, LightGray, '*' );
-      end;
+      if iDmg > 10 then FPresentation.addMarkAnimation( 199, aDelay, iTC, iHSprite, Red, '*' )
+        else if iDmg > 4 then FPresentation.addMarkAnimation( 199, aDelay, iTC, iHSprite, LightRed, '*' )
+          else FPresentation.addMarkAnimation( 199, aDelay, iTC, iHSprite, LightGray, '*' );
       if iKnock > 0 then
       begin
         iDir.CreateSmooth( aSource, iTC );
@@ -1298,7 +1295,7 @@ begin
     end;
 
     DamageTile( iTC, iDmg, aDamageType, aDelay, False );
-    if isVisible( iTC ) and ( not isShotPassable( iTC ) ) then
+    if not isShotPassable( iTC ) then
       FPresentation.addMarkAnimation( 199, aDelay, iTC, iHSprite, LightGray,'*' );
   end;
   FHookDelay := iHookDelay;

@@ -2488,9 +2488,10 @@ begin
       else iDuration := (iSource - iMisslePath.Current).LargerLength * iDelay;
     iMarkSeq := ImpactDelay;
     iLevel.Presentation.addMissileAnimation( iDuration, aSequence,iSource,iMisslePath.Current,iColor,aItem.MisASCII,iDelay,iSprite,aItem.Flags[ IF_RAYGUN ],aItem.MissTrail);
-    if iHit and iLevel.isVisible( iMisslePath.Current ) then
+    if iHit then
     begin
-      iLevel.Presentation.addSoundAnimation( iMarkSeq, iMisslePath.Current, iLevel.Presentation.ResolveSoundID([Iif( iIsHit, 'flesh_bullet_hit', 'concrete_bullet_hit' )]) );
+      if iLevel.isVisible( iMisslePath.Current ) then
+        iLevel.Presentation.addSoundAnimation( iMarkSeq, iMisslePath.Current, iLevel.Presentation.ResolveSoundID([Iif( iIsHit, 'flesh_bullet_hit', 'concrete_bullet_hit' )]) );
       iLevel.Presentation.addMarkAnimation(199, iMarkSeq, iMisslePath.Current, aItem.HitSprite, Iif( iIsHit, LightRed, LightGray ), '*' );
     end;
   end;
