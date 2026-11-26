@@ -12,6 +12,7 @@ uses classes, sysutils, idea,
      drlkeybindings;
 
 const PlayerSafeZone = 6;
+      NukeDuration   = 4000;
 
 type
   TIntHashMap   = specialize TGHashMap<Integer>;

@@ -130,7 +130,7 @@ type TDRLIO = class( TIORL, IDRLPresentation )
 
   procedure BloodSlideDown( aDelayTime : Word ); virtual;
 
-  procedure WaitForAnimation( aStrict : Boolean = True ); virtual;
+  procedure WaitForAnimation( aStrict : Boolean = True; aBudget : DWord = 2000 ); virtual;
   procedure Blink( aColor : Byte; aDuration : Word = 100; aDelay : DWord = 0); virtual; abstract;
   procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single; aDirection : TDirection ); virtual;
   procedure addScreenShakeAnimation( aDuration : DWord; aDelay : DWord; aStrength : Single );
@@ -356,14 +356,14 @@ begin
 }
 end;
 
-procedure TDRLIO.WaitForAnimation( aStrict : Boolean = True );
+procedure TDRLIO.WaitForAnimation( aStrict : Boolean = True; aBudget : DWord = 2000 );
 begin
   if ( FRunStatus = nil ) or not ( FRunStatus.State in [ DSPlaying, DSEnding ] ) then
   begin
     if MsgPending then MsgUpdate;
     Exit;
   end;
-  if not WaitForAnimationCompletion( aStrict, 2000 ) then
+  if not WaitForAnimationCompletion( aStrict, aBudget ) then
     Log( LOGWARN, 'Emergency animation break!' );
   if aStrict then ClearAnimations;
 end;

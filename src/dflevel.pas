@@ -1676,7 +1676,7 @@ begin
       FPresentation.Blink( White,    50, (iCount-1) * 200 + 50 );
     end;
   end;
-  FPresentation.Blink(White,2000,2000);
+  FPresentation.Blink( White, NukeDuration div 2, NukeDuration div 2 );
   FArea.ForAllCells( @NukeCell );
 end;
 
