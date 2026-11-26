@@ -54,6 +54,8 @@ type
   procedure PushPresentedItem( const aCoord : TCoord2D; aItem : TItem; const aSprite : TSprite; aDTime : Integer = 0 );
   // TParticlePlacement for the level's particle store.
   function ParticlePlacement( aUID : TUID; out aPosition : TVec2f; out aVisible : Boolean ) : Boolean;
+  // Whether the thing is hidden by a clip until it appears.
+  function Appearing( aUID : TUID ) : Boolean;
 private
   FIO             : TDRLIO;
   FTextures       : TTextureManager;
@@ -115,6 +117,16 @@ implementation
 uses vmath, viotypes, vvision, vgl3library, vnode,
      dfmap, dfthing, drlcontrollerbindings,
      drlmarkers, drldecals, drlanimation;
+
+// The clip presenting a thing, if any: the first one claiming it.
+function ThingClip( aAnimations : TAnimationManager; aUID : TUID ) : TGFXThingAnimation;
+var iAnimation : TAnimation;
+begin
+  for iAnimation in aAnimations.Animations do
+    if ( iAnimation is TGFXThingAnimation ) and ( TGFXThingAnimation( iAnimation ).Thing = aUID ) then
+      Exit( TGFXThingAnimation( iAnimation ) );
+  Exit( nil );
+end;
 
 function SpritePartSetFill( aPart : TSpritePart ) : TSpritePartSet;
 begin
@@ -210,6 +222,11 @@ begin
   if ( FVisualMap = nil ) or not PresentedPosition( aUID, aPosition ) then Exit( False );
   aVisible  := FVisualMap.Visible( NewCoord2D( Round( aPosition.X ) + 1, Round( aPosition.Y ) + 1 ) );
   Exit( True );
+end;
+
+function TDRLSpriteMap.Appearing( aUID : TUID ) : Boolean;
+begin
+  Exit( ThingClip( FAnimations, aUID ) is TGFXAppearAnimation );
 end;
 
 procedure TDRLSpriteMap.Update( aTime : DWord; aProjection : TMatrix44; aDarkness : Boolean );
@@ -1305,7 +1322,7 @@ var iClip  : TGFXThingAnimation;
     iThing : TThing;
 begin
   aPosition := Vec2f( 0, 0 );
-  iClip := ThingAnimation( FAnimations, aUID );
+  iClip := ThingClip( FAnimations, aUID );
   if iClip <> nil then Exit( iClip.Position( aPosition ) );
   iThing := FLevel.Context.UIDs.Get( aUID ) as TThing;
   if ( iThing = nil ) or not FVisualMap.Presentable( iThing ) then Exit( False );
@@ -1324,7 +1341,7 @@ begin
     if iAnimation is TGFXThingAnimation then
     begin
       iClip := TGFXThingAnimation( iAnimation );
-      if ThingAnimation( FAnimations, iClip.Thing ) = iClip then iClip.PushThing;
+      if ThingClip( FAnimations, iClip.Thing ) = iClip then iClip.PushThing;
     end;
   // The other things of the level.
   for iNode in FLevel do
@@ -1332,7 +1349,7 @@ begin
     begin
       iThing := TThing( iNode );
       if not ( FLevel.isProperCoord( iThing.Position ) and FVisualMap.Presentable( iThing ) ) then Continue;
-      if ThingAnimation( FAnimations, iThing.UID ) <> nil then Continue;
+      if ThingClip( FAnimations, iThing.UID ) <> nil then Continue;
       if iThing is TBeing then
         PushPresentedBeing( iThing.Position, TBeing( iThing ), iThing.Sprite )
       else if iThing is TItem then
@@ -1391,7 +1408,7 @@ begin
       // The target follows its being as it is presented.
       if iBeing <> nil then
       begin
-        iClip := ThingAnimation( FAnimations, iBeing.UID );
+        iClip := ThingClip( FAnimations, iBeing.UID );
         if PresentedPosition( iBeing.UID, iPos ) then iV := PixelPosition( iPos );
       end;
       if ( iBeing <> nil ) and ( iBeing.isVisible or ( ( iClip <> nil ) and not ( iClip is TGFXAppearAnimation ) ) )

@@ -581,7 +581,7 @@ procedure TDRLGFXIO.LingerThing( aThing : TThing; aDelay : Integer );
 begin
   if not CanAnimateLevel then Exit;
   // A thing removed before it appeared is never shown.
-  if ThingAnimation( FAnimations, aThing.UID ) is TGFXAppearAnimation then Exit;
+  if FSpriteMap.Appearing( aThing.UID ) then Exit;
   FAnimations.AddAnimation( TGFXLingerAnimation.Create( FSpriteMap, Level, FVisual, aDelay, aThing ) );
 end;
 

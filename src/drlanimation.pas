@@ -38,7 +38,7 @@ end;
 // Presents one thing of the level, or one just removed from it, from the
 // clip's creation until its destruction, also while it waits to start.
 // Renderers draw a claimed thing only through the first clip claiming it;
-// see ThingAnimation.
+// see ThingClip in drlspritemap.
 TGFXThingAnimation = class(TGFXLevelAnimation)
   // aThing, which must exist, is captured in its cell for drawing once it
   // is gone. aChain queues the clip after earlier clips of the thing.
@@ -323,10 +323,6 @@ private
   FDirection  : TDirection;
 end;
 
-
-// The clip presenting a thing, if any: the first one claiming it.
-function ThingAnimation( aAnimations : TAnimationManager; aUID : TUID ) : TGFXThingAnimation;
-
 implementation
 
 uses vlog, vdebug;
@@ -393,15 +389,6 @@ begin
   end
   else
     FLevelMap.PushSpriteBeing( iPixel, FSprite, aLight );
-end;
-
-function ThingAnimation( aAnimations : TAnimationManager; aUID : TUID ) : TGFXThingAnimation;
-var iAnimation : TAnimation;
-begin
-  for iAnimation in aAnimations.Animations do
-    if ( iAnimation is TGFXThingAnimation ) and ( TGFXThingAnimation( iAnimation ).FThing = aUID ) then
-      Exit( TGFXThingAnimation( iAnimation ) );
-  Exit( nil );
 end;
 
 { TGFXAppearAnimation }
