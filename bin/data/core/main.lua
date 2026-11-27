@@ -524,16 +524,16 @@ register_perk "perk_lever_description"
 }
 
 -- Drives the floods started with level:start_flood, in the order they were
--- started.
+-- started. They are blocked by walls and by fluid given to level:yield_floods_to.
 register_perk "perk_incremental_flood"
 {
 	OnTick = function( self, time )
-		local walls = generator.cell_lists[ CELLSET_WALLS ]
+		local blocked = level.data.flood_blocked or generator.cell_lists[ CELLSET_WALLS ]
 		for _,flood in ipairs( level.data.floods ) do
 			flood.timer = flood.timer + 1
 			if flood.timer >= flood.tick_rate then
 				flood.timer = 0
-				level:flood_front_step( flood.fluid, walls, flood.target )
+				level:flood_front_step( flood.fluid, blocked, flood.target )
 			end
 		end
 	end,

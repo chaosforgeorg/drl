@@ -80,15 +80,7 @@ register_level "halls_of_carnage"
 		level:summon{ "lostsoul", 6 + 2*DIFFICULTY, area = middle }
 
 		generator.set_permanence( area( 66,9,70,12 ) )
-		local tick = core.bydiff{ 80, 60, 50, 30, 20 }
-
-		level.data.event = {
-			timer      = 0,
-			step       = tick,
-			direction  = 1,
-			flood_min  = 0,
-			cell		= "lava",
-		}
+		generator.event_flood_start( "lava", 1, core.bydiff{ 80, 60, 50, 30, 20 } )
 	end,
 
 }

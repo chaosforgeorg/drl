@@ -131,7 +131,6 @@ function drl.register_events()
 				cell       = "acid",
 				stairs     = "stairs",
 				min_step   = 60,
-				destroy    = true,
 			}
 		end,
 
@@ -158,7 +157,6 @@ function drl.register_events()
 				cell        = "lava",
 				stairs      = "stairs",
 				min_step    = 40,
-				destroy     = true,
 				rush_danger = 20,
 			}
 		end,
@@ -186,7 +184,6 @@ function drl.register_events()
 				cell        = "blood",
 				stairs      = "stairs",
 				min_step    = 40,
-				destroy     = false,
 				rush_danger = 30,
 			}
 		end,

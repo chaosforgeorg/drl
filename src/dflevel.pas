@@ -2259,69 +2259,62 @@ begin
   Exit( 1 );
 end;
 
-// flood_front_step( level, fluid, blocked_cells, area ) -> count
-// One step of a flood that spreads only from its front, the fluid cells of
-// area marked with LFFLOOD. Front cells are taken in row order, as the scan
-// reaches them; cells flooded in this step are not taken. Each front cell
-// looks at its orthogonal neighbours ( left, right, up, down ):
+// flood_front_step( level, fluid, blocked_cells, area [, dominant ] ) -> count
+// One step of a flood that spreads from the fluid cells of area marked with
+// LFFLOOD, which keep the mark once flooded. They are taken in row order, as
+// the scan reaches them; cells flooded in this step are not taken. Each looks
+// at its orthogonal neighbours ( left, right, up, down ):
 // - a neighbour outside area, flooded in this step, or in blocked_cells is
-//   closed;
-// - a CF_LIQUID neighbour marked LFFLOOD is closed if it is fluid, flooded if
-//   its nid is lower than fluid's, and otherwise left alone ( another flood's
-//   front that wins );
+//   left alone;
+// - a CF_LIQUID neighbour marked LFFLOOD is left alone if it is fluid or
+//   belongs to another flood that wins, and flooded if its nid is lower than
+//   fluid's or the flood is dominant;
 // - any other neighbour ( including unmarked liquid, even fluid itself ) is
 //   flooded, as in flood_step, and marked LFFLOOD; a CF_CRITICAL one stays as
 //   it is.
-// A front cell whose four neighbours are all closed loses LFFLOOD at once.
 // Fluid edges are recalculated afterwards. Returns the number of flooded
 // cells.
 function lua_level_flood_front_step( L : Plua_State ) : Integer; cdecl;
-var iState   : TLuaMapStack;
-    iFlood   : TFloodStep;
-    iBlocked : TFlags;
-    iArea    : TArea;
-    iCoord   : TCoord2D;
-    iClosed  : Integer;
-    iStep    : Integer;
+var iState    : TLuaMapStack;
+    iFlood    : TFloodStep;
+    iBlocked  : TFlags;
+    iArea     : TArea;
+    iCoord    : TCoord2D;
+    iDominant : Boolean;
+    iStep     : Integer;
 
-  // Floods aCoord if it can take the fluid; returns whether it is closed.
-  function Closed( const aCoord : TCoord2D ) : Boolean;
+  // Floods aCoord if it can take the fluid.
+  procedure Spread( const aCoord : TCoord2D );
   var iCellID : Byte;
       iLiquid : Boolean;
   begin
-    if not iArea.Contains( aCoord ) then Exit( True );
-    if iFlood.Flooded( aCoord ) then Exit( True );
+    if not iArea.Contains( aCoord ) then Exit;
+    if iFlood.Flooded( aCoord ) then Exit;
     iCellID := iFlood.Level.GetCell( aCoord );
-    if iCellID in iBlocked then Exit( True );
+    if iCellID in iBlocked then Exit;
     iLiquid := CF_LIQUID in iFlood.Level.FData.Cells[ iCellID ].Flags;
     if iLiquid and iFlood.Level.LightFlag[ aCoord, LFFLOOD ] then
     begin
-      if iCellID = iFlood.Fluid then Exit( True );
-      if iFlood.Fluid <= iCellID then Exit( False );
+      if iCellID = iFlood.Fluid then Exit;
+      if ( not iDominant ) and ( iFlood.Fluid <= iCellID ) then Exit;
     end;
     if iFlood.Flood( aCoord, iCellID ) then
       iFlood.Level.LightFlag[ aCoord, LFFLOOD ] := True;
-    Exit( False );
   end;
 
 begin
   iState.Init( L );
   iFlood.Init( iState.Map as TLevel, iState.ToCell( 2 ) );
-  iBlocked := iState.ToCellSet( 3 );
-  iArea    := iState.ToArea( 4 );
+  iBlocked  := iState.ToCellSet( 3 );
+  iArea     := iState.ToArea( 4 );
+  iDominant := iState.ToBoolean( 5, False );
   iFlood.Level.Area.Clamp( iArea );
 
   for iCoord in iArea do
     if ( iFlood.Level.GetCell( iCoord ) = iFlood.Fluid ) and not iFlood.Flooded( iCoord )
        and iFlood.Level.LightFlag[ iCoord, LFFLOOD ] then
-    begin
-      iClosed := 0;
       for iStep := 0 to 3 do
-        if Closed( NewCoord2D( iCoord.X + FloodStepX[ iStep ], iCoord.Y + FloodStepY[ iStep ] ) ) then
-          Inc( iClosed );
-      if iClosed = 4 then
-        iFlood.Level.LightFlag[ iCoord, LFFLOOD ] := False;
-    end;
+        Spread( NewCoord2D( iCoord.X + FloodStepX[ iStep ], iCoord.Y + FloodStepY[ iStep ] ) );
 
   iFlood.Level.RecalcFluids;
   iState.Push( iFlood.Count );

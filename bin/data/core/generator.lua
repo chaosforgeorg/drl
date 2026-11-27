@@ -1320,25 +1320,104 @@ function generator.generate_rivers( settings )
 	end
 end
 
+local EVENT_FLOOD_BACK_LAG = 3
+
+-- Starts an event flood of cell sweeping the level from its left side
+-- ( direction 1 ) or right side ( direction -1 ). Two waves advance on their
+-- own timers, the back half a step out of phase with the front:
+-- - the front is a dominant flood ( see level:flood_front_step ); its first
+--   step floods the whole edge column and marks it as front. It steps 25%
+--   faster than the back, spreads around walls and overpowers every other
+--   flood;
+-- - the back starts EVENT_FLOOD_BACK_LAG steps behind and moves one column
+--   every step ticks, overwriting whole columns including walls and part of
+--   the next column. Its ragged edge becomes front, so the front also spreads
+--   through the walls it breaks, starting on the front's next step.
+-- Floods started with level:start_flood never enter cell.
+function generator.event_flood_start( cell, direction, step )
+	local edge = MAXX
+	if direction == 1 then edge = 1 end
+	level.data.event = {
+		cell       = cell,
+		direction  = direction,
+		edge       = edge,
+		step       = step,
+		front_step = math.max( math.floor( step * 0.8 ), 1 ),
+		front_time = 0,
+		back_time  = math.floor( step / 2 ),
+		seeded     = false,
+		back       = edge - ( EVENT_FLOOD_BACK_LAG + 1 ) * direction,
+	}
+	level:yield_floods_to( cell )
+end
+
+-- Marks c as front for level:flood_front_step if it holds cell, so the front
+-- spreads from it on its next step.
+local function event_flood_mark( c, nid )
+	if level:get_cell( c ) == nid then
+		level:set_light_flag( c, LFFLOOD, true )
+	end
+end
+
+-- Advances the back by one column and marks its ragged edge as front.
+local function event_flood_back_step( data, destroy )
+	local dir   = data.direction
+	data.back   = data.back + dir
+	local back  = data.back
+	local ahead = back + dir
+	if back < 1 or back > MAXX then return end
+	local nid = cells[ data.cell ].nid
+	for y = 1,MAXY do
+		level:flood_tile( coord( back, y ), data.cell, destroy )
+	end
+	local partial = ahead >= 1 and ahead <= MAXX
+	local switch  = false
+	for y = 1,MAXY do
+		local edge = back
+		if partial then
+			if switch then
+				level:flood_tile( coord( ahead, y ), data.cell, destroy )
+				edge = ahead
+			end
+			if math.random(4) == 1 then switch = not switch end
+		end
+		event_flood_mark( coord( edge, y ), nid )
+	end
+	level:recalc_fluids()
+end
+
+-- Spreads the front one step, only from the back's column onwards where it
+-- still matters; its first step floods the edge column and marks it as front.
+local function event_flood_front_step( data, destroy )
+	local dir = data.direction
+	if not data.seeded then
+		data.seeded = true
+		local nid = cells[ data.cell ].nid
+		for y = 1,MAXY do
+			local c = coord( data.edge, y )
+			level:flood_tile( c, data.cell, destroy )
+			event_flood_mark( c, nid )
+		end
+		level:recalc_fluids()
+		return
+	end
+	local back = data.back
+	if dir == 1 and back <= MAXX then
+		level:flood_front_step( data.cell, generator.cell_lists[ CELLSET_WALLS ], area( math.max( back, 1 ), 1, MAXX, MAXY ), true )
+	elseif dir == -1 and back >= 1 then
+		level:flood_front_step( data.cell, generator.cell_lists[ CELLSET_WALLS ], area( 1, 1, math.min( back, MAXX ), MAXY ), true )
+	end
+end
+
 function generator.event_flood_setup( params )
 	assert( params.cell, "event_flood_setup: .cell required!" )
 	assert( params.stairs, "event_flood_setup: .stairs required!" )
-	local data      = level.data.event
-	data.timer      = 0
-	data.step       = math.max( 200 - level.danger_level - DIFFICULTY * 5, params.min_step or 40 )
-	data.direction  = (math.random(2)*2)-3
-	data.flood_min  = 0
-	data.destroy    = params.destroy or false
-	data.cell       = params.cell
-	if data.direction == -1 then
-		data.flood_min = 80
-	else
-		data.direction = 1
-	end
-
+	local direction = (math.random(2)*2)-3
+	local step      = math.max( 200 - level.danger_level - DIFFICULTY * 5, params.min_step or 40 )
 	if params.rush_danger and level.danger_level > params.rush_danger and math.random(5) == 1 then
-		data.step = 25
+		step = 25
 	end
+	generator.event_flood_start( params.cell, direction, step )
 
 	local left  = generator.safe_empty_coord( area(2,2,20,19) )
 	local right = generator.safe_empty_coord( area(60,2,78,19) )
@@ -1347,31 +1426,23 @@ function generator.event_flood_setup( params )
 		level.map[ c ] = generator.styles[ level.style ].floor
 	end
 
-	if data.direction == 1 then left, right = right, left end
+	if direction == 1 then left, right = right, left end
 	player:displace( right )
 	level.map[ left ] = params.stairs
 end
 
 function generator.events_flood_tick()
-	local data = level.data.event
-	data.timer = data.timer + 1
-	if data.timer == data.step then
-		data.timer = 0
-		data.flood_min = data.flood_min + data.direction
-		if data.flood_min >= 1 and data.flood_min <= MAXX then
-			for y = 1,MAXY do
-				level:flood_tile( coord( data.flood_min, y ), data.cell, data.destroy )
-			end
-		end
-		if data.flood_min + data.direction >= 1 and data.flood_min + data.direction  <= MAXX then
-			local switch = false
-			for y = 1,MAXY do
-				if switch then
-					level:flood_tile( coord( data.flood_min + data.direction, y ), data.cell, data.destroy )
-				end
-				if math.random(4) == 1 then switch = not switch end
-			end
-		end
+	local data    = level.data.event
+	local destroy = cells[ data.cell ].flags[ CF_HAZARD ]
+	-- The front goes first, so seeds the back places spread only on a later step.
+	data.front_time = data.front_time + 1
+	if data.front_time >= data.front_step then
+		data.front_time = 0
+		event_flood_front_step( data, destroy )
 	end
-	level:recalc_fluids()
+	data.back_time = data.back_time + 1
+	if data.back_time >= data.step then
+		data.back_time = 0
+		event_flood_back_step( data, destroy )
+	end
 end

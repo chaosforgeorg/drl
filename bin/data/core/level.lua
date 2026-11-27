@@ -43,6 +43,12 @@ function level:start_flood( fluid_id, source, target, tick_rate )
 	self:recalc_fluids()
 end
 
+-- Keeps the floods started with level:start_flood out of fluid_id cells, so
+-- that they never overwrite a dominant flood of fluid_id.
+function level:yield_floods_to( fluid_id )
+	self.data.flood_blocked = generator.merge_cell_lists( generator.cell_lists[ CELLSET_WALLS ], { cells[ fluid_id ].nid } )
+end
+
 function level:is_flooding( fluid_id )
 	local floods = self.data.floods
 	if not floods then return false end
