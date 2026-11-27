@@ -1379,7 +1379,7 @@ function drl.register_regular_items()
 			OnUse = function(self,being)
 				statistics.levers_pulled = statistics.levers_pulled + 1
 				ui.msg("Suddenly water starts gushing from the ground!")
-				level:flood( "water", self.TARGET_AREA )
+				core.lever_flood( self, "water" )
 				return true
 			end,
 		},
@@ -1406,14 +1406,12 @@ function drl.register_regular_items()
 		runtime    = {
 			OnUse = function(self,being)
 				statistics.levers_pulled = statistics.levers_pulled + 1
-				if self.TARGET_AREA:size() >= level:get_area():shrinked():size() then
-					-- Really?  Censoring "f***" when the plot has it?
+				if core.lever_flood( self, "acid" ) then
 					ui.msg("WTF?! Acid splashes everywhere!")
 					being:add_history("He flooded the entire @1 with acid!")
 				else
 					ui.msg("Green acid covers the floor!")
 				end
-				level:flood( "acid", self.TARGET_AREA )
 				return true
 			end,
 		},
@@ -1439,13 +1437,12 @@ function drl.register_regular_items()
 		runtime    = {
 			OnUse = function(self,being)
 				statistics.levers_pulled = statistics.levers_pulled + 1
-				if self.TARGET_AREA:size() >= level:get_area():shrinked():size() then
+				if core.lever_flood( self, "lava" ) then
 					ui.msg("Oh shit... oh shit... OH SHIT!!!!")
 					being:add_history("He flooded the entire @1 with lava!")
 				else
 					ui.msg("The ground explodes in flames!")
 				end
-				level:flood( "lava", self.TARGET_AREA )
 				return true
 			end,
 		},

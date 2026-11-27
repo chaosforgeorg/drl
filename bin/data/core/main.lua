@@ -523,6 +523,35 @@ register_perk "perk_lever_description"
 	end,
 }
 
+-- Drives the floods started with level:start_flood, in the order they were
+-- started.
+register_perk "perk_incremental_flood"
+{
+	OnTick = function( self, time )
+		local walls = generator.cell_lists[ CELLSET_WALLS ]
+		for _,flood in ipairs( level.data.floods ) do
+			flood.timer = flood.timer + 1
+			if flood.timer >= flood.tick_rate then
+				flood.timer = 0
+				level:flood_front_step( flood.fluid, walls, flood.target )
+			end
+		end
+	end,
+}
+
+-- Starts or extends a flood of fluid_id from lever over its TARGET_AREA.
+-- Room floods spread twice as fast as level-wide ones. Returns whether the
+-- flood covers the whole level.
+function core.lever_flood( lever, fluid_id )
+	local whole_level = lever.TARGET_AREA:size() >= level:get_area():shrinked():size()
+	local tick_rate   = ({ 30, 20, 15, 10, 10 })[ DIFFICULTY ] or 10
+	if not whole_level then
+		tick_rate = math.floor( tick_rate / 2 )
+	end
+	level:start_flood( fluid_id, lever.position, lever.TARGET_AREA, tick_rate )
+	return whole_level
+end
+
 register_perk "perk_itemset"
 {
 	OnEquip = function( self, being )

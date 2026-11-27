@@ -9,12 +9,47 @@ function level:flood_tile( pos, cell, destroy )
 	end
 end
 
-function level:flood( tile, flood_area )
-	local hazard = cells[tile].flags[ CF_HAZARD ]
-	for c in flood_area() do
-		level:flood_tile( c, tile, hazard )
+-- Starts fluid_id flooding from source, spreading one front step inside
+-- target every tick_rate ticks ( see perk_incremental_flood ). A flood of
+-- fluid_id already in progress gains source as another front cell, and
+-- takes target and tick_rate unless it already covers the whole level.
+function level:start_flood( fluid_id, source, target, tick_rate )
+	local floods = self.data.floods
+	if not floods then
+		floods = {}
+		self.data.floods = floods
+		self:add_perk( "perk_incremental_flood" )
 	end
+	local flood
+	for _,active in ipairs( floods ) do
+		if active.fluid == fluid_id then
+			flood = active
+			break
+		end
+	end
+	if not flood then
+		table.insert( floods, {
+			fluid     = fluid_id,
+			timer     = 0,
+			tick_rate = tick_rate,
+			target    = target:clone(),
+		} )
+	elseif flood.target:size() < self:get_area():size() then
+		flood.target    = target:clone()
+		flood.tick_rate = tick_rate
+	end
+	self:set_cell_and_hp( source, fluid_id )
+	self:set_light_flag( source, LFFLOOD, true )
 	self:recalc_fluids()
+end
+
+function level:is_flooding( fluid_id )
+	local floods = self.data.floods
+	if not floods then return false end
+	for _,flood in ipairs( floods ) do
+		if flood.fluid == fluid_id then return true end
+	end
+	return false
 end
 
 
